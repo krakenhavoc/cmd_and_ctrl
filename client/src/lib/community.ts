@@ -25,6 +25,8 @@ export interface Community {
   results?: boolean;
   /** The server can DM a table's invite link through the bot; else Played with offers Copy invite (ADR 0213 §1). */
   dm_invites?: boolean;
+  /** A person can link CMD & CTRL to their Discord profile (ADR 0163). */
+  linked_roles?: boolean;
 }
 
 /** The initial value, and the value every failure resolves to. */
@@ -35,6 +37,7 @@ export const NO_COMMUNITY: Community = {
   lfg: false,
   results: false,
   dm_invites: false,
+  linked_roles: false,
 };
 
 const store = guardedWritable<Community>(NO_COMMUNITY, "community");
@@ -56,6 +59,7 @@ export function parseCommunity(body: unknown): Community {
     lfg?: unknown;
     results?: unknown;
     dm_invites?: unknown;
+    linked_roles?: unknown;
   };
   return {
     invite_url: inviteURL(b.invite_url),
@@ -64,6 +68,7 @@ export function parseCommunity(body: unknown): Community {
     lfg: b.lfg === true,
     results: b.results === true,
     dm_invites: b.dm_invites === true,
+    linked_roles: b.linked_roles === true,
   };
 }
 

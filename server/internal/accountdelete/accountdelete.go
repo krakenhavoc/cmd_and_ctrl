@@ -16,8 +16,10 @@
 //     invite the person sent or was sent and their pod suggestion
 //     dismissals (ADR 0220 §12; a pod they owned passes to the member
 //     who joined first, or is deleted if they were the last), the
-//     identities row (Discord id, name, avatar hash and the encrypted
-//     refresh token), the person's deck_request_asks rows, the player
+//     scheduled tables they host and every RSVP of theirs (ADR 0215;
+//     the upcoming plans are cancelled by it), the
+//     identities row (Discord id, name, avatar hash, the encrypted
+//     refresh token and the encrypted Linked Roles grant), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
 //     keyed on their account or Discord id (#2984).
 //  3. Anonymise: the person's seats keep their place in the game but
@@ -55,6 +57,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 )
 
 // DeletedPlayerName is the stable name an anonymised seat carries, in
@@ -112,10 +115,16 @@ type Counts struct {
 	PodMembers    int
 	PodInvites    int
 	PodDismissals int
-	ModelKeyRows  int
-	Identities    int
-	Reports       int
-	Blocks        int
+	// ADR 0215 (privacy section): the person's scheduled tables, of
+	// which ScheduledCancelled were still upcoming, and their RSVPs on
+	// other people's.
+	ScheduledPlans     int
+	ScheduledCancelled int
+	ScheduledRSVPs     int
+	ModelKeyRows       int
+	Identities         int
+	Reports            int
+	Blocks             int
 }
 
 // Result is what Delete hands back after it commits.
@@ -130,8 +139,16 @@ type Result struct {
 	DiscordSubject string
 	// AvatarHash is the avatar hash the identity row held, "" if none.
 	AvatarHash string
-	Counts     Counts
-	DeletedAt  time.Time
+	// RoleConnectionToken is the sealed Linked Roles grant the identity
+	// row held (ADR 0163 §7), nil if the person had not linked. The row
+	// is gone; the caller uses this once to empty the connection on
+	// Discord, best effort, and must never log it.
+	RoleConnectionToken []byte
+	// ScheduledGames are the tables of the person's scheduled tables that
+	// had opened; the caller lets go of their holds (ADR 0215).
+	ScheduledGames []string
+	Counts         Counts
+	DeletedAt      time.Time
 }
 
 // Store deletes accounts. SQLStore is the production one.
@@ -206,7 +223,8 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	// were claimed through OAuth before a users row linked them.
 	var subject, hash sql.NullString
 	err = tx.QueryRowContext(ctx,
-		`SELECT subject, avatar_hash FROM identities WHERE user_id = ? AND provider = 'discord'`, uid).Scan(&subject, &hash)
+		`SELECT subject, avatar_hash, role_connection_token FROM identities WHERE user_id = ? AND provider = 'discord'`, uid).
+		Scan(&subject, &hash, &res.RoleConnectionToken)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return Result{}, fmt.Errorf("accountdelete: read identity: %w", err)
 	}
@@ -349,6 +367,16 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	}
 	res.Counts.PodsPassedOn, res.Counts.PodsDeleted = pc.PodsPassedOn, pc.PodsDeleted
 	res.Counts.PodMembers, res.Counts.PodInvites, res.Counts.PodDismissals = pc.Members, pc.Invites, pc.Dismissals
+	// Scheduled tables (ADR 0215, migration 0034): the plans the person
+	// hosts go with their lists, which cancels the upcoming ones (owner
+	// decision 14), and every RSVP of theirs goes, by account and by
+	// Discord id. A plan still waiting deals its seats again.
+	sc, err := schedule.ForgetAccount(ctx, tx, uid, res.DiscordSubject, at)
+	if err != nil {
+		return Result{}, fmt.Errorf("accountdelete: scheduled tables: %w", err)
+	}
+	res.Counts.ScheduledPlans, res.Counts.ScheduledCancelled, res.Counts.ScheduledRSVPs = sc.PlansDeleted, sc.PlansCancelled, sc.RSVPs
+	res.ScheduledGames = sc.Games
 	// The person's own model key (ADR 0182, migration 0025), sealed
 	// key and all. A bot seat that ran on it keeps pointing at the
 	// tombstone (seats.bot_key_user_id), which carries no identity and

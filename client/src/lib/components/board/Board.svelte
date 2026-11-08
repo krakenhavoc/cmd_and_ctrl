@@ -169,11 +169,13 @@
     castBlightOffer,
     castRevealCost,
     castExilePermanentCost,
+    castReturnCost,
     castTapCost,
     castHandExileCost,
     altCostPayDefinesX,
     altCostPayX,
     castExileCardsCost,
+    exileCostForTargets,
     exileXChoice,
     tapCostFor,
     tapCostLimit,
@@ -265,6 +267,7 @@
   import { needsPermissionTypePicker } from "../../permissionTypes";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
+  import { specialActionNeedsX, withX, type SpecialActionXRow } from "../../specialActionX";
   import TapCostModal from "./TapCostModal.svelte";
   import DelveCostModal from "./DelveCostModal.svelte";
   import { delveOptionIDs, hasDelveChoice } from "../../delve";
@@ -374,8 +377,29 @@
   // slips past this guard is surfaced, not swallowed.
   const guardedSendAction: ActionSender = (type, params, player) => {
     if (disabled) return;
+    // #5249 (CR 107.3d): a special action whose cost has an {X} asks
+    // for X first, whichever menu sent it; the picker's confirm sends
+    // the payload with x_value.
+    if (type === "special_action") {
+      const needsX = specialActionNeedsX(view, params);
+      if (needsX) {
+        xSpecialPrompt = { ...needsX, params, player };
+        return;
+      }
+    }
     sendAction(type, params, player);
   };
+
+  // #5249: the special action waiting on its X, and what it will send.
+  let xSpecialPrompt = $state<
+    (SpecialActionXRow & { params: ActionPayload["params"]; player?: string }) | null
+  >(null);
+  function confirmSpecialX(x: number): void {
+    const p = xSpecialPrompt;
+    xSpecialPrompt = null;
+    if (!p || disabled) return;
+    sendAction("special_action", withX(p.params, x), p.player);
+  }
 
   // ADR 0134 §1: one combat damage clock for the whole board. The arrows'
   // beat cues and the strike layer's lunges both listen to it, and every
@@ -892,6 +916,28 @@
     afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
   }
 
+  // #5247: "return a permanent you control to its owner's hand" as a
+  // spell's additional cost (Fear of Isolation) — the exile picker one
+  // destination over, over the server's `return_options`, the answer sent
+  // as `return_ids`.
+  let returnPrompt = $state<{
+    card: CardView;
+    label: string;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  let returnPromptOptionIDs = $state<string[]>([]);
+  const returnPromptOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, returnPromptOptionIDs),
+  );
+
+  function confirmReturnPermanent(ids: string[]): void {
+    const p = returnPrompt;
+    returnPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, returnIDs: ids });
+  }
+
   // #3868: "tap an untapped Vampire you control" as a spell's additional
   // cost (New Blood) — the sacrifice picker with the verb "Tap", over the
   // server's `tap_others_options`, the answer sent as `teamwork_ids`.
@@ -954,6 +1000,9 @@
     afterX?: boolean;
     // #5193: collect evidence N — any number, enough at this mana value.
     manaValueMin?: number;
+    // #5240: collect evidence sized by the targets, asked after them; the
+    // confirm sends the cast with these picks.
+    afterTargets?: { state: TargetingState; targets: TargetRef[] };
   } | null>(null);
   const exileCardsOptions = $derived.by(() => {
     const p = exileCardsPrompt;
@@ -970,6 +1019,11 @@
     if (!p) return;
     if (p.afterX) {
       afterXCost(p.card, { ...p.choices, exileIDs: ids });
+      return;
+    }
+    if (p.afterTargets) {
+      const { state, targets } = p.afterTargets;
+      fireTargets({ ...state, choices: { ...p.choices, exileIDs: ids } }, targets);
       return;
     }
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
@@ -1023,6 +1077,19 @@
       exilePrompt = { card, label: ex.label, count: ex.count, choices };
       return;
     }
+    // #5247: the return pick, after the exile pick. Skipped when the board
+    // offers exactly the permanents the clause demands, as the activated
+    // return pick is: a modal with one possible answer is worse than none.
+    const rt = castReturnCost(card, choices);
+    if (rt && choices.returnIDs === undefined) {
+      if (rt.options.length <= rt.count) {
+        afterSacrificeCost(card, { ...choices, returnIDs: rt.options });
+        return;
+      }
+      returnPromptOptionIDs = rt.options;
+      returnPrompt = { card, label: rt.label, count: rt.count, choices };
+      return;
+    }
     const tc = castTapCost(card, choices);
     if (tc && choices.teamworkIDs === undefined) {
       // #3961: none is the only answer to "any number" with nothing to tap.
@@ -1047,8 +1114,9 @@
     }
     const ec = castExileCardsCost(card, choices);
     // #1948: "exile X cards" is asked after the X prompt (afterXCost),
-    // because its count is the X.
-    if (ec && !ec.fromX && choices.exileIDs === undefined) {
+    // because its count is the X. #5240: a collect evidence X sized by the
+    // targets is asked after targeting (fireTargets), because X is theirs.
+    if (ec && !ec.fromX && !ec.fromTargets && choices.exileIDs === undefined) {
       if (ec.options.length > ec.count) {
         exileCardsPrompt = {
           card,
@@ -2099,6 +2167,31 @@
       abilityCostBranch = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
       targeting.set(null);
+      return;
+    }
+    // #5240: "collect evidence X, where X is the total mana value of the
+    // permanents this spell targets" (Urgent Necropsy). The targets are
+    // chosen before the total cost is determined (CR 601.2c, 601.2f), so
+    // the graveyard picker opens now, with the floor these targets fix. X =
+    // 0 has nothing to ask.
+    const castChoices = state.choices ?? {};
+    const evidence = castExileCardsCost(state.card, castChoices);
+    if (evidence?.fromTargets && castChoices.exileIDs === undefined) {
+      const sized = exileCostForTargets(evidence, targets);
+      if (sized.exileIDs) {
+        fireTargets({ ...state, choices: { ...castChoices, exileIDs: sized.exileIDs } }, targets);
+        return;
+      }
+      exileCardsPrompt = {
+        card: state.card,
+        cost: sized.cost.cost,
+        label: sized.cost.label,
+        count: 0,
+        choices: castChoices,
+        manaValueMin: sized.cost.manaValueMin,
+        afterTargets: { state, targets },
+      };
+      cancelTargeting();
       return;
     }
     const params: Record<string, unknown> = { instance_id: state.card.instance_id, targets };
@@ -4438,6 +4531,18 @@
     onConfirm={confirmExilePermanent}
     onCancel={() => (exilePrompt = null)}
   />
+  <!-- #5247: return a permanent you control to its owner's hand, as a
+       spell's additional cost. The picks ride cast_spell's return_ids. -->
+  <SacrificeCostModal
+    source={returnPrompt?.card ?? null}
+    label={returnPrompt?.label ?? "a permanent you control"}
+    options={returnPromptOptions}
+    count={returnPrompt?.count ?? 1}
+    verb="Return"
+    castName={returnPrompt?.card.name}
+    onConfirm={confirmReturnPermanent}
+    onCancel={() => (returnPrompt = null)}
+  />
   <!-- #3868: tap an untapped Vampire you control, as a spell's additional
        cost. The picks ride cast_spell's teamwork_ids. -->
   <SacrificeCostModal
@@ -4888,6 +4993,19 @@
     confirmVerb="Activate"
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}
+  />
+  <!-- #5249: and for a special action's {X} (CR 107.3d), held under the
+       server's own ceiling for the row. -->
+  <XCostModal
+    gameID={view.id}
+    card={xSpecialPrompt?.card ?? null}
+    suggestedMax={xSpecialPrompt?.row.x_max ?? 0}
+    costLabel={xSpecialPrompt?.row.cost}
+    maxX={xSpecialPrompt?.row.x_max ?? 0}
+    maxXUnit="mana"
+    confirmVerb={L.xPickerTurnFaceUp}
+    onConfirm={confirmSpecialX}
+    onCancel={() => (xSpecialPrompt = null)}
   />
   <!-- CR 107.4f (#916): how many Phyrexian symbols the CAST pays
        with 2 life each. Between the X picker and the convoke picker,

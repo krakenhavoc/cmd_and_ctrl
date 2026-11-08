@@ -341,6 +341,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if g.PowerUpUsed(source, ab) {
 			continue
 		}
+		// #5221, CR 602.5b: a plain "Activate only once" this object
+		// has already spent, the reader ActivateCatalogAbility refuses on.
+		if g.OnlyOnceSpent(source.InstanceID, ab) {
+			continue
+		}
 		// ADR 0155 Decision 7: a once-each-turn lent row this borrower
 		// has already used, the reader ActivateCatalogAbility refuses on.
 		if g.BorrowedRowSpentLocked(source.InstanceID, origins.At(idx)) {

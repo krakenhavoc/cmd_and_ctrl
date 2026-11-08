@@ -170,6 +170,22 @@ describe("the privacy page", () => {
     expect(text).toContain("it passes to the member who joined first");
   });
 
+  it("says what a scheduled table keeps, who sees the names, and for how long (ADR 0215, slice 2)", () => {
+    const { container } = render(Privacy as never, {} as never);
+    const entry = [...container.querySelectorAll("h3")].find(
+      (h) => h.textContent === "Scheduled tables",
+    );
+    expect(entry).toBeDefined();
+    const text = entry!.parentElement!.textContent!.replace(/\s+/g, " ");
+    expect(text).toContain(
+      `we keep the plan and the list of people with seats or on the waitlist, in the order they reserved, until ${PRIVACY_FACTS.scheduledKeepHours} hours after the start`,
+    );
+    expect(text).toContain(
+      "The host and the people on the list see the names on it; everyone else sees how many seats are open.",
+    );
+    expect(text).toContain("cancels and deletes the tables you scheduled");
+  });
+
   it("is a public route and is reachable by its hash", async () => {
     session.set(null);
     navigate(PRIVACY_HASH);

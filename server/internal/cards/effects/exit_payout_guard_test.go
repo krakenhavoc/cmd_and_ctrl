@@ -133,6 +133,11 @@ var exitPayoutAllowlist = map[string]string{
 		"you do\", so an indestructible or regenerated target still makes the Food. The value is " +
 		"read before the destroy because that is the last moment the permanent is guaranteed " +
 		"findable (CR 608.2h).",
+	"seedship_impact.go:38": "Seedship Impact's `small` is Tainted Treats' gate (#4461): \"If its " +
+		"mana value was 2 or less, create a Lander token\" has no \"if you do\", so an " +
+		"indestructible or regenerated target still makes the Lander. The value is read before " +
+		"the destroy because that is the last moment the permanent is guaranteed findable " +
+		"(CR 608.2h).",
 	"sokkas_haiku.go:42": "Sokka's Haiku's `t` is its second target, the land of \"Untap target " +
 		"land\": a separate printed sentence that reads the target's legality (CR 608.2b), never the " +
 		"mill's outcome, so a replaced or redirected mill cannot change whether the land untaps.",

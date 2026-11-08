@@ -317,20 +317,10 @@ func applyLastSetup(ctx context.Context, c Config, p auth.Principal, id uuid.UUI
 func applySetup(ctx context.Context, c Config, p auth.Principal, id uuid.UUID, setup tablesetups.Setup) setupResult {
 	res := setupResult{Skipped: []setupSkip{}}
 
-	if len(bytes.TrimSpace(setup.Settings)) > 0 && !bytes.Equal(bytes.TrimSpace(setup.Settings), []byte("{}")) {
-		var patch game.SettingsPatch
-		switch err := json.Unmarshal(setup.Settings, &patch); {
-		case err != nil:
-			res.Skipped = append(res.Skipped, setupSkip{Name: "table settings", Reason: "the saved settings could not be read"})
-		default:
-			if verr := patch.Validate(); verr != nil {
-				res.Skipped = append(res.Skipped, setupSkip{Name: "table settings", Reason: verr.Error()})
-			} else if _, uerr := c.Lobby.UpdateSettings(id, actorIn(p, id), patch); uerr != nil {
-				res.Skipped = append(res.Skipped, setupSkip{Name: "table settings", Reason: uerr.Error()})
-			} else {
-				res.Settings = true
-			}
-		}
+	ok, skip := applySetupSettings(c, actorIn(p, id), id, setup.Settings)
+	res.Settings = ok
+	if skip != nil {
+		res.Skipped = append(res.Skipped, *skip)
 	}
 
 	for i, b := range setup.Bots {
@@ -345,6 +335,27 @@ func applySetup(ctx context.Context, c Config, p auth.Principal, id uuid.UUID, s
 		res.BotsAdded++
 	}
 	return res
+}
+
+// applySetupSettings applies a setup's saved settings to the lobby table
+// id, as actor (applySetup, and a scheduled table's doors-open). It
+// answers whether they were applied, or the skip that says why not;
+// neither for a setup with no settings.
+func applySetupSettings(c Config, actor, id uuid.UUID, settings json.RawMessage) (bool, *setupSkip) {
+	if len(bytes.TrimSpace(settings)) == 0 || bytes.Equal(bytes.TrimSpace(settings), []byte("{}")) {
+		return false, nil
+	}
+	var patch game.SettingsPatch
+	if err := json.Unmarshal(settings, &patch); err != nil {
+		return false, &setupSkip{Name: "table settings", Reason: "the saved settings could not be read"}
+	}
+	if verr := patch.Validate(); verr != nil {
+		return false, &setupSkip{Name: "table settings", Reason: verr.Error()}
+	}
+	if _, uerr := c.Lobby.UpdateSettings(id, actor, patch); uerr != nil {
+		return false, &setupSkip{Name: "table settings", Reason: uerr.Error()}
+	}
+	return true, nil
 }
 
 // seatSetupBot adds one bot from a setup, through the same checks POST

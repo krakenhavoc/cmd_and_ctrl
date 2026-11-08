@@ -337,6 +337,13 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #4973: Brad Boimler's extra counter, read by no layer. Its cases
 		// are in one_more_counter_test.go and cards/effects.
 		ModOneMoreCounter: true,
+		// #5235: Prairie Dog's extra +1/+1 counter, read by no layer. Its
+		// cases are in one_more_counter_test.go and cards/effects.
+		ModOneMorePlusOneCounter: true,
+		// #5251: Lumbering Laundry's look at face-down creatures, read by
+		// no layer. Its cases are in face_down_look_test.go, in
+		// protocol's face_down_look_view_test.go and in cards/effects.
+		ModLookAtFaceDownCreatures: true,
 		// ADR 0107 §6: the next-damage shield is a replacement. Its
 		// cases are in prevent_next_from_source_test.go.
 		ModPreventNextFromSource: true,
@@ -408,6 +415,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0058 amendment 2026-10-16 (#3995): a player-wide untap
 		// skip. Its cases are in untap_player_skip_test.go.
 		ModSkipNextUntapStep: true,
+		// #5075 (Empty City Ruse): a player's next turn's combat phases
+		// skipped. Its cases are in skip_combat_phases_test.go.
+		ModSkipCombatPhases: true,
 		// #1997: Hall of Gemstone's recolouring, a replacement. Its
 		// cases are in land_mana_color_test.go.
 		ModLandManaIsColor: true,

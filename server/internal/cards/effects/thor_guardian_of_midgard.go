@@ -27,20 +27,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Combat || ev.Amount <= 0 || ev.Target == source.Controller || g.PlayerByIDForEffect(ev.Target) == nil {
-					return false
-				}
-				controller, ok := b34DamageSourceController(ev, g)
-				return ok && controller == source.Controller
-			}, "Thor, Guardian of Midgard — exile that many cards from the top of your library; you may play them this turn",
-				func(g *game.Game, item *game.StackItem) error {
-					return ExileTopWithPermission{
-						From:    item.Controller,
-						GrantTo: item.Controller,
-						N:       item.Trigger.Event.Amount,
-					}.Apply(NewContext(g, item))
-				}), "Exile that many cards from the top of your library? You may play them this turn."),
+			Optional(On(game.EventDealDamage, ASourceYouControlDealtNoncombatDamageToAnOpponent,
+				"Thor, Guardian of Midgard — exile that many cards from the top of your library; you may play them this turn",
+				exileThatManyYouMayPlayThisTurn), "Exile that many cards from the top of your library? You may play them this turn."),
 		},
 	})
 }

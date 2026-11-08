@@ -1001,6 +1001,22 @@ type ActivatedAbilityShape struct {
 	//     and the payment price it from one function.
 	PowerUp bool
 
+	// OnlyOnce is the ability's own "Activate only once." without the
+	// exhaust keyword (#5221, CR 602.1b / 602.5b): Possessed Goat,
+	// Haunted Screen. Once per OBJECT for as long as it stays one, read
+	// from the per-object, per-label record exhaust reads, so a flicker
+	// makes a new object that may activate it again (CR 400.7) and a
+	// restore keeps a spent one spent.
+	//
+	// Its own bit rather than Exhaust, because the keyword is more than
+	// the limit: "whenever you activate an exhaust ability", exhaust
+	// cost modifiers and Elvish Refueler's permission all read Exhaust,
+	// and none of them may see this. Game.OnlyOnceSpent is the gate
+	// (activate_only_once.go); ActivateCatalogAbility
+	// (ErrAbilityActivatedOnce), internal/legal and the view
+	// (`once_used`) read it.
+	OnlyOnce bool
+
 	// CostModifiers are the ability's OWN cost clauses — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (Takenuma, Otawara, Boseiju), "This ability costs {1}
@@ -1648,6 +1664,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if g.PowerUpUsed(source, ab) {
 		return ErrPowerUpUsed
 	}
+	// #5221, CR 602.5b: a plain "Activate only once", from the same
+	// record and key, before anything is paid.
+	if g.OnlyOnceSpent(cardID, ab) {
+		return ErrAbilityActivatedOnce
+	}
 	// ADR 0155 Decision 7: "You may activate each of those abilities only
 	// once each turn" (Mairsil). Keyed, like exhaust, before anything is
 	// paid.
@@ -1853,7 +1874,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if !ab.Cost.Waterbend.Empty() {
 		// #1296: with the announced targets, so a target-keyed
 		// discount sizes the budget as it sizes the payment below.
-		priced, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
+		priced, err := g.AbilityManaCostAtXForEffect(playerID, *source, srcZone, ab, params.Targets, params.XValue)
 		if err != nil {
 			return ErrInvalidParam
 		}
@@ -2197,7 +2218,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// before 601.2f, so "{1} less for each color of the creature
 		// it targets" (Dragonfire Blade) is sized against the target
 		// this activation actually named.
-		manaCost, err := g.AbilityManaCostForTargetsForEffect(playerID, *source, srcZone, ab, params.Targets)
+		// S79 (#302): and with the announced X, which a one-mana floor
+		// (Training Grounds) measures the total against.
+		manaCost, err := g.AbilityManaCostAtXForEffect(playerID, *source, srcZone, ab, params.Targets, params.XValue)
 		if err != nil {
 			return ErrInvalidParam
 		}
@@ -2487,6 +2510,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		paid.Foraged = true
 		g.noteForageLocked(playerID, cardID)
 	}
+	// #5223, CR 701.59a: and a "Collect evidence N" component, paid with
+	// the exiles above (Forensic Researcher), is a collection that
+	// "whenever you collect evidence" sees.
+	if ab.Cost.ExileCards.IsCollectEvidence() {
+		g.noteCollectEvidenceLocked(playerID, cardID, exiles)
+	}
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()
@@ -2687,6 +2716,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// use. Validated above with every other component; the mana they
 	// stood in for was already subtracted from the mana component.
 	g.payTapPermanentsCostLocked(playerID, params.WaterbendIDs)
+	// #5276, CR 701.67c: the waterbend cost is paid, however much of it
+	// the taps covered, so the activator has waterbent.
+	if !ab.Cost.Waterbend.Empty() {
+		g.noteBendLocked(EventWaterbend, playerID, cardID)
+	}
 	// The cost may have queued dies-triggers (a sacrifice outlet
 	// feeding Blood Artist). Drain them so they sit ABOVE the
 	// ability on the stack, which is where paying a cost puts them.

@@ -3186,6 +3186,13 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #5247: a "return a permanent you control to its owner's hand"
+  // additional cost (Fear of Isolation). `return_options` lists the
+  // permanents that could pay it, in payment order, min / max the clause's
+  // count; the picks ride cast_spell as `return_ids`. Fewer cards than
+  // `min` means the cost cannot be paid right now.
+  return_label?: string;
+  return_options?: LegalTargetsView;
   // #3868: a "tap an untapped Vampire you control" additional cost (New
   // Blood), on the cost or on one of its branches. `tap_others_options`
   // lists the untapped permanents that could pay it, in payment order,
@@ -3221,6 +3228,15 @@ export interface AdditionalCostView {
   // graveyard pays, absent at 0.
   exile_cost_x?: boolean;
   exile_cost_x_max?: number;
+  // #5240: "collect evidence X, where X is the total mana value of the
+  // permanents this spell targets" (Urgent Necropsy). Any number of
+  // `exile_cost_options`, none included, whose mana values total X or
+  // more; X is known only once the targets are picked, so the cast chain
+  // asks for the cards after targeting. `exile_cost_target_mana_values` is
+  // each permanent's mana value as the server reads it, keyed by instance
+  // id: X is the sum over the distinct permanents picked as targets.
+  exile_cost_from_targets?: boolean;
+  exile_cost_target_mana_values?: Record<string, number>;
   payable?: boolean;
 }
 
@@ -3634,6 +3650,15 @@ export interface SpecialActionView {
   // cost, and this is what tells them apart. Absent on every other
   // kind.
   route?: "mana_cost" | "morph" | "disguise";
+  // #5249 (CR 107.3d): the row's cost has an {X} the player chooses as
+  // they take the action — Aurelia's Vindicator's "Turn face up
+  // {X}{3}{W}". The client asks for X before sending, and the payload
+  // carries it as `x_value`. Absent on every other row.
+  demands_x?: boolean;
+  // The largest X the viewer can pay for right now, from the pool and
+  // auto-tap together. Absent beside demands_x when not even X = 0 is
+  // payable.
+  x_max?: number;
 }
 
 // RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):
@@ -3818,6 +3843,11 @@ export interface ActivatedAbilityView {
   // charged_mana_cost already carries the keyword's reduction by the
   // permanent's mana cost the turn it entered.
   power_up_used?: boolean;
+  // #5221, CR 602.5b: true when the ability says "Activate only once"
+  // without the exhaust keyword (Possessed Goat, Haunted Screen) and this
+  // permanent has already activated it. Absent otherwise. Only a new
+  // object (CR 400.7) clears it.
+  once_used?: boolean;
   // #4980: on a row whose purpose declares resolution_mana, how many
   // times this permanent's row has resolved this turn (the engine's own
   // count; an activation still on the stack is not in it). Bot data; the

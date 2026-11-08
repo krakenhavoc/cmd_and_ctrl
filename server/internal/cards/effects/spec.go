@@ -572,6 +572,15 @@ type Spec struct {
 	// land_play_restriction.go.
 	LandPlayRestrictions []game.LandPlayRestriction
 
+	// TurnFaceUpRestrictions are the "can't be turned face up" statics
+	// this permanent imposes while it is on the battlefield (#5241):
+	// Karlov Watchdog's "Permanents your opponents control can't be
+	// turned face up during your turn". Read live from the battlefield
+	// through CatalogAbilityKey, like LandPlayRestrictions, by the
+	// turn-face-up special action's window (so the engine, the
+	// enumerator and the view agree) and by game.TurnFaceUpForEffect.
+	TurnFaceUpRestrictions []game.TurnFaceUpRestriction
+
 	// IgnorableEffect declares that the player a static ability bears on
 	// may ignore it until end of turn by sacrificing a permanent (CR
 	// 116.2d, #1986) — Damping Engine's last sentence. The restrictions
@@ -1714,6 +1723,15 @@ type Spec struct {
 	// every query (ADR 0206, game/attack_direction.go).
 	AttackOnlyNearestOpponentInChosenDirection bool
 
+	// LooksAtFaceDownCreatures declares "you may look at face-down
+	// creatures your opponents control any time" (Found Footage, #5251).
+	// Not a `Static` entry, for HandsRevealed's reason: it is a fact
+	// about what a player may see, derived from the battlefield on every
+	// frame and never stored (game/face_down_look.go). For the
+	// until-end-of-turn form a resolved ability calls
+	// game.LookAtFaceDownCreaturesThisTurnForEffect.
+	LooksAtFaceDownCreatures bool
+
 	// DiscardByOpponent declares what "if a spell or ability an
 	// opponent controls causes you to discard this card" does for this
 	// card while it sits in a hand: game.DiscardByOpponentBattlefield
@@ -2001,6 +2019,15 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// OnlyOnce is the printed "Activate only once." on an ability that
+	// is not an exhaust ability (CR 602.5b, #5221): Possessed Goat,
+	// Haunted Screen. One bit, no card logic: the engine reads the
+	// per-object activation record exhaust reads and refuses a second
+	// activation itself (game.Game.OnlyOnceSpent). Never Exhaust: true
+	// for these, which would wake "whenever you activate an exhaust
+	// ability". Register panics when the label prints the clause without
+	// the bit, or the bit without the clause.
+	OnlyOnce bool
 	// CostModifiers is the ability's OWN cost clause — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (the channel lands), "…for each color of the creature

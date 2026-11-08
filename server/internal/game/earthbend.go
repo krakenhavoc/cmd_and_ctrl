@@ -184,6 +184,11 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, keyed 
 	g.animateLandLocked(source, land, stamp,
 		earthbendLabel+" — becomes a 0/0 creature with haste that's still a land")
 	g.scheduleEarthbendReturnLocked(actor, source, land, stamp)
+	// #5276, CR 701.66b: "whenever you earthbend" triggers as the return
+	// trigger is created, which is now. Also for a land already earthbent:
+	// its second return trigger is created by the rules, though the
+	// engine keeps one (scheduleEarthbendReturnLocked).
+	g.noteBendLocked(EventEarthbend, actor, source)
 	if n <= 0 {
 		// "Earthbend 0" is a real instruction — Rockalanche with no
 		// Forests — and it is not a no-op: the land is a 0/0 creature

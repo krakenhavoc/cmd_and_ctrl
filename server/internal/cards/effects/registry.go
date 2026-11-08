@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -83,6 +84,7 @@ func Register(spec Spec) {
 	checkBoast(spec)
 	checkPowerUp(spec)
 	checkPowerUpExtras(spec)
+	checkOnlyOnce(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
@@ -133,6 +135,7 @@ func Register(spec Spec) {
 	for _, t := range spec.Triggered {
 		checkStateTrigger(spec.Name, t)
 		checkNotPutByThisAbility(spec.Name, t)
+		checkTriggersOnlyOnce(spec.Name, t)
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
@@ -310,6 +313,9 @@ func Register(spec Spec) {
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
 	checkCostOpensFlash(spec)
+	// #5240: a collect evidence X sized by the targets, before the
+	// either/or and optional checks so its own refusal is the one read.
+	checkCollectEvidenceFromTargets(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
@@ -451,6 +457,9 @@ func Register(spec Spec) {
 	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	for _, r := range spec.TurnFaceUpRestrictions {
+		checkRestriction(spec.Name, "turn-face-up", r.Label, r.Forbids == nil)
+	}
 	// CR 116.2d (#1986): an ignorable effect and the restrictions that
 	// are it come together or not at all.
 	checkIgnorableEffect(spec)
@@ -534,6 +543,10 @@ func Register(spec Spec) {
 		for i, m := range mods {
 			if why := m.UnitProblem(); why != "" {
 				panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) declares %s (ADR 0048 addendum §16)", spec.Name, i, m.Label, why))
+			}
+			// S79 (#302): the one-mana floor is a generic reduction's.
+			if why := m.KeepsOneManaProblem(); why != "" {
+				panic(fmt.Sprintf("effects.Register: %q cost modifier %d (%q) declares %s — build it with KeepsOneMana(ActivationCostsLess(…))", spec.Name, i, m.Label, why))
 			}
 		}
 	}
@@ -2394,11 +2407,60 @@ func checkPowerUp(spec Spec) {
 	}
 }
 
+// onlyOnceClause finds "only once" in an ability label, and the word
+// after it when that word makes it a per-turn limit ("only once each
+// turn").
+var onlyOnceClause = regexp.MustCompile(`(?i)\bonly once( each\b)?`)
+
+// printsActivateOnlyOnce reports whether an ability label prints "Activate
+// only once" with no "each turn" after it.
+func printsActivateOnlyOnce(label string) bool {
+	for _, m := range onlyOnceClause.FindAllStringSubmatch(label, -1) {
+		if m[1] == "" {
+			return true
+		}
+	}
+	return false
+}
+
+// checkOnlyOnce is the boot-time contract of a plain "Activate only once"
+// (CR 602.5b, #5221), for checkPowerUp's reasons: the label and the bit
+// agree in both directions (a printed "Activate only once." without the
+// bit could be activated every turn, and a bit without the printed clause
+// is a rule the player cannot read), two such abilities on one card may
+// not share a label (the record is keyed by it), and the bit is never
+// beside Exhaust or PowerUp, which already carry the limit.
+func checkOnlyOnce(spec Spec) {
+	seen := map[string]bool{}
+	for i, a := range spec.Activated {
+		printed := printsActivateOnlyOnce(a.Label)
+		if a.OnlyOnce && !printed {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets OnlyOnce but its label does not print \"Activate only once\"", spec.Name, i))
+		}
+		if printed && !a.OnlyOnce && !a.Exhaust && !a.PowerUp {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d prints \"Activate only once\" and does not set OnlyOnce: true — without the bit it can be activated again", spec.Name, i))
+		}
+		if !a.OnlyOnce {
+			continue
+		}
+		if a.Exhaust || a.PowerUp {
+			panic(fmt.Sprintf("effects.Register: %q activated ability %d sets OnlyOnce beside Exhaust or PowerUp — the keyword already carries the limit", spec.Name, i))
+		}
+		if seen[a.Label] {
+			panic(fmt.Sprintf("effects.Register: %q has two only-once abilities labelled %q — the activation record is keyed by the label, so they would share one use", spec.Name, a.Label))
+		}
+		seen[a.Label] = true
+	}
+}
+
 // checkOneExhaustAbility is the body of the three checks above, for
 // one ability of either kind. `seen` is shared across the kinds
 // because the record's key space is.
 func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool, seen map[string]bool) {
-	mentions := strings.Contains(strings.ToLower(label), "exhaust")
+	// "an exhaust ability" names other abilities (Pit Automaton's "When
+	// you next activate an exhaust ability …"); only the keyword itself
+	// marks this one.
+	mentions := strings.Contains(strings.ReplaceAll(strings.ToLower(label), "exhaust abilit", ""), "exhaust")
 	if exhaust && !mentions {
 		panic(fmt.Sprintf("effects.Register: %q %s %d sets Exhaust but its label does not print the keyword — the label is what the player reads", name, kind, i))
 	}
@@ -2596,6 +2658,12 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
 	}
+	if ec.ManaValueFromTargets {
+		// #5240: a floor read off a cast's targets exists on a spell's
+		// mandatory slot only (checkCastExileCardsClause).
+		panic(fmt.Sprintf("effects.Register: %q %s collects evidence sized by the targets — a cast's additional cost only (#5240)",
+			name, where))
+	}
 	if ec.CountFromX {
 		// #1948: "exile X cards" exists on a cast's mandatory slot only
 		// (checkCastExileCardsClause); no ability prints it.
@@ -2659,6 +2727,9 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		if m.Kind == game.CostFloor || m.Kind == game.CostZeroAlternative {
 			panic(fmt.Sprintf("effects.Register: %q %s is a CostFloor or CostZeroAlternative — an ability's own cost clause increases or reduces", name, where))
 		}
+		if m.KeepsOneMana {
+			panic(fmt.Sprintf("effects.Register: %q %s keeps one mana — no printed ability floors its own cost; the floor is a board clause about other abilities (Training Grounds)", name, where))
+		}
 		if m.SpecialActions {
 			panic(fmt.Sprintf("effects.Register: %q %s sets SpecialActions — an ability's own clause prices that ability", name, where))
 		}
@@ -2668,6 +2739,20 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		if why := m.UnitProblem(); why != "" {
 			panic(fmt.Sprintf("effects.Register: %q %s declares %s (ADR 0048 addendum §16)", name, where, why))
 		}
+	}
+}
+
+// checkTriggersOnlyOnce holds TriggeredAbility.OnlyOnce (#5245) to the
+// rows the harvester's claim reaches: an event trigger with a Key, which
+// is half of the per-object record's key. A state trigger is dispatched
+// by its own path (state_triggers.go), which has no claim, so the bit
+// would do nothing there.
+func checkTriggersOnlyOnce(card string, t game.TriggeredAbility) {
+	if !t.OnlyOnce {
+		return
+	}
+	if t.Key == "" || t.State != "" {
+		panic(fmt.Sprintf("effects.Register: %q declares a trigger that triggers only once without a Key, or on a state trigger (#5245)", card))
 	}
 }
 

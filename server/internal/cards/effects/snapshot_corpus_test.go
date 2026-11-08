@@ -140,7 +140,12 @@ func corpusBoards() []corpusBoard {
 		{"scoped_effect_kinds", corpusScopedEffectKinds},
 		{"mass_diminish_cast_batch", corpusMassDiminish},
 		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
-		{"earthbend", corpusEarthbend},
+		// #5276: the board that wrote earthbend.json earthbent without
+		// announcing it, a history this engine no longer makes (an
+		// earthbend raises EventEarthbend as its return trigger is
+		// created, CR 701.66b). The file stays and is still restored;
+		// the same board is a new file.
+		{"earthbend_announced", corpusEarthbend},
 		// #3942: the board that wrote suspend_haste.json logged a counter
 		// placement with no placer, a history this engine no longer
 		// makes (every placement names who put the counters). The file
@@ -709,7 +714,47 @@ func corpusBoards() []corpusBoard {
 		// marking goes too while it keeps the keyword. A new vocabulary
 		// value an older binary must refuse rather than read as nothing.
 		{"lose_all_creature_types_cast_batch", corpusLoseAllCreatureTypes},
+		// v9, added by #5277 (ADR 0188 Decision 13) as new files, made by
+		// the card that writes them, Bumi, Unleashed: a rules effect
+		// waiting for one combat phase (phaseEffects[]) under the new
+		// creaturesThatArentLands scope, and the same rule registered in
+		// Bumi's combat (scopedEffects[] with that scope and an
+		// until-end-of-combat duration). A new field and a new scope value
+		// an older binary must refuse or drop, never read as more.
+		{"bumi_combat_rule_waiting", corpusBumiCombatRuleWaiting},
+		{"bumi_combat_rule_in_force", corpusBumiCombatRuleInForce},
 	}
+}
+
+// corpusBumiCombatRuleWaiting is #5277's waiting rule: Bumi, Unleashed
+// connected in the first combat and its trigger resolved, so one
+// phaseEffects[] record waits for the combat it added.
+func corpusBumiCombatRuleWaiting(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	bumi := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Bumi, Unleashed", TypeLine: "Legendary Creature — Human Noble Ally",
+		OracleID: bumiUnleashedOracle, Power: 5, Toughness: 4, Owner: me.ID, Controller: me.ID,
+	})
+	attackWith(t, g, opp.ID, bumi)
+	passPriorityAroundTable(t, g)
+	if len(g.PhaseEffects) != 1 || g.PhaseEffects[0].Effect.Scope != game.ScopeCreaturesThatArentLands {
+		t.Fatalf("setup: waiting rules %+v, want one creaturesThatArentLands record", g.PhaseEffects)
+	}
+	return g
+}
+
+// corpusBumiCombatRuleInForce is the same game in the declare attackers
+// step of Bumi's combat: the rule is a registered scoped effect lasting
+// until the end of that combat.
+func corpusBumiCombatRuleInForce(t *testing.T) *game.Game {
+	g := corpusBumiCombatRuleWaiting(t)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if len(g.PhaseEffects) != 0 || len(g.ScopedEffects) != 1 || g.ScopedEffects[0].Scope != game.ScopeCreaturesThatArentLands {
+		t.Fatalf("setup: waiting %+v, registered %+v; want the rule registered", g.PhaseEffects, g.ScopedEffects)
+	}
+	return g
 }
 
 // corpusLoseAllCreatureTypes is #4691's loseAllCreatureTypes kind, made

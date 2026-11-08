@@ -29,6 +29,7 @@
   import type { CardView } from "../../protocol";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
+  import { L } from "../../labels";
 
   interface Props {
     gameID: string;
@@ -51,8 +52,12 @@
     maxX?: number;
     // #1944: what maxX counts. "loyalty" for a −X loyalty cost (Chandra,
     // Awakened Inferno), whose ceiling is the planeswalker's loyalty
-    // (CR 606.6); "energy" otherwise.
-    maxXUnit?: "energy" | "loyalty";
+    // (CR 606.6); "energy" otherwise. #5249: "mana" for a special
+    // action's {X} (Aurelia's Vindicator's turn face up {X}{3}{W}), whose
+    // ceiling is the server's own `x_max`: every X up to it is payable, so
+    // there is no preview to ask for (the preview prices a cast or an
+    // ability, never a special action).
+    maxXUnit?: "energy" | "loyalty" | "mana";
     // #2581: a spell's printed "X can't be greater than <count>" —
     // the card's `x_max`, read for the viewer. The server refuses more
     // (CR 601.2b), so the input does too. The live preview reports the
@@ -130,7 +135,7 @@
     const value = x;
     const ability = abilityIndex;
     const cast = castParams;
-    if (!id) return;
+    if (!id || maxXUnit === "mana") return;
     loading = true;
     fetchAutoTapPreview(gameID, id, { xValue: value, abilityIndex: ability, cast })
       .then((p) => {
@@ -202,6 +207,9 @@
       <!-- #1944: a −X loyalty cost spends no mana, so there is no
            auto-tap check to describe. -->
       <p class="prompt-hint">Pick a value for X.</p>
+    {:else if maxXUnit === "mana"}
+      <!-- #5249: the server priced every X up to maxX already. -->
+      <p class="prompt-hint">{L.xPickerManaCeiling(maxX ?? 0)}</p>
     {:else if card.additional_cost?.demands_x}
       <!-- S23: Toxic Deluge's X is paid in LIFE, not mana, so the
            auto-tap line below is about the flat printed cost and
@@ -226,7 +234,7 @@
           ? " — that's all of it, and the planeswalker will die"
           : ""}.
       </p>
-    {:else if maxX !== undefined}
+    {:else if maxX !== undefined && maxXUnit === "energy"}
       <!-- ADR 0129 §8: "Pay X {E}" — X energy, at most what the seat has. -->
       <p class="prompt-hint">You'll pay {x} energy (you can pay up to {maxX}).</p>
     {/if}

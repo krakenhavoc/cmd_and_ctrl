@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Glasspool Mimic // Glasspool Shore — Modal DFC. Front: Creature —
 // Shapeshifter Rogue {2}{U}, 0/0:
@@ -31,17 +27,7 @@ func init() {
 		Name:         "Glasspool Mimic",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
-			EntersAsCopyOf(
-				"Glasspool Mimic",
-				func(g *game.Game, controller uuid.UUID, self uuid.UUID) []uuid.UUID {
-					return copyCandidates(g, self, func(c game.Card) bool {
-						return c.IsCreature() && c.Controller == controller
-					})
-				},
-				func(_ *game.ReplacementEvent, v *game.PrintedValues, _ *game.Game, _ *game.Card) {
-					v.AddSubtype("Shapeshifter")
-					v.AddSubtype("Rogue")
-				}),
+			EntersAsCopyOf("Glasspool Mimic", aCreatureYouControl, alsoAShapeshifterRogue),
 		},
 	})
 }

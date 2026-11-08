@@ -1022,6 +1022,10 @@ type tokenGroupSnapshot struct {
 	AttackOpponent *uuid.UUID         `json:"attackOpponent,omitempty"`
 	CreatedWith    PermissionCardRef  `json:"createdWith"`
 	Blocking       *uuid.UUID         `json:"blocking,omitempty"`
+	// Tag is TokenGroup.Tag (#4867). Additive within v9: only a tail that
+	// reads it (a key of its own) is told it, so a binary from before it
+	// refuses the file by that key.
+	Tag *uuid.UUID `json:"tag,omitempty"`
 }
 
 // tokenTailSnapshot is a tokenTail's data half: present exactly when the

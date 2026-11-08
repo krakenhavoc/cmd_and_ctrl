@@ -242,6 +242,22 @@ func exileChosenTargetUntilThisLeaves(label string) Effect {
 	}
 }
 
+// exileChosenTargetUntilThisLeavesThenGainLife is the binding enchantments'
+// enters trigger (Makeshift Binding, Prayer of Binding): "exile <target>
+// until this enchantment leaves the battlefield. You gain <life> life."
+// The life follows the exile whether or not anything was exiled; a
+// trigger whose chosen target is gone by resolution has no legal target
+// and does not resolve at all.
+func exileChosenTargetUntilThisLeavesThenGainLife(label string, life int) Effect {
+	untilLeaves := exileChosenTargetUntilThisLeaves(label)
+	return func(g *game.Game, item *game.StackItem) error {
+		if err := untilLeaves(g, item); err != nil {
+			return err
+		}
+		return GainLife{Amount: life}.Apply(NewContext(g, item))
+	}
+}
+
 // UntilThisLeavesLegacyReturn is the leaves-the-battlefield trigger an
 // "until this leaves the battlefield" card carried before #1729, kept
 // for one job: a card a table exiled with it under an older binary has

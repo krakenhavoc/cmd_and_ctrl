@@ -36,7 +36,7 @@ func (l *Lobby) SetTableEvents(e TableEvents) {
 // holds l.mu; the notifier only queues, and never calls back into the
 // lobby from there.
 func (l *Lobby) noteFilledLocked(entry *gameEntry, by uuid.UUID) {
-	if l.events == nil || entry.practice || len(entry.meta.Players) < game.MaxPlayers {
+	if l.events == nil || entry.practice || len(entry.meta.Players) < seatCapLocked(entry) {
 		return
 	}
 	l.events.TableFilled(entry.meta.ID, by)
@@ -101,7 +101,7 @@ func notifyTableLocked(e *gameEntry) notify.Table {
 		ID:    e.meta.ID,
 		Name:  e.meta.Name,
 		State: string(e.room.Game.CurrentState()),
-		Full:  len(e.meta.Players) >= game.MaxPlayers,
+		Full:  len(e.meta.Players) >= seatCapLocked(e),
 	}
 	if glance, ok := e.room.Game.Glance(); ok {
 		t.Turn = glance.Turn

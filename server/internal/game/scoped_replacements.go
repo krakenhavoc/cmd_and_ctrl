@@ -163,6 +163,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a oneMoreCounter replacement names no player"
 		}
+	case ModOneMorePlusOneCounter:
+		// #5235: Prairie Dog names who puts the counters.
+		if m.Player == uuid.Nil {
+			return "a oneMorePlusOneCounter replacement names no player"
+		}
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
@@ -198,7 +203,7 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchLife
 	case ModRollExtraDieIgnoreOne:
 		return watchRollDie
-	case ModOneMoreCounter:
+	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		return watchCounterPlaced
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
@@ -721,6 +726,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return rollExtraDieAppliesLocked(m, ev)
 	case ModOneMoreCounter:
 		return oneMoreCounterAppliesLocked(g, m, ev)
+	case ModOneMorePlusOneCounter:
+		return oneMorePlusOneCounterAppliesLocked(g, m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
@@ -799,7 +806,7 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		ev.Cancel()
 	case ModRollExtraDieIgnoreOne:
 		g.applyRollExtraDieLocked(e, ev)
-	case ModOneMoreCounter:
+	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		// "That many plus one": one window per kind, so one more each.
 		ev.CounterDelta++
 	case ModLandManaIsColor:

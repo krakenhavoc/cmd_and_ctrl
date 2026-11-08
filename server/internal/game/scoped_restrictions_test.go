@@ -36,6 +36,7 @@ func TestRuleScopedRestrictionScopes(t *testing.T) {
 		{ScopeYourCreatures, [4]bool{true, false, false, false}},
 		{ScopeOpponentsCreatures, [4]bool{false, true, true, true}},
 		{ScopeCreaturesWithoutFlying, [4]bool{true, true, false, true}},
+		{ScopeCreaturesThatArentLands, [4]bool{true, true, true, true}},
 	}
 	for _, c := range cases {
 		t.Run(string(c.scope), func(t *testing.T) {

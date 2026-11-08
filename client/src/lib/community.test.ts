@@ -23,6 +23,7 @@ describe("parseCommunity", () => {
       lfg: false,
       results: false,
       dm_invites: false,
+      linked_roles: false,
     });
   });
 
@@ -34,6 +35,16 @@ describe("parseCommunity", () => {
       false,
     );
     expect(parseCommunity({ invite_url: INVITE, gate: false }).dm_invites).toBe(false);
+  });
+
+  it("reads whether Discord Linked Roles is offered, and only a literal true (ADR 0163)", () => {
+    expect(
+      parseCommunity({ invite_url: INVITE, gate: false, linked_roles: true }).linked_roles,
+    ).toBe(true);
+    expect(parseCommunity({ invite_url: INVITE, gate: false, linked_roles: 1 }).linked_roles).toBe(
+      false,
+    );
+    expect(parseCommunity({ invite_url: INVITE, gate: false }).linked_roles).toBe(false);
   });
 
   it("reads whether the results feed is offered, and only a literal true (ADR 0174 §6)", () => {
@@ -90,6 +101,7 @@ describe("loadCommunity", () => {
       lfg: false,
       results: false,
       dm_invites: false,
+      linked_roles: false,
     });
     expect(f).toHaveBeenCalledTimes(1);
     expect(f.mock.calls[0][0]).toBe("/community");

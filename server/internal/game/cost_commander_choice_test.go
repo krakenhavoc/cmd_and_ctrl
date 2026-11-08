@@ -402,6 +402,48 @@ func costCommanderCases() []costCommanderCase {
 					return g.CastSpell(g.Seats[0].ID, spell.InstanceID, CastSpellParams{AlternativeCost: "daze", AltCostIDs: []uuid.UUID{id}})
 				}, spellOnStack(spell.InstanceID)}
 		}},
+		// #5247: "As an additional cost to cast this spell, return a
+		// permanent you control to its owner's hand" (Fear of Isolation).
+		{"spell: additional cost, return a permanent you control", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			const oracle = "test-5247-return"
+			withCatalogAdditionalCost(t, func(o string) *AdditionalCost {
+				if o == oracle {
+					return &AdditionalCost{ReturnToHand: &ReturnToHandCost{Count: 1, Filter: creatureCostSpec(), Label: "a creature you control"}, Label: "Return a creature you control to its owner's hand"}
+				}
+				return nil
+			})
+			advanceTo(t, g, StepPrecombatMain)
+			me := g.Seats[0]
+			spell := NewCard("Test Fear", me.ID)
+			spell.TypeLine = "Sorcery"
+			spell.OracleID = oracle
+			me.Hand.PushTop(spell)
+			id := seedCostCard(g.Battlefield, me.ID, me.ID, cmd, nil)
+			return costCommanderSetup{0, id, battlefieldZone, handOf(0),
+				func(g *Game) error {
+					return g.CastSpell(g.Seats[0].ID, spell.InstanceID, CastSpellParams{ReturnIDs: []uuid.UUID{id}})
+				}, spellOnStack(spell.InstanceID)}
+		}},
+		{"spell: additional cost, return a STOLEN commander to its owner's hand", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
+			const oracle = "test-5247-return-stolen"
+			withCatalogAdditionalCost(t, func(o string) *AdditionalCost {
+				if o == oracle {
+					return &AdditionalCost{ReturnToHand: &ReturnToHandCost{Count: 1, Filter: creatureCostSpec(), Label: "a creature you control"}, Label: "Return a creature you control to its owner's hand"}
+				}
+				return nil
+			})
+			advanceTo(t, g, StepPrecombatMain)
+			me, opp := g.Seats[0], g.Seats[1]
+			spell := NewCard("Test Fear", me.ID)
+			spell.TypeLine = "Sorcery"
+			spell.OracleID = oracle
+			me.Hand.PushTop(spell)
+			id := seedCostCard(g.Battlefield, opp.ID, me.ID, cmd, nil)
+			return costCommanderSetup{1, id, battlefieldZone, handOf(1),
+				func(g *Game) error {
+					return g.CastSpell(g.Seats[0].ID, spell.InstanceID, CastSpellParams{ReturnIDs: []uuid.UUID{id}})
+				}, spellOnStack(spell.InstanceID)}
+		}},
 		{"spell: flashback, sacrifice a creature (#1727)", func(t *testing.T, g *Game, cmd bool) costCommanderSetup {
 			const oracle = "test-1727-flashback-sacrifice"
 			me := g.Seats[0]

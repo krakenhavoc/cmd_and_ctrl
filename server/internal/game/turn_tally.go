@@ -191,6 +191,31 @@ type PlayerTurnTally struct {
 	// creature left the battlefield under your control this turn" read it
 	// through Game.CreatureLeftThisTurn. Additive.
 	CreaturesLeft int `json:"creaturesLeft,omitempty"`
+	// PermanentsEnteredFaceDown counts the permanents that entered the
+	// battlefield face down under this player's control this turn
+	// (Oblivious Bookworm, #5241): a face-down spell resolving, a
+	// manifest, a cloak (CR 708.3). Judged as each entered, so one
+	// that has since been turned face up or left still counts. A
+	// permanent turned face down where it already was (CR 708.2a) did
+	// not enter and is not counted. Read through
+	// Game.PermanentEnteredFaceDownThisTurn. Additive within schema v9.
+	PermanentsEnteredFaceDown int `json:"permanentsEnteredFaceDown,omitempty"`
+	// PermanentsTurnedFaceUp counts the permanents this player turned
+	// face up this turn (Oblivious Bookworm, #5241), by the special
+	// action (CR 116.2b) or by an effect of theirs (CR 708.8): the Actor
+	// of EventTurnedFaceUp, whoever controls the permanent. Read through
+	// Game.TurnedPermanentFaceUpThisTurn. Additive within schema v9.
+	PermanentsTurnedFaceUp int `json:"permanentsTurnedFaceUp,omitempty"`
+	// Waterbends, Earthbends, Firebends and Airbends count the times this
+	// player performed each bending action this turn (#5276): one per
+	// EventWaterbend, EventEarthbend, EventFirebend and EventAirbend whose
+	// Actor they are (bending.go). Avatar Aang's "if you've done all four
+	// this turn" reads them through Game.AllFourBendsThisTurn. Additive
+	// within schema v9.
+	Waterbends int `json:"waterbends,omitempty"`
+	Earthbends int `json:"earthbends,omitempty"`
+	Firebends  int `json:"firebends,omitempty"`
+	Airbends   int `json:"airbends,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -2033,6 +2058,17 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			// #5164: celebration. One per entry, not one per card type.
 			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.NonlandPermanentsEntered++ })
 		}
+		if controller != uuid.Nil && c.FaceDownIsPermanent() {
+			// #5241: entered face down. The landing stamps the state
+			// before the entry is announced, so it is read here.
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsEnteredFaceDown++ })
+		}
+	case EventTurnedFaceUp:
+		// #5241: the player who turned it, not its controller.
+		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.PermanentsTurnedFaceUp++ })
+	case EventWaterbend, EventEarthbend, EventFirebend, EventAirbend:
+		// #5276: the bending player's count of each action this turn.
+		g.recordBendLocked(ev)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return
@@ -2258,6 +2294,23 @@ func (g *Game) PermanentLeftThisTurn(playerID uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) NonlandPermanentsEnteredThisTurn(playerID uuid.UUID) int {
 	return g.TurnTallyFor(playerID).NonlandPermanentsEntered
+}
+
+// PermanentEnteredFaceDownThisTurn reports whether a permanent entered
+// the battlefield face down under `playerID`'s control this turn
+// (Oblivious Bookworm, #5241).
+//
+// Caller must hold g.mu.
+func (g *Game) PermanentEnteredFaceDownThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).PermanentsEnteredFaceDown > 0
+}
+
+// TurnedPermanentFaceUpThisTurn reports whether `playerID` turned a
+// permanent face up this turn (Oblivious Bookworm, #5241).
+//
+// Caller must hold g.mu.
+func (g *Game) TurnedPermanentFaceUpThisTurn(playerID uuid.UUID) bool {
+	return g.TurnTallyFor(playerID).PermanentsTurnedFaceUp > 0
 }
 
 // CreatureLeftThisTurn reports whether a creature `playerID` controlled

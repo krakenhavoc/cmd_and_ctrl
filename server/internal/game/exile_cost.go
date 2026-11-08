@@ -272,6 +272,19 @@ type ExileCost struct {
 	// card's main characteristics (CR 715.4). Plain data, so the floor adds
 	// no closure route to Game. Zero is no mana-value floor.
 	ManaValueAtLeast int
+
+	// ManaValueFromTargets is collect evidence X as a spell's additional
+	// cost, "where X is the total mana value of the permanents this spell
+	// targets" (Urgent Necropsy, #5240): an AnyNumber graveyard clause
+	// whose floor is not printed but read off the announced targets. The
+	// targets are chosen at CR 601.2c and the total cost is determined at
+	// 601.2f, so CastSpell fixes the floor there
+	// (CollectEvidenceTargetsFloorForEffect) and checks the cards on
+	// exile_ids against it. ManaValueAtLeast stays zero. A cast's
+	// mandatory slot only: effects.Register refuses it on an ability, an
+	// optional cost and an either/or branch. Plain data, so it adds no
+	// closure route to Game.
+	ManaValueFromTargets bool
 }
 
 // TotalManaValue is the sum of `cards`' mana values as they sit in a

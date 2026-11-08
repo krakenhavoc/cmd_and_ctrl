@@ -2,12 +2,31 @@ package effects
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
+
+// thisGetsPlusOneZeroAndCantBeBlockedThisTurn is "this creature gets
+// +1/+0 until end of turn and can't be blocked this turn" as a trigger's
+// whole body (Nimrodel Watcher, Merfolk Cave-Diver): both halves land on
+// the source only while it is still the permanent the ability came from
+// (CR 400.7).
+func thisGetsPlusOneZeroAndCantBeBlockedThisTurn(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !sourceIsStillThisPermanent(g, item) {
+			return nil
+		}
+		ctx := NewContext(g, item)
+		if err := (BoostUntilEOT{Target: item.SourceCardID, Power: 1, Label: label}).Apply(ctx); err != nil {
+			return err
+		}
+		return RestrictUntilEOT{Target: item.SourceCardID, Restrictions: game.CantBeBlocked, Label: label}.Apply(ctx)
+	}
+}
 
 // exileTheFirstTargetIfLegal is "Exile target <thing>" for a spell or
 // ability whose first target is the one exiled (Baleful Mastery, Fall to
@@ -1233,11 +1252,13 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 // one that left in response is skipped (CR 608.2b). Curtains' Call's
 // "two target creatures" and Wear Down's gift-promised "two target
 // artifacts and/or enchantments" — and the one-target unpromised Wear
-// Down, which is the same loop over one slot.
+// Down, which is the same loop over one slot. A permanent chosen for two
+// of the spell's "target" words (CR 115.3, Urgent Necropsy's artifact
+// creature) is destroyed once.
 func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) {
+		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) || slices.Contains(ids, t.ID) {
 			continue
 		}
 		ids = append(ids, t.ID)
@@ -1268,6 +1289,18 @@ func putPlusOneCounterOnEachLegalTarget(g *game.Game, item *game.StackItem) erro
 		}
 	}
 	return nil
+}
+
+// twoPlusOneCountersOnModeTarget is a mode's "Put two +1/+1 counters on
+// target creature [you control]": the bullet's still-legal target gets two
+// counters (CR 608.2b). Shared by Apothecary Stomper's first mode and Trash
+// the Town's first Spree bullet.
+func twoPlusOneCountersOnModeTarget(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetCard {
+		return nil
+	}
+	return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
 }
 
 // plusOneCounterPlacementOnYourCreature is Hardened Scales' and
@@ -1709,12 +1742,25 @@ func eachOpponentSacrificesACreature(g *game.Game, item *game.StackItem) error {
 // on it" (Generous Revival, Prison Break). The counter is a CR 614.1c
 // "enters with".
 func returnTargetCreatureWithPlusOneCounter(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCreatureWithPlusOneCounters(ctx, 1)
+}
+
+// returnTargetCreatureWithTwoPlusOneCounters is the same OnResolve with
+// "two additional +1/+1 counters on it" (Evil Reawakened).
+func returnTargetCreatureWithTwoPlusOneCounters(_ *game.StackItem, ctx *Context) error {
+	return returnTargetCreatureWithPlusOneCounters(ctx, 2)
+}
+
+// returnTargetCreatureWithPlusOneCounters returns the first legal target
+// from the graveyard under the caster's control with n +1/+1 counters as
+// it enters (CR 614.1c).
+func returnTargetCreatureWithPlusOneCounters(ctx *Context, n int) error {
 	ts := ctx.LegalTargets()
 	if len(ts) == 0 {
 		return nil
 	}
 	_, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(ts[0].ID, ctx.Controller(), false,
-		map[string]int{game.CounterPlusOne: 1})
+		map[string]int{game.CounterPlusOne: n})
 	if errors.Is(err, game.ErrCardNotFound) {
 		return nil // CR 400.7: it left the graveyard in response
 	}
@@ -1739,4 +1785,85 @@ func conniveFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return ConniveEach{Controller: ctx.Controller(), Creatures: []uuid.UUID{id}}.Apply(ctx)
+}
+
+// bounceTheTargetThenDraw is "Return target nonland permanent to its
+// owner's hand. Draw a card." as a spell's whole OnResolve (Fantastic
+// Bounce, Johann's Stopgap): the bounce, then the draw as a keyed tail
+// that waits behind it, so a replacement or an order prompt on the
+// return is answered before the card is drawn.
+func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
+}
+
+// returnThisFromGraveyardWithAFinalityCounter is "<cost>: Return this card
+// from your graveyard to the battlefield with a finality counter on it"
+// (Uchbenbak, the Great Mistake; Gastal Thrillroller): the card comes back
+// with the counter as it enters, and a card that left the graveyard in
+// response stays where it is. Grim Reaper's Scythe's verb aimed at the
+// source.
+func returnThisFromGraveyardWithAFinalityCounter(g *game.Game, item *game.StackItem) error {
+	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return g.ReturnFromGraveyardWithCountersKeyedForEffect(item.SourceCardID, item.Controller, false,
+		map[string]int{game.CounterFinality: 1}, game.KeyedTail{})
+}
+
+// returnCardsExiledWithToOwnersHands is "Return all cards exiled with this
+// <permanent> to their owner's hand" (Bag of Holding, Connecting the Dots):
+// every card still in exile that the source's ability labelled `label`
+// put there (b27ExiledWith) returns to its OWNER's hand (CR 610.3). The
+// source is usually sacrificed as the cost, which costs the reader
+// nothing: the stack item keeps its instance ID, and the record was
+// written against that ID while it was on the battlefield.
+func returnCardsExiledWithToOwnersHands(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		for _, id := range b27ExiledWith(g, item.SourceCardID, label) {
+			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// pumpEquippedCreatureUntilEOT is "equipped creature gets +P/+T until end
+// of turn" (Umezawa's Jitte's first bullet, Adventuring Gear's landfall).
+// The creature is the one the source is attached to as the ability
+// resolves, read from the source's last-known information when the
+// Equipment has left the battlefield (CR 608.2h). An unattached
+// Equipment, or a host that has gone or is no longer a creature, pumps
+// nothing.
+func pumpEquippedCreatureUntilEOT(ctx *Context, power, toughness int, label string) error {
+	source, ok := ctx.SourcePermanent()
+	if !ok || source.AttachedObject == nil {
+		return nil
+	}
+	host, ok := ctx.Game.PermanentForEffect(*source.AttachedObject)
+	if !ok || host.Left {
+		return nil
+	}
+	creature, found := ctx.Game.LookupCardForEffect(source.AttachedObject.ID)
+	if !found || !creature.IsCreature() {
+		return nil
+	}
+	return BoostUntilEOT{Target: source.AttachedObject.ID, Power: power, Toughness: toughness, Label: label}.Apply(ctx)
+}
+
+// exileThatManyYouMayPlayThisTurn is "exile that many cards from the top of
+// your library. You may play those cards this turn", where "that many" is
+// the triggering damage event's amount: Breeches' play-this-turn window over
+// the trigger controller's own library. Thor, Guardian of Midgard and
+// Virtue of Courage.
+func exileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
+	return ExileTopWithPermission{
+		From:    item.Controller,
+		GrantTo: item.Controller,
+		N:       item.Trigger.Event.Amount,
+	}.Apply(NewContext(g, item))
 }

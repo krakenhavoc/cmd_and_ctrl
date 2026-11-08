@@ -227,6 +227,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
@@ -868,6 +869,12 @@ func main() {
 		go pods.RunSweeper(ctx, podStore, log, pods.SweepEvery)
 	}
 
+	// Discord Linked Roles (ADR 0163): said once, either way.
+	linkedRoles := startLinkedRoles(ctx, log, cfg.LinkedRoles, discordCfg, database, userStore)
+	if linkedRoles != nil {
+		l.SetLinkedRoles(linkedRoles)
+	}
+
 	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		Auth:        authenticator,
@@ -915,6 +922,7 @@ func main() {
 		BugStore:          bugStore,
 		BugForum:          bugForum,
 		ModLog:            modLog,
+		LinkedRoles:       lobbyLinkedRoles(linkedRoles),
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
@@ -930,7 +938,14 @@ func main() {
 		// Mountains stand-in sub-PR 4 shipped while the real decks
 		// were still being built. See botdecks.go.
 		BotDecks: botDeckCatalog{},
+		// Scheduled tables (ADR 0215 slice 2), nil with no database.
+		Schedule: newScheduleStore(database),
 	}
+	// ADR 0215: the scheduler opens each plan's doors 15 minutes before
+	// its start and runs its held seats. After the restore, so its first
+	// tick puts the holds back on the restored tables; it needs the
+	// Config for the bots and the last setup.
+	go l.RunSchedule(ctx, lobbyCfg)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -1177,6 +1192,11 @@ type config struct {
 	// CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID, a private channel, with the bot
 	// token. A malformed id fails the boot; no bot token leaves it off.
 	ModLog discord.ModLog
+	// LinkedRoles is ADR 0163's Discord Linked Roles:
+	// CMDCTRL_DISCORD_LINKED_ROLES=1 with CMDCTRL_DISCORD_APP_ID and the
+	// bot token. A malformed switch or application id fails the boot;
+	// a missing id or token leaves it off.
+	LinkedRoles discord.LinkedRoles
 	// Shops is ADR 0179's shop link templates, one CMDCTRL_SHOP_*
 	// variable per retailer. Unset: no shop links. A malformed template
 	// fails the boot, naming the variable.
@@ -1488,6 +1508,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.ModLog = modLog
+	linkedRoles, lrerr := discord.LinkedRolesFromEnv(os.Getenv)
+	if lrerr != nil {
+		log.Error("linked roles config invalid", "err", lrerr)
+		os.Exit(1)
+	}
+	c.LinkedRoles = linkedRoles
 	// ADR 0179: a typo in a shop template stops the boot rather than
 	// serving links that go somewhere unexpected.
 	shops, serr := shoplinks.FromEnv(os.Getenv)
@@ -1739,6 +1765,15 @@ func newPodStore(database *db.DB, s *social.Store) *pods.Store {
 		return nil
 	}
 	return pods.NewStore(database, s)
+}
+
+// newScheduleStore is ADR 0215's scheduled tables (migration 0034), or
+// nil with no database, where nobody is signed in to schedule one.
+func newScheduleStore(database *db.DB) *schedule.Store {
+	if database == nil {
+		return nil
+	}
+	return schedule.NewStore(database)
 }
 
 func newTableSetupStore(database *db.DB) tablesetups.Store {

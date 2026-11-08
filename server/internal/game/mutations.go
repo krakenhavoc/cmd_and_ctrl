@@ -410,6 +410,14 @@ type CastSpellParams struct {
 	// `exile_permanent_ids`, the name an activation already uses.
 	ExilePermanentIDs []uuid.UUID
 
+	// ReturnIDs names the permanents paid to a mandatory ReturnToHand
+	// additional cost (#5247) — Fear of Isolation's "return a permanent
+	// you control to its owner's hand". Validated at announce by the
+	// activation's own validator and returned with the spell on the
+	// stack. On the wire as `return_ids`, the name an activation already
+	// uses.
+	ReturnIDs []uuid.UUID
+
 	// ExileFromHandIDs names the hand cards paid to a mandatory
 	// ExileFromHand additional cost (#3175) — March of Swirling Mist's
 	// "you may exile any number of blue cards from your hand". Any number,
@@ -1577,6 +1585,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #5247: and the return-a-permanent cost, with every permanent another
+	// component of this cast already takes off the battlefield (CR 118.3).
+	if err := g.validateCastReturnToHandLocked(playerID, cardID, costPlan, params.ReturnIDs, castReturnAlsoSpent(params)); err != nil {
+		slog.Warn("cast_spell rejected: bad return-a-permanent payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"returns_received", len(params.ReturnIDs),
+			"err", err,
+		)
+		return err
+	}
 	// #3175: and the hand-exile cost (March of Swirling Mist), with every
 	// hand card another component of this cast already pays with (CR 118.3).
 	if err := g.validateCastHandExileLocked(playerID, cardID, costPlan, params.ExileFromHandIDs,
@@ -1591,8 +1610,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #3536: and the exile-cards-from-your-graveyard cost, with every card
 	// another component of this cast already spends (CR 118.3).
+	// #5240: a collect evidence X sized by the targets reads them here,
+	// chosen above (CR 601.2c) and fixed for the payment below (CR 601.2f).
 	if err := g.validateCastExileCardsLocked(playerID, cardID, costPlan, params.ExileIDs,
-		castExileAlsoSpent(params), params.XValue); err != nil {
+		castExileAlsoSpent(params), params.XValue, allTargets); err != nil {
 		slog.Warn("cast_spell rejected: bad exile-cards payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1919,6 +1940,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.DelveIDs...)
 	// #3402: and the permanents an exile-a-permanent cost takes.
 	moving = append(moving, params.ExilePermanentIDs...)
+	// #5247: and the permanents a return-a-permanent cost returns.
+	moving = append(moving, params.ReturnIDs...)
 	// #3175: and the hand cards a hand-exile cost takes.
 	moving = append(moving, params.ExileFromHandIDs...)
 	// #3536: and the graveyard cards an exile-cards cost takes.
@@ -1936,8 +1959,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		return err
 	}
 	// ADR 0115: of those, only a card the payment puts into a hand or
-	// a library is asked first (CR 903.9b), and the one cast cost that
-	// does is the alternative cost's return to hand (Daze, Gush). A
+	// a library is asked first (CR 903.9b), and the cast costs that do
+	// are the returns to hand: the alternative cost's (Daze, Gush), a
+	// splice card's and the additional cost's (Fear of Isolation). A
 	// discarded, sacrificed, pitched, escaped or delved commander is
 	// paid like any other card and offered the command zone afterwards
 	// by the CR 903.9a state-based action.
@@ -1947,6 +1971,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	}
 	// #4055: and a splice cost's return to hand (Veil of Secrecy).
 	asking = append(asking, costCommanderMovesTo(ZoneHand, spliceReturnIDsOf(params.SplicePayments)...)...)
+	// #5247: and the additional cost's return to hand (Fear of Isolation).
+	asking = append(asking, costCommanderMovesTo(ZoneHand, params.ReturnIDs...)...)
 	// #2055: an "of an opponent's choice" clause still unanswered parks
 	// the cast here, before anything is paid or moved (CR 601.2c comes
 	// before CR 601.2h): the caster names an opponent and that opponent
@@ -2257,6 +2283,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			return err
 		}
 	}
+	// #5247: the return-a-permanent cost, in the same window and for the
+	// same reason, each to its owner's hand (CR 400.3). A commander's owner
+	// was asked CR 903.9b before anything was paid.
+	if len(params.ReturnIDs) > 0 {
+		if _, err := g.payReturnToHandCostLocked(playerID, cardID, params.ReturnIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: return-a-permanent cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
 	// #3175: the hand-exile cost (March of Swirling Mist), with the spell
 	// on the stack, through the exile-a-card cost's payer: a plain move to
 	// exile, not a discard, so a countered March keeps nothing back.
@@ -2402,6 +2441,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		g.noteForageLocked(playerID, cardID)
 	}
+	// #5223, CR 701.59a: an announced "you may collect evidence N" has
+	// been paid with the exiles above, so the caster has collected
+	// evidence — announced for "whenever you collect evidence", with the
+	// spell on the stack below the triggers.
+	if planCollectsEvidence(costPlan) {
+		g.noteCollectEvidenceLocked(playerID, cardID, params.ExileIDs)
+	}
+	// #5276, CR 701.67c: each waterbend cost in the total cost has been
+	// paid with the mana and the taps above, so the caster has waterbent
+	// once for each — announced for "whenever you waterbend", with the
+	// spell on the stack below the triggers.
+	g.noteWaterbendsOfCastLocked(playerID, cardID, card, params)
 	if splitSecond {
 		g.SplitSecondActive = true
 	} else {
@@ -2440,6 +2491,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.Total++
 	if !card.IsCreature() {
 		tally.Noncreature++
+	}
+	// #5235: "if you haven't cast a spell from your hand this turn".
+	// src is the zone the card was found in before CR 601.2a moved it to
+	// the stack, the zone CastFromZone records on the item.
+	if src.Kind != ZoneHand {
+		tally.NotFromHand++
 	}
 	// ADR 0108 §9: the colours of the instants and sorceries cast this
 	// turn (Refraction Trap), read off the spell as it is on the stack.

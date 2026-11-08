@@ -26,13 +26,10 @@ import (
 // "CHOOSE UP TO ONE TARGET CREATURE, THEN AIRBEND ALL OTHER
 // CREATURES." The spared creature is a TARGET (CR 601.2c) and everyone
 // else is not — airbend does not target the rest of the board, so
-// hexproof and shroud have nothing to say about them. Airbend is
-// applied one creature at a time rather than through a batch primitive
-// (ExileAllMatching moves cards but has no per-card grant to attach;
-// Airbend's exile-with-a-permission is per instance), which is
-// rules-correct here because nothing about the clause counts how many
-// left or drags anything along with them — unlike Teferi's Protection
-// phase-out, which needs one simultaneous call for CR 702.26h.
+// hexproof and shroud have nothing to say about them. "Exile them" is
+// one instruction, so the creatures leave as one simultaneous exile
+// through AirbendAll, each with its own grant, and it is ONE airbend
+// (CR 701.65b, #5276): "whenever you airbend" triggers once.
 //
 // "UNTIL YOUR NEXT TURN, YOUR OPPONENTS CAN'T CAST SPELLS FROM
 // ANYWHERE OTHER THAN THEIR HANDS." #1316's proof: a
@@ -65,13 +62,15 @@ func init() {
 			// "Airbend all other creatures." Snapshotted before any of
 			// them moves, exactly as every other mass effect in this
 			// catalog reads the board once before mutating it.
+			var others []uuid.UUID
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 				if !c.IsCreature() || c.InstanceID == spared {
 					continue
 				}
-				if err := (Airbend{Target: c.InstanceID}).Apply(ctx.asGroupMember()); err != nil {
-					return err
-				}
+				others = append(others, c.InstanceID)
+			}
+			if err := (AirbendAll{Targets: others}).Apply(ctx.asGroupMember()); err != nil {
+				return err
 			}
 			// "Until your next turn, your opponents can't cast spells
 			// from anywhere other than their hands."

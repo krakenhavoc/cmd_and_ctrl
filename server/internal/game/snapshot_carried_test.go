@@ -365,6 +365,24 @@ var carriedFixture = map[string]any{
 			}},
 		}}
 	},
+	// ADR 0188 Decision 13 (#5277): a rules effect waiting for one combat
+	// phase. A generated scope and mod kind would be refused at restore,
+	// as for Game.ExtraTurns, so the record is built with real ones; turn
+	// and phase id keep distinctive values.
+	"Game.PhaseEffects": func(g *Game) any {
+		return []PhaseEffect{{
+			Turn: 4343, PhaseID: 44,
+			Effect: ScopedEffect{
+				Scope:      ScopeCreaturesThatArentLands,
+				Mods:       []Mod{AddRestrictionsMod(CantAttack)},
+				Source:     ObjectRef{ID: uuid.NewSHA1(uuid.Nil, []byte("Game.PhaseEffects/effect")), Epoch: 3},
+				SourceName: "drift-Game.PhaseEffects",
+				Timestamp:  4444,
+				Duration:   Duration{Kind: Indefinite},
+				Label:      "drift-Game.PhaseEffects",
+			},
+		}}
+	},
 	// ADR 0041 P9 (#1497): the record is keyed by its card's instance
 	// ID and restore re-keys it by the restored card, so a generated map
 	// (key and card ID independent) could never come back under its key;

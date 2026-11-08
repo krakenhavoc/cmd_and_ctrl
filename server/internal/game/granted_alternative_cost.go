@@ -368,7 +368,7 @@ func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card) []*Alter
 	}
 	for _, s := range p.Statics {
 		np := s.NextSpell
-		if !np.WithoutPayingManaCost || !g.livePromise(s) || !np.Filter.Matches(card) {
+		if !np.WithoutPayingManaCost || !g.livePromise(s) || !np.Matches(card) {
 			continue
 		}
 		label := "Cast it without paying its mana cost"

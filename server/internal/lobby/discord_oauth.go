@@ -119,6 +119,13 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, "oauth state not found or expired")
 	}
 
+	// Linked Roles (ADR 0163 §3): its own branch, before the sign-up
+	// gate and before anything a sign-in writes. It mints no session.
+	if entry.RoleConnection {
+		finishRoleConnection(c, w, r, entry, code)
+		return nil
+	}
+
 	// A link round-trip only finishes in the browser that started it:
 	// the one whose session cookie still holds the seat being linked.
 	// Checked before the code is exchanged, so a callback that fails it
@@ -320,6 +327,12 @@ func discordCallbackError(c Config, w http.ResponseWriter, r *http.Request, derr
 	entry, err := store.Consume(st)
 	if err != nil {
 		return refused
+	}
+	// A Linked Roles round always had its consent screen: the person
+	// said no, or Discord refused. Their page, not a JSON 400.
+	if entry.RoleConnection {
+		http.Redirect(w, r, linkedRoleFailed, http.StatusFound)
+		return nil
 	}
 	state, challenge, err := store.Retry(entry)
 	if errors.Is(err, discord.ErrNoRetry) {

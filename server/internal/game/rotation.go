@@ -322,6 +322,9 @@ func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	// also drops any added phase the old turn never reached.
 	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
+	// S79 (#5075): "skips all combat phases of their next turn" arms as
+	// that player's turn really begins (skip_combat_phases.go).
+	g.armCombatSkipsLocked()
 	// #4973: an extra turn that really begins (CR 500.7) — the one
 	// count "haven't begun an extra turn this game" reads.
 	if s := g.Turn.ActiveSeat; g.Turn.Extra && s >= 0 && s < len(g.Seats) && g.Seats[s] != nil {

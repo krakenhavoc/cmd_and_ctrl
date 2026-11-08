@@ -99,6 +99,17 @@ On when all of these are set: `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_BOT_TOK
 - **Abandoned tables do not count** as played.
 - **Push after each game,** with no periodic sweep.
 
+## Implementation notes (slice 2, 2026-11-06, #3323)
+
+Recorded for the owner's review; each is the conservative reading of a point the decision above leaves open.
+
+- **An explicit switch.** §6 says there is no new variable. The build adds one, `CMDCTRL_DISCORD_LINKED_ROLES`, off unless `1`, beside `CMDCTRL_DISCORD_APP_ID`, the bot token, sign-in, the database and `CMDCTRL_IDENTITY_KEY`. Without it the metadata would be registered on the application on every production boot whether or not the owner wanted the feature yet.
+- **`joined` is Discord's type 5,** `DATETIME_LESS_THAN_OR_EQUAL`: the value is a date, and a role asks for one at least N days ago, which is the "joined at least N days ago" §2 describes.
+- **The deletion step runs after the commit,** not before the identity row goes: the transaction reads the sealed grant, and the server empties the connection afterwards, in the background. A deletion the active-table rule refuses so never touches Discord.
+- **A first push that fails keeps nothing:** the grant is cleared and the person is told to try again.
+- **Pushes are paced:** one worker, 250 ms between people, a person queued twice pushed once, at most 1,024 waiting.
+- **The client pages** of slice 3 (`#/linked-role`, one per outcome) and the privacy paragraph ship with this slice; the account-settings line does not.
+
 ## Slices
 
 | # | Slice | Model | Needs |

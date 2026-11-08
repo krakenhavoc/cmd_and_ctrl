@@ -27,15 +27,34 @@ import (
 // (exileCardsPayment's any-number arm). A set of optional costs the
 // graveyard cannot pay drops the move (CR 701.59b); declining it is
 // always a move of its own.
+//
+// #5240: for collect evidence X sized by the targets the floor is not known
+// until a move's targets are, so this returns every candidate, cheapest fuel
+// first, like the X form; exileCardsForTargets cuts it per target set.
 func (e *enumerator) exileCardsCastPayment(castID uuid.UUID, mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (ids []uuid.UUID, ok bool) {
 	ec := exileCardsCostOf(mandatory, optional, chosen)
 	if ec == nil {
 		return nil, true
 	}
-	if ec.CountFromX {
+	if ec.CountFromX || ec.IsCollectEvidenceFromTargets() {
 		return e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, castID, ec)), true
 	}
 	return e.exileCardsPayment(ec, castID, nil)
+}
+
+// exileCardsForTargets is the payment a move with `targets` names for a
+// collect evidence X sized by the targets (#5240, Urgent Necropsy): the
+// cheapest-first pool cut where its total mana value first reaches the X
+// those targets fix (Game.CollectEvidenceTargetsFloorForEffect, the number
+// CastSpell checks), none at X = 0. ok is false when the whole pool falls
+// short, and the target set is not offered (CR 118.3). Any other cost's
+// payment is `pool` unchanged.
+func (e *enumerator) exileCardsForTargets(paying *game.AdditionalCost, pool []uuid.UUID, targets []game.TargetRef) ([]uuid.UUID, bool) {
+	if paying == nil || !paying.ExileCards.IsCollectEvidenceFromTargets() {
+		return pool, true
+	}
+	floor := e.g.CollectEvidenceTargetsFloorForEffect(targets)
+	return e.g.ExileCostCheapestSufficientForEffect(e.seat, game.CollectEvidenceCost(floor, ""), pool)
 }
 
 // exileCardsCostOf is the graveyard exile clause a cast's plan pays: the

@@ -396,6 +396,15 @@ type GameSnapshot struct {
 	TurnPlan    []PlannedStep `json:"turnPlan,omitempty"`
 	NextPhaseID int           `json:"nextPhaseId,omitempty"`
 
+	// PhaseEffects are the rules effects waiting for one combat phase of
+	// this turn (#5277, ADR 0188 Decision 13). Pure data, additive within
+	// v9: their scope and mods are held to the same vocabulary as the live
+	// records (checkEffectKeys), so a file naming one this binary cannot
+	// read is refused. An older binary reading a newer file drops them,
+	// and Bumi's added combat has no restriction (weaker, never stronger)
+	// until the next deploy.
+	PhaseEffects []PhaseEffect `json:"phaseEffects,omitempty"`
+
 	// ScopedEffects is ADR 0041 phase 3's data-backed continuous
 	// effects (scoped_effects.go, #1497): carried verbatim, because a
 	// record holds nothing but data. v7.
@@ -431,6 +440,12 @@ type GameSnapshot struct {
 	// player can lose on: a restore that forgot it would hand every
 	// exhaust ability on the board back.
 	Activations ActivationTally `json:"activations,omitempty"`
+
+	// OnlyOnceTriggered is Game.OnlyOnceTriggered (#5245): the
+	// "triggers only once" abilities that have triggered, per object.
+	// Additive within v9: a file written before it restores with none
+	// spent, which is what such a file's game had.
+	OnlyOnceTriggered map[string]int `json:"onlyOnceTriggered,omitempty"`
 
 	// LoopNotice / LoopThreshold are the CR 732 loop breaker (#628).
 	// Both carried: a restore that dropped the notice would resume a
@@ -2569,6 +2584,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.NextExtraRef = g.NextExtraRef
 	s.TurnPlan = clonePlan(g.TurnPlan)
 	s.NextPhaseID = g.NextPhaseID
+	s.PhaseEffects = clonePhaseEffects(g.PhaseEffects)
 	// ADR 0041 phase 3 (#1497): data, so carried whole and never
 	// counted by the census.
 	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
@@ -2586,6 +2602,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.DrawnThisStep = copyIntMap(g.DrawnThisStep)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
 	s.Activations = cloneActivationTally(g.Activations)
+	s.OnlyOnceTriggered = copyStringIntMap(g.OnlyOnceTriggered)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
 	s.LoopThreshold = g.LoopThreshold
 	s.LoopRecording = cloneLoopRecording(g.LoopRecording)
@@ -3881,6 +3898,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.NextExtraRef = s.NextExtraRef
 	g.TurnPlan = clonePlan(s.TurnPlan)
 	g.NextPhaseID = s.NextPhaseID
+	g.PhaseEffects = clonePhaseEffects(s.PhaseEffects)
 	// A file from before the plan names no nextPhaseId at all: every
 	// game with a plan has at least the template's 5 (#753).
 	prePlan := len(s.TurnPlan) == 0 && s.NextPhaseID == 0 && g.Turn.Step != ""
@@ -3908,6 +3926,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.derivePrePlanOrdinalsLocked()
 	}
 	g.Activations = cloneActivationTally(s.Activations)
+	g.OnlyOnceTriggered = copyStringIntMap(s.OnlyOnceTriggered)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
 	g.LoopRecording = cloneLoopRecording(s.LoopRecording)

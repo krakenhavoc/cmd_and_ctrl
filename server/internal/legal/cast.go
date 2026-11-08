@@ -54,6 +54,10 @@ type castParams struct {
 	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
 	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+	// ReturnIDs is the permanent a mandatory return-a-permanent
+	// additional cost returns to its owner's hand (#5247) —
+	// CastSpellParams.ReturnIDs.
+	ReturnIDs []string `json:"return_ids,omitempty"`
 	// ExileFromHandIDs are the hand cards a mandatory hand-exile
 	// additional cost exiles (#3175, the Marches) —
 	// CastSpellParams.ExileFromHandIDs.
@@ -1175,6 +1179,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if !ok {
 		return
 	}
+	// #5247: and a return-a-permanent cost names its permanent the same
+	// way. A seat with nothing to return is not offered the cast (CR 118.3).
+	returnIDs, ok := e.returnCastPayment(card.InstanceID, addCost)
+	if !ok {
+		return
+	}
 	// #3536: and an exile-N-cards-from-your-graveyard cost names its cards
 	// the same way. A graveyard too small to pay it drops the cast.
 	exileCardIDs, ok := e.exileCardsCastPayment(card.InstanceID, addCost, optional, chosen)
@@ -1214,7 +1224,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, handExile, exileCardIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1365,6 +1375,12 @@ modeLoop:
 			// can't target it -- and the life it does pay is held back
 			// from every other use of the life total: the Phyrexian
 			// symbols, and the "pay X life" ceiling.
+			// #5240: a collect evidence X sized by the targets is paid
+			// from the graveyard, and a set whose X the graveyard can't
+			// reach is a cast the engine refuses (CR 118.3).
+			if _, ok := e.exileCardsForTargets(addCost, exileCardIDs, targets); !ok {
+				continue
+			}
 			taxLife := e.g.CastTargetTaxForEffect(e.seat, card, targets)
 			setReserved, setLifeCeiling := lifeReserved, xLifeCeiling
 			if taxLife > 0 {
@@ -1518,13 +1534,19 @@ modeLoop:
 					// component — an Eldrazi Spawn named to Dread
 					// Return's "sacrifice three creatures" cannot also
 					// make the {1} a Thalia adds to the flashback.
-					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs)+len(altCostSets[0]) > 0 &&
+					//
+					// #5247: and for the permanent a return cost names — a
+					// Treasure returned to Fear of Isolation cannot also be
+					// cracked for its {U} (it may still tap for mana, as a
+					// sacrificed one may).
+					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs)+len(altCostSets[0])+len(returnIDs) > 0 &&
 						!e.canPayExcluding(payCost, payX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
 							TeamworkIDs:  teamIDs,
 							BlightIDs:    blightIDs,
 							AltCostIDs:   altCostSets[0],
+							ReturnIDs:    returnIDs,
 						}, offer)) {
 						continue
 					}
@@ -1717,7 +1739,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs, exileIDs, handExile, exileCardIDs []uuid.UUID,
+	teamIDs, blightIDs, revealIDs, exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1733,6 +1755,13 @@ func (e *enumerator) castMoveEmitter(
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
+		// #5240: or the cards a collect evidence X sized by these targets
+		// exiles. The target loop has already dropped a set the graveyard
+		// cannot pay for.
+		exileCardIDs, ok := e.exileCardsForTargets(paying, exileCardIDs, targets)
+		if !ok {
+			return
+		}
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
@@ -1781,6 +1810,8 @@ func (e *enumerator) castMoveEmitter(
 		// #3402: the creature an exile-a-permanent cost gives up, named in
 		// the move so a bot trace, a model seat and an MCP client read it.
 		label += exileLabel(g, exileIDs)
+		// #5247: and the permanent a return-a-permanent cost sends back.
+		label += returnLabel(g, returnIDs)
 		// #3175: and the hand cards a March exiles for its discount.
 		label += exileLabel(g, handExile)
 		// #3536: and the graveyard cards an exile-cards cost gives up.
@@ -1845,10 +1876,10 @@ func (e *enumerator) castMoveEmitter(
 			TargetsStack: targetsStack,
 			HasTargets:   hasTargets(targets),
 			// #2877: an announcement declared to answer nothing.
-			ValueOnly: castValueOnly(g, answers, targetsStack, sacs, exileIDs, altPaid),
+			ValueOnly: castValueOnly(g, answers, targetsStack, sacs, exileIDs, returnIDs, altPaid),
 			// #4734: whether the announcement's declared answers match
 			// the window.
-			AnswersNow: e.answerWindow().castAnswersNow(g, answers, targetsStack, sacs, exileIDs, altPaid),
+			AnswersNow: e.answerWindow().castAnswersNow(g, answers, targetsStack, sacs, exileIDs, returnIDs, altPaid),
 			IdleHint:   idle,
 			Value:      xv,
 			Params: mustJSON(castParams{
@@ -1868,6 +1899,7 @@ func (e *enumerator) castMoveEmitter(
 				BlightIDs:         idStrings(blightIDs),
 				RevealIDs:         idStrings(revealIDs),
 				ExilePermanentIDs: idStrings(exileIDs),
+				ReturnIDs:         idStrings(returnIDs),
 				ExileFromHandIDs:  idStrings(handExile),
 				ExileIDs:          idStrings(exileCardIDs),
 				DelveIDs:          idStrings(delve),

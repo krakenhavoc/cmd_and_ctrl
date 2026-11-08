@@ -257,7 +257,7 @@ func snapshotTokenGroups(groups []TokenGroup, cen *ContinuationCensus) []tokenGr
 		out = append(out, tokenGroupSnapshot{
 			Template: snapshotCard(grp.Template, cen), Count: grp.Count, Entry: snapshotTokenEntry(grp.Entry),
 			Attacking: uuidPtrOrNil(grp.Attacking), AttackOpponent: uuidPtrOrNil(grp.AttackOpponent),
-			CreatedWith: grp.CreatedWith, Blocking: uuidPtrOrNil(grp.Blocking),
+			CreatedWith: grp.CreatedWith, Blocking: uuidPtrOrNil(grp.Blocking), Tag: uuidPtrOrNil(grp.Tag),
 		})
 	}
 	return out
@@ -270,7 +270,7 @@ func restoreTokenGroups(snaps []tokenGroupSnapshot) []TokenGroup {
 		out = append(out, TokenGroup{
 			Template: restoreCard(&grp.Template), Count: grp.Count, Entry: grp.Entry.options(),
 			Attacking: uuidOrNil(grp.Attacking), AttackOpponent: uuidOrNil(grp.AttackOpponent),
-			CreatedWith: grp.CreatedWith, Blocking: uuidOrNil(grp.Blocking),
+			CreatedWith: grp.CreatedWith, Blocking: uuidOrNil(grp.Blocking), Tag: uuidOrNil(grp.Tag),
 		})
 	}
 	return out

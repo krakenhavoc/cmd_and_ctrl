@@ -25,7 +25,7 @@ func init() {
 			On(game.EventCast, informedInkwrightCast,
 				"Inkshape Demonstrator — Repartee: +1/+0 and lifelink until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
-					return socB27ThisGetsAndGains(NewContext(g, item), 1, 0, "lifelink", "Inkshape Demonstrator")
+					return socB27ThisGetsAndGains(NewContext(g, item), 1, "lifelink", "Inkshape Demonstrator")
 				}),
 		},
 	})

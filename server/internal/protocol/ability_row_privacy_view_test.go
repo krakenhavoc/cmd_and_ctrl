@@ -90,7 +90,7 @@ var activatedRowScopes = map[string]rowScope{
 	"SacrificeLabel": rowPublic, "ReturnLabel": rowPublic, "TapOthersLabel": rowPublic,
 	// Verdicts over public state: whose turn it is, the stack, the
 	// battlefield, the ability's own activation record.
-	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic, "PowerUpUsed": rowPublic, "BoastBlocked": rowPublic,
+	"ChargedManaCost": rowPublic, "ConditionUnmet": rowPublic, "Exhausted": rowPublic, "PowerUpUsed": rowPublic, "OnceUsed": rowPublic, "BoastBlocked": rowPublic,
 	"CantActivate": rowPublic, "TimingClosed": rowPublic,
 	// #4980: the row's resolutions this turn, which every player saw.
 	"ResolvedThisTurn": rowPublic,

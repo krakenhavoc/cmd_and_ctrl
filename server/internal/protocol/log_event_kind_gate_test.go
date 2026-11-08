@@ -66,6 +66,11 @@ var silentEventKinds = map[string]string{
 	"EventFight": "fight participation is consumed by triggers; the resolving ability and resulting damage already have log entries",
 	// --- already told, by another line -------------------------------
 	"EventForage":          "the payment itself is the line: the three cards' exile or the Food's sacrifice (#5184, CR 701.61a); the event exists for \"whenever you forage\" (Corpseberry Cultivator), whose own LogTrigger line follows",
+	"EventWaterbend":       "the payment itself is the line: the mana and the taps (#5276, CR 701.67c); the event exists for \"whenever you waterbend\" (Avatar Aang), whose own LogTrigger line follows",
+	"EventEarthbend":       "the animation and the counters are the lines (#5276, CR 701.66b); the event exists for \"whenever you earthbend\" (Avatar Aang), whose own LogTrigger line follows",
+	"EventFirebend":        "the firebending trigger's resolution and its mana are the lines (#5276, CR 702.189b); the event exists for \"whenever you firebend\" (Avatar Aang), whose own LogTrigger line follows",
+	"EventAirbend":         "the exiles themselves are the lines (#5276, CR 701.65b); the event exists for \"whenever you airbend\" (Avatar Aang), whose own LogTrigger line follows",
+	"EventCollectEvidence": "the exiles themselves are the lines (#5223, CR 701.59a); the event exists for \"whenever you collect evidence\" (Evidence Examiner, Surveillance Monitor), whose own LogTrigger line follows",
 	"EventEchoPaid":        "the payment itself is the line: the mana spent, the discard or the sacrifice (ADR 0108 §5); the event exists for Shah of Naar Isle's trigger, whose own line follows",
 	"EventDamagePrevented": "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
 	"EventConcede":         "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",

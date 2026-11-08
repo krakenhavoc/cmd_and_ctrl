@@ -11,6 +11,7 @@
   import RouteLoading from "./lib/components/RouteLoading.svelte";
   import FrontPage from "./routes/FrontPage.svelte";
   import RequestAccess from "./routes/RequestAccess.svelte";
+  import LinkedRole from "./routes/LinkedRole.svelte";
   import AdminLogin from "./routes/AdminLogin.svelte";
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
@@ -161,6 +162,8 @@
   <FrontPage />
 {:else if $route.name === "requestAccess"}
   <RequestAccess retry={$route.retry === true} />
+{:else if $route.name === "linkedRole"}
+  <LinkedRole status={$route.status} />
 {:else if $route.name === "adminLogin"}
   <div class="app-column"><AdminLogin /></div>
 {:else if $route.name === "adminViews"}

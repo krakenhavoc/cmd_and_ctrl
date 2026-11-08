@@ -292,6 +292,13 @@ type Game struct {
 	// phase is 6.
 	NextPhaseID int
 
+	// PhaseEffects are rules effects waiting for one combat phase of
+	// this turn (#5277, ADR 0188 Decision 13, phase_effects.go): built
+	// when the card resolved, registered as that combat begins. Bumi,
+	// Unleashed's "only land creatures can attack during that combat
+	// phase". Copy on write.
+	PhaseEffects []PhaseEffect
+
 	// planAt is the cursor position TurnPlan was built or last popped
 	// for. A cursor that moved some other way (a test setting
 	// Turn.Step, a snapshot from before the plan) no longer matches,
@@ -423,6 +430,14 @@ type Game struct {
 	// paid for (ActivateCatalogAbility). See activation_tally.go
 	// (#1181).
 	Activations ActivationTally
+
+	// OnlyOnceTriggered records the triggered abilities that print
+	// "This ability triggers only once" (TriggeredAbility.OnlyOnce) and
+	// have triggered, keyed by ObjectTallyKey(source, epoch, Key). Never
+	// reset: the limit is for the life of the object, and a new object
+	// after a zone change (CR 400.7) reads a key nothing has written.
+	// Nil until the first such trigger. See trigger_only_once.go (#5245).
+	OnlyOnceTriggered map[string]int
 
 	// LoopNotice is the CR 732 loop breaker's flag: set when the
 	// same triggered ability has resolved LoopThreshold times this
@@ -2146,6 +2161,29 @@ type CastTally struct {
 	// through CastFlyingCreatureSpellWithout. Additive within the
 	// snapshot version.
 	FlyingCreatureSubtypes string `json:"flyingCreatureSubtypes,omitempty"`
+	// NotFromHand counts the spells the player cast this turn from
+	// anywhere but their hand (#5235): a graveyard, exile, the command
+	// zone, the top of a library, outside the game. The zone is the one
+	// the card was in as the cast was proposed, before CR 601.2a moved it
+	// to the stack. Outlaws of Thunder Junction's "if you haven't cast a
+	// spell from your hand this turn" reads Total minus this, through
+	// CastTally.FromHand. A copy of a spell isn't cast (CR 707.10) and
+	// playing a land is a special action, not a cast (CR 305.1), so
+	// neither adds anything.
+	//
+	// It counts the casts NOT from the hand, rather than the casts from
+	// it, so that a file written before it existed reads every spell of
+	// that turn as cast from the hand: the condition is then off for the
+	// rest of the turn (weaker, never stronger). Additive within the
+	// snapshot version.
+	NotFromHand int `json:"notFromHand,omitempty"`
+}
+
+// FromHand is how many of the player's spells this turn were cast from
+// their hand (NotFromHand): "if you haven't cast a spell from your hand
+// this turn" is FromHand() == 0.
+func (t CastTally) FromHand() int {
+	return max(t.Total-t.NotFromHand, 0)
 }
 
 // CastFlyingCreatureSpellWithout reports whether the player cast a
@@ -2442,6 +2480,14 @@ func (g *Game) runStepEntryHooksLocked() {
 		g.runStepEntryHooksLocked()
 		return
 	}
+	// S79 (#5075, CR 500.11): a combat phase of a turn whose combat
+	// phases are skipped never begins, an added one included, so the
+	// cursor walks past each of its steps (skip_combat_phases.go).
+	if PhaseOf(g.Turn.Step) == PhaseCombat && g.combatPhasesSkippedThisTurnLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
@@ -2532,6 +2578,10 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// mid-combat waits for the next combat phase.
 	if opensPhase && PhaseOf(g.Turn.Step) == PhaseCombat {
 		g.beginCombatControlsLocked()
+		// #5277, ADR 0188 Decision 13: a rules effect bound to this
+		// combat phase ("only land creatures can attack during that
+		// combat phase") begins with it, before anything is announced.
+		g.registerPhaseEffectsLocked()
 	}
 	g.DrawnThisStep = nil
 	// S31 sub-PR 0: announce the step for the public game log, and

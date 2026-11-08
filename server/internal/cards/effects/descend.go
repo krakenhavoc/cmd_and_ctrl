@@ -44,6 +44,14 @@ func WheneverThisAttacksIfDescend(n int, label string, effect Effect) game.Trigg
 	return InterveningIf(CondDescend{N: n}, On(game.EventAttack, AllOf(ThisAttacked, DescendHolds(n)), label, effect))
 }
 
+// WhenThisEntersIfDescend is "Descend N — When this creature enters, if
+// there are N or more permanent cards in your graveyard, …" (Coati
+// Scavenger, Council of Echoes): checked as it enters and again as the
+// trigger resolves (CR 603.4).
+func WhenThisEntersIfDescend(n int, label string, effect Effect) game.TriggeredAbility {
+	return InterveningIf(CondDescend{N: n}, On(game.EventETB, AllOf(Self, DescendHolds(n)), label, effect))
+}
+
 // CondDescended is "if you descended this turn" (CR 700.11: a permanent
 // card was put into your graveyard from anywhere this turn) as an
 // intervening-if Condition, read for the resolving ability's controller.

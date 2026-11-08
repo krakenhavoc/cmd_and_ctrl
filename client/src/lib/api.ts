@@ -1703,6 +1703,10 @@ export async function fetchAutoTapPreview(
     if (cast.exilePermanentIDs && cast.exilePermanentIDs.length > 0) {
       params.set("exile_permanent_ids", cast.exilePermanentIDs.join(","));
     }
+    // #5247: a land returned to pay a spell's cost may still tap for mana.
+    if (cast.returnIDs && cast.returnIDs.length > 0) {
+      params.set("return_ids", cast.returnIDs.join(","));
+    }
     // #3175: each hand card a March exiles takes {2} off the price.
     if (cast.exileFromHandIDs && cast.exileFromHandIDs.length > 0) {
       params.set("exile_from_hand_ids", cast.exileFromHandIDs.join(","));

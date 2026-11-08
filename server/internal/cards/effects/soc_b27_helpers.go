@@ -22,17 +22,18 @@ func socB27TargetGetsAndGains(power, toughness int, keyword, label string) func(
 	)
 }
 
-// socB27ThisGetsAndGains is "this creature gets +P/+T and gains <keyword>
+// socB27ThisGetsAndGains is "this creature gets +P/+0 and gains <keyword>
 // until end of turn" for a triggered ability's resolution (the Repartee
 // bodies). The creature must still be the permanent the trigger came from: one
-// that left and came back is a new object (CR 400.7). A zero power and
-// toughness grants the keyword alone.
-func socB27ThisGetsAndGains(ctx *Context, power, toughness int, keyword, label string) error {
+// that left and came back is a new object (CR 400.7). A zero power grants the
+// keyword alone. Every printed use leaves toughness alone, so there is no
+// toughness argument.
+func socB27ThisGetsAndGains(ctx *Context, power int, keyword, label string) error {
 	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 		return nil
 	}
 	id := ctx.Item.SourceCardID
-	if err := (BoostUntilEOT{Target: id, Power: power, Toughness: toughness, Label: label + " — pump"}).Apply(ctx); err != nil {
+	if err := (BoostUntilEOT{Target: id, Power: power, Label: label + " — pump"}).Apply(ctx); err != nil {
 		return err
 	}
 	return GrantKeywordUntilEOT{Target: id, Keywords: []string{keyword}, Label: label + " — " + keyword}.Apply(ctx)

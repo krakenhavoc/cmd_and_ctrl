@@ -31,6 +31,8 @@ func damageEachClauseTarget(amounts ...int) func(*game.StackItem, *Context) erro
 // that has become illegal (CR 608.2b) is dealt nothing. Searing Blood and
 // Blooming Blast deal their first sentence with it, so their second waits
 // for any prompt the damage asks (CR 608.2c, #4155).
+//
+//nolint:unparam // the clause slot, kept at the call site like ClauseTarget's
 func damageTheClauseTarget(slot, n int) Instruction {
 	return func(ctx *Context) error {
 		t, ok := ctx.ClauseTarget(slot)

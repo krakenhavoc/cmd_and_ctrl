@@ -159,3 +159,49 @@ func YouDrawTwiceInsteadExceptTheFirst(label string) game.ReplacementEffect {
 		Label:               label,
 	}.Build()
 }
+
+// youWouldDrawFromAnEmptyLibrary is the condition Laboratory Maniac and
+// Living Conundrum share: "if you would draw a card while your library
+// has no cards in it". A draw the replacement's controller makes, read
+// at the moment of each individual draw (CR 121.2), with nothing left in
+// that library. CR 614.11: a draw replacement applies even though no card
+// could be drawn, which is the only time this one applies at all.
+func youWouldDrawFromAnEmptyLibrary(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if ev.Kind != game.RepEventDraw || ev.DrawCount <= 0 || src == nil {
+		return false
+	}
+	if ev.DrawPlayer != src.Controller {
+		return false
+	}
+	p := g.PlayerByIDForEffect(ev.DrawPlayer)
+	return p != nil && !p.Eliminated && p.Library.Size() == 0
+}
+
+// SkipThatDrawFromAnEmptyLibrary is "If you would draw a card while your
+// library has no cards in it, skip that draw instead" (Living Conundrum,
+// #5246).
+//
+// A skip is a replacement effect (CR 614.1b), and "skip [something]" is
+// "instead of doing [something], do nothing" (CR 614.10). So Replace
+// cancels the draw and does nothing else. The replaced event never
+// happens (CR 614.6): no card moves, no EventDrawCard is emitted, so no
+// "whenever you draw" ability triggers, the cards-drawn counts this turn
+// do not rise, and no CR 704.5b flag is set, so the player does not lose
+// for it. Each draw of "draw three" is its own event (CR 121.2), so a
+// two-card library draws two and skips the third (the 2024-02-02 ruling).
+// Beside Laboratory Maniac both apply to one draw, and the drawing player
+// chooses the order (CR 616.1, the second ruling).
+func SkipThatDrawFromAnEmptyLibrary(name string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches:   []game.EventKind{game.EventDrawCard},
+		AppliesTo: youWouldDrawFromAnEmptyLibrary,
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.Cancel()
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: name + ": skip a draw from an empty library",
+	}
+}

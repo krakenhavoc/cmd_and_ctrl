@@ -169,6 +169,16 @@ type SpecialAction struct {
 	// "Suspend 1—{R}", "Turn face up {1}{U}".
 	Label string
 
+	// X is the value chosen for an {X} in Cost as the action is TAKEN
+	// (CR 107.3d: "the value of X is chosen by the player taking the
+	// special action immediately before they pay that cost"), #5249.
+	// Zero on every offer: an offer is what a card makes available, and
+	// nothing has been chosen yet. PerformSpecialAction stamps it on the
+	// copy it hands the performer, so turnFaceUpLocked can put it on
+	// EventTurnedFaceUp for the permanent's other abilities
+	// (CR 702.168e).
+	X int
+
 	// Zone is where this OFFER is taken from when that is not the
 	// kind's own zone (specialActionZone). Empty on every declared or
 	// derived offer. Set only on an offer that a permanent's
@@ -321,6 +331,16 @@ type SpecialActionParams struct {
 	// it is named, never picked for them. Required for that kind and
 	// refused on every other.
 	SacrificeID uuid.UUID
+
+	// XValue is the value of X for an {X} in the action's cost — Aurelia's
+	// Vindicator's "Disguise {X}{3}{W}" (#5249). CR 107.3d: it is chosen
+	// by the player taking the special action immediately before they pay
+	// the cost, so it is part of this payload and nothing later can change
+	// it. Validated as CastSpellParams.XValue and ActivateAbilityParams.
+	// XValue are: within MaxAnnouncedX, and zero unless the offer's cost
+	// has an {X}. Only turn_face_up takes one; it is refused on every
+	// other kind, none of which prints an {X} the engine pays.
+	XValue int
 }
 
 // SpecialActionTimingOKLocked is the per-kind timing table, and the
@@ -376,8 +396,15 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// Priority is the dispatcher's requirePriorityHolder, and
 		// whether the permanent is face down and the actor's to turn
 		// is SpecialActionOffered's answer and PerformSpecialAction's
-		// re-check. Nothing left for the window itself to say.
-		return true
+		// re-check.
+		//
+		// #5241: the one thing the window does say is a "can't"
+		// (CR 101.2) — Karlov Watchdog's "permanents your opponents
+		// control can't be turned face up during your turn", which is a
+		// matter of whose turn it is. Asked here so the engine refuses
+		// it, the enumerator never offers it and the view greys the row
+		// (turn_face_up_gate.go).
+		return !g.turnFaceUpForbiddenLocked(&card)
 
 	case SpecialActionPlot:
 		// CR 702.170a: "any time you have priority during your main
@@ -461,6 +488,11 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if params.Route != "" && kind != SpecialActionTurnFaceUp {
 		return ErrInvalidParam
 	}
+	// #5249, CR 107.3d: an X is bounded before anything reads it
+	// (x_bound.go), and only turn_face_up's cost can carry one.
+	if !announcedXInRange(params.XValue) || (params.XValue != 0 && kind != SpecialActionTurnFaceUp) {
+		return ErrInvalidParam
+	}
 	// CR 116.2d (#1986): ignoring a static ability's effect is taken on a
 	// permanent the actor need not control, so it does not go through the
 	// card-in-the-actor's-zone lookup below. Its sacrifice is named; no
@@ -502,6 +534,15 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if sa == nil {
 		return ErrSpecialActionNotOffered
 	}
+	// #5249, CR 107.3d: an X is chosen for an {X} the cost prints, and
+	// for nothing else. An X sent for a cost without one is refused
+	// rather than ignored, as an activation's is (activated.go): the
+	// client is confused about which action it is taking.
+	if params.XValue != 0 && !SpecialActionDemandsX(*sa) {
+		return ErrInvalidParam
+	}
+	taken := *sa
+	taken.X = params.XValue
 	// The performer is looked up BEFORE the cost is paid, so a kind
 	// the engine declares but cannot yet carry out refuses for free
 	// rather than charging for nothing. That is not hypothetical
@@ -545,21 +586,26 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 		if perr != nil {
 			return ErrInvalidParam
 		}
+		// #5249: the chosen X multiplies into the generic demand
+		// exactly as an activation's does, through the same helper, so
+		// a strict payment refuses an X the seat cannot pay before
+		// anything is spent.
 		if _, err := g.payAbilityManaCostLocked(p, cardID, card.Name, saCost, ActivateAbilityParams{
 			Strict:  params.Strict,
 			AutoTap: params.AutoTap,
+			XValue:  taken.X,
 		}, specialActionSpendContext(kind), nil); err != nil {
 			return err
 		}
 	}
-	if err := perform(g, p, cardID, *sa); err != nil {
+	if err := perform(g, p, cardID, taken); err != nil {
 		return err
 	}
 	g.EmitEvent(Event{
 		Kind:   EventSpecialAction,
 		Actor:  playerID,
 		CardID: cardID,
-		Label:  sa.Label,
+		Label:  specialActionLogLabel(taken),
 	})
 	// #2275 / CR 117.3c: the player keeps priority, and the passes
 	// made before the action no longer count — a special action is an

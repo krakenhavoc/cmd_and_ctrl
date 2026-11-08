@@ -1454,6 +1454,16 @@ type CounterUnlessPaid struct {
 	// resolve; the engine keys that one itself.
 	Then  game.PayUnlessElse
 	Carry []uuid.UUID
+
+	// Dest overrides where a spell countered this way goes (#5236), as
+	// CounterTarget's Dest does (#1230): Syncopate's and No More Lies's
+	// "if that spell is countered this way, exile it instead of putting
+	// it into its owner's graveyard" is Dest: game.ZoneRef{Kind:
+	// game.ZoneExile}. The zero value keeps the graveyard. Exile is the
+	// one destination the engine has keyed (game.CounterUnlessPaidPrompt
+	// .Dest), so the prompt stays a restore point; any other is refused,
+	// as is a Dest beside a Then.
+	Dest game.ZoneRef
 }
 
 func (c CounterUnlessPaid) Apply(ctx *Context) error {
@@ -1463,6 +1473,7 @@ func (c CounterUnlessPaid) Apply(ctx *Context) error {
 		Source:    ctx.Source(),
 		Cost:      c.Cost,
 		Question:  c.Question,
+		Dest:      c.Dest,
 	}
 	if c.Then.Key() != "" {
 		prompt.Then = c.Then

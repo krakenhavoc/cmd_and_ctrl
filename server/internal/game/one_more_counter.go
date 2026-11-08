@@ -38,6 +38,42 @@ func oneMoreCounterAppliesLocked(g *Game, m Mod, ev *ReplacementEvent) bool {
 	return ok && c.Controller == m.Player
 }
 
+// ModOneMorePlusOneCounter is the narrower form (Prairie Dog, Outlaws of
+// Thunder Junction, #5235): "until end of turn, if you would put one or
+// more +1/+1 counters on a creature you control, put that many plus one
+// +1/+1 counters on it instead". Reads Player, who must be both the
+// player putting the counters (ReplacementEvent.CounterPlacer) and the
+// creature's controller; another kind of counter, a noncreature
+// permanent and counters an opponent puts are left alone. Scope
+// ScopeGame. An on-disk identity: never renamed, never reused.
+const ModOneMorePlusOneCounter ModKind = "oneMorePlusOneCounter"
+
+// oneMorePlusOneCounterAppliesLocked is ModOneMorePlusOneCounter's
+// AppliesTo: +1/+1 counters the record's player is about to put on a
+// creature they control, read through the layers as the counters
+// arrive. Caller must hold g.mu.
+func oneMorePlusOneCounterAppliesLocked(g *Game, m Mod, ev *ReplacementEvent) bool {
+	if ev.Kind != RepEventCounter || ev.CounterDelta <= 0 || ev.CounterPlayer != uuid.Nil ||
+		ev.CounterName != CounterPlusOne || m.Player == uuid.Nil || ev.CounterPlacer != m.Player {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CounterTarget)
+	return ok && c.Controller == m.Player && c.IsCreature()
+}
+
+// OneMorePlusOneCounterThisTurnForEffect registers a
+// ModOneMorePlusOneCounter record for `player` until end of turn.
+// Reports whether a record was written.
+//
+// Caller must hold g.mu (write).
+func (g *Game) OneMorePlusOneCounterThisTurnForEffect(sourceID, player uuid.UUID, label string) bool {
+	if player == uuid.Nil {
+		return false
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, player,
+		[]Mod{{Kind: ModOneMorePlusOneCounter, Player: player}}, g.UntilEndOfTurnDuration(), label)
+}
+
 // OneMoreCounterThisTurnForEffect registers the record for `player`
 // until end of turn. Reports whether a record was written.
 //

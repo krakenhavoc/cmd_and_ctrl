@@ -781,6 +781,24 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PaperPaymentModal.svelte`],
     doc: "the paper payment picker's tag on a slot of the cost's {X} part, the mana a spend-only-on-X clause restricts (#3941)",
   }),
+  xPickerTurnFaceUp: label({
+    name: "Turn face up",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}Board.svelte`],
+    doc: "the X picker's confirm verb for a turn-face-up cost with an {X} (Aurelia's Vindicator's disguise {X}{3}{W}, #5249); the button reads Turn face up with X = <n>",
+  }),
+  xPickerManaCeiling: dynamicLabel({
+    stem: "You can pay for X up to ",
+    match: "prefix",
+    shape: "You can pay for X up to <n> right now.",
+    make: (n: number) => `You can pay for X up to ${n} right now.`,
+    example: [2],
+    kind: "text",
+    role: "paragraph",
+    owners: [`${BOARD}XCostModal.svelte`],
+    doc: "the X picker's ceiling for a special action's {X} (#5249, CR 107.3d): the largest X the server says the viewer can pay from the pool and auto-tap",
+  }),
   castFree: label({
     name: "Cast without paying its mana cost",
     kind: "text",
@@ -1027,6 +1045,14 @@ export const LABEL_SPECS = {
     role: "generic",
     owners: ["lib/contextMenu.logic.ts"],
     doc: "the reason on a power-up ability row the server marked power_up_used (#4527, CR 702.193a: activate each power-up ability only once), in the card menu and the mana-ability popover",
+  }),
+
+  onceUsed: label({
+    name: "already activated",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/contextMenu.logic.ts"],
+    doc: "the reason on an ability row the server marked once_used (#5221, CR 602.5b: activate only once, without the exhaust keyword), in the card menu",
   }),
 
   rulings: label({

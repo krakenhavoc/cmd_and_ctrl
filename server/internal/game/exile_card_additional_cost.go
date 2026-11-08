@@ -54,9 +54,18 @@ func planExileCards(plan []costPayment) *ExileCost {
 // refused before anything is named (CR 118.3) — the ceiling the view
 // and the enumerator read, so the three agree. X = 0 names nothing.
 //
+// #5240: a target-sized collect evidence clause ("collect evidence X,
+// where X is the total mana value of the permanents this spell targets")
+// is checked against the floor `targets` fix (CR 601.2c chooses them, CR
+// 601.2f determines the cost from them): cards whose total mana value is
+// that floor or more, none when it is 0.
+//
 // Caller must hold g.mu.
-func (g *Game) validateCastExileCardsLocked(playerID, castID uuid.UUID, plan []costPayment, ids, alsoSpent []uuid.UUID, xValue int) error {
+func (g *Game) validateCastExileCardsLocked(playerID, castID uuid.UUID, plan []costPayment, ids, alsoSpent []uuid.UUID, xValue int, targets []TargetRef) error {
 	ec := planExileCards(plan)
+	if ec.IsCollectEvidenceFromTargets() {
+		ec = CollectEvidenceCost(g.CollectEvidenceTargetsFloorForEffect(targets), ec.Label)
+	}
 	if ec != nil && ec.CountFromX {
 		if xValue > g.ExileCardsXCeilingForEffect(playerID, castID, ec) {
 			return ErrInvalidParam

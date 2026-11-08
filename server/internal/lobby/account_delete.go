@@ -223,6 +223,9 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 	if c.Lobby != nil {
 		c.Lobby.anonymiseDeletedSeats(res.Seats, res.DiscordSubject)
 		c.Lobby.forgetBlocksOf(id, res.DiscordSubject)
+		// ADR 0215: the plans and RSVPs went in the transaction; the
+		// holds on the tables are the in-memory copy.
+		c.Lobby.forgetScheduleOf(id, res.DiscordSubject, res.ScheduledGames)
 	}
 	// ADR 0182: the key row went in the transaction; a bot seat that had
 	// already opened the key stops using it from its next call.
@@ -243,6 +246,12 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		if err := c.Playmats.ForgetFiles(res.PlaymatIDs); err != nil {
 			log.Warn("account deletion: removing playmat files failed", "user_id", id, "err", err)
 		}
+	}
+	// ADR 0163 §7: the grant went with the identity row; empty the
+	// Discord connection with it so the profile stops showing the
+	// numbers. In the background, and a failure is only logged.
+	if c.LinkedRoles != nil && len(res.RoleConnectionToken) > 0 {
+		c.LinkedRoles.Forget(res.DiscordSubject, res.RoleConnectionToken)
 	}
 	if c.DiscordAvatars != nil && res.DiscordSubject != "" {
 		if err := c.DiscordAvatars.Forget(res.DiscordSubject); err != nil {
@@ -272,6 +281,9 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"pod_members", res.Counts.PodMembers,
 		"pod_invites", res.Counts.PodInvites,
 		"pod_dismissals", res.Counts.PodDismissals,
+		"scheduled_tables", res.Counts.ScheduledPlans,
+		"scheduled_cancelled", res.Counts.ScheduledCancelled,
+		"scheduled_rsvps", res.Counts.ScheduledRSVPs,
 		"identities", res.Counts.Identities,
 		"reports", res.Counts.Reports,
 		"table_blocks", res.Counts.Blocks,

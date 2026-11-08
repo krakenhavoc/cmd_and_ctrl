@@ -47,7 +47,9 @@ cmd_and_ctrl/
 │   │   ├── usersettings/ # a signed-in person's synced settings: one JSON object, 32 KiB cap, If-Match revision (ADR 0110 §4, migration 0008)
 │   │   ├── tablesetups/  # the last setup each person started a table with: settings, bots, tablemates (ADR 0110 §5, migration 0008)
 │   │   ├── moderation/  # the name and chat filter: a hand-kept denylist (denylist.txt) with normalisation, masking for chat, refusal for names, and the folded key a guest block uses; a test holds it clear of every card name (#2984, ADR 0075 §2.6)
+│   │   ├── linkedroles/ # Discord Linked Roles (ADR 0163): link a grant, the stats query, the post-game push worker, emptying a deleted account's connection
 │   │   ├── pods/        # pods: a named group with one owner, friend invites, the invite link, leaving, removal and the limits (ADR 0220, migration 0033); ForgetAccount for account deletion
+│   │   ├── schedule/    # scheduled tables: a plan until its doors open, the list of seats and the waitlist in order, the holds after doors-open, the limits and the sweep (ADR 0215, migration 0034); ForgetAccount for account deletion. lobby/schedule.go opens the tables and runs the holds
 │   │   ├── social/      # friends, requests, personal blocks and the two social settings (ADR 0213 §2, §3, migration 0032); Blocked / BlockedWith for other packages (pods, ADR 0220 §6)
 │   │   ├── accountdelete/ # self-serve account deletion (ADR 0149, migration 0015): one SQL transaction, the tombstone, and Inventory — every column with its deletion treatment, held to the live schema by a test
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)

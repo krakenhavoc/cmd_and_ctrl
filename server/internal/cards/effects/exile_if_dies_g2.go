@@ -132,3 +132,14 @@ func g2Bargain() game.AdditionalCost {
 
 // g2WasBargained is "if this spell was bargained".
 func g2WasBargained(ctx *Context) bool { return ctx.OptionalCostTimes(g2BargainKey) > 0 }
+
+// CostsLessIfBargained is "This spell costs {n} less to cast if it's
+// bargained" (Ice Out, Johann's Stopgap), a SelfCostModifiers entry
+// beside g2Bargain: the bargain offer is announced at CR 601.2b, so the
+// total at 601.2f reads it off the announcement
+// (game.CostQuery.OptionalCosts), as CostsLessIfEvidenceCollected does.
+func CostsLessIfBargained(n int, label string) game.CostModifier {
+	return CostsLess(n, label, func(q game.CostQuery) bool {
+		return q.OptionalCostTimes(g2BargainKey) > 0
+	})
+}

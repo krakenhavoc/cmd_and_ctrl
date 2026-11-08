@@ -1,0 +1,23 @@
+-- Migration 0035: the Discord Linked Roles grant (ADR 0163 §4, #3323).
+--
+--   identities.role_connection_token  the OAuth refresh token of the
+--                                      person's Linked Roles grant
+--                                      (scopes `identify
+--                                      role_connections.write`), sealed
+--                                      under CMDCTRL_IDENTITY_KEY like
+--                                      refresh_token, or NULL for not
+--                                      linked. It is a second grant: a
+--                                      sign-in replaces refresh_token
+--                                      and never touches this one.
+--
+-- Set when a person links CMD & CTRL from Discord, rotated on every
+-- push of their stats, and cleared when Discord rejects it
+-- (invalid_grant: they removed the connection or de-authorized the
+-- app). Account deletion (ADR 0149) deletes it with the identity row,
+-- and the server then asks Discord to empty the connection.
+--
+-- Additive: one nullable column, no backfill. Rolling back: an older
+-- binary refuses this schema (ErrSchemaTooNew). The column can be
+-- dropped by hand; see docs/environments.md.
+
+ALTER TABLE identities ADD COLUMN role_connection_token BLOB;

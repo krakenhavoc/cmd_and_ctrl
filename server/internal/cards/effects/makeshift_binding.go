@@ -18,20 +18,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	untilLeaves := exileChosenTargetUntilThisLeaves(
-		"Makeshift Binding — the exiled creature returns when Makeshift Binding leaves the battlefield")
 	Register(Spec{
 		OracleID:     "942f3f06-1df0-40b4-8537-71cbec111852",
 		Name:         "Makeshift Binding",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Makeshift Binding — exile target creature an opponent controls until this enchantment leaves the battlefield; you gain 2 life",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := untilLeaves(g, item); err != nil {
-						return err
-					}
-					return GainLife{Amount: 2}.Apply(NewContext(g, item))
-				}),
+				exileChosenTargetUntilThisLeavesThenGainLife(
+					"Makeshift Binding — the exiled creature returns when Makeshift Binding leaves the battlefield", 2)),
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 		},
 	})

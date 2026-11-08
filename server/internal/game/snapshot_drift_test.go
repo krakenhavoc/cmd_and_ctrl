@@ -133,6 +133,9 @@ var gameFields = plan(
 	// plan describes, and restore stamps it from the restored cursor.
 	"TurnPlan", carried, "",
 	"NextPhaseID", carried, "",
+	// ADR 0188 Decision 13 (#5277): rules effects waiting for one combat
+	// phase of this turn. Plain data.
+	"PhaseEffects", carried, "",
 	"planAt", rebuilt, "derived from the restored cursor: a restored plan describes the cursor it was captured with",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
@@ -157,6 +160,10 @@ var gameFields = plan(
 	// that dropped it would give every exhaust ability on the board a
 	// second use.
 	"Activations", carried, "",
+	// #5245: "This ability triggers only once", per object. Carried
+	// for Activations' reason: it never refreshes, so a restore that
+	// dropped it would let the ability trigger a second time.
+	"OnlyOnceTriggered", carried, "",
 	// #628 CR 732 loop breaker. Carried for the same reason the
 	// per-turn tallies are: a restore mid-loop that forgot the notice
 	// would come back with automatic passing live again, and the

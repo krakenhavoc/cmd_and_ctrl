@@ -197,6 +197,19 @@ func (m *ModLog) TableDeleted(p auth.Principal, name string) {
 	})
 }
 
+// ScheduledCancelled logs an admin cancelling someone else's scheduled
+// table before its doors opened (ADR 0215 §12).
+func (m *ModLog) ScheduledCancelled(p auth.Principal, name string) {
+	if m == nil {
+		return
+	}
+	m.post(discord.ModLogEntry{
+		Title:  "Scheduled table cancelled",
+		Fields: []discord.ModLogField{{Name: "Table", Value: name}},
+		Actor:  modLogActor(p),
+	})
+}
+
 // SeatRemoved logs an admin removing a seat, or a spectator, from a
 // table. who is the name the seat or spectator had there.
 func (m *ModLog) SeatRemoved(p auth.Principal, id uuid.UUID, table, who string, spectator, blocked bool) {

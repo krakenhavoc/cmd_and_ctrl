@@ -66,6 +66,16 @@ type NextSpellPromise struct {
 	// No `omitzero`, for PlayerStatic.Timing's reason (#1492).
 	Filter PermissionFilter `json:"filter"`
 
+	// FaceDownOnly narrows the promise to FACE-DOWN spells (CR 708.4):
+	// Goblin Maskmaker's "face-down spells you cast this turn cost {1}
+	// less to cast" (#5241). Judged on the spell as it is priced, and a
+	// face-down cast is stamped a CR 708.2 object before that
+	// (castSpellLocked; the legal-move enumerator stamps it too), so the
+	// question is asked of the 2/2 rather than of the card. Read through
+	// NextSpellPromise.Matches, beside Filter. Additive within the
+	// schema version.
+	FaceDownOnly bool `json:"faceDownOnly,omitempty"`
+
 	// Flash is "can be cast as though it had flash" (CR 702.8).
 	Flash bool `json:"flash,omitempty"`
 
@@ -132,6 +142,16 @@ type NextSpellPromise struct {
 	Text string `json:"text,omitempty"`
 }
 
+// Matches reports whether the promise is about `card`: its Filter, and
+// FaceDownOnly's "face-down spells". Every reader of a promise asks
+// this rather than the filter alone.
+func (np NextSpellPromise) Matches(card Card) bool {
+	if np.FaceDownOnly && !card.FaceDownIsPermanent() {
+		return false
+	}
+	return np.Filter.Matches(card)
+}
+
 // ImproviseTapCost is the tap cost an improvise grant offers. The effects
 // package sets it at init (effects.Improvise()); game cannot build a
 // TargetSpec itself.
@@ -147,7 +167,7 @@ func (g *Game) improvisePromiseCostLocked(player uuid.UUID, card Card) *TapPerma
 		return nil
 	}
 	for _, s := range p.Statics {
-		if s.NextSpell.Improvise && g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Filter.Matches(card) {
+		if s.NextSpell.Improvise && g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Matches(card) {
 			return ImproviseTapCost
 		}
 	}
@@ -219,7 +239,7 @@ func (g *Game) nextSpellCostModifiersLocked(player uuid.UUID, card Card) []bound
 	var out []boundCostModifier
 	for _, s := range p.Statics {
 		np := s.NextSpell
-		if (np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted) || !g.livePromise(s) || !np.Filter.Matches(card) {
+		if (np.Reduce <= 0 && np.AffinityFor == "" && !np.Undaunted) || !g.livePromise(s) || !np.Matches(card) {
 			continue
 		}
 		n := np.Reduce + g.affinityCountLocked(player, np.AffinityFor)
@@ -311,7 +331,7 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []spentPr
 		followUps []spentPromiseFollowUp
 	)
 	for _, s := range p.Statics {
-		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Filter.Matches(*spell) {
+		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Matches(*spell) {
 			spent = append(spent, s)
 			continue
 		}

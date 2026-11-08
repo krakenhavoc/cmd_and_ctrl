@@ -40,6 +40,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			records = append(append([]ScopedEffect(nil), records...), et.Effects...)
 		}
 	}
+	// ADR 0188 Decision 13 (#5277): and so are the effects waiting for
+	// one combat phase, registered as that combat begins.
+	for _, pe := range s.PhaseEffects {
+		records = append(append([]ScopedEffect(nil), records...), pe.Effect)
+	}
 	unknown = append(unknown, unknownScopedEffectRecordKeys(records)...)
 	// ADR 0203: a venture marker on a dungeon or room this binary does
 	// not register.
@@ -504,6 +509,10 @@ func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
 			// #3995: a player-wide untap skip naming no player or no
 			// permanent type, or anyController on another kind.
 			if problem := skipNextUntapStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// S79 (#5075): a combat-phase skip naming no player.
+			if problem := skipCombatPhasesModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 			// #2567: an attack-this-permanent requirement naming no

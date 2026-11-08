@@ -83,6 +83,7 @@ var xMattersAllowlist = map[string]string{
 	"voracious_hydra.go Voracious Hydra":                          "0/1 body survives at X=0, and the enters-the-battlefield fight mode is X-independent",
 	"procrastinate.go Procrastinate":                              "\"Tap target creature\" never reads X: at X=0 the spell still taps the creature and puts no stun counters on it, a real (if weak) play",
 	"pterafractyl.go Pterafractyl":                                "\"When this creature enters, you gain 2 life\" never reads X: at X=0 the 1/0 dies, but its enters trigger still resolves and gains the 2 life",
+	"song_of_totentanz.go Song of Totentanz":                      "\"Creatures you control gain haste until end of turn\" never reads X: at X=0 the spell makes no Rats and still gives the team haste",
 	"wild_hypothesis.go Wild Hypothesis":                          "the X counters scale with X but \"Surveil 2\" is a fixed rider: at X=0 the Fractal dies as a 0/0 and the spell still surveils 2, a real play",
 }
 

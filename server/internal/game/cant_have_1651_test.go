@@ -240,7 +240,7 @@ func TestScopedHexproofWaiverSurvivesUndoAndRestore(t *testing.T) {
 func TestScopeCoversPlayerOnlyForTheNewScope(t *testing.T) {
 	me, opp := uuid.New(), uuid.New()
 	for _, s := range []AffectedScope{ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
-		ScopeYourCreatures, ScopeCreaturesWithoutFlying} {
+		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeCreaturesThatArentLands} {
 		if scopeCoversPlayer(s, me, opp) {
 			t.Errorf("scope %q must name no player", s)
 		}

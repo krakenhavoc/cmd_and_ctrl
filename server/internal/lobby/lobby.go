@@ -369,6 +369,8 @@ type Lobby struct {
 	// away is the away clock's own state: who chose to keep waiting
 	// (away.go). Guarded by its own mutex.
 	away awayState
+	// sched is the scheduler's lock and clock (schedule.go, ADR 0215).
+	sched scheduleState
 	// idle is the idle sweep's clock (idle.go, ADR 0211). Guarded by
 	// its own mutex, a leaf read under l.mu.
 	idle idleState
@@ -399,6 +401,10 @@ type Lobby struct {
 	// results is the results feed (ADR 0174), nil when it is off. Set
 	// once at boot by SetResultsFeed.
 	results *ResultsFeed
+	// linkedRoles queues a Discord Linked Roles push for the accounts
+	// of a game that ends (ADR 0163 §5), nil when it is off. Set once
+	// at boot by SetLinkedRoles.
+	linkedRoles RoleConnectionQueue
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.
@@ -582,6 +588,12 @@ type gameEntry struct {
 	idleWarnedAt     time.Time
 	idleCloseAt      time.Time
 	closedReason     string
+
+	// sched is the plan a scheduled table was made from (schedule.go,
+	// ADR 0215): its start, its seat count and the seats held for the
+	// people who reserved them, copied from the plan's list by the
+	// scheduler. nil for every other table, and once the plan is gone.
+	sched *entrySchedule
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -884,7 +896,7 @@ func (l *Lobby) JoinWithIdentity(id uuid.UUID, invite, playerName string, identi
 // /me/games/{id}/session) finds "the seat whose user_id is theirs",
 // and two of them would make that a guess.
 func (l *Lobby) JoinAs(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID) (GameMeta, uuid.UUID, error) {
-	return l.join(id, invite, playerName, identity, userID, nil)
+	return l.join(id, invite, playerName, identity, userID, nil, false)
 }
 
 // AgentDecl is an agent client's declaration at join (ADR 0122 §7):
@@ -935,12 +947,15 @@ func NormalizeAgentClient(raw string) string {
 // identity at all, so it cannot give an agent seat one.
 func (l *Lobby) JoinAgent(id uuid.UUID, invite, playerName string, decl AgentDecl) (GameMeta, uuid.UUID, error) {
 	decl.Client = NormalizeAgentClient(decl.Client)
-	return l.join(id, invite, playerName, DiscordIdentity{}, uuid.Nil, &decl)
+	return l.join(id, invite, playerName, DiscordIdentity{}, uuid.Nil, &decl, false)
 }
 
-// join is the one seat claim behind JoinAs and JoinAgent. agent is nil
-// for every seat but an agent's.
-func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID, agent *AgentDecl) (GameMeta, uuid.UUID, error) {
+// join is the one seat claim behind JoinAs, JoinAgent and ClaimHeldSeat.
+// agent is nil for every seat but an agent's. claim is a scheduled
+// table's held seat taken with no invite (ADR 0215 §3): the hold is the
+// credential, so invite is not read, and a person with no hold is
+// ErrNoHeldSeat.
+func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordIdentity, userID uuid.UUID, agent *AgentDecl, claim bool) (GameMeta, uuid.UUID, error) {
 	if agent != nil && (identity.Populated() || userID != uuid.Nil) {
 		// Decision 2: an agent seat is a guest. The HTTP layer
 		// already refuses a signed-in agent join; this keeps the rule
@@ -983,8 +998,13 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 		return GameMeta{}, uuid.Nil, ErrGameNotFound
 	}
 	// The invite IS the credential for this endpoint. A spectator
-	// invite must not seat anyone.
-	if rec, err := l.resolveInvite(id, invite); err != nil {
+	// invite must not seat anyone. A claim's credential is the hold,
+	// checked with the seats below.
+	if claim {
+		if agent != nil || holdIndexLocked(entry, userID, identity.ID) < 0 {
+			return GameMeta{}, uuid.Nil, ErrNoHeldSeat
+		}
+	} else if rec, err := l.resolveInvite(id, invite); err != nil {
 		return GameMeta{}, uuid.Nil, err
 	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
@@ -1003,8 +1023,16 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
 	}
-	if len(entry.meta.Players) >= game.MaxPlayers {
-		return GameMeta{}, uuid.Nil, ErrGameFull
+	// ADR 0215 §3: a scheduled table's held seats count as taken for
+	// everyone but their holder, and its seat count is the plan's. An
+	// agent holds nothing.
+	holdUser, holdDiscord := userID, identity.ID
+	if agent != nil {
+		holdUser, holdDiscord = uuid.Nil, ""
+	}
+	hold, err := seatFreeLocked(entry, holdUser, holdDiscord)
+	if err != nil {
+		return GameMeta{}, uuid.Nil, err
 	}
 	if userID != uuid.Nil {
 		if _, taken := seatOfUser(entry.meta.Players, userID); taken {
@@ -1109,6 +1137,9 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 		seat.AgentClient = agent.Client
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
+	// ADR 0215 §3: the hold is used up; the next advance marks the
+	// person seated on the plan's list.
+	takeHoldLocked(entry, hold)
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, p.ID)
 	l.touchLocked(entry) // ADR 0211 §1
@@ -1438,7 +1469,21 @@ func (l *Lobby) SetLibraryDeckPower(deckID string, power float64) {
 // Admins and any seated player can call Start — seat-claim
 // and start-button ownership is deferred until there's a reason to
 // differentiate them.
+//
+// A scheduled table with seats still held is *SeatsHeldError (ADR 0215
+// §3): the host confirms, and StartWithoutHeld drops the holds.
 func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
+	return l.start(id, false)
+}
+
+// StartWithoutHeld is Start after the host confirmed starting without
+// the people whose seats are still held: the unclaimed holds are dropped
+// (ADR 0215 §3), and the plan's next advance marks them lapsed.
+func (l *Lobby) StartWithoutHeld(id uuid.UUID) (GameMeta, error) {
+	return l.start(id, true)
+}
+
+func (l *Lobby) start(id uuid.UUID, dropHolds bool) (GameMeta, error) {
 	// Registered before the lock defer so it runs after l.mu is
 	// released — see applyLocked.
 	var broadcast func()
@@ -1472,6 +1517,11 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 			return GameMeta{}, ErrDeckNotUploaded
 		}
 	}
+	// ADR 0215 §3: the host confirms starting without the people whose
+	// seats are still held.
+	if held := heldLocked(entry); held > 0 && !dropHolds {
+		return GameMeta{}, &SeatsHeldError{Held: held}
+	}
 	var err error
 	l.keepRematchDecksLocked(entry)
 	// ADR 0121 §1: the table rolls for the first turn itself. Each seat
@@ -1485,6 +1535,9 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 		// Most likely ErrNotEnoughPlayers — surface as-is; the HTTP
 		// handler turns it into 409.
 		return GameMeta{}, err
+	}
+	if entry.sched != nil {
+		entry.sched.holds = nil
 	}
 	l.syncStateLocked(entry)
 	l.startWatchLocked(entry)
@@ -1604,8 +1657,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
 	}
-	if len(entry.meta.Players) >= game.MaxPlayers {
-		return GameMeta{}, uuid.Nil, ErrGameFull
+	// ADR 0215 §3: a bot never takes a held seat.
+	if _, err := seatFreeLocked(entry, uuid.Nil, ""); err != nil {
+		return GameMeta{}, uuid.Nil, err
 	}
 	// A bot is the expensive seat (capacity.go): refuse it when the
 	// load has no room, before the engine is touched.

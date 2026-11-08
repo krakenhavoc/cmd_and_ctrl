@@ -294,6 +294,17 @@ does not reach spectating. `GET /games/{id}/preview?t=<player invite>`
 answers the same 401 to a blocked person who sends a signed-in session,
 and a seated person still sees their own table there.
 
+**A scheduled table's held seats** ([ADR 0215](decisions/0215-scheduled-games-discord-scheduled-events-and-rsvp-seats.md)
+§3). A table opened from a plan holds its seats for the people who
+reserved them until 10 minutes after the start, and has the plan's
+number of seats. The holder of a seat joins by this route as usual (or
+by [`POST /scheduled/{id}/claim`](#post-scheduledidclaim), with no
+invite). Anyone else takes a seat nobody holds, or is refused **409**
+`{"code": "seats_reserved", "reserved_until": <ms>, "error": "The other
+seats are reserved until 19:40 UTC"}`; `reserved_until` is when the last
+hold runs out, for the client to show in the viewer's zone. A full table
+is the usual **409**.
+
 **Lifetime** ([ADR 0110](decisions/0110-remember-me.md) §1, S55): a
 signed-in joiner's seat session expires at the same instant as the
 session they joined from, so `expires_at` is that session's, not
@@ -1533,13 +1544,21 @@ the other signed-in people who sat there. A layout is final when the table
 starts, so a table that never starts leaves no setup. A failed write is logged
 and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
 
+**A scheduled table with seats still held** ([ADR 0215](decisions/0215-scheduled-games-discord-scheduled-events-and-rsvp-seats.md)
+§3) answers **409** `{"code": "seats_held", "held": 2, "error": "2 reserved
+seats are still empty. Start without them?"}` and does not start. The host
+confirms by sending the start again with the optional body
+`{"without_held": true}`, which drops the unclaimed holds. A start with no
+body, or `{}`, is the plain one. See [Scheduled tables](#scheduled-tables-adr-0215-slice-2).
+
 **Errors**
 
 | Status | Reason |
 |---|---|
+| 400 | a body that is not JSON |
 | 403 | not a seat in this game |
 | 404 | game not found |
-| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum); or the table has been archived (`code: "game_closed"`) |
+| 409 | not enough players (min 2), or one or more seats haven't uploaded a deck, or a Planechase table whose communal planar deck the server cannot build (no card database, or fewer cards than CR 901.15a's minimum); or the table has been archived (`code: "game_closed"`); or seats are still held (`code: "seats_held"`) |
 
 ### Rematch: `POST /games/{id}/rematch`, `/rematch/accept`, `/rematch/leave` (ADR 0164, #3285)
 
@@ -4817,6 +4836,175 @@ For a bad name that gets through the filter (ADR 0220 §8), behind
 `{"id", "name"}`); `DELETE` deletes the pod (**204**). **404** for no such
 pod. There is no pod list and no membership graph for admins.
 
+## Scheduled tables (ADR 0215 slice 2)
+
+A scheduled table is a table booked for a start time ([ADR 0215](decisions/0215-scheduled-games-discord-scheduled-events-and-rsvp-seats.md)).
+It is a **plan**, a row in migration 0034's `scheduled_tables` with its
+list in `scheduled_rsvps` (`server/internal/schedule`), until its **doors
+open, 15 minutes before the start**. Then the scheduler
+(`Lobby.RunSchedule`, `lobby/schedule.go`, every minute) makes an ordinary
+lobby table from it and holds its seats. Slice 2 is the server only: the
+pages are slice 3, the Discord event slices 4 and 5, reminders slice 6.
+
+Scheduling, reserving and claiming need a signed-in person. No credential
+is **401**; a guest's seat or spectator session and the admin token are
+**403** (`scheduled tables need an account…`). With no database every
+route is **503**. Times are Unix milliseconds, UTC.
+
+**The list** (§3). The host has a row of their own and holds seat 1; a
+plan has `players` seats, 2 to 4, the host included. Before doors-open the
+first `players` people in the order they reserved have a seat (`seat`),
+and the rest are on the waitlist (`waiting`), in order. Leaving, a removal
+or fewer players deals the seats again, so the first on the waitlist moves
+up at once and a cut seat goes to the front of the waitlist. Reserving
+again keeps your place; leaving and reserving again is the back. The host
+may remove a reservation (`removed`): that person cannot reserve this
+occurrence again. A person the host has blocked (ADR 0213 §3) is refused
+with the same answer, `This table can't take your reservation` (**403**).
+
+**Doors-open** (§1). The table is created as the host's (its creator, and
+its named host until they sit down), with the plan's name and create
+options: Planechase, the last setup's settings (not its bots: the seats are
+held), the voice room, #lfg and results. Nobody is seated, the host
+included. Opening skips the open-table cap and the create rate limit but
+not the load cap: a full server is tried every minute until the grace
+ends, and then the plan is `missed`. After a restart, a plan more than an
+hour past its start is `missed` instead of opened.
+
+**Holds** (§3). At doors-open every `seat` becomes `held` until **10
+minutes after the start** (the grace). A held seat counts as taken for
+everyone but its holder: a join by the invite link (**409**
+`seats_reserved`, [above](#post-gamesidjoin)), a bot (the same), the #lfg
+post (holds count as seated, and a table whose every free seat is held
+posts nothing) and the start (**409** `seats_held` until the host confirms,
+[above](#post-gamesidstart)). The table has the plan's number of seats.
+The holder takes the seat with [`POST /scheduled/{id}/claim`](#post-scheduledidclaim)
+or the invite link, and becomes `seated`. A seat nobody holds or sits in
+(someone left, or a hold lapsed) goes to the first on the waitlist, held
+until the grace ends or for **10 more minutes**, whichever is later. When
+the grace has ended and no hold is left, the plan is `settled`; if the host
+chose `fill_bots`, every seat still empty gets a bot: the host's last
+setup's bots first, then the heuristic tier on the catalog's decks. A
+table that starts, closes or goes away settles its plan at once, and the
+holds lapse.
+
+**Nobody came** (§7, ADR 0211's amendment). A scheduled table with no
+person seated **an hour after its start** is closed as `idle_lobby` by the
+idle sweep.
+
+**Limits** (§12): 3 upcoming plans a host, 50 on the server (`The
+calendar is full`), at least 30 minutes and at most 30 days ahead, 3 moves
+a plan, nothing changed after doors-open. A new plan and a move spend the
+create bucket `POST /games` spends (1 per 30 s, burst 3). The other writes
+share a per-person bucket of 1 a second, burst 5; `GET /scheduled` one of
+2 a second, burst 10; `GET /scheduled/{id}` one of 2 a second, burst 10,
+per client address.
+
+**Kept** until 24 hours after the start, or 24 hours after a cancel
+(`schedule.Keep`), then deleted with its list. Account deletion deletes the
+plans the person hosts (cancelling the upcoming ones) and every RSVP of
+theirs, by account and by Discord id.
+
+### The plan
+
+Every route but `GET /scheduled` answers a plan:
+
+```json
+{
+  "id": "<uuid>", "name": "Friday pod", "host": "Ann", "host_zone": "America/New_York",
+  "starts_at": 1793998800000, "ends_at": 1794009600000,
+  "doors_open_at": 1793997900000, "held_until": 1793999400000,
+  "length_minutes": 180, "players": 4, "status": "scheduled",
+  "open_seats": 1, "waitlist": 2,
+  "options": { "voice_room": true, "lfg": true, "fill_bots": true },
+  "is_host": true, "moves_left": 3,
+  "game_id": "<uuid, once the doors opened>",
+  "you": { "state": "seat", "position": 1 },
+  "list": [
+    { "display_name": "Ann", "state": "seat", "host": true, "you": true, "discord_id": "…" },
+    { "display_name": "Bea", "state": "waiting" }
+  ]
+}
+```
+
+- `status`: `scheduled`, `open` (the table exists and its holds run),
+  `settled`, `cancelled` or `missed`.
+- `state`: `seat`, `waiting`, `held` (with `held_until`), `seated`,
+  `lapsed` or `removed`.
+- `open_seats` and `waitlist` are for everyone. `list` and `game_id` are
+  for the host and the people on the list (§11); `discord_id` on each row,
+  `moves_left` and the removed rows are the host's only. `you` is the
+  caller's own row, with `position` counted from 1 within the seats or
+  within the waitlist.
+
+### `GET /scheduled`
+
+Signed in. `{"plans": [...], "max_upcoming_per_host": 3}`: the plans that
+are scheduled, open, or cancelled or missed and not yet deleted, with
+counts and `you` but no `list`, your own plans and reservations first, each
+part by start.
+
+### `POST /scheduled`
+
+```json
+{
+  "name": "Friday pod", "starts_at": 1793998800000, "zone": "America/New_York",
+  "players": 4, "length_minutes": 180,
+  "voice_room": true, "lfg": true, "results": false, "planechase": false,
+  "setup": "last", "fill_bots": true
+}
+```
+
+**201** with the plan. `starts_at` and `zone` (an IANA name) are required;
+`players` defaults to 4, `length_minutes` (120, 180 or 240) to 180; a
+blank `name` is a generated one. **400** for a start too soon or too far,
+a bad zone, length, players or setup, or a name the filter refuses (`code:
+"name_not_allowed"`); **409** for a fourth upcoming plan or a full
+calendar; **429** past the create bucket.
+
+### `GET /scheduled/{id}`
+
+**Public by id**: it is the Discord event's link. A session, when there is
+one, says who is asking. **404** for no such plan.
+
+### `PATCH /scheduled/{id}`
+
+The host, before doors-open. Any of `name`, `starts_at`, `zone`,
+`players`, `length_minutes` and the options (each option on its own).
+A new `starts_at` is a move: **409** after three, **400** into the next 30
+minutes, **429** past the create bucket. **403** for anyone else; **409**
+once the doors are open (`…this is a table now…`) or the plan is closed.
+
+### `DELETE /scheduled/{id}`
+
+Cancel: the host, or an admin, who can cancel any plan (an `admin action`
+line and a #mod-log entry). **200** with the plan, `status: "cancelled"`.
+**409** once the doors are open: it is a table, closed with the table's own
+controls.
+
+### `PUT /scheduled/{id}/rsvp` and `DELETE /scheduled/{id}/rsvp`
+
+Reserve a seat, and leave. **200** with the plan. Reserving an open plan
+puts you on the waitlist, and a free seat is held for you at once. **409**
+for the host (`You're the host: you hold seat 1.`) and a closed plan;
+**403** for a removed or blocked person; **404** leaving a list you are
+not on. Leaving after doors-open passes your seat down the waitlist at
+once.
+
+### `DELETE /scheduled/{id}/rsvps/{discord_id}`
+
+The host removes a reservation (`discord_id` from the host's `list`).
+**200** with the plan; **403** for anyone else; **404** for someone not on
+the list; **409** for the host's own row.
+
+### `POST /scheduled/{id}/claim`
+
+Take your seat, with no invite token: the hold is the credential. **200**
+with a seat session, as [`POST /games/{id}/join`](#post-gamesidjoin)
+answers. **409** before the doors open, for a closed plan, for someone who
+holds no seat (`you don't hold a seat at this table`) or who is already
+seated; **503** at the connection cap.
+
 ## Session lifetimes (ADR 0110 §1)
 
 One rule for every route that mints a session
@@ -5822,14 +6010,14 @@ The re-check at renewal is under
 Public, no credential. The client's source for every Discord placement:
 
 ```json
-{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true, "results": true, "dm_invites": true }
+{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true, "results": true, "dm_invites": true, "linked_roles": false }
 ```
 
 `invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
 then hides every Discord link). `gate` is whether sign-up needs the
 admitting role. `voice` is whether a host may give a table a voice room
 (ADR 0159), and `lfg` whether a host may post a table to #lfg (ADR 0161,
-[`PUT /games/{id}/lfg`](#put-gamesidlfg)), and `results` whether a host may opt a table in to a results post in #game-results (ADR 0174, [`PUT /games/{id}/results`](#put-gamesidresults)), and `dm_invites` whether this server can DM a table's invite link through the bot (`POST /games/{id}/invites/dm`: the bot token and a public origin, so production only); where it is false the Played with list offers Copy invite instead (ADR 0213 §1). No guild, role or user id is ever in it. Answered with
+[`PUT /games/{id}/lfg`](#put-gamesidlfg)), and `results` whether a host may opt a table in to a results post in #game-results (ADR 0174, [`PUT /games/{id}/results`](#put-gamesidresults)), and `dm_invites` whether this server can DM a table's invite link through the bot (`POST /games/{id}/invites/dm`: the bot token and a public origin, so production only); where it is false the Played with list offers Copy invite instead (ADR 0213 §1). `linked_roles` is whether Discord Linked Roles is on ([`GET /auth/discord/linked-role`](#get-authdiscordlinked-role-adr-0163)). No guild, role or user id is ever in it. Answered with
 `Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`
@@ -5948,6 +6136,63 @@ What the callback then does:
 | 409 | `?game=` names another table; the table is archived; or the Discord account already holds a different seat at this table |
 | 422 | the seat is a bot, or an agent seat ([ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) §7: it stays a guest) |
 | 503 | Discord is not configured on this server |
+
+### `GET /auth/discord/linked-role` (ADR 0163)
+
+Discord Linked Roles' **verification URL**, set in the Developer Portal
+([ADR 0163](decisions/0163-discord-linked-roles.md) §3). Discord sends a
+person here when they link CMD & CTRL from a server role's Links
+requirement or from User Settings → Connections. Public, no session,
+rate-limited with `/start`.
+
+- **Off** (see `CMDCTRL_DISCORD_LINKED_ROLES` in [env.md](env.md)):
+  **302** to `/#/linked-role?status=unavailable`. No state is parked.
+- **On:** **302** to Discord's authorize URL with
+  `scope=identify role_connections.write`, `prompt=consent`, PKCE, and the
+  sign-in **redirect URI**, so the portal needs no new redirect. The state
+  is a fourth purpose, `RoleConnection`, with no game and no seat.
+
+The callback's branch for that state comes before the sign-up gate and
+anything a sign-in writes, and it **mints no session** (linking is not
+signing in):
+
+1. Exchanges the code and reads `/users/@me`.
+2. Finds the account by Discord id. **None:** **302** to
+   `/#/linked-role?status=signin`; nothing is written.
+3. Refuses a grant without `role_connections.write` or without a refresh
+   token.
+4. Stores the grant's refresh token, sealed, in
+   `identities.role_connection_token` (migration 0035), apart from the
+   sign-in grant, and pushes the numbers with the grant's access token:
+   `PUT /users/@me/applications/{app}/role-connection` with
+   `platform_name` "CMD & CTRL", `platform_username` the display name, and
+   `games_played`, `games_won`, `joined`. A 429 waits once, at most 2 s.
+5. **302** to `/#/linked-role?status=linked`; on any failure in 3 or 4
+   the token is cleared and the answer is `?status=failed`, as it is when
+   Discord comes back with `error` (the person said no).
+
+**After a game ends** with a win or a draw (not an abandoned or practice
+table), the lobby queues a push for every seated account; one worker
+pushes them one at a time, 250 ms apart, a person queued twice is pushed
+once, and the queue holds at most 1,024. Each push recomputes the numbers
+from the database (`state = ended`, `outcome` win or draw; won when the
+`winner_seat` is theirs; bot and agent seats count for nobody), exchanges
+the stored refresh token for a fresh access token and stores the rotated
+one. Discord refusing the token (`invalid_grant`: the connection was
+removed or the app de-authorized) clears it, which unlinks the person. A
+429 waits `retry_after` once, at most 30 s; a 5xx or a timeout is logged
+at WARN and left for the next game. There is no periodic sweep.
+
+**Account deletion** reads the sealed token inside its transaction, and
+afterwards, in the background and best effort, refreshes it and sends an
+empty connection (`platform_name` and `platform_username` null, no
+metadata), so the profile stops showing the numbers.
+
+**At boot**, with the feature on, the server registers the three
+metadata fields with the bot token
+(`PUT /applications/{app}/role-connections/metadata`; idempotent):
+`games_played` and `games_won` (integer, at least) and `joined` (a date,
+"at least N days ago").
 
 ---
 
@@ -6368,4 +6613,4 @@ query string.
 
 The routes the lobby and the server serve, with the API reference above.
 
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/seats/{player_id}/away` + `POST /games/{id}/seats/me/take-back` (moving the table on without a player who has been offline for the table's `away_after`: hand the seat to a heuristic bot, concede it for them or keep waiting, decided by the host, else any present player, else the admin; and the player taking their seat back from the bot — [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md), [docs/lobby.md](lobby.md)), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/stats/advanced` + `GET /me/stats/decks/{deck_id}` (the advanced-stats read routes: the overview and one saved deck, filtered by `makeup` and `range`, the deck by `version`; 403 while the caller's advanced stats are off — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) slice 5), `POST` + `DELETE /me/stats/share-link`, `GET /stats/shared/{token}` and `GET /stats/shared/{token}/decks/{deck_id}` (the stats share link: mint or rotate, revoke, and the read-only shared view and its deck pages, public and limited per address, which never names another player — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §6), `GET` + `PUT /me/stats/prefs`, `GET /admin/stats/advanced`, `PUT /admin/stats/advanced-default` and `PUT /admin/users/{id}/advanced-stats` (the advanced-stats switch: a person's own, an admin's for a person, and the server's default, off unless an admin stores one; `GET /me/stats` reports `advanced` — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §2), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `POST /me/decks/{id}/update` + `POST /me/decks/{id}/update/confirm` (the owner previews, then commits, an update of a saved deck from its own link, a new link or a pasted list: a diff, the new coverage, and optionally a deck request for only the cards the deck's earlier request did not list; a table already seated with the deck keeps its list; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) amendment 2026-10-19, #2036), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6; a tablemate or a friend, with no block either way — ADR 0213 slice 3), `GET /me/friends`, `POST /me/friends/requests` (by `user_id`, or by `game_id` + `player_id` for a seat at your table), `POST /me/friends/requests/{user_id}/accept` + `/ignore`, `DELETE /me/friends/requests/{user_id}`, `DELETE /me/friends/{user_id}`, `GET /me/blocks`, `GET` + `PUT` + `DELETE /me/blocks/{user_id}` and `GET` + `PUT /me/social` (friends, requests, personal blocks and the two social settings: mutual by request, someone you have played with, 200 friends, 20 pending, 10 new an hour, 30-day expiry, a block ends both sides' ties and refuses requests and DM invites — [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md) §2, §3, [docs/lobby.md](lobby.md#friends-and-blocks-adr-0213-slice-3)), `GET /me/pods`, `POST /pods`, `GET` + `PATCH` + `DELETE /pods/{id}`, `PUT /pods/{id}/owner`, `POST /pods/{id}/invites` + `DELETE /pods/{id}/invites/{user_id}`, `POST /me/pod-invites/{pod_id}/accept` + `/decline`, `POST` + `DELETE /pods/{id}/link`, `GET` + `POST /pods/join/{token}`, `DELETE /pods/{id}/members/{user_id}` and `PUT /admin/pods/{id}/name` + `DELETE /admin/pods/{id}` (pods: a named group with one owner who passes on to the member who joined first; in by a friend invite or the owner's 7-day link; members only, 404 to anyone else; 12 members, 10 pods each, 20 pending invites, 10 invites an hour, 3 new pods then 1 an hour, 30-day invites; one answer for every dead link; a block keeps a person out and hides two members from each other — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md), [docs/lobby.md](lobby.md#pods-adr-0220-slice-2)), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/seats/{player_id}/away` + `POST /games/{id}/seats/me/take-back` (moving the table on without a player who has been offline for the table's `away_after`: hand the seat to a heuristic bot, concede it for them or keep waiting, decided by the host, else any present player, else the admin; and the player taking their seat back from the bot — [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md), [docs/lobby.md](lobby.md)), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/stats/advanced` + `GET /me/stats/decks/{deck_id}` (the advanced-stats read routes: the overview and one saved deck, filtered by `makeup` and `range`, the deck by `version`; 403 while the caller's advanced stats are off — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) slice 5), `POST` + `DELETE /me/stats/share-link`, `GET /stats/shared/{token}` and `GET /stats/shared/{token}/decks/{deck_id}` (the stats share link: mint or rotate, revoke, and the read-only shared view and its deck pages, public and limited per address, which never names another player — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §6), `GET` + `PUT /me/stats/prefs`, `GET /admin/stats/advanced`, `PUT /admin/stats/advanced-default` and `PUT /admin/users/{id}/advanced-stats` (the advanced-stats switch: a person's own, an admin's for a person, and the server's default, off unless an admin stores one; `GET /me/stats` reports `advanced` — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §2), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `POST /me/decks/{id}/update` + `POST /me/decks/{id}/update/confirm` (the owner previews, then commits, an update of a saved deck from its own link, a new link or a pasted list: a diff, the new coverage, and optionally a deck request for only the cards the deck's earlier request did not list; a table already seated with the deck keeps its list; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) amendment 2026-10-19, #2036), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6; a tablemate or a friend, with no block either way — ADR 0213 slice 3), `GET /me/friends`, `POST /me/friends/requests` (by `user_id`, or by `game_id` + `player_id` for a seat at your table), `POST /me/friends/requests/{user_id}/accept` + `/ignore`, `DELETE /me/friends/requests/{user_id}`, `DELETE /me/friends/{user_id}`, `GET /me/blocks`, `GET` + `PUT` + `DELETE /me/blocks/{user_id}` and `GET` + `PUT /me/social` (friends, requests, personal blocks and the two social settings: mutual by request, someone you have played with, 200 friends, 20 pending, 10 new an hour, 30-day expiry, a block ends both sides' ties and refuses requests and DM invites — [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md) §2, §3, [docs/lobby.md](lobby.md#friends-and-blocks-adr-0213-slice-3)), `GET /me/pods`, `POST /pods`, `GET` + `PATCH` + `DELETE /pods/{id}`, `PUT /pods/{id}/owner`, `POST /pods/{id}/invites` + `DELETE /pods/{id}/invites/{user_id}`, `POST /me/pod-invites/{pod_id}/accept` + `/decline`, `POST` + `DELETE /pods/{id}/link`, `GET` + `POST /pods/join/{token}`, `DELETE /pods/{id}/members/{user_id}` and `PUT /admin/pods/{id}/name` + `DELETE /admin/pods/{id}` (pods: a named group with one owner who passes on to the member who joined first; in by a friend invite or the owner's 7-day link; members only, 404 to anyone else; 12 members, 10 pods each, 20 pending invites, 10 invites an hour, 3 new pods then 1 an hour, 30-day invites; one answer for every dead link; a block keeps a person out and hides two members from each other — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md), [docs/lobby.md](lobby.md#pods-adr-0220-slice-2)), `GET` + `POST /scheduled`, `GET` + `PATCH` + `DELETE /scheduled/{id}`, `PUT` + `DELETE /scheduled/{id}/rsvp`, `DELETE /scheduled/{id}/rsvps/{discord_id}` and `POST /scheduled/{id}/claim` (scheduled tables: a plan until its doors open 15 minutes before the start, then an ordinary table whose seats are held for the first N reservations until 10 minutes after the start and then passed down the waitlist; `GET /scheduled/{id}` is public by id, names go to the host and the list only; 3 upcoming a host, 50 on the server, 30 minutes to 30 days ahead, 3 moves — [ADR 0215](decisions/0215-scheduled-games-discord-scheduled-events-and-rsvp-seats.md), [docs/lobby.md](lobby.md#scheduled-tables-adr-0215-slice-2)), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `GET /auth/discord/linked-role` (Discord Linked Roles' verification URL: public, mints no session, pushes the person's games played, games won and join date to their Discord profile — [ADR 0163](decisions/0163-discord-linked-roles.md), [docs/lobby.md](lobby.md#get-authdiscordlinked-role-adr-0163)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))

@@ -300,6 +300,27 @@ func ExilePermanentCost(label, cardType string) *game.AdditionalCost {
 	}
 }
 
+// ReturnPermanentToHandCost is "As an additional cost to cast this spell,
+// return a <permanent> you control to its owner's hand" (Fear of
+// Isolation, #5247): the activated ability's return-to-hand component
+// (ReturnAPermanentToHand) on a cast's mandatory slot, so the candidate
+// walk, the clause check and the payer are the activation's own.
+//
+//	AdditionalCost: ReturnPermanentToHandCost("a permanent you control"),
+//
+// The label is the clause without the verb, as the activated form's is;
+// the predicates narrow it ("a creature you control" is Creature()), and
+// "you control" is the engine's rule, not a predicate. The caster names
+// the permanent on cast_spell as return_ids; it is returned with the
+// spell on the stack, to its owner's hand. It does not target, so a
+// hexproof permanent pays. Nothing to return makes the spell uncastable.
+func ReturnPermanentToHandCost(label string, preds ...CardPredicate) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		ReturnToHand: ReturnAPermanentToHand(label, preds...).ReturnToHand,
+		Label:        "Return " + label + " to its owner's hand",
+	}
+}
+
 // ExileCreatureYouControlCost is ExilePermanentCost for "a creature you
 // control".
 func ExileCreatureYouControlCost() *game.AdditionalCost {
@@ -563,6 +584,9 @@ func checkEitherCost(spec Spec) {
 		if !oc.ExilePermanents.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles a permanent — only the mandatory slot may (#3402)", spec.Name, oc.Key))
 		}
+		if oc.ReturnToHand != nil {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q returns a permanent to hand — only the mandatory slot may (#5247)", spec.Name, oc.Key))
+		}
 		// #5193: the one optional graveyard exile is "you may collect
 		// evidence N" (checkOptionalCollectEvidence holds its shape).
 		if oc.ExileCards != nil && oc.Key != game.CollectEvidenceKey {
@@ -588,6 +612,9 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q additional cost exiles craft materials or has no count — a cast exiles a fixed number of permanents (#3402)", spec.Name))
 		}
 	}
+	// #5247: the activated form's clause check — a count of at least one
+	// over a clause that matches permanents.
+	checkReturnClause(spec.Name, "additional cost", ac.ReturnToHand)
 	if ec := ac.ExileCards; ec != nil {
 		checkCastExileCardsClause(spec.Name, "additional cost", ec)
 		// #1948: "exile X cards" shares ONE announced X with every other
@@ -648,6 +675,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles X cards from a graveyard — the X form is the mandatory slot's only, not a branch (#1948)", spec.Name, where))
 		case !b.ExilePermanents.Empty():
 			panic(fmt.Sprintf("effects.Register: %q %s exiles a permanent — only the mandatory slot may, not a branch (#3402)", spec.Name, where))
+		case b.ReturnToHand != nil:
+			panic(fmt.Sprintf("effects.Register: %q %s returns a permanent to hand — only the mandatory slot may, not a branch (#5247)", spec.Name, where))
 		case b.ExileFromHand != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s exiles cards from hand — only the mandatory slot may, not a branch (#3175)", spec.Name, where))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
@@ -706,6 +735,14 @@ func checkForageBranches(name string, ac *game.AdditionalCost) {
 // count or the X form ("exile X cards"), which has no printed count of
 // its own (ExileCost.CountFromX, N zero).
 func checkCastExileCardsClause(name, where string, ec *game.ExileCost) {
+	// #5240: collect evidence X sized by the targets is the one any-number
+	// clause a cast may print (checkCollectEvidenceFromTargets holds where).
+	if ec.ManaValueFromTargets {
+		if !ec.IsCollectEvidenceFromTargets() {
+			panic(fmt.Sprintf("effects.Register: %q %s is a malformed target-sized collect evidence clause — build it with CollectEvidenceFromTargetsCost (#5240)", name, where))
+		}
+		return
+	}
 	if ec.AnyNumber {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards — a CR 602 ability's cost only", name, where))
 	}

@@ -27,7 +27,7 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 1},
 			Cost:    Plus(ManaCost("{3}{G}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return rfSpellBMillThenMayTakePermanent(NewContext(g, item), 4,
+				return rfSpellBMillThenMayTakePermanent(NewContext(g, item),
 					"Temporal Anomaly — you may put a permanent card milled this way into your hand",
 					temporalAnomalyMilled)
 			},

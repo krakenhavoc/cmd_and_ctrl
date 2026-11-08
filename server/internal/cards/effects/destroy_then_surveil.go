@@ -6,6 +6,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Defeat, Your Fate Ends Here): the first target is destroyed if it is still
 // legal, and the controller surveils whether or not anything was destroyed
 // (an indestructible target survives and the surveil still happens).
+//
+//nolint:unparam // the printed surveil count, kept at the call site
 func destroyTargetThenSurveil(n int) func(*game.StackItem, *Context) error {
 	return func(item *game.StackItem, ctx *Context) error {
 		if len(item.Targets) > 0 && item.Targets[0].Kind == game.TargetCard && ctx.IsTargetLegal(item.Targets[0]) {

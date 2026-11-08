@@ -58,7 +58,7 @@ func hauntwoodsShriekerRevealAndMaybeTurnUp(g *game.Game, item *game.StackItem) 
 			Cards:  []uuid.UUID{id},
 		})
 		c, ok := g.LookupCardForEffect(id)
-		if !ok || !c.PrintedIsCreature() || !game.CanTurnFaceUpForEffect(c) {
+		if !ok || !c.PrintedIsCreature() || !canTurnFaceUpByEffect(g, id) {
 			return nil
 		}
 		return MayChoice{

@@ -132,16 +132,16 @@ func TestBatch31CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The two remaining declared skips must stay out until their seam
-	// lands: a put-a-card-from-hand-onto-the-battlefield prompt (Oviya)
-	// and a continuous effect with no duration (Tree of Redemption).
-	// Manaweft Sliver came OFF this list with ADR 0093's granted
+	// The remaining declared skip must stay out until its seam lands: a
+	// continuous effect with no duration (Tree of Redemption). Oviya,
+	// Automech Artisan came OFF this list with the put-from-hand prompt
+	// (PutFromHandOntoBattlefield) and ships in oviya_automech_artisan.go
+	// (#4464). Manaweft Sliver came OFF this list with ADR 0093's granted
 	// abilities and ships in manaweft_sliver.go; Duress came off it with
 	// ADR 0116's filtered revealed-hand pick and ships in duress.go;
 	// Conspicuous Snoop came off it with ADR 0155's library-top borrow
 	// and ships in conspicuous_snoop.go.
 	for oracle, name := range map[string]string{
-		"b01649b8-b0b5-4cf6-aea7-291f3407859e": "Oviya, Automech Artisan",
 		"1372dd15-cdb9-470c-b3e8-3423697e46e8": "Tree of Redemption",
 	} {
 		if _, ok := Lookup(oracle); ok {

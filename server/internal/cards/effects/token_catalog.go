@@ -340,6 +340,23 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,
+
+	// Final Fantasy's Chocobo Bird (#4462): a 2/2 green Bird that gets
+	// +1/+0 on landfall.
+	printedChocoboBirdToken,
+
+	// Into the Fae Court's Faerie: flying, and it can block only
+	// creatures with flying (Wilds of Eldraine, #4471).
+	printedFlyingBlockerFaerieToken,
+
+	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
+	// legendary Equipment token, +1/+1, vigilance, trample and haste,
+	// equip {2}.
+	printedCragflameToken,
+
+	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
+	// token, +1/+1, equip {2}.
+	printedBlacksmithsSwordToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

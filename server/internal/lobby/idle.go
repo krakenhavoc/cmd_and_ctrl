@@ -34,6 +34,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 )
 
 // The constants of ADR 0211 §7. The thresholds themselves are settings
@@ -291,6 +292,12 @@ func (l *Lobby) idleStepLocked(e *gameEntry, lim capacity.Limits, now time.Time,
 
 	if unstarted {
 		e.botOnlySince = time.Time{}
+		// ADR 0215 §7, this ADR's amendment: a scheduled table nobody
+		// came to, with no person seated an hour after its start, is
+		// closed as an idle lobby rather than holding load for a day.
+		if e.sched != nil && !inGrace && !now.Before(e.sched.start.Add(schedule.NoShowAfter)) && !personSeatedLocked(e) {
+			return l.closeIdleLocked(e, ClosedIdleLobby, int(now.Sub(e.sched.start)/time.Hour), now)
+		}
 		if lim.IdleLobbyAfter > 0 && idleFor >= lim.IdleLobbyAfter && !inGrace {
 			return l.closeIdleLocked(e, ClosedIdleLobby, int(idleFor/time.Hour), now)
 		}

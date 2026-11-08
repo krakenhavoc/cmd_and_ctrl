@@ -156,8 +156,8 @@ func seed(t *testing.T) fixture {
 			VALUES (?, ?, '/avatars/x/y.png', 100, 200, '{"kind":"prebuilt","id":"x"}', ?, 60, 300, 400, 'admitted')`,
 			u.id.String(), u.name, "mat-"+u.name)
 	}
-	exec(t, d, `INSERT INTO identities (provider, subject, user_id, display_name, avatar_hash, refresh_token, scopes, linked_at)
-		VALUES ('discord', ?, ?, 'ian#1', ?, x'0102', 'identify', 1)`, userSubject, f.user.String(), f.hash)
+	exec(t, d, `INSERT INTO identities (provider, subject, user_id, display_name, avatar_hash, refresh_token, scopes, linked_at, role_connection_token)
+		VALUES ('discord', ?, ?, 'ian#1', ?, x'0102', 'identify', 1, x'0a0b')`, userSubject, f.user.String(), f.hash)
 	exec(t, d, `INSERT INTO identities (provider, subject, user_id, display_name, avatar_hash, refresh_token, scopes, linked_at)
 		VALUES ('discord', ?, ?, 'bea#1', 'bbbb', x'0304', 'identify', 1)`, otherSubject, f.other.String())
 
@@ -265,6 +265,11 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	}
 	if res.DiscordSubject != userSubject || res.AvatarHash != f.hash {
 		t.Errorf("identity handed back = %q / %q", res.DiscordSubject, res.AvatarHash)
+	}
+	// ADR 0163 §7: the sealed Linked Roles grant is handed back once, so
+	// the caller can empty the Discord connection; the row is gone.
+	if string(res.RoleConnectionToken) != "\x0a\x0b" {
+		t.Errorf("RoleConnectionToken handed back = %x, want 0a0b", res.RoleConnectionToken)
 	}
 
 	// Anonymised: the seat keeps its place, the name and the pointers go.

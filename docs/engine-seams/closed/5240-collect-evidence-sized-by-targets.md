@@ -1,0 +1,6 @@
+---
+title: "A cost sized by the chosen targets"
+date: 2026-11-06
+issues: [5240]
+---
+**A cost sized by the chosen targets** (#5240, [ADR 0021 amendment 2026-11-06](decisions/0021-additional-costs.md), CR 601.2c / 601.2f / 701.59a / 115.3) — Urgent Necropsy's "As an additional cost to cast this spell, collect evidence X, where X is the total mana value of the permanents this spell targets" is `game.ExileCost.ManaValueFromTargets` (`effects.CollectEvidenceFromTargetsCost`): collect evidence's graveyard clause whose floor `CastSpell` reads off the announced targets (`Game.CollectEvidenceTargetsFloorForEffect`, each permanent once, through `ManaValueForEffect`) right after the CR 601.2c check, then validates `exile_ids` with the existing validator. Every such cast emits `EventCollectEvidence`, collect evidence 0 included. A parked announcement already carries the targets and the picks, so no snapshot change. The view ships `exile_cost_from_targets` and `exile_cost_target_mana_values`; the client opens the graveyard picker after targeting (X = 0 asks nothing); the enumerator drops a target set the graveyard cannot pay and names the cheapest cards that reach each set's X. `effects.Register` allows it alone on a spell's mandatory slot, on a spell whose every target clause is "up to". **Cards:** Urgent Necropsy (Full).
