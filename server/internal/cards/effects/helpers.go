@@ -1819,3 +1819,26 @@ func returnCardsExiledWithToOwnersHands(label string) Effect {
 		return nil
 	}
 }
+
+// pumpEquippedCreatureUntilEOT is "equipped creature gets +P/+T until end
+// of turn" (Umezawa's Jitte's first bullet, Adventuring Gear's landfall).
+// The creature is the one the source is attached to as the ability
+// resolves, read from the source's last-known information when the
+// Equipment has left the battlefield (CR 608.2h). An unattached
+// Equipment, or a host that has gone or is no longer a creature, pumps
+// nothing.
+func pumpEquippedCreatureUntilEOT(ctx *Context, power, toughness int, label string) error {
+	source, ok := ctx.SourcePermanent()
+	if !ok || source.AttachedObject == nil {
+		return nil
+	}
+	host, ok := ctx.Game.PermanentForEffect(*source.AttachedObject)
+	if !ok || host.Left {
+		return nil
+	}
+	creature, found := ctx.Game.LookupCardForEffect(source.AttachedObject.ID)
+	if !found || !creature.IsCreature() {
+		return nil
+	}
+	return BoostUntilEOT{Target: source.AttachedObject.ID, Power: power, Toughness: toughness, Label: label}.Apply(ctx)
+}

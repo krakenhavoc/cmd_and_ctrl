@@ -29,19 +29,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerPump},
 				Modes: ChooseOne(
 					ModeDoing("Equipped creature gets +2/+2 until end of turn.", nil, func(_ *game.StackItem, ctx *Context, _ int) error {
-						source, ok := ctx.SourcePermanent()
-						if !ok || source.AttachedObject == nil {
-							return nil
-						}
-						host, ok := ctx.Game.PermanentForEffect(*source.AttachedObject)
-						if !ok || host.Left {
-							return nil
-						}
-						creature, found := ctx.Game.LookupCardForEffect(source.AttachedObject.ID)
-						if !found || !creature.IsCreature() {
-							return nil
-						}
-						return BoostUntilEOT{Target: source.AttachedObject.ID, Power: 2, Toughness: 2, Label: "Umezawa's Jitte — +2/+2"}.Apply(ctx)
+						return pumpEquippedCreatureUntilEOT(ctx, 2, 2, "Umezawa's Jitte — +2/+2")
 					}),
 					ModeDoing("Target creature gets -1/-1 until end of turn.", TargetCreature("target creature"), func(_ *game.StackItem, ctx *Context, occ int) error {
 						target, ok := ModeTarget(ctx, occ)
