@@ -2343,6 +2343,7 @@ tail then/saurons-ransom-take
 tail then/screaming-nemesis-cant-gain-life
 tail then/selective-obliteration-color-chosen
 tail then/selfless-safewright-type-chosen
+tail then/servant-of-the-stinger-search
 tail then/shadow-mysterious-assassin-sacrificed
 tail then/shatter-the-oath-role
 tail then/shimmering-mirage-draw
