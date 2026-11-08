@@ -8,8 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 When this creature enters, return up to one other target permanent
 //	 you control to its owner's hand."
 //
-// Mirkwood Nurturer's target clause without its counter: the
-// still-legal pick returns to its owner's hand (bounceTheTargetToHand),
+// Mirkwood Nurturer's target clause without its counter, shared with
+// Stickytongue Sentinel as whenThisEntersReturnAnotherPermanentYouControl:
+// the still-legal pick returns to its owner's hand (bounceTheTargetToHand),
 // and choosing none returns nothing. Flash rides PrintedKeywords.
 //
 // No simplification.
@@ -20,11 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(
-				WhenThisEnters("Mischievous Pup — return up to one other target permanent you control to its owner's hand",
-					bounceTheTargetToHand),
-				Another(TargetPermanent("up to one other target permanent you control", YouControl())).WithCount(0, 1),
-			),
+			whenThisEntersReturnAnotherPermanentYouControl("Mischievous Pup"),
 		},
 	})
 }
