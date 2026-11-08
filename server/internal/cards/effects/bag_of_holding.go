@@ -71,23 +71,8 @@ func init() {
 				Label:   "{4}, {T}, Sacrifice this artifact: Return all cards exiled with this artifact to their owner's hand.",
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
-				Effect:  bagOfHoldingReturnExiledCards,
+				Effect:  returnCardsExiledWithToOwnersHands(bagOfHoldingExileLabel),
 			},
 		},
 	})
-}
-
-// bagOfHoldingReturnExiledCards is the sacrifice ability's body:
-// every card still in exile that this Bag's trigger put there returns
-// to its OWNER's hand (CR 610.3 — the card goes to the player who
-// owned it, not to whoever exiled it, which matters for a card
-// discarded off an opponent's wheel).
-func bagOfHoldingReturnExiledCards(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, id := range b27ExiledWith(g, item.SourceCardID, bagOfHoldingExileLabel) {
-		if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }

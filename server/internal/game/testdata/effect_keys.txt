@@ -1564,6 +1564,7 @@ steps then-steps/altar-of-the-wretched-draw-mill
 steps then-steps/arc-of-fortune-embark
 steps then-steps/arcane-denial-draws
 steps then-steps/bloatfly-swarm-remove
+steps then-steps/blood-spatter-analysis-return
 steps then-steps/bonehoard-dracosaur-tokens
 steps then-steps/braids-arisen-nightmare-consequence
 steps then-steps/cease-gain-and-draw
