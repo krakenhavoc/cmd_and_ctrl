@@ -353,6 +353,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// legendary Equipment token, +1/+1, vigilance, trample and haste,
 	// equip {2}.
 	printedCragflameToken,
+
+	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
+	// token, +1/+1, equip {2}.
+	printedBlacksmithsSwordToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

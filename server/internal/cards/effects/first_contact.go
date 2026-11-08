@@ -27,7 +27,7 @@ func init() {
 			if trekB20IsFirstSpellCastThisGame(ctx) {
 				then = firstContactMilledFirstSpell
 			}
-			return rfSpellBMillThenMayTakePermanent(ctx, 4,
+			return rfSpellBMillThenMayTakePermanent(ctx,
 				"First Contact — put a permanent card milled this way into your hand", then)
 		},
 	})

@@ -11,7 +11,7 @@ import (
 // reality_fracture_spell_b_helpers.go — shared bodies for the Reality
 // Fracture instants and sorceries of slice fra-spell-b (tracker #2795).
 
-// rfSpellBMillThenMayTakePermanent is Something Worth Saving: mill n
+// rfSpellBMillThenMayTakePermanent is Something Worth Saving: mill four
 // cards, then the controller may put a permanent card from among them
 // into their hand; the `then` milled was registered with
 // (rfSpellBTakeFromMilledTail) runs once that is settled (also when
@@ -19,8 +19,8 @@ import (
 //
 // #4253 slice 10a: the mill's "then" is a keyed tail, the question its
 // Word. The pick after it is keyed too (rfSpellBTakeFromMilledTail).
-func rfSpellBMillThenMayTakePermanent(ctx *Context, n int, question string, milled game.TailRef) error {
-	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), n, game.ZoneGraveyard, game.MillUntil{},
+func rfSpellBMillThenMayTakePermanent(ctx *Context, question string, milled game.TailRef) error {
+	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), 4, game.ZoneGraveyard, game.MillUntil{},
 		withWord(ctx.ItemTail(milled), question))
 }
 
@@ -32,16 +32,24 @@ func rfSpellBMillThenMayTakePermanent(ctx *Context, n int, question string, mill
 // with its slashes dashed and "-pick" after it (an on-disk key, ledgered):
 // the asking item rides the prompt as data and `then` runs against it.
 func rfSpellBTakeFromMilledTail(key string, then func(ctx *Context) error) game.TailRef {
+	return rfSpellBTakeFromMilledTailPicked(key, func(ctx *Context, _ []uuid.UUID) error { return then(ctx) })
+}
+
+// rfSpellBTakeFromMilledTailPicked is rfSpellBTakeFromMilledTail for a
+// `then` that reads what was taken (Cache Grab's "returned a Squirrel card
+// to your hand this way"): the card picked, empty when none was (nothing
+// eligible, or the pick declined). The keys are the same shape.
+func rfSpellBTakeFromMilledTailPicked(key string, then func(ctx *Context, picked []uuid.UUID) error) game.TailRef {
 	pick := askedPick("choose-cards/"+strings.ReplaceAll(key, "/", "-")+"-pick", func(ctx *Context, r game.CardsChosen) error {
 		if len(r.Picked) > 0 {
 			if err := (ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneHand}).Apply(ctx); err != nil {
 				return err
 			}
 		}
-		return then(ctx)
+		return then(ctx, r.Picked)
 	})
 	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
-		return rfSpellBMayTakeFromMilled(ctx, pick, o.Tail.Word, then, o.IDs)
+		return rfSpellBMayTakeFromMilled(ctx, pick, o.Tail.Word, func(c *Context) error { return then(c, nil) }, o.IDs)
 	})
 }
 

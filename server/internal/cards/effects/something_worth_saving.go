@@ -17,7 +17,7 @@ func init() {
 		Name:         "Something Worth Saving",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return rfSpellBMillThenMayTakePermanent(ctx, 4,
+			return rfSpellBMillThenMayTakePermanent(ctx,
 				"Something Worth Saving — put a permanent card milled this way into your hand",
 				somethingWorthSavingMilled)
 		},

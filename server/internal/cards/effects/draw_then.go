@@ -74,25 +74,33 @@ func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) g
 	// point. The continuation itself does nothing: the discard is the clause.
 	asked := discardTwoUnlessOneRule("choose-cards/"+key, qualifies)
 	return game.RegisterDrawThen(key, func(g *game.Game, d game.DrawThen) error {
-		p := g.PlayerByIDForEffect(d.Player)
-		if p == nil {
-			return nil
-		}
-		switch len(p.Hand.Cards) {
-		case 0:
-			return nil
-		case 1:
-			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: d.Player, Source: d.Source, N: 1, Question: question})
-			return nil
-		}
-		return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
-			Player:   d.Player,
-			Source:   d.Source,
-			N:        d.N,
-			Min:      1,
-			Question: question,
-		}, asked, nil)
+		return askDiscardTwoUnlessOne(g, d.Player, d.Source, d.N, question, asked)
 	})
+}
+
+// askDiscardTwoUnlessOne asks `player` to discard n cards unless they
+// discard one card that `asked`'s set rule accepts (discardTwoUnlessOneRule):
+// an empty hand asks nothing, and a hand of one card discards that card,
+// whatever it is (CR 701.9a). Bandit's Talent asks it of each opponent.
+func askDiscardTwoUnlessOne(g *game.Game, player, source uuid.UUID, n int, question string, asked game.DiscardThen) error {
+	p := g.PlayerByIDForEffect(player)
+	if p == nil {
+		return nil
+	}
+	switch len(p.Hand.Cards) {
+	case 0:
+		return nil
+	case 1:
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: player, Source: source, N: 1, Question: question})
+		return nil
+	}
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+		Player:   player,
+		Source:   source,
+		N:        n,
+		Min:      1,
+		Question: question,
+	}, asked, nil)
 }
 
 // discardTwoUnlessOneRule registers the keyed discard behind "discard two
