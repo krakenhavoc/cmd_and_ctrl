@@ -32,17 +32,8 @@ func init() {
 	})
 }
 
-// railwayBrawlerCounters reads the entering creature's power now and puts
-// that many +1/+1 counters on it.
+// railwayBrawlerCounters puts X +1/+1 counters on the entering creature,
+// where X is its power now (plusOneCountersEqualToItsPower).
 func railwayBrawlerCounters(g *game.Game, item *game.StackItem) error {
-	id := item.Trigger.Event.CardID
-	if !onBattlefield(g, id) {
-		return nil
-	}
-	g.RecomputeLayersIfStaleLocked()
-	c, ok := g.LookupCardForEffect(id)
-	if !ok || c.CurrentPower() <= 0 {
-		return nil
-	}
-	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: c.CurrentPower()}.Apply(NewContext(g, item))
+	return plusOneCountersEqualToItsPower(g, item, item.Trigger.Event.CardID)
 }
