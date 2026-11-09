@@ -116,6 +116,11 @@ export type EffectKind =
   // #4450: a spell or ability that left the stack with no legal target
   // (CR 608.2b), the counterspell's quiet cousin.
   | "fizzle"
+  // #4450: one source made every opponent lose life at once (a drain), and
+  // a player became the monarch or took the initiative.
+  | "drain_table"
+  | "monarch"
+  | "initiative"
   | "pw_enter"
   | "pw_leave"
   // S80 (#4441 on): the common moments.
@@ -178,6 +183,11 @@ export const EFFECT_BASE_MS: Record<EffectKind, number> = {
   counter: 1600,
   // #4450: a soft dissolve on the stack item, inside its sound's 0.8 s.
   fizzle: 800,
+  // #4450: a thin dark line from the source to each player, 0.8 s; a short
+  // glint on the new holder's panel, inside its sound's 1 s.
+  drain_table: 800,
+  monarch: 700,
+  initiative: 700,
   pw_enter: 1200,
   pw_leave: 1500,
   token_create: 400,
@@ -219,6 +229,9 @@ export const EFFECT_SOUND: Record<EffectKind, SoundName | null> = {
   bounce: "bounce",
   counter: "counter",
   fizzle: "fizzle",
+  drain_table: "drain_table",
+  monarch: "monarch",
+  initiative: "initiative",
   pw_enter: "pw_enter",
   pw_leave: "pw_leave",
   token_create: "token_create",
@@ -410,6 +423,12 @@ export interface EffectCue {
    */
   librarySeat?: number;
   /**
+   * For a drain_table cue (#4450): the log seat indexes that lost life,
+   * ascending. `cardID` is the source. For a monarch or initiative cue
+   * `seat` is the new holder.
+   */
+  drainSeats?: number[];
+  /**
    * For a transform cue (#4448): the permanent was melded out of two
    * cards (CR 701.42a), so the face it turns from is its first card's,
    * not its own other face. For a day_night cue: what the game became.
@@ -549,12 +568,29 @@ export function planEffects(
   const rises: LogEvent[] = [];
   const searches: LogEvent[] = [];
   const turns: LogEvent[] = [];
+  const losses: LogEvent[] = [];
+  const crowns: LogEvent[] = [];
+  const damaged = new Set<string>();
   for (const e of log ?? []) {
     if (e.kind === "step") {
       step = e.step ?? "";
       continue;
     }
     if (!freshSeqs.has(e.seq)) continue;
+
+    // #4450: a drain's life losses (grouped below), and the crown or the
+    // initiative changing hands.
+    if (e.kind === "life") {
+      losses.push(e);
+      continue;
+    }
+    if (e.kind === "damage") {
+      if (e.batch != null && e.card_id) damaged.add(`${e.batch}|${e.card_id}`);
+    }
+    if (e.kind === "monarch" || e.kind === "initiative") {
+      crowns.push(e);
+      continue;
+    }
 
     // A token arrives from no zone: the engine logs its creation as a
     // `token` entry, never a `zone` one as well (#762).
@@ -718,6 +754,8 @@ export function planEffects(
   cues.push(...pileCues(piles));
   cues.push(...reanimateCues(rises));
   cues.push(...searchCues(searches));
+  cues.push(...drainCues(losses, damaged));
+  cues.push(...crownCues(crowns));
   cues.push(...turnCues(turns, ctx));
   waitForFlips(cues);
   meldIsOneSound(cues, turns);
@@ -885,6 +923,75 @@ export function fizzleCue(e: LogEvent): EffectCue | null {
     weight: "full",
     delayMs: 0,
   };
+}
+
+/**
+ * drainCues gives one source's life drain on the table one cue (#4450):
+ * `life` entries that lose life (a negative amount), name a source card
+ * and share one batch, for two or more different players. That is one
+ * resolution making several players lose life at once (Syr Konrad,
+ * Zulaport Cutthroat, a "each opponent loses 1 life" trigger), not the
+ * separate hits the log shows: the cue is one line from the source to
+ * each player and one sound. A source that also dealt damage in the
+ * batch is a damage spell, not a drain, and a single player's loss
+ * (Blood Artist) is no cue: it stays a life number. Entries with no
+ * batch, or no source, can't be grouped and are never one. No wire
+ * change: `life` already carries `batch` and `card_id` (the source).
+ */
+export function drainCues(
+  entries: readonly LogEvent[],
+  damaged: ReadonlySet<string> = new Set(),
+): EffectCue[] {
+  const groups = new Map<string, LogEvent[]>();
+  for (const e of entries) {
+    if ((e.amount ?? 0) >= 0 || e.batch == null || !e.card_id || e.seat < 0) continue;
+    const k = `${e.batch}|${e.card_id}`;
+    if (damaged.has(k)) continue;
+    const g = groups.get(k);
+    if (g) g.push(e);
+    else groups.set(k, [e]);
+  }
+  const out: EffectCue[] = [];
+  for (const g of groups.values()) {
+    const seats = [...new Set(g.map((e) => e.seat))].sort((a, b) => a - b);
+    if (seats.length < 2) continue;
+    out.push({
+      id: `${g[0].seq}:drain`,
+      seq: g[0].seq,
+      kind: "drain_table",
+      cardID: g[0].card_id ?? null,
+      stackItemID: null,
+      batch: g[0].batch ?? null,
+      weight: "full",
+      delayMs: 0,
+      seat: g[0].seat,
+      drainSeats: seats,
+    });
+  }
+  return out;
+}
+
+/**
+ * crownCues is a glint on the panel of a player who becomes the monarch
+ * or takes the initiative (#4450). `seat` is the new holder.
+ */
+export function crownCues(entries: readonly LogEvent[]): EffectCue[] {
+  const out: EffectCue[] = [];
+  for (const e of entries) {
+    if ((e.kind !== "monarch" && e.kind !== "initiative") || e.seat < 0) continue;
+    out.push({
+      id: `${e.seq}:${e.kind}`,
+      seq: e.seq,
+      kind: e.kind,
+      cardID: e.card_id ?? null,
+      stackItemID: null,
+      batch: e.batch ?? null,
+      weight: "full",
+      delayMs: 0,
+      seat: e.seat,
+    });
+  }
+  return out;
 }
 
 /**

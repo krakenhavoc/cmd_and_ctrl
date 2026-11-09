@@ -53,6 +53,8 @@ import {
   exitKind,
   FIZZLE_MOTES,
   fizzleCue,
+  drainCues,
+  crownCues,
   fizzleMotes,
   headlines,
   isEffectsMode,
@@ -2063,5 +2065,92 @@ describe("the layer", () => {
   });
   it("carries its own prefers-reduced-motion block", () => {
     expect(src).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+  });
+});
+
+describe("a table-wide drain (#4450)", () => {
+  const loss = (seat: number, extra: Partial<LogEvent> = {}): LogEvent => ({
+    seq: ++seq,
+    kind: "life",
+    seat,
+    card_id: "konrad",
+    amount: -1,
+    batch: 21,
+    text: "",
+    ...extra,
+  });
+
+  it("one source's losses for several players in one batch are one cue", () => {
+    const cues = plan([loss(0), loss(1), loss(2)]).cues;
+    expect(cues.map((c) => c.kind)).toEqual(["drain_table"]);
+    expect(cues[0].cardID).toBe("konrad");
+    expect(cues[0].drainSeats).toEqual([0, 1, 2]);
+    expect(cues[0].batch).toBe(21);
+    expect(headlines(plan([loss(0), loss(1), loss(2)]))).toBe(1);
+  });
+
+  it("is no cue for one player, a gain, another batch, no source, or a damage spell", () => {
+    expect(kinds([loss(1)])).toEqual([]);
+    expect(kinds([loss(0, { amount: 2 }), loss(1, { amount: 2 })])).toEqual([]);
+    expect(kinds([loss(0), loss(1, { batch: 22 })])).toEqual([]);
+    expect(kinds([loss(0, { card_id: undefined }), loss(1, { card_id: undefined })])).toEqual([]);
+    expect(kinds([loss(0, { batch: undefined }), loss(1, { batch: undefined })])).toEqual([]);
+    const dmg: LogEvent = {
+      seq: ++seq,
+      kind: "damage",
+      seat: -1,
+      card_id: "konrad",
+      batch: 21,
+      text: "",
+    };
+    expect(kinds([dmg, loss(0), loss(1)])).toEqual([]);
+  });
+
+  it("two sources in one batch are two cues", () => {
+    const cues = drainCues([
+      loss(0),
+      loss(1),
+      loss(0, { card_id: "z" }),
+      loss(2, { card_id: "z" }),
+    ]);
+    expect(cues.map((c) => c.cardID)).toEqual(["konrad", "z"]);
+  });
+
+  it("is a 0.8 s line with a low siphon, the same in Short", () => {
+    expect(EFFECT_BASE_MS.drain_table).toBe(800);
+    expect(EFFECT_SOUND.drain_table).toBe("drain_table");
+    expect(SOUND_CATEGORY.drain_table).toBe("effects");
+    expect(SOUND_MANIFEST.drain_table).toEqual([]);
+    const c = drainCues([loss(0), loss(1)])[0];
+    expect(cueTiming(c, "short", 1).ms).toBe(800);
+  });
+});
+
+describe("the monarch and the initiative (#4450)", () => {
+  const crown = (kind: "monarch" | "initiative", seat = 2): LogEvent => ({
+    seq: ++seq,
+    kind,
+    seat,
+    batch: 30,
+    text: "",
+  });
+
+  it("each is a cue on the new holder's seat, with its own sound", () => {
+    const [m] = plan([crown("monarch")]).cues;
+    expect(m.kind).toBe("monarch");
+    expect(m.seat).toBe(2);
+    const [i] = plan([crown("initiative", 3)]).cues;
+    expect(i.kind).toBe("initiative");
+    expect(i.seat).toBe(3);
+    for (const k of ["monarch", "initiative"] as const) {
+      expect(EFFECT_SOUND[k]).toBe(k);
+      expect(SOUND_CATEGORY[k]).toBe("effects");
+      expect(SOUND_MANIFEST[k]).toEqual([]);
+      expect(EFFECT_BASE_MS[k]).toBeLessThanOrEqual(1000);
+    }
+  });
+
+  it("an entry with no seat is no cue", () => {
+    expect(crownCues([crown("monarch", -1)])).toEqual([]);
   });
 });

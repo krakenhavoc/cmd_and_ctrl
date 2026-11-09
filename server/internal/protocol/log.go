@@ -513,6 +513,15 @@ const (
 	// because the state-based action that completes it (CR 704.5t) has
 	// no spell or ability behind it.
 	LogDungeonCompleted LogKind = "dungeon_completed"
+	// LogMonarch — a player became the monarch (CR 725.1). `Actor` is
+	// the new monarch. Narrated (#4450, ADR 0209 §3) so the client's
+	// crown cue has a moment to play on; GameView.monarch still carries
+	// the holder. Clearing the crown has no line.
+	LogMonarch LogKind = "monarch"
+	// LogInitiative — a player took the initiative (CR 726.2). `Actor`
+	// is the new holder; `CardID` is the object whose effect gave it,
+	// when there is one (#4450). Clearing the marker has no line.
+	LogInitiative LogKind = "initiative"
 	// LogSpeed — a player's speed changed (CR 702.179, ADR 0138).
 	// `Actor` is the player and `Amount` the new speed. Narrated
 	// because the start-your-engines state-based action gives a
@@ -2443,6 +2452,23 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ventureRoomName(ev.Label)
 		return base, true
 
+	case game.EventMonarchChanged:
+		// #4450. A cleared crown (no new monarch) is a correction, not
+		// a moment.
+		if ev.Actor == uuid.Nil {
+			return LogEvent{}, false
+		}
+		base.Kind = LogMonarch
+		return base, true
+
+	case game.EventInitiativeTaken:
+		if ev.Actor == uuid.Nil {
+			return LogEvent{}, false
+		}
+		base.Kind = LogInitiative
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventDungeonCompleted:
 		base.Kind = LogDungeonCompleted
 		base.Label = dungeonName(ev.Label)
@@ -3513,6 +3539,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s ventures into %s", actor, e.Label)
 	case LogDungeonCompleted:
 		return fmt.Sprintf("%s completes %s", actor, e.Label)
+	case LogMonarch:
+		return fmt.Sprintf("%s becomes the monarch", actor)
+	case LogInitiative:
+		return fmt.Sprintf("%s takes the initiative", actor)
 	case LogSpeed:
 		if e.Amount >= game.MaxSpeed {
 			return fmt.Sprintf("%s has max speed", actor)
