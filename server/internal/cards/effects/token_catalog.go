@@ -345,6 +345,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// #4468): enters dealing 2 damage to any target, taps for any color.
 	printedMeteoriteToken,
 
+	// Bonny Pall, Clearcutter's Beau (Outlaws of Thunder Junction, #4468):
+	// a legendary blue Ox whose power and toughness are the lands you control.
+	printedBeauToken,
+
 	// Final Fantasy's Chocobo Bird (#4462): a 2/2 green Bird that gets
 	// +1/+0 on landfall.
 	printedChocoboBirdToken,

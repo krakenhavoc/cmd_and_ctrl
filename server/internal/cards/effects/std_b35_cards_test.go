@@ -39,6 +39,7 @@ const (
 	b35VraskaSilencerOracle      = "e7c5a568-3855-4a20-9edf-01a8a6a4ba97"
 	b35RoxanneOracle             = "11765eaf-87a1-48bd-90c1-7a5f21be5918"
 	b35DocAurlockOracle          = "3ca32660-bf5f-4398-bef6-a0ec8bc767cf"
+	b35BonnyPallOracle           = "fcb811a8-c6e6-4bc4-b64b-8963a7183669"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -71,6 +72,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35VraskaSilencerOracle:      "Vraska, the Silencer",
 		b35RoxanneOracle:             "Roxanne, Starfall Savant",
 		b35DocAurlockOracle:          "Doc Aurlock, Grizzled Genius",
+		b35BonnyPallOracle:           "Bonny Pall, Clearcutter",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1256,5 +1258,71 @@ func TestB35DocAurlockMakesSpellsCastFromYourGraveyardCostTwoLess(t *testing.T) 
 	pushCatalogPermanent(g, me.ID, "Doc Aurlock, Grizzled Genius", "Legendary Creature — Bear Druid", b35DocAurlockOracle, false)
 	if err := g.CastSpell(me.ID, looting, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
 		t.Fatalf("flashback {2}{R} should cost {R} under Doc Aurlock: %v", err)
+	}
+}
+
+func TestB35BonnyPallMakesBeauWhoCountsYourLands(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	seedLandOnBattlefield(g, me.ID, "Island", "Basic Land — Island")
+	msc17Play(t, g, me, game.Card{Name: "Bonny Pall, Clearcutter", TypeLine: "Legendary Creature — Giant Scout",
+		ManaCost: "{3}{G}{U}{U}", OracleID: b35BonnyPallOracle, Power: 6, Toughness: 5})
+	var beau uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Beau" && c.IsToken() {
+			beau = c.InstanceID
+			if !c.IsLegendary() || !c.HasSubtype("Ox") || len(c.Colors) != 1 || c.Colors[0] != "U" {
+				t.Errorf("Beau is %q colors %v, want a legendary blue Ox", c.TypeLine, c.Colors)
+			}
+		}
+	}
+	if beau == uuid.Nil {
+		t.Fatal("no Beau")
+	}
+	if p, tt := ptOf(t, g, beau); p != 2 || tt != 2 {
+		t.Errorf("Beau is %d/%d with two lands, want 2/2", p, tt)
+	}
+	pushCatalogPermanent(g, me.ID, "Swamp", "Basic Land — Swamp", "", false)
+	if p, tt := ptOf(t, g, beau); p != 3 || tt != 3 {
+		t.Errorf("Beau is %d/%d with three lands, want 3/3", p, tt)
+	}
+}
+
+func TestB35BonnyPallDrawsOnAttackAndMayPutALandFromHandOrGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Bonny Pall, Clearcutter", "Legendary Creature — Giant Scout", b35BonnyPallOracle, 6, 5)
+	runner := pushVanillaCreature(g, me.ID, "Runner", 2, 2)
+	var gyLand uuid.UUID
+	g.WithWriteLock(func() { gyLand = pushGraveyardCardTyped(me, "Dead Forest", "Basic Land — Forest") })
+	handLand := putInHand(me, game.Card{Name: "Hand Island", TypeLine: "Basic Land — Island", Owner: me.ID, Controller: me.ID})
+	hand := len(me.Hand.Cards)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(runner, opp.ID); err != nil {
+		t.Fatal(err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	c := latestChooseCards(g, me.ID)
+	if c == nil {
+		t.Fatal("no land prompt")
+	}
+	offered := map[uuid.UUID]bool{}
+	for _, id := range c.ChooseCards {
+		offered[id] = true
+	}
+	if !offered[gyLand] || !offered[handLand] {
+		t.Fatalf("offered %v, want the graveyard land and the hand land", c.ChooseCards)
+	}
+	if len(me.Hand.Cards) < hand+1 {
+		t.Errorf("hand %d, want at least %d after the draw", len(me.Hand.Cards), hand+1)
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{gyLand}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(gyLand) {
+		t.Error("the graveyard land did not enter the battlefield")
 	}
 }
