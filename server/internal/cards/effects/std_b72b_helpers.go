@@ -23,14 +23,19 @@ func KindredCommandCopyMode(subtype string) game.ModeOption {
 // cards." (Ashling's Command), declared as a draw for the bots.
 func TargetPlayerDrawsTwoMode() game.ModeOption {
 	return ModeWithPurpose(ModeDoing("Target player draws two cards.", TargetPlayer("target player"),
-		func(_ *game.StackItem, ctx *Context, occ int) error {
-			t, ok := ModeTarget(ctx, occ)
-			if !ok || t.Kind != game.TargetPlayer {
-				return nil
-			}
-			return DrawCards{Player: t.ID, N: 2}.Apply(ctx)
-		}),
+		TheModesTargetPlayerDrawsTwo),
 		ForTargets(game.TargetPurpose{Slot: 0, Draws: 2}))
+}
+
+// TheModesTargetPlayerDrawsTwo is "target player draws two cards" as a
+// modal bullet's body (Ashling's Command, Metamorphic Blast's spree
+// bullet).
+func TheModesTargetPlayerDrawsTwo(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	return DrawCards{Player: t.ID, N: 2}.Apply(ctx)
 }
 
 // mutavaultOracleID is the card Mutavault's oracle ID (mutavault.go).
