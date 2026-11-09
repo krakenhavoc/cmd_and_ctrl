@@ -14,7 +14,7 @@ import (
 // the player who tapped it is the source's controller (Event.TappedBy
 // TapTargetForEffectBy stamps), and the creature belongs to an
 // opponent. A tap by an opponent's ability, an attack, or a mana ability
-// leaves the Actor empty or someone else, so none of them count.
+// leaves the TappedBy empty or someone else, so none of them count.
 func std52YouTappedUntappedOpposingCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventTapCard || ev.TappedBy != source.Controller {
 		return false
