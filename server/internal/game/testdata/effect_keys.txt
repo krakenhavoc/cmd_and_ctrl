@@ -669,6 +669,7 @@ choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
+choose choose-cards/mistbreath-elder-return
 choose choose-cards/mog-moogle-warrior-discarded
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
@@ -1007,6 +1008,7 @@ confirm confirm/madame-null-pay-life-for-counters
 confirm confirm/mask-of-memory-loot
 confirm confirm/megatron-tyrant-convert
 confirm confirm/merciful-mandate-end-combat
+confirm confirm/mistbreath-elder-return-self
 confirm confirm/model-of-unity-scry
 confirm confirm/mog-moogle-warrior-discard
 confirm confirm/msh-a6-nick-fury-transform
