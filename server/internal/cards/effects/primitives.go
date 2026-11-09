@@ -714,6 +714,8 @@ func (t TapTarget) Apply(ctx *Context) error {
 		// is nothing to tap, so the instruction does nothing.
 		return nil
 	}
+	// The tap is the effect controller's instruction: Event.TappedBy names
+	// them, for "whenever you tap an untapped creature an opponent controls".
 	return ctx.Game.TapTargetForEffectBy(t.Target, ctx.Controller())
 }
 

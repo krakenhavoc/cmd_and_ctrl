@@ -1209,6 +1209,17 @@ type ReplacementEvent struct {
 	// Event.FromRadiation.
 	LifeFromRadiation bool
 
+	// LifePayment marks a life loss that is a PAYMENT (CR 118.3, CR 119.4):
+	// the cost-shaped path payLifeAsCostLocked takes, which every "pay N
+	// life" runs through (a Phyrexian symbol, a ward, a shockland, an
+	// activation cost). A replacement worded about paying life ("if you
+	// would pay life while your library has at least that many cards,
+	// exile that many cards instead", Ashiok, Wicked Manipulator) reads
+	// it; a replacement about losing life ignores it, because a payment IS
+	// a loss. A payment replaced down to a zero delta is still paid (it
+	// is not Canceled): no life moves and no EventChangeLife is emitted.
+	LifePayment bool
+
 	// lifeTail is the life half's answer to damageTail: the rest of
 	// the effect that asked for this change, run with the amount that
 	// actually moved once the pipeline settles. Set by the *Then*
