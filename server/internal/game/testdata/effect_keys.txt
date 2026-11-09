@@ -2406,6 +2406,7 @@ tail tail/deadly-cover-up-exiled
 tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
 tail tail/hide-in-plain-sight-rest
+tail tail/intrude-on-the-mind-rest
 tail tail/lazav-investigate
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
