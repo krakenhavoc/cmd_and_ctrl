@@ -1488,3 +1488,67 @@ func TestStdB45YarusIgnoresAFaceUpCreatureDying(t *testing.T) {
 		t.Errorf("a face-up Bear returned %d times", n)
 	}
 }
+
+const stdVoltstriderOracle = "e7b746c8-1b32-42ed-8328-4e16274209d8"
+
+func TestStdB45KyloxsVoltstriderLinksTheEvidenceAndCastsAnInstantFromIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	vehicle := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Kylox's Voltstrider", TypeLine: "Artifact — Vehicle", OracleID: stdVoltstriderOracle,
+		Power: 4, Toughness: 4, Owner: me.ID, Controller: me.ID,
+	})
+	bolt := gyCard(me, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle)
+	big := gyCard(me, "Big Creature", "Creature — Bear", "{5}", "")
+	creatureCard := gyCard(me, "Dead Bear", "Creature — Bear", "{9}", "")
+	_ = creatureCard
+
+	if err := g.ActivateCatalogAbility(me.ID, vehicle, 0, game.ActivateAbilityParams{ExileIDs: []uuid.UUID{bolt}}); err == nil {
+		t.Fatal("collect evidence 6 paid with a total of 1")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, vehicle, 0, game.ActivateAbilityParams{ExileIDs: []uuid.UUID{bolt, big}}); err != nil {
+		t.Fatalf("collect evidence 6: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	g.ReadSnapshot(func() {
+		for _, c := range g.Exile.Cards {
+			if c.InstanceID != bolt && c.InstanceID != big {
+				continue
+			}
+			if c.ExiledWith.ID != vehicle {
+				t.Errorf("%s is not linked to the Vehicle: %+v", c.Name, c.ExiledWith)
+			}
+		}
+	})
+	if c := tmtB1Card(t, g, vehicle); !c.IsCreature() {
+		t.Fatal("the Vehicle did not become a creature")
+	}
+
+	attackAndTrigger(t, g, vehicle)
+	passPriorityAroundTable(t, g)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
+	if offer == nil {
+		t.Fatalf("no cast offer: %+v", g.PendingChoices)
+	}
+	for _, id := range offer.DiscardOptions {
+		if id == big {
+			t.Error("a creature card was offered")
+		}
+	}
+	b06AddMana(me, "R")
+	if err := g.CastForResolutionChoice(me.ID, offer.ID, bolt, game.CastSpellParams{FromZone: "exile",
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("cast the exiled Bolt: %v", err)
+	}
+	if got := me.ManaPool.Total(); got != 0 {
+		t.Errorf("%d mana left: the Bolt must be paid for (it is not free)", got)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Exile.Contains(bolt) || me.Graveyard.Contains(bolt) {
+		t.Errorf("the resolved Bolt is in exile or the graveyard (zone %v), not at the bottom of its owner's library; stack %d, pending %d", g.FindCardZoneForEffect(bolt).Kind, g.Stack.Size(), len(g.PendingChoices))
+	}
+	if me.Library.Size() == 0 || me.Library.Cards[0].InstanceID != bolt {
+		t.Error("the Bolt is not on the bottom of its owner's library")
+	}
+}
