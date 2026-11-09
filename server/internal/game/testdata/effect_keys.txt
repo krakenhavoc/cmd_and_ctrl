@@ -112,6 +112,7 @@ body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
 body dr-leonard-mccoy/return-at-next-end-step
 body dr-leonard-mccoy/when-it-dies-this-turn
+body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
@@ -652,6 +653,7 @@ choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
 choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
+choose choose-cards/minion-of-the-mighty-put
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mog-moogle-warrior-discarded
@@ -716,6 +718,7 @@ choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
 choose choose-cards/sample-collector-collect-evidence
+choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
@@ -1212,6 +1215,7 @@ option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/memories-returning-opponent
+option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/multiform-wonder-keyword
@@ -1882,6 +1886,7 @@ tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail distant-memories/offer
 tail dominion-infiltration/haste-and-exile-copies
+tail dragonhawk-fates-tempest/schedule-damage
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
 tail dredge/return-then-draw
@@ -2134,6 +2139,7 @@ tail mill-then-take/first-contact
 tail mill-then-take/first-contact-first-spell
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
+tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
