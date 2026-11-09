@@ -39,6 +39,7 @@
     diceThrow,
     faceAt,
     placeDice,
+    planarFaceOf,
     rollFromLog,
     rollsFromLogs,
     visiblePlays,
@@ -49,6 +50,7 @@
   import { DiceQueue, useDiceQueue } from "../../diceQueue.svelte";
   import { latestOpeningDice } from "../../openingRoll";
   import { play } from "../../sounds";
+  import { ICONS } from "../../icons";
 
   const LOG_SELECTOR = "aside.log-panel";
 
@@ -425,7 +427,29 @@
             {#if p.roll.kind === "die"}
               {@const face = faceAt(p, i, now)}
               <span class="die" style={throwStyle(p, i)} data-face={face}>
-                {#if p.roll.sides === 6}
+                {#if p.roll.planar}
+                  <!-- ADR 0216 §4: the planar die. One chaos face, one
+                       planeswalk face, four blanks, drawn with C2's own
+                       glyphs (lib/icons.ts: spark, door), never the
+                       printed symbols; the caption names the face. -->
+                  {@const pf = planarFaceOf(face)}
+                  <svg viewBox="0 0 48 48" width={DIE_PX} height={DIE_PX} data-planar-face={pf}>
+                    <polygon class="d6-top" points="4,10 10,4 44,4 38,10" />
+                    <polygon class="d6-side" points="38,10 44,4 44,38 38,44" />
+                    <rect class="d6-front planar" x="4" y="10" width="34" height="34" rx="5" />
+                    {#if pf !== "blank"}
+                      <g class="planar-glyph" transform="translate(9 15)">
+                        {#each ICONS[pf === "chaos" ? "spark" : "door"] as prim, k (k)}
+                          {#if prim.t === "path"}
+                            <path d={prim.d} class:fill={prim.fill} />
+                          {:else if prim.t === "circle"}
+                            <circle cx={prim.cx} cy={prim.cy} r={prim.r} class:fill={prim.fill} />
+                          {/if}
+                        {/each}
+                      </g>
+                    {/if}
+                  </svg>
+                {:else if p.roll.sides === 6}
                   <svg viewBox="0 0 48 48" width={DIE_PX} height={DIE_PX}>
                     <polygon class="d6-top" points="4,10 10,4 44,4 38,10" />
                     <polygon class="d6-side" points="38,10 44,4 44,38 38,44" />
@@ -471,6 +495,8 @@
         <span class="caption">
           {#if phase !== "tumble" && p.roll.kind === "coin" && p.roll.faces.length === 1}
             {p.roll.faces[0]}
+          {:else if phase !== "tumble" && p.roll.planar}
+            {planarFaceOf(p.roll.results[0])}
           {:else}
             {diceLabel(p.roll)}
           {/if}
@@ -553,6 +579,17 @@
     stroke: color-mix(in srgb, var(--seat) 45%, black);
     stroke-width: 1;
     stroke-linejoin: round;
+  }
+  .planar-glyph path,
+  .planar-glyph circle {
+    fill: none;
+    stroke: color-mix(in srgb, var(--seat) 30%, black);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .planar-glyph .fill {
+    fill: color-mix(in srgb, var(--seat) 30%, black);
   }
   .pip {
     fill: #0e1116;

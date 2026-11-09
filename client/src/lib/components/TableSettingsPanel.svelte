@@ -46,6 +46,8 @@
   } from "../tableSettings";
   import type { TableSettingsView } from "../protocol";
   import { DEFAULT_AWAY_AFTER, describeAwayAfter } from "../away";
+  import { devFeature } from "../env";
+  import { L } from "../labels";
 
   interface Props {
     settings: TableSettingsView;
@@ -96,6 +98,11 @@
   let localError = $state<string | null>(null);
 
   const lifeLocked = $derived(startingLifeLocked(gameState));
+  // ADR 0216 owner answer 3: offered where the server offers it (cmd-dev
+  // until the plane batches land). The server refuses it elsewhere; a
+  // table that already plays it shows the row wherever it is.
+  const planechaseOffered = devFeature("planechase");
+  const showPlanechase = $derived($planechaseOffered || settings.planechase === true);
   const disabled = $derived(!canManage || busy);
   const shownError = $derived(localError ?? error);
 
@@ -316,6 +323,32 @@
       {/if}
     </p>
   </section>
+
+  {#if showPlanechase}
+    <!-- ADR 0216 §1: chosen in the lobby, fixed once the game starts, as
+         free mulligans are. -->
+    <section class="tsp-field" data-field="planechase" class:locked={lifeLocked}>
+      <div class="tsp-row">
+        <label class="tsp-label" for="tsp-planechase">{L.planechaseSetting}</label>
+        <span class="tsp-control">
+          <input
+            id="tsp-planechase"
+            type="checkbox"
+            disabled={disabled || lifeLocked}
+            checked={settings.planechase === true}
+            onchange={(e) => apply({ planechase: e.currentTarget.checked })}
+          />
+        </span>
+      </div>
+      <p class="tsp-hint">
+        {#if lifeLocked}
+          Fixed — the planar deck was built when the game started.
+        {:else}
+          A shared deck of planes and the planar die.
+        {/if}
+      </p>
+    </section>
+  {/if}
 
   <!-- ADR 0177 §7: changeable at any time, and it applies to the clocks
        already running. -->

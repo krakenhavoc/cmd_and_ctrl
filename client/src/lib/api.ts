@@ -367,10 +367,18 @@ export interface CreateGameResponse extends GameMeta {
 // quickly. `setup: "last"` applies their remembered setup to it,
 // `voiceRoom` asks for a Discord voice room (ADR 0159 §1), and `lfg`
 // posts it to the Discord's #lfg board (ADR 0161 §1), and `results` opts
-// it in to a results post when its game ends (ADR 0174 §1).
+// it in to a results post when its game ends (ADR 0174 §1), and
+// `planechase` makes it a Planechase table (ADR 0216 §1; a server that
+// does not offer it answers 400).
 export async function createGame(
   name: string,
-  opts: { setup?: "last"; voiceRoom?: boolean; lfg?: boolean; results?: boolean } = {},
+  opts: {
+    setup?: "last";
+    voiceRoom?: boolean;
+    lfg?: boolean;
+    results?: boolean;
+    planechase?: boolean;
+  } = {},
 ): Promise<CreateGameResponse> {
   const body: {
     name: string;
@@ -378,11 +386,13 @@ export async function createGame(
     voice_room?: boolean;
     lfg?: boolean;
     results?: boolean;
+    planechase?: boolean;
   } = { name };
   if (opts.setup) body.setup = opts.setup;
   if (opts.voiceRoom) body.voice_room = true;
   if (opts.lfg) body.lfg = true;
   if (opts.results) body.results = true;
+  if (opts.planechase) body.planechase = true;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),

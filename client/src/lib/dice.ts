@@ -43,7 +43,7 @@
 // only needs its own `rollsFrom…` and a stable `key`.
 
 import { isOpeningDieLog } from "./openingRoll";
-import type { LogEvent } from "./protocol";
+import type { LogEvent, PlanarFace } from "./protocol";
 import type { SoundName } from "./sounds";
 
 /** The tumble at speed 1. Scaled by `animations.speed`. */
@@ -92,6 +92,12 @@ export interface DiceRoll {
   /** The log's public line: the announcer reads it. */
   text: string;
   source: DiceSource;
+  /**
+   * ADR 0216 §4: a planar die, a d6 with no number (CR 901.9d). Its
+   * `results` hold the face drawn: PLANAR_CHAOS, PLANAR_PLANESWALK or
+   * one of the four blanks, the server's own mapping.
+   */
+  planar?: true;
 }
 
 /** One scheduled animation. All times are absolute, in ms (Date.now()). */
@@ -167,6 +173,17 @@ export function rollFromLog(log: LogEvent): DiceRoll | null {
     text: log.text,
     source: (isOpeningDieLog(log) ? "opening" : "card") as DiceSource,
   };
+  if (log.kind === "roll" && log.planar_face) {
+    return {
+      ...base,
+      source: "card",
+      kind: "die",
+      sides: 6,
+      results: [planarFaceNumber(log.planar_face, base.key)],
+      faces: [],
+      planar: true,
+    };
+  }
   if (log.kind === "roll") {
     const results = (log.results ?? []).filter((n) => Number.isInteger(n));
     const sides = log.sides ?? 0;
@@ -180,6 +197,28 @@ export function rollFromLog(log: LogEvent): DiceRoll | null {
     return { ...base, kind: "coin", sides: 2, results: [], faces, ...(call ? { call } : {}) };
   }
   return null;
+}
+
+// ADR 0216 §4: the planar die is a d6 with one chaos face, one
+// planeswalk face and four blanks; the server reads a 1 as chaos and a 6
+// as planeswalk. The wire says only the face, so a blank lands on one of
+// the four, chosen from the roll's key, so it is the same on every
+// screen and every frame.
+export const PLANAR_CHAOS = 1;
+export const PLANAR_PLANESWALK = 6;
+
+/** The die face a planar roll lands on. */
+export function planarFaceNumber(face: PlanarFace, key: string): number {
+  if (face === "chaos") return PLANAR_CHAOS;
+  if (face === "planeswalk") return PLANAR_PLANESWALK;
+  return 2 + (diceSeed(key, 3000) % 4);
+}
+
+/** The planar face a die face shows: the inverse of planarFaceNumber. */
+export function planarFaceOf(n: number): PlanarFace {
+  if (n === PLANAR_CHAOS) return "chaos";
+  if (n === PLANAR_PLANESWALK) return "planeswalk";
+  return "blank";
 }
 
 /**
@@ -530,6 +569,7 @@ export function diceShown(r: DiceRoll): DiceShown {
 
 /** The small label under a group of dice: "d20", "2d12", "3 coins". */
 export function diceLabel(r: DiceRoll): string {
+  if (r.planar) return "planar die";
   if (r.kind === "coin") return r.faces.length === 1 ? "coin" : `${r.faces.length} coins`;
   return r.results.length === 1 ? `d${r.sides}` : `${r.results.length}d${r.sides}`;
 }

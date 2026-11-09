@@ -21,6 +21,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
@@ -242,4 +243,35 @@ func logKinds(entries []protocol.LogEvent) []protocol.LogKind {
 		out = append(out, e.Kind)
 	}
 	return out
+}
+
+// TestSetTableSettingsRefusesPlanechaseWhereNotOffered — ADR 0216 owner
+// answer 3: the socket's settings verb cannot turn Planechase on where
+// the deployment does not offer it, which is the lobby door's rule too.
+// Turning it off, and every other field, is untouched by the gate.
+func TestSetTableSettingsRefusesPlanechaseWhereNotOffered(t *testing.T) {
+	off := NewRoomManager(slog.New(slog.NewTextHandler(io.Discard, nil)), "")
+	on := NewRoomManager(slog.New(slog.NewTextHandler(io.Discard, nil)), "")
+	on.SetPlanechaseOffered(true)
+	act := func(params string) actions.Action {
+		return actions.Action{Type: actions.TypeSetTableSettings, Params: json.RawMessage(params)}
+	}
+	cases := []struct {
+		name   string
+		mgr    *RoomManager
+		action actions.Action
+		want   bool
+	}{
+		{"on, not offered", off, act(`{"planechase":true}`), true},
+		{"on, no manager", nil, act(`{"planechase":true}`), true},
+		{"on, offered", on, act(`{"planechase":true}`), false},
+		{"off, not offered", off, act(`{"planechase":false}`), false},
+		{"another field", off, act(`{"undo_limit":3}`), false},
+		{"the undo alias", off, actions.Action{Type: actions.TypeSetUndoLimit, Params: json.RawMessage(`{"limit":3}`)}, false},
+	}
+	for _, tc := range cases {
+		if got := refusesPlanechase(tc.mgr, tc.action); got != tc.want {
+			t.Errorf("%s: refusesPlanechase = %v, want %v", tc.name, got, tc.want)
+		}
+	}
 }

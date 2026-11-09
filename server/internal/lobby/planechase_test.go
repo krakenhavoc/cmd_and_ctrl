@@ -33,6 +33,7 @@ func (p lobbyPlanes) PlanarCards(game.PlanarKinds) []game.Card {
 
 func TestCreatingATableWithPlanechaseTurnsTheOptionOn(t *testing.T) {
 	s := newTableStack(t)
+	s.lobby.mgr.SetPlanechaseOffered(true)
 	alice, _ := s.signIn(t, "discord-4870", "Alice")
 	code, out, _, raw := s.create(t, alice, createGameRequest{Name: "Planar table", Planechase: true})
 	if code != http.StatusCreated {
@@ -52,6 +53,7 @@ func TestCreatingATableWithPlanechaseTurnsTheOptionOn(t *testing.T) {
 
 func TestPlanechaseIsSetInTheLobbyAndLockedAtStart(t *testing.T) {
 	srv, l, a := newTestHTTPStack(t)
+	l.mgr.SetPlanechaseOffered(true)
 	meta, _, aliceTok, _ := settingsTable(t, l, a)
 	path := "/games/" + meta.ID.String() + "/settings"
 
@@ -97,5 +99,38 @@ func TestPlanechaseIsSetInTheLobbyAndLockedAtStart(t *testing.T) {
 	}
 	if !settingsOf(t, l, meta.ID).Planechase {
 		t.Error("the refused patch turned Planechase off")
+	}
+}
+
+// ADR 0216 owner answer 3: a server that does not offer Planechase (prod,
+// until the plane batches land) refuses every way of turning it on, and
+// still lets a table turn it off.
+func TestPlanechaseIsRefusedWhereTheServerDoesNotOfferIt(t *testing.T) {
+	s := newTableStack(t)
+	alice, _ := s.signIn(t, "discord-4870-off", "Alice")
+	code, _, _, raw := s.create(t, alice, createGameRequest{Name: "Planar table", Planechase: true})
+	if code != http.StatusBadRequest {
+		t.Fatalf("create with planechase on a server that does not offer it: %d %s, want 400", code, raw)
+	}
+
+	srv, l, a := newTestHTTPStack(t)
+	meta, _, aliceTok, _ := settingsTable(t, l, a)
+	path := "/games/" + meta.ID.String() + "/settings"
+	resp := patchJSON(t, srv, path, aliceTok, map[string]any{"planechase": true})
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("PATCH planechase on: got %d, want 400", resp.StatusCode)
+	}
+	if settingsOf(t, l, meta.ID).Planechase {
+		t.Fatal("the refused patch turned Planechase on")
+	}
+	on := true
+	if _, err := l.UpdateSettings(meta.ID, uuid.Nil, game.SettingsPatch{Planechase: &on}); !errors.Is(err, game.ErrPlanechaseNotOffered) {
+		t.Fatalf("UpdateSettings: %v, want ErrPlanechaseNotOffered", err)
+	}
+	resp = patchJSON(t, srv, path, aliceTok, map[string]any{"planechase": false})
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PATCH planechase off: got %d, want 200", resp.StatusCode)
 	}
 }

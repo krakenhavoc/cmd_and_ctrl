@@ -41,7 +41,7 @@ func TestLoadFeaturesProdIgnoresOverrides(t *testing.T) {
 
 func TestLoadFeaturesDevDefaultsOn(t *testing.T) {
 	got := LoadFeatures(EnvDev)
-	want := Features{CardSpawn: true, SeatSwap: true, FrameInspector: true, ReplayScrubber: true}
+	want := Features{CardSpawn: true, SeatSwap: true, FrameInspector: true, ReplayScrubber: true, Planechase: true}
 	if got != want {
 		t.Fatalf("LoadFeatures(dev) = %+v, want %+v", got, want)
 	}
@@ -57,8 +57,21 @@ func TestLoadFeaturesDevOverrideSubtracts(t *testing.T) {
 	if got.SeatSwap {
 		t.Error("SeatSwap should be off when CMDCTRL_DEV_SEAT_SWAP=off")
 	}
-	if !got.FrameInspector || !got.ReplayScrubber {
+	if !got.FrameInspector || !got.ReplayScrubber || !got.Planechase {
 		t.Error("unset feature vars should stay on in dev")
+	}
+}
+
+// ADR 0216 owner answer 3: the Planechase option is offered on cmd-dev
+// only, and a dev deployment can switch it off to rehearse prod.
+func TestLoadFeaturesPlanechaseIsDevOnly(t *testing.T) {
+	t.Setenv("CMDCTRL_DEV_PLANECHASE", "1")
+	if LoadFeatures(EnvProd).Planechase {
+		t.Fatal("Planechase must not be offered in production")
+	}
+	t.Setenv("CMDCTRL_DEV_PLANECHASE", "0")
+	if LoadFeatures(EnvDev).Planechase {
+		t.Fatal("CMDCTRL_DEV_PLANECHASE=0 should switch Planechase off in dev")
 	}
 }
 

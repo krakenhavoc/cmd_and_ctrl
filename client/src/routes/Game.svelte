@@ -90,6 +90,7 @@
     type TableSettingsPatch,
   } from "../lib/tableSettings";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
+  import { planarDieButton } from "../lib/planarDie";
   import VoiceRoom from "../lib/components/VoiceRoom.svelte";
   import NotificationsNudge from "../lib/components/NotificationsNudge.svelte";
   import {
@@ -1352,6 +1353,18 @@
   // you own outside the game puts a shortcut in the dock. The sideboard is
   // no pile on the table (its tab is in the zone browser); Wish's "name a
   // card to play" lives here.
+  // ADR 0216 §10: the planar die button, at a Planechase table only. The
+  // press sends the server's own move (lib/planarDie.ts).
+  const planarDie = $derived.by(() => {
+    const button = planarDieButton(view, viewerID);
+    if (!button) return null;
+    return {
+      button,
+      onPress: () => {
+        if (button.params) sendAction("special_action", button.params, viewerID ?? undefined);
+      },
+    };
+  });
   const outsideDockProps = $derived(
     outsideDock(view, viewerID, {
       name: () => sendAction("outside_play", undefined, viewerID ?? undefined),
@@ -3782,6 +3795,7 @@
           outside={outsideDockProps}
           {viewerID}
           handoff={handoffOffer}
+          {planarDie}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />
