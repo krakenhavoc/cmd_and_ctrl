@@ -103,8 +103,8 @@ func TestStd52PrincessExilesPumpsAndReturns(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	answerPickTarget(t, g, mine)
 	passPriorityAroundTable(t, g)
-	if c := layeredCard(t, g, mine); c.Power != 4 || c.Toughness != 4 || !hobB10Has(c, "flying") {
-		t.Errorf("chapter II left my Bear %d/%d flying=%v, want 4/4 flying", c.Power, c.Toughness, hobB10Has(c, "flying"))
+	if c, p, th := layeredCard(t, g, mine), effectivePower(t, g, mine), effectiveToughness(t, g, mine); p != 4 || th != 4 || !hobB10Has(c, "flying") {
+		t.Errorf("chapter II left my Bear %d/%d flying=%v, want 4/4 flying", p, th, hobB10Has(c, "flying"))
 	}
 
 	advanceToPrecombatMainOf(t, g, seat)
@@ -154,8 +154,8 @@ func TestStd52ThreeBlindMiceMakesCopiesThenPumps(t *testing.T) {
 			continue
 		}
 		lc := layeredCard(t, g, c.InstanceID)
-		if lc.Power != 2 || lc.Toughness != 2 || !hobB10Has(lc, "vigilance") {
-			t.Errorf("chapter IV left a Mouse %d/%d vigilance=%v, want 2/2 vigilance", lc.Power, lc.Toughness, hobB10Has(lc, "vigilance"))
+		if p, th := effectivePower(t, g, c.InstanceID), effectiveToughness(t, g, c.InstanceID); p != 2 || th != 2 || !hobB10Has(lc, "vigilance") {
+			t.Errorf("chapter IV left a Mouse %d/%d vigilance=%v, want 2/2 vigilance", p, th, hobB10Has(lc, "vigilance"))
 		}
 	}
 }
@@ -246,6 +246,17 @@ func TestStd52StormReadingDrawsFourDiscardsTwoAndExiles(t *testing.T) {
 	if got := handSize(me); got != hand-1+4 {
 		t.Fatalf("hand after the draw = %d, want %d", got, hand-1+4)
 	}
+	var pitch []uuid.UUID
+	g.ReadSnapshot(func() {
+		for _, h := range me.Hand.Cards[:2] {
+			pitch = append(pitch, h.InstanceID)
+		}
+	})
+	answerDiscard(t, g, me.ID, pitch...)
+	passPriorityAroundTable(t, g)
+	if got := handSize(me); got != hand-1+4-2 {
+		t.Fatalf("hand after the discard = %d, want %d", got, hand-1+4-2)
+	}
 	if !g.Exile.Contains(c.InstanceID) {
 		t.Error("the Adventure card was not exiled")
 	}
@@ -256,13 +267,9 @@ func TestStd52StormReadingDrawsFourDiscardsTwoAndExiles(t *testing.T) {
 func TestStd52HornedLochWhaleEntersTappedUnlessItIsYourTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	c := std52Adventure(me.ID, std52WhaleOracle, "Horned Loch-Whale", "Creature — Whale", "", 6, 6, "Lagoon Breach", "Instant — Adventure", "{1}{U}")
-	me.Hand.PushTop(c)
+	c := std52Adventure(me.ID, std52WhaleOracle, "Horned Loch-Whale", "Creature — Whale", "{4}{U}{U}", 6, 6, "Lagoon Breach", "Instant — Adventure", "{1}{U}")
 	std52ToMain(t, g)
-	if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{Face: 0}); err != nil {
-		t.Fatalf("cast the Whale: %v", err)
-	}
-	passPriorityAroundTable(t, g)
+	castFromHandAndResolve(t, g, me, c)
 	if tapped, ok := battlefieldCardTapped(g, c.InstanceID); !ok || tapped {
 		t.Errorf("on my turn: on battlefield=%v tapped=%v, want untapped", ok, tapped)
 	}
@@ -303,8 +310,15 @@ func TestStd52LagoonBreachLetsTheOwnerChooseTopOrBottom(t *testing.T) {
 		t.Fatalf("cast Lagoon Breach: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(attacker) {
-		t.Fatal("the attacker is still on the battlefield")
+	pc := latestChoiceOfKindFor(g, game.PendingChoicePutInLibrary, opp.ID)
+	if pc == nil || pc.LibraryPlacement != game.LibraryPlaceTopOrBottom {
+		t.Fatalf("the owner was not asked top or bottom: %+v", pc)
+	}
+	if err := g.ResolvePutInLibrary(pc.ID, opp.ID, []uuid.UUID{attacker}, nil); err != nil {
+		t.Fatalf("ResolvePutInLibrary: %v", err)
+	}
+	if g.Battlefield.Contains(attacker) || !opp.Library.Contains(attacker) {
+		t.Fatal("the attacker is not in its owner's library")
 	}
 	if !g.Exile.Contains(c.InstanceID) {
 		t.Error("the Adventure card was not exiled")

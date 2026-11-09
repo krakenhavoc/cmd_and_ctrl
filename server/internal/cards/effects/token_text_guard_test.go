@@ -61,6 +61,7 @@ var tokenTemplateDoors = map[string]bool{
 // creature type the engine reads through the granting permanent's text
 // as it derives the permission, each with where.
 var permissionFilterDerived = map[string]string{
+	"intrepid_paleontologist.go":      "standing cast permission (stampStandingPermissionLocked)",
 	"gisa_and_geralf.go":              "standing cast permission (stampStandingPermissionLocked)",
 	"conspicuous_snoop.go":            "standing play permission (stampStandingPermissionLocked)",
 	"deeproot_historian.go":           "standing retrace permission (stampStandingPermissionLocked)",

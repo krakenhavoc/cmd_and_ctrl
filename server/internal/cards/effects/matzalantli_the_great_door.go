@@ -38,8 +38,9 @@ func init() {
 				return b16DrawThenDiscard(g, item, 1)
 			},
 		}, {
-			Label: "{4}, {T}: Transform Matzalantli. Activate only if there are four or more permanent types among cards in your graveyard.",
-			Cost:  Plus(ManaCost("{4}"), TapCost()),
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Label:   "{4}, {T}: Transform Matzalantli. Activate only if there are four or more permanent types among cards in your graveyard.",
+			Cost:    Plus(ManaCost("{4}"), TapCost()),
 			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
 				return permanentTypesInGraveyard(g, controller) >= 4
 			},

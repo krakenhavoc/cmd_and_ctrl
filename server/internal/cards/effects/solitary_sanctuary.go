@@ -27,7 +27,7 @@ func init() {
 			Targeting(WhenThisEnters("Solitary Sanctuary — tap target creature an opponent controls and put a stun counter on it", tapTargetAndStunIt),
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 			Targeting(On(game.EventTapCard, std52YouTappedUntappedOpposingCreature,
-				"Solitary Sanctuary — put a +1/+1 counter on target creature you control", std52PlusOneCounterOnTarget),
+				"Solitary Sanctuary — put a +1/+1 counter on target creature you control", b36CounterOnChosenAnimal),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})

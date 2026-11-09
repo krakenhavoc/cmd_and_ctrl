@@ -69,18 +69,18 @@ func TestStd52AquaticAlchemistGrowsOnlyOnTheFirstInstantOrSorceryEachTurn(t *tes
 	alch := pushCatalogPermanent(g, me.ID, "Aquatic Alchemist", "Creature — Elemental", std52AlchemistOracle, false)
 	castFromHand(t, g, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}"}, game.CastSpellParams{})
 	passPriorityAroundTable(t, g)
-	if c := layeredCard(t, g, alch); c.Power != 1 {
-		t.Fatalf("a creature spell pumped the Alchemist to %d", c.Power)
+	if p := effectivePower(t, g, alch); p != 1 {
+		t.Fatalf("a creature spell pumped the Alchemist to %d", p)
 	}
 	castFromHand(t, g, game.Card{Name: "Spell One", TypeLine: "Sorcery", ManaCost: "{1}"}, game.CastSpellParams{})
 	passPriorityAroundTable(t, g)
-	if c := layeredCard(t, g, alch); c.Power != 3 {
-		t.Fatalf("power %d after the first sorcery, want 3", c.Power)
+	if p := effectivePower(t, g, alch); p != 3 {
+		t.Fatalf("power %d after the first sorcery, want 3", p)
 	}
 	castFromHand(t, g, game.Card{Name: "Spell Two", TypeLine: "Sorcery", ManaCost: "{1}"}, game.CastSpellParams{})
 	passPriorityAroundTable(t, g)
-	if c := layeredCard(t, g, alch); c.Power != 3 {
-		t.Errorf("power %d after the second sorcery, want 3", c.Power)
+	if p := effectivePower(t, g, alch); p != 3 {
+		t.Errorf("power %d after the second sorcery, want 3", p)
 	}
 }
 
@@ -101,8 +101,8 @@ func TestStd52BubbleUpPutsAnInstantOrSorceryOnTopAndExilesTheCard(t *testing.T) 
 		t.Fatalf("cast Bubble Up: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if top := me.Library.Cards[0]; top.InstanceID != spell.InstanceID {
-		t.Errorf("top of library is %q, want Old Spell", top.Name)
+	if top := libraryTopIDs(me, 1); len(top) != 1 || top[0] != spell.InstanceID {
+		t.Errorf("top of library is %v, want Old Spell", top)
 	}
 	if !g.Exile.Contains(c.InstanceID) {
 		t.Error("the Adventure card was not exiled")

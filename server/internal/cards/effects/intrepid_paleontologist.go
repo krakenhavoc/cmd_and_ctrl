@@ -38,15 +38,7 @@ func init() {
 			Cost:    ManaCost("{2}"),
 			Purpose: game.Purpose{Answers: game.AnswerGraveyard},
 			Targets: TargetCardInGraveyard("target card from a graveyard"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ExileTarget{Target: t.ID, Linked: true}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  avB7ExileTargetLinked,
 		}},
 		CastPermissions: []game.CastPermission{{
 			Zone: game.ZoneExile,

@@ -22,14 +22,3 @@ func std52YouTappedUntappedOpposingCreature(ev game.Event, source *game.Card, _ 
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.IsCreature() && c.Controller != source.Controller && c.Controller != uuid.Nil
 }
-
-// std52PlusOneCounterOnTarget puts a +1/+1 counter on the first target
-// still legal as the ability resolves (CR 608.2b).
-func std52PlusOneCounterOnTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-}
