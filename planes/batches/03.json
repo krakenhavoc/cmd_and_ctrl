@@ -1,0 +1,200 @@
+{
+ "batch": 3,
+ "cards": [
+  {
+   "name": "The Doctor's Tomb",
+   "oracle_id": "fc621e94-e7c7-49ea-9547-4ab041ea39f3",
+   "type_line": "Plane — Trenzalore",
+   "oracle_text": "If a creature would die, instead exile it and that creature's controller loses 2 life.\nWhenever chaos ensues, redistribute any number of players' life totals. (Each of those players gets one life total back.)",
+   "set": "who",
+   "collector_number": "580",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "You choose which player gets which life total when the chaos ability resolves.",
+    "You can't split up a life total when you redistribute it. For example, suppose that in a two-player game your life total is 5 and your opponent's life total is 15 when the chaos ability starts to resolve. You can choose to (a) leave the life totals as they are or (b) make your life total 15 and your opponent's 5. You can't choose to make your life total 20 and your opponent's 0."
+   ]
+  },
+  {
+   "name": "The Drum, Mining Facility",
+   "oracle_id": "9f7e1607-34b5-4332-81e3-391fb49cd6ad",
+   "type_line": "Plane — Earth",
+   "oracle_text": "Whenever you roll the planar die, creatures you control get +1/+1 and gain haste until end of turn.\nWhenever chaos ensues, end the turn. (Exile all spells and abilities from the stack. The player whose turn it is discards down to their maximum hand size. Damage wears off, and \"this turn\" and \"until end of turn\" effects end.)",
+   "set": "who",
+   "collector_number": "581",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "Ending the turn this way means the following things happen in order: 1) All spells and abilities on the stack are exiled. This includes spells and abilities that can't be countered. 2) If there are any attacking and blocking creatures, they're removed from combat. 3) State-based actions are checked. No player gets priority, and no triggered abilities are put onto the stack. 4) The current phase and/or step ends. The game skips straight to the cleanup step. 5) The cleanup step happens in its entirety.",
+    "If any triggered abilities do trigger during this process, they're put onto the stack during the cleanup step. If this happens, players will have a chance to cast spells and activate abilities, then there will be another cleanup step before the turn is over.",
+    "Though other spells and abilities that are exiled won't get a chance to resolve, they don't count as being countered.",
+    "Any \"at the beginning of the next end step\" triggered abilities won't get the chance to trigger that turn because the end step is skipped. Those abilities will trigger at the beginning of the end step of the next turn."
+   ]
+  },
+  {
+   "name": "The Lux Foundation Library",
+   "oracle_id": "68750b81-1309-4362-84b3-8835b3d71d28",
+   "type_line": "Plane — The Library",
+   "oracle_text": "Players have no maximum hand size.\nWhenever a creature you control deals combat damage to a player, you may draw a card.\nWhenever chaos ensues, put a shadow counter on target creature. (A creature with shadow can block or be blocked by only creatures with shadow.)",
+   "set": "who",
+   "collector_number": "588",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "The Matrix of Time",
+   "oracle_id": "ed44d47b-2eea-4cb2-a091-07583bdf390f",
+   "type_line": "Plane — Gallifrey",
+   "oracle_text": "When you planeswalk to The Matrix of Time, each player exiles the top card of their library.\nDuring your turn, you may play lands and cast spells from among cards exiled with The Matrix of Time.\nWhenever you play a land or cast a spell from among cards exiled with The Matrix of Time, that card's owner loses 3 life and exiles the top card of their library.\nWhenever chaos ensues, create two Treasure tokens.",
+   "set": "who",
+   "collector_number": "589",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You must pay all costs and follow all normal timing rules to play cards exiled with The Matrix of Time. For example, you may play a land this way only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "The Moonbase",
+   "oracle_id": "381f510b-8696-4af1-a6c9-d1175e9f36d0",
+   "type_line": "Plane — Moon",
+   "oracle_text": "Low Gravity — All creatures have \"{2}: This creature gains flying until end of turn. Activate only as a sorcery.\"\nWhenever chaos ensues, for each opponent, choose up to one target creature card in that player's graveyard. Put those cards onto the battlefield face down under your control. They're 2/2 Cyberman artifact creatures.",
+   "set": "who",
+   "collector_number": "591",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "Each creature turned face down this way or put onto the battlefield this way is a 2/2 Cyberman artifact creature with no name and no color.",
+    "If, for any reason, the face-down creature is turned face up, the effect making it a Cyberman ends. It will be whatever is printed on the card.",
+    "The player who controls a face-down permanent may look at it at any time. Notably, if the cards were put on the battlefield face down from another player's library, the player that owns them does not get to look at those cards.",
+    "Double-faced permanents that are already on the battlefield can't be turned face down this way. However, a double-faced card can be put onto the battlefield face down from another zone this way.",
+    "If the face-down card has a morph ability, its controller may turn it face up by paying the associated morph cost."
+   ]
+  },
+  {
+   "name": "The Pyramid of Mars",
+   "oracle_id": "5910ae7e-7a74-4296-9ae1-7fa093b4e640",
+   "type_line": "Plane — Mars",
+   "oracle_text": "When you planeswalk to The Pyramid of Mars and at the beginning of your upkeep, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nWhenever chaos ensues, return target creature card from your graveyard to the battlefield.",
+   "set": "who",
+   "collector_number": "597",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "Two Streams Facility",
+   "oracle_id": "d8aa7f2d-2280-42d4-b082-1b5d45df77c5",
+   "type_line": "Plane — Apalapucia",
+   "oracle_text": "Whenever you planeswalk to Two Streams Facility and at the beginning of the first upkeep of the game, each player chooses green anchor or red waterfall.\nEach player who last chose green anchor may play an additional land during each of their turns.\nCreatures controlled by players who last chose red waterfall get +2/+0 and have haste.\nWhenever chaos ensues, each player who last chose green anchor chooses red waterfall, and vice versa.",
+   "set": "who",
+   "collector_number": "603",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "UNIT Headquarters",
+   "oracle_id": "a7641877-1a61-467c-9365-487cf5a5656d",
+   "type_line": "Plane — Earth",
+   "oracle_text": "When you planeswalk to UNIT Headquarters and at the beginning of your upkeep, create a tapped 1/1 white Soldier creature token.\nWhenever chaos ensues, put a +1/+1 counter on each creature you control.",
+   "set": "who",
+   "collector_number": "604",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Soldier",
+     "type_line": "Token Creature — Soldier",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Bloodhill Bastion",
+   "oracle_id": "ce8139b9-31f3-464d-86ea-7efbdbfce478",
+   "type_line": "Plane — Equilor",
+   "oracle_text": "Whenever a creature enters, it gains double strike and haste until end of turn.\nWhenever chaos ensues, exile target nontoken creature you control, then return it to the battlefield under your control.",
+   "set": "moc",
+   "collector_number": "140",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "If a creature you've gained control of temporarily (because of Act of Treason, for example) is exiled and returns to the battlefield under your control, you will control that creature indefinitely."
+   ]
+  },
+  {
+   "name": "Enigma Ridges",
+   "oracle_id": "93b3acc1-2d41-4f5f-9225-7a30ea2d8158",
+   "type_line": "Plane — Echoir",
+   "oracle_text": "When you planeswalk to Enigma Ridges, each player who controls fewer lands than the player who controls the most lands searches their library for a number of basic land cards less than or equal to the difference, reveals them, puts them into their hand, then shuffles.\nWhenever chaos ensues, draw a card, then you may put a land card from your hand onto the battlefield.",
+   "set": "moc",
+   "collector_number": "48",
+   "released_at": "2023-04-21"
+  },
+  {
+   "name": "Esper",
+   "oracle_id": "4eebfaf3-18da-4661-b6a5-d874585e170a",
+   "type_line": "Plane — Alara",
+   "oracle_text": "Artifact spells cost {1} less to cast.\nWhenever chaos ensues, creatures you control that are white, blue, and/or black become artifacts in addition to their other types until end of turn. Then each artifact creature you control gains vigilance, menace, and lifelink until end of turn.",
+   "set": "moc",
+   "collector_number": "49",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Esper’s first ability doesn’t change the mana cost or mana value of any artifact spell. It changes only the total cost players pay.",
+    "That ability can’t reduce the amount of colored mana players pay for a spell. It reduces only the generic component of that cost.",
+    "If there are additional costs to cast an artifact spell, or if the cost to cast a spell is increased by an effect (such as the one created by Thalia, Guardian of Thraben’s ability), apply those increases before applying cost reductions.",
+    "The cost reduction can apply to alternative costs such as prototype costs.",
+    "If a spell you cast has {X} in its mana cost, you choose the value of X before calculating the spell’s total cost. For example, if an artifact spell’s mana cost is {X}{X}, you could choose 2 as the value of X and pay {3} to cast the spell.",
+    "The set of artifact creatures affected by the chaos ability is determined as that ability resolves. Artifact creatures you begin to control later in the turn and permanents that become artifact creatures later in the turn won’t get the bonuses."
+   ]
+  },
+  {
+   "name": "Gavony",
+   "oracle_id": "2387edac-765b-4502-bd3d-88be8ba7d0a4",
+   "type_line": "Plane — Innistrad",
+   "oracle_text": "All creatures have vigilance.\nWhenever chaos ensues, creatures you control gain indestructible until end of turn.",
+   "set": "moc",
+   "collector_number": "142",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "The chaos ability grants indestructible only to creatures that you control at the time it resovles. Creatures that you gain control of later in the turn will not have indestructible.",
+    "If another player gains control of one of your creatures after the chaos ability resolves, that creature will continue to have indestructible until end of turn."
+   ]
+  },
+  {
+   "name": "Ghirapur",
+   "oracle_id": "a7c6b72c-f9ec-4048-8e4c-99210e4e7b85",
+   "type_line": "Plane — Avishkar",
+   "oracle_text": "At the beginning of combat on your turn, until end of turn, each noncreature, non-Vehicle artifact you control becomes a 5/3 Vehicle in addition to its other types and gains trample, haste, and crew 2.\nWhenever chaos ensues, return target noncreature artifact card from your graveyard to your hand.",
+   "set": "moc",
+   "collector_number": "51",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "The set of artifacts affected by Ghirapur’s first ability is determined as the ability resolves. Artifacts you begin to control later in the turn and nonartifact permanents that become artifacts later in the turn won’t become Vehicles.",
+    "The affected artifacts retain any other card types, subtypes, and abilities they had."
+   ]
+  },
+  {
+   "name": "Glimmervoid Basin",
+   "oracle_id": "43a23de7-0738-4b03-b87d-5a7d1144825c",
+   "type_line": "Plane — Mirrodin",
+   "oracle_text": "Whenever a player casts an instant or sorcery spell with a single target, that player copies that spell for each other spell, permanent, card not on the battlefield, and/or player the spell could target. Each copy targets a different one of them.\nWhenever chaos ensues, choose target creature. Each player except that creature's controller creates a token that's a copy of that creature.",
+   "set": "moc",
+   "collector_number": "143",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If a spell targets multiple things, it won't cause Glimmervoid Basin's first ability to trigger, even if all but one of those targets has become illegal.",
+    "If a spell targets the same player or object multiple times, it won't cause Glimmervoid Basin's first ability to trigger.",
+    "Other than choices involving modes or additional costs, the copies are created based on what they could target if the spell were cast anew. For example, if a player casts Naturalize (\"Destroy target artifact or enchantment\") targeting an artifact, Glimmervoid Basin's first ability will copy it for each artifact and enchantment it could target (and each copy will target a different one of those), not just for each artifact it could target.",
+    "Anything that couldn't be targeted by the original spell (due to shroud, protection abilities, targeting restrictions, or any other reason) is just ignored by Glimmervoid Basin's first ability.",
+    "The controller of the spell that caused Glimmervoid Basin's first ability to trigger also controls all the copies. That player chooses the order the copies are put onto the stack. The original spell will be on the stack beneath those copies and resolves last.",
+    "The copies that Glimmervoid Basin's first ability creates are created on the stack, so they're not \"cast.\" Abilities that trigger when a player casts a spell (like Glimmervoid Basin's first ability itself) won't trigger.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode. Its controller can't choose a different one.",
+    "If the spell that's copied has an X whose value was determined as it was cast (like Earthquake does), the copy has the same value of X.",
+    "The controller of a copy can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "As a token is created by the chaos ability, it checks the printed values of the creature it's copying, as well as any copy effects that have been applied to it. It won't copy counters on the creature, nor will it copy other effects that have changed the creature's power, toughness, types, color, and so on."
+   ]
+  }
+ ]
+}

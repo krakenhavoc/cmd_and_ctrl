@@ -1,0 +1,154 @@
+[
+ {
+  "name": "Caught in a Parallel Universe",
+  "oracle_id": "c265447b-a8ce-4d77-b620-865f7d4e0722",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Caught in a Parallel Universe, each player chooses a creature controlled by the player to their left. Each player creates a token that's a copy of the creature they chose, except it has menace. (Then planeswalk away from this phenomenon.)",
+  "set": "who",
+  "collector_number": "572",
+  "released_at": "2023-10-13",
+  "related": [
+   {
+    "name": "Copy",
+    "type_line": "Token",
+    "component": "token"
+   }
+  ]
+ },
+ {
+  "name": "Chaotic Aether",
+  "oracle_id": "6dc67a65-31bf-4535-9e02-8f6d6ecefde5",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Chaotic Aether, each blank roll of the planar die is a {CHAOS} roll until a player planeswalks away from a plane. (Then planeswalk away from this phenomenon.)",
+  "set": "moc",
+  "collector_number": "141",
+  "released_at": "2023-04-21",
+  "rulings": [
+   "While Chaotic Aether's effect applies, rolling any blank face of the planar die will cause chaos abilities to trigger.",
+   "Planeswalking away from a phenomenon (as you do when resolving Chaotic Aether's ability) doesn't cause Chaotic Aether's effect to expire."
+  ]
+ },
+ {
+  "name": "Fixed Point in Time",
+  "oracle_id": "be9870be-cf1b-44ea-a129-8f3711901b16",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Fixed Point in Time, until your next turn, if a player would planeswalk as a result of rolling the planar die, chaos ensues instead. (Then planeswalk away from this phenomenon.)",
+  "set": "who",
+  "collector_number": "582",
+  "released_at": "2023-10-13"
+ },
+ {
+  "name": "Human—Time Lord Meta-Crisis",
+  "oracle_id": "96e26369-ae5d-4a77-adaa-d34b25af076f",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Human—Time Lord Meta-Crisis, each player chooses one or two creatures they control. Each player creates a token that's a copy of the first creature they chose, except it isn't legendary. Then each player who chose a second creature puts a number of +1/+1 counters on the token they created equal to the power of the second creature they chose. (Then planeswalk away from this phenomenon.)",
+  "set": "who",
+  "collector_number": "585",
+  "released_at": "2023-10-13",
+  "related": [
+   {
+    "name": "Copy",
+    "type_line": "Token",
+    "component": "token"
+   }
+  ]
+ },
+ {
+  "name": "Interplanar Tunnel",
+  "oracle_id": "7812174b-2dc1-43e8-b98f-639905e20ab7",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Interplanar Tunnel, reveal cards from the top of your planar deck until you reveal five plane cards. Put a plane card from among them on top of your planar deck, then put the rest of the revealed cards on the bottom in a random order. (Then planeswalk away from this phenomenon.)",
+  "set": "opca",
+  "collector_number": "2",
+  "released_at": "2016-11-25",
+  "rulings": [
+   "The plane card you put on top of your planar deck is the one you’ll planeswalk to after planeswalking away from Interplanar Tunnel."
+  ]
+ },
+ {
+  "name": "Morphic Tide",
+  "oracle_id": "302e4ac2-522b-4a0a-850a-d856639ea2a4",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Morphic Tide, each player shuffles all permanents they own into their library, then reveals that many cards from the top of their library. Each player puts all artifact, creature, land, and planeswalker cards revealed this way onto the battlefield, then does the same for enchantment cards, then puts all cards revealed this way that weren't put onto the battlefield on the bottom of their library in any order. (Then planeswalk away from this phenomenon.)",
+  "set": "opca",
+  "collector_number": "3",
+  "released_at": "2016-11-25",
+  "rulings": [
+   "This ability is very similar to that of Warp World, but note that planeswalkers are put onto the battlefield.",
+   "Taking it slowly, here's what happens when Morphic Tide's ability resolves: 1) Each player counts the number of permanents they own. 2) Each player shuffles those permanents into their library. 3) Each player reveals cards from the top of their library equal to the number that player counted. 4) Each player puts all artifact, creature, land, and planeswalker cards revealed this way onto the battlefield. All of these cards enter at the same time. 5) Each player puts all enchantment cards revealed this way onto the battlefield. An Aura put onto the battlefield this way can enchant an artifact, creature, land, or planeswalker that was already put onto the battlefield, but can't enchant an enchantment that's being put onto the battlefield at the same time as it. If multiple players have Auras to put onto the battlefield, the player whose turn it is announces what their Auras will enchant, then each other player in turn order does the same, then all enchantments (both Auras and non-Auras) enter at the same time. 6) Each player puts all of their other revealed cards (instants, sorceries, and Auras that can't enchant anything) on the bottom of their library in any order.",
+   "Cards such as Sakashima's Student that can enter as a copy of another permanent won't be able to enter as a copy of a permanent that's entering at the same time.",
+   "After all permanents are put onto the battlefield and you planeswalk away from Morphic Tide, any abilities that triggered from those permanents entering, from the previous generation of permanents leaving the battlefield, and from the new plane or phenomenon will be put onto the stack. You'll put all of your triggered abilities on the stack in any order, then each other player in turn order will do the same. (The last ability put on the stack will be the first one that resolves.)",
+   "The permanents will enter while Morphic Tide is face up. This means the game won't be on any plane when determining if any abilities trigger because those permanents entered, for example. However, you'll planeswalk away from Morphic Tide before any such abilities are put on the stack. After you turn the next card of the planar deck face up, any abilities that triggered during the resolution of Morphic Tide (including any abilities that triggered because you encountered another phenomenon or planeswalked to the next plane) will be put on the stack. The planar controller will put their abilities on the stack in any order, followed by each other player in turn order. The last ability put on the stack will be the first one to resolve.",
+   "Token permanents a player owns will count toward the number of cards that player reveals. They'll be shuffled into that player's library and subsequently cease to exist. A token's owner is the player who created it."
+  ]
+ },
+ {
+  "name": "Mutual Epiphany",
+  "oracle_id": "c871974e-54e6-411f-8408-3708823fa2df",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Mutual Epiphany, each player draws four cards. (Then planeswalk away from this phenomenon.)",
+  "set": "moc",
+  "collector_number": "151",
+  "released_at": "2023-04-21"
+ },
+ {
+  "name": "Planewide Disaster",
+  "oracle_id": "a34b272b-084b-4ff1-8b02-d95116ccfeab",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Planewide Disaster, destroy all creatures. (Then planeswalk away from this phenomenon.)",
+  "set": "moc",
+  "collector_number": "154",
+  "released_at": "2023-04-21"
+ },
+ {
+  "name": "Reality Shaping",
+  "oracle_id": "3fc15821-1add-4321-aecd-33f8a8c5f9a7",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Reality Shaping, starting with you, each player may put a permanent card from their hand onto the battlefield. (Then planeswalk away from this phenomenon.)",
+  "set": "moc",
+  "collector_number": "155",
+  "released_at": "2023-04-21",
+  "rulings": [
+   "First, you may put a permanent card onto the battlefield, then each other player in turn order may do the same. Cards such as Sakashima's Student that can enter as a copy of another creature could copy a creature put onto the battlefield earlier in the resolution of the ability.",
+   "Each player will know what permanent cards were put onto the battlefield earlier in the ability's resolution.",
+   "This process is not repeated. Go around the table only once.",
+   "After all permanents are put onto the battlefield and you planeswalk away from Reality Shaping, any abilities that triggered from those permanents entering will be put onto the stack. You'll put all of your triggered abilities on the stack in any order, then each other player in turn order will do the same. (The last ability put on the stack will be the first one that resolves.)"
+  ]
+ },
+ {
+  "name": "Spatial Merging",
+  "oracle_id": "aa166578-b13b-4adb-a78e-d5183e987112",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Spatial Merging, reveal cards from the top of your planar deck until you reveal two plane cards. Simultaneously planeswalk to both of them. Put all other cards revealed this way on the bottom of your planar deck in any order.",
+  "set": "moc",
+  "collector_number": "158",
+  "released_at": "2023-04-21",
+  "rulings": [
+   "Until a player planeswalks, the game will exist on both planes. The abilities of both plane cards can affect the game.",
+   "If a player rolls {CHAOS}, both chaos abilities will trigger. The player may put those abilities on the stack in any order.",
+   "The next time a player planeswalks, they planeswalk away from both planes. Their owner puts them on the bottom of their planar deck in an order of their choice. This order isn't revealed to other players."
+  ]
+ },
+ {
+  "name": "Time Distortion",
+  "oracle_id": "e19e8895-f8a4-4995-8dd4-2821c6469126",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Time Distortion, reverse the game's turn order. (For example, if play had proceeded clockwise around the table, it now goes counterclockwise. Then planeswalk away from this phenomenon.)",
+  "set": "opca",
+  "collector_number": "8",
+  "released_at": "2016-11-25",
+  "rulings": [
+   "This effect reverses the turn order established at the beginning of the game. While the order is reversed, anything that cares about this order (such as determining in what order choices are made) will use the new reversed.",
+   "If the game’s turn order is reversed again, it will return to the default order used at the beginning of the game."
+  ]
+ },
+ {
+  "name": "Unleash the Flux",
+  "oracle_id": "14066888-66f6-4903-8de2-cc961aa45d8d",
+  "type_line": "Phenomenon",
+  "oracle_text": "When you encounter Unleash the Flux, each player sacrifices a nonland permanent of their choice, then you flip a coin. If you lose the flip, repeat this process. (Then planeswalk away from this phenomenon.)",
+  "set": "who",
+  "collector_number": "605",
+  "released_at": "2023-10-13"
+ }
+]

@@ -1,0 +1,223 @@
+{
+ "batch": 5,
+ "cards": [
+  {
+   "name": "Orochi Colony",
+   "oracle_id": "6e008fdc-48f2-40ef-95bd-80d014535ca3",
+   "type_line": "Plane — Kamigawa",
+   "oracle_text": "Whenever a creature you control deals combat damage to a player, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nWhenever chaos ensues, target creature can't be blocked this turn.",
+   "set": "moc",
+   "collector_number": "152",
+   "released_at": "2023-04-21"
+  },
+  {
+   "name": "Paliano",
+   "oracle_id": "c5f0da12-b76f-42fb-a52e-cd09535e72fb",
+   "type_line": "Plane — Fiora",
+   "oracle_text": "When one or more creatures you control deal combat damage to a player, if there is no monarch, you become the monarch.\nWhenever chaos ensues, create a 1/1 black Assassin creature token with deathtouch and haste.",
+   "set": "moc",
+   "collector_number": "62",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Assassin",
+     "type_line": "Token Creature — Assassin",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Panopticon",
+   "oracle_id": "cd8ce6f1-9753-40a7-a625-5ed63c15c29e",
+   "type_line": "Plane — Mirrodin",
+   "oracle_text": "When you planeswalk to Panopticon, draw a card.\nAt the beginning of your draw step, draw an additional card.\nWhenever chaos ensues, draw a card.",
+   "set": "moc",
+   "collector_number": "153",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Riptide Island",
+   "oracle_id": "91fe554b-13db-451d-ab25-717ab2b70649",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "When you planeswalk to Riptide Island and at the beginning of your upkeep, create two 1/1 colorless Sliver creature tokens.\nWhenever chaos ensues, Slivers you control gain haste and get +X/+X until end of turn, where X is the number of Slivers you control.",
+   "set": "moc",
+   "collector_number": "64",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Sliver",
+     "type_line": "Token Creature — Sliver",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Count the number of Slivers you control as the chaos ability resolves to determine the value of X."
+   ]
+  },
+  {
+   "name": "Selesnya Loft Gardens",
+   "oracle_id": "0a4bf88d-106a-413b-9d80-8775c1ff5ded",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "If an effect would create one or more tokens, it creates twice that many of those tokens instead.\nIf an effect would put one or more counters on a permanent, it puts twice that many of those counters on that permanent instead.\nWhenever chaos ensues, until end of turn, whenever you tap a land for mana, add one mana of any type that land produced.",
+   "set": "moc",
+   "collector_number": "156",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Effects that place a counter on a permanent include that permanent entering. For example, a creature that normally enters with one or more +1/+1 counters will enter that many +1/+1 counters on it. A planeswalker will enter with twice its starting loyalty counters.",
+    "Adding loyalty counters to a planeswalker in order to activate a loyalty ability isn't an effect, so those counters are not doubled.",
+    "Any -1/-1 counters that are placed on a creature because of wither or infect are also not doubled.",
+    "The chaos ability is cumulative. For example, if you roll {CHAOS} twice in a turn, tapping a land for mana will cause two mana abilities to trigger."
+   ]
+  },
+  {
+   "name": "Sokenzan",
+   "oracle_id": "c09d304a-87d0-4a2a-bcb2-e81341b2dbf2",
+   "type_line": "Plane — Kamigawa",
+   "oracle_text": "All creatures get +1/+1 and have haste.\nWhenever chaos ensues, untap all creatures that attacked this turn. If it's a main phase, there is an additional combat phase after this phase, followed by an additional main phase.",
+   "set": "moc",
+   "collector_number": "157",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If you roll {CHAOS} twice in the same main phase, two new combat phases will be created. However, all creatures that attacked this turn untap as the chaos abilities resolve, not as the combat phases start. Any creature that attacks in the second combat phase will remain tapped during the third combat phase (unless you roll {CHAOS} again)."
+   ]
+  },
+  {
+   "name": "Stensia",
+   "oracle_id": "38bdd034-0375-403c-97ca-6f93a5e12e54",
+   "type_line": "Plane — Innistrad",
+   "oracle_text": "Whenever a creature deals damage to one or more players for the first time each turn, put a +1/+1 counter on it.\nWhenever chaos ensues, each creature you control gains \"{T}: This creature deals 1 damage to target player or planeswalker\" until end of turn.",
+   "set": "moc",
+   "collector_number": "159",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Each creature can have only one +1/+1 counter put on it this way per turn.",
+    "Unlike the Vampires in the Innistrad(TM) block, Stensia's ability triggers whenever a creature deals any damage, not just combat damage."
+   ]
+  },
+  {
+   "name": "Strixhaven",
+   "oracle_id": "022e38c3-fcea-428f-a0d0-a6cca057faa3",
+   "type_line": "Plane — Arcavios",
+   "oracle_text": "Instant and sorcery spells players cast have demonstrate. (Whenever a player casts an instant or sorcery spell, they may copy it. If they do, they choose an opponent to also copy it. Players may choose new targets for their copies.)\nWhenever chaos ensues, return up to one target instant or sorcery card from a graveyard to its owner's hand.",
+   "set": "moc",
+   "collector_number": "65",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "If you cast the spell and choose not to copy it, no opponent will get to copy it either.",
+    "You choose whether to make a copy as the demonstrate ability resolves. This happens before the original spell resolves. Your copy goes on the stack above the original spell.",
+    "If the spell requires targets, you choose the target of the original spell as you cast it. If you create a copy of the spell, you may choose new targets for the copy as you create that copy. Similarly, the opponent you chose to create a copy may choose new targets for that copy as it’s created. In other words, your opponent will know the targets of your original spell and your copy when choosing the new targets, if any, for their copy.",
+    "This means that if you cast a spell with demonstrate and both you and an opponent copy it, the opponent’s copy will resolve first, then your copy will resolve, and finally the original spell will resolve."
+   ]
+  },
+  {
+   "name": "Stronghold Furnace",
+   "oracle_id": "ff76b576-8ad3-44f9-8043-80003a078e84",
+   "type_line": "Plane — Rath",
+   "oracle_text": "If a source would deal damage to a permanent or player, it deals double that damage instead.\nWhenever chaos ensues, Stronghold Furnace deals 1 damage to any target.",
+   "set": "moc",
+   "collector_number": "160",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Stronghold Furnace's first ability interacts with all damage, not just combat damage. Notably, it doubles the damage from its own chaos ability.",
+    "If multiple effects modify how damage will be dealt, the player who would be dealt damage or the controller of the creature that would be dealt damage chooses the order to apply the effects. For example, Mending Hands says, \"Prevent the next 4 damage that would be dealt to any target this turn.\" Suppose a spell would deal 5 damage to a player who has cast Mending Hands targeting themselves. The player who would be dealt damage can either (a) prevent 4 damage first and then let Stronghold Furnace's effect double the remaining 1 damage, taking 2 damage, or (b) double the damage to 10 and then prevent 4 damage, taking 6 damage.",
+    "If a spell or ability divides damage among multiple recipients (such as Pyrotechnics does), the damage is divided before Stronghold Furnace's effect doubles it. The same is true for combat damage."
+   ]
+  },
+  {
+   "name": "Ten Wizards Mountain",
+   "oracle_id": "a0cb118e-6af1-41d2-847f-d685ced2165d",
+   "type_line": "Plane — Shenmeng",
+   "oracle_text": "Whenever you roll the planar die, put a +1/+1 counter on up to one target creature.\nWhenever chaos ensues, creatures you control gain flying until end of turn.",
+   "set": "moc",
+   "collector_number": "66",
+   "released_at": "2023-04-21"
+  },
+  {
+   "name": "The Aether Flues",
+   "oracle_id": "8eb442a9-5e61-4e2e-983d-b49b04be2575",
+   "type_line": "Plane — Iquatana",
+   "oracle_text": "When you planeswalk to The Aether Flues and at the beginning of your upkeep, you may sacrifice a creature. If you do, reveal cards from the top of your library until you reveal a creature card, put that card onto the battlefield, then shuffle all other cards revealed this way into your library.\nWhenever chaos ensues, you may put a creature card from your hand onto the battlefield.",
+   "set": "moc",
+   "collector_number": "139",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "The first ability of The Aether Flues doesn't target a creature. You don't choose a creature to sacrifice until the ability resolves. Once you choose a creature to sacrifice, it's too late for players to respond.",
+    "If you use the first ability of The Aether Flues but there are no creatures in your library, you'll reveal your entire library then shuffle it."
+   ]
+  },
+  {
+   "name": "The Caldaia",
+   "oracle_id": "86534917-5d51-4eba-9bf5-f9fc93c83c80",
+   "type_line": "Plane — Capenna",
+   "oracle_text": "Creature spells you cast from your hand have blitz {3}. (If you cast a spell for its blitz cost, it gains haste and \"When this creature dies, draw a card.\" Sacrifice it at the beginning of the next end step.)\nWhenever chaos ensues, return target creature card from your graveyard to your hand.",
+   "set": "moc",
+   "collector_number": "47",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "The triggered ability that lets the creature’s controller draw a card triggers when it dies for any reason, not just when you sacrifice it during the end step.",
+    "If you choose to pay the blitz cost rather than the mana cost, you’re still casting the spell. It goes on the stack and can be responded to and countered. You can cast a creature spell for its blitz cost only if you could cast that creature spell. Most of the time, this means during your main phase when the stack is empty.",
+    "If you pay the blitz cost to cast a creature spell, that permanent will be sacrificed only if it’s still on the battlefield when that triggered ability resolves. If it dies or goes to another zone before then, it will stay where it is.",
+    "You don’t have to attack with the creature with blitz unless another ability says you do.",
+    "If a creature enters the battlefield as a copy of or becomes a copy of a creature whose blitz cost was paid, the copy won’t have haste, won’t be sacrificed, and its controller won’t draw a card when it dies.",
+    "If you choose to pay the blitz cost rather than the mana cost, you're still casting the spell. It goes on the stack and can be responded to and countered. You can cast a creature spell for its blitz cost only if you could cast that creature spell. Most of the time, this means during your main phase when the stack is empty.",
+    "If you pay the blitz cost to cast a creature spell, that permanent will be sacrificed only if it's still on the battlefield when that triggered ability resolves. If it dies or goes to another zone before then, it will stay where it is.",
+    "You don't have to attack with the creature with blitz unless another ability says you do.",
+    "If a creature enters the battlefield as a copy of or becomes a copy of a creature whose blitz cost was paid, the copy won't have haste, won't be sacrificed, and its controller won't draw a card when it dies.",
+    "The triggered ability that lets its controller draw a card triggers when it dies for any reason, not just when you sacrifice it during the end step."
+   ]
+  },
+  {
+   "name": "The Fertile Lands of Saulvinia",
+   "oracle_id": "2f3e71b6-0fd6-4ac5-a265-faaabe21177b",
+   "type_line": "Plane — Antausia",
+   "oracle_text": "Whenever a player taps a land for mana, that player adds one mana of any type that land produced.\nWhenever chaos ensues, reveal cards from the top of your planar deck until you reveal a plane card. Chaos ensues on that plane. Then put all cards revealed this way on the bottom of your planar deck in any order.",
+   "set": "moc",
+   "collector_number": "50",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "“Chaos ensues on that plane” means that plane card’s chaos ability will trigger. The chaos ability of the current plane (namely, The Fertile Lands of Saulvinia) won’t trigger."
+   ]
+  },
+  {
+   "name": "The Golden City of Orazca",
+   "oracle_id": "3c200cc0-02b1-4a32-a910-5cd3c4d716b7",
+   "type_line": "Plane — Ixalan",
+   "oracle_text": "Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nWhenever one or more creatures you control deal combat damage to a player, create a Treasure token. Then draw a card if you have the city's blessing.\nWhenever chaos ensues, you may put a permanent card from your hand onto the battlefield tapped.",
+   "set": "moc",
+   "collector_number": "52",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Once you have the city’s blessing, you have it for the rest of the game, even if you lose control of some or all of your permanents. The city’s blessing isn’t a permanent itself and can’t be removed by any effect.",
+    "A permanent is any object on the battlefield, including tokens and lands. Spells, planes, and emblems aren’t permanents.",
+    "If you control ten permanents but have not yet found The Golden City of Orazca (and you don’t control a permanent or resolving spell with ascend), you don’t get the city’s blessing. For example, if you control ten permanents, lose control of one, then planeswalk to The Golden City of Orazca, you won’t have the city’s blessing.",
+    "If your tenth permanent enters the battlefield and then a permanent leaves the battlefield immediately afterwards (most likely due to the “legend rule” or due to being a creature with 0 toughness), you get the city’s blessing before it leaves the battlefield.",
+    "Ascend on a plane or permanent isn’t a triggered ability and doesn’t use the stack. Players can respond to a spell that will give you your tenth permanent, but they can’t respond to getting the city’s blessing once you control that tenth permanent. This means that if your tenth permanent is a land you play, players can’t respond before you get the city’s blessing."
+   ]
+  }
+ ]
+}

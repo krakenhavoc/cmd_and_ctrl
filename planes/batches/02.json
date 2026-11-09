@@ -1,0 +1,252 @@
+{
+ "batch": 2,
+ "cards": [
+  {
+   "name": "New New York",
+   "oracle_id": "4f8cf1ab-1359-44af-a989-dd254fa6c7b5",
+   "type_line": "Plane — New Earth",
+   "oracle_text": "At the beginning of combat on your turn, until end of turn, noncreature artifacts you control become 3/3 Vehicles in addition to their other types and gain flying, haste, and crew 1.\nWhenever chaos ensues, create a Treasure token and a 2/2 white Alien creature token.",
+   "set": "who",
+   "collector_number": "592",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    },
+    {
+     "name": "Alien",
+     "type_line": "Token Creature — Alien",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "North Pole Research Base",
+   "oracle_id": "a2dfbb3e-3d5f-4b6a-b910-4c7b0c9dc17a",
+   "type_line": "Plane — Earth",
+   "oracle_text": "At the beginning of your upkeep, target opponent draws a card and creates a Treasure token.\nWhenever chaos ensues, create a 2/2 white Alien creature token. When you do, tap target nontoken creature an opponent controls. Put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "set": "who",
+   "collector_number": "593",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    },
+    {
+     "name": "Alien",
+     "type_line": "Token Creature — Alien",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Ood Sphere",
+   "oracle_id": "8bf638e5-8325-48ca-9039-37a19761ef56",
+   "type_line": "Plane — Horsehead Nebula",
+   "oracle_text": "Song of the Ood — Noncreature spells have convoke. (A player's creatures can help cast those spells. Each creature they tap while casting a noncreature spell pays for {1} or one mana of that creature's color.)\nRed-Eye — Whenever chaos ensues, for each opponent, goad up to one target creature that opponent controls. Until your next turn, those creatures can't become tapped unless they're being declared as attackers.",
+   "set": "who",
+   "collector_number": "594",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "The creatures goaded by the Red-Eye ability can't be tapped by effects or tapped to pay any costs of abilities."
+   ]
+  },
+  {
+   "name": "Pompeii",
+   "oracle_id": "5dc1deab-ce04-45c0-a4ff-c526a948e500",
+   "type_line": "Plane — Earth",
+   "oracle_text": "When you planeswalk to Pompeii and at the beginning of your upkeep, put an eruption counter on it.\nWhenever you roll a blank on the planar die, scry 2. Then put an eruption counter on Pompeii.\nWhen chaos ensues, Pompeii deals damage to each creature and each player equal to the number of eruption counters on Pompeii. Each player sacrifices a land of their choice. Then planeswalk.",
+   "set": "who",
+   "collector_number": "595",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "Prime Minister's Cabinet Room",
+   "oracle_id": "b3acbacd-7e97-4bcf-9281-fffa5ea3e70b",
+   "type_line": "Plane — Earth",
+   "oracle_text": "At the beginning of combat on your turn, up to one target creature you control becomes a copy of target creature an opponent controls.\nWill of the council — Whenever chaos ensues, starting with you, each player votes for a creature you don't control. Exile each creature with the most votes or tied for most votes.",
+   "set": "who",
+   "collector_number": "596",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "The target creature you control copies the printed values of the other creature plus any copy effects that have been applied to it. It won't copy any other effects that have changed that creature's power, toughness, color, and so on. It also won't copy any counters on the creature, but it will retain any counters it already had on it.",
+    "If it becomes a copy of a token creature, it copies the original characteristics of that token as defined by the effect that created the token. It won't become a token creature.",
+    "When a creature becomes a copy of another creature, it's neither entering nor leaving the battlefield. Any enters-the-battlefield or leaves-the-battlefield abilities won't trigger.",
+    "If the creature an opponent controls is an illegal target as the ability resolves, nothing happens and the creature you control remains as it was."
+   ]
+  },
+  {
+   "name": "Singing Towers of Darillium",
+   "oracle_id": "99fb2128-61fc-45a6-a3f8-b116c3eb2c3d",
+   "type_line": "Plane — Darillium",
+   "oracle_text": "Each nonland card in your hand without foretell has foretell. Its foretell cost is equal to its mana cost reduced by {2}. (During your turn, you may pay {2} and exile it from your hand face down. Cast it on a later turn for its foretell cost.)\nWhenever chaos ensues, you may cast a foretold card you own from exile without paying its mana cost this turn.",
+   "set": "who",
+   "collector_number": "598",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "Cards that are foretold by virtue of Singing Towers of Darillium's ability won't continue to have the foretell ability once they leave your hand, but you can still cast them from exile on a later turn for the foretell costs they were given by Singing Towers of Darillium.",
+    "The reduction of the foretell cost applies only to generic mana in the foretell cost. It can't reduce requirements of specific colors of mana. For example, if you foretell a card in your hand with mana cost {1}{G}{G}, its foretell cost will be {G}{G}.",
+    "Because exiling a card with foretell from your hand is a special action, you can do so any time you have priority during your turn, including in response to spells and abilities. Once you announce you're taking the action, no other player can respond by trying to remove the card from your hand.",
+    "Casting a foretold card from exile follows the timing rules for that card. If you foretell an instant card, you can cast it as soon as the next player's turn. In most cases, if you foretell a card that isn't an instant (or doesn't have flash), you'll have to wait until your next turn to cast it.",
+    "If you're casting a foretold card from exile for its foretell cost, you can't choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, those must be paid to cast the spell."
+   ]
+  },
+  {
+   "name": "Spectrox Mines",
+   "oracle_id": "4f387b4c-3e4a-419d-9dbe-95c5f797747e",
+   "type_line": "Plane — Androzani Minor",
+   "oracle_text": "When you planeswalk to Spectrox Mines and at the beginning of your upkeep, you lose 3 life and create a Treasure token.\nWhenever chaos ensues, create a Food token and a 2/2 black Human Rogue creature token.",
+   "set": "who",
+   "collector_number": "599",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    },
+    {
+     "name": "Human Rogue",
+     "type_line": "Token Creature — Human Rogue",
+     "component": "token"
+    },
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Stormcage Containment Facility",
+   "oracle_id": "204ee01c-74ca-4c4c-92db-aebeebb89406",
+   "type_line": "Plane — Unknown Planet",
+   "oracle_text": "Each creature card in your graveyard has escape. The escape cost is equal to the card's mana cost plus exile three other cards from your graveyard. (You may cast cards from your graveyard for their escape cost.)\nWhenever chaos ensues, detain target creature an opponent controls. (Until your next turn, that creature can't attack or block and its activated abilities can't be activated.)",
+   "set": "who",
+   "collector_number": "600",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "If a card has no mana cost, its escape cost is an unpayable cost, so you can't cast it for that cost.",
+    "If you're casting a modal double-faced card with escape, you choose how you wish to cast it, then pay the appropriate cost (for the face you're casting) plus exiling three other cards.",
+    "If a spell you're casting with escape has an additional cost of discarding cards or sacrificing permanents, you may exile cards discarded or sacrificed this way to pay that part of its escape cost.",
+    "Escape's permission doesn't change when you may cast the spell from your graveyard.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying (such as an escape cost), add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was and no matter whether an alternative cost was paid.",
+    "After an escaped spell resolves, it returns to its owner's graveyard if it's not a permanent spell. If it is a permanent spell, it enters the battlefield and will return to its owner's graveyard if it dies later. Perhaps it will escape again.",
+    "If a card has multiple abilities giving you permission to cast it, such as two escape abilities or an escape ability and a flashback ability, you choose which one to apply. The others have no effect.",
+    "If you cast a spell with its escape permission, you can't choose to apply any other alternative costs or to cast it without paying its mana cost. If it has any additional costs, you must pay those.",
+    "If a card with escape is put into your graveyard during your turn, you'll be able to cast it right away if it's legal to do so, before an opponent can take any actions.",
+    "Once you begin casting a spell with escape, it immediately moves to the stack. Players can't take any other actions until you're done casting the spell.",
+    "Activated abilities include a colon and are written in the form \"[cost]: [effect].\" No one can activate any activated abilities, including mana abilities, of a detained permanent.",
+    "The static abilities of a detained permanent still apply. The triggered abilities of a detained permanent can still trigger.",
+    "If a creature is already attacking or blocking when it's detained, it won't be removed from combat. It will continue to attack or block.",
+    "If a permanent's activated ability is on the stack when that permanent is detained, the ability will be unaffected.",
+    "When a player leaves a multiplayer game, any continuous effects with durations that last until that player's next turn or until a specific point in that turn will last until that turn would have begun. They neither expire immediately nor last indefinitely."
+   ]
+  },
+  {
+   "name": "TARDIS Bay",
+   "oracle_id": "424b2702-e7c6-4056-8466-a43782d7df2b",
+   "type_line": "Plane — Gallifrey",
+   "oracle_text": "The first spell you cast during each of your turns with mana value 2 or greater has cascade. (When you cast that spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)\nWhen chaos ensues, gain control of target artifact. Then planeswalk.",
+   "set": "who",
+   "collector_number": "601",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "If a spell has multiple instances of cascade, each one triggers separately.",
+    "A spell's mana value is determined only by its mana cost. Ignore any alternative costs, additional costs, cost increases, or cost reductions.",
+    "Cascade triggers when you cast the spell, meaning that it resolves before that spell. If you end up casting the exiled card, it will go on the stack above the spell with cascade.",
+    "When the cascade ability resolves, you must exile cards. The only optional part of the ability is whether or not you cast the last card exiled.",
+    "If a spell with cascade is countered, the cascade ability will still resolve normally.",
+    "You exile the cards face up. All players will be able to see them.",
+    "If you cast a card \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those to cast the card.",
+    "If the card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Due to a 2021 rules change to cascade, not only do you stop exiling cards if you exile a nonland card with lesser mana value than the spell with cascade, but the resulting spell you cast must also have lesser mana value. Previously, in cases where a card's mana value differed from the resulting spell, such as with some modal double-faced cards or cards with an Adventure, you could cast a spell with a higher mana value than the exiled card."
+   ]
+  },
+  {
+   "name": "Temple of Atropos",
+   "oracle_id": "9c925057-ac3d-461e-b505-f80e2fd38c8c",
+   "type_line": "Plane — Time",
+   "oracle_text": "At the beginning of each of your postcombat main phases, there is an additional beginning phase after this phase. (The beginning phase includes the untap, upkeep, and draw steps.)\nWhen chaos ensues, reverse the game's turn order. Then planeswalk. (For example, if play had proceeded clockwise around the table, it now goes counterclockwise.)",
+   "set": "who",
+   "collector_number": "602",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "The additional beginning phase will be a lot like your normal beginning phase. During the untap step, permanents will phase in or out as appropriate and you'll untap your tapped permanents. Anything that triggers \"at the beginning of your upkeep\" or similar will trigger during the upkeep step, and you'll eventually draw a card for your draw step.",
+    "The additional beginning phase all happens during the current turn. Any effects that last \"until your next turn\" or similar won't expire just because you'll go through an additional beginning phase.",
+    "After the additional beginning phase, the game proceeds to the ending phase (unless something has added even more phases; see below).",
+    "If multiple phases are added to the same point in your turn, the most recently created phase happens first. For example, say the current plane is Temple of Atropos and its ability triggers during your postcombat main phase. Later during that same main phase, another effect gives you an additional combat phase after this main phase. The additional combat will happen first, followed by the additional beginning phase.",
+    "Even if you don't attack with any creatures during combat, you'll still get a postcombat main phase and Temple of Atropos's ability will still trigger.",
+    "If you somehow have more than two main phases in a turn, each main phase other than the first one is a postcombat main phase, and Temple of Atropos's ability triggers at the beginning of each of them.",
+    "The effect of the chaos ability reverses the turn order for players established at the beginning of the game. While the order is reversed, anything that cares about this order (such as determining in what order choices are made) will use the new order.",
+    "If the game's turn order is reversed again, it will return to the default order used at the beginning of the game.",
+    "If the turn order is reversed during an extra turn, the next non-extra turn will be taken by the next player in turn order from the last player who took a non-extra turn. The order of any pending extra turns isn't affected.",
+    "If the turn order is reversed during a two-player game, or during a multiplayer game that only has two players left, it has no noticeable effect on the game.",
+    "Reversing the turn order has no effect on the order of steps and phases in each turn. Those steps and phases still happen normally (along with the additional beginning phase)."
+   ]
+  },
+  {
+   "name": "The Cave of Skulls",
+   "oracle_id": "6ad7027a-5f13-4833-bb88-879ba8830720",
+   "type_line": "Plane — Earth",
+   "oracle_text": "Each creature card in your graveyard has scavenge. The scavenge cost is equal to its mana cost. (Exile a creature card from your graveyard and pay its mana cost: Put a number of +1/+1 counters equal to that card's power on target creature. Scavenge only as a sorcery.)\nWhenever chaos ensues, create two 1/1 white Warrior creature tokens.",
+   "set": "who",
+   "collector_number": "573",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Warrior",
+     "type_line": "Token Creature — Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "The Cheetah Planet",
+   "oracle_id": "0c4679a1-f92f-44a9-9a44-066a137c8cd7",
+   "type_line": "Plane — Outside Mutter's Spiral",
+   "oracle_text": "When you planeswalk to The Cheetah Planet and at the beginning of your upkeep, put two +1/+1 counters on target non-Cat creature you control. It becomes a Cat in addition to its other types.\nWhenever chaos ensues, all Cats gain provoke until end of turn. (Whenever a Cat attacks, its controller may have target creature defending player controls untap and block it if able.)",
+   "set": "who",
+   "collector_number": "574",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "The Dining Car",
+   "oracle_id": "7099883d-0a4b-47ae-bff8-a96efa7a3a9a",
+   "type_line": "Plane — Spacecraft",
+   "oracle_text": "When you planeswalk to The Dining Car, each player creates a Food token.\nSixty-Six Seconds — At the beginning of your upkeep, sacrifice a creature with the least toughness among creatures you control. Then investigate.\nWhenever chaos ensues, activated abilities of artifact tokens you control cost {2} less to activate this turn.",
+   "set": "who",
+   "collector_number": "578",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "The Doctor's Childhood Barn",
+   "oracle_id": "2a21b90a-7ea7-4090-82ec-359ba8ba1aad",
+   "type_line": "Plane — Gallifrey",
+   "oracle_text": "Creatures enter tapped.\nWhenever chaos ensues, for each opponent, choose up to one target nonland permanent that opponent controls. Untap those permanents. They phase out. They can't phase in for as long as The Doctor's Childhood Barn remains face up. When a player planeswalks, those permanents phase in.",
+   "set": "who",
+   "collector_number": "579",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "While a permanent is phased out, it's treated as though it doesn't exist. It can't be the target of spells or abilities, its static abilities have no effect on the game, its triggered abilities can't trigger, it can't attack or block, and so on.",
+    "Phasing out doesn't cause any \"leaves the battlefield\" abilities to trigger. Similarly, phasing in won't cause any \"enters the battlefield\" abilities to trigger.",
+    "Any one-shot effects that are waiting \"until [this] leaves the battlefield,\" won't happen when a permanent phases out.",
+    "Any continuous effects with a \"for as long as\" duration ignore phased-out objects. Any such effects will expire if their conditions are no longer met after ignoring the phased-out objects.",
+    "Each Aura and Equipment attached to a permanent that's phasing out also phases out. They will phase in with that permanent and still be attached to it. Similarly, permanents that phase out with counters phase in with those counters.",
+    "Choices made for permanents as they entered the battlefield are remembered when they phase in.",
+    "A permanent phased out by The Doctor's Childhood Barn phases in during its controller's untap step as normal only if The Doctor's Childhood Barn is no longer face up. (This situation may occur in rare instances if the delayed triggered ability that would normally cause those permanents to phase in immediately is countered.)"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,202 @@
+{
+ "batch": 1,
+ "cards": [
+  {
+   "name": "Amy's Home",
+   "oracle_id": "5b200e41-126d-4017-8e01-f50582b31af0",
+   "type_line": "Plane — Earth",
+   "oracle_text": "When you planeswalk to Amy's Home and at the beginning of your upkeep, you may exile a nonland card from your hand with a number of time counters on it equal to its mana value. If it doesn't have suspend, it gains suspend.\nWhenever chaos ensues, time travel. (For each suspended card you own and each permanent you control with a time counter on it, you may add or remove a time counter.)",
+   "set": "who",
+   "collector_number": "566",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "Antarctic Research Base",
+   "oracle_id": "d65ff607-1ff5-42bd-8db2-f082cc2f0b5e",
+   "type_line": "Plane — Earth",
+   "oracle_text": "When you planeswalk to Antarctic Research Base and at the beginning of your upkeep, investigate.\nWhenever chaos ensues, put X +1/+1 counters on target creature you control, where X is the number of artifacts you control. It becomes a Plant in addition to its other types.",
+   "set": "who",
+   "collector_number": "567",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you control no artifacts for the chaos ability, you will still choose a target creature you control, and it will still become a Plant in addition to its other types."
+   ]
+  },
+  {
+   "name": "Aplan Mortarium",
+   "oracle_id": "7c9d6193-1d50-4035-8c85-98c384f461be",
+   "type_line": "Plane — Alfava Metraxis",
+   "oracle_text": "Byzantium Radiation — At the beginning of your upkeep, put an exposure counter on Aplan Mortarium. Then you lose life equal to the number of exposure counters on it.\nWhenever chaos ensues, create two 2/2 black Alien Angel artifact creature tokens with first strike, vigilance, and \"Whenever an opponent casts a creature spell, this token isn't a creature until end of turn.\"",
+   "set": "who",
+   "collector_number": "568",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Alien Angel",
+     "type_line": "Token Artifact Creature — Alien Angel",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "As the triggered ability of the Alien Angel token resolves, it continues to be an artifact but will stop being both an Alien and an Angel until it becomes a creature again.",
+    "If an opponent casts a creature spell with flash while the token is attacking or blocking, the token is removed from combat because it stops being a creature. However, any creatures that it was blocking are still considered blocked."
+   ]
+  },
+  {
+   "name": "Bad Wolf Bay",
+   "oracle_id": "706720f6-bb04-4a7b-8471-0f3d662d6eeb",
+   "type_line": "Plane — Earth",
+   "oracle_text": "At the beginning of combat on your turn, exile up to one target creature. Return it to the battlefield under its owner's control at the beginning of the next end step.\nWhen chaos ensues, cards can't enter from exile this turn. Then planeswalk.",
+   "set": "who",
+   "collector_number": "569",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "You planeswalk immediately as the chaos ability resolves."
+   ]
+  },
+  {
+   "name": "Besieged Viking Village",
+   "oracle_id": "75206757-dae7-4a1e-a391-862699a100d7",
+   "type_line": "Plane — Earth",
+   "oracle_text": "All creatures have \"Boast — {1}: Put a +1/+1 counter on this creature.\" (Activate only if that creature attacked this turn and only once each turn.)\nWhenever chaos ensues, put an indestructible counter on target creature you control that attacked this turn.",
+   "set": "who",
+   "collector_number": "570",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "Bowie Base One",
+   "oracle_id": "7076bc0c-9cc7-4cd7-aba5-f2f236aab0f7",
+   "type_line": "Plane — Mars",
+   "oracle_text": "At the beginning of your end step, goad target creature controlled by the player to your left. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)\nWhenever chaos ensues, target creature gains islandwalk until end of turn. (It can't be blocked as long as defending player controls an Island.)",
+   "set": "who",
+   "collector_number": "571",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "City of the Daleks",
+   "oracle_id": "a2ef6b79-faeb-4183-a510-f10b14dff417",
+   "type_line": "Plane — Skaro",
+   "oracle_text": "Whenever you attack, target opponent loses X life, where X is the number of artifacts you control.\nWhenever chaos ensues, for each opponent, you create a 3/3 black Dalek artifact creature token with menace that attacks that opponent this turn if able. Those tokens gain haste. Sacrifice them at the beginning of the next end step.",
+   "set": "who",
+   "collector_number": "575",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Dalek",
+     "type_line": "Token Artifact Creature — Dalek",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Coal Hill School",
+   "oracle_id": "51a53042-6baa-442a-84ec-2f16fdc12087",
+   "type_line": "Plane — Earth",
+   "oracle_text": "Whenever a player casts a historic spell, that player draws a card. (Artifacts, legendaries, and Sagas are historic.)\nWhenever chaos ensues, return target historic card from your graveyard to your hand.",
+   "set": "who",
+   "collector_number": "576",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "Dalek Intensive Care",
+   "oracle_id": "2edd018b-6d82-4ff1-b9d0-5da9b628af3f",
+   "type_line": "Plane — The Dalek Asylum",
+   "oracle_text": "When you planeswalk to Dalek Intensive Care and at the beginning of your upkeep, exile a non-Dalek creature you control. If you do, create a 3/3 black Dalek artifact creature token with menace. It gains haste until end of turn.\nWhenever chaos ensues, target Dalek you control deals damage equal to its power to target creature you don't control.",
+   "set": "who",
+   "collector_number": "577",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Dalek",
+     "type_line": "Token Artifact Creature — Dalek",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Gardens of Tranquil Repose",
+   "oracle_id": "d45692d5-19e8-45ec-92bf-b79cb3919acd",
+   "type_line": "Plane — Necros",
+   "oracle_text": "Suspended Animation — Whenever a creature dies, exile it. Its controller scries 1.\nWhenever chaos ensues, create X 3/3 black Dalek artifact creature tokens with menace, where X is one plus the number of cards exiled with Gardens of Tranquil Repose.",
+   "set": "who",
+   "collector_number": "583",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Dalek",
+     "type_line": "Token Artifact Creature — Dalek",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Hotel of Fears",
+   "oracle_id": "79d3e356-9eb9-49bb-b4ba-f4f71876869e",
+   "type_line": "Plane — Spacecraft",
+   "oracle_text": "At the beginning of your upkeep, exile the top card of your library. You lose life equal to its mana value. You may play that card this turn.\nPraise Him — Whenever chaos ensues, choose a color. Put X +1/+1 counters on target creature you control, where X is your devotion to that color. Then sacrifice another creature. (Your devotion to a color is the number of mana symbols of that color in the mana costs of permanents you control.)",
+   "set": "who",
+   "collector_number": "584",
+   "released_at": "2023-10-13"
+  },
+  {
+   "name": "Kerblam! Warehouse",
+   "oracle_id": "71bff56b-733c-4d74-9e0c-85371a8b3787",
+   "type_line": "Plane — Kandoka",
+   "oracle_text": "Whenever one or more creatures you control deal combat damage to a player, create a Treasure token.\nWhenever chaos ensues, until your next turn, noncreature artifacts you control gain \"{T}, Sacrifice this artifact: Flip a coin. If you win the flip, this artifact deals 3 damage to any target.\"",
+   "set": "who",
+   "collector_number": "586",
+   "released_at": "2023-10-13",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You choose a target for the activated ability before flipping a coin. Opponents will know what or who you are targeting before you flip, and can respond with spells and abilities at that point. They can't respond once the ability has begun to resolve and they see what the result of the coin flip is."
+   ]
+  },
+  {
+   "name": "Lake Silencio",
+   "oracle_id": "4dffc1cb-e9bd-4410-9b08-184eabd2c4da",
+   "type_line": "Plane — Earth",
+   "oracle_text": "Still Point in Time — All spells have split second. (As long as a spell with split second is on the stack, players can't cast spells or activate abilities that aren't mana abilities.)\nWhenever chaos ensues, Lake Silencio deals 6 damage to target creature an opponent controls. If a creature dealt damage this way would die this turn, exile it instead.",
+   "set": "who",
+   "collector_number": "587",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "Players still get priority while a spell with split second is on the stack; their options are just limited to mana abilities and certain special actions.",
+    "Players may turn face-down creatures face up while a spell with split second is on the stack.",
+    "Split second doesn't stop triggered abilities from triggering, such as that of Chalice of the Void. If one does, its controller puts it on the stack and chooses targets for it, if any. Those abilities will resolve as normal.",
+    "Casting a spell with split second won't affect spells and abilities that are already on the stack.",
+    "If the resolution of a triggered ability involves casting a spell, that spell can't be cast if a spell with split second is on the stack.",
+    "After a spell with split second resolves (or otherwise leaves the stack), players may again cast spells and activate abilities before the next object on the stack resolves.",
+    "If a triggered ability causes the planar controller to planeswalk away from Lake Silencio, its ability no longer gives spells split second and players can respond to spells and abilities as normal."
+   ]
+  },
+  {
+   "name": "Mondassian Colony Ship",
+   "oracle_id": "9cc34a5b-550d-4d3e-b3e5-4d4630649882",
+   "type_line": "Plane — Spacecraft",
+   "oracle_text": "Whenever a creature attacks, it gets +1/+1 until end of turn for each other creature its controller controls that shares a creature type with it.\nWhenever chaos ensues, turn target creature face down. It becomes a 2/2 Cyberman artifact creature.",
+   "set": "who",
+   "collector_number": "590",
+   "released_at": "2023-10-13",
+   "rulings": [
+    "Each creature turned face down this way or put onto the battlefield this way is a 2/2 Cyberman artifact creature with no name and no color.",
+    "If, for any reason, the face-down creature is turned face up, the effect making it a Cyberman ends. It will be whatever is printed on the card.",
+    "The player who controls a face-down permanent may look at it at any time. Notably, if the cards were put on the battlefield face down from another player's library, the player that owns them does not get to look at those cards.",
+    "Double-faced permanents that are already on the battlefield can't be turned face down this way. However, a double-faced card can be put onto the battlefield face down from another zone this way.",
+    "If the face-down card has a morph ability, its controller may turn it face up by paying the associated morph cost."
+   ]
+  }
+ ]
+}

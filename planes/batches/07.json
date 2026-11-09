@@ -1,0 +1,238 @@
+{
+ "batch": 7,
+ "cards": [
+  {
+   "name": "Aretopolis",
+   "oracle_id": "d6ab4159-e04e-4991-8a9b-9da302c98e9d",
+   "type_line": "Plane — Kephalai",
+   "oracle_text": "When you planeswalk to Aretopolis and at the beginning of your upkeep, put a scroll counter on Aretopolis, then you gain life equal to the number of scroll counters on it.\nWhen Aretopolis has ten or more scroll counters on it, planeswalk.\nWhenever chaos ensues, put a scroll counter on Aretopolis, then draw cards equal to the number of scroll counters on it.",
+   "set": "opca",
+   "collector_number": "13",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "For both abilities that count the number of scroll counters on Aretopolis, count all scroll counters on it, not just ones you put there."
+   ]
+  },
+  {
+   "name": "Astral Arena",
+   "oracle_id": "805f9dc2-e172-481d-bae7-9a136a3d1e49",
+   "type_line": "Plane — Kolbahan",
+   "oracle_text": "No more than one creature can attack each combat.\nNo more than one creature can block each combat.\nWhenever chaos ensues, Astral Arena deals 2 damage to each creature.",
+   "set": "opca",
+   "collector_number": "14",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Astral Arena’s abilities stop more than one creature from being declared as an attacker or as a blocker each combat. However, it doesn’t affect creatures that are put onto the battlefield attacking or blocking.",
+    "If a turn has multiple combat phases, either a different creature or the same one can attack or block in each of them."
+   ]
+  },
+  {
+   "name": "Bant",
+   "oracle_id": "82e67c57-6d7a-44cc-ba63-77ce887ab075",
+   "type_line": "Plane — Alara",
+   "oracle_text": "All creatures have exalted. (Whenever a creature attacks alone, it gets +1/+1 until end of turn for each instance of exalted among permanents its controller controls.)\nWhenever chaos ensues, put a divinity counter on target green, white, or blue creature. That creature has indestructible for as long as it has a divinity counter on it.",
+   "set": "opca",
+   "collector_number": "15",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A creature with a divinity counter put on it due to the chaos ability retains indestructible even after Bant stops being the face-up plane card.",
+    "If all divinity counters on a creature are moved to a different creature, the indestructible ability doesn't move along with them. The first creature no longer has indestructible because it no longer has a divinity counter on it. The second creature doesn't have indestructible because the chaos ability didn't target it.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If you declare exactly one creature as an attacker, each exalted ability on each permanent you control (including, perhaps, the attacking creature itself) will trigger. Note that if a creature has multiple instances of exalted, each one triggers separately. The bonuses are given to the attacking creature, not to the permanent with exalted. Ultimately, the attacking creature will wind up with +1/+1 for each of your exalted abilities.",
+    "If you attack with multiple creatures, but then all but one are removed from combat, your exalted abilities won't trigger.",
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "Some effects put creatures onto the battlefield attacking. Since those creatures were never declared as attackers, they're ignored by exalted abilities. They won't cause exalted abilities to trigger. If any exalted abilities have already triggered (because exactly one creature was declared as an attacker), those abilities will resolve as normal even though there may now be multiple attackers.",
+    "Exalted bonuses last until the turn ends. If an effect creates an additional combat phase during your turn, a creature that attacked alone during the first combat phase will still have its exalted bonuses in that new phase. If a creature attacks alone during the second combat phase, all your exalted abilities will trigger again.",
+    "In a Two-Headed Giant game, a creature \"attacks alone\" if it's the only creature declared as an attacker by your entire team. If you control that attacking creature, your exalted abilities will trigger but your teammate's exalted abilities won't.",
+    "Exalted abilities will resolve before blockers are declared.",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had."
+   ]
+  },
+  {
+   "name": "Celestine Reef",
+   "oracle_id": "2979597d-c3cc-4585-a9b7-7fa15641b030",
+   "type_line": "Plane — Luvion",
+   "oracle_text": "Creatures without flying or islandwalk can't attack.\nWhenever chaos ensues, until a player planeswalks, you can't lose the game and your opponents can't win the game.",
+   "set": "opca",
+   "collector_number": "17",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "Cliffside Market",
+   "oracle_id": "b21a71d7-f236-43e2-b576-0b5c9280f0cc",
+   "type_line": "Plane — Mercadia",
+   "oracle_text": "When you planeswalk to Cliffside Market and at the beginning of your upkeep, you may exchange life totals with target player.\nWhenever chaos ensues, exchange control of two target permanents that share a card type.",
+   "set": "opca",
+   "collector_number": "18",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "For two players to exchange life totals, what actually happens is that each player gains or loses the amount of life necessary to equal the other player's previous life total. For example, if Player A has 5 life and Player B has 3 life before the exchange, Player A will lose 2 life and Player B will gain 2 life. Other cards that interact with life gain or life loss will interact with this effect accordingly.",
+    "Neither permanent you target with the chaos ability needs to be one you control.",
+    "The control-change effect has no duration. For each permanent, it will last until the game ends or the permanent leaves the battlefield. It will override all previous control-change effects for those permanents, and may be overridden by a later control-change effect.",
+    "Both permanents targeted by the chaos ability may be controlled by the same player. If they are, the effect nothing.",
+    "If either permanent targeted by the chaos ability is an illegal target by the time the ability resolves, the exchange doesn't happen. If both targets become illegal, the ability doesn't resolve."
+   ]
+  },
+  {
+   "name": "Edge of Malacol",
+   "oracle_id": "cb467901-a68d-4922-8ceb-867b582c8fe7",
+   "type_line": "Plane — Belenon",
+   "oracle_text": "If a creature you control would untap during your untap step, put two +1/+1 counters on it instead.\nWhenever chaos ensues, untap each creature you control.",
+   "set": "opca",
+   "collector_number": "20",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "While Edge of Malacol is face up, the normal turn-based action of untapping your creatures is replaced. Those creatures won’t untap. Other tapped permanents you control will untap as normal.",
+    "Other spells and abilities can untap creatures as normal. In that case, they’ll just untap. You won’t put any +1/+1 counters on them.",
+    "If you untap a creature you control during another player’s untap step (perhaps due to Seedborn Muse’s ability), that creature will untap normally. You won’t put any +1/+1 counters on it."
+   ]
+  },
+  {
+   "name": "Eloren Wilds",
+   "oracle_id": "23fe1c21-c396-4ebf-a8b0-22d697952b34",
+   "type_line": "Plane — Shandalar",
+   "oracle_text": "Whenever a player taps a permanent for mana, that player adds one mana of any type that permanent produced.\nWhenever chaos ensues, target player can't cast spells until a player planeswalks.",
+   "set": "opca",
+   "collector_number": "21",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "You're \"tapping a permanent for mana\" only if you're activating an activated ability of that permanent that includes the {T} symbol in its cost and produces mana as part of its effect.",
+    "Eloren Wilds's first ability affects any permanent players tap for mana, not just lands they tap for mana.",
+    "The additional mana is produced by Eloren Wilds, not the permanent that was tapped for mana.",
+    "The chaos ability prevents the affected player from casting permanent spells (artifacts, creatures, enchantments, and planeswalkers), not just instant and sorcery spells. It doesn't stop the player from playing lands or activating abilities (such as cycling or unearth)."
+   ]
+  },
+  {
+   "name": "Feeding Grounds",
+   "oracle_id": "b1eff630-b56c-48a5-ac21-836a60157b35",
+   "type_line": "Plane — Muraganda",
+   "oracle_text": "Red spells cost {1} less to cast.\nGreen spells cost {1} less to cast.\nWhenever chaos ensues, put X +1/+1 counters on target creature, where X is that creature's mana value.",
+   "set": "opca",
+   "collector_number": "23",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Spells that are both red and green cost {2} less to cast."
+   ]
+  },
+  {
+   "name": "Fields of Summer",
+   "oracle_id": "81a0d96a-7ac8-4947-8779-2102c9b33d38",
+   "type_line": "Plane — Moag",
+   "oracle_text": "Whenever a player casts a spell, that player may gain 2 life.\nWhenever chaos ensues, you may gain 10 life.",
+   "set": "opca",
+   "collector_number": "24",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Furnace Layer",
+   "oracle_id": "1799d361-85e7-4c04-aa04-6f83e6499573",
+   "type_line": "Plane — New Phyrexia",
+   "oracle_text": "When you planeswalk to Furnace Layer and at the beginning of your upkeep, select target player at random. That player discards a card. If that player discards a land card this way, they lose 3 life.\nWhenever chaos ensues, you may destroy target nonland permanent.",
+   "set": "opca",
+   "collector_number": "26",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "If the target player has no cards in their hand when the ability resolves, nothing happens. That player won’t lose any life.",
+    "You can be selected as the target of the first ability, not just your opponents."
+   ]
+  },
+  {
+   "name": "Glen Elendra",
+   "oracle_id": "662e5245-73e4-49ba-aece-c73f1bea7b6a",
+   "type_line": "Plane — Lorwyn",
+   "oracle_text": "At end of combat, you may exchange control of target creature you control that dealt combat damage to a player this combat and target creature that player controls.\nWhenever chaos ensues, gain control of target creature you own.",
+   "set": "opca",
+   "collector_number": "28",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "If either target is no longer on the battlefield or is otherwise an illegal target when the chaos ability resolves, the exchange won’t happen. No creatures will change controllers. If both targets are illegal, the ability won’t resolve."
+   ]
+  },
+  {
+   "name": "Goldmeadow",
+   "oracle_id": "f12400e5-8288-48e1-b3b7-0cc4f8d9ca67",
+   "type_line": "Plane — Lorwyn",
+   "oracle_text": "Whenever a land enters, that land's controller creates three 0/1 white Goat creature tokens.\nWhenever chaos ensues, create a 0/1 white Goat creature token.",
+   "set": "opca",
+   "collector_number": "30",
+   "released_at": "2016-11-25",
+   "related": [
+    {
+     "name": "Goat",
+     "type_line": "Token Creature — Goat",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Grand Ossuary",
+   "oracle_id": "fb9651f5-1aec-4812-a044-3c1b60e6651f",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "Whenever a creature dies, its controller distributes a number of +1/+1 counters equal to its power among any number of target creatures they control.\nWhenever chaos ensues, each player exiles all creatures they control and creates X 1/1 green Saproling creature tokens, where X is the total power of the creatures they exiled this way. Then planeswalk.",
+   "set": "opca",
+   "collector_number": "31",
+   "released_at": "2016-11-25",
+   "related": [
+    {
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You choose the number of target creatures and declare how you are distributing the counters as you put the first ability on the stack. Each target must receive at least one +1/+1 counter.",
+    "Any target that is illegal when the first ability resolves won’t get any +1/+1 counters. Those counters are essentially lost; you won’t get to put them on another creature.",
+    "For the chaos ability, the total power of the creatures a player exiled is the total power of those creatures as they last existed on the battlefield, including any bonuses from +1/+1 counters, Auras, Equipment, and other applicable effects."
+   ]
+  },
+  {
+   "name": "Grixis",
+   "oracle_id": "1aaa60e4-47a8-4255-8a09-5f00922ccf6d",
+   "type_line": "Plane — Alara",
+   "oracle_text": "Blue, black, and/or red creature cards in your graveyard have unearth. The unearth cost is equal to the card's mana cost. (Pay the card's mana cost: Return it to the battlefield. The creature gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield. Unearth only as a sorcery.)\nWhenever chaos ensues, put target creature card from a graveyard onto the battlefield under your control.",
+   "set": "opca",
+   "collector_number": "33",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Despite the appearance of the reminder text, the unearth abilities that Grixis grants are activated abilities of each individual blue, black, and/or red creature card in a graveyard. They're not activated abilities of Grixis.",
+    "A card's mana cost includes its color.",
+    "Grixis may cause a creature card in a graveyard to have multiple unearth abilities. Its owner may activate any one of those abilities.",
+    "If you activate a creature card's unearth ability but that card is removed from your graveyard before the ability resolves, that unearth ability will resolve and do nothing.",
+    "Activating a creature card's unearth ability isn't the same as casting the creature card. The unearth ability is put on the stack, but the creature card is not. Spells and abilities that interact with activated abilities (such as Stifle) will interact with unearth, but spells and abilities that interact with spells (such as Essence Scatter) will not.",
+    "At the beginning of the end step, a creature returned to the battlefield with unearth is exiled. This is a delayed triggered ability, and it can be countered by effects such as Stifle or Voidslime that counter triggered abilities. If the ability is countered, the creature will stay on the battlefield and the ability won't trigger again. However, the replacement effect will still exile the creature if it would eventually leave the battlefield.",
+    "Unearth grants haste to the creature that's returned to the battlefield. However, neither of the exile abilities is granted to that creature. If that creature loses all its abilities, it will still be exiled at the beginning of the end step, and if it would leave the battlefield, it is still exiled instead.",
+    "If a creature returned to the battlefield with unearth would leave the battlefield for any reason, it's exiled instead — unless the spell or ability that's causing the creature to leave the battlefield is actually trying to exile it! In that case, it succeeds at exiling it. If it later returns the creature card to the battlefield (as Oblivion Ring or Flickerwisp might, for example), the creature card will return to the battlefield as a new permanent with no relation to its previous existence. The unearth effect will no longer apply to it.",
+    "Unlike the unearth ability, the chaos ability returns a creature card from a graveyard to the battlefield indefinitely."
+   ]
+  }
+ ]
+}

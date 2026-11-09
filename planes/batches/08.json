@@ -1,0 +1,220 @@
+{
+ "batch": 8,
+ "cards": [
+  {
+   "name": "Horizon Boughs",
+   "oracle_id": "065346cd-cd81-478e-8a62-2c7ea421bdcd",
+   "type_line": "Plane — Pyrulea",
+   "oracle_text": "All permanents untap during each player's untap step.\nWhenever chaos ensues, you may search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle.",
+   "set": "opca",
+   "collector_number": "37",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "Immersturm",
+   "oracle_id": "ece3b5ed-3c07-4586-bf99-72bc1aa6ccef",
+   "type_line": "Plane — Valla",
+   "oracle_text": "Whenever a creature enters, that creature's controller may have it deal damage equal to its power to any target of their choice.\nWhenever chaos ensues, exile target creature, then return it to the battlefield under its owner's control.",
+   "set": "opca",
+   "collector_number": "38",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If a creature controlled by a player other than the planar controller enters, the planar controller (not the creature's controller) controls Immersturm's triggered ability. That means that if multiple creatures enter at the same time, that player controls all of Immersturm's triggered abilities and may put them on the stack in whichever order they like. The last one put on the stack is the first one to resolve.",
+    "When the chaos ability resolves, the targeted creature is exiled, then immediately returned to the battlefield as a new permanent with no relation to its previous existence.",
+    "Any \"as [this permanent] enters\" choices for the card returned by the chaos ability are made by that card's owner, not its old controller or the controller of the chaos ability.",
+    "A token that has left the battlefield can't come back onto the battlefield. If the chaos ability exiles a token, that token remains in exile until state-based actions are checked, then it ceases to exist."
+   ]
+  },
+  {
+   "name": "Izzet Steam Maze",
+   "oracle_id": "e5f8b2bb-e9bb-4a0a-aa88-7fa0299f52a9",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "Whenever a player casts an instant or sorcery spell, that player copies it. The player may choose new targets for the copy.\nWhenever chaos ensues, instant and sorcery spells you cast this turn cost {3} less to cast.",
+   "set": "opca",
+   "collector_number": "40",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "The effect of Izzet Steam Maze's first ability is mandatory. You must copy the spell whether you want to or not.",
+    "Izzet Steam Maze's first ability will copy any instant or sorcery spell, not just one with targets.",
+    "The controller of the spell that caused Izzet Steam Maze's first ability to trigger also controls the copy. The copy resolves before the original spell.",
+    "A copy is created even if the spell that caused Izzet Steam Maze's first ability to trigger has been countered by the time that ability resolves.",
+    "The copy will have the same targets as the spell it's copying unless its controller chooses new ones. That player may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode. Its controller can't choose a different one.",
+    "If the spell that's copied has an X whose value was determined as it was cast (like Earthquake does), the copy has the same value of X.",
+    "The controller of the copy can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy that Izzet Steam Maze's first ability creates is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell (like Izzet Steam Maze's first ability itself) won't trigger."
+   ]
+  },
+  {
+   "name": "Kessig",
+   "oracle_id": "b54d9a4a-1d55-4ceb-96fd-2b1d5e46de14",
+   "type_line": "Plane — Innistrad",
+   "oracle_text": "Prevent all combat damage that would be dealt by non-Werewolf creatures.\nWhenever chaos ensues, each creature you control gets +2/+2, gains trample, and becomes a Werewolf in addition to its other types until end of turn.",
+   "set": "opca",
+   "collector_number": "42",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A “non-Werewolf creature” is a creature that doesn’t have the Werewolf creature type. A creature with additional types, such as a Human Werewolf, is not a non-Werewolf creature.",
+    "Creatures that you gain control of after the chaos ability resolves won’t get any of that ability’s bonuses."
+   ]
+  },
+  {
+   "name": "Kilnspire District",
+   "oracle_id": "fc650404-991c-4639-b311-c35df81a254a",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "When you planeswalk to Kilnspire District and at the beginning of your first main phase, put a charge counter on Kilnspire District, then add {R} for each charge counter on it.\nWhenever chaos ensues, you may pay {X}. If you do, Kilnspire District deals X damage to any target.",
+   "set": "opca",
+   "collector_number": "44",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "You choose the target of the chaos ability as you put that ability on the stack. When the ability resolves, you choose a value for X and decide whether to pay {X}. If you do decide to pay {X}, it’s too late for any player to respond since the ability is already in the midst of resolving.",
+    "When you count the number of charge counters on Kilnspire District, count all charge counters on it, not just ones you put there."
+   ]
+  },
+  {
+   "name": "Lair of the Ashen Idol",
+   "oracle_id": "ac4fe2a2-76ff-49d9-b506-26a17b4bf892",
+   "type_line": "Plane — Azgol",
+   "oracle_text": "At the beginning of your upkeep, sacrifice a creature. If you can't, planeswalk.\nWhenever chaos ensues, any number of target players each create a 2/2 black Zombie creature token.",
+   "set": "opca",
+   "collector_number": "46",
+   "released_at": "2016-11-25",
+   "related": [
+    {
+     "name": "Zombie",
+     "type_line": "Token Creature — Zombie",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you control a creature when the first ability resolves, you must sacrifice it.",
+    "You can choose to target zero players with the chaos ability."
+   ]
+  },
+  {
+   "name": "Lethe Lake",
+   "oracle_id": "85592710-8637-4726-8b92-552b9be677c0",
+   "type_line": "Plane — Arkhos",
+   "oracle_text": "At the beginning of your upkeep, mill ten cards.\nWhenever chaos ensues, target player mills ten cards.",
+   "set": "opca",
+   "collector_number": "47",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If you don't have ten cards in your library, you'll put all the cards in your library into your graveyard. The same is true if the targeted player doesn't have ten cards in their library."
+   ]
+  },
+  {
+   "name": "Llanowar",
+   "oracle_id": "11b3fcb2-0b66-4d8b-8e66-a21a5da1c1f5",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "All creatures have \"{T}: Add {G}{G}.\"\nWhenever chaos ensues, untap all creatures you control.",
+   "set": "opca",
+   "collector_number": "48",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Minamo",
+   "oracle_id": "6491f511-87e6-4504-84f5-fe5cf44768d7",
+   "type_line": "Plane — Kamigawa",
+   "oracle_text": "Whenever a player casts a spell, that player may draw a card.\nWhenever chaos ensues, each player may return a blue card from their graveyard to their hand.",
+   "set": "opca",
+   "collector_number": "50",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Minamo's first ability resolves before the spell that caused it to trigger.",
+    "The chaos ability doesn't target the cards it will return, so they're not chosen until resolution. As the ability resolves, first the active player may choose a blue card in their graveyard, then each other player in turn order does the same, then all cards chosen this way are returned to their owners' hands. Once a card is chosen, it's too late for players to respond."
+   ]
+  },
+  {
+   "name": "Mirrored Depths",
+   "oracle_id": "b6329c2f-ea7f-4611-986c-f82bacf2a872",
+   "type_line": "Plane — Karsus",
+   "oracle_text": "Whenever a player casts a spell, that player flips a coin. If the player loses the flip, counter that spell.\nWhenever chaos ensues, target player reveals the top card of their library. If it's a nonland card, you may cast it without paying its mana cost.",
+   "set": "opca",
+   "collector_number": "51",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "Mount Keralia",
+   "oracle_id": "e0dc9986-1099-4189-bfff-8f41bab9019d",
+   "type_line": "Plane — Regatha",
+   "oracle_text": "At the beginning of your end step, put a pressure counter on Mount Keralia.\nWhen you planeswalk away from Mount Keralia, it deals damage equal to the number of pressure counters on it to each creature and each planeswalker.\nWhenever chaos ensues, prevent all damage that planes named Mount Keralia would deal this game to permanents you control.",
+   "set": "opca",
+   "collector_number": "52",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "If you roll {CHAOS}, Mount Keralia’s damage-prevention effect will last for the rest of the game. It will apply to damage dealt by any plane named Mount Keralia, regardless of who owns that plane."
+   ]
+  },
+  {
+   "name": "Murasa",
+   "oracle_id": "07cc253d-e23c-450c-bfaf-5cb6a3a588ce",
+   "type_line": "Plane — Zendikar",
+   "oracle_text": "Whenever a nontoken creature enters, its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle.\nWhenever chaos ensues, target land becomes a 4/4 creature that's still a land.",
+   "set": "opca",
+   "collector_number": "53",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "The effect of the chaos ability has no duration. The affected land will remain a creature until the end of the game, it leaves the battlefield, or some other effect changes its card types, whichever comes first. It doesn't matter whether Murasa remains the face-up plane card."
+   ]
+  },
+  {
+   "name": "Naar Isle",
+   "oracle_id": "3e0bcf65-1eaf-440f-a59b-0b11e1106135",
+   "type_line": "Plane — Wildfire",
+   "oracle_text": "At the beginning of your upkeep, put a flame counter on Naar Isle, then Naar Isle deals damage to you equal to the number of flame counters on it.\nWhenever chaos ensues, Naar Isle deals 3 damage to target player or planeswalker.",
+   "set": "opca",
+   "collector_number": "54",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Naya",
+   "oracle_id": "5ed6be01-af06-4f3d-8b43-ef8993c52c97",
+   "type_line": "Plane — Alara",
+   "oracle_text": "You may play any number of lands on each of your turns.\nWhenever chaos ensues, target red, green, or white creature you control gets +1/+1 until end of turn for each land you control.",
+   "set": "opca",
+   "collector_number": "55",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If you play lands using Naya's first ability, and then you planeswalk away from Naya, the lands you played still count as additional land plays for the turn. If you haven't already, you can still play a land using your standard land play.",
+    "The bonus granted by the chaos ability is determined at the time it resolves. It won't change if the number of lands you control changes later in the turn."
+   ]
+  }
+ ]
+}

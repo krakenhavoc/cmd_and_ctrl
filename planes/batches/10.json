@@ -1,0 +1,214 @@
+{
+ "batch": 10,
+ "cards": [
+  {
+   "name": "Takenuma",
+   "oracle_id": "de53c948-b371-4f79-a965-33c44d0b44de",
+   "type_line": "Plane — Kamigawa",
+   "oracle_text": "Whenever a creature leaves the battlefield, its controller draws a card.\nWhenever chaos ensues, return target creature you control to its owner's hand.",
+   "set": "opca",
+   "collector_number": "76",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "Talon Gates",
+   "oracle_id": "c85d3740-8c8d-4fef-ad33-a6f446b883ac",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "Any time you could cast a sorcery, you may exile a nonland card from your hand with X time counters on it, where X is its mana value. If the exiled card doesn't have suspend, it gains suspend. (At the beginning of its owner's upkeep, they remove a time counter. When the last is removed, the player may cast it without paying its mana cost. If it's a creature, it has haste.)\nWhenever chaos ensues, remove two time counters from each suspended card you own.",
+   "set": "opca",
+   "collector_number": "77",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Exiling a nonland card from your hand this way is a special action. It doesn’t use the stack and doesn’t count as casting a spell or activating an ability. Players can’t respond to this action, although they can respond when you cast the spell after the last time counter is removed.",
+    "The first ability may be used any number of times.",
+    "Even after the game leaves Talon Gates, each of the suspended cards will continue to have suspend; the owners of those cards will continue to remove a time counter from each during their upkeeps."
+   ]
+  },
+  {
+   "name": "Tazeem",
+   "oracle_id": "97f708de-9271-4137-a9fe-dda25b922900",
+   "type_line": "Plane — Zendikar",
+   "oracle_text": "Creatures can't block.\nWhenever chaos ensues, draw a card for each land you control.",
+   "set": "opca",
+   "collector_number": "78",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Tember City",
+   "oracle_id": "bbb1d13c-a3ce-4151-883a-cce9bbd584d0",
+   "type_line": "Plane — Kinshala",
+   "oracle_text": "Whenever a player taps a land for mana, Tember City deals 1 damage to that player.\nWhenever chaos ensues, each other player sacrifices a nonland permanent of their choice.",
+   "set": "opca",
+   "collector_number": "79",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "The Dark Barony",
+   "oracle_id": "5503c308-560d-4d5f-a86a-4b06d9947ddc",
+   "type_line": "Plane — Ulgrotha",
+   "oracle_text": "Whenever a nonblack card is put into a player's graveyard from anywhere, that player loses 1 life.\nWhenever chaos ensues, each opponent discards a card.",
+   "set": "opca",
+   "collector_number": "19",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "The Dark Barony's first ability doesn't behave like a leaves-the-battlefield triggered ability, since the card put into a graveyard may come from anywhere. If a card is put into a graveyard from the battlefield, its color is checked in the graveyard, not as it last existed on the battlefield."
+   ]
+  },
+  {
+   "name": "The Eon Fog",
+   "oracle_id": "a04d05ed-1b9b-4407-8780-c75c102a94dd",
+   "type_line": "Plane — Equilor",
+   "oracle_text": "Players skip their untap steps.\nWhenever chaos ensues, untap all permanents you control.",
+   "set": "opca",
+   "collector_number": "22",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "The Fourth Sphere",
+   "oracle_id": "13e801cd-e537-4ea6-8c3d-21b142bdc026",
+   "type_line": "Plane — Phyrexia",
+   "oracle_text": "At the beginning of your upkeep, sacrifice a nonblack creature.\nWhenever chaos ensues, create a 2/2 black Zombie creature token.",
+   "set": "opca",
+   "collector_number": "25",
+   "released_at": "2016-11-25",
+   "related": [
+    {
+     "name": "Zombie",
+     "type_line": "Token Creature — Zombie",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "The Hippodrome",
+   "oracle_id": "cde8d8c4-5e2b-452f-b3e9-bb9f2e745ec9",
+   "type_line": "Plane — Segovia",
+   "oracle_text": "All creatures get -5/-0.\nWhenever chaos ensues, you may destroy target creature if its power is 0 or less.",
+   "set": "opca",
+   "collector_number": "36",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Creatures may have negative power. For example, a 3/4 creature that gets -5/-0 becomes -2/4. The total of its power and toughness is 2. It would need +3/+0 to raise its power to 1.",
+    "A creature that would assign 0 or less combat damage (due to having power 0 or less) doesn't assign combat damage at all.",
+    "You may target any creature with The Hippodrome's chaos ability. Whether its power is 0 or less isn't checked until the ability resolves."
+   ]
+  },
+  {
+   "name": "The Maelstrom",
+   "oracle_id": "e28deac5-d3c4-48e9-974c-093e3122f317",
+   "type_line": "Plane — Alara",
+   "oracle_text": "When you planeswalk to The Maelstrom and at the beginning of your upkeep, you may reveal the top card of your library. If a permanent card is revealed this way, you may put it onto the battlefield. If you revealed a card but didn't put it onto the battlefield, put it on the bottom of your library.\nWhenever chaos ensues, return target permanent card from your graveyard to the battlefield.",
+   "set": "opca",
+   "collector_number": "49",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "A permanent card is an artifact, creature, enchantment, land, or planeswalker card.",
+    "As The Maelstrom's first ability resolves, you choose whether or not to reveal the top card of your library. If you reveal it and it's a permanent card, you have two choices: Put it onto the battlefield, or put it on the bottom of your library. It can't remain on top of your library. On the other hand, if you reveal it and it's an instant or sorcery card, it must be put on the bottom of your library. There is no way you can leave a card revealed this way on top of your library.",
+    "If you reveal a permanent card that can't enter (because it's an Aura and there's nothing it can enchant, for example), then you must put it on the bottom of your library."
+   ]
+  },
+  {
+   "name": "The Zephyr Maze",
+   "oracle_id": "2d84be6d-49a5-4200-8cd3-d8653dfd0899",
+   "type_line": "Plane — Kyneth",
+   "oracle_text": "Creatures with flying get +2/+0.\nCreatures without flying get -2/-0.\nWhenever chaos ensues, target creature gains flying until end of turn.",
+   "set": "opca",
+   "collector_number": "86",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "Trail of the Mage-Rings",
+   "oracle_id": "b2c95c7a-a04c-46ef-a879-6eb08e444093",
+   "type_line": "Plane — Vryn",
+   "oracle_text": "Instant and sorcery spells have rebound. (The spell's controller exiles the spell as it resolves if they cast it from their hand. At the beginning of that player's next upkeep, they may cast that card from exile without paying its mana cost.)\nWhenever chaos ensues, you may search your library for an instant or sorcery card, reveal it, put it into your hand, then shuffle.",
+   "set": "opca",
+   "collector_number": "80",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Similarly, if you gain control of an instant or sorcery spell with Commandeer, it will have rebound, but the ability won’t do anything because that spell wasn’t cast from your hand.",
+    "If a spell with rebound that you cast from your hand doesn’t resolve for any reason (due being countered by a spell like Cancel, or because all of its targets are illegal), rebound has no effect. The spell is simply put into your graveyard. You won’t get to cast it again next turn.",
+    "If you cast a spell with rebound from anywhere other than your hand (such as from your graveyard due to Sins of the Past, from your library due to cascade, or from your opponent’s hand due to Sen Triplets), rebound won’t have any effect. If you do cast it from your hand, rebound will work regardless of whether you paid its mana cost (for example, if you cast it from your hand due to Maelstrom Archangel).",
+    "If a replacement effect would cause a spell with rebound that you cast from your hand to be put somewhere else instead of your graveyard (such as Leyline of the Void might), you choose whether to apply the rebound effect or the other effect as the spell resolves.",
+    "Rebound will have no effect on copies of spells because you don’t cast them from your hand.",
+    "If you cast a spell with rebound from your hand and it resolves, it isn’t put into your graveyard. Rather, it’s exiled directly from the stack. Effects that care about cards being put into your graveyard won’t do anything.",
+    "At the beginning of your upkeep, all delayed triggered abilities created by rebound effects trigger. You may handle them in any order. If you want to cast a card this way, you do so as part of the resolution of its delayed triggered ability. Timing restrictions based on the card’s type (if it’s a sorcery) are ignored. Other restrictions are not (such as the one from Rule of Law).",
+    "If you are unable to cast a card from exile this way, or you choose not to, nothing happens when the delayed triggered ability resolves. The card remains exiled for the rest of the game, and you won’t get another chance to cast the card. The same is true if the ability is countered (due to Stifle, perhaps).",
+    "If you cast a card from exile this way, it will go to your graveyard when it resolves, fails to resolve, or is countered. It won’t go back to exile.",
+    "Multiple instances of rebound on the same spell are redundant.",
+    "The rebound effect is not optional. Each instant and sorcery spell you cast from your hand is exiled instead of being put into your graveyard as it resolves, whether you want it to be or not. Casting the spell during your next upkeep is optional, however.",
+    "If a spell moves itself into another zone as part of its resolution (as Arc Blade, All Suns’ Dawn, and Beacon of Unrest do), rebound won’t get a chance to apply.",
+    "If a spell you cast from your hand has both rebound and buyback (and the buyback cost was paid), you choose which effect to apply as it resolves.",
+    "You’ll be able to cast a spell with flashback three times this way. First you can cast it from your hand. It will be exiled due to rebound as it resolves. Then you can cast it from exile due to rebound’s delayed triggered ability. It will be put into your graveyard as it resolves. Then you can cast it from your graveyard due to flashback. It will be exiled due to flashback as it resolves.",
+    "If you cast an instant or sorcery spell from your hand and it’s exiled due to rebound, the delayed triggered ability will allow you to cast it during your next upkeep even if Trail of the Mage-Rings has been turned face down by then.",
+    "If you cast a card from exile “without paying its mana cost,” you can’t pay any alternative costs. Any X in the mana cost will be 0. On the other hand, if the card has optional additional costs (such as kicker or multikicker), you may pay those when you cast the card. If the card has mandatory additional costs (such as Momentous Fall does), you must pay those if you choose to cast the card.",
+    "If a spell has restrictions on when it can be cast (for example, “Cast [this spell] only during the declare blockers step”), those restrictions may prevent you from casting it from exile during your upkeep.",
+    "If you cast a spell using the madness or suspend abilities, you’re casting it from exile, not from your hand. Although those spells will have rebound, the ability won’t have any effect.",
+    "Rebound’s delayed triggered ability will let you cast the spell at the beginning of your next upkeep even if the game has left Trail of the Mage-Rings by then."
+   ]
+  },
+  {
+   "name": "Velis Vel",
+   "oracle_id": "1c4e174e-19fb-4c0a-b762-ef6d927392c9",
+   "type_line": "Plane — Lorwyn",
+   "oracle_text": "Each creature gets +1/+1 for each other creature on the battlefield that shares at least one creature type with it. (For example, if two Elemental Shamans and an Elemental Spirit are on the battlefield, each gets +2/+2.)\nWhenever chaos ensues, target creature gains all creature types until end of turn.",
+   "set": "opca",
+   "collector_number": "84",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Sharing multiple creature types doesn't give an additional bonus. Velis Vel's first ability counts creatures, not creature types.",
+    "The chaos ability doesn't give a creature changeling."
+   ]
+  },
+  {
+   "name": "Windriddle Palaces",
+   "oracle_id": "e4b941d1-60cb-4e14-89a4-62a9785f6eda",
+   "type_line": "Plane — Belenon",
+   "oracle_text": "Players play with the top card of their libraries revealed.\nYou may play lands and cast spells from the top of any player's library.\nWhenever chaos ensues, each player mills a card.",
+   "set": "opca",
+   "collector_number": "85",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "You can only play the top cards of players’ libraries when you are the planar controller. Generally, this means as long as it’s your turn. When another player begins their turn, that player becomes the planar controller and can play the top card of players’ libraries. You won’t be able to until you again become the planar controller.",
+    "You may play the top card of any player’s library, including your own. This effect doesn’t change when you can play any of these cards (meaning play it if it’s a land card or cast it if it’s a nonland card). You can still cast creature spells only on your turn during your main phase and so on.",
+    "If the top card of a player’s library is a land card, you may play it only if you haven’t played a land yet that turn.",
+    "As soon as you finish playing the card on top of a player’s library, the next card in that library becomes revealed.",
+    "If a player draws multiple cards at once, they reveal each one before drawing it.",
+    "Other players won’t be able to play the top card of their libraries unless another effect allows it. If you and another player can play the top card of that player’s library (because of some other effect), you’ll be able to in most cases. This is because you have priority first at the beginning of each phase and step and after each spell or ability resolves. Once you play that card, it immediately moves from that library to the appropriate zone (the battlefield if it’s a land card or the stack if it’s a nonland card). The other player can’t respond by playing that card."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,220 @@
+{
+ "batch": 4,
+ "cards": [
+  {
+   "name": "Grove of the Dreampods",
+   "oracle_id": "3e553881-bac7-4830-b739-3b8c6aa0ded6",
+   "type_line": "Plane — Fabacin",
+   "oracle_text": "When you planeswalk to Grove of the Dreampods and at the beginning of your upkeep, reveal cards from the top of your library until you reveal a creature card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.\nWhenever chaos ensues, return target creature card from your graveyard to the battlefield.",
+   "set": "moc",
+   "collector_number": "145",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Both abilities are mandatory. You must put the creature card onto the battlefield, even if you don't want to.",
+    "If you don't reveal any creature cards from your library, you'll put the cards from your library on the bottom of your library in a random order. Essentially, this will shuffle your library, although you are not shuffling it for purposes of effects that care about a player shuffling a library."
+   ]
+  },
+  {
+   "name": "Hedron Fields of Agadeem",
+   "oracle_id": "1f7daaf2-3206-4f52-928a-f5116b782367",
+   "type_line": "Plane — Zendikar",
+   "oracle_text": "Creatures with power 7 or greater can't attack or block.\nWhenever chaos ensues, create a 7/7 colorless Eldrazi creature token with annihilator 1. (Whenever it attacks, defending player sacrifices a permanent of their choice.)",
+   "set": "moc",
+   "collector_number": "146",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Eldrazi",
+     "type_line": "Token Creature — Eldrazi",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A creature's power is checked when attackers or blockers are declared. Increasing the power of an attacking or blocking creature to 7 or greater won't remove that creature from combat."
+   ]
+  },
+  {
+   "name": "Inys Haen",
+   "oracle_id": "61c5f2cb-f39c-487c-9786-a8dad4663f4f",
+   "type_line": "Plane — Cridhe",
+   "oracle_text": "When you planeswalk to Inys Haen and at the beginning of your upkeep, mill three cards.\nWhen you planeswalk away from Inys Haen, each player returns all land cards from their graveyard to the battlefield tapped.\nWhenever chaos ensues, return target nonland card from your graveyard to your hand.",
+   "set": "moc",
+   "collector_number": "54",
+   "released_at": "2023-04-21"
+  },
+  {
+   "name": "Isle of Vesuva",
+   "oracle_id": "f017380f-97db-4a36-b111-b257aa17ebaf",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "Whenever a nontoken creature enters, its controller creates a token that's a copy of that creature.\nWhenever chaos ensues, destroy target creature and all other creatures with the same name as that creature.",
+   "set": "moc",
+   "collector_number": "147",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "If the permanent targeted by the chaos ability isn't destroyed (because it regenerates, or because it has indestructible), all other permanents with the same name as it will still be destroyed.",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "As a token is created by Isle of Vesuva's first ability, it checks the printed values of the creature it's copying, as well as any copy effects that have been applied to it. It won't copy counters on the creature, nor will it copy other effects that have changed the creature's power, toughness, types, color, and so on.",
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "The chaos ability will destroy all creatures with the same name as the target creature, not just tokens created by Isle of Vesuva's first ability. It doesn't matter who controls them.",
+    "If the permanent targeted by the chaos ability has become an illegal target by the time the ability resolves, the ability doesn't resolve. Nothing will be destroyed.",
+    "A token's name is the same as the creature types listed by the effect that created it, unless the token copies a permanent or that effect specifically gives that token a name. For example, the effect of The Fourth Sphere's chaos ability creates a token with the name \"Zombie.\"",
+    "A face-down creature has no name, so it doesn't have the same name as anything else.",
+    "If the creature that caused Isle of Vesuva's first ability to trigger has already left the battlefield by the time the ability resolves, the ability still creates a token. It will have the copiable values of the characteristics of that nontoken creature as it last existed on the battlefield."
+   ]
+  },
+  {
+   "name": "Jund",
+   "oracle_id": "9aa94de8-b114-4479-a771-c7bc0297be58",
+   "type_line": "Plane — Alara",
+   "oracle_text": "Whenever a player casts a creature spell that's black, red, or green, it gains devour 5. (As that creature enters, you may sacrifice any number of creatures. It enters with five times that many +1/+1 counters on it.)\nWhenever chaos ensues, create two 1/1 red Goblin creature tokens.",
+   "set": "moc",
+   "collector_number": "148",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Goblin",
+     "type_line": "Token Creature — Goblin",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Casting a multicolor spell will cause the first ability to trigger as long as that spell is black, red, or green. It can be other colors as well.",
+    "If the creature spell already has devour, you may sacrifice creatures using either ability. Each creature you sacrifice counts for only one devour ability. Under most circumstances, you'll pick the devour ability that gives the greatest number of +1/+1 counters."
+   ]
+  },
+  {
+   "name": "Ketria",
+   "oracle_id": "f3b27908-ca10-4793-ab8e-6639c73cfadd",
+   "type_line": "Plane — Ikoria",
+   "oracle_text": "When you planeswalk to Ketria and at the beginning of your upkeep, put your choice of a vigilance, menace, or trample counter on target creature you control.\nWhenever chaos ensues, exile cards from the top of your library until you exile a nonland permanent card. Put that card onto the battlefield or into your hand.",
+   "set": "moc",
+   "collector_number": "55",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "You choose which counter you’re putting on the target creature as Ketria’s first ability resolves.",
+    "While resolving the chaos ability, the cards you exile before exiling a nonland permanent card remain exiled."
+   ]
+  },
+  {
+   "name": "Kharasha Foothills",
+   "oracle_id": "256770fe-c17d-45dd-bf05-36eeee240324",
+   "type_line": "Plane — Mongseng",
+   "oracle_text": "Whenever a creature you control attacks a player, for each other opponent, you may create a token that's a copy of that creature, tapped and attacking that opponent. Exile those tokens at the beginning of the next end step.\nWhenever chaos ensues, you may sacrifice any number of creatures. If you do, Kharasha Foothills deals that much damage to target creature.",
+   "set": "moc",
+   "collector_number": "149",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "The first ability doesn't trigger when a creature attacks a planeswalker, and the token copies can't be put onto the battlefield attacking a planeswalker.",
+    "As each token is created, it checks the printed values of the creature it's copying, as well as any copy effects that have been applied to it.",
+    "The copiable values of each token's characteristics are the same as the copiable values of the characteristics of the creature it's copying.",
+    "You choose the target of the chaos ability as you put that ability on the stack. You don't sacrifice any creatures until that ability resolves."
+   ]
+  },
+  {
+   "name": "Krosa",
+   "oracle_id": "2732b605-7c88-4995-b46e-62dc09e68919",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "All creatures get +2/+2.\nWhenever chaos ensues, you may add {W}{U}{B}{R}{G}.",
+   "set": "moc",
+   "collector_number": "150",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Littjara",
+   "oracle_id": "0ff2bbed-e435-4108-b02a-564a75abba40",
+   "type_line": "Plane — Kaldheim",
+   "oracle_text": "When you planeswalk to Littjara and at the beginning of your upkeep, create a 2/2 blue Shapeshifter creature token with changeling. (It is every creature type.)\nWhenever chaos ensues, choose a creature type. Put a +1/+1 counter on each creature you control of that type.",
+   "set": "moc",
+   "collector_number": "56",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Shapeshifter",
+     "type_line": "Token Creature — Shapeshifter",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it."
+   ]
+  },
+  {
+   "name": "Megaflora Jungle",
+   "oracle_id": "c907333b-eae8-444f-9da3-b193289f19e2",
+   "type_line": "Plane — Gargantikar",
+   "oracle_text": "Each creature with mana value 2 or less gets +2/+2.\nWhenever chaos ensues, create a 1/1 green Insect creature token with flying named Butterfly.",
+   "set": "moc",
+   "collector_number": "57",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Butterfly",
+     "type_line": "Token Creature — Insect",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Naktamun",
+   "oracle_id": "a2048704-0d22-435d-b819-269291f2981e",
+   "type_line": "Plane — Amonkhet",
+   "oracle_text": "Each creature card in your graveyard has embalm. Its embalm cost is equal to its mana cost. (Exile a creature card from your graveyard and pay its embalm cost: Create a token that's a copy of it, except it's a white Zombie in addition to its other types with no mana cost. Embalm only as a sorcery.)\nWhenever chaos ensues, you may discard a card. If you do, draw a card.",
+   "set": "moc",
+   "collector_number": "58",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "If a spell or ability resolves during your main phase, causing a creature card to be put into your graveyard, you’ll have priority immediately afterward. You can activate the creature card’s embalm ability before any player can exile it, if it’s legal for you to do so.",
+    "Once you’ve activated an embalm ability, the card is immediately exiled. Opponents can’t try to stop the ability by exiling the card or quickly getting the heck off of Naktamun."
+   ]
+  },
+  {
+   "name": "New Argive",
+   "oracle_id": "08427dab-3874-4a29-bd63-cbd16c1d229d",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "Whenever a historic creature you control attacks, it gets +2/+2 until end of turn. (Artifacts, legendaries, and Sagas are historic.)\nWhenever chaos ensues, reveal cards from the top of your library until you reveal a historic card. Put that card into your hand and the rest on the bottom of your library in a random order.",
+   "set": "moc",
+   "collector_number": "59",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Once a historic creature you control attacks, it will keep the +2/+2 for the entire turn, even if it stops being historic later that turn.",
+    "It’s not easy to attack with Sagas, but doing so makes for a great story."
+   ]
+  },
+  {
+   "name": "Norn's Seedcore",
+   "oracle_id": "ab72ff80-738a-4468-aecf-5d806143f791",
+   "type_line": "Plane — New Phyrexia",
+   "oracle_text": "When you planeswalk to Norn's Seedcore, chaos ensues.\nWhenever chaos ensues, reveal cards from the top of your planar deck until you reveal a plane card. Planeswalk to it, except don't planeswalk away from any plane. Put the rest of the revealed cards on the bottom of your planar deck in any order.",
+   "set": "moc",
+   "collector_number": "60",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Until a player planeswalks, the game will continue on multiple planes. The abilities of all face-up plane cards can affect the game.",
+    "If a player rolls {CHAOS}, chaos ensues and all chaos abilities will trigger. The player may put those abilities on the stack in any order.",
+    "The next time a player planeswalks, they planeswalk away from all face-up planes. Their owners’ put them on the bottom of their planar decks in an order of their choice. This order isn’t revealed to other players."
+   ]
+  },
+  {
+   "name": "Nyx",
+   "oracle_id": "6552e3dd-ce35-4267-a25e-f5d4dceb8311",
+   "type_line": "Plane — Theros",
+   "oracle_text": "Nontoken creatures are enchantments in addition to their other types.\nConstellation — Whenever an enchantment you control enters, you gain 1 life.\nWhenever chaos ensues, choose a color. Add an amount of mana of that color equal to your devotion to that color.",
+   "set": "moc",
+   "collector_number": "61",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A player’s devotion to a color is equal to the number of mana symbols of that color among the mana costs of permanents that player controls.",
+    "Nyx’s first ability will apply to nontoken creatures from the moment they enter the battlefield. Notably, a nontoken creature entering the battlefield will cause the constellation ability to trigger.",
+    "The chaos ability isn’t a mana ability. It uses the stack and can be responded to. You choose the color as the ability resolves. Once the ability starts resolving and you’ve chosen a color, it’s too late for anyone to respond and change your devotion to any color."
+   ]
+  }
+ ]
+}

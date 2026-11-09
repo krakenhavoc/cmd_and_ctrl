@@ -1,0 +1,225 @@
+{
+ "batch": 9,
+ "cards": [
+  {
+   "name": "Nephalia",
+   "oracle_id": "72af7529-75bb-488f-801d-7148631b9e9b",
+   "type_line": "Plane — Innistrad",
+   "oracle_text": "At the beginning of your end step, mill seven cards. Then return a card at random from your graveyard to your hand.\nWhenever chaos ensues, return target card from your graveyard to your hand.",
+   "set": "opca",
+   "collector_number": "56",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Nephalia’s first ability doesn’t target any card, and players don’t get priority to cast spells or activate abilities in between putting cards into your graveyard and choosing a card to return."
+   ]
+  },
+  {
+   "name": "Norn's Dominion",
+   "oracle_id": "9d58f647-3f83-4f65-a944-c6236db7c422",
+   "type_line": "Plane — New Phyrexia",
+   "oracle_text": "When you planeswalk away from Norn's Dominion, destroy each nonland permanent without a fate counter on it, then remove all fate counters from all permanents.\nWhenever chaos ensues, you may put a fate counter on target permanent.",
+   "set": "opca",
+   "collector_number": "57",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Fate counters put on permanents in other ways (such as with Oblivion Stone) will cause those permanents to not be destroyed and will be removed when the first ability resolves."
+   ]
+  },
+  {
+   "name": "Onakke Catacomb",
+   "oracle_id": "69f06edb-dade-4e94-b563-e36a05e567f0",
+   "type_line": "Plane — Shandalar",
+   "oracle_text": "All creatures are black and have deathtouch.\nWhenever chaos ensues, creatures you control get +1/+0 and gain first strike until end of turn.",
+   "set": "opca",
+   "collector_number": "58",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Creatures will be only black, not any other color. Creature cards in other zones are not affected.",
+    "Creatures that you gain control of after the chaos ability resolves won’t get any of that ability’s bonuses."
+   ]
+  },
+  {
+   "name": "Orzhova",
+   "oracle_id": "c7241e4b-d2c7-4801-96a3-91bb998953a1",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "When you planeswalk away from Orzhova, each player returns all creature cards from their graveyard to the battlefield.\nWhenever chaos ensues, for each opponent, exile up to one target creature card from that player's graveyard.",
+   "set": "opca",
+   "collector_number": "60",
+   "released_at": "2016-11-25"
+  },
+  {
+   "name": "Otaria",
+   "oracle_id": "29e3371d-aa41-46a9-921a-96565be47eff",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "Instant and sorcery cards in graveyards have flashback. The flashback cost is equal to the card's mana cost. (Its owner may cast the card from their graveyard for its mana cost. Then they exile it.)\nWhenever chaos ensues, take an extra turn after this one.",
+   "set": "opca",
+   "collector_number": "61",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "If a card with no mana cost gains flashback, it has no flashback cost. It can't be cast this way.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "If you cast an instant or sorcery with {X} in its mana cost this way, you still choose the value of X as part of casting the spell and pay that cost.",
+    "If you cast a spell with flashback, you can't pay any alternative costs such as overload costs. You can pay additional costs such as kicker costs. If the spell has any mandatory additional costs, you must pay those to cast the spell with flashback.",
+    "If a card has multiple instances of flashback, you may choose any of its flashback costs to pay.",
+    "If a split card gains flashback, you pay only the cost of the half you're casting.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If you roll {CHAOS} multiple times in the same turn, you'll take that many extra turns after this one.",
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\""
+   ]
+  },
+  {
+   "name": "Pools of Becoming",
+   "oracle_id": "f133e42a-2962-4781-b413-ce2127f17c26",
+   "type_line": "Plane — Bolas's Meditation Realm",
+   "oracle_text": "At the beginning of your end step, put the cards in your hand on the bottom of your library in any order, then draw that many cards.\nWhenever chaos ensues, reveal the top three cards of your planar deck. Each of the revealed cards' chaos abilities triggers. Then put the revealed cards on the bottom of your planar deck in any order.",
+   "set": "opca",
+   "collector_number": "63",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "The face-up plane card isn't currently part of its owner's planar deck. If the chaos ability is rolled by the owner of Pools of Becoming, Pools of Becoming is not one of the three cards that are revealed.",
+    "You may put the chaos abilities of the three revealed plane cards on the stack in any order. The last one you put on the stack will be the first one to resolve.",
+    "If one of the revealed plane cards is another Pools of Becoming, its chaos ability triggers. When it resolves, you'll reveal three more cards from the top of your planar deck, their chaos abilities will trigger, and you'll put them on the stack in any order on top of any remaining chaos abilities from the first Pools of Becoming's effect."
+   ]
+  },
+  {
+   "name": "Prahv",
+   "oracle_id": "34a31865-b701-4ce1-8912-29fc41ecdda3",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "If you cast a spell this turn, you can't attack with creatures.\nIf you attacked with creatures this turn, you can't cast spells.\nWhenever chaos ensues, you gain life equal to the number of cards in your hand.",
+   "set": "opca",
+   "collector_number": "64",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "Prahv only cares about the turn-based action of declaring attackers. If an effect allows you to put a creature onto the battlefield attacking, you can cast spells later that turn."
+   ]
+  },
+  {
+   "name": "Quicksilver Sea",
+   "oracle_id": "53517dbf-7b32-423a-af76-afd39b876a1a",
+   "type_line": "Plane — Mirrodin",
+   "oracle_text": "When you planeswalk to Quicksilver Sea and at the beginning of your upkeep, scry 4. (Look at the top four cards of your library, then put any number of them on the bottom and the rest on top in any order.)\nWhenever chaos ensues, reveal the top card of your library. You may play it without paying its mana cost.",
+   "set": "opca",
+   "collector_number": "65",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "You play the card (meaning it play it if it’s a land card or cast it if it’s a nonland card) as part of the resolution of the chaos ability. Timing restrictions based on the card’s type are ignored. Other restrictions, such as “Cast [this card] only during combat,” are not.",
+    "If you reveal a land card when resolving the chaos ability, you may play it only if you haven’t played a land yet that turn.",
+    "If you cast a card without paying its mana cost, you can’t choose to cast it for any alternative costs, such as evoke or the alternative cost provided by the morph ability. If it has {X} in its mana cost, X must be 0. However, you can pay optional additional costs, such as kicker, and you must still pay mandatory additional costs, such as the one on Fling."
+   ]
+  },
+  {
+   "name": "Raven's Run",
+   "oracle_id": "b53e06af-be18-4f75-9dd0-7494ec867b13",
+   "type_line": "Plane — Shadowmoor",
+   "oracle_text": "All creatures have wither. (They deal damage to creatures in the form of -1/-1 counters.)\nWhenever chaos ensues, put a -1/-1 counter on target creature, two -1/-1 counters on another target creature, and three -1/-1 counters on a third target creature.",
+   "set": "opca",
+   "collector_number": "66",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Wither applies to any damage, not just combat damage.",
+    "The -1/-1 counters that result from wither remain on the damaged creature indefinitely. They won't be removed if the creature regenerates or the turn ends.",
+    "Since damage from a creature with wither is real damage, it follows all the other rules for damage. It can be prevented or redirected. When it's dealt, it will cause \"Whenever [this creature] deals damage\" and \"Whenever [this creature] is dealt damage\" abilities to trigger.",
+    "If the source of the damage is still on the battlefield at the time that damage is dealt, its characteristics are checked to see if it has wither. If the source has left the battlefield by then, its last existence on the battlefield is checked to see if it had wither.",
+    "Damage from creatures with wither affects players and planeswalkers normally.",
+    "Multiple instances of wither are redundant.",
+    "You must target three different creatures when the chaos ability triggers, even if that means you have to target creatures you control. If you can't target three creatures (because there are just two creatures on the battlefield, perhaps), the ability is removed from the stack and does nothing."
+   ]
+  },
+  {
+   "name": "Sanctum of Serra",
+   "oracle_id": "f0c8ce35-b627-485c-bd64-d7eae47b8efa",
+   "type_line": "Plane — Serra's Realm",
+   "oracle_text": "When you planeswalk away from Sanctum of Serra, destroy all nonland permanents.\nWhenever chaos ensues, you may have your life total become 20.",
+   "set": "opca",
+   "collector_number": "67",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If you planeswalk away from Sanctum of Serra because the player who owns Sanctum of Serra leaves the game, its first ability will still trigger and resolve.",
+    "For a player's life total to become 20, what actually happens is that the player gains or loses the appropriate amount of life. For example, if your life total is 14 when this ability resolves, it will cause you to gain 6 life. Other cards that interact with life gain or life loss will interact with this effect accordingly."
+   ]
+  },
+  {
+   "name": "Sea of Sand",
+   "oracle_id": "edd21d18-98d2-4e3f-8da1-1ba645b8f69c",
+   "type_line": "Plane — Rabiah",
+   "oracle_text": "Players reveal each card they draw.\nWhenever a player draws a land card, that player gains 3 life.\nWhenever a player draws a nonland card, that player loses 3 life.\nWhenever chaos ensues, put target permanent on top of its owner's library.",
+   "set": "opca",
+   "collector_number": "68",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Shiv",
+   "oracle_id": "70edae19-e278-401d-9772-508bd66320a6",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "All creatures have \"{R}: This creature gets +1/+0 until end of turn.\"\nWhenever chaos ensues, create a 5/5 red Dragon creature token with flying.",
+   "set": "opca",
+   "collector_number": "70",
+   "released_at": "2016-11-25",
+   "related": [
+    {
+     "name": "Dragon",
+     "type_line": "Token Creature — Dragon",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully."
+   ]
+  },
+  {
+   "name": "Skybreen",
+   "oracle_id": "61006acf-de38-420b-ab7a-685fbd64141c",
+   "type_line": "Plane — Kaldheim",
+   "oracle_text": "Players play with the top card of their libraries revealed.\nSpells that share a card type with the top card of a library can't be cast.\nWhenever chaos ensues, target player loses life equal to the number of cards in their hand.",
+   "set": "opca",
+   "collector_number": "71",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "When playing with the top card of your library revealed, if an effect tells you to draw several cards, reveal each one before you draw it.",
+    "If the top card of your library changes during the process of casting a spell or activating an ability, the new top card won't be revealed until the process of casting the spell or activating the ability ends (all targets are chosen, all costs are paid, and so on).",
+    "Skybreen's second ability prevents each player from casting spells that share a card type with a card on top of any library, not just the one on top of that player's own library. This includes permanent spells (artifacts, creatures, enchantments, and planeswalkers), not just instant and sorcery spells. It doesn't stop players from playing lands or activating abilities (such as cycling or unearth)."
+   ]
+  },
+  {
+   "name": "Stairs to Infinity",
+   "oracle_id": "7a425df4-7010-462e-9cb5-20389bac721c",
+   "type_line": "Plane — Xerex",
+   "oracle_text": "Players have no maximum hand size.\nWhenever you roll the planar die, draw a card.\nWhenever chaos ensues, reveal the top card of your planar deck. You may put it on the bottom of your planar deck.",
+   "set": "opca",
+   "collector_number": "73",
+   "released_at": "2016-11-25"
+  }
+ ]
+}

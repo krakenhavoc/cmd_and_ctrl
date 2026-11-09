@@ -1,0 +1,239 @@
+{
+ "batch": 6,
+ "cards": [
+  {
+   "name": "The Great Aerie",
+   "oracle_id": "00f00001-bd84-4dbf-a707-f4b1549100d4",
+   "type_line": "Plane — Tarkir",
+   "oracle_text": "When you planeswalk to The Great Aerie and at the beginning of your upkeep, bolster 3. (Choose a creature with the least toughness among creatures you control and put three +1/+1 counters on it.)\nWhenever chaos ensues, choose up to one target creature you control and up to one target creature an opponent controls. Each of those creatures deals damage equal to its toughness to the other.",
+   "set": "moc",
+   "collector_number": "53",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "Bolster itself doesn’t target any creature, though some spells and abilities that bolster may have other effects that target creatures.",
+    "You determine which creature to put counter(s) on as the spell or ability that instructs you to bolster resolves. That could be the creature with the bolster ability, if it’s still under your control and has the least toughness. If there’s a tie, you choose which creature gets the counter(s).",
+    "If you choose two target creatures for the chaos ability and either target is an illegal target as the ability tries to resolve, the ability won’t resolve and none of its effects will happen. Neither creature will deal or be dealt damage."
+   ]
+  },
+  {
+   "name": "The Great Forest",
+   "oracle_id": "8c56bb41-a8d8-4b0f-bbb7-be8466dc9ed1",
+   "type_line": "Plane — Lorwyn",
+   "oracle_text": "Each creature assigns combat damage equal to its toughness rather than its power.\nWhenever chaos ensues, creatures you control get +0/+2 and gain trample until end of turn.",
+   "set": "moc",
+   "collector_number": "144",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "The Great Forest's first ability means, for example, that a 2/3 creature will assign 3 damage in combat instead of 2.",
+    "The Great Forest's first ability doesn't actually change creatures' power; it changes only the value of the combat damage they assign. All other rules and effects that check power or toughness use the real values."
+   ]
+  },
+  {
+   "name": "The Pit",
+   "oracle_id": "b60e8617-fc35-4c8a-beb0-4688b88484c4",
+   "type_line": "Plane — The Abyss",
+   "oracle_text": "When you planeswalk to The Pit, each player creates their choice of a 3/3 white Angel creature token with flying or a 6/6 black Demon creature token with flying, trample, and \"At the beginning of your upkeep, sacrifice another creature. If you can't, this token deals 6 damage to you.\"\nWhenever chaos ensues, each player sacrifices a nonartifact creature of their choice.",
+   "set": "moc",
+   "collector_number": "63",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Angel",
+     "type_line": "Token Creature — Angel",
+     "component": "token"
+    },
+    {
+     "name": "Demon",
+     "type_line": "Token Creature — Demon",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "To resolve the first ability, starting with you and proceeding in turn order, each player chooses which creature token they're creating. Then all creature tokens are created and enter the battlefield at the same time."
+   ]
+  },
+  {
+   "name": "The Western Cloud",
+   "oracle_id": "4abae901-eb47-4318-bf64-322a893c2833",
+   "type_line": "Plane — Gobakhan",
+   "oracle_text": "Prevent all damage that would be dealt to creatures and planeswalkers you control.\nWhenever chaos ensues, create three tapped Treasure tokens. They each deal 1 damage to each creature and each planeswalker.",
+   "set": "moc",
+   "collector_number": "70",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The Treasure tokens deal the damage, not The Western Cloud."
+   ]
+  },
+  {
+   "name": "The Wilds",
+   "oracle_id": "cb7ae16a-9982-4782-9e20-07bb771d0601",
+   "type_line": "Plane — Eldraine",
+   "oracle_text": "When you planeswalk to The Wilds and at the beginning of your upkeep, create a Food token.\nWhenever chaos ensues, target player sacrifices a creature of their choice. If they do, you create a Food token. You create two Food tokens instead if the sacrificed creature's toughness was 4 or greater.",
+   "set": "moc",
+   "collector_number": "71",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Towashi",
+   "oracle_id": "0c1cb8e2-8ed4-4a0e-926b-4df5466c607c",
+   "type_line": "Plane — Kamigawa",
+   "oracle_text": "Modified creatures you control have trample and \"Whenever this creature deals combat damage to a player or planeswalker, draw a card.\" (Equipment, Auras you control, and counters are modifications.)\nWhenever chaos ensues, distribute three +1/+1 counters among one, two, or three target creatures you control.",
+   "set": "moc",
+   "collector_number": "67",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "You choose how many targets the chaos ability has and how the counters are distributed as you put the ability onto the stack. Each target must receive at least one counter.",
+    "If some of the creatures are illegal targets as the chaos ability tries to resolve, the original distribution of counters still applies and the counters that would have been put on the illegal targets are lost. They won’t be put instead on a legal target."
+   ]
+  },
+  {
+   "name": "Truga Jungle",
+   "oracle_id": "d858e6db-9842-41d1-8006-574c8dcd98ed",
+   "type_line": "Plane — Ergamon",
+   "oracle_text": "All lands have \"{T}: Add one mana of any color.\"\nWhenever chaos ensues, reveal the top three cards of your library. Put all land cards revealed this way into your hand and the rest on the bottom of your library in any order.",
+   "set": "moc",
+   "collector_number": "161",
+   "released_at": "2023-04-21"
+  },
+  {
+   "name": "Turri Island",
+   "oracle_id": "1300b5e7-d741-4723-bb15-dabd04cb0c11",
+   "type_line": "Plane — Ir",
+   "oracle_text": "Creature spells cost {2} less to cast.\nWhenever chaos ensues, reveal the top three cards of your library. Put all creature cards revealed this way into your hand and the rest into your graveyard.",
+   "set": "moc",
+   "collector_number": "162",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Turri Island's first ability can't reduce the cost to cast a creature spell to less than {0}.",
+    "If there are fewer than three cards in your library as the chaos ability resolves, you'll reveal all the cards in your library."
+   ]
+  },
+  {
+   "name": "Undercity Reaches",
+   "oracle_id": "f3f5a033-d063-4250-9cfe-4c3c1a2725f1",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "Whenever a creature deals combat damage to a player, its controller may draw a card.\nWhenever chaos ensues, you have no maximum hand size for the rest of the game.",
+   "set": "moc",
+   "collector_number": "163",
+   "released_at": "2023-04-21",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "If multiple creatures deal combat damage to a player, the first ability of Undercity Reaches triggers multiple times.",
+    "If a creature deals combat damage to a player, the controller of Undercity Reaches controls the ability that triggers, but the controller of the creature decides whether to draw a card.",
+    "The chaos ability's effect continues to apply even after Undercity Reaches stops being the face-up plane card.",
+    "If multiple effects modify your hand size, apply them in timestamp order. For example, if you put Null Profusion (an enchantment that says your maximum hand size is two) onto the battlefield and then roll {CHAOS} while Undercity Reaches is the face-up plane card, you'll have no maximum hand size. However, if those events had happened in the opposite order, your maximum hand size would be two for as long as Null Profusion is on the battlefield."
+   ]
+  },
+  {
+   "name": "Unyaro",
+   "oracle_id": "503fcc43-dafd-484b-a97f-bbd11eed66de",
+   "type_line": "Plane — Zhalfir",
+   "oracle_text": "At the beginning of your end step, if you planeswalked to Unyaro this turn, untap all creatures. They phase out until a player planeswalks. (Treat them and anything attached to them as though they didn't exist.)\nWhenever chaos ensues, create two 2/2 white and blue Knight creature tokens with vigilance.",
+   "set": "moc",
+   "collector_number": "68",
+   "released_at": "2023-04-21",
+   "related": [
+    {
+     "name": "Knight",
+     "type_line": "Token Creature — Knight",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A creature phased out by Unyaro doesn’t phase in during its controller’s untap step as normal.",
+    "While a permanent is phased out, it’s treated as though it doesn't exist. It can’t be the target of spells or abilities, its static abilities have no effect on the game, its triggered abilities can’t trigger, it can’t attack or block, and so on.",
+    "Phasing out doesn’t cause any “leaves the battlefield” abilities to trigger. Similarly, phasing in won’t cause any “enters the battlefield” abilities to trigger.",
+    "Any one-shot effects that are waiting “until [this] leaves the battlefield,” such as that of Banisher Priest, won’t happen when a permanent phases out.",
+    "Any continuous effects with a “for as long as” duration, such as that of Tide Shaper, ignore phased-out objects. Any such effects will expire if their conditions are no longer met after ignoring the phased-out objects.",
+    "Each Aura and Equipment attached to a permanent that’s phasing out also phases out. They will phase in with that permanent and still be attached to it. Similarly, permanents that phase out with counters phase in with those counters.",
+    "Choices made for permanents as they entered the battlefield are remembered when they phase in."
+   ]
+  },
+  {
+   "name": "Valor's Reach",
+   "oracle_id": "61b5984a-de6a-4d5a-8b20-e2fb3b553a34",
+   "type_line": "Plane — Kylem",
+   "oracle_text": "Whenever your team attacks with exactly two creatures, those creatures gain double strike until end of turn.\nWhenever chaos ensues, untap up to two target creatures your team controls. If it's a main phase, there is an additional combat phase after this phase, followed by an additional main phase.",
+   "set": "moc",
+   "collector_number": "69",
+   "released_at": "2023-04-21"
+  },
+  {
+   "name": "Academy at Tolaria West",
+   "oracle_id": "15b979de-c8ee-4664-9ca7-6c4eb3346967",
+   "type_line": "Plane — Dominaria",
+   "oracle_text": "At the beginning of your end step, if you have no cards in hand, draw seven cards.\nWhenever chaos ensues, discard your hand.",
+   "set": "opca",
+   "collector_number": "9",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Academy at Tolaria West's first ability has an \"intervening 'if' clause.\" That means (1) the ability won't trigger at all unless you have no cards in hand as your end step begins, and (2) the ability will do nothing unless you have no cards in hand by the time it resolves.",
+    "If you discard your hand as a result of rolling {CHAOS}, Academy at Tolaria West's first ability will then trigger at the beginning of your end step (unless you planeswalk or somehow put a card in your hand before then)."
+   ]
+  },
+  {
+   "name": "Agyrem",
+   "oracle_id": "38f84e55-049c-441e-b4e2-1e207ab5dbe5",
+   "type_line": "Plane — Ravnica",
+   "oracle_text": "Whenever a white creature dies, return it to the battlefield under its owner's control at the beginning of the next end step.\nWhenever a nonwhite creature dies, return it to its owner's hand at the beginning of the next end step.\nWhenever chaos ensues, creatures can't attack you until a player planeswalks.",
+   "set": "opca",
+   "collector_number": "11",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A plane card is treated as if its text box included \"When you roll {PW}, put this card on the bottom of its owner's planar deck face down, then move the top card of your planar deck off that planar deck and turn it face up.\" This is called the \"planeswalking ability.\"",
+    "A face-up plane card that's turned face down becomes a new object with no relation to its previous existence. In particular, it loses all counters it may have had.",
+    "The controller of a face-up plane card is the player designated as the \"planar controller.\" Normally, the planar controller is whoever the active player is. However, if the current planar controller would leave the game, instead the next player in turn order that wouldn't leave the game becomes the planar controller, then the old planar controller leaves the game. The new planar controller retains that designation until they leave the game or a different player becomes the active player, whichever comes first.",
+    "If an ability of a plane refers to \"you,\" it's referring to whoever the plane's controller is at the time, not to the player that started the game with that plane card in their deck. Many abilities of plane cards affect all players, while many others affect only the planar controller, so read each ability carefully.",
+    "Agyrem's first and second abilities each set up a delayed triggered ability. These abilities will trigger at the beginning of the next end step even if Agyrem is no longer the face-up plane card.",
+    "Agyrem's first ability will return a card to the battlefield only if it's still in the graveyard by the time the delayed triggered ability resolves. Similarly, Agyrem's second ability will return a card to its owner's hand only if it's still in the graveyard by the time the delayed triggered ability resolves.",
+    "If a creature is put into a graveyard from the battlefield, its last existence on the battlefield is checked to determine its color.",
+    "A creature that caused either of Agyrem's first two abilities to trigger will be returned at the beginning of the next end step even if it's not a creature card. (For example, if it's a Treetop Village.)",
+    "If a token creature is put into a graveyard from the battlefield, one of Agyrem's first two abilities will trigger, but the token will cease to exist long before it would be returned somewhere.",
+    "If multiple creatures are put into their owners' graveyards at the same time (due to combat damage or Planar Cleansing, for example), Agyrem's first two abilities trigger that many times. At the beginning of the next end step, the player whose turn it is at that time puts all of their Agyrem delayed triggered abilities on the stack in any order, then each other player in turn order does the same. The last ability put on the stack is the first one that resolves. The creatures are returned one at a time.",
+    "If you're affected by the chaos ability, creatures will still be able to attack planeswalkers you control."
+   ]
+  },
+  {
+   "name": "Akoum",
+   "oracle_id": "25650a32-4014-4065-ad01-7357c3ad3995",
+   "type_line": "Plane — Zendikar",
+   "oracle_text": "Players may cast enchantment spells as though they had flash.\nWhenever chaos ensues, destroy target creature that isn't enchanted.",
+   "set": "opca",
+   "collector_number": "12",
+   "released_at": "2016-11-25",
+   "rulings": [
+    "A creature that’s enchanted can’t be chosen as the target of the chaos ability.",
+    "If a creature that isn’t enchanted is targeted by the chaos ability, but that creature is enchanted when that ability tries to resolve, the ability won’t resolve for having an illegal target."
+   ]
+  }
+ ]
+}
