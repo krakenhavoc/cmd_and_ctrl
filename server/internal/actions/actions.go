@@ -777,6 +777,16 @@ func dispatch(g *game.Game, a Action) error {
 			// one entry when the claimed cost charges one, absent
 			// otherwise.
 			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+			// #5390 — the claimed alternative cost's "remove N
+			// counters from among creatures you control" (Quilled
+			// Greatwurm's graveyard cast), in activate_ability's own
+			// words: the permanents, the count off each, and the kind
+			// (counter_kind for one, counter_kinds per part when they
+			// differ). Absent on every other cast.
+			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterCounts    []int    `json:"counter_counts,omitempty"`
+			CounterKind      string   `json:"counter_kind,omitempty"`
+			CounterKinds     []string `json:"counter_kinds,omitempty"`
 			// ADR 0100 — delve_ids names the cards in the caster's
 			// graveyard exiled to delve the spell (CR 702.66a), each
 			// paying for {1} of the generic mana. Absent pays the
@@ -934,6 +944,7 @@ func dispatch(g *game.Game, a Action) error {
 			{"exile_from_hand_ids", p.ExileFromHandIDs, &params.ExileFromHandIDs},
 			{"exile_ids", p.ExileIDs, &params.ExileIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
+			{"counter_source_ids", p.CounterSourceIDs, &params.CounterSourceIDs},
 		} {
 			for i, raw := range l.raw {
 				id, err := uuid.Parse(raw)
@@ -943,6 +954,9 @@ func dispatch(g *game.Game, a Action) error {
 				*l.dst = append(*l.dst, id)
 			}
 		}
+		params.CounterCounts = p.CounterCounts
+		params.CounterKind = p.CounterKind
+		params.CounterKinds = p.CounterKinds
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {

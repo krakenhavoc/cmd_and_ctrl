@@ -487,10 +487,11 @@ func duplicatesListedPrice(card Card, listed []*AlternativeCost, granted *Altern
 
 // onlyMana reports whether this offer's whole price is its mana cost:
 // no condition, no life, no card to pitch, return, exile or sacrifice,
-// and no rider that changes the spell (a target rewrite, a face, an
-// entry clause, an exile on leaving the stack).
+// no counters to remove (#5390), and no rider that changes the spell (a
+// target rewrite, a face, an entry clause, an exile on leaving the
+// stack).
 func (a *AlternativeCost) onlyMana() bool {
-	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && a.XCeiling == 0 && !a.PaysCards() &&
+	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && a.XCeiling == 0 && !a.PaysCards() && a.RemoveCounters == nil &&
 		a.Targets == nil && !a.ClearsTargets && !a.SacrificeOnEntry &&
 		!a.ExileOnLeavingStack && !a.WarpExile && !a.Dash && !a.Blitz && !a.Sneak && a.EntersWithCounterName == "" &&
 		a.FaceDown == nil && !a.RequiresGrant && a.CastsFace == 0

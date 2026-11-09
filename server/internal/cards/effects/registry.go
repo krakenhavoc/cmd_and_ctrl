@@ -224,6 +224,7 @@ func Register(spec Spec) {
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
+		checkAltCostRemoveCounters(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
 		checkHarmonize(spec.Name, ac)
 		checkAwaken(spec, ac)
@@ -1767,6 +1768,33 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 		tc = &plain
 	}
 	checkTapOthersClause(card, where, tc, false)
+}
+
+// checkAltCostRemoveCounters holds an alternative cost's counter removal
+// (#5390) to the shape the cast path reads: the activation's own checks
+// (checkCounterCost), and the one form a spell can pay — "from among
+// <permanents> you control", a fixed count. The spell being cast is not
+// on the battlefield, so the self form ("from this") and "other" have
+// nothing to name, and no printed alternative cost removes X counters.
+// Not beside a card component either: the cast has one cost picker
+// chain, and no printed offer charges both.
+func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
+	rc := ac.RemoveCounters
+	if rc == nil {
+		return
+	}
+	where := fmt.Sprintf("alternative cost %q", ac.Key)
+	checkCounterCost(card, where, rc, nil)
+	switch {
+	case rc.From == nil:
+		panic(fmt.Sprintf("effects.Register: %q %s removes counters from itself — a spell being cast is not on the battlefield; give it a \"from among …\" clause", card, where))
+	case rc.From.ExcludeSource:
+		panic(fmt.Sprintf("effects.Register: %q %s removes counters from \"other\" permanents — a spell being cast is not on the battlefield, so ExcludeSource names nothing", card, where))
+	case !rc.Among || rc.Variable:
+		panic(fmt.Sprintf("effects.Register: %q %s is not a fixed \"remove N counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters", card, where))
+	case altCostCardComponents(ac) > 0:
+		panic(fmt.Sprintf("effects.Register: %q %s removes counters beside a card-shaped payment — no printed alternative cost does", card, where))
+	}
 }
 
 // checkHarmonize holds ReducedByTappedPower (#3931, CR 702.180a) and
