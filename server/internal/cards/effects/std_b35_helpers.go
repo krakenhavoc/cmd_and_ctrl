@@ -199,3 +199,11 @@ func b35TokenCopyOfEachOtherNonland(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// b35YourSpecialAction passes when the special action being priced is taken
+// by the modifier's controller ("you"): the actor is CostQuery.Controller.
+func b35YourSpecialAction() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Controller == q.Source.Controller
+	}
+}

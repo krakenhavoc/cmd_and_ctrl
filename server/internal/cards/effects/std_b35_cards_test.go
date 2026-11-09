@@ -38,6 +38,7 @@ const (
 	b35TinybonesOracle           = "7bc4c7e2-6758-4a85-84e7-03ab93981106"
 	b35VraskaSilencerOracle      = "e7c5a568-3855-4a20-9edf-01a8a6a4ba97"
 	b35RoxanneOracle             = "11765eaf-87a1-48bd-90c1-7a5f21be5918"
+	b35DocAurlockOracle          = "3ca32660-bf5f-4398-bef6-a0ec8bc767cf"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -69,6 +70,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35TinybonesOracle:           "Tinybones, the Pickpocket",
 		b35VraskaSilencerOracle:      "Vraska, the Silencer",
 		b35RoxanneOracle:             "Roxanne, Starfall Savant",
+		b35DocAurlockOracle:          "Doc Aurlock, Grizzled Genius",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1206,5 +1208,53 @@ func TestB35RoxanneMakesATappedMeteoriteThatShocksAndDoublesTokenMana(t *testing
 	}
 	if got := me.ManaPool.CountColor("R"); got != 2 {
 		t.Errorf("%d {R} after tapping Meteorite for red under Roxanne, want 2", got)
+	}
+}
+
+func TestB35DocAurlockMakesYourPlottingCostTwoLess(t *testing.T) {
+	const aloeOracle = "97489ef7-98c3-4700-bbe6-185215d41b25"
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceTo(t, g, game.StepPrecombatMain)
+	aloe := plotHandCard(me, "Aloe Alchemist", "Creature — Plant Warlock", "{1}{G}", aloeOracle, 3, 2)
+	// Without Doc Aurlock the {1}{G} plot cost is not payable with {G}.
+	me.ManaPool.AddMana(game.ManaToken{Color: "G"})
+	if err := g.PerformSpecialAction(me.ID, aloe, game.SpecialActionPlot, game.SpecialActionParams{Strict: true}); err == nil {
+		t.Fatal("plotted for {G} with no Doc Aurlock")
+	}
+	pushCatalogPermanent(g, me.ID, "Doc Aurlock, Grizzled Genius", "Legendary Creature — Bear Druid", b35DocAurlockOracle, false)
+	if err := g.PerformSpecialAction(me.ID, aloe, game.SpecialActionPlot, game.SpecialActionParams{Strict: true}); err != nil {
+		t.Fatalf("plot with Doc Aurlock out: %v", err)
+	}
+	if !g.Exile.Contains(aloe) {
+		t.Error("the plotted card is not in exile")
+	}
+}
+
+func TestB35DocAurlockDoesNotReducePlottingForAnOpponent(t *testing.T) {
+	const aloeOracle = "97489ef7-98c3-4700-bbe6-185215d41b25"
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceTo(t, g, game.StepPrecombatMain)
+	pushCatalogPermanent(g, opp.ID, "Doc Aurlock, Grizzled Genius", "Legendary Creature — Bear Druid", b35DocAurlockOracle, false)
+	aloe := plotHandCard(me, "Aloe Alchemist", "Creature — Plant Warlock", "{1}{G}", aloeOracle, 3, 2)
+	me.ManaPool.AddMana(game.ManaToken{Color: "G"})
+	if err := g.PerformSpecialAction(me.ID, aloe, game.SpecialActionPlot, game.SpecialActionParams{Strict: true}); err == nil {
+		t.Fatal("an opponent's Doc Aurlock reduced your plot cost")
+	}
+}
+
+func TestB35DocAurlockMakesSpellsCastFromYourGraveyardCostTwoLess(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceTo(t, g, game.StepPrecombatMain)
+	looting := seedGraveyardCard(t, g, "Faithless Looting", "Sorcery", "3d6fa57a-aa53-4b5c-b8af-a7612c823117")
+	me.ManaPool.AddMana(game.ManaToken{Color: "R"})
+	if err := g.CastSpell(me.ID, looting, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "flashback"}); err == nil {
+		t.Fatal("flashed back Faithless Looting for {R} with no Doc Aurlock")
+	}
+	pushCatalogPermanent(g, me.ID, "Doc Aurlock, Grizzled Genius", "Legendary Creature — Bear Druid", b35DocAurlockOracle, false)
+	if err := g.CastSpell(me.ID, looting, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+		t.Fatalf("flashback {2}{R} should cost {R} under Doc Aurlock: %v", err)
 	}
 }
