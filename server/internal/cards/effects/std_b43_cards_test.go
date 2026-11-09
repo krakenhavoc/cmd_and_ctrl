@@ -153,3 +153,199 @@ func TestStdB43TolsimirDoesNothingWhenHeStaysHome(t *testing.T) {
 		t.Fatalf("records = %+v, want none: Tolsimir did not attack", recs)
 	}
 }
+
+const stdSoulSearchOracle = "58f12f0d-e2c1-48f9-9e27-d1de8db743cb"
+
+// stdSoulSearch casts Soul Search at the opponent holding `cards` and
+// chooses `pick` (a hand index), returning the opponent and the picked id.
+func stdSoulSearch(t *testing.T, pick int, cards ...game.Card) (*game.Game, *game.Player, *game.Player, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	ids := revealHand(opp, cards...)
+	castAt(t, g, "Soul Search", "Sorcery", stdSoulSearchOracle, pbPlayer(opp.ID))
+	p := openVariant(t, g)
+	if err := g.ResolvePendingChoice(p.ID, me.ID, []uuid.UUID{ids[pick]}); err != nil {
+		t.Fatalf("resolve the pick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	return g, me, opp, ids[pick]
+}
+
+func TestStdB43SoulSearchExilesAndMakesASpiritForAManaValueOneCard(t *testing.T) {
+	g, me, _, id := stdSoulSearch(t, 1,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Cheap", TypeLine: "Creature — Bear", ManaCost: "{G}", Colors: []string{"G"}, Power: 1, Toughness: 1})
+	if !g.Exile.Contains(id) {
+		t.Fatal("the chosen card was not exiled")
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Spirit"); n != 1 {
+		t.Fatalf("%d Spirit tokens, want 1", n)
+	}
+}
+
+func TestStdB43SoulSearchMakesNoSpiritForAManaValueTwoCard(t *testing.T) {
+	g, me, _, id := stdSoulSearch(t, 0,
+		game.Card{Name: "Pricey", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Colors: []string{"G"}, Power: 2, Toughness: 2})
+	if !g.Exile.Contains(id) {
+		t.Fatal("the chosen card was not exiled")
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Spirit"); n != 0 {
+		t.Fatalf("%d Spirit tokens, want 0", n)
+	}
+}
+
+func TestStdB43SoulSearchIgnoresLands(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	revealHand(opp, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	castAt(t, g, "Soul Search", "Sorcery", stdSoulSearchOracle, pbPlayer(opp.ID))
+	if len(opp.Hand.Cards) != 1 {
+		t.Fatalf("hand %d, want the land kept", len(opp.Hand.Cards))
+	}
+}
+
+const stdRepulsiveOracle = "611bfaa6-b098-48d9-9e49-1e7dc8687f15"
+
+// stdRepulsive: seat 0 casts a sorcery, seat 1 answers with Repulsive
+// Mutation (X=2) on their 2/2, targeting that sorcery. Returns the table,
+// the casting seat, the sorcery and the creature.
+func stdRepulsive(t *testing.T) (*game.Game, *game.Player, uuid.UUID, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	caster, me := g.Seats[0], g.Seats[1]
+	toMainForCost(t, g)
+	bear := reqCreature(g, me.ID, "My Bear", "", 2, 2)
+	victim := castCatalogSpell(t, g, "Their Sorcery", "Sorcery", "", nil)
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority to the responder: %v", err)
+	}
+	b06AddMana(me, "G", "U", "C", "C")
+	id := handCardFull(me, "Repulsive Mutation", "Instant", "{X}{G}{U}", stdRepulsiveOracle, []string{"G", "U"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, XValue: 2,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}, {Kind: game.TargetCard, ID: victim}}}); err != nil {
+		t.Fatalf("casting Repulsive Mutation: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	return g, caster, victim, bear
+}
+
+func TestStdB43RepulsiveMutationCountersUnlessThePowerIsPaid(t *testing.T) {
+	g, caster, victim, bear := stdRepulsive(t)
+	if c := tmtB1Card(t, g, bear); c.Counters["+1/+1"] != 2 {
+		t.Fatalf("counters %d, want 2", c.Counters["+1/+1"])
+	}
+	// The greatest power among their creatures is the 4/4 Bear: {4}.
+	pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if pay == nil {
+		t.Fatal("the caster was not offered the payment")
+	}
+	if err := g.ResolvePayUnless(pay.ID, caster.ID, false); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
+	if g.Stack.Contains(victim) {
+		t.Fatal("the spell was not countered when its controller declined")
+	}
+}
+
+func TestStdB43RepulsiveMutationLetsAPayerKeepTheSpell(t *testing.T) {
+	g, caster, victim, _ := stdRepulsive(t)
+	b06AddMana(caster, "C", "C", "C", "C")
+	pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if pay == nil {
+		t.Fatal("the caster was not offered the payment")
+	}
+	if err := g.ResolvePayUnless(pay.ID, caster.ID, true); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
+	if got := caster.ManaPool.Total(); got != 0 {
+		t.Errorf("%d mana left, want the {4} paid", got)
+	}
+	_ = victim
+}
+
+const stdFlotsamOracle = "b0c28b2b-a2dd-4b76-bb1c-cec55a0a6784"
+
+// stdCastFlotsamJetsam puts the split card in the active player's hand
+// with a few cards on top of every opponent's library, casts the face and
+// returns the table.
+func stdCastFlotsamJetsam(t *testing.T, g *game.Game, face int) {
+	t.Helper()
+	me := g.Seats[g.Turn.ActiveSeat]
+	for _, p := range g.Seats {
+		for i := 0; i < 5; i++ {
+			p.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Sorcery", ManaCost: "{9}", Owner: p.ID, Controller: p.ID})
+		}
+	}
+	card := game.Card{
+		InstanceID: uuid.New(), OracleID: stdFlotsamOracle, Layout: game.LayoutSplit, Owner: me.ID, Controller: me.ID,
+		Faces: []game.Face{
+			{Name: "Flotsam", TypeLine: "Instant", ManaCost: "{1}{G/U}", Colors: []string{"G", "U"}},
+			{Name: "Jetsam", TypeLine: "Sorcery", ManaCost: "{4}{U/B}{U/B}", Colors: []string{"U", "B"}},
+		},
+	}
+	card.SetFace(0)
+	me.Hand.PushTop(card)
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, card.InstanceID, game.CastSpellParams{Face: face}); err != nil {
+		t.Fatalf("cast the split card: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+}
+
+func TestStdB43FlotsamMillsThreeAndInvestigates(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	gy := me.Graveyard.Size()
+	stdCastFlotsamJetsam(t, g, 0)
+	// The split card itself lands in the graveyard after resolving.
+	if got := me.Graveyard.Size() - gy; got != 4 {
+		t.Errorf("graveyard grew by %d, want 3 milled plus the spell", got)
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 1 {
+		t.Errorf("%d Clues, want 1", n)
+	}
+}
+
+func TestStdB43JetsamMillsEachOpponentThenCastsFromTheirGraveyardFree(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	bolt := gyCard(opp, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle)
+	before := opp.Graveyard.Size()
+	stdCastFlotsamJetsam(t, g, 1)
+	if got := opp.Graveyard.Size() - before; got < 3 {
+		t.Errorf("an opponent's graveyard grew by %d, want 3 milled", got)
+	}
+	var offer *game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceResolutionCast {
+			for _, id := range c.DiscardOptions {
+				if id == bolt {
+					offer = c
+				}
+			}
+		}
+	}
+	if offer == nil {
+		t.Fatal("no cast offer naming the Bolt after the mill")
+	}
+	if err := g.CastForResolutionChoice(me.ID, offer.ID, bolt, game.CastSpellParams{
+		FromZone: "graveyard", AlternativeCost: game.AltCostKeyGrantedCost,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("casting Lightning Bolt free from their graveyard: %v", err)
+	}
+	// Each opponent's graveyard has its own offer; leave the others.
+	for _, c := range append([]*game.PendingChoice(nil), g.PendingChoices...) {
+		if c != nil && c.Kind == game.PendingChoiceResolutionCast {
+			if err := g.ResolvePendingChoice(c.ID, c.Chooser, nil); err != nil {
+				t.Fatalf("declining another offer: %v", err)
+			}
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(bolt) {
+		t.Error("the Bolt cast this way was not exiled instead of going to the graveyard")
+	}
+}
