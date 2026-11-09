@@ -1314,6 +1314,11 @@ export type LogKind =
   // ADR 0203: a player completed a dungeon (CR 309.7). `label` is its
   // name.
   | "dungeon_completed"
+  // #4450: a player became the monarch (CR 725.1) or took the initiative
+  // (CR 726.2). `seat` is the new holder; an initiative's `card_id` is the
+  // object that gave it, when there is one.
+  | "monarch"
+  | "initiative"
   // ADR 0138 (#2122): a player's speed changed (CR 702.179). `seat` is
   // the player and `amount` the new speed. Narrated because the
   // start-your-engines state-based action has no card behind it.

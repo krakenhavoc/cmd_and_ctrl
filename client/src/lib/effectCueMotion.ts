@@ -132,6 +132,13 @@ export function cueMotion(node: HTMLElement, f: CueMotion): void {
     case "fizzle":
       fizzle(node, f);
       return;
+    case "drain_table":
+      drainTable(node, f);
+      return;
+    case "monarch":
+    case "initiative":
+      crownGlint(node, f);
+      return;
     case "pw_leave":
       pwLeave(node, f);
       return;
@@ -787,6 +794,77 @@ function fizzle(node: HTMLElement, f: CueMotion): void {
       span(f, at, at + 0.5, EASE.power1Out),
     );
   }
+}
+
+// ---- A table-wide drain (#4450): a thin dark line to each player ----
+
+/**
+ * drainTable draws each line from the source out to its player (the
+ * stroke runs along it, over the first half), holds it a beat and lets
+ * it go, so the whole thing ends inside the cue's 0.8 s. The lines start
+ * one after another a little apart. Display only.
+ */
+function drainTable(node: HTMLElement, f: CueMotion): void {
+  const lines = all<SVGElement>(node, ".drain-line");
+  lines.forEach((el, i) => {
+    const a = Math.min(0.2, i * 0.06);
+    run(
+      el as unknown as HTMLElement,
+      [
+        { offset: 0, strokeDashoffset: "1", opacity: 0 },
+        { offset: 0.12, strokeDashoffset: "0.85", opacity: 0.9, easing: EASE.power1Out },
+        { offset: 0.5, strokeDashoffset: "0", opacity: 0.9 },
+        { offset: 1, strokeDashoffset: "0", opacity: 0 },
+      ],
+      span(f, a, 1),
+    );
+  });
+  const dot = node.querySelector<HTMLElement>(".drain-source");
+  if (dot) {
+    run(
+      dot,
+      [
+        { offset: 0, scale: "0.4", opacity: 0 },
+        { offset: 0.2, scale: "1", opacity: 0.9, easing: EASE.power1Out },
+        { offset: 1, scale: "1.6", opacity: 0 },
+      ],
+      span(f, 0, 0.7),
+    );
+  }
+}
+
+// ---- The crown or the initiative changes hands (#4450): a short glint ----
+
+/**
+ * crownGlint rings the new holder's panel with a soft light that opens
+ * and fades, and flicks four small sparks out from its centre, so the
+ * marker that has just moved there is noticed. Gold for the crown,
+ * violet for the initiative (styled by the cue's `data-effect`).
+ */
+function crownGlint(node: HTMLElement, f: CueMotion): void {
+  const ring = node.querySelector<HTMLElement>(".glint-ring");
+  if (ring) {
+    run(
+      ring,
+      [
+        { offset: 0, scale: "0.7", opacity: 0 },
+        { offset: 0.2, scale: "0.9", opacity: 0.95, easing: EASE.power2Out },
+        { offset: 1, scale: "1.15", opacity: 0 },
+      ],
+      span(f, 0, 1, EASE.sineInOut),
+    );
+  }
+  all<HTMLElement>(node, ".glint-spark").forEach((el, i) => {
+    run(
+      el,
+      [
+        { offset: 0, translate: "0px 0px", scale: "0.3", opacity: 0 },
+        { offset: 0.3, scale: "1", opacity: 1, easing: EASE.power2Out },
+        { offset: 1, translate: `${num(el, "dx")}px ${num(el, "dy")}px`, scale: "0.2", opacity: 0 },
+      ],
+      span(f, 0.05 + i * 0.05, 0.85, EASE.power1Out),
+    );
+  });
 }
 
 // ---- A planeswalker that dies (D9): cracks, then leaves the plane ----

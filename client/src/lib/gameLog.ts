@@ -227,6 +227,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // about a player's command zone, toned with the other board-state lines.
   venture: "tone-zone",
   dungeon_completed: "tone-zone",
+  // The crown and the initiative are designations, toned like the others (#4450).
+  monarch: "tone-zone",
+  initiative: "tone-zone",
   // A player's speed changed (ADR 0138): a fact about a player, like
   // the turn line, not about a card.
   speed: "tone-zone",

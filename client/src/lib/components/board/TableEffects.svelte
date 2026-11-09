@@ -260,6 +260,8 @@
     tileIDs?: (string | null)[];
     // A library searched (#4447): whose library pile riffles, a seat ID.
     library?: string;
+    // A table-wide drain (#4450): each line, source to player, in board px.
+    lines?: { x1: number; y1: number; x2: number; y2: number }[];
     // A permanent that transforms (#4448): the face it turns from (`src`
     // is the face it turns to). The game becoming day or night: which.
     from?: string;
@@ -471,6 +473,11 @@
     counter: null,
     // And its "Fizzled" badge says this one (#4450).
     fizzle: null,
+    // A drain and the crown (#4450): the life totals and the marker on the
+    // panel say it, and the log names it.
+    drain_table: null,
+    monarch: null,
+    initiative: null,
     pw_enter: L.effectBadgePwEnter,
     pw_leave: L.effectBadgePwLeave,
     // The token itself is the news: it is on the board, and the log says
@@ -582,6 +589,14 @@
     }
     if (cue.kind === "library_search") {
       placeRiffle(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "drain_table") {
+      placeDrain(cue, base, motion, b);
+      return;
+    }
+    if (cue.kind === "monarch" || cue.kind === "initiative") {
+      placeGlint(cue, base, motion, b);
       return;
     }
     if (cue.kind === "day_night") {
@@ -1219,6 +1234,52 @@
       count: RIFFLE_CARDS,
       library: owner,
     });
+  }
+
+  // ---- A table-wide drain, the crown and the initiative (#4450) ----
+
+  // One thin dark line from the source (its tile on the battlefield, else
+  // the middle of the table) to each player's panel that lost life. A
+  // player with no panel on the board gets none; with no line at all, or
+  // a still cue, nothing is drawn and the sound plays.
+  function placeDrain(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const id = cue.cardID ?? "";
+    const el = id ? findCardAnchor(boardEl, id, { accept: fieldTile }) : null;
+    const from = el ? cmdBox(el, b.rect) : null;
+    const sx = from ? from.x : b.size.w / 2;
+    const sy = from ? from.y : b.size.h / 2;
+    const lines = [];
+    for (const i of cue.drainSeats ?? []) {
+      const to = seatBox(view.seats?.[i]?.id ?? "", b.rect);
+      if (to) lines.push({ x1: sx, y1: sy, x2: to.x, y2: to.y });
+    }
+    if (lines.length === 0) return;
+    add({ ...base, x: sx, y: sy, lines });
+  }
+
+  // A soft ring and four sparks over the new holder's panel.
+  const GLINT_SPARKS = [
+    { dx: -26, dy: -22 },
+    { dx: 28, dy: -16 },
+    { dx: -20, dy: 24 },
+    { dx: 24, dy: 20 },
+  ];
+  function placeGlint(
+    cue: EffectCue,
+    base: Omit<Fx, "key">,
+    motion: EffectMotion,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    if (motion === "still" || !boardEl) return;
+    const at = seatBox(view.seats?.[cue.seat ?? -1]?.id ?? "", b.rect);
+    if (!at) return;
+    add({ ...base, x: at.x, y: at.y, width: Math.min(at.w, 220), height: Math.min(at.h, 120) });
   }
 
   // ---- A double-faced card transforms, or day and night (#4448) ----
@@ -2360,6 +2421,44 @@
               </div>
             {/if}
           </div>
+        {/each}
+      </div>
+    {:else if f.kind === "drain_table"}
+      <!-- #4450: a thin dark line from the source to each player. -->
+      <div
+        class="fx m"
+        data-effect="drain_table"
+        data-effect-motion={f.motion}
+        style:left="0px"
+        style:top="0px"
+        use:motionOf={f}
+      >
+        <svg
+          class="drain-svg"
+          width={f.board.w}
+          height={f.board.h}
+          viewBox={`0 0 ${f.board.w} ${f.board.h}`}
+          aria-hidden="true"
+        >
+          {#each f.lines ?? [] as l, i (i)}
+            <line class="drain-line" pathLength="1" x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
+          {/each}
+        </svg>
+        <div class="drain-source" style:left={`${f.x}px`} style:top={`${f.y}px`}></div>
+      </div>
+    {:else if f.kind === "monarch" || f.kind === "initiative"}
+      <!-- #4450: a short glint on the new holder's panel. -->
+      <div
+        class="fx m"
+        data-effect={f.kind}
+        data-effect-motion={f.motion}
+        style:left={`${f.x}px`}
+        style:top={`${f.y}px`}
+        use:motionOf={f}
+      >
+        <div class="glint-ring" style:width={`${f.width}px`} style:height={`${f.height}px`}></div>
+        {#each GLINT_SPARKS as s, i (i)}
+          <div class="glint-spark" data-dx={s.dx} data-dy={s.dy}></div>
         {/each}
       </div>
     {:else if f.kind === "library_search"}
@@ -3670,6 +3769,64 @@
   .sky[data-sky="day"] .sky-orb {
     background: radial-gradient(circle, #fff6d6 0%, #ffd56a 60%, #ffb63a 100%);
     box-shadow: 0 0 26px 10px rgba(255, 206, 110, 0.6);
+  }
+
+  /* A table-wide drain (#4450): a thin dark line, source to player. */
+  .drain-svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+  }
+  .drain-line {
+    stroke: rgba(92, 20, 48, 0.9);
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    filter: drop-shadow(0 0 3px rgba(150, 30, 70, 0.7));
+    opacity: 0;
+  }
+  .drain-source {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(150, 30, 70, 0.8), rgba(92, 20, 48, 0));
+    opacity: 0;
+  }
+
+  /* The crown or the initiative changes hands (#4450). */
+  .glint-ring {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 224, 120, 0.9);
+    box-shadow:
+      0 0 14px 2px rgba(255, 206, 80, 0.65),
+      inset 0 0 12px rgba(255, 224, 120, 0.4);
+    opacity: 0;
+  }
+  .glint-spark {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: rgba(255, 244, 196, 0.98);
+    box-shadow: 0 0 6px 2px rgba(255, 214, 100, 0.8);
+    opacity: 0;
+  }
+  .fx[data-effect="initiative"] .glint-ring {
+    border-color: rgba(176, 140, 255, 0.9);
+    box-shadow:
+      0 0 14px 2px rgba(124, 84, 220, 0.65),
+      inset 0 0 12px rgba(150, 110, 240, 0.4);
+  }
+  .fx[data-effect="initiative"] .glint-spark {
+    background: rgba(226, 212, 255, 0.98);
+    box-shadow: 0 0 6px 2px rgba(140, 100, 230, 0.8);
   }
 
   /* A library searched (#4447): card backs riffled off the pile, which

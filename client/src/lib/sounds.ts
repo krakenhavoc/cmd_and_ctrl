@@ -116,6 +116,11 @@ export type SoundName =
   // #4450: a spell or ability that fizzles (a quiet counter with no slap),
   // and a die rolled or a coin flipped (a dice rattle, a coin ring).
   | "fizzle"
+  // #4450: a table-wide life drain (a low siphon), the crown changing
+  // hands (a bright chime) and the initiative (a darker one).
+  | "drain_table"
+  | "monarch"
+  | "initiative"
   | "dice_roll"
   | "coin_flip"
   // ADR 0209 §4 signature effects (#4397), in the effects category. If its
@@ -194,6 +199,9 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   clue_crack: "effects",
   food_crack: "effects",
   fizzle: "effects",
+  drain_table: "effects",
+  monarch: "effects",
+  initiative: "effects",
   dice_roll: "effects",
   coin_flip: "effects",
   sig_blasphemous_act: "effects",
@@ -302,6 +310,9 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   // dice_roll-1.mp3 and coin_flip-1.mp3 (and an optional -2 of each) are
   // listed here (client/public/sounds/README.md, "Files not made yet").
   fizzle: [],
+  drain_table: [],
+  monarch: [],
+  initiative: [],
   dice_roll: [],
   coin_flip: [],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],

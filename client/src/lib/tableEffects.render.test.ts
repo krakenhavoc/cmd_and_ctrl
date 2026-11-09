@@ -2529,3 +2529,94 @@ describe("priming", () => {
     expect(playSound).not.toHaveBeenCalled();
   });
 });
+
+describe("a drain, the monarch and the initiative (#4450)", () => {
+  const ME = { left: 300, top: 700, width: 200, height: 80 };
+  const OPP = { left: 560, top: 20, width: 60, height: 60 };
+  const sounds = (name: string) => vi.mocked(playSound).mock.calls.filter(([n]) => n === name);
+
+  // The board (with the opponent's seat), plus the viewer's own.
+  function frame(log: LogEvent[]) {
+    const board = makeBoard(IDS);
+    board.appendChild(rectEl("data-seat-id", "me", ME));
+    const before = cardsAll.map((c) => ({ ...c }) as CardView);
+    const r = render(
+      TableEffects as never,
+      { view: viewWith([], before), boardEl: board } as never,
+    );
+    advance(50);
+    r.setProps({ view: viewWith(log, before) } as never);
+    flushSync();
+    return r;
+  }
+  const loss = (seat: number): LogEvent => ({
+    seq: ++seq,
+    kind: "life",
+    seat,
+    card_id: "a",
+    amount: -1,
+    batch: 9,
+    text: "",
+  });
+  const crown = (kind: "monarch" | "initiative", seat: number): LogEvent => ({
+    seq: ++seq,
+    kind,
+    seat,
+    batch: 10,
+    text: "",
+  });
+
+  it("a drain draws one thin line from the source to each player and plays one sound", () => {
+    frame([loss(0), loss(1)]);
+    const [cue] = effects("drain_table");
+    expect(cue).toBeTruthy();
+    const lines = [...cue.querySelectorAll<SVGLineElement>(".drain-line")];
+    expect(lines).toHaveLength(2);
+    // The source tile "a" is centred at (140, 356).
+    for (const l of lines) {
+      expect(l.getAttribute("x1")).toBe("140");
+      expect(l.getAttribute("y1")).toBe("356");
+    }
+    expect(lines.map((l) => l.getAttribute("x2"))).toEqual(["400", "590"]);
+    expect(sounds("drain_table")).toEqual([["drain_table", { volume: 1, batch: "g1:9" }]]);
+    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS.drain_table + 1e-6);
+    advance(EFFECT_BASE_MS.drain_table + 200);
+    expect(effects()).toHaveLength(0);
+  });
+
+  it.each(["monarch", "initiative"] as const)(
+    "%s: a glint on the new holder's panel and one sound",
+    (kind) => {
+      frame([crown(kind, 1)]);
+      const [cue] = effects(kind);
+      expect(cue).toBeTruthy();
+      expect(cue.style.left).toBe(`${OPP.left + OPP.width / 2}px`);
+      expect(cue.style.top).toBe(`${OPP.top + OPP.height / 2}px`);
+      expect(cue.querySelector(".glint-ring")).toBeTruthy();
+      expect(cue.querySelectorAll(".glint-spark").length).toBeGreaterThan(0);
+      expect(sounds(kind)).toEqual([[kind, { volume: 1, batch: "g1:10" }]]);
+      for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS[kind] + 1e-6);
+    },
+  );
+
+  it("Short plays the same cue, speed scales it", () => {
+    updateSettings("animations", "effects", "short");
+    updateSettings("animations", "speed", 2);
+    frame([crown("monarch", 0)]);
+    expect(effects("monarch")).toHaveLength(1);
+    expect(Math.max(...runEnds())).toBeLessThanOrEqual(EFFECT_BASE_MS.monarch * 2 + 1e-6);
+  });
+
+  it.each([
+    ["reduced motion", () => updateSettings("accessibility", "reduceMotion", true)],
+    ["Off", () => updateSettings("animations", "effects", "off")],
+  ])("still (%s): nothing is drawn, and each sound plays once", (_, still) => {
+    still();
+    frame([loss(0), loss(1), crown("monarch", 1), crown("initiative", 0)]);
+    expect(effects()).toHaveLength(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(sounds("drain_table")).toHaveLength(1);
+    expect(sounds("monarch")).toHaveLength(1);
+    expect(sounds("initiative")).toHaveLength(1);
+  });
+});
