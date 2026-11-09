@@ -1410,6 +1410,12 @@ type cardSnapshot struct {
 	// have found nothing before. A pointer, so a card no ability linked
 	// writes nothing (the #1492 omitzero rule).
 	ExiledWithAbility *AbilityRef `json:"exiledWithAbility,omitempty"`
+	// ExiledWithTurn is the turn that link was made on (Maralen, Fae
+	// Ascendant's "cards exiled with Maralen this turn", #4458).
+	// Additive within the version: a file without it restores zero,
+	// "not this turn", so a restored game's earlier links grant nothing
+	// this-turn clauses read, which is the safe direction.
+	ExiledWithTurn int `json:"exiledWithTurn,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -3130,6 +3136,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:           c.ExiledWithTurn,
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -4264,6 +4271,7 @@ func restoreCard(c *cardSnapshot) Card {
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:           c.ExiledWithTurn,
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,

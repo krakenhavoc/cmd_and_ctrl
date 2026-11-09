@@ -1257,6 +1257,14 @@ type Card struct {
 	// by MoveCard with ExiledWith. Carried by the snapshot.
 	ExiledWithAbility AbilityRef
 
+	// ExiledWithTurn is the Turn.Seq on which ExiledWith was stamped:
+	// "cards exiled with Maralen THIS TURN" (Maralen, Fae Ascendant,
+	// #4458) reads it through PermissionFilter.ExiledWithSourceThisTurn.
+	// Written beside ExiledWith by every linked exile and cleared with it
+	// by MoveCard; zero when the card is linked to nothing. Carried by
+	// the snapshot.
+	ExiledWithTurn int
+
 	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
 	// {instance, epoch} a card with cipher was exiled encoded on as its
 	// spell resolved (#3867, cipher.go). A separate link from ExiledWith

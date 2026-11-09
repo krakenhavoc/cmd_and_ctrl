@@ -6813,7 +6813,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	if shuffleAfter && dest == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
 	}
-	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability)
+	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability, g.Turn.Seq)
 	stampExileCounterLocked(destZone, cardID, exileCounter)
 	move := Event{
 		Kind:    EventZoneMove,

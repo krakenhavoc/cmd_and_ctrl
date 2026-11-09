@@ -688,6 +688,8 @@ var cardFields = plan(
 	// #2651: the ability half of that link (CR 607.2a). The zero ref is
 	// a legal state too: a replacement's link, or a file before it.
 	"ExiledWithAbility", carried, "",
+	// #4458: the turn that link was made on; zero is "not this turn".
+	"ExiledWithTurn", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
