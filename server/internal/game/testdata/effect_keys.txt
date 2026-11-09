@@ -1426,6 +1426,7 @@ payunless pay-unless/nothing
 payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/passenger-ferry-unblockable
+payunless pay-unless/persistent-marshstalker-return
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
