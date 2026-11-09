@@ -34,8 +34,12 @@ func init() {
 			Produced: "{G}",
 			Label:    "Add {G}. When you next cast a Bird creature spell this turn, it enters with an additional +1/+1 counter on it",
 			Rider: func(g *game.Game, controller, source uuid.UUID) error {
+				bird := "Bird"
+				if c, ok := g.LookupCardForEffect(source); ok {
+					bird = c.TextSubtype("Bird")
+				}
 				g.GrantNextSpellPromiseForEffect(controller, game.NextSpellPromise{
-					Filter:      game.PermissionFilter{CreatureOnly: true, CreatureType: "Bird"},
+					Filter:      game.PermissionFilter{CreatureOnly: true, CreatureType: bird},
 					CounterKind: game.CounterPlusOne,
 					Counters:    1,
 					Text:        "The next Bird creature spell you cast this turn enters with an additional +1/+1 counter.",

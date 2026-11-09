@@ -57,7 +57,8 @@ func godoUntapItAndSamurai(ctx *Context) error {
 	if ctx.Item != nil && sourceIsNewObject(ctx.Game, ctx.Item) {
 		self = uuid.Nil
 	}
+	samurai := ctx.TextSubtype("Samurai")
 	return b16UntapAllYouControlMatching(ctx, ctx.Controller(), func(c game.Card) bool {
-		return c.InstanceID == self || c.HasSubtype("Samurai")
+		return c.InstanceID == self || c.HasSubtype(samurai)
 	})
 }

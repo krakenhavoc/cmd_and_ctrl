@@ -46,7 +46,7 @@ func winotaNonHumanAttacked(ev game.Event, source *game.Card, _ game.Characteris
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Controller == source.Controller && !c.HasSubtype("Human")
+	return ok && c.IsCreature() && c.Controller == source.Controller && !c.HasSubtype(source.TextSubtype("Human"))
 }
 
 // winotaLook looks at six and asks which Human creature card, if any.
@@ -58,8 +58,9 @@ func winotaLook(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	var humans []uuid.UUID
+	human := ctx.TextSubtype("Human")
 	for _, id := range looked {
-		if c, ok := g.LookupCardForEffect(id); ok && c.IsCreature() && !IsToken(c) && c.HasSubtype("Human") {
+		if c, ok := g.LookupCardForEffect(id); ok && c.IsCreature() && !IsToken(c) && c.HasSubtype(human) {
 			humans = append(humans, id)
 		}
 	}
