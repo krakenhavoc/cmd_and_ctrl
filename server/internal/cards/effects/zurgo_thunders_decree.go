@@ -35,7 +35,7 @@ func init() {
 			Label:           "During your end step, Warrior tokens you control have \"This token can't be sacrificed.\"",
 			Layer:           game.Layer6Ability,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.Controller == source.Controller && target.IsToken() && target.HasSubtype("Warrior") &&
+				return target.Controller == source.Controller && target.IsToken() && target.HasSubtype(source.TextSubtype("Warrior")) &&
 					g.Turn.Step == game.StepEnd && isActivePlayer(g, source.Controller)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

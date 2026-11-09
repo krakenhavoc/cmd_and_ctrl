@@ -30,7 +30,7 @@ func init() {
 				Do(EachOpponentLosesLife{N: 2}, GainLife{Amount: 2}, Surveil{N: 2})),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.HasSubtype("Dragon")
+				return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 			}, "Corroding Dragonstorm — return this enchantment to its owner's hand",
 				Do(Instruction(func(ctx *Context) error {
 					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
