@@ -36,6 +36,7 @@ const (
 	b35StepBetweenWorldsOracle   = "48b43d53-9a8a-46b2-9d8c-b0d66fb68a5d"
 	b35LilahOracle               = "0757c5a7-e51b-4c39-bb4d-b32657c10cb4"
 	b35TinybonesOracle           = "7bc4c7e2-6758-4a85-84e7-03ab93981106"
+	b35VraskaSilencerOracle      = "e7c5a568-3855-4a20-9edf-01a8a6a4ba97"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -65,6 +66,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35StepBetweenWorldsOracle:   "Step Between Worlds",
 		b35LilahOracle:               "Lilah, Undefeated Slickshot",
 		b35TinybonesOracle:           "Tinybones, the Pickpocket",
+		b35VraskaSilencerOracle:      "Vraska, the Silencer",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1128,5 +1130,45 @@ func TestB35TinybonesCastsANonlandPermanentFromTheDamagedPlayersGraveyardWithAny
 	}
 	if c := battlefieldCardPtr(t, g, theirs); c.Controller != me.ID {
 		t.Error("the Bear is not under the caster's control")
+	}
+}
+
+func TestB35VraskaTheSilencerReturnsAnOpponentsCreatureAsATappedTreasure(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Vraska, the Silencer", "Legendary Creature — Gorgon Assassin", b35VraskaSilencerOracle, 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	mine := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	token := pushToken(g, opp.ID, MercenaryToken())
+	// Neither my own creature nor a token triggers it.
+	p1Destroy(t, g, mine)
+	p1Destroy(t, g, token)
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKind(g, game.PendingChoicePayUnless) != nil {
+		t.Fatal("offered for my own creature or a token")
+	}
+	p1Destroy(t, g, theirs)
+	passPriorityAroundTable(t, g)
+	pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if pay == nil {
+		t.Fatal("no offer to pay {1}")
+	}
+	b06AddMana(me, "C")
+	if err := g.ResolvePayUnless(pay.ID, me.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	c, ok := battlefieldCard(g, theirs)
+	if !ok {
+		t.Fatal("the creature card did not return")
+	}
+	if c.Controller != me.ID || !c.Tapped {
+		t.Errorf("controller %s tapped %v, want mine and tapped", c.Controller, c.Tapped)
+	}
+	if c.IsCreature() || !c.IsArtifact() || !c.HasSubtype("Treasure") {
+		t.Errorf("type line %q: want a Treasure artifact and no creature", c.TypeLine)
+	}
+	if grantedManaRowsOf(g, theirs) != 1 {
+		t.Error("the Treasure has no sacrifice-for-mana ability")
 	}
 }
