@@ -966,7 +966,8 @@ type Config struct {
 
 	// AttackTaxPenalty is what one point of CR 508.1h attack tax costs
 	// an attack's value (ADR 0080, #1063) — Propaganda's {2} is worth
-	// 2 × this. It is a MANA price rather than a life or card price,
+	// 2 × this. ADR 0221 prices a CR 509.1d block tax (Archangel of
+	// Tithes) with the same weight: one mana is one mana. It is a MANA price rather than a life or card price,
 	// so it is tuned against DamageToOpponent: at the default, {2}
 	// cancels roughly a 6-power swing, which is the right shape for
 	// "a 1/1 into Ghostly Prison is not worth the turn's mana, a Wurm

@@ -1436,7 +1436,23 @@ func dispatch(g *game.Game, a Action) error {
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
 		}
-		return g.FinishBlocks(a.Player)
+		// ADR 0221: the CR 509.1d block tax is paid as the declaration
+		// completes, with the attack declaration's payment trio. Absent
+		// params (every payload before the tax existed) are the strict
+		// zero posture, and inert at a table with no block tax.
+		var p struct {
+			attackTaxParams
+		}
+		if len(a.Params) > 0 {
+			if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+				return err
+			}
+		}
+		ap, err := p.decode("finish_blocks")
+		if err != nil {
+			return err
+		}
+		return g.FinishBlocksWith(a.Player, game.DeclareBlockersParams(ap))
 
 	case TypeClearCombat:
 		// #4131: the "combat is wedged" escape hatch, no longer open to

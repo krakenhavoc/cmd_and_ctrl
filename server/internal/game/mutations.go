@@ -9752,6 +9752,13 @@ func (g *Game) passPriorityLocked() error {
 			if err := g.blockCheckpointLocked(g.Seats[h].ID); err != nil {
 				return err
 			}
+			// ADR 0221 / CR 509.1d: and its payment point, with the
+			// zero posture — the pool, strictly. Refused unpaid.
+			if g.State == StateActive && !g.blockDeclarationDoneLocked(g.Seats[h].ID) && g.isDefendingPlayerLocked(g.Seats[h].ID) {
+				if err := g.payBlockTaxLocked(g.Seats[h].ID, DeclareBlockersParams{}); err != nil {
+					return err
+				}
+			}
 			if g.completeBlockDeclarationLocked(g.Seats[h].ID) && g.closeBlockDeclarationIfCompleteLocked() {
 				return nil
 			}

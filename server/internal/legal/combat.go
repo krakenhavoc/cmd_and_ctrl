@@ -304,6 +304,16 @@ func (e *enumerator) combatMoves() {
 				e.add(requiredBlockMove(g, e.seat, opt))
 				continue
 			}
+			// ADR 0221 / CR 509.1d: a block tax (Archangel of Tithes)
+			// is paid when the declaration completes, so a block is
+			// offered only while the seat could still pay for every
+			// block it has staged plus this one — a bot is never left
+			// holding blocks its finish_blocks cannot pay for (#544).
+			// The move carries what it ADDS to the price.
+			taxMana, affordable := e.blockTaxAddition(opt)
+			if !affordable {
+				continue
+			}
 			if len(opt.Blocks) == 1 {
 				blk := cardByID(g, first.Blocker)
 				if blk == nil {
@@ -313,8 +323,9 @@ func (e *enumerator) combatMoves() {
 					Type:   TypeDeclareBlocker,
 					Player: e.seat,
 					Kind:   KindBlock,
-					Label:  "Block " + atk.Name + " with " + blk.Name,
+					Label:  "Block " + atk.Name + " with " + blk.Name + blockTaxLabel(taxMana),
 					Source: blk.InstanceID,
+					Cost:   blockTaxCost(taxMana),
 					Params: mustJSON(blockParams{Blocker: blk.InstanceID.String(), Attacker: atk.InstanceID.String()}),
 				})
 				continue
@@ -341,12 +352,13 @@ func (e *enumerator) combatMoves() {
 				Type:   TypeDeclareBlockers,
 				Player: e.seat,
 				Kind:   KindBlock,
-				Label:  "Block " + atk.Name + " with " + joinNames(names),
+				Label:  "Block " + atk.Name + " with " + joinNames(names) + blockTaxLabel(taxMana),
 				Source: opt.Blocks[0].Blocker,
+				Cost:   blockTaxCost(taxMana),
 				Params: mustJSON(set),
 			})
 		}
-		if m, ok := finishBlocksMove(g, e.seat); ok {
+		if m, ok := e.finishBlocksMove(); ok {
 			e.leave()
 			e.add(m)
 		}
@@ -369,8 +381,16 @@ func (e *enumerator) combatMoves() {
 // idempotent), so it is where an automated defender goes when its
 // preferred block keeps bouncing.
 //
+// ADR 0221: with a CR 509.1d block tax on the staged blocks the move
+// pays it — `auto_tap` set when the pool alone is short, MoveCost.Mana
+// stamped with the whole price. The block moves were only offered while
+// the seat could pay for everything staged, and nobody holds priority
+// to change that while the declaration is open, so the finish stays
+// AlwaysLegal.
+//
 // Caller holds the enumerator's read lock.
-func finishBlocksMove(g *game.Game, seat uuid.UUID) (Move, bool) {
+func (e *enumerator) finishBlocksMove() (Move, bool) {
+	g, seat := e.g, e.seat
 	if g.BlockDeclarationStatusLocked(seat) != game.BlockDeclarationPending || blockRequirementOwed(g, seat) {
 		return Move{}, false
 	}
@@ -382,13 +402,81 @@ func finishBlocksMove(g *game.Game, seat uuid.UUID) (Move, bool) {
 			break
 		}
 	}
-	return Move{
+	m := Move{
 		Type:        TypeFinishBlocks,
 		Player:      seat,
 		Kind:        KindFinishBlocks,
 		Label:       label,
 		AlwaysLegal: true,
-	}, true
+	}
+	if price := g.PriceBlockDeclarationForEffect(seat); !price.IsFree() {
+		total := g.CostAsPaidByForEffect(seat, game.ManaSpendContext{}, price.Total, 0)
+		autoTap, phyLife, _ := e.attackTaxPayment(total)
+		m.Label += blockTaxLabel(price.Cost) + attackLifeLabel(phyLife)
+		m.Cost = withPhyrexianLife(blockTaxCost(price.Cost), phyLife)
+		if autoTap || phyLife > 0 {
+			m.Params = mustJSON(finishBlocksParams{AutoTap: autoTap, PhyrexianLife: phyLife})
+		}
+	}
+	return m, true
+}
+
+// finishBlocksParams is finish_blocks' payment posture for a CR 509.1d
+// block tax (ADR 0221), the attack declaration's trio.
+type finishBlocksParams struct {
+	AutoTap       bool `json:"auto_tap,omitempty"`
+	PhyrexianLife int  `json:"phyrexian_life,omitempty"`
+}
+
+// blockTaxAddition is what declaring `opt` would add to the seat's
+// CR 509.1d block tax, and whether the seat could pay the staged
+// blocks' price and that addition together (pool, then the tapper,
+// then life for Phyrexian symbols — attackTaxPayment's test, which
+// mirrors the engine's payer). A creature already blocking adds
+// nothing: the tax is per blocking creature, not per block.
+//
+// Caller holds the enumerator's read lock.
+func (e *enumerator) blockTaxAddition(opt game.BlockOption) (mana string, ok bool) {
+	g := e.g
+	var fresh []uuid.UUID
+	for _, d := range opt.Blocks {
+		b := cardByID(g, d.Blocker)
+		if b == nil || b.BlockingTarget != uuid.Nil || slices.Contains(fresh, d.Blocker) {
+			continue
+		}
+		fresh = append(fresh, d.Blocker)
+	}
+	add := g.PriceBlockersForEffect(fresh)
+	if add.IsFree() {
+		return "", true
+	}
+	staged := g.PriceBlockDeclarationForEffect(e.seat)
+	total, err := game.ParseCost(staged.Cost + add.Cost)
+	if err != nil {
+		return "", false
+	}
+	total = g.CostAsPaidByForEffect(e.seat, game.ManaSpendContext{}, total, 0)
+	if _, _, ok := e.attackTaxPayment(total); !ok {
+		return "", false
+	}
+	return add.Cost, true
+}
+
+// blockTaxCost is a block move's MoveCost under a block tax: the mana
+// it adds, nil when it adds none.
+func blockTaxCost(mana string) *MoveCost {
+	if mana == "" {
+		return nil
+	}
+	return &MoveCost{Mana: mana}
+}
+
+// blockTaxLabel is a block move's label suffix under a block tax.
+func blockTaxLabel(mana string) string {
+	if mana == "" {
+		return ""
+	}
+	return " (pay " + mana + ")"
 }
 
 // attackRequirementOwed reports whether `seat` is the active player in

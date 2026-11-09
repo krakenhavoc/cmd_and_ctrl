@@ -256,6 +256,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},
 	{field: "PowerUpExtras", fallback: "Power-up abilities can be activated an additional time", ownLabel: true},
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
+	{field: "BlockTaxes", fallback: "Block tax", ownLabel: true},
 	{field: "EquipCostAlternatives", fallback: "Equip abilities may cost {0}", ownLabel: true},
 	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
 	{field: "BlockRules", label: blockRuleRows},

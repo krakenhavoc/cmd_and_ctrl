@@ -178,6 +178,11 @@ type CardDef struct {
 	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// BlockTaxes are the "creatures can't block unless their controller
+	// pays {N} for each of those creatures" statics this permanent
+	// contributes (CR 509.1d, ADR 0221) — Archangel of Tithes. Read
+	// from the battlefield through BlockTaxesForCard.
+	BlockTaxes []BlockTax
 	// EquipCostAlternatives are the "you may pay {0} rather than pay the
 	// equip cost of the first equip ability you activate each turn"
 	// clauses this permanent contributes to its controller (CR 118.9,
@@ -899,6 +904,12 @@ func init() {
 	CatalogAttackTaxes = func(key string) []AttackTax {
 		if d := catalogDef(key); d != nil {
 			return d.AttackTaxes
+		}
+		return nil
+	}
+	CatalogBlockTaxes = func(key string) []BlockTax {
+		if d := catalogDef(key); d != nil {
+			return d.BlockTaxes
 		}
 		return nil
 	}
