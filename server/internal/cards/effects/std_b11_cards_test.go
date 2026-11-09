@@ -20,6 +20,9 @@ const (
 	sb11MaelstromOracle   = "49e9fba7-8465-4bbb-95db-73a7e149f494"
 	sb11DancersOracle     = "83c8f1ca-194e-4cb6-9d5f-029133c1edbc"
 	sb11BattlefrontOracle = "892a83a0-a3cb-4cfb-9106-4008e4e75c0f"
+	sb11PriestOracle      = "3a38bf69-511f-4851-870f-8a65641d832e"
+	sb11RoadwatcherOracle = "0c3d86b6-5dcd-4016-9b4a-d4f66b1e963f"
+	sb11HellkiteOracle    = "2a3b29c3-f69d-4671-8907-600d21528153"
 	sb11DeathBegetsOracle = "53e86135-3b24-4618-bcc0-af4d81e672dd"
 )
 
@@ -431,6 +434,199 @@ func TestSb11UnitedBattlefrontPutsUpToTwoCheapNoncreatureNonlandPermanents(t *te
 	}
 	if bottom[deep] {
 		t.Error("the card below the top seven was moved to the bottom")
+	}
+}
+
+// --- Severance Priest -----------------------------------------------------
+
+// sb11PriestTable casts the Priest against seat 1, whose hand is a Forest,
+// a Lightning Bolt and a Big Bear ({3}{R}{R}); when `take` is true the Bear
+// is chosen, otherwise the "you may" is declined.
+func sb11PriestTable(t *testing.T, take bool) (g *game.Game, me, opp *game.Player, priest, bear uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[g.Turn.ActiveSeat]
+	opp = g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	ids := revealHand(opp, rhForest(), rhBolt(),
+		game.Card{Name: "Big Bear", TypeLine: "Creature — Bear", ManaCost: "{3}{R}{R}", Colors: []string{"R"}, Power: 3, Toughness: 3})
+	bear = ids[2]
+	priest = castCatalogSpell(t, g, "Severance Priest", "Creature — Djinn Cleric", sb11PriestOracle, nil)
+	passPriorityAroundTable(t, g)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	pick := openVariant(t, g)
+	if !sameIDs(pick.DiscardOptions, ids[1:]) {
+		t.Fatalf("options %v: want the two nonland cards", pick.DiscardOptions)
+	}
+	var picked []uuid.UUID
+	if take {
+		picked = []uuid.UUID{bear}
+	}
+	if err := g.ResolvePendingChoice(pick.ID, me.ID, picked); err != nil {
+		t.Fatalf("resolve the pick: %v", err)
+	}
+	return g, me, opp, priest, bear
+}
+
+func TestSb11SeverancePriestExilesACardAndItsOwnerGetsASpiritWhenItLeaves(t *testing.T) {
+	g, me, opp, priest, bear := sb11PriestTable(t, true)
+	if !g.Exile.Contains(bear) {
+		t.Fatal("the chosen card was not exiled")
+	}
+	killCreature(t, g, me.ID, priest)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := len(battlefieldIDsNamed(g, "Spirit")); got != 1 {
+		t.Fatalf("%d Spirits, want 1", got)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.Name != "Spirit" {
+			continue
+		}
+		if c.Controller != opp.ID {
+			t.Error("the exiled card's owner creates the token, not the Priest's controller")
+		}
+		if p, tt := ptOf(t, g, c.InstanceID); p != 5 || tt != 5 {
+			t.Errorf("the Spirit is %d/%d, want 5/5 (the Bear's mana value)", p, tt)
+		}
+		if !c.HasColor("W") {
+			t.Error("the Spirit is not white")
+		}
+	}
+}
+
+func TestSb11SeverancePriestMakesNothingWhenYouDeclineTheCard(t *testing.T) {
+	g, me, opp, priest, _ := sb11PriestTable(t, false)
+	if g.Exile.Size() != 0 {
+		t.Fatal("a card was exiled though the choice was declined")
+	}
+	if opp.Hand.Size() != 3 {
+		t.Errorf("the hand has %d cards, want 3", opp.Hand.Size())
+	}
+	killCreature(t, g, me.ID, priest)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := len(battlefieldIDsNamed(g, "Spirit")); got != 0 {
+		t.Errorf("%d Spirits though nothing was exiled", got)
+	}
+}
+
+// --- Yathan Roadwatcher -----------------------------------------------------
+
+func TestSb11YathanRoadwatcherMillsFourThenReturnsACheapCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	cheap := pushGraveyardCardTyped(me, "Cheap Bear", "Creature — Bear")
+	for i := range me.Graveyard.Cards {
+		if me.Graveyard.Cards[i].InstanceID == cheap {
+			me.Graveyard.Cards[i].ManaCost = "{2}"
+		}
+	}
+	dear := pushGraveyardCardTyped(me, "Dear Bear", "Creature — Bear")
+	for i := range me.Graveyard.Cards {
+		if me.Graveyard.Cards[i].InstanceID == dear {
+			me.Graveyard.Cards[i].ManaCost = "{4}"
+		}
+	}
+	lib := me.Library.Size()
+	rfdCast(t, g, "Yathan Roadwatcher", "Creature — Human Scout", sb11RoadwatcherOracle, 3, 3)
+	if got := me.Library.Size(); got != lib-4 {
+		t.Fatalf("library = %d, want %d (milled four)", got, lib-4)
+	}
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatal("no target prompt for the reflexive trigger")
+	}
+	if hasID(pick.PickTargetCards, dear) {
+		t.Error("a creature card with mana value 4 is not a legal target")
+	}
+	pickTriggerTarget(t, g, me.ID, cheap)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(cheap) {
+		t.Error("the cheap creature card did not return to the battlefield")
+	}
+	if g.Battlefield.Contains(dear) {
+		t.Error("the mana value 4 creature returned")
+	}
+}
+
+func TestSb11YathanRoadwatcherDoesNothingWhenItWasNotCast(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	lib := me.Library.Size()
+	pushCatalogPermanent(g, me.ID, "Yathan Roadwatcher", "Creature — Human Scout", sb11RoadwatcherOracle, false)
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventETB, CardID: g.Battlefield.Cards[len(g.Battlefield.Cards)-1].InstanceID})
+	})
+	passPriorityAroundTable(t, g)
+	if got := me.Library.Size(); got != lib {
+		t.Errorf("library = %d, want %d: an entry that was not a cast mills nothing", got, lib)
+	}
+}
+
+// --- Magmatic Hellkite ------------------------------------------------------
+
+func TestSb11MagmaticHellkiteDestroysANonbasicAndItsControllerFetchesAStunnedBasic(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	coffers := seedLandOnBattlefield(g, opp.ID, "Cabal Coffers", "Land")
+	basic := seedLandOnBattlefield(g, opp.ID, "Swamp", "Basic Land — Swamp")
+	swamp := b07LibraryLand(opp, "Swamp", "Basic Land — Swamp")
+	b07LibraryLand(opp, "Swamp", "Basic Land — Swamp")
+	castCatalogSpell(t, g, "Magmatic Hellkite", "Creature — Dragon", sb11HellkiteOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatal("no target prompt")
+	}
+	if hasID(pick.PickTargetCards, basic) {
+		t.Error("a basic land is not a legal target")
+	}
+	pickCard(t, g, me.ID, coffers)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(coffers) || !opp.Graveyard.Contains(coffers) {
+		t.Error("the targeted land should be destroyed")
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Fatal("the Hellkite's controller does not search")
+	}
+	if searchChoiceFor(g, opp.ID) == nil {
+		t.Fatal("the land's controller gets no search prompt")
+	}
+	answerSearchByID(t, g, opp.ID, swamp)
+	card, ok := battlefieldCard(g, swamp)
+	if !ok {
+		t.Fatal("the basic land did not reach the battlefield")
+	}
+	if !card.Tapped {
+		t.Error("the basic land enters tapped")
+	}
+	if card.Counters[game.CounterStun] != 1 {
+		t.Errorf("the basic land has %d stun counters, want 1", card.Counters[game.CounterStun])
+	}
+}
+
+func TestSb11MagmaticHellkiteSearchHappensEvenIfTheLandIsIndestructible(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	tough := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Tough Land", TypeLine: "Land", Keywords: []string{"indestructible"},
+		Owner: opp.ID, Controller: opp.ID,
+	})
+	swamp := b07LibraryLand(opp, "Swamp", "Basic Land — Swamp")
+	castCatalogSpell(t, g, "Magmatic Hellkite", "Creature — Dragon", sb11HellkiteOracle, nil)
+	passPriorityAroundTable(t, g)
+	pickCard(t, g, me.ID, tough)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(tough) {
+		t.Error("an indestructible land was destroyed")
+	}
+	if searchChoiceFor(g, opp.ID) == nil {
+		t.Fatal("the land's controller still searches")
+	}
+	answerSearchByID(t, g, opp.ID, swamp)
+	if !g.Battlefield.Contains(swamp) {
+		t.Error("the basic land did not enter")
 	}
 }
 
