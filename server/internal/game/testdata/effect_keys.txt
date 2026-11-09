@@ -740,6 +740,8 @@ choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sarkhan-dragon-ascendant-behold
+choose choose-cards/scavengers-talent-return
+choose choose-cards/season-of-gathering-creature
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
@@ -1282,6 +1284,7 @@ option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/saurons-ransom-splitter
+option option-pick/season-of-gathering-type
 option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
@@ -1447,6 +1450,7 @@ payunless pay-unless/riparian-tiger-pump
 payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rush-of-inspiration-discard
+payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shriek-treblemaker-cant-block
