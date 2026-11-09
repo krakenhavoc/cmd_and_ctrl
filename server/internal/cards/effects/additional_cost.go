@@ -679,10 +679,17 @@ func checkEitherCost(spec Spec) {
 			rest := *ac
 			rest.Reveal, rest.Label = nil, ""
 			rc := ac.Reveal
-			if !rc.Exile {
+			if rc.Chosen {
+				// Monstrous Emergence's "choose a creature you control or reveal a
+				// creature card from your hand" (ChooseOrRevealCost): a behold of a
+				// card type that records its pick, alone on the slot.
+				if !rc.Behold || rc.Exile || rc.CardType == "" || rc.Subtype != "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+					panic(fmt.Sprintf("effects.Register: %q declares a malformed choose-or-reveal cost — build it with ChooseOrRevealCost, alone on the mandatory slot", spec.Name))
+				}
+			} else if !rc.Exile {
 				panic(fmt.Sprintf("effects.Register: %q declares a reveal / behold cost outside an either/or branch — every printed one is a branch beside mana (ADR 0100 amendment 2026-10-07), or the exiling behold (BeholdAndExileCost)", spec.Name))
 			}
-			if !rc.Behold || rc.Subtype == "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+			if !rc.Chosen && (!rc.Behold || rc.Subtype == "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0) {
 				panic(fmt.Sprintf("effects.Register: %q declares a malformed behold-and-exile cost — build it with BeholdAndExileCost, alone on the mandatory slot (#4687)", spec.Name))
 			}
 		}

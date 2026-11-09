@@ -44,6 +44,23 @@ type RevealCost struct {
 	// branch (RevealCardCost) still names a Subtype and no colour.
 	// ADR 0020's 2026-10-08 amendment (#2598).
 	Color string
+	// CardType narrows the candidates to one card type ("creature"), read
+	// with Card.HasCardType: a hand card must be a card of that type and a
+	// permanent must be one. It is the clause's quality when no creature
+	// type is named: Monstrous Emergence's "choose a creature you control
+	// or reveal a creature card from your hand" (CR 701.4a, behold's
+	// "creature" form). Combines with Subtype and Color by AND. Lower case,
+	// as HasCardType takes it.
+	CardType string
+	// Chosen records the pick on the cast's payment (PaidCost.Chosen), for a
+	// spell whose text reads the object it chose or revealed: "damage equal
+	// to the power of the creature you chose or the card you revealed". A
+	// permanent is recorded as the object it is now, so its power is read as
+	// the spell resolves and, once it has left the battlefield, as it last
+	// existed there (CR 608.2h); a card from the hand is recorded with the
+	// power it was revealed with. Behold only, on the mandatory slot only
+	// (ChooseOrRevealCost).
+	Chosen bool
 	// Exile is "behold a <type> AND EXILE IT" (#4687, ADR 0100's
 	// 2026-11-05 amendment): the Lorwyn Eclipsed Champions' mandatory
 	// additional cost. The one card named on RevealIDs — a matching
@@ -70,6 +87,9 @@ func (rc *RevealCost) matches(c Card) bool {
 		return false
 	}
 	if rc.Color != "" && !c.HasColorWord(rc.Color) {
+		return false
+	}
+	if rc.CardType != "" && !c.HasCardType(rc.CardType) {
 		return false
 	}
 	return true
@@ -172,6 +192,9 @@ func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, i
 	}
 	if rc.Exile {
 		return g.payBeholdExileLocked(playerID, castID, ids[0], answers)
+	}
+	if rc.Chosen {
+		g.recordChosenLocked(playerID, castID, ids[0])
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil || !p.Hand.Contains(ids[0]) {

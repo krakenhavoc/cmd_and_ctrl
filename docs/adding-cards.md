@@ -5690,6 +5690,27 @@ spell's card stays in exile. With nothing to behold the card can't be cast.
 The mandatory slot only, and alone on it: Register refuses the exiling form
 on a branch, an optional cost, an alternative cost and an ability.
 
+**Choose a creature or reveal a creature card, and read it back (#4452, CR
+701.4a, CR 608.2h):** Monstrous Emergence's "As an additional cost to cast
+this spell, choose a creature you control or reveal a creature card from your
+hand. … damage equal to the power of the creature you chose or the card you
+revealed" is
+
+```go
+AdditionalCost: ChooseOrRevealCost("creature", "Choose a creature you control or reveal a creature card from your hand"),
+// at resolution
+n, ok := b25ChosenPower(ctx) // game.ChosenPowerForEffect(ctx.Item)
+```
+
+It is the behold component over a card type (`RevealCost.CardType`, no creature
+type) with `Chosen` set, so the payment records the pick on `PaidCost.Chosen`
+(a `PaidTap`, as a station's tapped creature). A permanent is read as the
+spell resolves and, once it has left the battlefield, as it last existed there
+(CR 608.2h: the exit hook rewrites the record); a revealed card is read at its
+printed power. The caster names the one object on `reveal_ids`, so the client's
+behold picker, the view and the bot serve it unchanged. The mandatory slot
+only, and alone on it.
+
 **Tap an untapped permanent you control as an additional cost (#3868):**
 "As an additional cost to cast this spell, tap an untapped Vampire you
 control" (New Blood) is `AdditionalCost: TapUntappedCost(1, "an untapped
