@@ -60,6 +60,12 @@ const (
 	// object. The duration is pinned to Of, not to the permanent that
 	// becomes the copy, and never starts if Of is untapped or gone.
 	CopyWhileOfRemainsTapped
+
+	// CopyUntilNextEndStep is "until the next end step" (Niko, Light of
+	// Hope): the copy ends as the next end step of any turn begins
+	// (game.UntilNextEndStep), a window of its own: shorter than "until end
+	// of turn" and not tied to any player's turn.
+	CopyUntilNextEndStep
 )
 
 // BecomeCopy makes each of Targets a copy of Of.
@@ -148,6 +154,8 @@ func (b BecomeCopy) ApplyReports(ctx *Context) (bool, error) {
 		if d, ok = ctx.Game.ForAsLongAsPinnedTappedDuration(b.Of); !ok {
 			return false, nil // CR 611.2b: it never starts
 		}
+	case CopyUntilNextEndStep:
+		d = ctx.Game.UntilNextEndStepDuration()
 	default:
 		d = ctx.Game.UntilEndOfTurnDuration()
 	}

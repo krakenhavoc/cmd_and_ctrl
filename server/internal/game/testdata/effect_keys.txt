@@ -741,6 +741,7 @@ choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/starseer-mentor-punisher-discarded
+choose choose-cards/std-b26-nashi-to-hand
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -1261,6 +1262,7 @@ option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
 option option-pick/starseer-mentor-punisher
+option option-pick/std-b26-reluctant-role-model-counter
 option option-pick/tap-or-untap-that-permanent
 option option-pick/teferis-realm-phase-out
 option option-pick/teyo-geometric-tactician-direction
@@ -2324,6 +2326,9 @@ tail sparring-dummy/after-mill
 tail speak-secrets/after-mill
 tail spelunking/gain-life-for-a-cave
 tail ss-botany-bay/then-you
+tail std-b26/come-back-wrong-return
+tail std-b26/nashi-after-mill
+tail std-b26/niko-after-exile
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
 tail stockpiling-celebrant/scry
