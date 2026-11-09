@@ -500,6 +500,7 @@ choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/finale-of-revelation-untap-lands
+choose choose-cards/fireglass-mentor-play
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
@@ -2039,6 +2040,7 @@ tail fin/triple-triad-grant
 tail final-parting/graveyard-search
 tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
+tail fireglass-mentor/choose-exiled
 tail firion-wild-rose-warrior/sacrifice-the-copy
 tail fishing-gear/after-exile
 tail fishing-gear/entered
