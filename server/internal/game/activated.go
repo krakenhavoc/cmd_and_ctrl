@@ -2759,7 +2759,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	g.payTapPermanentsCostLocked(playerID, params.WaterbendIDs)
 	// #5276, CR 701.67c: the waterbend cost is paid, however much of it
 	// the taps covered, so the activator has waterbent.
-	if !ab.Cost.Waterbend.Empty() {
+	if !ab.Cost.Waterbend.Empty() && ab.Cost.Waterbend.Key == "waterbend" {
 		g.noteBendLocked(EventWaterbend, playerID, cardID)
 	}
 	// The cost may have queued dies-triggers (a sacrifice outlet
