@@ -207,6 +207,7 @@ body mana-drain/refund
 body mana-rider/dispatch
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
+body meanders-guide/return
 body megatron-destructive-force/strike
 body melee/pump
 body merry-bards/young-hero-role
@@ -503,6 +504,7 @@ choose choose-cards/glittering-wish-take
 choose choose-cards/gluntch-the-bestower-creature
 choose choose-cards/golden-wish-take
 choose choose-cards/granted-take
+choose choose-cards/gravelgill-scoundrel-tap
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/heart-shaped-herb-sacrifice
@@ -525,6 +527,7 @@ choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/kinscaer-sentry-put
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
@@ -609,6 +612,7 @@ choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/masterminds-acquisition-take
+choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
@@ -1202,6 +1206,7 @@ option option-pick/hidden-strings-tap-or-untap
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
 option option-pick/kharn-the-betrayer-opponent
+option option-pick/kinscaer-sentry-attacks
 option option-pick/land-mana-each
 option option-pick/leatherhead-remove-a-counter
 option option-pick/leori-sparktouched-hunter-planeswalker-type
@@ -1332,6 +1337,7 @@ payunless pay-unless/divert-change-target
 payunless pay-unless/draw-a-card
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
+payunless pay-unless/eirdu-transform
 payunless pay-unless/electro-assaulting-battery-damage
 payunless pay-unless/electrozoa-tap
 payunless pay-unless/elesh-norn-argent-etchings-lose-two
@@ -1564,6 +1570,7 @@ run prompt-run/liliana-dreadhorde-general-keep
 run prompt-run/lithobraking-sacrifice
 run prompt-run/lord-skitters-butcher-sacrifice
 run prompt-run/lotus-field-sacrifice
+run prompt-run/malevolent-witchkite-sacrifice
 run prompt-run/manifest-from-hand
 run prompt-run/megatron-tyrant-sacrifice
 run prompt-run/mica-reader-of-ruins-copy
@@ -1724,6 +1731,7 @@ tail afflicted-deserter/damage-controller-if-destroyed
 tail agathas-soul-cauldron/after-exile
 tail ainok-wayfarer/after-mill
 tail airbend/grant-and-announce
+tail ajani-outland-chaperone/shuffle
 tail ajanis-chosen/offer-attach
 tail alien-invasion/grow
 tail aminatous-augury/after-mill
@@ -2069,6 +2077,7 @@ tail kaervek-the-punisher/copy-exiled
 tail kang-prime/time-counters
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
+tail kinscaer-sentry/entered
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
@@ -2104,6 +2113,7 @@ tail mass/blood-money-treasures
 tail mass/ceaseless-conflict-spirits
 tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
+tail mass/faerie-slumber-party-faeries
 tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
@@ -2155,6 +2165,8 @@ tail noctis/entered-unblockable
 tail now-for-wrath/vigilance-and-temptation
 tail nurturing-pixie/counter-if-returned
 tail nyla-shirshu-sleuth/lose-x-make-x-clues
+tail oko-shadowmoor-scion/after-mill
+tail oko-shadowmoor-scion/emblem-type
 tail old-hob/token-haste-and-destroy
 tail oona-queen-of-the-fae/after-mill
 tail ormos-archive-keeper/then-draw
