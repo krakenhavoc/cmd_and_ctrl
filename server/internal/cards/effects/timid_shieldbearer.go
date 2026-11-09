@@ -18,12 +18,9 @@ func init() {
 		Name:         "Timid Shieldbearer",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{4}{W}: Creatures you control get +1/+1 until end of turn.",
-			Cost:  ManaCost("{4}{W}"),
-			Purpose: game.Purpose{
-				Answers: game.AnswerPump,
-				Pump:    &game.Pump{Power: 1, Toughness: 1},
-			},
+			Label:   "{4}{W}: Creatures you control get +1/+1 until end of turn.",
+			Cost:    ManaCost("{4}{W}"),
+			Purpose: game.Purpose{TeamPump: &game.Pump{Power: 1, Toughness: 1}, Answers: game.AnswerPump},
 			Effect: Do(BoostUntilEOT{Match: And(Creature(), YouControl()), Power: 1, Toughness: 1,
 				Label: "Timid Shieldbearer — +1/+1"}),
 		}},

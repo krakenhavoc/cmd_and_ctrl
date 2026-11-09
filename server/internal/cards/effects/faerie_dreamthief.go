@@ -26,10 +26,11 @@ func init() {
 			WhenThisEnters("Faerie Dreamthief — surveil 1", Do(Surveil{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{B}, Exile this card from your graveyard: You draw a card and you lose 1 life.",
-			Cost:   Plus(ManaCost("{2}{B}"), ExileThis()),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: b36DrawAndLoseOne,
+			Label:   "{2}{B}, Exile this card from your graveyard: You draw a card and you lose 1 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
+			Cost:    Plus(ManaCost("{2}{B}"), ExileThis()),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect:  b36DrawAndLoseOne,
 		}},
 	})
 }
