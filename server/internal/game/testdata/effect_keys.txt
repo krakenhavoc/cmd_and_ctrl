@@ -702,6 +702,7 @@ choose choose-cards/plunge-into-darkness-take
 choose choose-cards/polygraph-orb-punisher-discarded
 choose choose-cards/populate
 choose choose-cards/port-of-karfell-return
+choose choose-cards/portent-of-calamity-card-type
 choose choose-cards/proliferate
 choose choose-cards/pulsar-squadron-ace-take
 choose choose-cards/put-from-hand-on-top-in-any-order
@@ -856,6 +857,7 @@ choose resolution-cast/herald-of-amity-rest-to-bottom
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
+choose resolution-cast/portent-of-calamity-rest-to-hand
 choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
@@ -2242,6 +2244,7 @@ tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
 tail portal-to-phyrexia/phyrexian
+tail portent-of-calamity/after-graveyard
 tail portent/ask-shuffle
 tail power-pack/after-exile
 tail primal-amulet/ask
