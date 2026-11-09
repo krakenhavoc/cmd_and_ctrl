@@ -1026,6 +1026,34 @@ func (g *Game) endPlaneswalkAwayDurationsLocked(plane uuid.UUID) {
 	matches := func(d Duration) bool {
 		return d.Kind == UntilPlaneswalkAway && !d.Ended && d.Source == plane
 	}
+	// Player-level statics a plane made (Agyrem's "creatures can't attack
+	// you until a player planeswalks") end the same way. The slice is
+	// replaced, never edited in place: its array is shared with undo
+	// snapshots.
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		hit := false
+		for _, s := range p.Statics {
+			if matches(s.Duration) {
+				hit = true
+				break
+			}
+		}
+		if !hit {
+			continue
+		}
+		next := make([]PlayerStatic, len(p.Statics))
+		for i, s := range p.Statics {
+			if matches(s.Duration) {
+				s.Duration.Ended = true
+			}
+			next[i] = s
+		}
+		p.Statics = next
+	}
+	g.sweepPlayerStaticsLocked(false)
 	found := false
 	for _, e := range g.ScopedEffects {
 		if matches(e.Duration) {

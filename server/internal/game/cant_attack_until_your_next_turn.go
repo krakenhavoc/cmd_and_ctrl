@@ -24,3 +24,18 @@ func (g *Game) GrantCantAttackPlayerUntilYourNextTurnForEffect(attacker, protect
 	g.grantCantAttackLocked(attacker, protected, scope, g.turnsBegunForLocked(attacker),
 		g.UntilYourNextTurnDuration(protected), label, source)
 }
+
+// GrantCantAttackPlayerUntilPlaneswalkForEffect makes `attacker` unable to
+// attack what `scope` covers of `protected` until a player planeswalks (CR
+// 901.11; Agyrem, ADR 0216 slice 4, #4870): the window opens now and closes
+// when the face-up planar card `plane` that made it stops being face up.
+// A plane that is not face up has already seen that end, so nothing is
+// granted (CR 611.2b). Same no-ops and caller contract as
+// GrantCantAttackPlayerForEffect.
+func (g *Game) GrantCantAttackPlayerUntilPlaneswalkForEffect(attacker, protected uuid.UUID, scope CantAttackScope, label string, plane uuid.UUID) {
+	d, ok := g.UntilPlaneswalkAwayDuration(plane)
+	if !ok {
+		return
+	}
+	g.grantCantAttackLocked(attacker, protected, scope, g.turnsBegunForLocked(attacker), d, label, plane)
+}

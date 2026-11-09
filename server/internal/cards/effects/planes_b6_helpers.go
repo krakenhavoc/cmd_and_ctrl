@@ -119,3 +119,18 @@ func (b6YouHaveNoCardsInHand) Holds(ctx *Context) bool {
 func (b6YouHaveNoCardsInHand) condition() (game.FootprintStep, bool) {
 	return game.FootprintStep{}, false
 }
+
+// b6ReturnObjectFromGraveyard returns the card the delayed ability's Object
+// names from a graveyard to `dest` (the battlefield under its owner's control,
+// or its owner's hand), when it is still that object there (CR 400.7).
+func b6ReturnObjectFromGraveyard(g *game.Game, item *game.StackItem, p game.EffectParams, dest game.ZoneKind) error {
+	id := p.Object.ID
+	c, ok := g.LookupCardForEffect(id)
+	if !ok || c.ObjectEpoch != p.Object.Epoch {
+		return nil
+	}
+	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: id, Dest: dest}.Apply(NewContext(g, item))
+}

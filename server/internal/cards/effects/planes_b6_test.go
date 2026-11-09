@@ -615,3 +615,71 @@ func TestAcademyAtTolariaWestDrawsSevenOnlyWithAnEmptyHand(t *testing.T) {
 		t.Errorf("hand %d after the end step, want 7", me2.Hand.Size())
 	}
 }
+
+var planeAgyrem = planeFixture{"38f84e55-049c-441e-b4e2-1e207ab5dbe5", "Agyrem", "Plane — Ravnica"}
+
+func b6Kill(g *game.Game, id uuid.UUID) {
+	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(uuid.Nil, id, 99) })
+	g.RunStateChecksForTest()
+}
+
+func TestAgyremReturnsWhiteToTheBattlefieldAndNonwhiteToHand(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeAgyrem)
+	g, _ := newPlaneGame(t, planeAgyrem)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	white := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "White Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"W"}, Owner: me.ID, Controller: me.ID})
+	green := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Green Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}, Owner: me.ID, Controller: me.ID})
+	b6Kill(g, white)
+	b6Kill(g, green)
+	passPriorityAroundTable(t, g)
+	advanceTo(t, g, game.StepEnd)
+	// Two delayed triggers fire at once: their controller orders them.
+	if c := latestChoiceOfKind(g, game.PendingChoiceTriggerOrder); c != nil {
+		var ids []uuid.UUID
+		for _, it := range g.PendingTriggers {
+			if it != nil {
+				ids = append(ids, it.ID)
+			}
+		}
+		if err := g.ResolveTriggerOrder(c.ID, c.Chooser, ids); err != nil {
+			t.Fatalf("ResolveTriggerOrder: %v", err)
+		}
+	}
+	for i := 0; i < 4; i++ {
+		passPriorityAroundTable(t, g)
+	}
+	g.ReadSnapshot(func() {
+		if z := g.FindCardZoneForEffect(white); z == nil || z.Kind != game.ZoneBattlefield {
+			t.Error("the white creature did not return to the battlefield")
+		}
+		if z := g.FindCardZoneForEffect(green); z == nil || z.Kind != game.ZoneHand {
+			t.Errorf("the nonwhite creature is not in its owner's hand")
+		}
+	})
+}
+
+func TestAgyremChaosStopsAttacksUntilAPlaneswalk(t *testing.T) {
+	g, _ := newPlaneGame(t, planeAgyrem)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	next := toNextUpkeep(t, g)
+	bear := pushVanillaCreature(g, next.ID, "Bear", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(bear, me.ID); err == nil {
+		t.Fatal("a creature attacked the planar controller who rolled chaos")
+	}
+	other := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+	if err := g.DeclareAttacker(bear, other.ID); err != nil {
+		t.Errorf("attacking someone else was refused: %v", err)
+	}
+	// A planeswalk ends it: the next turn's attacker may attack the roller.
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(next.ID) })
+	for _, pl := range g.Seats[0].Statics {
+		if pl.CantAttack.Protected != uuid.Nil {
+			t.Error("the can't-attack restriction outlived the planeswalk")
+		}
+	}
+}
