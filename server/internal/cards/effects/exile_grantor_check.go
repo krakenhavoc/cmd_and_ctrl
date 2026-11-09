@@ -21,16 +21,16 @@ import (
 //     pays one component (CR 118.3). No printed card does it.
 func checkExileGrantor(card, where string, ab ActivatedAbility, granted bool, zone game.ZoneKind) {
 	c := ab.Cost
-	if !c.ExileGrantor {
+	if !c.ExileGrantor && !c.TapGrantor {
 		return
 	}
 	switch {
 	case !granted:
-		panic(fmt.Sprintf("effects.Register: %q %s exiles its grantor but is not a granted ability — only a granted row has a grantor (#4000)", card, where))
+		panic(fmt.Sprintf("effects.Register: %q %s exiles or taps its grantor but is not a granted ability — only a granted row has a grantor (#4000)", card, where))
 	case zone != "" && zone != game.ZoneBattlefield:
-		panic(fmt.Sprintf("effects.Register: %q %s exiles its grantor from a bundle given to cards in %s — only a battlefield grant records one (#4000)", card, where, zone))
+		panic(fmt.Sprintf("effects.Register: %q %s exiles or taps its grantor from a bundle given to cards in %s — only a battlefield grant records one (#4000)", card, where, zone))
 	case c.SacrificeOther != nil || !c.ReturnToHand.Empty() || !c.ExilePermanents.Empty() || !c.TapOthers.Empty() ||
 		c.Crew > 0 || c.Saddle > 0 || !c.Waterbend.Empty():
-		panic(fmt.Sprintf("effects.Register: %q %s exiles its grantor beside a component that picks permanents — not modelled (#4000, CR 118.3)", card, where))
+		panic(fmt.Sprintf("effects.Register: %q %s exiles or taps its grantor beside a component that picks permanents — not modelled (#4000, CR 118.3)", card, where))
 	}
 }

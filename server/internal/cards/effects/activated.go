@@ -463,6 +463,16 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileGrantor {
 			out.ExileGrantor = true
 		}
+		// Cursecloth Wrappings: and "its mana cost" as the mana component;
+		// dropped, the granted embalm would be free.
+		if c.ManaFromSource {
+			out.ManaFromSource = true
+		}
+		// Fishing Pole: and the tap-the-grantor component; dropped, the
+		// granted ability would be free of its Equipment tap.
+		if c.TapGrantor {
+			out.TapGrantor = true
+		}
 		// #4799: and the unattach component; dropped, Captain America's
 		// throw would deal damage for {3} and keep the Equipment on him.
 		if c.UnattachEquipment != 0 {
@@ -696,6 +706,23 @@ func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
 // never beside a component that picks permanents: Register refuses
 // anything else. Compose it with Plus like any other component.
 func ExileTheGrantor() game.AbilityCost { return game.AbilityCost{ExileGrantor: true} }
+
+// ItsManaCost is "pay a cost equal to its mana cost" as the mana component
+// of a granted ability's cost (game.AbilityCost.ManaFromSource): Cursecloth
+// Wrappings' embalm. The bundle row names no mana of its own; the card that
+// has the row supplies its mana cost as the row is built.
+func ItsManaCost() game.AbilityCost { return game.AbilityCost{ManaFromSource: true} }
+
+// TapTheGrantor is "Tap <the permanent that grants this ability>" as a
+// cost: Fishing Pole's equipped creature has "{1}, {T}, Tap Fishing Pole:
+// …". The ability is the creature's, so {T} taps the creature; this taps
+// the Equipment whose grant the row is (game.AbilityCost.TapGrantor), which
+// must be untapped.
+//
+// Only in an AbilityGrant bundle given to battlefield permanents, and never
+// beside a component that picks permanents: Register refuses anything else.
+// Compose it with Plus like any other component.
+func TapTheGrantor() game.AbilityCost { return game.AbilityCost{TapGrantor: true} }
 
 // PutThisOnTheBottomOfItsOwnersLibrary is "Put this creature on the
 // bottom of its owner's library" as a cost (#2726).

@@ -110,6 +110,15 @@ type AbilityCost struct {
 	// means no mana component.
 	Mana string
 
+	// ManaFromSource is "its cost is equal to its mana cost": the mana
+	// component is the mana cost of the card that has the row, not a
+	// printed string. Only in an ability bundle a resolved effect gives a
+	// card (Cursecloth Wrappings' embalm): the row builder
+	// (activatedAbilityRows) writes that card's mana cost into Mana, so every
+	// reader of a granted row sees a plain string. Mana stays empty on the
+	// bundle itself.
+	ManaFromSource bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'
@@ -542,6 +551,18 @@ type AbilityCost struct {
 	// no longer on the battlefield, and one the same payment already
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
+
+	// TapGrantor taps the permanent that GRANTED this ability as part of
+	// the cost: Fishing Pole's equipped creature has "{1}, {T}, Tap
+	// Fishing Pole: …". Same grantor as ExileGrantor (AbilityOrigin.
+	// GrantedBy), same rule that only a granted battlefield row has one,
+	// but the grantor stays where it is and an already tapped grantor
+	// can't pay (CR 118.3). Tapping a permanent that isn't a creature
+	// isn't the {T} symbol (CR 302.6 is about the source), so no
+	// summoning-sickness check is made on it. Paid with the ability on
+	// the stack, so a "becomes tapped" watcher goes above it. See
+	// tap_grantor_cost.go.
+	TapGrantor bool
 
 	// UnattachEquipment is "Unattach an Equipment from <this>" as a cost
 	// (#4799, ADR 0020's 2026-11-02 amendment) — Captain America, First
@@ -1851,6 +1872,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
+	// "Tap <the permanent that granted this>" (Fishing Pole): the row's
+	// grantor must still be on the battlefield and untapped, and pays no
+	// other component (CR 118.3).
+	tapGrantor, err := g.tapGrantorOfLocked(ab.Cost, origins.At(index))
+	if err != nil {
+		return err
+	}
+	if err := validateTapGrantorCostLocked(tapGrantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs, params.TapIDs); err != nil {
+		return err
+	}
 	// #4799: "Unattach an Equipment from <this>" (Captain America, First
 	// Avenger). Unattaching moves nothing, so the pick competes with no
 	// other component; it is checked here with the rest so a refusal
@@ -2704,6 +2735,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taps are paid — so station's effect can read the tapped
 	// creature back at resolution (CR 702.184a). See PaidTap.
 	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	// Fishing Pole: and the tap-the-grantor half, for the same reason.
+	g.payTapGrantorCostLocked(playerID, tapGrantor)
 	// #2695: a saddle ability's tapped creatures are the "creatures
 	// that saddled it" (CR 702.171c); the effect hands them to
 	// SaddleForEffect from this record. No printed cost has both a

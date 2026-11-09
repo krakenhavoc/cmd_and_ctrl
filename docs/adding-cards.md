@@ -50,6 +50,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
+  - [Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)](#tapping-the-grantor-and-an-ability-a-card-is-given-until-end-of-turn-4465-4464)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
@@ -4510,6 +4511,22 @@ Captain America". The activator picks one Equipment attached to the source, whoe
 battlefield unattached. With nothing attached the ability can't be activated. A divided amount that reads the pick is
 `Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
 the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
+
+### Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)
+
+`Plus(ManaCost("{1}"), TapCost(), TapTheGrantor())` in an `AbilityGrant` bundle is Fishing Pole's equipped creature
+having "{1}, {T}, Tap Fishing Pole: …": `{T}` taps the creature, `TapTheGrantor` taps the Equipment whose grant the row is
+(`game.AbilityCost.TapGrantor`, `game/tap_grantor_cost.go`, the same grantor `ExileTheGrantor` reads). It must be
+untapped (CR 118.3), is tapped with the ability on the stack, and the effect puts its counter on `ctx.Grantor()`, never
+on another permanent with the same name. `Register` allows it only in a granted battlefield row and never beside a
+component that picks permanents.
+
+"Target creature card in your graveyard gains embalm until end of turn. The embalm cost is equal to its mana cost"
+(Cursecloth Wrappings) is a graveyard `AbilityGrant` given with
+`Game.GrantAbilityToGraveyardCardUntilEndOfTurnForEffect(card, source, activator, key)`
+(`game/graveyard_effect_grants.go`): Q's exile grant (ADR 0219) on a card in a graveyard, ended by the CR 514.2 sweep
+or by the card moving. The bundle's mana component is `ItsManaCost()` (`AbilityCost.ManaFromSource`); the row builder
+writes the card's own mana cost into it, so every reader of the row sees a plain string.
 
 ### "Can't have counters put on it" (#4692, CR 101.2)
 

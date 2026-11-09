@@ -91,6 +91,13 @@ var untilEndOfTurnExempt = map[string]string{
 	"Liliana of the Dark Realms": "the sign is chosen at resolution",
 	// Moves Zack Fair's counters and Equipment onto the creature for good.
 	"Zack Fair": "part of what it does lasts",
+	// "Target opponent loses X life, where X is the amount of life you
+	// gained this turn": "this turn" bounds the count, not a change to the
+	// target.
+	"Midnight Snack": "this turn bounds the count, not a change to the target",
+	// The target is a card in a graveyard, which a permanent direction
+	// cannot describe: it gains embalm until end of turn.
+	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog

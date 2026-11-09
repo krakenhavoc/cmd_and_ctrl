@@ -39,13 +39,7 @@ func init() {
 			}},
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouGainLife("Ajani Resolute — put a loyalty counter on him",
-				func(g *game.Game, item *game.StackItem) error {
-					if !b09SourceStillOnBattlefield(g, item) {
-						return nil
-					}
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterLoyalty, N: 1}.Apply(NewContext(g, item))
-				}),
+			WheneverYouGainLife("Ajani Resolute — put a loyalty counter on him", stdB15LoyaltyCounterOnThis),
 		},
 		Activated: []ActivatedAbility{
 			{

@@ -161,6 +161,7 @@ battlefield.cards[].exileGrants[]	object
 battlefield.cards[].exileGrants[].activator	custom(uuid.UUID)
 battlefield.cards[].exileGrants[].key	string
 battlefield.cards[].exileGrants[].source	custom(uuid.UUID)
+battlefield.cards[].exileGrants[].untilEndOfTurn	bool
 battlefield.cards[].exiledWith	object
 battlefield.cards[].exiledWith.epoch	number:int
 battlefield.cards[].exiledWith.id	custom(uuid.UUID)
@@ -704,6 +705,7 @@ enteringTokens[].exileGrants[]	object
 enteringTokens[].exileGrants[].activator	custom(uuid.UUID)
 enteringTokens[].exileGrants[].key	string
 enteringTokens[].exileGrants[].source	custom(uuid.UUID)
+enteringTokens[].exileGrants[].untilEndOfTurn	bool
 enteringTokens[].exiledWith	object
 enteringTokens[].exiledWith.epoch	number:int
 enteringTokens[].exiledWith.id	custom(uuid.UUID)
@@ -1205,6 +1207,7 @@ exile.cards[].exileGrants[]	object
 exile.cards[].exileGrants[].activator	custom(uuid.UUID)
 exile.cards[].exileGrants[].key	string
 exile.cards[].exileGrants[].source	custom(uuid.UUID)
+exile.cards[].exileGrants[].untilEndOfTurn	bool
 exile.cards[].exiledWith	object
 exile.cards[].exiledWith.epoch	number:int
 exile.cards[].exiledWith.id	custom(uuid.UUID)
@@ -4250,6 +4253,7 @@ frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Key	string
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 frozenEntries[].event.damageTail.sourceLki.Name	string
 frozenEntries[].event.damageTail.sourceLki.PTDefined	bool
 frozenEntries[].event.damageTail.sourceLki.PTSwitched	bool
@@ -8177,6 +8181,7 @@ frozenEntries[].event.keywordActionTail.armyToken.exileGrants[]	object
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].key	string
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith	object
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -10367,6 +10372,7 @@ frozenEntries[].event.millTail.run.planned[].exileGrants[]	object
 frozenEntries[].event.millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].exileGrants[].key	string
 frozenEntries[].event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.millTail.run.planned[].exiledWith	object
 frozenEntries[].event.millTail.run.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -10763,6 +10769,7 @@ frozenEntries[].event.millTail.run.seen[].exileGrants[]	object
 frozenEntries[].event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].exileGrants[].key	string
 frozenEntries[].event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.millTail.run.seen[].exiledWith	object
 frozenEntries[].event.millTail.run.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -12369,6 +12376,7 @@ frozenEntries[].event.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.GrantedAbilities[].Key	string
 frozenEntries[].event.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+frozenEntries[].event.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 frozenEntries[].event.sourceLki.Name	string
 frozenEntries[].event.sourceLki.PTDefined	bool
 frozenEntries[].event.sourceLki.PTSwitched	bool
@@ -12862,6 +12870,7 @@ frozenEntries[].event.tokenGroups[].template.exileGrants[]	object
 frozenEntries[].event.tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.exileGrants[].key	string
 frozenEntries[].event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.tokenGroups[].template.exiledWith	object
 frozenEntries[].event.tokenGroups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -13864,6 +13873,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[]	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].key	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -14273,6 +14283,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -14669,6 +14680,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -18125,6 +18137,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[]	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -18550,6 +18563,7 @@ heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[]	object
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Key	string
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
+heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].UntilEndOfTurn	bool
 heldCombatDamage.answers[].frame.SourceLKI.Name	string
 heldCombatDamage.answers[].frame.SourceLKI.PTDefined	bool
 heldCombatDamage.answers[].frame.SourceLKI.PTSwitched	bool
@@ -18727,6 +18741,7 @@ lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
 lastKnownBattlefield{}.GrantedAbilities[].Key	string
 lastKnownBattlefield{}.GrantedAbilities[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.GrantedAbilities[].UntilEndOfTurn	bool
 lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
 lastKnownBattlefield{}.PTSwitched	bool
@@ -18908,6 +18923,7 @@ lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Key	string
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.GrantedAbilities[].UntilEndOfTurn	bool
 lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
 lastKnownPermanents{}[].characteristic.PTSwitched	bool
@@ -19131,6 +19147,7 @@ lastKnownStack[].card.exileGrants[]	object
 lastKnownStack[].card.exileGrants[].activator	custom(uuid.UUID)
 lastKnownStack[].card.exileGrants[].key	string
 lastKnownStack[].card.exileGrants[].source	custom(uuid.UUID)
+lastKnownStack[].card.exileGrants[].untilEndOfTurn	bool
 lastKnownStack[].card.exiledWith	object
 lastKnownStack[].card.exiledWith.epoch	number:int
 lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
@@ -21779,6 +21796,7 @@ movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Key	string
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 movesAwaitingTokens[].damageTail.sourceLki.Name	string
 movesAwaitingTokens[].damageTail.sourceLki.PTDefined	bool
 movesAwaitingTokens[].damageTail.sourceLki.PTSwitched	bool
@@ -25706,6 +25724,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[]	object
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].key	string
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith	object
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -27896,6 +27915,7 @@ movesAwaitingTokens[].millTail.run.planned[].exileGrants[]	object
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].key	string
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].millTail.run.planned[].exiledWith	object
 movesAwaitingTokens[].millTail.run.planned[].exiledWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -28292,6 +28312,7 @@ movesAwaitingTokens[].millTail.run.seen[].exileGrants[]	object
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].key	string
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].millTail.run.seen[].exiledWith	object
 movesAwaitingTokens[].millTail.run.seen[].exiledWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -29898,6 +29919,7 @@ movesAwaitingTokens[].sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Key	string
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+movesAwaitingTokens[].sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 movesAwaitingTokens[].sourceLki.Name	string
 movesAwaitingTokens[].sourceLki.PTDefined	bool
 movesAwaitingTokens[].sourceLki.PTSwitched	bool
@@ -30391,6 +30413,7 @@ movesAwaitingTokens[].tokenGroups[].template.exileGrants[]	object
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].key	string
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].tokenGroups[].template.exiledWith	object
 movesAwaitingTokens[].tokenGroups[].template.exiledWith.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -31393,6 +31416,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[]	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].key	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -31802,6 +31826,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -32198,6 +32223,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -35654,6 +35680,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[]	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -37426,6 +37453,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[]	object
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].key	string
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.id	custom(uuid.UUID)
@@ -37842,6 +37870,7 @@ pendingChoices[].attackSplit.settled.groups[].template.exileGrants[]	object
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].key	string
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -38824,6 +38853,7 @@ pendingChoices[].attackSplit.template.exileGrants[]	object
 pendingChoices[].attackSplit.template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.exileGrants[].key	string
 pendingChoices[].attackSplit.template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].attackSplit.template.exiledWith	object
 pendingChoices[].attackSplit.template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.template.exiledWith.id	custom(uuid.UUID)
@@ -39587,6 +39617,7 @@ pendingChoices[].copyWalk.src.exileGrants[]	object
 pendingChoices[].copyWalk.src.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.exileGrants[].key	string
 pendingChoices[].copyWalk.src.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].copyWalk.src.exiledWith	object
 pendingChoices[].copyWalk.src.exiledWith.epoch	number:int
 pendingChoices[].copyWalk.src.exiledWith.id	custom(uuid.UUID)
@@ -40050,6 +40081,7 @@ pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Key	string
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
 pendingChoices[].damageAssignment.SourceLKI.PTSwitched	bool
@@ -40865,6 +40897,7 @@ pendingChoices[].divideShield.staged[].lki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Key	string
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].divideShield.staged[].lki.Name	string
 pendingChoices[].divideShield.staged[].lki.PTDefined	bool
 pendingChoices[].divideShield.staged[].lki.PTSwitched	bool
@@ -41031,6 +41064,7 @@ pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].divideShield.staged[].sourceLki.Name	string
 pendingChoices[].divideShield.staged[].sourceLki.PTDefined	bool
 pendingChoices[].divideShield.staged[].sourceLki.PTSwitched	bool
@@ -46474,6 +46508,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[]
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Name	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTDefined	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTSwitched	bool
@@ -50401,6 +50436,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].key	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -52591,6 +52627,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[]	ob
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -52987,6 +53024,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[]	objec
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -54593,6 +54631,7 @@ pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.sourceLki.Name	string
 pendingChoices[].replacementResume.event.sourceLki.PTDefined	bool
 pendingChoices[].replacementResume.event.sourceLki.PTSwitched	bool
@@ -55086,6 +55125,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[]	ob
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].key	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -56088,6 +56128,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exi
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].key	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -56497,6 +56538,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -56893,6 +56935,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGr
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -60349,6 +60392,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrant
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -62253,6 +62297,7 @@ pendingChoices[].targetWalk.frame.lki.GrantedAbilities[]	object
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Key	string
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].targetWalk.frame.lki.Name	string
 pendingChoices[].targetWalk.frame.lki.PTDefined	bool
 pendingChoices[].targetWalk.frame.lki.PTSwitched	bool
@@ -62439,6 +62484,7 @@ pendingChoices[].targetWalk.frame.source.exileGrants[]	object
 pendingChoices[].targetWalk.frame.source.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.exileGrants[].key	string
 pendingChoices[].targetWalk.frame.source.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].targetWalk.frame.source.exiledWith	object
 pendingChoices[].targetWalk.frame.source.exiledWith.epoch	number:int
 pendingChoices[].targetWalk.frame.source.exiledWith.id	custom(uuid.UUID)
@@ -62988,6 +63034,7 @@ pendingChoices[].triggerFrame.lki.GrantedAbilities[]	object
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Key	string
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].triggerFrame.lki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].triggerFrame.lki.Name	string
 pendingChoices[].triggerFrame.lki.PTDefined	bool
 pendingChoices[].triggerFrame.lki.PTSwitched	bool
@@ -63174,6 +63221,7 @@ pendingChoices[].triggerFrame.source.exileGrants[]	object
 pendingChoices[].triggerFrame.source.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.exileGrants[].key	string
 pendingChoices[].triggerFrame.source.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].triggerFrame.source.exiledWith	object
 pendingChoices[].triggerFrame.source.exiledWith.epoch	number:int
 pendingChoices[].triggerFrame.source.exiledWith.id	custom(uuid.UUID)
@@ -64257,6 +64305,7 @@ phasedOut.cards[].exileGrants[]	object
 phasedOut.cards[].exileGrants[].activator	custom(uuid.UUID)
 phasedOut.cards[].exileGrants[].key	string
 phasedOut.cards[].exileGrants[].source	custom(uuid.UUID)
+phasedOut.cards[].exileGrants[].untilEndOfTurn	bool
 phasedOut.cards[].exiledWith	object
 phasedOut.cards[].exiledWith.epoch	number:int
 phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
@@ -64656,6 +64705,7 @@ planechase.deck.cards[].exileGrants[]	object
 planechase.deck.cards[].exileGrants[].activator	custom(uuid.UUID)
 planechase.deck.cards[].exileGrants[].key	string
 planechase.deck.cards[].exileGrants[].source	custom(uuid.UUID)
+planechase.deck.cards[].exileGrants[].untilEndOfTurn	bool
 planechase.deck.cards[].exiledWith	object
 planechase.deck.cards[].exiledWith.epoch	number:int
 planechase.deck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -65055,6 +65105,7 @@ planechase.faceUp.cards[].exileGrants[]	object
 planechase.faceUp.cards[].exileGrants[].activator	custom(uuid.UUID)
 planechase.faceUp.cards[].exileGrants[].key	string
 planechase.faceUp.cards[].exileGrants[].source	custom(uuid.UUID)
+planechase.faceUp.cards[].exileGrants[].untilEndOfTurn	bool
 planechase.faceUp.cards[].exiledWith	object
 planechase.faceUp.cards[].exiledWith.epoch	number:int
 planechase.faceUp.cards[].exiledWith.id	custom(uuid.UUID)
@@ -65684,6 +65735,7 @@ resolving.card.exileGrants[]	object
 resolving.card.exileGrants[].activator	custom(uuid.UUID)
 resolving.card.exileGrants[].key	string
 resolving.card.exileGrants[].source	custom(uuid.UUID)
+resolving.card.exileGrants[].untilEndOfTurn	bool
 resolving.card.exiledWith	object
 resolving.card.exiledWith.epoch	number:int
 resolving.card.exiledWith.id	custom(uuid.UUID)
@@ -66651,6 +66703,7 @@ seats[].attractionDeck.cards[].exileGrants[]	object
 seats[].attractionDeck.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].attractionDeck.cards[].exileGrants[].key	string
 seats[].attractionDeck.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].attractionDeck.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].attractionDeck.cards[].exiledWith	object
 seats[].attractionDeck.cards[].exiledWith.epoch	number:int
 seats[].attractionDeck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -67183,6 +67236,7 @@ seats[].command.cards[].exileGrants[]	object
 seats[].command.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].command.cards[].exileGrants[].key	string
 seats[].command.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].command.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].command.cards[].exiledWith	object
 seats[].command.cards[].exiledWith.epoch	number:int
 seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
@@ -67584,6 +67638,7 @@ seats[].companion.cards[].exileGrants[]	object
 seats[].companion.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].companion.cards[].exileGrants[].key	string
 seats[].companion.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].companion.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].companion.cards[].exiledWith	object
 seats[].companion.cards[].exiledWith.epoch	number:int
 seats[].companion.cards[].exiledWith.id	custom(uuid.UUID)
@@ -67994,6 +68049,7 @@ seats[].emblems.cards[].exileGrants[]	object
 seats[].emblems.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].emblems.cards[].exileGrants[].key	string
 seats[].emblems.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].emblems.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].emblems.cards[].exiledWith	object
 seats[].emblems.cards[].exiledWith.epoch	number:int
 seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
@@ -68491,6 +68547,7 @@ seats[].graveyard.cards[].exileGrants[]	object
 seats[].graveyard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].graveyard.cards[].exileGrants[].key	string
 seats[].graveyard.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].graveyard.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].graveyard.cards[].exiledWith	object
 seats[].graveyard.cards[].exiledWith.epoch	number:int
 seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -68888,6 +68945,7 @@ seats[].hand.cards[].exileGrants[]	object
 seats[].hand.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].hand.cards[].exileGrants[].key	string
 seats[].hand.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].hand.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].hand.cards[].exiledWith	object
 seats[].hand.cards[].exiledWith.epoch	number:int
 seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
@@ -69290,6 +69348,7 @@ seats[].junkyard.cards[].exileGrants[]	object
 seats[].junkyard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].junkyard.cards[].exileGrants[].key	string
 seats[].junkyard.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].junkyard.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].junkyard.cards[].exiledWith	object
 seats[].junkyard.cards[].exiledWith.epoch	number:int
 seats[].junkyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -69696,6 +69755,7 @@ seats[].library.cards[].exileGrants[]	object
 seats[].library.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].library.cards[].exileGrants[].key	string
 seats[].library.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].library.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].library.cards[].exiledWith	object
 seats[].library.cards[].exiledWith.epoch	number:int
 seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
@@ -70134,6 +70194,7 @@ seats[].sideboard.cards[].exileGrants[]	object
 seats[].sideboard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].sideboard.cards[].exileGrants[].key	string
 seats[].sideboard.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].sideboard.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].sideboard.cards[].exiledWith	object
 seats[].sideboard.cards[].exiledWith.epoch	number:int
 seats[].sideboard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -70846,6 +70907,7 @@ stack.cards[].exileGrants[]	object
 stack.cards[].exileGrants[].activator	custom(uuid.UUID)
 stack.cards[].exileGrants[].key	string
 stack.cards[].exileGrants[].source	custom(uuid.UUID)
+stack.cards[].exileGrants[].untilEndOfTurn	bool
 stack.cards[].exiledWith	object
 stack.cards[].exiledWith.epoch	number:int
 stack.cards[].exiledWith.id	custom(uuid.UUID)
