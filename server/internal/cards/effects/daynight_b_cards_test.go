@@ -169,14 +169,16 @@ func TestDayNightBTableWerewolvesHaveTheirPrintedPower(t *testing.T) {
 	}
 }
 
-// Oakshade Stalker's flash-for-more option is the declared gap.
+// Oakshade Stalker's flash-for-{2}-more is an optional cost that opens
+// the window.
 func TestOakshadeStalkerOffersItsFlashSurcharge(t *testing.T) {
 	// #3172: the flash-for-{2}-more clause landed (FlashForMore);
-	// cav_b_test.go casts it. #5207: the offer is an alternative cost, so
-	// the front face carries that one caveat.
+	// cav_b_test.go casts it. #5207: it is an optional additional cost,
+	// not an alternative cost, so the front face is Full.
 	spec, ok := Lookup(dnbOakshade)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 || len(spec.AlternativeCosts) != 1 || !spec.AlternativeCosts[0].AsThoughFlash {
-		t.Fatalf("Oakshade Stalker: %+v, want caveats with the flash surcharge offer", spec)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 || len(spec.AlternativeCosts) != 0 ||
+		len(spec.OptionalCosts) != 1 || !spec.OptionalCosts[0].AsThoughFlash || spec.OptionalCosts[0].ManaCost != "{2}" {
+		t.Fatalf("Oakshade Stalker: %+v, want Full with the {2} optional cost that opens the window", spec)
 	}
 	if back, _ := Lookup(dnbOakshade + "#1"); back.Completeness != CompletenessFull {
 		t.Errorf("Moonlit Ambusher is %v, want full", back.Completeness)

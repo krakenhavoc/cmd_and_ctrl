@@ -30,6 +30,7 @@ func TestSquallDeckCardsAreRegisteredFull(t *testing.T) {
 	for _, oracle := range []string{
 		sqArdennOracle, sqCelestialOracle, sqJirinaOracle, sqMichikoOracle,
 		sqRinoaOracle, sqDaggerOracle, sqSigardasOracle, sqSwordLSOracle, sqTouchOracle,
+		sqFatedClashOracl, // #5207: its flash is a timing permission now
 		zenosYaeGalvusOracleID, zenosYaeGalvusOracleID + "#1",
 	} {
 		spec, ok := Lookup(oracle)
@@ -40,12 +41,6 @@ func TestSquallDeckCardsAreRegisteredFull(t *testing.T) {
 		if spec.Completeness != CompletenessFull {
 			t.Errorf("%s: completeness %v, want Full", spec.Name, spec.Completeness)
 		}
-	}
-	// #5207: Fated Clash's flash is an alternative-cost offer, so it
-	// carries the caveat coverage's TestEveryFlashIfOfferCardDeclaresItsCaveat
-	// holds.
-	if spec, ok := Lookup(sqFatedClashOracl); !ok || spec.Completeness != CompletenessCaveats {
-		t.Errorf("Fated Clash: registered %v, completeness %v, want caveats", ok, spec.Completeness)
 	}
 }
 
@@ -420,7 +415,7 @@ func TestFatedClashFlashOnlyWithAnAttackerAndABlocker(t *testing.T) {
 			}
 		})
 	}
-	flash := game.CastSpellParams{Strict: true, AlternativeCost: "flash-if-attacking-and-blocking",
+	flash := game.CastSpellParams{Strict: true,
 		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: attacker}, {Kind: game.TargetCard, ID: blocker}}}
 	if fatedClashCreaturesInCombat(g, me.ID) {
 		t.Fatal("the condition holds outside combat")

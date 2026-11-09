@@ -457,6 +457,16 @@ type Spec struct {
 	// needed this permission; see game/flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
 
+	// FlashIf is "You may cast this spell as though it had flash if
+	// <condition>" (#5207): a timing permission, not an alternative cost,
+	// so the flash cast still takes any cost the caster picks (CR 118.9a
+	// limits alternative costs, not timing). Build it with FlashIfYou /
+	// FlashIfXAtMost / FlashIfTargets; a condition on paying a cost ("if
+	// you pay {2} more", "if you behold a Dragon") is an optional cost
+	// instead (FlashForMore, OptionalBeholdOpeningFlash). See
+	// game/flash_if.go.
+	FlashIf *game.FlashIf
+
 	// CastTimeValues are the numbers this spell fixes AS IT IS CAST
 	// (CR 601.2i, #3781): Lifestream's Blessing's "X is the greatest
 	// power among creatures you controlled as you cast this spell". The

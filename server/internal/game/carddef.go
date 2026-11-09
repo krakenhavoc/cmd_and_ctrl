@@ -330,6 +330,10 @@ type CardDef struct {
 	// it at the beginning of the next cleanup step" (#3156). See
 	// flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
+	// FlashIf is "You may cast this spell as though it had flash if
+	// <condition>" (#5207): the card's own conditional timing
+	// permission. See flash_if.go.
+	FlashIf *FlashIf
 	// CastTimeValues are the numbers the spell fixes as it is cast
 	// (#3781): "where X is the greatest power among creatures you
 	// controlled as you cast this spell". See cast_time_values.go.

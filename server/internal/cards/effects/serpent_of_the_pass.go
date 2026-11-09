@@ -10,10 +10,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 This spell costs {1} less to cast for each noncreature, nonland card
 //	 in your graveyard."
 //
-// The flash clause is Bard's Company's shape: an offer at the printed
-// cost that opens the instant-speed window for its own claim
-// (AlternativeCost.AsThoughFlash), gated by Condition, read as the cast
-// begins (CR 601.3). The discount is Ravenous Cosmozoan's (CR 601.2f):
+// The flash clause is Bard's Company's shape: the card's own timing
+// permission (FlashIfYou, Spec.FlashIf, #5207), read as the cast begins
+// (CR 601.3), and not an alternative cost, so a flash cast may still
+// claim one (CR 118.9a). The discount is Ravenous Cosmozoan's (CR 601.2f):
 // it counts the caster's graveyard as the cost is determined, applies to
 // either cast, and reduces only the generic part, so {U}{U} is always
 // paid (the ruling). The mana value stays 7 (the ruling).
@@ -24,13 +24,7 @@ func init() {
 		OracleID:     "98e36c6e-a868-4679-a5b5-6f02097f560b",
 		Name:         "Serpent of the Pass",
 		Completeness: CompletenessFull,
-		AlternativeCosts: []game.AlternativeCost{{
-			Key:           "flash-if-three-lessons",
-			Label:         "Cast with flash — three or more Lesson cards in your graveyard ({5}{U}{U})",
-			ManaCost:      "{5}{U}{U}",
-			AsThoughFlash: true,
-			Condition:     avatarB6ThreeLessonsInYourGraveyard,
-		}},
+		FlashIf:      FlashIfYou("if there are three or more Lesson cards in your graveyard", avatarB6ThreeLessonsInYourGraveyard),
 		SelfCostModifiers: []game.CostModifier{
 			CostsLessEach(trekB17NoncreatureNonlandCardsInYourGraveyard,
 				"This spell costs {1} less to cast for each noncreature, nonland card in your graveyard."),

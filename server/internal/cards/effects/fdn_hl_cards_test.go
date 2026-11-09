@@ -54,14 +54,10 @@ func TestFdnHLEveryCardIsRegistered(t *testing.T) {
 			t.Errorf("%s is not registered", name)
 			continue
 		}
-		want := CompletenessFull
-		if oracle == fdnHLHarbingerOracle {
-			want = CompletenessCaveats
-		}
-		if spec.Name != name || spec.Completeness != want {
+		if spec.Name != name || spec.Completeness != CompletenessFull {
 			t.Errorf("%s: name %q, completeness %s", name, spec.Name, spec.Completeness)
 		}
-		if want == CompletenessFull && len(spec.Caveats) != 0 {
+		if len(spec.Caveats) != 0 {
 			t.Errorf("%s: a full card with caveats %v", name, spec.Caveats)
 		}
 	}
@@ -134,11 +130,13 @@ func TestFdnHLHarbingerRefusesAnUntappedOrYourOwnCreature(t *testing.T) {
 
 func TestFdnHLHarbingerHasFlashForTwoMore(t *testing.T) {
 	spec, _ := Lookup(fdnHLHarbingerOracle)
-	if len(spec.AlternativeCosts) != 1 {
-		t.Fatalf("%d alternative costs, want the flash surcharge only", len(spec.AlternativeCosts))
+	// #5207: an optional additional {2} that opens the window, not an
+	// alternative cost.
+	if len(spec.AlternativeCosts) != 0 || len(spec.OptionalCosts) != 1 {
+		t.Fatalf("%d alternative costs, %d optional costs; want the {2} optional cost only", len(spec.AlternativeCosts), len(spec.OptionalCosts))
 	}
-	if ac := spec.AlternativeCosts[0]; !ac.AsThoughFlash || ac.ManaCost != "{2}{U}{U}" {
-		t.Errorf("flash for {2} more: %+v", ac)
+	if oc := spec.OptionalCosts[0]; !oc.AsThoughFlash || oc.ManaCost != "{2}" {
+		t.Errorf("flash for {2} more: %+v", oc)
 	}
 }
 

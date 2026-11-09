@@ -8,14 +8,14 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// auto_tap_preview_offer_x_ceiling_test.go — #3225. The preview reads the
-// X ceiling of the cast it is pricing, so the alternative cost the
-// player claimed before the X picker opened bounds the picker: Silver
-// Scrutiny's flash offer ("as though it had flash if X is 3 or less",
-// CR 601.3b) reports x_max 3, the cast for the printed cost reports none.
-func TestAutoTapPreviewReportsTheClaimedOffersXCeiling(t *testing.T) {
+// auto_tap_preview_offer_x_ceiling_test.go — #3225, #5207. The preview
+// reads the X ceiling of the cast it is pricing, so a cast that is open
+// only because of Silver Scrutiny's "as though it had flash if X is 3 or
+// less" (CR 601.3b) reports x_max 3, and the same cast in Alice's main
+// phase, which needs no flash, reports none.
+func TestAutoTapPreviewReportsTheFlashPermissionsXCeiling(t *testing.T) {
 	f := newPreviewFixture(t)
-	f.mainPhase()
+	f.mainPhaseForAlice()
 	scrutiny := f.spawn(f.alice, game.ZoneHand, game.Card{
 		Name: "Silver Scrutiny", TypeLine: "Sorcery", ManaCost: "{X}{U}{U}",
 		OracleID: "2b0b4fc1-9ad6-4259-a0a2-9a14484c246e",
@@ -36,10 +36,16 @@ func TestAutoTapPreviewReportsTheClaimedOffersXCeiling(t *testing.T) {
 		}
 		return body.XMax
 	}
-	if got := read("card=" + scrutiny.String() + "&x=1&alternative_cost=flash-x-at-most"); got == nil || *got != 3 {
-		t.Errorf("the flash offer: x_max = %v, want 3", got)
-	}
 	if got := read("card=" + scrutiny.String() + "&x=1"); got != nil {
-		t.Errorf("the printed cost: x_max = %d, want absent", *got)
+		t.Errorf("main phase: x_max = %d, want absent", *got)
+	}
+	g := f.game()
+	for g.Turn.Step != game.StepBeginCombat {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if got := read("card=" + scrutiny.String() + "&x=1"); got == nil || *got != 3 {
+		t.Errorf("beginning of combat: x_max = %v, want 3", got)
 	}
 }

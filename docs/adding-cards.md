@@ -13008,7 +13008,7 @@ first, second and sixth are in the amendments of [ADR 0025](decisions/0025-alter
 ```go
 AlternativeCosts: []game.AlternativeCost{Dash("{1}{R}")},                   // Ragavan: haste, back to hand at the next end step
 AlternativeCosts: []game.AlternativeCost{Freerunning("{1}{B}", "Assassin")}, // Restart Sequence: Assassin or commander connected
-AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},  // Asinine Antics: printed cost + {2}, total spelled out
+OptionalCosts: []game.AdditionalCost{FlashForMore("{2}")},                 // Asinine Antics: an optional {2} that opens the flash window
 Triggered: []game.TriggeredAbility{Training("Hopeful Initiate — training")}, // +1/+1 counter beside a bigger attacker
 Triggered: []game.TriggeredAbility{Targeting(WheneverYouExpend(8, "…", effect), spec)}, // Trailtracker Scout
 Activated: []ActivatedAbility{Encore("{3}{R}")},                            // Impulsive Pilferer: one bound token per opponent
@@ -13016,11 +13016,11 @@ ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(c
 ```
 
 Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
-that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
-the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Because the offer is an alternative
-cost, the flash cast can't also take another one (CR 118.9a), which the printed card allows: every "as though it had
-flash if" offer (`FlashForMore`, `FlashIfXAtMost`, `FlashIfTargets`, a `Condition`-gated `AsThoughFlash` offer) ships
-`CompletenessCaveats` with that caveat, and coverage's `TestEveryFlashIfOfferCardDeclaresItsCaveat` holds it (#5207).
+that keeps its haste and never goes home. `FlashForMore` takes the SURCHARGE ("{2}"): it is an optional additional cost
+(CR 601.3c) whose announcement opens the instant-speed window for that cast, so it composes with any alternative cost
+and is paid on top of one (#5207); a cast that does not announce it stays sorcery-speed. Never build "as though it had
+flash if" as an alternative cost: coverage's `TestNoFlashIfClauseIsAnAlternativeCost` refuses it (see
+[Flash if a condition holds](#flash-if-a-condition-holds-5207)).
 Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
@@ -13080,22 +13080,28 @@ It opens the graveyard only to a sneak cast of a creature spell, under the grant
 own sneak, never for the mana cost. Engine notes are in the 2026-11-04 amendment of
 [ADR 0025](decisions/0025-alternative-costs.md).
 
-### Flash if X is N or less (#3225)
+### Flash if a condition holds (#5207)
 
-"You may cast this spell as though it had flash if X is 3 or less" (Silver Scrutiny) is an offer at the printed cost that
-opens the instant-speed window for its own claim and bounds the X announced under it
-([ADR 0025](decisions/0025-alternative-costs.md), amendment dated 2026-10-13):
+"You may cast this spell as though it had flash if <condition>" is a TIMING PERMISSION, never an alternative cost, so a
+flash cast still claims whichever cost the caster picks (CR 118.9a limits alternative costs, not timing). Pick the shape
+by what the condition is about ([ADR 0025](decisions/0025-alternative-costs.md), amendment dated 2026-11-09;
+`game/flash_if.go`):
 
 ```go
-AlternativeCosts: []game.AlternativeCost{FlashIfXAtMost("{X}{U}{U}", 3)}, // Silver Scrutiny
+FlashIf: FlashIfYou("if you control a Human", youControlAHuman),             // a game condition, read as the cast begins (CR 601.3)
+FlashIf: FlashIfXAtMost(3),                                                   // Silver Scrutiny: X the caster will announce (CR 601.3b)
+FlashIf: FlashIfTargets("a commander", EnchantCreature(ACommander())),       // Timely Ward: the target it will choose (CR 601.3b)
+OptionalCosts: []game.AdditionalCost{FlashForMore("{2}")},                  // "if you pay {2} more" (CR 601.3c)
+OptionalCosts: []game.AdditionalCost{OptionalBeholdOpeningFlash("a", "Dragon")}, // Molten Exhale: "if you behold a Dragon"
 ```
 
-Use the constructor, never `Spec.XCeiling` and never a flat `CastKindAsThoughFlash`: the first bounds the sorcery-speed
-cast too (nothing prints that), the second opens instant speed for every X (stronger than printed). The printed cost
-stays sorcery-speed with any X. The ceiling rides `AlternativeCost.XCeiling`, read through
-`game.SpellXCeilingForOfferLocked` by the announce gate, the enumerator, the view (`alternative_costs[].x_max`) and the
-auto-tap preview; `Register` refuses one on a cost with no {X}. The card still ships `CompletenessCaveats`: the offer is
-an alternative cost, so the flash cast can't take another one (#5207, the flash surcharge section above).
+`Spec.FlashIf` is step 1c of the cast timing gate. A choice-shaped condition (`XCeiling`, `Targets`) opens the window and
+then binds only a cast that NEEDS the permission (`game.FlashIfReliedOnLocked`): a Silver Scrutiny cast in a main phase,
+or under a Vedalken Orrery, takes any X. The announce gate, the enumerator, the view's card-level `x_max` and
+`legal_targets`, and the auto-tap preview all read it. Never use `Spec.XCeiling` (it bounds the sorcery-speed cast
+too) or a flat `CastKindAsThoughFlash` (stronger than printed). Word order varies: Serpent of the Pass prints "If …, you
+may cast this spell as though it had flash", the same clause. `TestNoFlashIfClauseIsAnAlternativeCost` holds every card
+that prints it to one of these shapes.
 
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 
@@ -13341,8 +13347,8 @@ ctx.SourcePermanent()                                                           
 
 - **"You may cast Aura and Equipment spells as though they had flash"** is
   `CastKindAsThoughFlash(game.PermissionFilter{AuraOrEquipmentOnly: true}, label)` (Sigarda's Aid).
-- **"You may cast this spell as though it had flash if <board condition>"** is an `AlternativeCost` at the printed cost
-  with `AsThoughFlash: true` and a `Condition` (Fated Clash: a creature attacking and a creature blocking).
+- **"You may cast this spell as though it had flash if <board condition>"** is `FlashIf: FlashIfYou(label, cond)` (Fated
+  Clash: a creature attacking and a creature blocking), a timing permission and not an alternative cost (#5207).
 - **"You may cast this spell as though it had flash if it's cast using teamwork"** is the optional cost with
   `AsThoughFlash` set, `OptionalCosts: []game.AdditionalCost{TeamworkOpeningFlash(2)}` (Quantum Reduction). Announcing
   the cost opens the window for that cast only (CR 601.3c); a per-player sorcery restriction still closes it.
@@ -13368,7 +13374,7 @@ Static: []game.StaticAbility{{Layer: game.Layer6Ability, DependsOnEvents: []game
     AppliesTo: selfOnly, Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, src *game.Card) { /* defender unless scried */ }}}
 c.CantBeAttacked = true                                                                  // in a layer 6 Apply: The Aetherspark, attached
 AnyColorSpend: YouMaySpendManaAsAnyTypeToCast("creature spells", "Creature")             // Vizier: coloured mana also pays {C}
-AlternativeCosts: []game.AlternativeCost{FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander()))} // Timely Ward
+FlashIf: FlashIfTargets("a commander", EnchantCreature(ACommander())) // Timely Ward (#5207)
 DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b, Repeats: true} // body reads item.Trigger.Event.Amount
 ```
 

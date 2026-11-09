@@ -15,31 +15,19 @@ import (
 //	 then discard a card. If you discarded a nonland card, create a 1/1
 //	 white Human Soldier creature token.)"
 //
-// The flash clause is Fated Clash's shape: an offer at the printed cost
-// that opens the instant-speed window for its own claim
-// (AlternativeCost.AsThoughFlash), gated by Condition, read as the cast
-// begins (CR 601.3). The Company is in the hand then, so it is not the
-// Human it asks about.
+// The flash clause is the card's own timing permission (FlashIfYou,
+// Spec.FlashIf, #5207), its condition read as the cast begins (CR 601.3).
+// The Company is in the hand then, so it is not the Human it asks about.
+// It is not an alternative cost, so a flash cast may still claim one (CR
+// 118.9a).
 //
-// Simplification (#5207): the offer is an alternative cost, so the flash
-// cast can't also take another alternative cost (CR 118.9a). On the
-// printed card the flash is a timing permission, so it could. Declared
-// as the caveat. The Hobbit (#4475).
+// No simplification. The Hobbit (#4475).
 func init() {
 	Register(Spec{
 		OracleID:     "5c5bfbb2-0e63-4e43-b441-c4878983288f",
 		Name:         "Bard's Company",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Casting this at instant speed while you control a Human can't be combined with another alternative cost.",
-		},
-		AlternativeCosts: []game.AlternativeCost{{
-			Key:           "flash-if-you-control-a-human",
-			Label:         "Cast with flash — you control a Human ({2}{W}{U})",
-			ManaCost:      "{2}{W}{U}",
-			AsThoughFlash: true,
-			Condition:     bardsCompanyYouControlAHuman,
-		}},
+		Completeness: CompletenessFull,
+		FlashIf:      FlashIfYou("if you control a Human", bardsCompanyYouControlAHuman),
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
