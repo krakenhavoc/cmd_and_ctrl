@@ -15,8 +15,8 @@ const (
 	cmdrMagmaquakeOracle   = "a52037df-0be1-4c99-b9eb-b033157af203"
 )
 
-// cmdrPush seeds a catalog permanent under owner and returns its id.
-func cmdrPush(g *game.Game, owner uuid.UUID, name, oracle, typeLine string, p, t int, keywords ...string) uuid.UUID {
+// cmdrB5Push seeds a catalog permanent under owner and returns its id.
+func cmdrB5Push(g *game.Game, owner uuid.UUID, name, oracle, typeLine string, p, t int, keywords ...string) uuid.UUID {
 	return pushBattlefieldCardWithTimestamp(g, game.Card{
 		InstanceID: uuid.New(),
 		Name:       name,
@@ -39,12 +39,12 @@ func cmdrPT(t *testing.T, g *game.Game, id uuid.UUID) (int, int) {
 func TestSoullessOneCountsZombiesOnBattlefieldAndInGraveyards(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	so := cmdrPush(g, me.ID, "Soulless One", cmdrSoullessOneOracle, "Creature — Zombie Avatar", 0, 0)
+	so := cmdrB5Push(g, me.ID, "Soulless One", cmdrSoullessOneOracle, "Creature — Zombie Avatar", 0, 0)
 	if p, tt := cmdrPT(t, g, so); p != 1 || tt != 1 {
 		t.Fatalf("alone it is %d/%d, want 1/1 (it is a Zombie)", p, tt)
 	}
-	cmdrPush(g, opp.ID, "Walker", "", "Creature — Zombie", 2, 2)
-	cmdrPush(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
+	cmdrB5Push(g, opp.ID, "Walker", "", "Creature — Zombie", 2, 2)
+	cmdrB5Push(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
 	opp.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: "Dead Zombie", TypeLine: "Creature — Zombie Knight", Owner: opp.ID, Controller: opp.ID})
 	me.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: "Dead Bear", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID})
 	g.RunStateChecksForTest()
@@ -57,10 +57,10 @@ func TestTendrilsOfCorruptionDamagesAndGainsPerSwamp(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	for i := 0; i < 3; i++ {
-		cmdrPush(g, me.ID, "Swamp", "", "Basic Land — Swamp", 0, 0)
+		cmdrB5Push(g, me.ID, "Swamp", "", "Basic Land — Swamp", 0, 0)
 	}
-	cmdrPush(g, opp.ID, "Swamp", "", "Basic Land — Swamp", 0, 0)
-	big := cmdrPush(g, opp.ID, "Ogre", "", "Creature — Ogre", 4, 4)
+	cmdrB5Push(g, opp.ID, "Swamp", "", "Basic Land — Swamp", 0, 0)
+	big := cmdrB5Push(g, opp.ID, "Ogre", "", "Creature — Ogre", 4, 4)
 	before := me.Life
 	castCatalogSpell(t, g, "Tendrils of Corruption", "Instant", cmdrTendrilsCorrOracle, []game.TargetRef{{Kind: game.TargetCard, ID: big}})
 	passPriorityAroundTable(t, g)
@@ -74,7 +74,7 @@ func TestTendrilsOfCorruptionDamagesAndGainsPerSwamp(t *testing.T) {
 
 func TestTendrilsOfCorruptionRefusesALandTarget(t *testing.T) {
 	g := newCatalogGame(t)
-	land := cmdrPush(g, g.Seats[1].ID, "Swamp", "", "Basic Land — Swamp", 0, 0)
+	land := cmdrB5Push(g, g.Seats[1].ID, "Swamp", "", "Basic Land — Swamp", 0, 0)
 	err := castCatalogSpellErr(t, g, "Tendrils of Corruption", "Instant", cmdrTendrilsCorrOracle, []game.TargetRef{{Kind: game.TargetCard, ID: land}})
 	if err == nil {
 		t.Fatal("a non-creature target was accepted")
@@ -84,9 +84,9 @@ func TestTendrilsOfCorruptionRefusesALandTarget(t *testing.T) {
 func TestBreathWeaponSparesDragons(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	dragon := cmdrPush(g, opp.ID, "Drake", "", "Creature — Dragon", 3, 2, "flying")
-	bear := cmdrPush(g, opp.ID, "Bear", "", "Creature — Bear", 2, 2)
-	mine := cmdrPush(g, me.ID, "Elf", "", "Creature — Elf", 3, 3)
+	dragon := cmdrB5Push(g, opp.ID, "Drake", "", "Creature — Dragon", 3, 2, "flying")
+	bear := cmdrB5Push(g, opp.ID, "Bear", "", "Creature — Bear", 2, 2)
+	mine := cmdrB5Push(g, me.ID, "Elf", "", "Creature — Elf", 3, 3)
 	castCatalogSpell(t, g, "Breath Weapon", "Instant", cmdrBreathWeaponOracle, nil)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(bear) {
@@ -103,9 +103,9 @@ func TestBreathWeaponSparesDragons(t *testing.T) {
 func TestMagmaquakeHitsGroundCreaturesAndPlaneswalkers(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	bear := cmdrPush(g, opp.ID, "Bear", "", "Creature — Bear", 2, 2)
-	bird := cmdrPush(g, opp.ID, "Bird", "", "Creature — Bird", 2, 2, "flying")
-	mine := cmdrPush(g, me.ID, "Ogre", "", "Creature — Ogre", 4, 4)
+	bear := cmdrB5Push(g, opp.ID, "Bear", "", "Creature — Bear", 2, 2)
+	bird := cmdrB5Push(g, opp.ID, "Bird", "", "Creature — Bird", 2, 2, "flying")
+	mine := cmdrB5Push(g, me.ID, "Ogre", "", "Creature — Ogre", 4, 4)
 	pw := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Walker", TypeLine: "Legendary Planeswalker — Test",
 		Counters: map[string]int{game.CounterLoyalty: 5}, Owner: opp.ID, Controller: opp.ID})
 	before := opp.Life

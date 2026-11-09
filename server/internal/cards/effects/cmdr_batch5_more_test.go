@@ -98,8 +98,8 @@ func TestBitterReunionSacrificeGivesCreaturesHaste(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	reunion := pushCatalogPermanent(g, me.ID, "Bitter Reunion", "Enchantment", cmdrBitterReunionOracle, false)
-	mine := cmdrPush(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
-	theirs := cmdrPush(g, opp.ID, "Ogre", "", "Creature — Ogre", 3, 3)
+	mine := cmdrB5Push(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
+	theirs := cmdrB5Push(g, opp.ID, "Ogre", "", "Creature — Ogre", 3, 3)
 	if err := g.ActivateCatalogAbility(me.ID, reunion, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("activated without paying {1}")
 	}
@@ -154,7 +154,7 @@ func TestSkylineDespotMakesNoDragonWhenYouAreNotTheMonarch(t *testing.T) {
 func TestScourgeOfValkasDealsDamageEqualToDragonsOnEntry(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	cmdrPush(g, me.ID, "Other Dragon", "", "Creature — Dragon", 3, 3)
+	cmdrB5Push(g, me.ID, "Other Dragon", "", "Creature — Dragon", 3, 3)
 	msc17Play(t, g, me, game.Card{Name: "Scourge of Valkas", TypeLine: "Creature — Dragon", ManaCost: "{2}{R}{R}{R}", OracleID: cmdrScourgeValkasOracle, Power: 4, Toughness: 4})
 	before := opp.Life
 	b16PickPlayer(t, g, me.ID, opp.ID)
@@ -194,7 +194,7 @@ func TestScourgeOfValkasTriggersForAnotherDragonAndPumps(t *testing.T) {
 func TestTyrantsFamiliarLieutenantNeedsYourCommander(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	fam := cmdrPush(g, me.ID, "Tyrant's Familiar", cmdrTyrantsFamiliarOracle, "Creature — Dragon", 5, 5, "flying", "haste")
+	fam := cmdrB5Push(g, me.ID, "Tyrant's Familiar", cmdrTyrantsFamiliarOracle, "Creature — Dragon", 5, 5, "flying", "haste")
 	if p, tt := cmdrPT(t, g, fam); p != 5 || tt != 5 {
 		t.Fatalf("without a commander it is %d/%d, want 5/5", p, tt)
 	}
@@ -209,11 +209,11 @@ func TestTyrantsFamiliarLieutenantNeedsYourCommander(t *testing.T) {
 func TestTyrantsFamiliarAttackDealsSevenToADefendersCreature(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	fam := cmdrPush(g, me.ID, "Tyrant's Familiar", cmdrTyrantsFamiliarOracle, "Creature — Dragon", 5, 5, "flying", "haste")
+	fam := cmdrB5Push(g, me.ID, "Tyrant's Familiar", cmdrTyrantsFamiliarOracle, "Creature — Dragon", 5, 5, "flying", "haste")
 	pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "My Commander", TypeLine: "Legendary Creature — Human",
 		Power: 2, Toughness: 2, IsCommander: true, Owner: me.ID, Controller: me.ID})
-	victim := cmdrPush(g, opp.ID, "Wall", "", "Creature — Wall", 0, 9)
-	bystander := cmdrPush(g, g.Seats[2].ID, "Bystander", "", "Creature — Bear", 2, 2)
+	victim := cmdrB5Push(g, opp.ID, "Wall", "", "Creature — Wall", 0, 9)
+	bystander := cmdrB5Push(g, g.Seats[2].ID, "Bystander", "", "Creature — Bear", 2, 2)
 	g.RunStateChecksForTest()
 	advanceTo(t, g, game.StepDeclareAttackers)
 	if err := g.DeclareAttacker(fam, opp.ID); err != nil {
@@ -233,8 +233,8 @@ func TestTyrantsFamiliarAttackDealsSevenToADefendersCreature(t *testing.T) {
 func TestTyrantsFamiliarAttackWithoutACommanderDoesNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	fam := cmdrPush(g, me.ID, "Tyrant's Familiar", cmdrTyrantsFamiliarOracle, "Creature — Dragon", 5, 5, "flying", "haste")
-	victim := cmdrPush(g, opp.ID, "Wall", "", "Creature — Wall", 0, 9)
+	fam := cmdrB5Push(g, me.ID, "Tyrant's Familiar", cmdrTyrantsFamiliarOracle, "Creature — Dragon", 5, 5, "flying", "haste")
+	victim := cmdrB5Push(g, opp.ID, "Wall", "", "Creature — Wall", 0, 9)
 	advanceTo(t, g, game.StepDeclareAttackers)
 	if err := g.DeclareAttacker(fam, opp.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
@@ -251,8 +251,8 @@ func TestTyrantsFamiliarAttackWithoutACommanderDoesNothing(t *testing.T) {
 func TestScourgeOfTheThroneDethronesAndGetsAnExtraCombatAgainstTheLeader(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	scourge := cmdrPush(g, me.ID, "Scourge of the Throne", cmdrScourgeThroneOracle, "Creature — Dragon", 5, 5, "flying")
-	other := cmdrPush(g, me.ID, "Attacker", "", "Creature — Bear", 2, 2)
+	scourge := cmdrB5Push(g, me.ID, "Scourge of the Throne", cmdrScourgeThroneOracle, "Creature — Dragon", 5, 5, "flying")
+	other := cmdrB5Push(g, me.ID, "Attacker", "", "Creature — Bear", 2, 2)
 	opp.Life = 45
 	advanceTo(t, g, game.StepDeclareAttackers)
 	for _, id := range []uuid.UUID{scourge, other} {
@@ -276,7 +276,7 @@ func TestScourgeOfTheThroneDethronesAndGetsAnExtraCombatAgainstTheLeader(t *test
 func TestScourgeOfTheThroneDoesNothingAgainstAPlayerBehindOnLife(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	scourge := cmdrPush(g, me.ID, "Scourge of the Throne", cmdrScourgeThroneOracle, "Creature — Dragon", 5, 5, "flying")
+	scourge := cmdrB5Push(g, me.ID, "Scourge of the Throne", cmdrScourgeThroneOracle, "Creature — Dragon", 5, 5, "flying")
 	g.Seats[2].Life = 50
 	opp.Life = 30
 	advanceTo(t, g, game.StepDeclareAttackers)
@@ -299,11 +299,11 @@ func TestScourgeOfTheThroneDoesNothingAgainstAPlayerBehindOnLife(t *testing.T) {
 func TestChallengerTrollLimitsBigCreaturesToOneBlocker(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	cmdrPush(g, me.ID, "Challenger Troll", cmdrChallengerTrollOracle, "Creature — Troll", 6, 5)
-	big := cmdrPush(g, me.ID, "Big", "", "Creature — Bear", 4, 4)
-	small := cmdrPush(g, me.ID, "Small", "", "Creature — Bear", 3, 3)
-	b1 := cmdrPush(g, opp.ID, "Blocker A", "", "Creature — Bear", 2, 2)
-	b2 := cmdrPush(g, opp.ID, "Blocker B", "", "Creature — Bear", 2, 2)
+	cmdrB5Push(g, me.ID, "Challenger Troll", cmdrChallengerTrollOracle, "Creature — Troll", 6, 5)
+	big := cmdrB5Push(g, me.ID, "Big", "", "Creature — Bear", 4, 4)
+	small := cmdrB5Push(g, me.ID, "Small", "", "Creature — Bear", 3, 3)
+	b1 := cmdrB5Push(g, opp.ID, "Blocker A", "", "Creature — Bear", 2, 2)
+	b2 := cmdrB5Push(g, opp.ID, "Blocker B", "", "Creature — Bear", 2, 2)
 	advanceTo(t, g, game.StepDeclareAttackers)
 	for _, id := range []uuid.UUID{big, small} {
 		if err := g.DeclareAttacker(id, opp.ID); err != nil {
@@ -327,14 +327,14 @@ func TestChallengerTrollLimitsBigCreaturesToOneBlocker(t *testing.T) {
 func TestDungroveElderCountsForestsYouControl(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	elder := cmdrPush(g, me.ID, "Dungrove Elder", cmdrDungroveElderOracle, "Creature — Treefolk", 0, 0, "hexproof")
+	elder := cmdrB5Push(g, me.ID, "Dungrove Elder", cmdrDungroveElderOracle, "Creature — Treefolk", 0, 0, "hexproof")
 	if p, tt := cmdrPT(t, g, elder); p != 0 || tt != 0 {
 		t.Fatalf("with no Forest it is %d/%d, want 0/0", p, tt)
 	}
-	cmdrPush(g, me.ID, "Forest", "", "Basic Land — Forest", 0, 0)
-	cmdrPush(g, me.ID, "Stomping Ground", "", "Land — Mountain Forest", 0, 0)
-	cmdrPush(g, opp.ID, "Forest", "", "Basic Land — Forest", 0, 0)
-	cmdrPush(g, me.ID, "Mountain", "", "Basic Land — Mountain", 0, 0)
+	cmdrB5Push(g, me.ID, "Forest", "", "Basic Land — Forest", 0, 0)
+	cmdrB5Push(g, me.ID, "Stomping Ground", "", "Land — Mountain Forest", 0, 0)
+	cmdrB5Push(g, opp.ID, "Forest", "", "Basic Land — Forest", 0, 0)
+	cmdrB5Push(g, me.ID, "Mountain", "", "Basic Land — Mountain", 0, 0)
 	g.RunStateChecksForTest()
 	if p, tt := cmdrPT(t, g, elder); p != 2 || tt != 2 {
 		t.Errorf("with two Forests of its controller's it is %d/%d, want 2/2", p, tt)
@@ -382,7 +382,7 @@ func TestElderGargarothOffersThreeModesOnAttack(t *testing.T) {
 		g := newCatalogGame(t)
 		me, opp := g.Seats[0], g.Seats[1]
 		seedLibrary(me, "A", "B")
-		garg := cmdrPush(g, me.ID, "Elder Gargaroth", cmdrElderGargarothOracle, "Creature — Beast", 6, 6, "reach", "vigilance", "trample")
+		garg := cmdrB5Push(g, me.ID, "Elder Gargaroth", cmdrElderGargarothOracle, "Creature — Beast", 6, 6, "reach", "vigilance", "trample")
 		before := [3]int{me.Life, me.Hand.Size(), 0}
 		advanceTo(t, g, game.StepDeclareAttackers)
 		if err := g.DeclareAttacker(garg, opp.ID); err != nil {
@@ -402,8 +402,8 @@ func TestElderGargarothOffersThreeModesOnAttack(t *testing.T) {
 func TestElderGargarothTriggersOnBlockToo(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	garg := cmdrPush(g, opp.ID, "Elder Gargaroth", cmdrElderGargarothOracle, "Creature — Beast", 6, 6, "reach", "vigilance", "trample")
-	atk := cmdrPush(g, me.ID, "Attacker", "", "Creature — Bear", 2, 2)
+	garg := cmdrB5Push(g, opp.ID, "Elder Gargaroth", cmdrElderGargarothOracle, "Creature — Beast", 6, 6, "reach", "vigilance", "trample")
+	atk := cmdrB5Push(g, me.ID, "Attacker", "", "Creature — Bear", 2, 2)
 	advanceTo(t, g, game.StepDeclareAttackers)
 	if err := g.DeclareAttacker(atk, opp.ID); err != nil {
 		t.Fatalf("DeclareAttacker: %v", err)
@@ -423,10 +423,10 @@ func TestElderGargarothTriggersOnBlockToo(t *testing.T) {
 func TestMonstrousOnslaughtDividesTheGreatestPowerAmongTargets(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	cmdrPush(g, me.ID, "Ogre", "", "Creature — Ogre", 5, 5)
-	cmdrPush(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
-	a := cmdrPush(g, opp.ID, "Target A", "", "Creature — Bear", 3, 3)
-	b := cmdrPush(g, opp.ID, "Target B", "", "Creature — Bear", 3, 3)
+	cmdrB5Push(g, me.ID, "Ogre", "", "Creature — Ogre", 5, 5)
+	cmdrB5Push(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
+	a := cmdrB5Push(g, opp.ID, "Target A", "", "Creature — Bear", 3, 3)
+	b := cmdrB5Push(g, opp.ID, "Target B", "", "Creature — Bear", 3, 3)
 	advanceToMain(t, g)
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Monstrous Onslaught", TypeLine: "Sorcery", OracleID: cmdrMonstrousOnslaughtOrcl, Owner: me.ID, Controller: me.ID})
@@ -457,10 +457,10 @@ func castRamThrough(t *testing.T, g *game.Game, mine, theirs uuid.UUID) error {
 func TestRamThroughIsOneSidedAndTrampleSendsTheExcessToTheController(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	plain := cmdrPush(g, me.ID, "Plain Ogre", "", "Creature — Ogre", 5, 5)
-	tramp := cmdrPush(g, me.ID, "Trampler", "", "Creature — Rhino", 5, 5, "trample")
-	t1 := cmdrPush(g, opp.ID, "Victim One", "", "Creature — Bear", 2, 2)
-	t2 := cmdrPush(g, opp.ID, "Victim Two", "", "Creature — Bear", 2, 3)
+	plain := cmdrB5Push(g, me.ID, "Plain Ogre", "", "Creature — Ogre", 5, 5)
+	tramp := cmdrB5Push(g, me.ID, "Trampler", "", "Creature — Rhino", 5, 5, "trample")
+	t1 := cmdrB5Push(g, opp.ID, "Victim One", "", "Creature — Bear", 2, 2)
+	t2 := cmdrB5Push(g, opp.ID, "Victim Two", "", "Creature — Bear", 2, 3)
 	life := opp.Life
 	if err := castRamThrough(t, g, plain, t1); err != nil {
 		t.Fatal(err)
@@ -490,8 +490,8 @@ func TestRamThroughIsOneSidedAndTrampleSendsTheExcessToTheController(t *testing.
 func TestRamThroughRefusesYourCreatureAsTheSecondTarget(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	a := cmdrPush(g, me.ID, "A", "", "Creature — Ogre", 5, 5)
-	b := cmdrPush(g, me.ID, "B", "", "Creature — Ogre", 5, 5)
+	a := cmdrB5Push(g, me.ID, "A", "", "Creature — Ogre", 5, 5)
+	b := cmdrB5Push(g, me.ID, "B", "", "Creature — Ogre", 5, 5)
 	if err := castRamThrough(t, g, a, b); err == nil {
 		t.Error("a creature you control was accepted as the target you don't control")
 	}
@@ -504,8 +504,8 @@ func TestDragonhawkExilesXCardsAndBurnsForEachStillExiledAtTheEndStep(t *testing
 	me := g.Seats[0]
 	played := seedLibraryTop(me, "Free Bear", "Creature — Bear", "")
 	kept := seedLibraryTop(me, "Kept Card", "Sorcery", "{9}")
-	cmdrPush(g, me.ID, "Big One", "", "Creature — Giant", 4, 4)
-	cmdrPush(g, me.ID, "Small One", "", "Creature — Bear", 3, 3)
+	cmdrB5Push(g, me.ID, "Big One", "", "Creature — Giant", 4, 4)
+	cmdrB5Push(g, me.ID, "Small One", "", "Creature — Bear", 3, 3)
 	msc17Play(t, g, me, game.Card{Name: "Dragonhawk, Fate's Tempest", TypeLine: "Legendary Creature — Bird Dragon",
 		ManaCost: "{3}{R}{R}", OracleID: cmdrDragonhawkOracle, Power: 5, Toughness: 5})
 	// X = Dragonhawk (5) + Big One (4): the top two cards, in order.
@@ -537,7 +537,7 @@ func TestDragonhawkExilesNothingWithoutAPowerFourCreature(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	top := seedLibraryTop(me, "Top", "Sorcery", "{1}")
-	d := cmdrPush(g, me.ID, "Dragonhawk, Fate's Tempest", cmdrDragonhawkOracle, "Legendary Creature — Bird Dragon", 3, 3)
+	d := cmdrB5Push(g, me.ID, "Dragonhawk, Fate's Tempest", cmdrDragonhawkOracle, "Legendary Creature — Bird Dragon", 3, 3)
 	g.WithWriteLock(func() {
 		_ = d
 	})
@@ -584,8 +584,8 @@ func TestGoddricPumpsDragonsYouControlWhileCelebrating(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	gid := cmdrEnterGoddric(t, g, me.ID)
-	dragon := cmdrPush(g, me.ID, "Drake", "", "Creature — Dragon", 3, 3)
-	bear := cmdrPush(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
+	dragon := cmdrB5Push(g, me.ID, "Drake", "", "Creature — Dragon", 3, 3)
+	bear := cmdrB5Push(g, me.ID, "Bear", "", "Creature — Bear", 2, 2)
 	if err := g.ActivateCatalogAbility(me.ID, gid, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("the Dragon pump was available before celebrating")
 	}
@@ -609,8 +609,8 @@ func TestGoddricPumpsDragonsYouControlWhileCelebrating(t *testing.T) {
 func TestMinionOfTheMightyPutsADragonOntoTheBattlefieldAttackingWithPackTactics(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	minion := cmdrPush(g, me.ID, "Minion of the Mighty", cmdrMinionOracle, "Creature — Kobold", 0, 1, "menace")
-	big := cmdrPush(g, me.ID, "Big", "", "Creature — Giant", 6, 6)
+	minion := cmdrB5Push(g, me.ID, "Minion of the Mighty", cmdrMinionOracle, "Creature — Kobold", 0, 1, "menace")
+	big := cmdrB5Push(g, me.ID, "Big", "", "Creature — Giant", 6, 6)
 	dragon := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: dragon, Name: "Hand Dragon", TypeLine: "Creature — Dragon", Power: 4, Toughness: 4, Owner: me.ID, Controller: me.ID})
 	notDragon := uuid.New()
@@ -646,8 +646,8 @@ func TestMinionOfTheMightyPutsADragonOntoTheBattlefieldAttackingWithPackTactics(
 func TestMinionOfTheMightyDoesNothingBelowSixPower(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	minion := cmdrPush(g, me.ID, "Minion of the Mighty", cmdrMinionOracle, "Creature — Kobold", 0, 1, "menace")
-	small := cmdrPush(g, me.ID, "Small", "", "Creature — Bear", 5, 5)
+	minion := cmdrB5Push(g, me.ID, "Minion of the Mighty", cmdrMinionOracle, "Creature — Kobold", 0, 1, "menace")
+	small := cmdrB5Push(g, me.ID, "Small", "", "Creature — Bear", 5, 5)
 	dragon := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: dragon, Name: "Hand Dragon", TypeLine: "Creature — Dragon", Power: 4, Toughness: 4, Owner: me.ID, Controller: me.ID})
 	advanceTo(t, g, game.StepDeclareAttackers)
@@ -748,7 +748,7 @@ func TestSarkhanBeholdingADragonInHandRevealsItAndMakesATreasure(t *testing.T) {
 func TestSarkhanBeholdingADragonYouControlWorksAndDecliningMakesNoTreasure(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	cmdrPush(g, me.ID, "Drake", "", "Creature — Dragon", 3, 3)
+	cmdrB5Push(g, me.ID, "Drake", "", "Creature — Dragon", 3, 3)
 	msc17Play(t, g, me, game.Card{Name: "Sarkhan, Dragon Ascendant", TypeLine: "Legendary Creature — Human Druid",
 		ManaCost: "{1}{R}", OracleID: cmdrSarkhanOracle, Power: 2, Toughness: 2})
 	answerChooseCards(t, g, me.ID)
