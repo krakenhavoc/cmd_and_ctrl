@@ -47,8 +47,9 @@ func init() {
 				"Noctis, Heir Apparent — attach target Equipment you control to target creature you control?"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Warp-Strike — {3}: Exile Noctis. Return it to the battlefield under its owner's control tapped and attacking at the beginning of that player's next declare attackers step. It can't be blocked that combat.",
-			Cost:  ManaCost("{3}"),
+			Label:   "Warp-Strike — {3}: Exile Noctis. Return it to the battlefield under its owner's control tapped and attacking at the beginning of that player's next declare attackers step. It can't be blocked that combat.",
+			Cost:    ManaCost("{3}"),
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if !sourceIsStillThisPermanent(g, item) {

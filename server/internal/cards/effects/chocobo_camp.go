@@ -49,7 +49,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{G}{G}, {T}: Create a 2/2 green Bird creature token with \"Whenever a land you control enters, this token gets +1/+0 until end of turn.\"",
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Tokens: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{2}{G}{G}"), TapCost()),
 			Effect:  Do(CreateToken{Template: chocoboBirdToken(), N: 1}),
 		}},
