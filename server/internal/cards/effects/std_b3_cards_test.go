@@ -299,6 +299,10 @@ func TestStdB3SystemsOverrideStealsAndChargesASpacecraft(t *testing.T) {
 		t.Error("with ten charge counters it is a creature with haste")
 	}
 	advanceThroughEndStep(t, g)
+	advanceTo(t, g, game.StepCleanup)
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatal(err)
+	}
 	after := layeredCard(t, g, ship)
 	if after.Counters[game.CounterCharge] != 0 {
 		t.Errorf("%d charge counters after the end step, want 0", after.Counters[game.CounterCharge])

@@ -266,6 +266,8 @@ func TestStdB3TapestryWardenStationsAndAssignsByToughness(t *testing.T) {
 		t.Error("creatures you control assign combat damage by toughness when it is greater")
 	}
 	station(t, g, me, ship, crew)
+	stdB3Resolve(t, g)
+	stdB3Resolve(t, g)
 	if got := layeredCard(t, g, ship).Counters[game.CounterCharge]; got != 3 {
 		t.Errorf("a 1/3 stations for its toughness: %d charge counters, want 3", got)
 	}
@@ -275,6 +277,8 @@ func TestStdB3TapestryWardenLeavesBiggerPowerAlone(t *testing.T) {
 	g, me, ship, crew := stationBoard(t, "Debris Field Crusher", "Artifact — Spacecraft", stdB3CrusherOracle, 5)
 	b12Push(g, me.ID, "Tapestry Warden", "Artifact Creature — Robot Soldier", stdB3WardenOracle, 3, 4)
 	station(t, g, me, ship, crew)
+	stdB3Resolve(t, g)
+	stdB3Resolve(t, g)
 	if got := layeredCard(t, g, ship).Counters[game.CounterCharge]; got != 5 {
 		t.Errorf("a 5/3 stations for its power: %d charge counters, want 5", got)
 	}
@@ -284,6 +288,8 @@ func TestStdB3TapestryWardenAlsoStationsAPlanet(t *testing.T) {
 	g, me, land, crew := stationBoard(t, "Adagia, Windswept Bastion", "Land — Planet", stdB3AdagiaOracle, 1)
 	b12Push(g, me.ID, "Tapestry Warden", "Artifact Creature — Robot Soldier", stdB3WardenOracle, 3, 4)
 	station(t, g, me, land, crew)
+	stdB3Resolve(t, g)
+	stdB3Resolve(t, g)
 	if got := layeredCard(t, g, land).Counters[game.CounterCharge]; got != 3 {
 		t.Errorf("a Planet stationed by a 1/3 gets %d charge counters, want 3", got)
 	}
@@ -294,6 +300,8 @@ func TestStdB3TapestryWardenIsOnlyForYourCreatures(t *testing.T) {
 	opp := g.Seats[1]
 	b12Push(g, opp.ID, "Tapestry Warden", "Artifact Creature — Robot Soldier", stdB3WardenOracle, 3, 4)
 	station(t, g, me, ship, avB1Named(g, me.ID, "Station Hand"))
+	stdB3Resolve(t, g)
+	stdB3Resolve(t, g)
 	if got := layeredCard(t, g, ship).Counters[game.CounterCharge]; got != 1 {
 		t.Errorf("an opponent's Warden does nothing for you: %d charge counters, want 1", got)
 	}
