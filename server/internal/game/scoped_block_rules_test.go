@@ -194,6 +194,47 @@ func TestCantBeBlockedByPowerReadsTheBlockersPowerLive(t *testing.T) {
 	}
 }
 
+// cantBeBlockedByPowerAtLeast (Squeak By): the other direction. A blocker of
+// power N or more is barred, N-1 is allowed, and the power is read live.
+func TestCantBeBlockedByPowerAtLeastReadsTheBlockersPowerLive(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	attacker := pushCombatant(t, g, me, "Attacker", 3, 3)
+	small := pushCombatant(t, g, opp, "Power Two", 2, 2)
+	big := pushCombatant(t, g, opp, "Power Three", 3, 3)
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(attacker),
+			[]Mod{CantBeBlockedByPowerAtLeastMod(3, "creatures with power 3 or greater")},
+			IndefiniteDuration(), "test") {
+			t.Fatal("setup: registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	refusal := func(blocker uuid.UUID) BlockRefusal {
+		var r BlockRefusal
+		g.WithWriteLock(func() {
+			g.RecomputeLayersIfStaleLocked()
+			r = g.blockRuleRefusalLocked(findCard(g, attacker), findCard(g, blocker))
+		})
+		return r
+	}
+	if r := refusal(big); r.Legal() {
+		t.Error("a blocker of power N was allowed")
+	} else if r.Reason != BlockReasonCantBeBlockedBy || r.Label != "creatures with power 3 or greater" {
+		t.Errorf("refusal = %+v", r)
+	}
+	if r := refusal(small); !r.Legal() {
+		t.Errorf("a blocker of power N-1 was refused: %+v", r)
+	}
+	g.WithWriteLock(func() {
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(small),
+			[]Mod{ModifyPTMod(1, 0)}, IndefiniteDuration(), "pump")
+	})
+	if r := refusal(small); r.Legal() {
+		t.Error("a blocker pumped to power N after the effect was still allowed")
+	}
+}
+
 // cantBeBlockedBySubtypes (#4100, Kick in the Door): the pinned
 // attacker is refused by a Wall and by a changeling (every creature
 // type), and allowed by any other blocker; an attacker it is not pinned
