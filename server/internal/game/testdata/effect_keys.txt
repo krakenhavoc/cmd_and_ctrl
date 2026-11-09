@@ -60,6 +60,7 @@ body breeches/blast
 body breeches/copy-that-spell
 body bullseye-death-dealer/damage
 body cait-sith/boost
+body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
 body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
@@ -221,6 +222,7 @@ body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
 body nine-lives/incarnation-counter
+body noctis/warp-strike-return
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
 body ondu-rising/attacker-gains-lifelink
@@ -460,6 +462,7 @@ choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/draw-instead-graveyard-return
+choose choose-cards/duelists-flame-exile
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
@@ -793,6 +796,7 @@ choose choose-cards/ward-sacrifice-three-permanents
 choose choose-cards/ward-sacrifice-two-permanents
 choose choose-cards/web-of-inertia-exile-or-restrict
 choose choose-cards/west-coast-expansion-free-cast
+choose choose-cards/winota-joiner-of-forces-human
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
@@ -934,6 +938,7 @@ confirm confirm/fabricate
 confirm confirm/farrels-mantle-damage
 confirm confirm/farrels-zealot-damage
 confirm confirm/firebender-ascension-copy
+confirm confirm/fishing-gear-put
 confirm confirm/flip-this
 confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
@@ -1029,6 +1034,7 @@ confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
 confirm confirm/transcendent-archaic-draw
 confirm confirm/turtles-in-time-ask
+confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
 confirm confirm/uss-enterprise-c-discard-hand
@@ -1197,6 +1203,7 @@ option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
 option option-pick/nesting-grounds-counter-kind
 option option-pick/nick-fury-spymaster-attacks
+option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
@@ -1262,6 +1269,7 @@ option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
 option option-pick/wingnut-bat-on-the-belfry-keyword
+option option-pick/winota-joiner-of-forces-attack
 option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
@@ -1286,6 +1294,7 @@ payunless pay-unless/balthier-and-fran-extra-combat
 payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/blaster-hulk-damage
+payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/chain-lightning-offer-copy
@@ -1406,6 +1415,7 @@ payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
+payunless pay-unless/vivis-persistence-return
 payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
@@ -1475,6 +1485,7 @@ run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
 run prompt-run/brudiclad-tokens-become-copies
+run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
 run prompt-run/consuming-vapors-gain
@@ -1949,6 +1960,8 @@ tail fight-rigging/offer
 tail final-parting/graveyard-search
 tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
+tail fishing-gear/after-exile
+tail fishing-gear/entered
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step
@@ -2105,6 +2118,7 @@ tail nezumi-graverobber/after-exile
 tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
 tail nita-forum-conciliator/after-exile
+tail noctis/entered-unblockable
 tail now-for-wrath/vigilance-and-temptation
 tail nurturing-pixie/counter-if-returned
 tail nyla-shirshu-sleuth/lose-x-make-x-clues
@@ -2527,6 +2541,7 @@ tail widespread-brutality/sweep
 tail will-of-the-sultai/after-mill
 tail will-of-the-sultai/counters-and-trample
 tail will-riker/rest-on-bottom-then-sacrifice-those-lands
+tail winota/entered-indestructible
 tail winter-soldier-icy-assassin/attach
 tail wishclaw-talisman/hand-it-over
 tail worlds-within-worlds/return

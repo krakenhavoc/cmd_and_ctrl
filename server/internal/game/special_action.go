@@ -379,6 +379,15 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		if card.IsInstant() || HasKeyword(&card, "flash") {
 			return true
 		}
+		// "As though it had flash" from the board (Vedalken Orrery, Teferi,
+		// Mage of Zhalfir) lets the card be cast at instant speed, so it
+		// may be suspended then too (CR 702.62a: "if you could begin to
+		// cast this card"); the whole cast-timing read decides, so a
+		// restriction on beginning a cast (Teferi, Time Raveler's) still
+		// closes it.
+		if g.castTimingVerdictLocked(playerID, card, ZoneHand).Flash && g.CastTimingOpenLocked(playerID, card, ZoneHand, nil) {
+			return true
+		}
 		return g.SorcerySpeedOpenLocked(playerID)
 
 	case SpecialActionTurnFaceUp:
