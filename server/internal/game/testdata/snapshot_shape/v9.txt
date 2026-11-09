@@ -12410,6 +12410,7 @@ frozenEntries[].event.stackItem.distribution{}	number:int
 frozenEntries[].event.stackItem.doubledBy	custom(uuid.UUID)
 frozenEntries[].event.stackItem.doubledByName	string
 frozenEntries[].event.stackItem.entersTapped	bool
+frozenEntries[].event.stackItem.exileAndPlot	bool
 frozenEntries[].event.stackItem.exileInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.exileWithCounter	string
 frozenEntries[].event.stackItem.faceDown	string
@@ -19419,6 +19420,7 @@ lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.entersTapped	bool
+lastKnownStack[].item.exileAndPlot	bool
 lastKnownStack[].item.exileInsteadOfGraveyard	bool
 lastKnownStack[].item.exileWithCounter	string
 lastKnownStack[].item.faceDown	string
@@ -29939,6 +29941,7 @@ movesAwaitingTokens[].stackItem.distribution{}	number:int
 movesAwaitingTokens[].stackItem.doubledBy	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.doubledByName	string
 movesAwaitingTokens[].stackItem.entersTapped	bool
+movesAwaitingTokens[].stackItem.exileAndPlot	bool
 movesAwaitingTokens[].stackItem.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].stackItem.exileWithCounter	string
 movesAwaitingTokens[].stackItem.faceDown	string
@@ -35989,6 +35992,7 @@ pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
 pausedModeWalk.item.entersTapped	bool
+pausedModeWalk.item.exileAndPlot	bool
 pausedModeWalk.item.exileInsteadOfGraveyard	bool
 pausedModeWalk.item.exileWithCounter	string
 pausedModeWalk.item.faceDown	string
@@ -36315,6 +36319,7 @@ pausedResolutionTail.item.distribution{}	number:int
 pausedResolutionTail.item.doubledBy	custom(uuid.UUID)
 pausedResolutionTail.item.doubledByName	string
 pausedResolutionTail.item.entersTapped	bool
+pausedResolutionTail.item.exileAndPlot	bool
 pausedResolutionTail.item.exileInsteadOfGraveyard	bool
 pausedResolutionTail.item.exileWithCounter	string
 pausedResolutionTail.item.faceDown	string
@@ -36635,6 +36640,7 @@ pausedStepWalk.item.distribution{}	number:int
 pausedStepWalk.item.doubledBy	custom(uuid.UUID)
 pausedStepWalk.item.doubledByName	string
 pausedStepWalk.item.entersTapped	bool
+pausedStepWalk.item.exileAndPlot	bool
 pausedStepWalk.item.exileInsteadOfGraveyard	bool
 pausedStepWalk.item.exileWithCounter	string
 pausedStepWalk.item.faceDown	string
@@ -39147,6 +39153,7 @@ pendingChoices[].copyWalk.item.distribution{}	number:int
 pendingChoices[].copyWalk.item.doubledBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.doubledByName	string
 pendingChoices[].copyWalk.item.entersTapped	bool
+pendingChoices[].copyWalk.item.exileAndPlot	bool
 pendingChoices[].copyWalk.item.exileInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.exileWithCounter	string
 pendingChoices[].copyWalk.item.faceDown	string
@@ -54634,6 +54641,7 @@ pendingChoices[].replacementResume.event.stackItem.distribution{}	number:int
 pendingChoices[].replacementResume.event.stackItem.doubledBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.doubledByName	string
 pendingChoices[].replacementResume.event.stackItem.entersTapped	bool
+pendingChoices[].replacementResume.event.stackItem.exileAndPlot	bool
 pendingChoices[].replacementResume.event.stackItem.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.exileWithCounter	string
 pendingChoices[].replacementResume.event.stackItem.faceDown	string
@@ -63599,6 +63607,7 @@ pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
 pendingTriggers[].entersTapped	bool
+pendingTriggers[].exileAndPlot	bool
 pendingTriggers[].exileInsteadOfGraveyard	bool
 pendingTriggers[].exileWithCounter	string
 pendingTriggers[].faceDown	string
@@ -65972,6 +65981,7 @@ resolving.item.distribution{}	number:int
 resolving.item.doubledBy	custom(uuid.UUID)
 resolving.item.doubledByName	string
 resolving.item.entersTapped	bool
+resolving.item.exileAndPlot	bool
 resolving.item.exileInsteadOfGraveyard	bool
 resolving.item.exileWithCounter	string
 resolving.item.faceDown	string
@@ -71137,6 +71147,7 @@ stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
 stackMeta[].entersTapped	bool
+stackMeta[].exileAndPlot	bool
 stackMeta[].exileInsteadOfGraveyard	bool
 stackMeta[].exileWithCounter	string
 stackMeta[].faceDown	string

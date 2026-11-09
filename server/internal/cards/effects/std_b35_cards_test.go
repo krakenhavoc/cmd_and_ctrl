@@ -47,6 +47,7 @@ const (
 	b35GhiredOracle              = "34b36022-0d93-48cc-a2cc-90ca4d65dc31"
 	b35KellanKidOracle           = "afacc200-16ff-40f3-9d43-268438131d24"
 	b35ErietteOracle             = "710a3499-64f8-4d2c-8c9c-d58950e47ea7"
+	b35RakdosOracle              = "e2c141af-925e-42bd-8d83-e1a71f4c9794"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -87,6 +88,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35GhiredOracle:              "Ghired, Mirror of the Wilds",
 		b35KellanKidOracle:           "Kellan, the Kid",
 		b35ErietteOracle:             "Eriette, the Beguiler",
+		b35RakdosOracle:              "Rakdos, the Muscle",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1635,5 +1637,33 @@ func TestB35ErietteStealsAPermanentWhileYourAuraIsAttachedToIt(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if c, _ := battlefieldCard(g, cheap); c.Controller != opp.ID {
 		t.Error("the Bear did not go back when the Aura left it")
+	}
+}
+
+func TestB35RakdosSacrificeExilesCardsEqualToItsManaValueAndMakesItIndestructible(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	rakdos := b12Push(g, me.ID, "Rakdos, the Muscle", "Legendary Creature — Demon Mercenary", b35RakdosOracle, 6, 5)
+	fodder := b12Creature(g, me.ID, "Fodder", "Creature — Bear", 2, 2)
+	findBattlefieldCardForTest(g, fodder).ManaCost = "{2}{B}"
+	other := b12Creature(g, me.ID, "More Fodder", "Creature — Bear", 2, 2)
+	before := len(g.Exile.Cards)
+	b16Activate(t, g, me.ID, rakdos, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{fodder}})
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if got := len(g.Exile.Cards) - before; got != 3 {
+		t.Errorf("exiled %d cards, want 3 (mana value of the sacrificed Bear)", got)
+	}
+	if !hasEffectiveKeyword(t, g, rakdos, "indestructible") {
+		t.Error("Rakdos has no indestructible")
+	}
+	if !b16Tapped(t, g, rakdos) {
+		t.Error("Rakdos is not tapped")
+	}
+	// Once each turn.
+	if err := g.ActivateCatalogAbility(me.ID, rakdos, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{other}}); err == nil {
+		t.Error("activated a second time in one turn")
 	}
 }
