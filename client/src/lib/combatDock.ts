@@ -229,12 +229,18 @@ export function attackRowRequest(input: AttackRowInput): DockRequest {
 // #3898: blocks are made on the board (click your creature, then the
 // attacker), so the question says how, and "Show as list" opens the same
 // declaration as a list: the keyboard path, and the fallback.
+//
+// #5375 (ADR 0221): under a block tax (Archangel of Tithes attacking)
+// `taxNote` is blockTaxNote's sentence, shown in the detail, so the
+// price is on the staging dock before Done blocking pays it.
 export function blockRequest(
   staged: number,
   onFinish: () => void,
   onShowList?: () => void,
+  taxNote = "",
 ): DockRequest {
   const done = staged > 0;
+  const how = "click your creature, then the attacker it blocks";
   return {
     rank: "blocks",
     label: L.declareBlockers,
@@ -245,7 +251,7 @@ export function blockRequest(
       staged > 0
         ? `${staged} ${staged === 1 ? "blocker" : "blockers"} declared`
         : "Choose blockers, or declare none",
-    detail: "click your creature, then the attacker it blocks",
+    detail: taxNote ? `${how} — ${taxNote}` : how,
     secondary: onShowList
       ? [
           {

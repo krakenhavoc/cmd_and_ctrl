@@ -5867,6 +5867,14 @@ type TurnView struct {
 	// BlockPendingSeats. Public information, like BlockDecisionSeats.
 	BlockPendingSeats   []int `json:"block_pending_seats,omitempty"`
 	BlocksDeclaredSeats []int `json:"blocks_declared_seats,omitempty"`
+	// BlockTaxes is the CR 509.1d block tax on each defender still
+	// declaring (ADR 0221, #5375) — Archangel of Tithes attacking. One
+	// row per pending seat whose blocks would cost anything; omitted
+	// at every table with no block tax. Public: the clauses and the
+	// staged blocks are on the board. The client shows it on block
+	// staging and pays it with finish_blocks' `auto_tap`; it never
+	// re-derives the price.
+	BlockTaxes []BlockTaxView `json:"block_taxes,omitempty"`
 	// AttackTargets is the set of things the ACTIVE player's
 	// creatures may be declared against right now (CR 506.2,
 	// 508.1d) — the other seated players, the planeswalkers they do
@@ -5884,6 +5892,69 @@ type TurnView struct {
 	// board is already visible — so it survives the per-viewer filter
 	// unredacted. Added in S27.
 	AttackTargets []AttackTargetView `json:"attack_targets,omitempty"`
+}
+
+// BlockTaxView is one pending defender's CR 509.1d block tax (ADR
+// 0221): what finishing the declaration would charge for the blocks
+// staged now, and the clauses that tax this seat's blocks.
+type BlockTaxView struct {
+	// Seat is the defender's seat index.
+	Seat int `json:"seat"`
+	// Cost is the price of the blocks staged now, concatenated per
+	// blocking creature ("{1}{1}"); "" with nothing taxed staged. What
+	// finish_blocks will charge.
+	Cost string `json:"cost,omitempty"`
+	// Each is what one more blocking creature adds when every one of
+	// this seat's creatures would pay the same ("{1}" under Archangel
+	// of Tithes); omitted when they differ, and the block moves'
+	// MoveCost.Mana is the per-creature answer then.
+	Each string `json:"each,omitempty"`
+	// Labels are the printed clauses that tax this seat's blocks, one
+	// per clause, for the hint.
+	Labels []string `json:"labels"`
+}
+
+// viewOfBlockTaxes is TurnView.BlockTaxes. Caller holds g's lock.
+func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
+	if len(pending) == 0 || game.CatalogBlockTaxes == nil {
+		return nil
+	}
+	var out []BlockTaxView
+	for _, idx := range pending {
+		if idx < 0 || idx >= len(g.Seats) || g.Seats[idx] == nil {
+			continue
+		}
+		seat := g.Seats[idx].ID
+		row := BlockTaxView{Seat: idx, Cost: g.PriceBlockDeclarationForEffect(seat).Cost}
+		seen := map[string]bool{}
+		each, uniform := "", true
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller != seat || !c.IsCreature() || (c.Tapped && c.BlockingTarget == uuid.Nil) {
+				continue
+			}
+			price := g.PriceBlockersForEffect([]uuid.UUID{c.InstanceID})
+			if each == "" && uniform {
+				each = price.Cost
+			} else if price.Cost != each {
+				uniform = false
+			}
+			for _, l := range price.Lines {
+				if !seen[l.Label] {
+					seen[l.Label] = true
+					row.Labels = append(row.Labels, l.Label)
+				}
+			}
+		}
+		if len(row.Labels) == 0 {
+			continue
+		}
+		if uniform {
+			row.Each = each
+		}
+		out = append(out, row)
+	}
+	return out
 }
 
 // AttackTargetView is one legal attack target: what it is, and the id
@@ -6044,6 +6115,8 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		// #1279: where each defender's block declaration stands.
 		view.Turn.BlockPendingSeats, view.Turn.BlocksDeclaredSeats = g.BlockDeclarationSeatsLocked()
+		// ADR 0221: the block tax on each defender still declaring.
+		view.Turn.BlockTaxes = viewOfBlockTaxes(g, view.Turn.BlockPendingSeats)
 		// ADR 0066. Asked ONCE per frame and threaded down, not per
 		// seat and not per card: the answer is "nobody may play this"
 		// in almost every game, it costs a walk of the battlefield,

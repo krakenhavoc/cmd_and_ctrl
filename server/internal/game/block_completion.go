@@ -197,7 +197,22 @@ func (g *Game) BlockDeclarationSeatsLocked() (pending, declared []int) {
 // block_requirement while the seat's staged declaration leaves a
 // CR 509.1c requirement unobeyed that it could obey. Idempotent: a seat whose declaration is already
 // complete gets nil and nothing happens.
+//
+// FinishBlocks pays any CR 509.1d block tax with the zero posture —
+// the mana pool, strictly; FinishBlocksWith carries the payment
+// posture (ADR 0221).
 func (g *Game) FinishBlocks(seat uuid.UUID) error {
+	return g.FinishBlocksWith(seat, DeclareBlockersParams{})
+}
+
+// FinishBlocksWith is FinishBlocks with the payment posture for a
+// CR 509.1d block tax (Archangel of Tithes, ADR 0221): the staged
+// blocks are priced as the declaration completes and paid with
+// `params` before anything is announced. Unpaid, it returns a
+// *BlockTaxUnpaidError (errors.Is ErrBlockTaxUnpaid), spends nothing
+// and leaves the declaration pending with its blocks staged. At a
+// table with no block tax `params` is inert.
+func (g *Game) FinishBlocksWith(seat uuid.UUID, params DeclareBlockersParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -220,6 +235,14 @@ func (g *Game) FinishBlocks(seat uuid.UUID) error {
 	// exactly as the defender's pass is.
 	if err := g.blockCheckpointLocked(seat); err != nil {
 		return err
+	}
+	// ADR 0221 / CR 509.1d-f: the total is determined and paid as the
+	// declaration completes, after the requirement checkpoint (a
+	// refused declaration owes nothing) and before the announcement.
+	if !g.blockDeclarationDoneLocked(seat) {
+		if err := g.payBlockTaxLocked(seat, params); err != nil {
+			return err
+		}
 	}
 	if g.completeBlockDeclarationLocked(seat) {
 		g.closeBlockDeclarationIfCompleteLocked()
@@ -418,6 +441,9 @@ func (g *Game) completeAllBlockDeclarationsLocked() bool {
 	}
 	completed := false
 	for _, seat := range g.defendingSeatsAPNAPLocked() {
+		// ADR 0221: the step is ending and cannot be refused, so an
+		// unpaid block tax takes the seat's staged blocks back.
+		g.settleBlockTaxForcedLocked(seat)
 		if g.completeBlockDeclarationLocked(seat) {
 			completed = true
 		}

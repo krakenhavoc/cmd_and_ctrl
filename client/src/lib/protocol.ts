@@ -51,6 +51,11 @@ export const ErrorCode = {
   // the symbols the pool and the tapper together could not cover.
   // No `card_id`: the refusal is about the declaration, not one card.
   AttackTaxUnpaid: "attack_tax_unpaid",
+  // #5375 (ADR 0221): a finish_blocks refused for want of the CR 509.1d
+  // block tax the staged blocks owe (Archangel of Tithes attacking).
+  // `reason` is the whole price ("{1}{1}"), `missing` the shortfall.
+  // Nothing was spent; the declaration is still open, blocks staged.
+  BlockTaxUnpaid: "block_tax_unpaid",
   // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
   // refused because the declaration breaks a CR 508.1c count limit
   // (Silent Arbiter's "no more than one creature can attack each
@@ -5914,12 +5919,28 @@ export interface TurnView {
   // control shows while the viewer's seat is pending.
   block_pending_seats?: number[];
   blocks_declared_seats?: number[];
+  // #5375 (ADR 0221): the CR 509.1d block tax on each defender still
+  // declaring, one row per seat whose blocks would be taxed. Absent at
+  // every table without one. Server-priced; never re-derived here.
+  block_taxes?: BlockTaxView[];
   // S27: what the ACTIVE player's creatures may attack right now —
   // the other seats, the planeswalkers they don't control, and the
   // battles they don't protect (CR 506.2, 508.1d). Present only
   // during declare_attackers. Server-computed: the client must not
   // re-derive "who protects which battle".
   attack_targets?: AttackTargetView[];
+}
+
+// BlockTaxView is one declaring defender's block tax (ADR 0221).
+export interface BlockTaxView {
+  seat: number;
+  // The price of the blocks staged now: what finish_blocks charges.
+  cost?: string;
+  // What one more blocker adds, when every one of the seat's creatures
+  // pays the same.
+  each?: string;
+  // The printed clauses that tax this seat's blocks.
+  labels: string[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all
