@@ -3,6 +3,8 @@ package effects
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -169,3 +171,138 @@ func TestLilGiriMakesLilGiriAndProtectsLegendaryFood(t *testing.T) {
 }
 
 func planesB11Ptr[T any](v T) *T { return &v }
+
+var (
+	planeKitchen       = planeFixture{"1d2bad25-dbe3-4b51-a78b-4a95dd5669fe", "Asmoranomardicadaistinaculdacar's Kitchen", "Plane — Hell"}
+	planeJalirasShow   = planeFixture{"eea700a1-a5f5-4b9e-aa03-8e092deb7396", "Jalira's Show", "Plane — Las Vegas"}
+	planesB11ElfOracle = "00000000-0000-4000-8000-0000000b1101"
+)
+
+func TestKitchenMakesFoodOnPlaneswalkAndWhenACreatureEnters(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeKitchen)
+	g, _ := newPlaneGame(t, planeKitchen)
+	advanceToMain(t, g)
+	me, other := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	planeswalkToPlane(t, g, planeKitchen.Oracle)
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Food"); n != 1 {
+		t.Fatalf("%d Food after planeswalking here, want 1", n)
+	}
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("1/1 green Squirrel"), 1) })
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Food"); n != 2 {
+		t.Errorf("%d Food after a creature entered under the planar controller, want 2", n)
+	}
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(other.ID, TokenCard("1/1 green Squirrel"), 1) })
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Food"); n != 2 {
+		t.Errorf("%d Food after a creature entered under another player, want 2", n)
+	}
+}
+
+func TestKitchenGainingLifeDrainsAnOpponent(t *testing.T) {
+	g, _ := newPlaneGame(t, planeKitchen)
+	advanceToMain(t, g)
+	me, other := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	life := other.Life
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 3) })
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, other.ID)
+	passPriorityAroundTable(t, g)
+	if got := life - other.Life; got != 3 {
+		t.Errorf("the opponent lost %d, want 3", got)
+	}
+}
+
+func TestKitchenChaosSacrificesForCardsAndLife(t *testing.T) {
+	g, plane := newPlaneGame(t, planeKitchen)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	a := b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	b12Permanent(g, me.ID, "Rock", "Artifact")
+	life, hand := me.Life, me.Hand.Size()
+	rollChaos(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 1 {
+		t.Fatalf("chaos put %d items on the stack, want 1", n)
+	}
+	passPriorityAroundTable(t, g)
+	answerPermanentPicks(t, g, me.ID, map[uuid.UUID][]uuid.UUID{me.ID: {a}})
+	passPriorityAroundTable(t, g)
+	if onBattlefieldForTest(g, a) {
+		t.Error("the chosen creature was not sacrificed")
+	}
+	if got := me.Hand.Size() - hand; got != 1 {
+		t.Errorf("drew %d cards, want 1", got)
+	}
+	if got := life - me.Life; got != 1 {
+		t.Errorf("lost %d life, want 1", got)
+	}
+}
+
+func onBattlefieldForTest(g *game.Game, id uuid.UUID) bool {
+	for _, c := range g.Battlefield.Cards {
+		if c.InstanceID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func TestJalirasShowMakesAPerformerWhenYouAttack(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeJalirasShow)
+	g, _ := newPlaneGame(t, planeJalirasShow)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	a := pushVanillaCreature(g, me.ID, "Bear A", 2, 2)
+	b := pushVanillaCreature(g, me.ID, "Bear B", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{a, b} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	advanceTo(t, g, game.StepDeclareBlockers)
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Performer"); n != 1 {
+		t.Errorf("%d Performers after one attack with two creatures, want 1", n)
+	}
+}
+
+func TestJalirasShowChaosDestroysAndRevealsForTheVictim(t *testing.T) {
+	g, _ := newPlaneGame(t, planeJalirasShow)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	victim := b12Creature(g, opp.ID, "Doomed Bear", "Creature — Bear", 2, 2)
+	putOnTopOfLibrary(g, opp, "Elf", "Creature — Elf", planesB11ElfOracle)
+	putOnTopOfLibrary(g, opp, "Spell", "Sorcery", "")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, victim)
+	passPriorityAroundTable(t, g)
+	if onBattlefieldForTest(g, victim) {
+		t.Error("the target was not destroyed")
+	}
+	found := false
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Elf" && c.Controller == opp.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("the victim's controller did not put the revealed creature card onto the battlefield")
+	}
+}
+
+func TestJalirasShowPlaneswalkingHereAlsoTriggers(t *testing.T) {
+	g, _ := newPlaneGame(t, planeJalirasShow)
+	advanceToMain(t, g)
+	opp := opponentOf(g)
+	victim := b12Creature(g, opp.ID, "Doomed Bear", "Creature — Bear", 2, 2)
+	planeswalkToPlane(t, g, planeJalirasShow.Oracle)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, victim)
+	passPriorityAroundTable(t, g)
+	if onBattlefieldForTest(g, victim) {
+		t.Error("planeswalking here did not destroy the target")
+	}
+}

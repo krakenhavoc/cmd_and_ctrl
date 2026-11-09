@@ -191,6 +191,7 @@ body invisible-woman/pump
 body iroh-tea-master/ally
 body itzquinth/dinosaur-bites
 body jace-reality-sculptor/attacker-gets-minus-five
+body jaliras-show/reveal-creature
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
 body kishla-trawlers/return-to-hand
@@ -1529,6 +1530,7 @@ run prompt-run/archfiend-of-depravity-keep
 run prompt-run/archon-of-cruelty-sacrificed
 run prompt-run/arid-archway-return-land
 run prompt-run/ascent-of-the-worthy-redirect
+run prompt-run/asmoranomardicadaistinaculdacars-kitchen-sacrifice
 run prompt-run/augusta-order-returned-exile
 run prompt-run/automated-warfare-system-draw
 run prompt-run/beetle-headed-merchants-draw-and-counter
