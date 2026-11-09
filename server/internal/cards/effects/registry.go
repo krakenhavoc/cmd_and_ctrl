@@ -1028,10 +1028,10 @@ func Register(spec Spec) {
 //     permanent could pay (game.ManaAbilityNeedsPermanentSource) —
 //     the same refusal an activated ability's Zones already gets, and
 //     the same reason: the cost could never be paid;
-//  3. an exile-this cost and a non-battlefield zone imply each other.
-//     Without the zone there is nothing to exile FROM; without the
-//     cost the ability is a free, repeatable mana source, which is
-//     not a card anybody printed.
+//  3. an exile-this cost and a declared zone imply each other, the
+//     battlefield included. Without the zone there is nothing to exile
+//     FROM; a non-battlefield zone without the cost is a free,
+//     repeatable mana source, which is not a card anybody printed.
 func checkManaAbilityZones(card string, i int, ma ManaAbility) {
 	offBattlefield := false
 	for _, zone := range ma.Zones {
@@ -1048,8 +1048,12 @@ func checkManaAbilityZones(card string, i int, ma ManaAbility) {
 				card, i, zone, why))
 		}
 	}
-	if ma.Cost.ExileSelf && !offBattlefield {
-		panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an exile-this cost but does not function from a non-battlefield zone — build it with ExileFromHandForMana",
+	// An exile-this cost on the battlefield (Ether's "{T}, Exile this
+	// artifact: Add {U}") names the battlefield in Zones: the permanent
+	// leaves, so it is no free repeatable source, but a bare cost with no
+	// zone at all is still a card that forgot where it works from.
+	if ma.Cost.ExileSelf && !offBattlefield && !slices.Contains(ma.Zones, game.ZoneBattlefield) {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d declares an exile-this cost but names no zone it functions from — set Zones (the hand for ExileFromHandForMana, the battlefield for \"{T}, Exile this artifact\")",
 			card, i))
 	}
 	if offBattlefield && !ma.Cost.ExileSelf {
