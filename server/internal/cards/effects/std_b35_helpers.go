@@ -68,18 +68,6 @@ func b35CopyTargetTokenModeBody(_ *game.StackItem, ctx *Context, occ int) error 
 	return CreateTokenCopy{Controller: ctx.Controller(), Copy: tr.ID, N: 1}.Apply(ctx)
 }
 
-// b35CopyFirstTargetToken is "create a token that's a copy of target
-// <artifact> token you control" as a resolution (Worldwalker Helm).
-func b35CopyFirstTargetToken(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return CreateTokenCopy{Controller: ctx.Controller(), Copy: t.ID, N: 1}.Apply(ctx)
-		}
-	}
-	return nil
-}
-
 // b35ArtifactTokenYouControl is the clause "target artifact token you
 // control".
 func b35ArtifactTokenYouControl() *game.TargetSpec {

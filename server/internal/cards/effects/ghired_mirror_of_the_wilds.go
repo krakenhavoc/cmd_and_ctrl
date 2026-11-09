@@ -30,7 +30,7 @@ func init() {
 				Label:   "{T}: Create a token that's a copy of target token you control that entered this turn.",
 				Cost:    TapCost(),
 				Targets: TargetPermanent("target token you control that entered this turn", IsTokenPredicate(), YouControl(), rfCreatureBEnteredThisTurn()),
-				Effect:  b35CopyFirstTargetToken,
+				Effect:  trekB39TokenCopyOfTheTarget,
 			}},
 			Text: "{T}: Create a token that's a copy of target token you control that entered this turn.",
 		}},

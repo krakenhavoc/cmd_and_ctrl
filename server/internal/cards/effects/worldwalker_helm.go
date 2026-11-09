@@ -44,7 +44,7 @@ func init() {
 			Label:   "{1}{U}, {T}: Create a token that's a copy of target artifact token you control.",
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
 			Targets: b35ArtifactTokenYouControl(),
-			Effect:  b35CopyFirstTargetToken,
+			Effect:  trekB39TokenCopyOfTheTarget,
 		}},
 	})
 }
