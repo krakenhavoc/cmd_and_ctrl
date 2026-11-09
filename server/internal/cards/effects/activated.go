@@ -642,6 +642,29 @@ func ExileAPermanentYouControl(label, cardType string) game.AbilityCost {
 	}}
 }
 
+// ExileArtifactsWithTotalManaValueX is "Exile one or more other
+// artifacts you control with total mana value X" as a COST (#5401) —
+// Fabrication Foundry's. The cost has no {X} symbol: X is announced
+// with the activation (CR 601.2b via CR 602.2b), before the targets
+// (CR 601.2c), and the artifacts the activator names at announce must
+// add up to exactly that X when the cost is paid (CR 601.2h). Pair it
+// with a target clause bounded by the same X
+// (TargetSpec.WithManaValueAtMostX); the effect may read ctx.X().
+//
+// "Other" is ExcludeSource: the ability's own source is never a
+// material. The client sends the picks' total as x_value and never
+// asks for X on its own; the engine refuses any other number.
+func ExileArtifactsWithTotalManaValueX(label string) game.AbilityCost {
+	return game.AbilityCost{ExilePermanents: &game.ExilePermanentsCost{
+		Count:           1,
+		OrMore:          true,
+		CardType:        "artifact",
+		ExcludeSource:   true,
+		TotalManaValueX: true,
+		Label:           label,
+	}}
+}
+
 // ExileACreatureYouControl is "Exile a creature you control" — The
 // Soul Stone's harness, Altar of Bhaal, City of Shadows, Food Chain.
 // The type is read off the permanent's current characteristics, so an

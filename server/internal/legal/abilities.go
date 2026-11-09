@@ -547,6 +547,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
+		// #5401: the totals those payments announce, ascending, for
+		// exileTotalDominated.
+		var exileTotals []int
+		if ec := ab.Cost.ExilePermanents; game.ExileTotalManaValueX(ec) {
+			for _, perms := range permanentSets {
+				if t, ok := g.ExileTotalManaValueForEffect(e.seat, ec, perms); ok {
+					exileTotals = append(exileTotals, t)
+				}
+			}
+		}
 		// #759: a "Tap another untapped creature you control" cost
 		// (station). One move per creature for the one-permanent
 		// clause, so the policy — not the enumerator — decides which
@@ -799,7 +809,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if game.StepsBoundByCountersRemoved(steps) || ab.Cost.XSlots() == 0 {
 					if !game.StepsBoundByCountersRemoved(steps) &&
 						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) &&
-						!game.DiscardCountFromX(ab.Cost.DiscardCards) && !game.DiscardManaValueX(ab.Cost.DiscardCards) {
+						!game.DiscardCountFromX(ab.Cost.DiscardCards) && !game.DiscardManaValueX(ab.Cost.DiscardCards) &&
+						!game.ExileTotalManaValueX(ab.Cost.ExilePermanents) {
 						continue
 					}
 					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
@@ -955,6 +966,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						for _, tr := range tapsAtRungs(tapSets, loyaltyXRungs(ab.Cost, ann.xValue, loyaltyFloor, loyaltyCeiling)) {
 							taps := tr.taps
 							tapXValue := xValue
+							// #5401: "with total mana value X" announces the
+							// exiled artifacts' total as X.
+							if game.ExileTotalManaValueX(ab.Cost.ExilePermanents) {
+								if total, ok := g.ExileTotalManaValueForEffect(e.seat, ab.Cost.ExilePermanents, perms); ok {
+									tapXValue = total
+								}
+							}
 							if game.TapOthersCountFromX(ab.Cost.TapOthers) {
 								tapXValue = len(taps)
 							}
@@ -994,6 +1012,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// (#544), and costs no budget.
 								if ann.bounded && !g.TargetsWithinBoundForEffect(ann.steps, targets,
 									game.AnnouncedBound{X: tapXValue, CountersRemoved: cc.total}) {
+									continue
+								}
+								// #5401: a larger exile than these targets
+								// need is never offered.
+								if ann.bounded && exileTotalDominated(g, ann.steps, targets, exileTotals, tapXValue, cc.total) {
 									continue
 								}
 								budget--
@@ -1474,6 +1497,17 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 	}
 	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
 	switch {
+	case game.ExileTotalManaValueX(ec):
+		// #5401: "with total mana value X" announces the payment's total
+		// as X, so which artifacts are exiled decides which targets are
+		// legal: one payment per total the candidates reach, the
+		// cheapest to keep standing for it, as Kozilek's discard offers
+		// one per mana value (manaValueDiscardPayments).
+		// Every total is offered: the emitter keeps a (payment, target)
+		// pair only when no smaller total admits the same target
+		// (exileTotalDominated), so each target is paired with the
+		// cheapest payment that reaches it.
+		return e.g.ExileTotalManaValuePaymentsForEffect(e.seat, ec, ordered, 0)
 	case ec.ShareCardType:
 		var out [][]uuid.UUID
 		seen := map[string]bool{}
@@ -1515,6 +1549,21 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 		out = append(out, ordered)
 	}
 	return out
+}
+
+// exileTotalDominated reports whether a "with total mana value X"
+// payment announcing `x` (#5401) exiles more than `targets` need: some
+// smaller total in `totals` (the payments on offer, ascending) admits
+// the same targets, so that cheaper payment is the move and this one is
+// not offered. False for every other cost (`totals` is empty).
+func exileTotalDominated(g *game.Game, steps []game.AnnouncedClause, targets []game.TargetRef, totals []int, x, countersRemoved int) bool {
+	best := -1
+	for _, t := range totals {
+		if t < x && t > best {
+			best = t
+		}
+	}
+	return best >= 0 && g.TargetsWithinBoundForEffect(steps, targets, game.AnnouncedBound{X: best, CountersRemoved: countersRemoved})
 }
 
 // onBattlefield reports whether `id` names a permanent on the
