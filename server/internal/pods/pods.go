@@ -478,6 +478,14 @@ func (s *Store) Create(ctx context.Context, owner, name string) (Summary, error)
 	if err != nil {
 		return Summary{}, err
 	}
+	return s.create(ctx, owner, name, nil)
+}
+
+// create makes the pod for an already cleaned name. Everyone in with but
+// owner gets an invite from owner in the same transaction (a suggestion,
+// §4); those invites count toward owner's hourly total but are not refused
+// by it, since the set is at most three people.
+func (s *Store) create(ctx context.Context, owner, name string, with []string) (Summary, error) {
 	s.write.Lock()
 	defer s.write.Unlock()
 	now := s.now()
@@ -490,20 +498,37 @@ func (s *Store) Create(ctx context.Context, owner, name string) (Summary, error)
 		return Summary{}, ErrCreateRateLimited
 	}
 	id := uuid.NewString()
-	err = s.inTx(ctx, func(tx *sql.Tx) error {
+	invited := 0
+	err := s.inTx(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO pods (id, name, owner_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 			id, name, owner, ms(now), ms(now)); err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO pod_members (pod_id, user_id, joined_at) VALUES (?, ?, ?)`, id, owner, ms(now))
-		return err
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO pod_members (pod_id, user_id, joined_at) VALUES (?, ?, ?)`, id, owner, ms(now)); err != nil {
+			return err
+		}
+		for _, to := range with {
+			if to == owner {
+				continue
+			}
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO pod_invites (pod_id, user_id, invited_by, created_at) VALUES (?, ?, ?, ?)`,
+				id, to, owner, ms(now)); err != nil {
+				return err
+			}
+			invited++
+		}
+		return nil
 	})
 	if err != nil {
 		return Summary{}, err
 	}
 	s.spendCreate(owner, now)
+	for i := 0; i < invited; i++ {
+		s.recordInvite(owner, now)
+	}
 	return Summary{ID: id, Name: name, Members: 1, Role: RoleOwner}, nil
 }
 

@@ -9,7 +9,7 @@ import Pod from "../routes/Pod.svelte";
 import PodJoin from "../routes/PodJoin.svelte";
 import Pods from "../routes/Pods.svelte";
 import { L } from "./labels";
-import { pickableFriends, podLinkURL } from "./pods";
+import { namesLine, pickableFriends, podLinkURL, suggestionLine } from "./pods";
 import { setSession, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
 
@@ -43,6 +43,7 @@ function reply(status: number, payload: unknown): Response {
 let calls: { method: string; path: string; body?: unknown }[] = [];
 let role: "owner" | "member" = "owner";
 let joinStatus = 200;
+let suggestions: unknown[] = [];
 
 function detail() {
   return {
@@ -73,6 +74,7 @@ beforeEach(() => {
   calls = [];
   role = "owner";
   joinStatus = 200;
+  suggestions = [];
   setSession(sess("identified", ME));
   vi.stubGlobal(
     "fetch",
@@ -91,7 +93,7 @@ beforeEach(() => {
               since: Date.now(),
             },
           ],
-          suggestions: [],
+          suggestions: suggestions,
           max_pods: 10,
           max_members: 12,
         });
@@ -157,6 +159,14 @@ describe("pods words", () => {
     });
     expect(out.map((f) => f.display_name)).toEqual(["Dee"]);
   });
+  it("words a suggestion", () => {
+    expect(namesLine(["Bea"])).toBe("Bea");
+    expect(namesLine(["Bea", "Cal"])).toBe("Bea and Cal");
+    expect(namesLine(["Bea", "Cal", "Dee"])).toBe("Bea, Cal and Dee");
+    expect(suggestionLine({ games: 4, days: 30 })).toBe(
+      "You’ve played 4 games together in the last 30 days.",
+    );
+  });
   it("builds the posted URL from the minted path", () => {
     expect(podLinkURL("#/pods/join/T", "https://x.test")).toBe("https://x.test/#/pods/join/T");
   });
@@ -210,6 +220,54 @@ describe("#/pods", () => {
     expect(calls.find((c) => c.method === "POST" && c.path === "/pods")?.body).toEqual({
       name: "Friday",
     });
+  });
+
+  const SUGG = {
+    key: "k".repeat(64),
+    people: [{ display_name: "Bea" }, { display_name: "Cal" }],
+    games: 4,
+    last_at: 1,
+    days: 30,
+  };
+
+  it("has no Suggested section without suggestions", async () => {
+    const { container } = render(Pods as never, {} as never);
+    await settle();
+    expect(container.querySelector("#p-suggested")).toBeNull();
+  });
+
+  it("shows a suggestion, and Make this pod asks for a name then posts the key", async () => {
+    suggestions = [SUGG];
+    const { container } = render(Pods as never, {} as never);
+    await settle();
+    const card = container.querySelector("#p-suggested")!.closest("section")!;
+    expect(card.textContent).toContain("Bea and Cal");
+    expect(card.textContent).toContain("You’ve played 4 games together in the last 30 days.");
+    click(button(container, L.makeSuggestedPod)!);
+    flushSync();
+    const input = container.querySelector<HTMLInputElement>(`#sg-name-${SUGG.key}`)!;
+    input.value = "  Thursday  ";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync();
+    input.closest("form")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    await settle();
+    expect(calls.find((c) => c.method === "POST" && c.path === "/pods")?.body).toEqual({
+      name: "Thursday",
+      suggestion: SUGG.key,
+    });
+  });
+
+  it("Not now dismisses the suggestion by its key", async () => {
+    suggestions = [SUGG];
+    const { container } = render(Pods as never, {} as never);
+    await settle();
+    click(button(container, L.dismissPodSuggestion)!);
+    await settle();
+    expect(
+      calls.some(
+        (c) => c.method === "POST" && c.path === `/me/pod-suggestions/${SUGG.key}/dismiss`,
+      ),
+    ).toBe(true);
   });
 
   it("a guest is told to sign in", async () => {

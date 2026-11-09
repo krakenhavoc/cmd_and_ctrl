@@ -1826,6 +1826,20 @@ export const LABEL_SPECS = {
     owners: ["routes/Pod.svelte"],
     doc: "copies the just-minted invite link; the token is never shown again (ADR 0220 §3b)",
   }),
+  makeSuggestedPod: label({
+    name: "Make this pod",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pods.svelte"],
+    doc: "a suggested pod's yes, on #/pods: asks for a name, makes the pod with you as its owner and invites the others in the suggestion (ADR 0220 §4, slice 4)",
+  }),
+  dismissPodSuggestion: label({
+    name: "Not now",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pods.svelte"],
+    doc: "hides a suggested pod from you for 180 days and from nobody else (ADR 0220 §4, slice 4)",
+  }),
   joinPod: label({
     name: "Join",
     kind: "text",

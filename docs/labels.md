@@ -235,6 +235,8 @@ registered, or when this file is stale.
 | `makePodOwner` | `Make owner` | button | text | `routes/Pod.svelte` | the owner hands the pod to a member and stays a member (ADR 0220 §2) |
 | `makePodLink` | `New link` | button | text | `routes/Pod.svelte` | mints or rotates the pod's invite link; the old one stops at once and the new one is shown once (ADR 0220 §3b) |
 | `copyPodLink` | `Copy invite link` | button | text | `routes/Pod.svelte` | copies the just-minted invite link; the token is never shown again (ADR 0220 §3b) |
+| `makeSuggestedPod` | `Make this pod` | button | text | `routes/Pods.svelte` | a suggested pod's yes, on #/pods: asks for a name, makes the pod with you as its owner and invites the others in the suggestion (ADR 0220 §4, slice 4) |
+| `dismissPodSuggestion` | `Not now` | button | text | `routes/Pods.svelte` | hides a suggested pod from you for 180 days and from nobody else (ADR 0220 §4, slice 4) |
 | `joinPod` | `Join` | button | text | `routes/PodJoin.svelte` | the invite link page's yes: joins the pod (ADR 0220 §3b) |
 | `friendsButton` | `Friends` | button | aria | `lib/components/SiteHeader.svelte` | the site header's people button, for someone signed in with Discord (ADR 0213 §9; it read People you've played with in slice 2); opens the friends drawer, which fetches then and never polls |
 | `friendsDrawer` | `Friends list` | dialog | aria | `lib/components/PlayedWithDrawer.svelte` | the header's drawer (ADR 0213 §9): Requests, Friends and Played with, each Played with row with Add friend and Invite; covers the page at tablet width (it was the Played with dialog in slice 2) |
