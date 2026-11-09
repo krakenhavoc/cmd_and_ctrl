@@ -1908,6 +1908,16 @@ type Card struct {
 	// HasntDealtCombatDamage gate.
 	DealtCombatDamage bool
 
+	// DealtDamage is "has dealt damage" (Karakyk Guardian's "has
+	// hexproof as long as it hasn't dealt damage yet"): DealtCombatDamage
+	// for damage of any kind, noncombat damage and damage to a player or
+	// a permanent alike. Set by emitDealDamageLocked when damage this
+	// permanent was the source of actually landed (damage fully
+	// prevented is not dealt) and kept until the permanent leaves the
+	// battlefield (CR 400.7). Not a characteristic; carried by clone and
+	// the snapshot. Read through the HasntDealtDamage gate.
+	DealtDamage bool
+
 	// Bestowed is CR 702.103b's "bestowed" status (ADR 0141, #2862): a
 	// spell cast for its bestow cost, and the permanent that spell
 	// becomes, is an Aura enchantment with enchant creature and not a
