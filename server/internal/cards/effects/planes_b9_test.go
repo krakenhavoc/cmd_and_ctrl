@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ var (
 	planeOtaria   = planeFixture{"29e3371d-aa41-46a9-921a-96565be47eff", "Otaria", "Plane — Dominaria"}
 	planeTrail    = planeFixture{"b2c95c7a-a04c-46ef-a879-6eb08e444093", "Trail of the Mage-Rings", "Plane — Vryn"}
 	planeStairs   = planeFixture{"7a425df4-7010-462e-9cb5-20389bac721c", "Stairs to Infinity", "Plane — Xerex"}
+	planePrahv    = planeFixture{"34a31865-b701-4ce1-8912-29fc41ecdda3", "Prahv", "Plane — Ravnica"}
 	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -779,5 +781,47 @@ func TestStairsToInfinityChaosRevealsTheTopPlaneAndMayBottomIt(t *testing.T) {
 	}
 	if bottom, _ := g.PlanarDeck.Bottom(); bottom.InstanceID != top.InstanceID {
 		t.Error("the revealed plane is not on the bottom of the planar deck")
+	}
+}
+
+// --- Prahv -------------------------------------------------------------------
+
+func TestPrahvCastingStopsAttackingAndAttackingStopsCasting(t *testing.T) {
+	requirePlaneRegisteredFull(t, planePrahv)
+	g, _ := newPlaneGame(t, planePrahv)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	raider := b12Creature(g, me.ID, "Raider", "Creature — Bear", 2, 2)
+	if err := jmpB4CastSandboxSpell(t, g, me); err != nil {
+		t.Fatalf("casting before attacking: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(raider, opp.ID); !errors.Is(err, game.ErrCantAttack) {
+		t.Fatalf("a player who cast a spell attacked: %v", err)
+	}
+
+	// The next turn: the new planar controller attacks first, then can't cast.
+	next := toNextUpkeep(t, g)
+	other := b12Creature(g, next.ID, "Other Raider", "Creature — Bear", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(other, me.ID); err != nil {
+		t.Fatalf("a player who cast nothing may attack: %v", err)
+	}
+	advanceTo(t, g, game.StepPostcombatMain)
+	if err := jmpB4CastSandboxSpell(t, g, next); err == nil {
+		t.Fatal("a player who attacked with creatures cast a spell")
+	}
+}
+
+func TestPrahvChaosGainsLifeForTheHandSize(t *testing.T) {
+	g, _ := newPlaneGame(t, planePrahv)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	life, hand := me.Life, me.Hand.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if me.Life != life+hand {
+		t.Errorf("life %d, want %d", me.Life, life+hand)
 	}
 }
