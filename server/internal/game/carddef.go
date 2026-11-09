@@ -473,6 +473,10 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogGameEndGates and
 	// ADR 0057 Decision 4 (#749).
 	GameEndGates []GameEndGate
+	// CoinFlipRules are this permanent's printed rules over the coins its
+	// controller flips (Edgar, King of Figaro's Two-Headed Coin), read from
+	// the battlefield through CatalogAbilityKey; see coin_flip_rules.go.
+	CoinFlipRules []CoinFlipRule
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -1191,6 +1195,12 @@ func init() {
 	CatalogGameEndGates = func(key string) []GameEndGate {
 		if d := catalogDef(key); d != nil {
 			return d.GameEndGates
+		}
+		return nil
+	}
+	CatalogCoinFlipRules = func(key string) []CoinFlipRule {
+		if d := catalogDef(key); d != nil {
+			return d.CoinFlipRules
 		}
 		return nil
 	}

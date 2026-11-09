@@ -385,6 +385,7 @@ choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/armored-skyhunter-attach
 choose choose-cards/as-enters-permanent
 choose choose-cards/assimilation-assessor-assimilate
+choose choose-cards/atraxa-grand-unifier-card-type
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
@@ -829,6 +830,7 @@ condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
 condition attach/this-aura-left
 condition attack/a-creature-you-control-attacks-alone
+condition attack/a-sea-creature-attacks-summon-leviathan
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
@@ -1038,6 +1040,9 @@ confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
+confirm may/carpet-of-flowers-add-mana
+confirm may/clive-ifrits-dominant-discard-and-draw
+confirm may/jecht-reluctant-guardian-transform
 drawinstead dredge-2
 drawinstead dredge-3
 drawinstead dredge-4
@@ -1238,6 +1243,7 @@ option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
+option option-pick/vial-smasher-the-fierce-recipient
 option option-pick/villainous-damocles-base
 option option-pick/villainous-davros-dalek-creator
 option option-pick/villainous-dr-eggman
@@ -1932,6 +1938,7 @@ tail fight-rigging/offer
 tail final-parting/graveyard-search
 tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
+tail firion-wild-rose-warrior/sacrifice-the-copy
 tail flicker/return-exiled
 tail flicker/return-on-owners-end-step
 tail flicker/schedule-return-at-end-step

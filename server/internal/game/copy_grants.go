@@ -268,6 +268,14 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// key (EffectiveLandDropsLocked, standingCastPermissionsLocked),
 		// so they end the pass the grant does and two recipients add.
 		merged.AdditionalLandPlays += g.AdditionalLandPlays
+		// A bundle may carry cost modifiers (Firion, Wild Rose Warrior's
+		// token copy: "This Equipment's equip abilities cost {2} less to
+		// activate"). costModifiersOf reads them off the composite key, so
+		// the recipient is the modifier's source and the cost change ends
+		// the pass the grant does.
+		if len(g.CostModifiers) > 0 {
+			merged.CostModifiers = append(append([]CostModifier(nil), merged.CostModifiers...), g.CostModifiers...)
+		}
 		if len(g.CastPermissions) > 0 {
 			merged.CastPermissions = append(append([]CastPermission(nil), merged.CastPermissions...), g.CastPermissions...)
 		}

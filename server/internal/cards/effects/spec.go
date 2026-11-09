@@ -1450,6 +1450,19 @@ type Spec struct {
 	// Issue #749, ADR 0057 Decision 4.
 	GameEndGates []game.GameEndGate
 
+	// CoinFlipRules declares a printed static over the coins its controller
+	// flips: Edgar, King of Figaro's "Two-Headed Coin — The first time you
+	// flip one or more coins each turn, those coins come up heads and you
+	// win those flips."
+	//
+	//	CoinFlipRules: []game.CoinFlipRule{{Label: "Two-Headed Coin", FirstTimeEachTurn: true, HeadsAndWin: true}},
+	//
+	// DERIVED, not stored: the engine asks the battlefield, through
+	// game.CatalogCoinFlipRules keyed by CatalogAbilityKey, each time its
+	// controller flips (called or uncalled), so the rule ends with the
+	// permanent or its abilities. See game/coin_flip_rules.go.
+	CoinFlipRules []game.CoinFlipRule
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 207.2c — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
