@@ -278,15 +278,23 @@ func (g *Game) manaTriggersExistLocked() bool {
 			return true
 		}
 	}
-	if g.Battlefield == nil || CatalogManaTriggers == nil {
+	if CatalogManaTriggers == nil {
 		return false
 	}
-	for i := range g.Battlefield.Cards {
-		if len(manaTriggersOf(&g.Battlefield.Cards[i])) > 0 {
-			return true
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			if len(manaTriggersOf(&g.Battlefield.Cards[i])) > 0 {
+				return true
+			}
 		}
 	}
-	return false
+	// A face-up plane's triggered mana abilities too (Eloren Wilds).
+	found := false
+	g.forEachPlanarSourceLocked(func(src *Card) bool {
+		found = len(manaTriggersOf(src)) > 0
+		return !found
+	})
+	return found
 }
 
 // manaTriggerFiringsLocked is the JUDGE (pass one of the two passes
@@ -332,11 +340,10 @@ func (g *Game) manaTriggerFiringsLocked(prod ManaProduced) []manaTriggerFiring {
 		}
 		fired = append(fired, manaTriggerFiring{source: dt.SourceCardID, label: dt.Label, produced: dt.ManaAdds})
 	}
-	for i := 0; g.Battlefield != nil && CatalogManaTriggers != nil && i < len(g.Battlefield.Cards); i++ {
-		source := &g.Battlefield.Cards[i]
+	judge := func(source *Card) {
 		triggers := manaTriggersOf(source)
 		if len(triggers) == 0 {
-			continue
+			return
 		}
 		for _, t := range triggers {
 			if t.AppliesTo != nil && !t.AppliesTo(prod, source, g) {
@@ -359,6 +366,16 @@ func (g *Game) manaTriggerFiringsLocked(prod ManaProduced) []manaTriggerFiring {
 				skip:     t.TappedSkipsNextUntap,
 			})
 		}
+
+	}
+	if CatalogManaTriggers != nil {
+		for i := 0; g.Battlefield != nil && i < len(g.Battlefield.Cards); i++ {
+			judge(&g.Battlefield.Cards[i])
+		}
+		g.forEachPlanarSourceLocked(func(src *Card) bool {
+			judge(src)
+			return true
+		})
 	}
 	return fired
 }

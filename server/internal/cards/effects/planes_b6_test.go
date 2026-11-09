@@ -981,3 +981,32 @@ func TestEdgeOfMalacolChaosUntapsYourCreatures(t *testing.T) {
 		t.Errorf("the chaos untap was replaced: %d counters", got)
 	}
 }
+
+var planeElorenWilds = planeFixture{"23fe1c21-c396-4ebf-a8b0-22d697952b34", "Eloren Wilds", "Plane — Shandalar"}
+
+func TestElorenWildsDoublesAnyPermanentsManaAndChaosBansCasting(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeElorenWilds)
+	g, _ := newPlaneGame(t, planeElorenWilds)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	forest := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	tapForMana(t, g, me.ID, forest)
+	if got := me.ManaPool.Total(); got != 2 {
+		t.Errorf("a tapped Forest made %d mana, want 2", got)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, opp.ID)
+	passPriorityAroundTable(t, g)
+	spell := uuid.New()
+	opp.Hand.PushTop(game.Card{InstanceID: spell, Name: "Ritual", TypeLine: "Instant", Owner: opp.ID, Controller: opp.ID})
+	if err := g.CastSpell(opp.ID, spell, game.CastSpellParams{}); err == nil {
+		t.Error("the banned player cast a spell")
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	for _, st := range opp.Statics {
+		if st.CastBan.Kind != game.CastBanNone {
+			t.Error("the cast ban outlived the planeswalk")
+		}
+	}
+}
