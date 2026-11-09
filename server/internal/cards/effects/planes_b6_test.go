@@ -346,3 +346,78 @@ func TestTowashiChaosDistributesThreeCounters(t *testing.T) {
 		t.Errorf("counters %d and %d, want 1 and 2", x, y)
 	}
 }
+
+var (
+	planeTrugaJungle = planeFixture{"d858e6db-9842-41d1-8006-574c8dcd98ed", "Truga Jungle", "Plane — Ergamon"}
+	planeTurriIsland = planeFixture{"1300b5e7-d741-4723-bb15-dabd04cb0c11", "Turri Island", "Plane — Ir"}
+)
+
+func TestTrugaJungleLandsTapForAnyColorAndChaosTakesLands(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTrugaJungle)
+	g, _ := newPlaneGame(t, planeTrugaJungle)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mine := b12Permanent(g, me.ID, "Odd Land", "Land")
+	theirs := b12Permanent(g, opp.ID, "Their Land", "Land")
+	g.BumpLayerVersionForTest()
+	for _, id := range []uuid.UUID{mine, theirs} {
+		var n int
+		g.WithWriteLock(func() {
+			g.RecomputeLayersIfStaleLocked()
+			c, _ := g.LookupCardForEffect(id)
+			n = len(game.ManaAbilitiesForCard(c))
+		})
+		if n != 1 {
+			t.Errorf("a land has %d mana abilities, want the granted one", n)
+		}
+	}
+	// Chaos: top three are land, creature, land.
+	libraryTop(me,
+		cardNamed("Bottom Land", "Basic Land — Forest"),
+		cardNamed("Bear", "Creature — Bear"),
+		cardNamed("Top Land", "Basic Land — Plains"))
+	hand := me.Hand.Size()
+	lib := me.Library.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	// The rest (one creature) goes to the bottom: a single card needs no order.
+	for i := 0; i < 4; i++ {
+		if ch := latestChoiceOfKind(g, game.PendingChoicePutInLibrary); ch != nil {
+			t.Fatalf("an order was asked for a single card")
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("%d cards entered the hand, want the 2 lands", got)
+	}
+	if got := lib - me.Library.Size(); got != 2 {
+		t.Errorf("library fell by %d, want 2", got)
+	}
+}
+
+func TestTurriIslandCreatureSpellsCostTwoLessAndChaosTakesCreatures(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTurriIsland)
+	g, _ := newPlaneGame(t, planeTurriIsland)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Two Drop", TypeLine: "Creature — Bear", ManaCost: "{2}", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("a {2} creature spell was not free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	libraryTop(me,
+		cardNamed("Spell", "Sorcery"),
+		cardNamed("Bear", "Creature — Bear"),
+		cardNamed("Elf", "Creature — Elf"))
+	hand, yard := me.Hand.Size(), me.Graveyard.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("%d cards entered the hand, want the 2 creatures", got)
+	}
+	if got := me.Graveyard.Size() - yard; got != 1 {
+		t.Errorf("%d cards entered the graveyard, want the sorcery", got)
+	}
+}
