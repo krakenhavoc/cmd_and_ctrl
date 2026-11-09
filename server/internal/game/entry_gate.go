@@ -138,7 +138,7 @@ type entryRefusal struct {
 // Caller must hold g.mu.
 func (g *Game) entryRefusalLocked(q EntryQuery) (entryRefusal, bool) {
 	if CatalogEntryRestrictions == nil {
-		return entryRefusal{}, false
+		return g.scopedEntryRefusalLocked(q)
 	}
 	refusedBy := func(src *Card) (entryRefusal, bool) {
 		for _, r := range entryRestrictionsOf(src) {
@@ -171,7 +171,62 @@ func (g *Game) entryRefusalLocked(q EntryQuery) (entryRefusal, bool) {
 		refused, found = refusedBy(src)
 		return !found
 	})
-	return refused, found
+	if found {
+		return refused, true
+	}
+	return g.scopedEntryRefusalLocked(q)
+}
+
+// scopedEntryRefusalLocked is the stored "this turn" entry restrictions
+// a resolved effect left (ModCardsCantEnterFromExile, Bad Wolf Bay): a
+// CARD leaving exile is refused; a token comes from nowhere (CR 111.1)
+// and is never one.
+//
+// Caller must hold g.mu.
+func (g *Game) scopedEntryRefusalLocked(q EntryQuery) (entryRefusal, bool) {
+	if q.Token || q.FromZone != ZoneExile {
+		return entryRefusal{}, false
+	}
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		for _, m := range e.Mods {
+			if m.Kind != ModCardsCantEnterFromExile {
+				continue
+			}
+			reason := "Cards can't enter from exile this turn"
+			if e.SourceName != "" {
+				reason += " — " + e.SourceName
+			}
+			return entryRefusal{reason: reason, source: e.Source.ID}, true
+		}
+	}
+	return entryRefusal{}, false
+}
+
+// anyScopedEntryRestrictionLocked reports whether a stored entry
+// restriction is in force.
+//
+// Caller must hold g.mu.
+func (g *Game) anyScopedEntryRestrictionLocked() bool {
+	for i := range g.ScopedEffects {
+		for _, m := range g.ScopedEffects[i].Mods {
+			if m.Kind == ModCardsCantEnterFromExile {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// CardsCantEnterFromExileThisTurnForEffect registers "cards can't enter
+// from exile this turn" (Bad Wolf Bay): a ModCardsCantEnterFromExile
+// record swept at cleanup (CR 514.2). `label` is the source's name for
+// the clause. Reports whether a record was written.
+//
+// Caller must hold g.mu (write).
+func (g *Game) CardsCantEnterFromExileThisTurnForEffect(sourceID uuid.UUID, label string) bool {
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{{Kind: ModCardsCantEnterFromExile}}, g.UntilEndOfTurnDuration(), label)
 }
 
 // anyEntryRestrictionLocked is the cheap first question: does anything
@@ -180,6 +235,9 @@ func (g *Game) entryRefusalLocked(q EntryQuery) (entryRefusal, bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) anyEntryRestrictionLocked() bool {
+	if g.anyScopedEntryRestrictionLocked() {
+		return true
+	}
 	if CatalogEntryRestrictions == nil {
 		return false
 	}

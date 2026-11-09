@@ -386,6 +386,7 @@ choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/alpharael-discard-two-unless-artifact
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
+choose choose-cards/amys-home-exile
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/armored-skyhunter-attach
@@ -836,6 +837,7 @@ coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/fighting-chance-shields
 coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
+coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
@@ -1258,6 +1260,7 @@ option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
 option option-pick/thornplate-intimidator-punisher
 option option-pick/thrull-wizard-pay
+option option-pick/time-travel
 option option-pick/tireless-provisioner-token
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
@@ -1483,6 +1486,7 @@ run blight/nothing-after
 run blight/scuzzback-scrounger-treasure
 run blight/sourbread-auntie-tokens
 run blight/warren-torchmaster-when-you-do
+run dalek-intensive-care/exile
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/altar-of-the-wretched-payout
 run prompt-run/ambrosia-whiteheart-return
@@ -1760,6 +1764,7 @@ tail avatar-kyoshi-earthbender/untap-that-land
 tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
+tail bad-wolf-bay/return-at-next-end-step
 tail barrowgoyf/after-mill
 tail batch18/exiled-creatures-controllers-fetch
 tail batch21-helpers/after-mill
@@ -1806,6 +1811,7 @@ tail cease/gain-and-draw
 tail charming-prince/after-exile
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
+tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
@@ -1844,6 +1850,8 @@ tail d-7-battle-cruiser/sacrifice-at-end
 tail dack-fayden-helping-hand/shuffle-goad-and-give
 tail dai-li-agents/second-earthbend
 tail dain-ironfoot/axe-created
+tail dalek-intensive-care/create-dalek
+tail dalek-intensive-care/haste
 tail damage-steps/next
 tail daredevil-man-without-fear/hero-boost
 tail dark-impostor/after-exile
@@ -2002,6 +2010,7 @@ tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
 tail gandalf-shadows-foe/return-lands-tapped
+tail gardens-of-tranquil-repose/its-controller-scries
 tail gemstone-mine/sacrifice-if-empty
 tail georgiou-terran-emperor/draw-then-officers
 tail ghostly-flicker/return-under-your-control
@@ -2033,6 +2042,7 @@ tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
+tail hotel-of-fears/praise-him
 tail hotshot-investigators/investigate
 tail hour-of-promise/zombies-if-three-deserts
 tail howlpack-piper/untap-if-wolf

@@ -357,6 +357,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
 	// token, +1/+1, equip {2}.
 	printedBlacksmithsSwordToken,
+	// Aplan Mortarium's Alien Angel (Doctor Who plane, #4870): a 2/2
+	// artifact creature that stops being a creature when an opponent
+	// casts a creature spell.
+	printedAlienAngelToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
