@@ -677,8 +677,6 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 		InstanceID: uuid.New(), Name: "Their Saga", TypeLine: "Enchantment — Saga", Owner: opp.ID, Controller: opp.ID,
 		Counters: map[string]int{game.CounterLore: 1},
 	})
-	// Each Saga entered with its own first lore counter on top of the ones pushed.
-	loreA, loreB := finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore)
 	declareAttack(t, g, opp.ID, garnet)
 	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
@@ -691,6 +689,8 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 			t.Error("an opponent's Saga was offered")
 		}
 	}
+	// The turn's lore counters have been added by now; read the counts at the prompt.
+	loreA, loreB := finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore)
 	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{sagaA, sagaB}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
