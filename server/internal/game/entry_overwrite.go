@@ -91,6 +91,11 @@ type EntersAs struct {
 	// 612.8): Princess Yue's "She's a land named Moon." Empty keeps the
 	// card's own.
 	Name string `json:"name,omitempty"`
+	// LosesAllAbilities is "and it loses all abilities" (layer 6, CR
+	// 613.1f): Retched Wretch's return. It lasts as long as the object is
+	// on the battlefield, like the rest of the record, and a card with only
+	// this field changes no types.
+	LosesAllAbilities bool `json:"losesAllAbilities,omitempty"`
 }
 
 // EntersAsPT is an entry overwrite's base power and toughness.
@@ -127,6 +132,9 @@ func (e *EntersAs) mods() []Mod {
 	if e.BasePT != nil {
 		mods = append(mods, SetBasePowerMod(e.BasePT.Power), SetBaseToughnessMod(e.BasePT.Toughness))
 	}
+	if e.LosesAllAbilities {
+		mods = append(mods, LoseAllAbilitiesMod())
+	}
 	return mods
 }
 
@@ -136,7 +144,7 @@ func (e *EntersAs) Problem() string {
 	if e == nil {
 		return ""
 	}
-	if len(e.Types) == 0 && len(e.AddTypes) == 0 {
+	if len(e.Types) == 0 && len(e.AddTypes) == 0 && !e.LosesAllAbilities {
 		return "an entry overwrite names no card type"
 	}
 	if len(e.Types) > 0 && (len(e.AddTypes) > 0 || len(e.AddSubtypes) > 0 || len(e.CreatureTypes) > 0) {
@@ -165,7 +173,7 @@ func copyEntersAs(e *EntersAs) *EntersAs {
 	}
 	out := &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label,
 		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords),
-		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name}
+		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name, LosesAllAbilities: e.LosesAllAbilities}
 	if e.BasePT != nil {
 		pt := *e.BasePT
 		out.BasePT = &pt
