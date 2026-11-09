@@ -152,6 +152,21 @@ type GrantedAlternativeCost struct {
 	// 118.6) has mana value 0, so it costs no life. Offer.ManaCost, Life
 	// and Energy must be empty.
 	LifeEqualToManaValue bool
+
+	// EveryPlayer is a static that makes the offer to EVERY player's
+	// casts, not only to its controller's (Weftwalking: "the first spell
+	// each player casts during each of their turns may be cast without
+	// paying its mana cost"). The source's controller is not "you" in the
+	// text; the caster is whoever is casting.
+	EveryPlayer bool
+
+	// FirstSpellOnOwnTurn is "the first spell [the caster] casts during
+	// each of their turns": the offer is made only while the caster is the
+	// active player and has cast no spell yet this turn
+	// (Game.SpellsCastThisTurn), read live each time the offer is derived.
+	// A spell that is countered still was cast, so it spends the chance;
+	// a copy is not cast and does not.
+	FirstSpellOnOwnTurn bool
 }
 
 // gatedOn reports whether this static is switched on for `src` right
@@ -163,6 +178,9 @@ func (gr GrantedAlternativeCost) gatedOn(g *Game, caster uuid.UUID, src *Card) b
 		return false
 	}
 	if gr.YourTurnOnly && g.activePlayerIDLocked() != caster {
+		return false
+	}
+	if gr.FirstSpellOnOwnTurn && (g.activePlayerIDLocked() != caster || g.SpellsCastThisTurn[caster].Total > 0) {
 		return false
 	}
 	return !gr.OnceEachTurn || g.TurnTally.GrantedAltCostsClaimed[gr.claimKey(src)] == 0
@@ -285,14 +303,16 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 	var seen map[string]bool
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		if src.Controller != playerID {
-			continue
-		}
 		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
+			// A static offers its controller's casts, unless it says it
+			// offers every player's (Weftwalking).
+			if src.Controller != playerID && !gr.EveryPlayer {
+				continue
+			}
 			// Rooftop Storm's "Zombie creature spells" is a word of the
 			// source's text (CR 612.2, #4005).
 			gr.Spells = gr.Spells.ThroughTextOf(src)

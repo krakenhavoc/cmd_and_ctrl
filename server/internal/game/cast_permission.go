@@ -885,7 +885,9 @@ type CastPermission struct {
 	// pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no
 	// EventTapCard, and nothing that watches an untapped permanent
 	// entering sees one. A spell that does not become a permanent
-	// ignores it.
+	// ignores it. A LAND played through the permission enters tapped the
+	// same way (Lightstall Inquisitor: "Each land played this way enters
+	// tapped"), seeded on its entry event in CastSpell's land branch.
 	EntersTapped bool `json:"entersTapped,omitempty"`
 
 	// GainsKeywords and GainsAbilities are "If you cast a creature spell
