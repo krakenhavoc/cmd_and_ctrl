@@ -1552,3 +1552,86 @@ func TestStdB45KyloxsVoltstriderLinksTheEvidenceAndCastsAnInstantFromIt(t *testi
 		t.Error("the Bolt is not on the bottom of its owner's library")
 	}
 }
+
+const stdCoverUpOracle = "04e2afbe-0c08-42bc-93e6-662066a958bf"
+
+func stdCoverUpCast(t *testing.T, evidence bool) (extractionTable, uuid.UUID, uuid.UUID) {
+	t.Helper()
+	x := extractionSetUp(t, "Grizzly Bears", "Creature — Bear")
+	advanceToMain(t, x.g)
+	mine := reqCreature(x.g, x.me.ID, "My Bear", "", 2, 2)
+	theirs := x.permanent("bear on board", "Grizzly Bears", "Creature — Bear", "G")
+	var ev []uuid.UUID
+	for _, mv := range []string{"{3}", "{3}"} {
+		ev = append(ev, gyCard(x.me, "Evidence "+mv, "Sorcery", mv, ""))
+	}
+	b06AddMana(x.me, "C", "C", "C", "B", "B")
+	id := handCardFull(x.me, "Deadly Cover-Up", "Sorcery", "{3}{B}{B}", stdCoverUpOracle, []string{"B"})
+	params := game.CastSpellParams{Strict: true}
+	if evidence {
+		params.OptionalCosts = []int{0}
+		params.ExileIDs = ev
+	}
+	if err := x.g.CastSpell(x.me.ID, id, params); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, x.g)
+	return x, mine, theirs
+}
+
+func TestStdB45DeadlyCoverUpWithoutEvidenceOnlyDestroysCreatures(t *testing.T) {
+	x, mine, theirs := stdCoverUpCast(t, false)
+	if x.g.Battlefield.Contains(mine) || x.g.Battlefield.Contains(theirs) {
+		t.Fatal("a creature survived")
+	}
+	if c := latestChoiceOfKindFor(x.g, game.PendingChoiceChooseCards, x.me.ID); c != nil {
+		t.Fatalf("asked to exile a card without evidence: %+v", c)
+	}
+	x.notExiled(t, "gy", "hand", "lib")
+}
+
+func TestStdB45DeadlyCoverUpWithEvidenceExilesTheNameFromEveryZoneAndDrawsForTheHand(t *testing.T) {
+	x, _, _ := stdCoverUpCast(t, true)
+	pick := latestChoiceOfKindFor(x.g, game.PendingChoiceChooseCards, x.me.ID)
+	if pick == nil {
+		t.Fatalf("no pick of a card from an opponent's graveyard: %+v", x.g.PendingChoices)
+	}
+	for _, id := range pick.ChooseCards {
+		c, _ := x.g.LookupCardForEffect(id)
+		if c.Owner == x.me.ID {
+			t.Fatal("one of my own cards was offered")
+		}
+	}
+	if err := x.g.ResolveChooseCards(pick.ID, x.me.ID, []uuid.UUID{x.cards["gy"]}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	x.exiled(t, "gy")
+	hand, lib := x.opp.Hand.Size(), x.opp.Library.Size()
+	answerSearchByID(t, x.g, x.me.ID, x.cards["gy 2"], x.cards["hand"], x.cards["lib"])
+	passPriorityAroundTable(t, x.g)
+	x.exiled(t, "gy", "gy 2", "hand", "lib")
+	x.notExiled(t, "gy other", "hand other", "lib other", "gy forest")
+	// One card left their hand, so they draw one; the library lost one and
+	// was shuffled.
+	if got := x.opp.Hand.Size() - (hand - 1); got != 1 {
+		t.Errorf("they drew %d, want 1 (one card was exiled from their hand)", got)
+	}
+	if x.opp.Library.Size() != lib-1-1 {
+		t.Errorf("library %d, want %d (one exiled, one drawn)", x.opp.Library.Size(), lib-2)
+	}
+	if x.searches() != 1 {
+		t.Errorf("%d shuffles, want 1", x.searches())
+	}
+}
+
+func TestStdB45DeadlyCoverUpMayExileABasicLand(t *testing.T) {
+	x, _, _ := stdCoverUpCast(t, true)
+	pick := latestChoiceOfKindFor(x.g, game.PendingChoiceChooseCards, x.me.ID)
+	if pick == nil {
+		t.Fatal("no pick")
+	}
+	if err := x.g.ResolveChooseCards(pick.ID, x.me.ID, []uuid.UUID{x.cards["gy forest"]}); err != nil {
+		t.Fatalf("a basic land was refused: %v", err)
+	}
+	x.exiled(t, "gy forest")
+}
