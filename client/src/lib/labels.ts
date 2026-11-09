@@ -1723,6 +1723,85 @@ export const LABEL_SPECS = {
     doc: "the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877)",
   }),
 
+  // -- Pods (ADR 0220 §11, slice 3) --
+  navPods: label({
+    name: "Pods",
+    kind: "text",
+    role: "link",
+    owners: ["lib/components/SiteHeader.svelte", "routes/Stats.svelte"],
+    doc: "the signed-in nav's link to #/pods, after Stats, and the Pods link on #/stats (ADR 0220 §11)",
+  }),
+  newPod: label({
+    name: "New pod",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pods.svelte"],
+    doc: "#/pods' one primary: asks for a name and makes a pod with you as its owner (ADR 0220 §5)",
+  }),
+  acceptPodInvite: label({
+    name: "Join pod",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pods.svelte"],
+    doc: "accepts a friend's invite to a pod, on #/pods; the invite's own yes (ADR 0220 §3a)",
+  }),
+  declinePodInvite: label({
+    name: "Decline",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pods.svelte"],
+    doc: "takes a pod invite off your list, silently: the pod still sees it pending (ADR 0220 §3a)",
+  }),
+  inviteToPod: label({
+    name: "Invite a friend",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pod.svelte"],
+    doc: "opens the friend picker on a pod's page; any member can invite one of their own friends (ADR 0220 §3a)",
+  }),
+  leavePod: label({
+    name: "Leave pod",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pod.svelte"],
+    doc: "leaves a pod after a one-line confirm; silent, nobody is told (ADR 0220 §3)",
+  }),
+  removePodMember: label({
+    name: "Remove",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pod.svelte"],
+    doc: "the owner's removal of a member, with its Also make a new invite link checkbox (ADR 0220 §3)",
+  }),
+  makePodOwner: label({
+    name: "Make owner",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pod.svelte"],
+    doc: "the owner hands the pod to a member and stays a member (ADR 0220 §2)",
+  }),
+  makePodLink: label({
+    name: "New link",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pod.svelte"],
+    doc: "mints or rotates the pod's invite link; the old one stops at once and the new one is shown once (ADR 0220 §3b)",
+  }),
+  copyPodLink: label({
+    name: "Copy invite link",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Pod.svelte"],
+    doc: "copies the just-minted invite link; the token is never shown again (ADR 0220 §3b)",
+  }),
+  joinPod: label({
+    name: "Join",
+    kind: "text",
+    role: "button",
+    owners: ["routes/PodJoin.svelte"],
+    doc: "the invite link page's yes: joins the pod (ADR 0220 §3b)",
+  }),
+
   // -- Friends (ADR 0213 §2, §3, §9, slice 3) --
   friendsButton: label({
     name: "Friends",

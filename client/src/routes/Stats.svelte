@@ -134,6 +134,9 @@
   lede="How your decks and commanders do at CMD & CTRL tables. Only your own seats are counted."
 >
   {#snippet actions()}
+    {#if isPerson}
+      <a class="btn ghost" href="#/pods">{L.navPods}</a>
+    {/if}
     {#if isPerson && $statsPrefs.available}
       <button type="button" class="btn" onclick={() => (sharing = true)} data-testid="share-stats">
         {L.shareStats}
