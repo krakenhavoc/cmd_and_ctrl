@@ -30,9 +30,12 @@ func init() {
 		Completeness:   CompletenessFull,
 		SpecialActions: []game.SpecialAction{Plot("{4}{U}{U}")},
 		Purpose:        game.Purpose{Draws: 7},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := b35AskShuffleIn(ctx, nil, tablePlayers(ctx)); err != nil {
 				return err
+			}
+			if sourceIsNewObject(ctx.Game, item) {
+				return nil
 			}
 			return ctx.Game.ExileCardForEffect(ctx.Source())
 		},

@@ -45,6 +45,7 @@ const (
 	b35LootOracle                = "542be13f-b9c0-4b79-b486-be576c531a82"
 	b35JasperFlintOracle         = "bd7c5a8b-cf62-41e1-a664-b16e3e5d142b"
 	b35GhiredOracle              = "34b36022-0d93-48cc-a2cc-90ca4d65dc31"
+	b35KellanKidOracle           = "afacc200-16ff-40f3-9d43-268438131d24"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -83,6 +84,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35LootOracle:                "Loot, the Key to Everything",
 		b35JasperFlintOracle:         "Laughing Jasper Flint",
 		b35GhiredOracle:              "Ghired, Mirror of the Wilds",
+		b35KellanKidOracle:           "Kellan, the Kid",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1499,5 +1501,88 @@ func TestB35GhiredLetsNontokenCreaturesCopyATokenThatEnteredThisTurn(t *testing.
 	// A token does not get the ability.
 	if i, _ := grantedActivatedIndex(t, g, clue); i >= 0 {
 		t.Error("a token was granted the ability")
+	}
+}
+
+// b35KellanSetup puts Kellan out, a cheap creature, an expensive one and a
+// land in hand, and flashes back Faithless Looting (mana value 1).
+func b35KellanSetup(t *testing.T) (g *game.Game, me *game.Player, cheap, dear, land uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[0]
+	advanceTo(t, g, game.StepPrecombatMain)
+	b12Push(g, me.ID, "Kellan, the Kid", "Legendary Creature — Human Faerie Rogue", b35KellanKidOracle, 3, 3)
+	me.Hand.Cards = nil
+	cheap = putInHand(me, game.Card{Name: "Cheap Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	dear = putInHand(me, game.Card{Name: "Dear Bear", TypeLine: "Creature — Bear", ManaCost: "{4}", Power: 4, Toughness: 4, Owner: me.ID, Controller: me.ID})
+	land = putInHand(me, game.Card{Name: "Hand Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	looting := seedGraveyardCard(t, g, "Faithless Looting", "Sorcery", "3d6fa57a-aa53-4b5c-b8af-a7612c823117")
+	for i := range me.Graveyard.Cards {
+		if me.Graveyard.Cards[i].InstanceID == looting {
+			me.Graveyard.Cards[i].ManaCost = "{R}"
+		}
+	}
+	me.ManaPool.AddMana(game.ManaToken{Color: "R"}, game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"})
+	if err := g.CastSpell(me.ID, looting, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+		t.Fatalf("flashback: %v", err)
+	}
+	return g, me, cheap, dear, land
+}
+
+func TestB35KellanTheKidCastsAnEqualOrLesserPermanentFreeAndThenNoLand(t *testing.T) {
+	g, me, cheap, dear, land := b35KellanSetup(t)
+	var prompt *game.PendingChoice
+	for i := 0; i < 8 && prompt == nil; i++ {
+		if prompt = keywordCastPromptFor(g, me.ID); prompt == nil {
+			if err := g.PassPriority(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if prompt == nil {
+		t.Fatal("no free-cast offer")
+	}
+	for _, id := range prompt.DiscardOptions {
+		if id == dear || id == land {
+			t.Fatalf("offered %v: a costlier creature or a land", id)
+		}
+	}
+	answerKeywordCast(t, g, prompt, true)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(cheap) {
+		t.Error("the Bear was not cast for free")
+	}
+	if g.Battlefield.Contains(land) {
+		t.Error("a land entered after a spell was cast")
+	}
+}
+
+func TestB35KellanTheKidMayPutALandIfYouDontCast(t *testing.T) {
+	g, me, cheap, _, land := b35KellanSetup(t)
+	var prompt *game.PendingChoice
+	for i := 0; i < 8 && prompt == nil; i++ {
+		if prompt = keywordCastPromptFor(g, me.ID); prompt == nil {
+			if err := g.PassPriority(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if prompt == nil {
+		t.Fatal("no free-cast offer")
+	}
+	answerKeywordCast(t, g, prompt, false)
+	c := latestChooseCards(g, me.ID)
+	if c == nil {
+		t.Fatal("no land prompt after declining")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{land}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(land) {
+		t.Error("the land did not enter the battlefield")
+	}
+	if g.Battlefield.Contains(cheap) {
+		t.Error("the Bear entered though the cast was declined")
 	}
 }

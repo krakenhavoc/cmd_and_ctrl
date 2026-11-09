@@ -125,6 +125,7 @@ body electro-assaulting-battery/damage
 body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
 body erica-ortegas/return-a-land-you-control
+body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
 body evoke/sacrifice
 body evolve/grow
@@ -405,6 +406,7 @@ choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
+choose choose-cards/bonny-pall-land-from-hand-or-graveyard
 choose choose-cards/borg-cube-assimilate
 choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
@@ -480,6 +482,7 @@ choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/evidence-examiner-collect-evidence
+choose choose-cards/exile-from-hand-and-plot
 choose choose-cards/exile-top-face-down-linked
 choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expressive-iteration-bottom
@@ -1078,6 +1081,7 @@ drawinstead pavel-chekov-first-posting
 drawinstead underrealm-lich
 drawthen aetherflux-conduit-after-draw
 drawthen alpharael-discard-two-unless-artifact
+drawthen bonny-pall-clearcutter/put-land
 drawthen brainstorm-put-back
 drawthen brainsurge-put-back
 drawthen development-after-draw
@@ -1157,6 +1161,7 @@ option option-pick/attach-source-to-player
 option option-pick/baleful-mastery-opponent-draws
 option option-pick/blank-blank-rocketship-letter
 option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
+option option-pick/bucolic-ranch-top-card
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
 option option-pick/choose-a-door
@@ -1251,6 +1256,7 @@ option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
 option option-pick/starseer-mentor-punisher
+option option-pick/step-between-worlds-shuffle
 option option-pick/tap-or-untap-that-permanent
 option option-pick/teferis-realm-phase-out
 option option-pick/teyo-geometric-tactician-direction
@@ -1341,6 +1347,7 @@ payunless pay-unless/energy-create-servo
 payunless pay-unless/energy-plus-one-counter-on-this
 payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
+payunless pay-unless/esoteric-duplicator-copy-at-end-step
 payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/extort-drain
 payunless pay-unless/fire-lord-sozin-reanimate
@@ -1435,6 +1442,7 @@ payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/vivis-persistence-return
 payunless pay-unless/voltaic-brawler-pump
+payunless pay-unless/vraska-the-silencer-return-as-treasure
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weapons-vendor-attach
@@ -1917,6 +1925,7 @@ tail engine/exile-card-granted
 tail engine/exile-return-transformed
 tail engine/exile-return-transformed-with-counter
 tail engine/exile-until-another-granted
+tail engine/exiled-and-plotted
 tail engine/exiled-creature-or-hand
 tail engine/exiled-with-counter
 tail engine/explore-ask
@@ -1963,6 +1972,7 @@ tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
 tail etali-primal-conqueror/after-mill
+tail exile-from-hand-and-plot/plot
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
