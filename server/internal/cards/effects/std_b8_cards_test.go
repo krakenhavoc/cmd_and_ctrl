@@ -166,7 +166,7 @@ func TestStdB8SidisiRefusesTheWrongManaValues(t *testing.T) {
 		"an announced X that is not the sacrificed creature's value": {XValue: 3, SacrificeIDs: []uuid.UUID{fodder}, Targets: b16TargetCard(four)},
 		"Sidisi sacrificing herself":                                 {XValue: 0, SacrificeIDs: []uuid.UUID{sidisi}, Targets: b16TargetCard(stdB8GraveyardCreature(me, "One Drop", "{B}"))},
 	} {
-		if err := g.ActivateCatalogAbility(me.ID, sidisi, 0, game.ActivateAbilityParams(params)); err == nil {
+		if err := g.ActivateCatalogAbility(me.ID, sidisi, 0, params); err == nil {
 			t.Errorf("%s was accepted", name)
 		}
 		if !g.Battlefield.Contains(fodder) || b16Tapped(t, g, sidisi) {
