@@ -34,7 +34,6 @@ func init() {
 		OracleID:        "618a2272-62e0-4d0e-834d-7b81719eba12",
 		Name:            "Dyadrine, Synthesis Amalgam",
 		Completeness:    CompletenessFull,
-		XMatters:        true,
 		ReadsManaSpent:  game.ReadsOwnPayment,
 		PrintedKeywords: []string{"trample"},
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{{

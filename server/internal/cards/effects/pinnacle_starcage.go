@@ -45,9 +45,10 @@ func init() {
 			WhenThisEnters("Pinnacle Starcage — exile all artifacts and creatures with mana value 2 or less until this artifact leaves the battlefield", starcageExile),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{6}{W}{W}: Put each card exiled with this artifact into its owner's graveyard, then create a 2/2 colorless Robot artifact creature token for each card put into a graveyard this way. Sacrifice this artifact.",
-			Cost:   ManaCost("{6}{W}{W}"),
-			Effect: starcageBury,
+			Label:   "{6}{W}{W}: Put each card exiled with this artifact into its owner's graveyard, then create a 2/2 colorless Robot artifact creature token for each card put into a graveyard this way. Sacrifice this artifact.",
+			Purpose: game.Purpose{Tokens: 1, Answers: game.AnswerValue},
+			Cost:    ManaCost("{6}{W}{W}"),
+			Effect:  starcageBury,
 		}},
 	})
 }

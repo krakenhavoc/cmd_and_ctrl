@@ -25,9 +25,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
-			Cost:   Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-			Effect: Do(GainLife{Amount: 3}),
+			Label:   "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+			Effect:  Do(GainLife{Amount: 3}),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Nutrient Block — draw a card", Do(DrawCards{N: 1})),
