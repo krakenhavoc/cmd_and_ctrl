@@ -25,7 +25,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:       "48b43d53-9a8a-46b2-9d8c-b0d66fb68a5d",
+		OracleID:       "48b43d53-9a8a-47a2-8610-a54d276d7be7",
 		Name:           "Step Between Worlds",
 		Completeness:   CompletenessFull,
 		SpecialActions: []game.SpecialAction{Plot("{4}{U}{U}")},

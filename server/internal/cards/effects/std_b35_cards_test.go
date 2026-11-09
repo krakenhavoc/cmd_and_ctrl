@@ -33,7 +33,7 @@ const (
 	b35KellanJoinsUpOracle       = "9b3ddd31-c058-4846-8784-25c7a9bbcb31"
 	b35OkoRingleaderOracle       = "4372b729-dc3d-4469-8fc5-811cc787d653"
 	b35JaceReawakenedOracle      = "cbd483b5-5554-43ed-a729-535d01b0d5d3"
-	b35StepBetweenWorldsOracle   = "48b43d53-9a8a-46b2-9d8c-b0d66fb68a5d"
+	b35StepBetweenWorldsOracle   = "48b43d53-9a8a-47a2-8610-a54d276d7be7"
 	b35LilahOracle               = "0757c5a7-e51b-4c39-bb4d-b32657c10cb4"
 	b35TinybonesOracle           = "7bc4c7e2-6758-4a85-84e7-03ab93981106"
 	b35VraskaSilencerOracle      = "e7c5a568-3855-4a20-9edf-01a8a6a4ba97"
