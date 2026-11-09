@@ -286,3 +286,52 @@ func TestStdB66TweezeDamagesThenMayRummage(t *testing.T) {
 		t.Errorf("hand %d, want %d (cast one, discarded one, drew one)", me.Hand.Size(), handBefore)
 	}
 }
+
+const stdB66AwakenerOracle = "cf9d13e2-bdcc-4c66-95ad-654ef795dbd3"
+
+func TestStdB66AuroraAwakenerRevealsUntilXPermanentCardsAndPutsAnyNumber(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	b16Creature(g, me.ID, "Red Guy", "Creature — Goblin", 1, 1, "R")
+	// Library, top first: Bolt (instant), Forest, Bear, Rock, Deeper.
+	deeper := seedLibraryTop(me, "Deeper", "Creature — Elf", "{1}{G}")
+	rock := seedLibraryTop(me, "Rock", "Artifact", "{2}")
+	bear := seedLibraryTop(me, "Bear", "Creature — Bear", "{1}{G}")
+	forest := seedLibraryTop(me, "Forest", "Basic Land — Forest", "")
+	bolt := seedLibraryTop(me, "Bolt", "Instant", "{R}")
+	stdB63CastCreature(t, g, "Aurora Awakener", "Creature — Giant Druid", "{6}{G}", stdB66AwakenerOracle, []string{"G"}, 7, 7)
+	// Green (itself) and red: X = 2, so Bolt, Forest and Bear are revealed.
+	c := latestChooseCardsFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no choice of permanent cards to put onto the battlefield")
+	}
+	if !hasID(c.ChooseCards, forest) || !hasID(c.ChooseCards, bear) || hasID(c.ChooseCards, bolt) || hasID(c.ChooseCards, rock) {
+		t.Errorf("offered %v: want the Forest and the Bear only (the Rock was never revealed, the Bolt is not a permanent card)", c.ChooseCards)
+	}
+	if c.ChooseMin != 0 {
+		t.Errorf("floor %d: \"any number\" includes none", c.ChooseMin)
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{forest}); err != nil {
+		t.Fatalf("choose: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(forest) {
+		t.Error("the chosen card did not enter")
+	}
+	if g.Battlefield.Contains(bear) {
+		t.Error("an unchosen card entered")
+	}
+	// The unchosen Bear and the Bolt are on the bottom; the Rock and Deeper stay on top.
+	var bottomTwo []uuid.UUID
+	g.WithWriteLock(func() {
+		n := len(me.Library.Cards)
+		bottomTwo = []uuid.UUID{me.Library.Cards[0].InstanceID, me.Library.Cards[1].InstanceID}
+		_ = n
+	})
+	if !(hasID(bottomTwo, bear) && hasID(bottomTwo, bolt)) {
+		t.Errorf("the bottom two cards are %v, want the Bear and the Bolt", bottomTwo)
+	}
+	if me.Library.Contains(deeper) == false || me.Library.Contains(rock) == false {
+		t.Error("an unrevealed card left the library")
+	}
+}
