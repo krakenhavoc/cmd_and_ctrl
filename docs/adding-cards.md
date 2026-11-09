@@ -54,6 +54,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
   - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
+  - [Cloak (#4452, CR 701.58)](#cloak-4452-cr-70158)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -4727,9 +4728,39 @@ var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", 
   slot of a spell whose every target clause is "up to" (`WithCount(0, 1)`), so
   X = 0 is always a legal cast.
 
-Not built yet: a mana ability that collects evidence, ward with a collect
-evidence cost and collect evidence as an alternative cost (the roadmap's
-`collect-evidence` row names the cards).
+**Ward—Collect evidence N** (Axebane Ferox, #4452) is `WardCollectEvidence(n)`
+in `Ward(...)`: the targeting player gets one choose_cards prompt over their own
+graveyard (a registered set rule, `game.CollectEvidenceMet`); none, or a
+graveyard below N in all, counters the spell or ability. The cards are exiled,
+not targeted, and the collection is announced for "whenever you collect
+evidence". `ExileCost.LinkToSource` makes a cost's exiled cards "exiled with"
+the object paying it (Kylox's Voltstrider, CR 607.2a).
+
+Not built yet: a mana ability that collects evidence (the activation names its
+cards in a picker the client has no mana-ability form for) and collect evidence
+as an alternative cost (the roadmap's `collect-evidence` row names the cards).
+
+### Cloak (#4452, CR 701.58)
+
+To cloak a card is to put it onto the battlefield face down as a 2/2 creature
+with ward {2} (`game.FaceDownCloaked`): manifest with the ward, which the engine
+already hangs off the state, so a card file writes none of it. Three doors,
+in [game/cloak.go](../server/internal/game/cloak.go):
+
+- the top card of a library, any player's, under the cloaker's control:
+  `CloakTopOfLibrary{LibraryOwner: …}` ("cloak the top card of that player's
+  library", Etrata, Deadly Fugitive);
+- a card chosen from your hand: `CloakACardFromYourHand{}` (Vannifar, Evolved
+  Enigma; a hand of one is not asked);
+- cards chosen from a library: `PutCardsFromLibraryOntoBattlefieldKeyedForEffect`
+  with `LibraryEntryOptions{Controller: you, FaceDown: game.FaceDownCloaked}`
+  (Hide in Plain Sight puts the rest on the bottom from the entry's tail).
+
+Any card may be cloaked, a nonpermanent one included. It turns face up for its
+mana cost if it is a creature card (`TurnFaceUpOffers`); `TurnFaceUpForEffect`
+turns it up as an effect, refused for a face-down instant or sorcery (Etrata's
+"if you can't").
+
 
 ### Adding a block-rule card (S37+, #750)
 
