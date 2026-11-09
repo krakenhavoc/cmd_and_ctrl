@@ -421,3 +421,42 @@ func TestTurriIslandCreatureSpellsCostTwoLessAndChaosTakesCreatures(t *testing.T
 		t.Errorf("%d cards entered the graveyard, want the sorcery", got)
 	}
 }
+
+var planeUndercityReaches = planeFixture{"f3f5a033-d063-4250-9cfe-4c3c1a2725f1", "Undercity Reaches", "Plane — Ravnica"}
+
+func TestUndercityReachesLetsTheCreaturesControllerDrawAndChaosLiftsHandSize(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeUndercityReaches)
+	g, _ := newPlaneGame(t, planeUndercityReaches)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	bear := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
+	before := me.Hand.Size()
+	pr7bAttack(t, g, opp.ID, bear)
+	var ch *game.PendingChoice
+	for i := 0; i < 8 && ch == nil; i++ {
+		if ch = latestChoiceOfKind(g, game.PendingChoiceConfirm); ch == nil {
+			if _, err := g.AdvanceStep(); err != nil && latestChoiceOfKind(g, game.PendingChoiceConfirm) == nil {
+				t.Fatalf("AdvanceStep: %v", err)
+			}
+			ch = latestChoiceOfKind(g, game.PendingChoiceConfirm)
+		}
+	}
+	if ch == nil {
+		t.Fatal("the creature's controller was not asked")
+	}
+	if ch.Chooser != me.ID {
+		t.Errorf("asked %v, want the creature's controller", ch.Chooser)
+	}
+	if err := g.ResolveConfirm(ch.ID, ch.Chooser, true); err != nil {
+		t.Fatalf("ResolveConfirm: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before; got != 1 {
+		t.Errorf("drew %d cards, want 1", got)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := me.MaxHandSize; got != game.NoMaxHandSize {
+		t.Errorf("max hand size %d, want none", got)
+	}
+}
