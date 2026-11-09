@@ -36,7 +36,7 @@ func init() {
 		Name:          "Deadly Cover-Up",
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{OptionalCollectEvidence(6)},
-		Purpose:       game.Purpose{Answers: game.AnswerRemove},
+		Purpose:       game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}, Answers: game.AnswerRemove},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// "If evidence was collected" is read from the announcement now and
 			// carried: the tail's copy of the item does not hold what was paid.

@@ -30,7 +30,7 @@ func init() {
 		OracleID:     "ce690a21-8117-420e-be00-cd6d9923a812",
 		Name:         "Anzrag's Rampage",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerRemove},
+		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifacts, How: game.SweepDestroy, OpponentsOnly: true}, Answers: game.AnswerRemove},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{
 				Match:    And(Artifact(), Not(YouControl())),
