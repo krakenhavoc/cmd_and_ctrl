@@ -126,6 +126,10 @@ var footprintConformanceCases = map[string]conformanceCase{
 		}),
 	"If:citys-blessing": ifCase(CondCitysBlessing{}, CounterOnThis{Kind: game.CounterPlusOne, N: 1},
 		func(_ *testing.T, _ *game.Game, me *game.Player, _ uuid.UUID) { me.CitysBlessing = true }),
+	"If:spells-cast": ifCase(CondSpellsCast{AtLeast: 2}, GainLife{Amount: 2},
+		func(_ *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) {
+			g.SpellsCastThisTurn = map[uuid.UUID]game.CastTally{me.ID: {Total: 2}}
+		}),
 	"If:no-spells-cast": ifCase(CondNoSpellsCast{}, CounterOnThis{Kind: game.CounterPlusOne, N: 2}, nil),
 	"If:monarch": ifCase(CondMonarch{}, CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 1},
 		func(_ *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) { g.Monarch = me.ID }),
