@@ -16,27 +16,28 @@ import (
 // face up on a Planechase table (planes_harness_test.go).
 
 var (
-	planeNephalia = planeFixture{"72af7529-75bb-488f-801d-7148631b9e9b", "Nephalia", "Plane — Innistrad"}
-	planeTazeem   = planeFixture{"97f708de-9271-4137-a9fe-dda25b922900", "Tazeem", "Plane — Zendikar"}
-	planeSanctum  = planeFixture{"f0c8ce35-b627-485c-bd64-d7eae47b8efa", "Sanctum of Serra", "Plane — Serra's Realm"}
-	planeNorns    = planeFixture{"9d58f647-3f83-4f65-a944-c6236db7c422", "Norn's Dominion", "Plane — New Phyrexia"}
-	planeOnakke   = planeFixture{"69f06edb-dade-4e94-b563-e36a05e567f0", "Onakke Catacomb", "Plane — Shandalar"}
-	planeRavens   = planeFixture{"b53e06af-be18-4f75-9dd0-7494ec867b13", "Raven's Run", "Plane — Shadowmoor"}
-	planeShiv     = planeFixture{"70edae19-e278-401d-9772-508bd66320a6", "Shiv", "Plane — Dominaria"}
-	planeVelisVel = planeFixture{"1c4e174e-19fb-4c0a-b762-ef6d927392c9", "Velis Vel", "Plane — Lorwyn"}
-	planeZephyr   = planeFixture{"2d84be6d-49a5-4200-8cd3-d8653dfd0899", "The Zephyr Maze", "Plane — Kyneth"}
-	planeHippo    = planeFixture{"cde8d8c4-5e2b-452f-b3e9-bb9f2e745ec9", "The Hippodrome", "Plane — Segovia"}
-	planeTakenuma = planeFixture{"de53c948-b371-4f79-a965-33c44d0b44de", "Takenuma", "Plane — Kamigawa"}
-	planeTember   = planeFixture{"bbb1d13c-a3ce-4151-883a-cce9bbd584d0", "Tember City", "Plane — Kinshala"}
-	planeBarony   = planeFixture{"5503c308-560d-4d5f-a86a-4b06d9947ddc", "The Dark Barony", "Plane — Ulgrotha"}
-	planeEonFog   = planeFixture{"a04d05ed-1b9b-4407-8780-c75c102a94dd", "The Eon Fog", "Plane — Equilor"}
-	planeFourth   = planeFixture{"13e801cd-e537-4ea6-8c3d-21b142bdc026", "The Fourth Sphere", "Plane — Phyrexia"}
-	planeOtaria   = planeFixture{"29e3371d-aa41-46a9-921a-96565be47eff", "Otaria", "Plane — Dominaria"}
-	planeTrail    = planeFixture{"b2c95c7a-a04c-46ef-a879-6eb08e444093", "Trail of the Mage-Rings", "Plane — Vryn"}
-	planeStairs   = planeFixture{"7a425df4-7010-462e-9cb5-20389bac721c", "Stairs to Infinity", "Plane — Xerex"}
-	planePrahv    = planeFixture{"34a31865-b701-4ce1-8912-29fc41ecdda3", "Prahv", "Plane — Ravnica"}
-	planeMaelstrm = planeFixture{"e28deac5-d3c4-48e9-974c-093e3122f317", "The Maelstrom", "Plane — Alara"}
-	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
+	planeNephalia    = planeFixture{"72af7529-75bb-488f-801d-7148631b9e9b", "Nephalia", "Plane — Innistrad"}
+	planeTazeem      = planeFixture{"97f708de-9271-4137-a9fe-dda25b922900", "Tazeem", "Plane — Zendikar"}
+	planeSanctum     = planeFixture{"f0c8ce35-b627-485c-bd64-d7eae47b8efa", "Sanctum of Serra", "Plane — Serra's Realm"}
+	planeNorns       = planeFixture{"9d58f647-3f83-4f65-a944-c6236db7c422", "Norn's Dominion", "Plane — New Phyrexia"}
+	planeOnakke      = planeFixture{"69f06edb-dade-4e94-b563-e36a05e567f0", "Onakke Catacomb", "Plane — Shandalar"}
+	planeRavens      = planeFixture{"b53e06af-be18-4f75-9dd0-7494ec867b13", "Raven's Run", "Plane — Shadowmoor"}
+	planeShiv        = planeFixture{"70edae19-e278-401d-9772-508bd66320a6", "Shiv", "Plane — Dominaria"}
+	planeVelisVel    = planeFixture{"1c4e174e-19fb-4c0a-b762-ef6d927392c9", "Velis Vel", "Plane — Lorwyn"}
+	planeZephyr      = planeFixture{"2d84be6d-49a5-4200-8cd3-d8653dfd0899", "The Zephyr Maze", "Plane — Kyneth"}
+	planeHippo       = planeFixture{"cde8d8c4-5e2b-452f-b3e9-bb9f2e745ec9", "The Hippodrome", "Plane — Segovia"}
+	planeTakenuma    = planeFixture{"de53c948-b371-4f79-a965-33c44d0b44de", "Takenuma", "Plane — Kamigawa"}
+	planeTember      = planeFixture{"bbb1d13c-a3ce-4151-883a-cce9bbd584d0", "Tember City", "Plane — Kinshala"}
+	planeBarony      = planeFixture{"5503c308-560d-4d5f-a86a-4b06d9947ddc", "The Dark Barony", "Plane — Ulgrotha"}
+	planeEonFog      = planeFixture{"a04d05ed-1b9b-4407-8780-c75c102a94dd", "The Eon Fog", "Plane — Equilor"}
+	planeFourth      = planeFixture{"13e801cd-e537-4ea6-8c3d-21b142bdc026", "The Fourth Sphere", "Plane — Phyrexia"}
+	planeOtaria      = planeFixture{"29e3371d-aa41-46a9-921a-96565be47eff", "Otaria", "Plane — Dominaria"}
+	planeTrail       = planeFixture{"b2c95c7a-a04c-46ef-a879-6eb08e444093", "Trail of the Mage-Rings", "Plane — Vryn"}
+	planeStairs      = planeFixture{"7a425df4-7010-462e-9cb5-20389bac721c", "Stairs to Infinity", "Plane — Xerex"}
+	planePrahv       = planeFixture{"34a31865-b701-4ce1-8912-29fc41ecdda3", "Prahv", "Plane — Ravnica"}
+	planeMaelstrm    = planeFixture{"e28deac5-d3c4-48e9-974c-093e3122f317", "The Maelstrom", "Plane — Alara"}
+	planeQuicksilver = planeFixture{"53517dbf-7b32-423a-af76-afd39b876a1a", "Quicksilver Sea", "Plane — Mirrodin"}
+	planeOrzhova     = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
 // planeLand puts a basic land on the battlefield under `owner`.
@@ -885,5 +886,65 @@ func TestMaelstromChaosReturnsAPermanentCard(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !planeOnBattlefield(g, bear) {
 		t.Error("the permanent card did not return to the battlefield")
+	}
+}
+
+// --- Quicksilver Sea ---------------------------------------------------------
+
+func TestQuicksilverSeaScriesFourOnPlaneswalkAndAtUpkeep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeQuicksilver)
+	g, _ := newPlaneGame(t, planeQuicksilver)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	planeswalkToPlane(t, g, planeQuicksilver.Oracle)
+	passPriorityAroundTable(t, g)
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceScry, me.ID); c == nil {
+		t.Fatalf("no scry after planeswalking to the plane: %+v", g.PendingChoices)
+	}
+}
+
+func TestQuicksilverSeaChaosPlaysTheTopCardAndOtherwiseLeavesItOnTop(t *testing.T) {
+	g, _ := newPlaneGame(t, planeQuicksilver)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	land := maelstromTop(g, me, "Top Forest", "Basic Land — Forest")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	c := latestChoiceOfKindFor(g, game.PendingChoiceMayCast, me.ID)
+	if c == nil {
+		t.Fatalf("the land was not offered: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveMayCast(c.ID, me.ID, false); err != nil {
+		t.Fatalf("decline: %v", err)
+	}
+	if top, _ := me.Library.Top(); top.InstanceID != land || me.Hand.Contains(land) {
+		t.Fatal("a declined land is not still on top of the library")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	c = latestChoiceOfKindFor(g, game.PendingChoiceMayCast, me.ID)
+	if c == nil {
+		t.Fatal("the land was not offered again")
+	}
+	if err := g.ResolveMayCast(c.ID, me.ID, true); err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+	if !planeOnBattlefield(g, land) {
+		t.Fatal("the land was not played")
+	}
+
+	// A spell: declining leaves it on top, not in the hand.
+	bauble := maelstromTop(g, me, "Top Bauble", "Artifact")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	rc := keywordCastPromptFor(g, me.ID)
+	if rc == nil {
+		t.Fatal("the spell was not offered as a free cast")
+	}
+	if err := g.ResolvePendingChoice(rc.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
+	}
+	if top, _ := me.Library.Top(); top.InstanceID != bauble || me.Hand.Contains(bauble) {
+		t.Error("a declined spell is not still on top of the library")
 	}
 }

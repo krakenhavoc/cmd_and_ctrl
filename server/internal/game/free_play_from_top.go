@@ -80,6 +80,21 @@ type FreePlayFromTop struct {
 	// Reveal is "reveal the top card" rather than "look at": every seat
 	// learns the card, and the prompt is public.
 	Reveal bool
+	// LeaveOnTop is the clause that does not send the card to the hand
+	// when it is not played: "reveal the top card of your library. You
+	// may play it without paying its mana cost" (Quicksilver Sea, #4870).
+	// Declining, a card that does not fit, and a land with no land drop
+	// left all leave it where it is, on top of the library. The prompts
+	// say so instead of "Put it into your hand".
+	LeaveOnTop bool
+}
+
+// declineLabel is the words of the decline answer.
+func (o FreePlayFromTop) declineLabel() string {
+	if o.LeaveOnTop {
+		return "Leave it on top"
+	}
+	return "Put it into your hand"
 }
 
 // OfferFreePlayFromTopOrHandForEffect looks at (or reveals) the top
@@ -117,7 +132,11 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	// A land the player can play as the card is, its front face, is the
 	// land offer (a plain land; a Town whose Adventure does not fit).
 	if c.IsLand() && o.Land && g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
-		return g.offerFreePlayLandLocked(o, id, c.Name, freePlayLandOrHand)
+		then := freePlayLandOrHand
+		if o.LeaveOnTop {
+			then = freePlayLandOrStay
+		}
+		return g.offerFreePlayLandLocked(o, id, c.Name, then)
 	}
 	// #4697: a modal DFC whose back face is a land is played as that face
 	// (CR 712.12). Offered alone when no face is a spell that fits; with
@@ -126,7 +145,11 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 		g.CanPlayLandFaceDuringResolutionForEffect(o.Player, id, 1) {
 		back := c
 		back.SetFace(1)
-		return g.offerFreePlayLandLocked(o, id, back.Name, freePlayBackLandOrHand)
+		then := freePlayBackLandOrHand
+		if o.LeaveOnTop {
+			then = freePlayBackLandOrStay
+		}
+		return g.offerFreePlayLandLocked(o, id, back.Name, then)
 	}
 	// #4697: "a spell with mana value N or less" is about the spell, so
 	// the card is offered when some face a cast may choose is a spell
@@ -209,7 +232,7 @@ func (g *Game) queueFreeCastFromTopOfferLocked(o FreePlayFromTop, id uuid.UUID, 
 		Candidates:   []uuid.UUID{id},
 		Keyword:      keyword,
 		AcceptLabel:  accept,
-		DeclineLabel: "Put it into your hand",
+		DeclineLabel: o.declineLabel(),
 	})
 }
 
@@ -300,6 +323,26 @@ var freePlayBackLandOrHand = RegisterMayCastThen("may-cast/free-play-back-land-o
 	return g.freePlayLandFaceOrHandLocked(r, 1)
 })
 
+// freePlayLandOrStay and freePlayBackLandOrStay are the land answers of a
+// LeaveOnTop clause: accepting plays the land, and declining, or a play the
+// rules end up ignoring, leaves it on top of the library. An on-disk key:
+// never renamed, never reused.
+var freePlayLandOrStay = RegisterMayCastThen("may-cast/free-play-land-or-stay", func(g *Game, r MayCastAnswer) error {
+	return g.freePlayLandFaceOrStayLocked(r, -1)
+})
+
+var freePlayBackLandOrStay = RegisterMayCastThen("may-cast/free-play-back-land-or-stay", func(g *Game, r MayCastAnswer) error {
+	return g.freePlayLandFaceOrStayLocked(r, 1)
+})
+
+func (g *Game) freePlayLandFaceOrStayLocked(r MayCastAnswer, face int) error {
+	if !r.Accepted {
+		return nil
+	}
+	_, err := g.PlayLandFaceDuringResolutionForEffect(r.Chooser, r.Card, face)
+	return err
+}
+
 // freePlayLandFaceOrHandLocked is both land answers: play the card as
 // `face` (below zero: as it is) on an accept, and put it into its
 // owner's hand on a decline or a play the rules end up ignoring.
@@ -332,7 +375,7 @@ func (g *Game) offerFreePlayLandLocked(o FreePlayFromTop, id uuid.UUID, name str
 		Question:     o.SourceName + " — play " + name + "?",
 		Keyword:      MayCastKeywordPlayOrHand,
 		AcceptLabel:  "Play it",
-		DeclineLabel: "Put it into your hand",
+		DeclineLabel: o.declineLabel(),
 		Private:      !o.Reveal,
 	}, then, nil)
 }
@@ -371,11 +414,20 @@ func (g *Game) freeCastFromTopPermissionLocked(o FreePlayFromTop) *CastPermissio
 		Timing:            TimingFlash,
 		CastOnly:          true,
 		MaxSpellManaValue: &limit,
-		LapseOnPass:       LapseToHand,
+		LapseOnPass:       o.lapse(),
 		Source:            o.Source,
 		SourceName:        o.SourceName,
 		Label:             o.SourceName + " — cast it without paying its mana cost",
 	}
+}
+
+// lapse is where the card goes when its permission lapses uncast: the
+// hand, or nowhere (it stays on top) for LeaveOnTop.
+func (o FreePlayFromTop) lapse() PermissionLapse {
+	if o.LeaveOnTop {
+		return ""
+	}
+	return LapseToHand
 }
 
 // putLibraryCardIntoHandLocked is "put that card into your hand": a move
@@ -384,6 +436,9 @@ func (g *Game) freeCastFromTopPermissionLocked(o FreePlayFromTop) *CastPermissio
 //
 // Caller must hold g.mu (write).
 func (g *Game) putLibraryCardIntoHandLocked(o FreePlayFromTop, cardID uuid.UUID) error {
+	if o.LeaveOnTop {
+		return nil
+	}
 	p := g.playerByIDLocked(o.Player)
 	if p == nil {
 		return nil
