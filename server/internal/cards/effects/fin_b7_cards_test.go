@@ -277,11 +277,12 @@ func TestFinB7TripleTriadLetsYouPlayYourCardAndEveryLesserOneFree(t *testing.T) 
 	me := g.Seats[0]
 	finB7RegisteredFull(t, finB7TripleOracle, "Triple Triad")
 	s58p6Push(g, me.ID, "Triple Triad", "Enchantment", finB7TripleOracle, "{3}{R}{R}{R}", 0, 0)
+	b12ToMyNextUpkeep(t, g)
 	mine := seedLibraryTop(me, "Mine", "Creature — Bear", "{3}")
+	// Seeded once the table is at my upkeep: the others' draws are behind us.
 	lesser := seedLibraryTop(g.Seats[1], "Lesser", "Instant", "{2}")
 	equal := seedLibraryTop(g.Seats[2], "Equal", "Sorcery", "{3}")
 	land := seedLibraryTop(g.Seats[3], "Forest", "Basic Land — Forest", "")
-	b12ToMyNextUpkeep(t, g)
 	passPriorityAroundTable(t, g)
 	for name, w := range map[string]struct {
 		id   uuid.UUID
@@ -367,6 +368,12 @@ func TestFinB7VanilleMeldsWithFangForFiveMana(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(vanille) || g.Battlefield.Contains(fang) {
 		t.Error("the two cards were not exiled")
+	}
+	for _, c := range g.Battlefield.Cards {
+		t.Logf("battlefield: %q oracle %s", c.Name, c.OracleID)
+	}
+	for _, c := range g.Exile.Cards {
+		t.Logf("exile: %q oracle %s", c.Name, c.OracleID)
 	}
 	melded := 0
 	for _, c := range g.Battlefield.Cards {

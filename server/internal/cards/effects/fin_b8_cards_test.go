@@ -283,8 +283,8 @@ func TestFinB8QuistisCastsASpellFromAnyGraveyardWithAnyMana(t *testing.T) {
 		}
 	})
 	victim := b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
-	floatForTest(g, me, "U")
 	castCatalogSpell(t, g, "Quistis Trepe", "Legendary Creature — Human Wizard", finB8QuistisOracle, nil)
+	floatForTest(g, me, "U")
 	passPriorityAroundTable(t, g)
 	if latestPickTarget(g, me.ID) != nil {
 		pickCard(t, g, me.ID, bolt)
@@ -666,11 +666,11 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 	me, opp := g.Seats[seat], g.Seats[1]
 	garnet := b12Push(g, me.ID, "Garnet, Princess of Alexandria", "Legendary Creature — Human Noble Cleric", finB8GarnetOracle, 2, 2)
 	sagaA := pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Saga A", TypeLine: "Enchantment — Saga", Owner: me.ID, Controller: me.ID,
+		InstanceID: uuid.New(), Name: "Summon: Fenrir", OracleID: finB7FenrirOracle, TypeLine: "Enchantment Creature — Saga Wolf", Owner: me.ID, Controller: me.ID,
 		Counters: map[string]int{game.CounterLore: 2},
 	})
 	sagaB := pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Saga B", TypeLine: "Enchantment — Saga", Owner: me.ID, Controller: me.ID,
+		InstanceID: uuid.New(), Name: "Summon: Fenrir", OracleID: finB7FenrirOracle, TypeLine: "Enchantment Creature — Saga Wolf", Owner: me.ID, Controller: me.ID,
 		Counters: map[string]int{game.CounterLore: 1},
 	})
 	theirSaga := pushBattlefieldCardWithTimestamp(g, game.Card{
