@@ -40,7 +40,7 @@ func init() {
 		OracleID:     "10e0b563-4dfc-4530-a010-0ba40bdf02ac",
 		Name:         "Pinnacle Starcage",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerRemove, Tokens: 1},
+		Purpose:      game.Purpose{Answers: game.AnswerRemove, Tokens: 1, Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepExile, Partial: true}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Pinnacle Starcage — exile all artifacts and creatures with mana value 2 or less until this artifact leaves the battlefield", starcageExile),
 		},
