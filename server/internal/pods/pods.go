@@ -717,6 +717,67 @@ func (s *Store) Get(ctx context.Context, viewer, pod string) (Detail, error) {
 	return d, nil
 }
 
+// Roster is a pod as its stats read it (ADR 0220 §6, §7): who the viewer
+// may see, and who shares.
+type Roster struct {
+	ID   string
+	Name string
+	// Visible is every member the viewer may see, the viewer included:
+	// a member with a block with the viewer is left out, the owner's
+	// "Blocked" row too (a hidden person has no numbers to show).
+	Visible []Member
+	// Sharing is the id of every member with the pod-sharing switch on,
+	// hidden ones too, in joined order. The pod's own numbers are
+	// counted over all of them, so one member's block does not change
+	// another member's record (§6).
+	Sharing []string
+}
+
+// Roster reads pod for a member's stats view. ErrNotFound for a pod that
+// does not exist or that viewer is not in. A deleted account is never a
+// member (account deletion removes the row), and is left out here too.
+func (s *Store) Roster(ctx context.Context, viewer, pod string) (Roster, error) {
+	p, err := s.asMember(ctx, s.db, pod, viewer)
+	if err != nil {
+		return Roster{}, err
+	}
+	blocked, err := s.blockedWith(ctx, viewer)
+	if err != nil {
+		return Roster{}, err
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT m.user_id, u.display_name, COALESCE(u.avatar_url, ''), m.joined_at, COALESCE(sp.share_pods, 0)
+		 FROM pod_members m JOIN users u ON u.id = m.user_id AND u.deleted_at IS NULL
+		 LEFT JOIN stats_prefs sp ON sp.user_id = m.user_id
+		 WHERE m.pod_id = ? ORDER BY m.joined_at, m.rowid`, pod)
+	if err != nil {
+		return Roster{}, err
+	}
+	defer func() { _ = rows.Close() }()
+	r := Roster{ID: p.id, Name: p.name, Visible: []Member{}, Sharing: []string{}}
+	for rows.Next() {
+		var (
+			m      Member
+			joined int64
+			share  int
+		)
+		if err := rows.Scan(&m.UserID, &m.DisplayName, &m.AvatarURL, &joined, &share); err != nil {
+			return Roster{}, err
+		}
+		m.JoinedAt, m.Sharing, m.Owner = fromMS(joined), share == 1, m.UserID == p.owner
+		if m.Sharing {
+			r.Sharing = append(r.Sharing, m.UserID)
+		}
+		if !blocked[m.UserID] {
+			r.Visible = append(r.Visible, m)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return Roster{}, err
+	}
+	return r, nil
+}
+
 // --- the owner's actions ------------------------------------------------------
 
 // Rename gives pod a new name. Owner only.

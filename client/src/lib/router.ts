@@ -87,6 +87,7 @@ export type Route =
   // to sign in there and nothing about the pod is shown (§3b).
   | { name: "pods" }
   | { name: "pod"; id: string }
+  | { name: "podStats"; id: string }
   | { name: "podJoin"; token: string }
   // A person's shared stats (ADR 0217 §6): #/stats/shared/<token>, a
   // read-only copy of their stats pages. Public: the link is the
@@ -210,6 +211,7 @@ export function parseHash(hash: string): Route {
     case "pods":
       if (parts[1] === "join")
         return parts[2] ? { name: "podJoin", token: parts[2] } : { name: "pods" };
+      if (parts[1] && parts[2] === "stats") return { name: "podStats", id: parts[1] };
       if (parts[1]) return { name: "pod", id: parts[1] };
       return { name: "pods" };
     case "practice":

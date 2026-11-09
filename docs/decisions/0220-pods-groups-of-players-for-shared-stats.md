@@ -332,6 +332,16 @@ Slice 4 can wait or be dropped without touching the others.
 | Slice 3 | remove the pages. The server keeps working |
 | Slice 2 | remove the routes. The four tables can be dropped by hand after rolling the binary back (an older binary refuses the newer schema, `ErrSchemaTooNew`; see docs/environments.md). `stats_prefs.share_pods` stays and does nothing |
 
+### Slice 5 as built
+
+Pod stats and the leaderboard (this ADR's slice 5 = ADR 0217 slice 7), 2026-11-09, #4880:
+
+- **Routes** `GET /pods/{id}/stats` and `GET /pods/{id}/leaderboard` (`lobby/pod_stats.go`), `?range=all|90d|30d`. The block filter is §6 as written: a hidden member is out of the member list, the board and head-to-head, and the pod's own numbers are counted over every sharing member. [docs/lobby.md](../lobby.md#get-podsidstats-and-get-podsidleaderboard) has the bodies.
+- **The switch** is `PUT /me/stats/prefs {"share_pods": …}` (`gamestats.PrefsStore.SetSharePods`), shown in Settings → Stats and on the pod's page by one component, `PodShareSwitch`. Migration 0030 already had the column, so there is **no migration and no `PRIVACY_SCHEMA_VERSION` bump**; the privacy page gains the pod sentence under "Who it is shared with" and "Stats settings" now names the switch.
+- **Viewing needs no switch of the viewer's own.** The switch decides what a member shows to others, not what they may look at; the page nudges a viewer who is not sharing that they have no row. Overturn if the group should be reciprocal.
+- **No makeup filter** on pod stats: §7 names only the range filter.
+- **Page** `#/pods/<id>/stats` reuses `ChartFigure`, `BarChart`, `StatTile` and `StatsFilters` (now with `showMakeup={false}`); the Pod page gains a **Pod stats** link.
+
 ## Owner decisions
 
 Ian. **Decided.**

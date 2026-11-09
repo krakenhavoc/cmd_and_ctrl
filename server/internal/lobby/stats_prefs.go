@@ -78,6 +78,10 @@ type statsPrefsResponse struct {
 	// §6), Unix ms, absent while they have none. The link itself is
 	// shown once, when it is made: only its hash is kept.
 	ShareLinkAt int64 `json:"share_link_at,omitempty"`
+	// SharePods is whether the caller shares their stats with the
+	// members of every pod they are in (ADR 0220 §7): one switch for all
+	// pods, off until they turn it on.
+	SharePods bool `json:"share_pods"`
 }
 
 // advancedStatsFor is userID's setting and the server's default. A
@@ -106,6 +110,7 @@ func (c Config) statsPrefsResponseOf(p gamestats.Prefs, def gamestats.DefaultSet
 		SetBy:       string(p.SetBy),
 		Default:     def.Advanced,
 		ShareLinkAt: millisOrZero(p.ShareLinkAt),
+		SharePods:   p.SharePods,
 	}
 }
 
@@ -124,10 +129,12 @@ func myStatsPrefs(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, c.statsPrefsResponseOf(prefs, def))
 }
 
-// putStatsPrefsRequest is PUT /me/stats/prefs' body. A pointer, so a
-// missing field is a 400, never a silent "off".
+// putStatsPrefsRequest is PUT /me/stats/prefs' body: either switch or
+// both. A pointer, so a missing field is left alone, and a body with
+// neither is a 400, never a silent "off".
 type putStatsPrefsRequest struct {
-	Advanced *bool `json:"advanced"`
+	Advanced  *bool `json:"advanced"`
+	SharePods *bool `json:"share_pods"`
 }
 
 // putMyStatsPrefs is PUT /me/stats/prefs: the person switches advanced
@@ -142,19 +149,39 @@ func putMyStatsPrefs(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	if body.Advanced == nil {
-		return httpError(http.StatusBadRequest, `body must be {"advanced": true} or {"advanced": false}`)
+	if body.Advanced == nil && body.SharePods == nil {
+		return httpError(http.StatusBadRequest, `body must be {"advanced": true|false}, {"share_pods": true|false}, or both`)
 	}
 	if c.StatsPrefs == nil {
 		return errNoStatsPrefs
 	}
-	saved, err := c.StatsPrefs.SetAdvanced(r.Context(), p.UserID.String(), *body.Advanced, gamestats.SetBySelf, c.now())
-	if errors.Is(err, gamestats.ErrNoUser) {
-		return httpError(http.StatusNotFound, "user not found")
+	var saved gamestats.Prefs
+	save := func(set func() (gamestats.Prefs, error)) error {
+		got, err := set()
+		if errors.Is(err, gamestats.ErrNoUser) {
+			return httpError(http.StatusNotFound, "user not found")
+		}
+		if err != nil {
+			c.logger().Error("saving a user's stats setting failed", "err", err)
+			return httpError(http.StatusInternalServerError, "could not save your stats setting; try again")
+		}
+		saved = got
+		return nil
 	}
-	if err != nil {
-		c.logger().Error("saving a user's stats setting failed", "err", err)
-		return httpError(http.StatusInternalServerError, "could not save your stats setting; try again")
+	id := p.UserID.String()
+	if body.Advanced != nil {
+		if err := save(func() (gamestats.Prefs, error) {
+			return c.StatsPrefs.SetAdvanced(r.Context(), id, *body.Advanced, gamestats.SetBySelf, c.now())
+		}); err != nil {
+			return err
+		}
+	}
+	if body.SharePods != nil {
+		if err := save(func() (gamestats.Prefs, error) {
+			return c.StatsPrefs.SetSharePods(r.Context(), id, *body.SharePods, c.now())
+		}); err != nil {
+			return err
+		}
 	}
 	def, err := c.StatsPrefs.Default(r.Context())
 	if err != nil {
