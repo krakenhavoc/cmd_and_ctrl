@@ -25,6 +25,9 @@ const (
 	sb11HellkiteOracle    = "2a3b29c3-f69d-4671-8907-600d21528153"
 	sb11CallOracle        = "3ceb23f5-abb1-4569-a1e4-1eed9a9babcf"
 	sb11SarkhanOracle     = "71cb48e2-2328-471c-a04a-7b6461f378f4"
+	sb11GlidecarOracle    = "8f40d73b-9106-448e-8649-5d62939f0d38"
+	sb11StrategistOracle  = "1b788680-28e3-4378-9607-bd42acb4fbad"
+	sb11HarrierOracle     = "23102d8a-3a93-4e83-af5b-401c85ba9dbc"
 	sb11DeathBegetsOracle = "53e86135-3b24-4618-bcc0-af4d81e672dd"
 )
 
@@ -812,6 +815,183 @@ func TestSb11SarkhanGrowsAndBecomesAFlyingDragonWhenADragonEnters(t *testing.T) 
 	}
 	if got := countersOn(g, sarkhan, game.CounterPlusOne); got != 1 {
 		t.Errorf("the counter is permanent: %d", got)
+	}
+}
+
+// --- Voyager Glidecar ---------------------------------------------------------
+
+func TestSb11VoyagerGlidecarTapsThreeOthersToBecomeAFlyingCreatureWithACounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	car := pushVehicleForTest(g, me.ID, "Voyager Glidecar", sb11GlidecarOracle, 2, 3)
+	a := b12Creature(g, me.ID, "A", "Creature — Bear", 2, 2)
+	b := b12Creature(g, me.ID, "B", "Creature — Bear", 2, 2)
+	c := b12Creature(g, me.ID, "C", "Creature — Bear", 2, 2)
+	if hasEffectiveKeyword(t, g, car, "flying") || layeredCard(t, g, car).IsCreature() {
+		t.Fatal("setup: the Vehicle is not a creature")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, car, 0, game.ActivateAbilityParams{TapIDs: []uuid.UUID{a, b}}); err == nil {
+		t.Fatal("two creatures paid a cost that needs three")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, car, 0, game.ActivateAbilityParams{TapIDs: []uuid.UUID{a, b, c}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{a, b, c} {
+		if !b12Card(t, g, id).Tapped {
+			t.Error("a creature was not tapped for the cost")
+		}
+	}
+	if !layeredCard(t, g, car).IsCreature() || !hasEffectiveKeyword(t, g, car, "flying") {
+		t.Error("the Vehicle is not a flying creature")
+	}
+	if p, tt := ptOf(t, g, car); p != 3 || tt != 4 {
+		t.Errorf("the Vehicle is %d/%d, want 3/4 with its counter", p, tt)
+	}
+	endTurn(t, g)
+	if layeredCard(t, g, car).IsCreature() || hasEffectiveKeyword(t, g, car, "flying") {
+		t.Error("the animation should end with the turn")
+	}
+	if countersOn(g, car, game.CounterPlusOne) != 1 {
+		t.Error("the counter stays")
+	}
+}
+
+func TestSb11VoyagerGlidecarScriesWhenItEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Voyager Glidecar", "Artifact — Vehicle", sb11GlidecarOracle, nil)
+	passPriorityAroundTable(t, g)
+	if scryChoiceFor(g, me.ID) == nil {
+		t.Error("no scry 1 prompt")
+	}
+}
+
+// --- Sabotage Strategist ------------------------------------------------------
+
+func TestSb11SabotageStrategistShrinksOnlyTheCreaturesThatAttackedYou(t *testing.T) {
+	g := newCatalogGame(t)
+	me, third := g.Seats[1], g.Seats[2]
+	b12Push(g, me.ID, "Sabotage Strategist", "Creature — Vedalken Ranger", sb11StrategistOracle, 2, 2)
+	a := b12Creature(g, g.Seats[0].ID, "Attacker A", "Creature — Bear", 3, 3)
+	b := b12Creature(g, g.Seats[0].ID, "Attacker B", "Creature — Bear", 3, 3)
+	c := b12Creature(g, g.Seats[0].ID, "Attacker C", "Creature — Bear", 3, 3)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, at := range []struct {
+		id  uuid.UUID
+		def uuid.UUID
+	}{{a, me.ID}, {b, me.ID}, {c, third.ID}} {
+		if err := g.DeclareAttacker(at.id, at.def); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{a, b} {
+		if p, _ := ptOf(t, g, id); p != 2 {
+			t.Errorf("a creature that attacked you has power %d, want 2", p)
+		}
+	}
+	if p, _ := ptOf(t, g, c); p != 3 {
+		t.Errorf("a creature that attacked another player has power %d, want 3", p)
+	}
+	endTurn(t, g)
+	if p, _ := ptOf(t, g, a); p != 3 {
+		t.Errorf("-1/-0 should end with the turn: power %d", p)
+	}
+}
+
+func TestSb11SabotageStrategistIgnoresAttacksOnOtherPlayers(t *testing.T) {
+	g := newCatalogGame(t)
+	me, third := g.Seats[1], g.Seats[2]
+	b12Push(g, me.ID, "Sabotage Strategist", "Creature — Vedalken Ranger", sb11StrategistOracle, 2, 2)
+	a := b12Creature(g, g.Seats[0].ID, "Attacker A", "Creature — Bear", 3, 3)
+	declareAttack(t, g, third.ID, a)
+	passPriorityAroundTable(t, g)
+	if p, _ := ptOf(t, g, a); p != 3 {
+		t.Errorf("an attack on another player shrank the attacker: power %d", p)
+	}
+}
+
+func TestSb11SabotageStrategistExhaustPutsThreeCountersOnce(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	sb := b12Push(g, me.ID, "Sabotage Strategist", "Creature — Vedalken Ranger", sb11StrategistOracle, 2, 2)
+	b06AddMana(me, "C", "C", "C", "C", "C", "U", "U", "C", "C", "C", "C", "C", "U", "U")
+	b16Activate(t, g, me.ID, sb, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if got := countersOn(g, sb, game.CounterPlusOne); got != 3 {
+		t.Fatalf("%d +1/+1 counters, want 3", got)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, sb, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Error("exhaust was activated a second time")
+	}
+}
+
+// --- Spikeshell Harrier -------------------------------------------------------
+
+// sb11Harrier casts the Harrier and aims it at the opponent's creature, then
+// lets it resolve.
+func sb11Harrier(t *testing.T, g *game.Game, target uuid.UUID) {
+	t.Helper()
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Spikeshell Harrier", "Artifact Creature — Robot Turtle", sb11HarrierOracle, nil)
+	passPriorityAroundTable(t, g)
+	pickCard(t, g, me.ID, target)
+	passPriorityAroundTable(t, g)
+}
+
+func TestSb11SpikeshellHarrierBouncesAndReducesTheHighestSpeedByOne(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	bear := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	g.SetSpeedForTest(opp.ID, 3)
+	g.SetSpeedForTest(g.Seats[2].ID, 2)
+	sb11Harrier(t, g, bear)
+	if g.Battlefield.Contains(bear) || !opp.Hand.Contains(bear) {
+		t.Error("the creature was not returned to its owner's hand")
+	}
+	if got := g.SpeedOf(opp.ID); got != 2 {
+		t.Errorf("the opponent's speed is %d, want 2", got)
+	}
+}
+
+func TestSb11SpikeshellHarrierLeavesSpeedAloneWhenAnotherPlayerIsAsFast(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	bear := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	g.SetSpeedForTest(opp.ID, 3)
+	g.SetSpeedForTest(g.Seats[2].ID, 3)
+	sb11Harrier(t, g, bear)
+	if got := g.SpeedOf(opp.ID); got != 3 {
+		t.Errorf("speed is %d, want 3: it is not greater than each other player's", got)
+	}
+}
+
+func TestSb11SpikeshellHarrierNeverReducesSpeedBelowOneAndCanTakeAVehicle(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	car := pushVehicleForTest(g, opp.ID, "Their Vehicle", "", 3, 3)
+	g.SetSpeedForTest(opp.ID, 1)
+	sb11Harrier(t, g, car)
+	if !opp.Hand.Contains(car) {
+		t.Error("the Vehicle was not returned")
+	}
+	if got := g.SpeedOf(opp.ID); got != 1 {
+		t.Errorf("speed is %d, want 1: it can't go below 1", got)
+	}
+}
+
+func TestSb11SpikeshellHarrierFromMaxSpeedEndsMaxSpeed(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	bear := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	g.SetSpeedForTest(opp.ID, game.MaxSpeed)
+	sb11Harrier(t, g, bear)
+	if g.SpeedOf(opp.ID) != game.MaxSpeed-1 {
+		t.Errorf("speed is %d, want %d", g.SpeedOf(opp.ID), game.MaxSpeed-1)
 	}
 }
 
