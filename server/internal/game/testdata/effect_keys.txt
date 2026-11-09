@@ -414,8 +414,10 @@ choose choose-cards/cemetery-prowler-exile
 choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-legacy-of-fire-remove
+choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
 choose choose-cards/chief-montgomery-scott-put
+choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
@@ -1511,6 +1513,8 @@ run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
+run prompt-run/kefka-court-mage-draw
+run prompt-run/kefka-court-mage-transform
 run prompt-run/killmonger-sacrificed
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
@@ -1761,6 +1765,7 @@ tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
 tail charming-prince/after-exile
+tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
@@ -2134,6 +2139,7 @@ tail queens-bay-paladin/lose-life
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
+tail ragnarok-divine-deliverance/return
 tail rapid-rescue/after-mill
 tail read-the-runes/sacrificed
 tail reality-fracture-helpers/after-exile
@@ -2220,6 +2226,8 @@ tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
+tail sin-spiras-punishment/copy-exiled
+tail sin-spiras-punishment/repeat-for-a-land
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill

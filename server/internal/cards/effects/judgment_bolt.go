@@ -23,24 +23,22 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		Purpose:      game.Purpose{Targets: game.ForTargets(DamageToTarget(0, 5)), Answers: game.AnswerRemove},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, ref := range ctx.LegalTargets() {
-				if ref.Kind != game.TargetCard {
-					continue
-				}
-				victim, ok := ctx.Game.LookupCardForEffect(ref.ID)
-				if !ok {
-					return nil
-				}
-				if err := (DealDamage{Source: ctx.Source(), Target: ref.ID, Amount: 5}).Apply(ctx); err != nil {
-					return err
-				}
-				x := countControlled(ctx.Game, item.Controller, func(c game.Card) bool { return c.HasSubtype("Equipment") })
-				if x <= 0 {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: x}.Apply(ctx)
+			target, ok := b16FirstLegalTargetCard(ctx)
+			if !ok {
+				return nil
 			}
-			return nil
+			victim, ok := ctx.Game.LookupCardForEffect(target)
+			if !ok {
+				return nil
+			}
+			if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: 5}).Apply(ctx); err != nil {
+				return err
+			}
+			x := countControlled(ctx.Game, item.Controller, func(c game.Card) bool { return c.HasSubtype("Equipment") })
+			if x <= 0 {
+				return nil
+			}
+			return DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: x}.Apply(ctx)
 		},
 	})
 }

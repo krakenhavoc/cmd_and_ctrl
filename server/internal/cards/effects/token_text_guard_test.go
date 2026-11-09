@@ -71,6 +71,7 @@ var permissionFilterDerived = map[string]string{
 	"mikey_and_don_party_planners.go": "standing cast permissions (stampStandingPermissionLocked)",
 	"hakoda_selfless_commander.go":    "standing cast permission (stampStandingPermissionLocked)",
 	"mai_and_zuko.go":                 "standing cast timing (castTimingVerdictLocked)",
+	"traveling_chocobo.go":            "standing cast permission (stampStandingPermissionLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {

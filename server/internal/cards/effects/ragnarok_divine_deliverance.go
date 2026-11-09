@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Ragnarok, Divine Deliverance — Legendary Creature — Beast Avatar, 7/6:
 // the combined back face of Fang, Fearless l'Cie and Vanille, Cheerful
@@ -29,18 +33,35 @@ func init() {
 				WhenThisDies("Ragnarok, Divine Deliverance — destroy target permanent and return target nonlegendary permanent card from your graveyard to the battlefield",
 					func(g *game.Game, item *game.StackItem) error {
 						ctx := NewContext(g, item)
-						if len(item.Targets) > 0 && ctx.IsTargetLegal(item.Targets[0]) {
-							if err := (DestroyTarget{Target: item.Targets[0].ID}).Apply(ctx); err != nil {
-								return err
-							}
-						}
+						var ret uuid.UUID
 						if len(item.Targets) > 1 && ctx.IsTargetLegal(item.Targets[1]) {
-							return ReturnFromGraveyard{Target: item.Targets[1].ID, Dest: game.ZoneBattlefield}.Apply(ctx)
+							ret = item.Targets[1].ID
 						}
-						return nil
+						if len(item.Targets) > 0 && ctx.IsTargetLegal(item.Targets[0]) {
+							return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{item.Targets[0].ID},
+								withCarry(ctx.ItemTail(ragnarokReturn), ret))
+						}
+						return ragnarokReturnCard(ctx, ret)
 					}),
 				TargetPermanent("target permanent").Then(
 					TargetCardInGraveyard("target nonlegendary permanent card from your graveyard", YouOwn(), Permanent(), Not(Legendary())))),
 		},
 	})
+}
+
+// ragnarokReturn is "and return target nonlegendary permanent card", run
+// once the destroy has finished. The card to return rides the carry. An
+// on-disk key.
+var ragnarokReturn = CardTail("ragnarok-divine-deliverance/return", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return ragnarokReturnCard(ctx, o.Tail.Carry[0])
+})
+
+func ragnarokReturnCard(ctx *Context, id uuid.UUID) error {
+	if id == uuid.Nil {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}.Apply(ctx)
 }
