@@ -207,3 +207,94 @@ func TestWesternCloudPreventsDamageToThePlanarControllersCreatures(t *testing.T)
 		t.Errorf("%d damage marked on the opposing creature, want 3", got)
 	}
 }
+
+var planeTheWilds = planeFixture{"cb7ae16a-9982-4782-9e20-07bb771d0601", "The Wilds", "Plane — Eldraine"}
+
+func countFood(g *game.Game, owner uuid.UUID) int {
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Food" && c.Controller == owner {
+				n++
+			}
+		}
+	})
+	return n
+}
+
+func TestTheWildsMakesFoodOnEntryAndAtUpkeep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTheWilds)
+	g, _ := newPlaneGame(t, planeTheWilds)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	planeswalkToPlane(t, g, planeTheWilds.Oracle)
+	passPriorityAroundTable(t, g)
+	if got := countFood(g, me.ID); got != 1 {
+		t.Fatalf("%d Food after planeswalking in, want 1", got)
+	}
+	next := toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	if got := countFood(g, next.ID); got != 1 {
+		t.Errorf("%d Food at the next planar controller's upkeep, want 1", got)
+	}
+}
+
+func TestTheWildsChaosEdictPaysOneOrTwoFood(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		toughness int
+		want      int
+	}{{"small", 3, 1}, {"big", 4, 2}} {
+		t.Run(tc.name, func(t *testing.T) {
+			g, _ := newPlaneGame(t, planeTheWilds)
+			advanceToMain(t, g)
+			me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+			victim := pushVanillaCreature(g, opp.ID, "Victim", 1, tc.toughness)
+			rollChaos(t, g, me.ID)
+			passPriorityAroundTable(t, g)
+			answerPickTargetPlayer(t, g, opp.ID)
+			passPriorityAroundTable(t, g)
+			b6AnswerSacrifices(t, g)
+			g.ReadSnapshot(func() {
+				if z := g.FindCardZoneForEffect(victim); z != nil && z.Kind == game.ZoneBattlefield {
+					t.Error("the creature was not sacrificed")
+				}
+			})
+			if got := countFood(g, me.ID); got != tc.want {
+				t.Errorf("%d Food, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+// b6AnswerSacrifices answers every open sacrifice prompt with its first
+// candidate, then lets the table settle.
+func b6AnswerSacrifices(t *testing.T, g *game.Game) {
+	t.Helper()
+	for i := 0; i < 8; i++ {
+		var open *game.PendingChoice
+		for _, c := range g.PendingChoices {
+			if isSacrificePrompt(c) {
+				open = c
+				break
+			}
+		}
+		if open == nil {
+			break
+		}
+		opts := sacrificeOptions(open)
+		if len(opts) == 0 {
+			t.Fatalf("a sacrifice prompt with no candidates")
+		}
+		var err error
+		if open.Kind == game.PendingChoiceSacrifice {
+			err = g.ResolveSacrificeChoice(open.ID, open.Chooser, opts[0])
+		} else {
+			err = g.ResolveChooseCards(open.ID, open.Chooser, opts[:1])
+		}
+		if err != nil {
+			t.Fatalf("answering the sacrifice prompt: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+}
