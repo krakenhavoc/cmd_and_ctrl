@@ -2541,6 +2541,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
 			}
+			// Serah Farron's "first legendary creature spell you cast each turn".
+			if characteristicHasType(ch, "Creature") && characteristicHasSupertype(ch, "Legendary") {
+				tally.LegendaryCreature++
+			}
 			// Momo, Friendly Flier's "first non-Lemur creature spell with
 			// flying" (#5075).
 			if characteristicHasType(ch, "Creature") && HasKeyword(sc, "flying") {

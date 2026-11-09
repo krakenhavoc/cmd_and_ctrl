@@ -302,6 +302,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty", ownLabel: true},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
+	{field: "CoinFlipRules", fallback: "Coin flips come up heads", ownLabel: true},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},
 	{field: "ConditionalLandPlays", label: conditionalLandPlayRows},
 	{field: "CastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
