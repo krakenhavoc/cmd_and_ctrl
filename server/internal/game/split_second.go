@@ -106,6 +106,13 @@ type SplitSecondGrant struct {
 	// nothing.
 	SpentFrom ManaSourceKinds
 
+	// AllSpells widens "spells you control" to every spell, whoever
+	// controls it: Lake Silencio's "All spells have split second." (ADR
+	// 0216 slice 4, #4870). It is a plane's static, read live from the
+	// command zone while the plane is face up (CR 901.7), so the grant
+	// ends the moment the planar controller planeswalks away from it.
+	AllSpells bool
+
 	// Label is the oracle sentence the card's ability row shows.
 	Label string
 }
@@ -113,11 +120,14 @@ type SplitSecondGrant struct {
 // reaches reports whether this grant, on a permanent controlled by
 // sourceController, reaches the spell `item` (on the stack as `spell`).
 func (gr SplitSecondGrant) reaches(sourceController uuid.UUID, item *StackItem, spell Card) bool {
-	if gr.YouCast {
+	switch {
+	case gr.AllSpells:
+		// Every spell, whoever controls or cast it.
+	case gr.YouCast:
 		if item.IsCopy || spellCasterOf(item) != sourceController {
 			return false
 		}
-	} else if item.Controller != sourceController {
+	case item.Controller != sourceController:
 		return false
 	}
 	if !gr.Spells.Matches(spell) {
@@ -174,6 +184,18 @@ func (g *Game) spellGrantedSplitSecondLocked(item *StackItem) bool {
 		return false
 	}
 	caster := spellCasterOf(item)
+	grants := func(src *Card) bool {
+		key := catalogAbilityKeyOf(src)
+		if key == "" {
+			return false
+		}
+		for _, gr := range CatalogSplitSecondGrants(key) {
+			if gr.reaches(src.Controller, item, *spell) {
+				return true
+			}
+		}
+		return false
+	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
 		// Only the spell's controller's or its caster's permanents can
@@ -181,17 +203,19 @@ func (g *Game) spellGrantedSplitSecondLocked(item *StackItem) bool {
 		if src.Controller != item.Controller && src.Controller != caster {
 			continue
 		}
-		key := catalogAbilityKeyOf(src)
-		if key == "" {
-			continue
-		}
-		for _, gr := range CatalogSplitSecondGrants(key) {
-			if gr.reaches(src.Controller, item, *spell) {
-				return true
-			}
+		if grants(src) {
+			return true
 		}
 	}
-	return false
+	// A face-up plane's grant (CR 901.7, ADR 0216 §6): Lake Silencio's
+	// "All spells have split second" reaches every spell, so no
+	// controller is skipped here.
+	found := false
+	g.forEachCommandSourceLocked(func(src *Card) bool {
+		found = grants(src)
+		return !found
+	})
+	return found
 }
 
 // SpellHasSplitSecondForEffect reports whether the spell on the stack

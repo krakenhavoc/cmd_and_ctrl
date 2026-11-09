@@ -1,0 +1,200 @@
+# planar_cards.txt — every plane and phenomenon card in the card database
+# (Scryfall layout "planar"), one per oracle ID: oracle_id<TAB>name<TAB>type line.
+# The denominator of the census's planar line (ADR 0216 §6, slice 4). Sorted by
+# oracle ID. Checked against the dump by TestPlanarCardListMatchesTheDump.
+00f00001-bd84-4dbf-a707-f4b1549100d4	The Great Aerie	Plane — Tarkir
+022e38c3-fcea-428f-a0d0-a6cca057faa3	Strixhaven	Plane — Arcavios
+04491781-0e6a-4a30-a69f-db226702adfc	The Windy City	Plane — Chicago
+05226c5f-1f56-4608-b09a-614d0198ad1b	Shy Town	Plane — Chicago
+05540922-3bd4-4853-a55a-720524042621	The Pro Tour	Plane — MagicCon
+065346cd-cd81-478e-8a62-2c7ea421bdcd	Horizon Boughs	Plane — Pyrulea
+07cc253d-e23c-450c-bfaf-5cb6a3a588ce	Murasa	Plane — Zendikar
+08081904-4115-4afd-ac82-f00421e54038	Tarnation	Plane — Thunder Junction
+08427dab-3874-4a29-bd63-cbd16c1d229d	New Argive	Plane — Dominaria
+0a4bf88d-106a-413b-9d80-8775c1ff5ded	Selesnya Loft Gardens	Plane — Ravnica
+0c1cb8e2-8ed4-4a0e-926b-4df5466c607c	Towashi	Plane — Kamigawa
+0c4679a1-f92f-44a9-9a44-066a137c8cd7	The Cheetah Planet	Plane — Outside Mutter's Spiral
+0c77d974-a9fe-4c70-b47a-3a957180bd92	Royal Booster	Phenomenon
+0ff2bbed-e435-4108-b02a-564a75abba40	Littjara	Plane — Kaldheim
+11b3fcb2-0b66-4d8b-8e66-a21a5da1c1f5	Llanowar	Plane — Dominaria
+123f4a6b-34eb-4383-bacd-4f5ac64a67fa	Multiversal High Council	Plane — Universia Beyondia
+1300b5e7-d741-4723-bb15-dabd04cb0c11	Turri Island	Plane — Ir
+133d8c07-4de5-4142-b141-235e5255fb6d	Pin Trading	Phenomenon
+13e801cd-e537-4ea6-8c3d-21b142bdc026	The Fourth Sphere	Plane — Phyrexia
+14066888-66f6-4903-8de2-cc961aa45d8d	Unleash the Flux	Phenomenon
+152e7c62-e18b-40a8-b224-9e45732e029b	Stroopwafel Cafe	Plane — Amsterdam
+15b979de-c8ee-4664-9ca7-6c4eb3346967	Academy at Tolaria West	Plane — Dominaria
+1799d361-85e7-4c04-aa04-6f83e6499573	Furnace Layer	Plane — New Phyrexia
+19d28483-5d14-4205-a817-c66083a4d049	Shrinking Plane	Plane — Foldaria
+1aaa60e4-47a8-4255-8a09-5f00922ccf6d	Grixis	Plane — Alara
+1c4e174e-19fb-4c0a-b762-ef6d927392c9	Velis Vel	Plane — Lorwyn
+1d2bad25-dbe3-4b51-a78b-4a95dd5669fe	Asmoranomardicadaistinaculdacar's Kitchen	Plane — Hell
+1f7daaf2-3206-4f52-928a-f5116b782367	Hedron Fields of Agadeem	Plane — Zendikar
+204ee01c-74ca-4c4c-92db-aebeebb89406	Stormcage Containment Facility	Plane — Unknown Planet
+2387edac-765b-4502-bd3d-88be8ba7d0a4	Gavony	Plane — Innistrad
+23a1cd82-75bc-4e3b-bbab-8a1ca9b9be88	Elvish Impersonation Contest	Plane — Las Vegas
+23fe1c21-c396-4ebf-a8b0-22d697952b34	Eloren Wilds	Plane — Shandalar
+24b2ba5b-c1cb-4c73-89bf-94d47f468622	Oteclán	Plane — Ixalan
+25650a32-4014-4065-ad01-7357c3ad3995	Akoum	Plane — Zendikar
+256770fe-c17d-45dd-bf05-36eeee240324	Kharasha Foothills	Plane — Mongseng
+2732b605-7c88-4995-b46e-62dc09e68919	Krosa	Plane — Dominaria
+2979597d-c3cc-4585-a9b7-7fa15641b030	Celestine Reef	Plane — Luvion
+29e3371d-aa41-46a9-921a-96565be47eff	Otaria	Plane — Dominaria
+2a21b90a-7ea7-4090-82ec-359ba8ba1aad	The Doctor's Childhood Barn	Plane — Gallifrey
+2d84be6d-49a5-4200-8cd3-d8653dfd0899	The Zephyr Maze	Plane — Kyneth
+2edd018b-6d82-4ff1-b9d0-5da9b628af3f	Dalek Intensive Care	Plane — The Dalek Asylum
+2f3e71b6-0fd6-4ac5-a265-faaabe21177b	The Fertile Lands of Saulvinia	Plane — Antausia
+302e4ac2-522b-4a0a-850a-d856639ea2a4	Morphic Tide	Phenomenon
+33ed1120-82b1-4936-b210-2f0323a9401c	Raiders' Allegiance	Plane — Ixalan
+34a31865-b701-4ce1-8912-29fc41ecdda3	Prahv	Plane — Ravnica
+36aac8aa-d6f0-4e53-a280-73b01e040f35	City Hall	Plane — Chicago
+370e2b01-5d06-4c9e-9a78-85082afb71d4	Year-End Review	Phenomenon
+381f510b-8696-4af1-a6c9-d1175e9f36d0	The Moonbase	Plane — Moon
+38bdd034-0375-403c-97ca-6f93a5e12e54	Stensia	Plane — Innistrad
+38f84e55-049c-441e-b4e2-1e207ab5dbe5	Agyrem	Plane — Ravnica
+3c200cc0-02b1-4a32-a910-5cd3c4d716b7	The Golden City of Orazca	Plane — Ixalan
+3e0bcf65-1eaf-440f-a59b-0b11e1106135	Naar Isle	Plane — Wildfire
+3e553881-bac7-4830-b739-3b8c6aa0ded6	Grove of the Dreampods	Plane — Fabacin
+3fc15821-1add-4321-aecd-33f8a8c5f9a7	Reality Shaping	Phenomenon
+41babf95-a5f8-42a8-92f5-df2032b1ba2a	Event Horizon	Plane — Blind Eternities
+424b2702-e7c6-4056-8466-a43782d7df2b	TARDIS Bay	Plane — Gallifrey
+43a23de7-0738-4b03-b87d-5a7d1144825c	Glimmervoid Basin	Plane — Mirrodin
+4abae901-eb47-4318-bf64-322a893c2833	The Western Cloud	Plane — Gobakhan
+4b0e9c83-867a-4dc1-ac15-3b00952f75c7	High and Dry Black Market	Phenomenon
+4dffc1cb-e9bd-4410-9b08-184eabd2c4da	Lake Silencio	Plane — Earth
+4eebfaf3-18da-4661-b6a5-d874585e170a	Esper	Plane — Alara
+4f387b4c-3e4a-419d-9dbe-95c5f797747e	Spectrox Mines	Plane — Androzani Minor
+4f8cf1ab-1359-44af-a989-dd254fa6c7b5	New New York	Plane — New Earth
+503fcc43-dafd-484b-a97f-bbd11eed66de	Unyaro	Plane — Zhalfir
+51a53042-6baa-442a-84ec-2f16fdc12087	Coal Hill School	Plane — Earth
+53517dbf-7b32-423a-af76-afd39b876a1a	Quicksilver Sea	Plane — Mirrodin
+5503c308-560d-4d5f-a86a-4b06d9947ddc	The Dark Barony	Plane — Ulgrotha
+5910ae7e-7a74-4296-9ae1-7fa093b4e640	The Pyramid of Mars	Plane — Mars
+5b200e41-126d-4017-8e01-f50582b31af0	Amy's Home	Plane — Earth
+5b76612b-b2d3-457d-8049-1bf01b8ec28b	Windmill Farm	Plane — Amsterdam
+5c28d927-7c8b-4a31-8767-ce053159dfdc	The Food Court	Plane — Eldraine
+5dc1deab-ce04-45c0-a4ff-c526a948e500	Pompeii	Plane — Earth
+5ed6be01-af06-4f3d-8b43-ef8993c52c97	Naya	Plane — Alara
+61006acf-de38-420b-ab7a-685fbd64141c	Skybreen	Plane — Kaldheim
+61b5984a-de6a-4d5a-8b20-e2fb3b553a34	Valor's Reach	Plane — Kylem
+61c5f2cb-f39c-487c-9786-a8dad4663f4f	Inys Haen	Plane — Cridhe
+6491f511-87e6-4504-84f5-fe5cf44768d7	Minamo	Plane — Kamigawa
+6515e8d6-26ff-4716-a62d-a5847d0933e7	Ghirapur Grand Prix	Plane — Avishkar
+6552e3dd-ce35-4267-a25e-f5d4dceb8311	Nyx	Plane — Theros
+662e5245-73e4-49ba-aece-c73f1bea7b6a	Glen Elendra	Plane — Lorwyn
+68750b81-1309-4362-84b3-8835b3d71d28	The Lux Foundation Library	Plane — The Library
+69f06edb-dade-4e94-b563-e36a05e567f0	Onakke Catacomb	Plane — Shandalar
+6ad7027a-5f13-4833-bb88-879ba8830720	The Cave of Skulls	Plane — Earth
+6d606b8c-5f9c-4a65-a321-403d85451c9c	Game Knights Live	Plane — MagicCon
+6dc67a65-31bf-4535-9e02-8f6d6ecefde5	Chaotic Aether	Phenomenon
+6e008fdc-48f2-40ef-95bd-80d014535ca3	Orochi Colony	Plane — Kamigawa
+706720f6-bb04-4a7b-8471-0f3d662d6eeb	Bad Wolf Bay	Plane — Earth
+7076bc0c-9cc7-4cd7-aba5-f2f236aab0f7	Bowie Base One	Plane — Mars
+7099883d-0a4b-47ae-bff8-a96efa7a3a9a	The Dining Car	Plane — Spacecraft
+70edae19-e278-401d-9772-508bd66320a6	Shiv	Plane — Dominaria
+71bff56b-733c-4d74-9e0c-85371a8b3787	Kerblam! Warehouse	Plane — Kandoka
+72af7529-75bb-488f-801d-7148631b9e9b	Nephalia	Plane — Innistrad
+75206757-dae7-4a1e-a391-862699a100d7	Besieged Viking Village	Plane — Earth
+7812174b-2dc1-43e8-b98f-639905e20ab7	Interplanar Tunnel	Phenomenon
+79d3e356-9eb9-49bb-b4ba-f4f71876869e	Hotel of Fears	Plane — Spacecraft
+7a425df4-7010-462e-9cb5-20389bac721c	Stairs to Infinity	Plane — Xerex
+7a7fbcc2-b139-44c7-a524-6d69651067d3	Team-Up!	Phenomenon
+7c9d6193-1d50-4035-8c85-98c384f461be	Aplan Mortarium	Plane — Alfava Metraxis
+804c913e-7dcd-4e83-a8d2-47b26e796c2e	Preston's Stage	Plane — Las Vegas
+805f9dc2-e172-481d-bae7-9a136a3d1e49	Astral Arena	Plane — Kolbahan
+81a0d96a-7ac8-4947-8779-2102c9b33d38	Fields of Summer	Plane — Moag
+82e67c57-6d7a-44cc-ba63-77ce887ab075	Bant	Plane — Alara
+85592710-8637-4726-8b92-552b9be677c0	Lethe Lake	Plane — Arkhos
+86534917-5d51-4eba-9bf5-f9fc93c83c80	The Caldaia	Plane — Capenna
+870ca595-9887-48f9-9ea8-60c0d511726e	Welcome to Valley	Plane — Bloomburrow
+87ff5801-1f16-463a-af2c-3223cef0a532	Unknown Event	Phenomenon
+88386fa3-4f4f-4af1-a159-2c87d9890596	High Noon At Thunder Junction	Plane — Thunder Junction
+8baa42cf-32bc-4d1f-b4bd-02a4fce376c4	Sky Deck	Plane — Chicago
+8bf638e5-8325-48ca-9039-37a19761ef56	Ood Sphere	Plane — Horsehead Nebula
+8c30e40a-6224-49a3-842c-662036d88e87	Mojave Desert	Plane — Las Vegas
+8c56bb41-a8d8-4b0f-bbb7-be8466dc9ed1	The Great Forest	Plane — Lorwyn
+8eb442a9-5e61-4e2e-983d-b49b04be2575	The Aether Flues	Plane — Iquatana
+91fe554b-13db-451d-ab25-717ab2b70649	Riptide Island	Plane — Dominaria
+93a2967d-b7e3-497f-af7e-56984d0f8386	Pin Collector's Booth	Plane — MagicCon
+93b3acc1-2d41-4f5f-9225-7a30ea2d8158	Enigma Ridges	Plane — Echoir
+9580cf0a-0c0d-4e78-a6cc-bb14c5cc5d23	Bicycle Rack	Plane — Amsterdam
+96e26369-ae5d-4a77-adaa-d34b25af076f	Human—Time Lord Meta-Crisis	Phenomenon
+97f708de-9271-4137-a9fe-dda25b922900	Tazeem	Plane — Zendikar
+995eede5-d3aa-42f8-9883-6e47a7c041bc	No Way Out	Plane — Duskmourn
+99fb2128-61fc-45a6-a3f8-b116c3eb2c3d	Singing Towers of Darillium	Plane — Darillium
+9aa94de8-b114-4479-a771-c7bc0297be58	Jund	Plane — Alara
+9c925057-ac3d-461e-b505-f80e2fd38c8c	Temple of Atropos	Plane — Time
+9cc34a5b-550d-4d3e-b3e5-4d4630649882	Mondassian Colony Ship	Plane — Spacecraft
+9d58f647-3f83-4f65-a944-c6236db7c422	Norn's Dominion	Plane — New Phyrexia
+9f7e1607-34b5-4332-81e3-391fb49cd6ad	The Drum, Mining Facility	Plane — Earth
+a04d05ed-1b9b-4407-8780-c75c102a94dd	The Eon Fog	Plane — Equilor
+a0cb118e-6af1-41d2-847f-d685ced2165d	Ten Wizards Mountain	Plane — Shenmeng
+a2048704-0d22-435d-b819-269291f2981e	Naktamun	Plane — Amonkhet
+a2dfbb3e-3d5f-4b6a-b910-4c7b0c9dc17a	North Pole Research Base	Plane — Earth
+a2ef6b79-faeb-4183-a510-f10b14dff417	City of the Daleks	Plane — Skaro
+a34b272b-084b-4ff1-8b02-d95116ccfeab	Planewide Disaster	Phenomenon
+a7641877-1a61-467c-9365-487cf5a5656d	UNIT Headquarters	Plane — Earth
+a7c6b72c-f9ec-4048-8e4c-99210e4e7b85	Ghirapur	Plane — Avishkar
+aa166578-b13b-4adb-a78e-d5183e987112	Spatial Merging	Phenomenon
+ab72ff80-738a-4468-aecf-5d806143f791	Norn's Seedcore	Plane — New Phyrexia
+ac4fe2a2-76ff-49d9-b506-26a17b4bf892	Lair of the Ashen Idol	Plane — Azgol
+b1eff630-b56c-48a5-ac21-836a60157b35	Feeding Grounds	Plane — Muraganda
+b21a71d7-f236-43e2-b576-0b5c9280f0cc	Cliffside Market	Plane — Mercadia
+b2c95c7a-a04c-46ef-a879-6eb08e444093	Trail of the Mage-Rings	Plane — Vryn
+b3a7f6b9-1a07-4da8-a90c-6f53a1c4eb28	Probability Flux	Phenomenon
+b3acbacd-7e97-4bcf-9281-fffa5ea3e70b	Prime Minister's Cabinet Room	Plane — Earth
+b53e06af-be18-4f75-9dd0-7494ec867b13	Raven's Run	Plane — Shadowmoor
+b54d9a4a-1d55-4ceb-96fd-2b1d5e46de14	Kessig	Plane — Innistrad
+b60e8617-fc35-4c8a-beb0-4688b88484c4	The Pit	Plane — The Abyss
+b6329c2f-ea7f-4611-986c-f82bacf2a872	Mirrored Depths	Plane — Karsus
+b977ff66-6c52-4f33-8f25-e310d835be8b	The Bean	Plane — Chicago
+bbb1d13c-a3ce-4151-883a-cce9bbd584d0	Tember City	Plane — Kinshala
+bc7a3c30-79af-4c60-83b7-8b1984a12e61	The Sphere	Plane — Las Vegas
+be9870be-cf1b-44ea-a129-8f3711901b16	Fixed Point in Time	Phenomenon
+bfb3a244-ff5c-4ed0-8b19-e96394a97284	Sorin's Remastered Manor	Plane — Innistrad
+c09d304a-87d0-4a2a-bcb2-e81341b2dbf2	Sokenzan	Plane — Kamigawa
+c265447b-a8ce-4d77-b620-865f7d4e0722	Caught in a Parallel Universe	Phenomenon
+c3b5f778-8857-498e-9b1c-f89cfb6f34b2	Omenpath Instability	Phenomenon
+c5f0da12-b76f-42fb-a52e-cd09535e72fb	Paliano	Plane — Fiora
+c7241e4b-d2c7-4801-96a3-91bb998953a1	Orzhova	Plane — Ravnica
+c85d3740-8c8d-4fef-ad33-a6f446b883ac	Talon Gates	Plane — Dominaria
+c871974e-54e6-411f-8408-3708823fa2df	Mutual Epiphany	Phenomenon
+c8cebdce-16d0-440f-8f4d-8d21483b16a3	Mad Labs	Phenomenon
+c907333b-eae8-444f-9da3-b193289f19e2	Megaflora Jungle	Plane — Gargantikar
+cb467901-a68d-4922-8ceb-867b582c8fe7	Edge of Malacol	Plane — Belenon
+cb7ae16a-9982-4782-9e20-07bb771d0601	The Wilds	Plane — Eldraine
+cd8ce6f1-9753-40a7-a625-5ed63c15c29e	Panopticon	Plane — Mirrodin
+cde8d8c4-5e2b-452f-b3e9-bb9f2e745ec9	The Hippodrome	Plane — Segovia
+ce8139b9-31f3-464d-86ea-7efbdbfce478	Bloodhill Bastion	Plane — Equilor
+d45692d5-19e8-45ec-92bf-b79cb3919acd	Gardens of Tranquil Repose	Plane — Necros
+d5b01af8-c1b4-41b9-83f6-6d51258dc96d	Pursued by Something	Plane — Duskmourn
+d65ff607-1ff5-42bd-8db2-f082cc2f0b5e	Antarctic Research Base	Plane — Earth
+d6ab4159-e04e-4991-8a9b-9da302c98e9d	Aretopolis	Plane — Kephalai
+d858e6db-9842-41d1-8006-574c8dcd98ed	Truga Jungle	Plane — Ergamon
+d8aa7f2d-2280-42d4-b082-1b5d45df77c5	Two Streams Facility	Plane — Apalapucia
+ddea0dcf-e8d1-44ea-9ce4-009fa8bbfb95	Black Lotus Lounge	Plane — MagicCon
+de53c948-b371-4f79-a965-33c44d0b44de	Takenuma	Plane — Kamigawa
+e0dc9986-1099-4189-bfff-8f41bab9019d	Mount Keralia	Plane — Regatha
+e19e8895-f8a4-4995-8dd4-2821c6469126	Time Distortion	Phenomenon
+e28deac5-d3c4-48e9-974c-093e3122f317	The Maelstrom	Plane — Alara
+e4b941d1-60cb-4e14-89a4-62a9785f6eda	Windriddle Palaces	Plane — Belenon
+e5f8b2bb-e9bb-4a0a-aa88-7fa0299f52a9	Izzet Steam Maze	Plane — Ravnica
+e60e8f90-8c9d-4e9d-823e-2c9c4ab21443	Clamilton Estate	Plane — Clamhattan
+e7092928-3d70-4c7f-aea6-4532b0c5e5eb	New Player's Journey	Plane — Foundations
+e72339e4-222e-44a2-89ad-bef9835fb1d7	Artist Alley	Plane — MagicCon
+eaa5979c-86d3-4647-9a45-fd80ba4bf192	The Command Zone	Plane — MagicCon
+ece3b5ed-3c07-4586-bf99-72bc1aa6ccef	Immersturm	Plane — Valla
+ed44d47b-2eea-4cb2-a091-07583bdf390f	The Matrix of Time	Plane — Gallifrey
+edd21d18-98d2-4e3f-8da1-1ba645b8f69c	Sea of Sand	Plane — Rabiah
+eea700a1-a5f5-4b9e-aa03-8e092deb7396	Jalira's Show	Plane — Las Vegas
+f017380f-97db-4a36-b111-b257aa17ebaf	Isle of Vesuva	Plane — Dominaria
+f0c8ce35-b627-485c-bd64-d7eae47b8efa	Sanctum of Serra	Plane — Serra's Realm
+f12400e5-8288-48e1-b3b7-0cc4f8d9ca67	Goldmeadow	Plane — Lorwyn
+f133e42a-2962-4781-b413-ce2127f17c26	Pools of Becoming	Plane — Bolas's Meditation Realm
+f3b27908-ca10-4793-ab8e-6639c73cfadd	Ketria	Plane — Ikoria
+f3f5a033-d063-4250-9cfe-4c3c1a2725f1	Undercity Reaches	Plane — Ravnica
+fb061505-a3d6-45a4-a9ba-2adb1883c77d	Circus of the Sun	Plane — Las Vegas
+fb9651f5-1aec-4812-a044-3c1b60e6651f	Grand Ossuary	Plane — Ravnica
+fc621e94-e7c7-49ea-9547-4ab041ea39f3	The Doctor's Tomb	Plane — Trenzalore
+fc650404-991c-4639-b311-c35df81a254a	Kilnspire District	Plane — Ravnica
+ff76b576-8ad3-44f9-8043-80003a078e84	Stronghold Furnace	Plane — Rath

@@ -113,6 +113,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
+  - [Plane cards (ADR 0216 slice 4, #4870)](#plane-cards-adr-0216-slice-4-4870)
   - [When in doubt](#when-in-doubt)
 
 ### Recipe
@@ -13697,6 +13698,62 @@ StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
   hold (CR 123.7a).
 - **No card moves a sticker** (CR 123.3d): no Commander-legal card does, so
   nothing implements it; the dump search is in the amendment.
+
+### Plane cards (ADR 0216 slice 4, #4870)
+
+A plane is an ordinary catalog card: one file per plane, one `init()`, keyed by
+its `oracle_id`, `Completeness` declared truthfully. There is no plane registry.
+The engine finds a plane's abilities only while it is face up in the command
+zone (CR 901.7, `game/planechase_sources.go`), and the face-up card's
+`Controller` is the planar controller (CR 901.6), so "you" on a plane is read
+off `source.Controller` / `item.Controller` like any permanent's. The inherent
+planeswalking ability (CR 901.8) is engine-wide: never write it into a card.
+The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
+
+```go
+// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
+WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
+// "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
+WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+// "When you planeswalk to ~" / "… away from ~" alone
+WhenYouPlaneswalkToThis(label, effect), WhenYouPlaneswalkAwayFromThis(label, effect),
+// "At the beginning of your upkeep / end step / combat on your turn": the ordinary shapes
+AtYourUpkeep(label, effect), AtYourEndStep(label, effect), AtBeginningOfYourCombat(label, effect),
+// A static: the ordinary Static, Grants, SplitSecondGrants … slots
+Static: []game.StaticAbility{GrantAbilities(allCreatures, besiegedVikingVillageBoast)},
+SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // Lake Silencio
+```
+
+- **Name the chaos label after the plane**, `"<plane> — <what happens>"`, and keep
+  an ability word in front when the card prints one (`"Praise Him — Hotel of
+  Fears: …"`, `"Byzantium Radiation — Aplan Mortarium: …"`).
+- **The plane is the source.** "~ deals 6 damage" is `item.SourceCardID`;
+  `ctx.SourceRef()` names the face-up plane object, so "cards exiled with ~" is
+  `ExileTarget{Linked: true}` and `g.ExiledWithForEffect(game.PermissionCardRef(ref))`
+  (Gardens of Tranquil Repose). Planeswalked away from, a plane is a new object
+  (CR 901.7a): its links, counters and "until you planeswalk away" effects end.
+- **Counters on the plane itself** go through
+  `g.PutCountersOnFaceUpPlanarCardForEffect` (Aplan Mortarium): the planar zones
+  are outside the card index, so `AddCounter` never reaches one.
+- **"Then planeswalk"** is `g.PlaneswalkForEffect(item.Controller)`; an effect that
+  outlives the plane it came from ("cards can't enter from exile this turn") is a
+  stored rule, not a static of the plane (Bad Wolf Bay,
+  `g.CardsCantEnterFromExileThisTurnForEffect`).
+- **"The player to your left"** is `ControlledByThePlayerToYourLeft()`
+  (`game.NearestOpponentForEffect(you, game.AttackDirectionLeft)`).
+- **Time travel** (CR 701.56a) is `Do(TimeTravel{})`.
+- **Tests** play the real entry on a Planechase table: `newPlaneGame(t,
+  planeFixture{oracle, name, typeLine})` in `planes_harness_test.go` puts the
+  plane face up at the turn-1 draw step with nothing of it triggered;
+  `planeswalkToPlane` makes the active player planeswalk to it (its "when you
+  planeswalk to" triggers); `rollChaos` / `rollBlank` finish a planar die roll
+  with that face; `toNextUpkeep` passes the turn, so the next player is planar
+  controller. Test the static or triggered half and the chaos half, that a
+  blank does nothing, and one face-down case. `requirePlaneRegisteredFull`
+  checks the registration.
+- **Coverage.** A plane counts in the registry keys like any card, and the
+  census's planar line ("planes and phenomena … N of M") counts it against
+  `coverage/planar_cards.txt`. Generate only your planes' oracle fixtures.
 
 ### When in doubt
 
