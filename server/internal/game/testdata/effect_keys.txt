@@ -798,6 +798,7 @@ choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
+choose choose-cards/twilight-diviner-copy
 choose choose-cards/twilight-prophet-take
 choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
