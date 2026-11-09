@@ -1,0 +1,295 @@
+{
+ "batch": 62,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Wanderbrine Trapper",
+   "oracle_id": "915d70ac-46ce-41d0-a137-f17e7aaea87d",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Merfolk Scout",
+   "oracle_text": "{1}, {T}, Tap another untapped creature you control: Tap target creature an opponent controls.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "42",
+   "set": "ecl"
+  },
+  {
+   "name": "Gravelgill Scoundrel",
+   "oracle_id": "6d7f7e6e-5076-4af7-afe3-3e500835c4aa",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Rogue",
+   "oracle_text": "Vigilance\nWhenever this creature attacks, you may tap another untapped creature you control. If you do, this creature can't be blocked this turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "53",
+   "set": "ecl"
+  },
+  {
+   "name": "Illusion Spinners",
+   "oracle_id": "b608288e-1755-4738-b828-9df6998bae8d",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Faerie Wizard",
+   "oracle_text": "You may cast this spell as though it had flash if you control a Faerie.\nFlying\nThis creature has hexproof as long as it's untapped. (It can't be the target of spells or abilities your opponents control.)",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "55",
+   "set": "ecl"
+  },
+  {
+   "name": "Kulrath Mystic",
+   "oracle_id": "ed428638-181b-47cb-92f4-379db020e634",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elemental Wizard",
+   "oracle_text": "Whenever you cast a spell with mana value 4 or greater, this creature gets +2/+0 and gains vigilance until end of turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "56",
+   "set": "ecl",
+   "rulings": [
+    "If a spell has {X} in its mana cost, use the value chosen for that X to determine the mana value of that spell."
+   ]
+  },
+  {
+   "name": "Lofty Dreams",
+   "oracle_id": "f75568a0-33ed-45a0-a885-48a19a5bb58b",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nEnchant creature\nWhen this Aura enters, draw a card.\nEnchanted creature gets +2/+2 and has flying.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant",
+    "Convoke"
+   ],
+   "collector_number": "58",
+   "set": "ecl",
+   "rulings": [
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke."
+   ]
+  },
+  {
+   "name": "Noggle the Mind",
+   "oracle_id": "b49efbe8-e15b-4dc7-82de-970cbce92b79",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Flash\nEnchant creature\nEnchanted creature loses all abilities and is a colorless Noggle with base power and toughness 1/1. (It loses all colors and all other creature types.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant",
+    "Flash"
+   ],
+   "collector_number": "60",
+   "set": "ecl",
+   "rulings": [
+    "Noggle the Mind overwrites all previous effects that set the creature's base power and toughness to specific values. Any power- or toughness-setting effects that start to apply afterward will overwrite this effect.",
+    "Effects that modify the creature's power and/or toughness, such as the effect of Appeal to Eirdu, will apply to the creature no matter when they started to take effect. The same is true for counters that change its power and/or toughness and effects that switch its power and toughness."
+   ]
+  },
+  {
+   "name": "Oko, Lorwyn Liege // Oko, Shadowmoor Scion",
+   "oracle_id": "a0c956dc-d7de-4f11-b76f-7537fbee1731",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Planeswalker — Oko // Legendary Planeswalker — Oko",
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Transform",
+    "Mill"
+   ],
+   "collector_number": "61",
+   "set": "ecl",
+   "card_faces": [
+    {
+     "name": "Oko, Lorwyn Liege",
+     "mana_cost": "{2}{U}",
+     "type_line": "Legendary Planeswalker — Oko",
+     "oracle_text": "At the beginning of your first main phase, you may pay {G}. If you do, transform Oko.\n+2: Up to one target creature gains all creature types. (This effect doesn't end.)\n+1: Target creature gets -2/-0 until your next turn.",
+     "loyalty": "3"
+    },
+    {
+     "name": "Oko, Shadowmoor Scion",
+     "mana_cost": "",
+     "type_line": "Legendary Planeswalker — Oko",
+     "oracle_text": "At the beginning of your first main phase, you may pay {U}. If you do, transform Oko.\n−1: Mill three cards. You may put a permanent card from among them into your hand.\n−3: Create two 3/3 green Elk creature tokens.\n−6: Choose a creature type. You get an emblem with \"Creatures you control of the chosen type get +3/+3 and have vigilance and hexproof.\"",
+     "loyalty": "3"
+    }
+   ],
+   "related": [
+    {
+     "name": "Elk",
+     "type_line": "Token Creature — Elk",
+     "component": "token"
+    },
+    {
+     "name": "Oko, Shadowmoor Scion Emblem",
+     "type_line": "Emblem",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In some rare cases, this permanent might transform while its triggered ability that allows you to pay mana to transform it is still on the stack. (For example, another effect might cause that ability to trigger an additional time.) In such a case, even if you pay mana as the triggered ability resolves, this permanent won't transform because it already transformed while the triggered ability was on the stack.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "The effect of Oko, Lorwyn Liege's first loyalty ability lasts indefinitely. It doesn't expire during the cleanup step or when Oko leaves the battlefield or transforms.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Oko, Lorwyn Liege's color identity is green and blue, since its front face is blue, its rules text contains a green mana symbol, and its back face has a green color indicator as well as a blue mana symbol in its rules text.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored."
+   ]
+  },
+  {
+   "name": "Omni-Changeling",
+   "oracle_id": "66d4370e-19b9-4680-9b1e-a192537bc002",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "Changeling (This card is every creature type.)\nConvoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nYou may have this creature enter as a copy of any creature on the battlefield, except it has changeling.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Convoke",
+    "Changeling"
+   ],
+   "collector_number": "62",
+   "set": "ecl",
+   "rulings": [
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten.",
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Any \"enters\" abilities of the copied creature will trigger when Omni-Changeling enters. Any \"as this creature enters\" or \"this creature enters with\" abilities of the copied creature will also work.",
+    "Omni-Changeling copies exactly what was printed on the original creature and nothing else, with the listed exception (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "If the copied creature is copying something else, then Omni-Changeling enters as whatever that creature copied, with the listed exception.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "If the copied creature is a token, Omni-Changeling copies the original characteristics of that token as stated by the effect that created that token, with the listed exception.",
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "You can choose not to have Omni-Changeling enter as a copy of another creature. If you do, it will just be a 0/0 Shapeshifter with changeling, and unless another effect is increasing its toughness, it will be put into its owner's graveyard."
+   ]
+  },
+  {
+   "name": "Pestered Wellguard",
+   "oracle_id": "b0dbfd40-ecc5-493b-976b-bc3f62137fcf",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Soldier",
+   "oracle_text": "Whenever this creature becomes tapped, create a 1/1 blue and black Faerie creature token with flying.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "63",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Rime Chill",
+   "oracle_id": "bad84deb-3f2c-46fd-9dcb-4e3ba9732769",
+   "layout": "normal",
+   "mana_cost": "{6}{U}",
+   "cmc": 7.0,
+   "type_line": "Instant",
+   "oracle_text": "Vivid — This spell costs {1} less to cast for each color among permanents you control.\nTap up to two target creatures. Put a stun counter on each of them. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nDraw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vivid"
+   ],
+   "collector_number": "64",
+   "set": "ecl",
+   "rulings": [
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color.",
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "If all of the target creatures are illegal targets as Rime Chill tries to resolve, it won't resolve and none of its effects will happen. You won't draw a card."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,300 @@
+{
+ "batch": 60,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Rooftop Percher",
+   "oracle_id": "3dc73517-0767-46ae-bc8d-ee378237a509",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "Changeling (This card is every creature type.)\nFlying\nWhen this creature enters, exile up to two target cards from graveyards. You gain 3 life.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Changeling",
+    "Flying"
+   ],
+   "collector_number": "2",
+   "set": "ecl",
+   "rulings": [
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten.",
+    "You don't have to choose any targets for Rooftop Percher's triggered ability. However, if you do and all of the targets are illegal as the ability tries to resolve, it won't resolve and none of its effects will happen. You won't gain life."
+   ]
+  },
+  {
+   "name": "Ajani, Outland Chaperone",
+   "oracle_id": "3ba809ce-3556-415c-9fcc-291cb10a43cd",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Planeswalker — Ajani",
+   "oracle_text": "+1: Create a 1/1 green and white Kithkin creature token.\n−2: Ajani deals 4 damage to target tapped creature.\n−8: Look at the top X cards of your library, where X is your life total. You may put any number of nonland permanent cards with mana value 3 or less from among them onto the battlefield. Then shuffle.",
+   "loyalty": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "4",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Kithkin",
+     "type_line": "Token Creature — Kithkin",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "An Aura being put onto the battlefield this way can't enchant anything else that is being put onto the battlefield at the same time.",
+    "If an Aura is put onto the battlefield without being cast, the Aura's controller-to-be chooses what it will enchant as it enters the battlefield. An Aura put onto the battlefield this way doesn't target anything (so it could be attached to an opponent's permanent with hexproof, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, it remains in its current zone.",
+    "If a card in a library has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Bark of Doran",
+   "oracle_id": "db3ba239-2239-4e9d-ad70-cff32ed24578",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +0/+1.\nAs long as equipped creature's toughness is greater than its power, it assigns combat damage equal to its toughness rather than its power.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "6",
+   "set": "ecl",
+   "rulings": [
+    "Bark of Doran's second ability doesn't actually change any creature's power. It changes only the amount of combat damage the creature assigns. All other rules and effects that check power or toughness use the real values, even if they cause damage \"equal to a creature's power\" to be dealt."
+   ]
+  },
+  {
+   "name": "Curious Colossus",
+   "oracle_id": "c8de2e1b-f2fa-4b6a-a3c5-9811c7f5f051",
+   "layout": "normal",
+   "mana_cost": "{5}{W}{W}",
+   "cmc": 7.0,
+   "type_line": "Creature — Giant Warrior",
+   "oracle_text": "When this creature enters, each creature target opponent controls loses all abilities, becomes a Coward in addition to its other types, and has base power and toughness 1/1.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "12",
+   "set": "ecl",
+   "rulings": [
+    "Curious Colossus's ability overwrites all previous effects that set an affected creature's base power and toughness to specific values. Any power- or toughness-setting effects that start to apply after the ability resolves will overwrite this effect.",
+    "The effects of Curious Colossus's ability last indefinitely. They don't expire during the cleanup step or when Curious Colossus leaves the battlefield.",
+    "The effects of Curious Colossus's ability apply only to creatures the target opponent controls as the ability resolves. Creatures they begin to control later won't be affected.",
+    "If one of the affected creatures gains an ability after Curious Colossus's ability resolves, it will keep that ability.",
+    "Effects that modify a creature's power and/or toughness, such as the effect of Appeal to Eirdu, will apply to the creature no matter when they started to take effect. The same is true for any counters that change its power and/or toughness and effects that switch its power and toughness."
+   ]
+  },
+  {
+   "name": "Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight",
+   "oracle_id": "36af3c2c-49d7-46ea-ab02-c254b332448e",
+   "layout": "transform",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elemental God // Legendary Creature — Elemental God",
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink",
+    "Transform"
+   ],
+   "collector_number": "13",
+   "set": "ecl",
+   "card_faces": [
+    {
+     "name": "Eirdu, Carrier of Dawn",
+     "mana_cost": "{3}{W}{W}",
+     "type_line": "Legendary Creature — Elemental God",
+     "oracle_text": "Flying, lifelink\nCreature spells you cast have convoke. (Your creatures can help cast those spells. Each creature you tap while casting a creature spell pays for {1} or one mana of that creature's color.)\nAt the beginning of your first main phase, you may pay {B}. If you do, transform Eirdu.",
+     "power": "5",
+     "toughness": "5"
+    },
+    {
+     "name": "Isilu, Carrier of Twilight",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Elemental God",
+     "oracle_text": "Flying, lifelink\nEach other nontoken creature you control has persist. (When it dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)\nAt the beginning of your first main phase, you may pay {W}. If you do, transform Isilu.",
+     "power": "5",
+     "toughness": "5"
+    }
+   ],
+   "rulings": [
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a creature with persist that has +1/+1 counters on it receives enough -1/-1 counters to cause it to be destroyed by lethal damage or put into its owner's graveyard for having 0 or less toughness, persist won't trigger and the card won't return to the battlefield. That's because persist checks the creature as it last existed on the battlefield, and it still had -1/-1 counters on it at that point.",
+    "In some rare cases, this permanent might transform while its triggered ability that allows you to pay mana to transform it is still on the stack. (For example, another effect might cause that ability to trigger an additional time.) In such a case, even if you pay mana as the triggered ability resolves, this permanent won't transform because it already transformed while the triggered ability was on the stack.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Once persist returns the creature, it's considered a new object with no relation to the object that it was. Auras that were attached to it won't return to the battlefield. Equipment that was attached to it will remain unattached. Any counters that were on it won't be put on the new creature.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Oko, Lorwyn Liege's color identity is green and blue, since its front face is blue, its rules text contains a green mana symbol, and its back face has a green color indicator as well as a blue mana symbol in its rules text.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "If a creature has +1/+1 counters and -1/-1 counters on it, state-based actions remove the same number of each so that it has only one kind of those counters on it. A creature's persist ability can bring it back again if its -1/-1 counters are removed this way.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "If a card with persist is removed from the graveyard after it dies but before the triggered ability resolves, it won't be returned to the battlefield.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "If you sacrifice Eirdu while casting a creature spell (to activate a mana ability, for example), the spell won't have convoke when you pay its costs unless it has convoke some other way.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking."
+   ]
+  },
+  {
+   "name": "Keep Out",
+   "oracle_id": "61cb927a-4cf8-49d6-ab4b-9e882bc08774",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Keep Out deals 4 damage to target tapped creature.\n• Destroy target enchantment.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "19",
+   "set": "ecl"
+  },
+  {
+   "name": "Kinscaer Sentry",
+   "oracle_id": "fdf0fba8-f335-419c-b96b-e99037727c43",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Kithkin Soldier",
+   "oracle_text": "First strike, lifelink\nWhenever this creature attacks, you may put a creature card with mana value X or less from your hand onto the battlefield tapped and attacking, where X is the number of attacking creatures you control.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "First strike"
+   ],
+   "collector_number": "22",
+   "set": "ecl",
+   "rulings": [
+    "The value of X is calculated only once, as Kinscaer Sentry's last ability resolves.",
+    "You choose the player, planeswalker, or battle the creature you put onto the battlefield is attacking. It doesn't have to attack the same player, planeswalker, or battle as Kinscaer Sentry.",
+    "If a card in your hand has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "Although the creatures put onto the battlefield with Kinscaer Sentry enter as attacking creatures, they were never declared as attacking creatures. Abilities that trigger whenever a creature attacks won't trigger when the creatures enter attacking."
+   ]
+  },
+  {
+   "name": "Kithkeeper",
+   "oracle_id": "5c5766f9-befd-4426-9527-d50af0699ca1",
+   "layout": "normal",
+   "mana_cost": "{6}{W}",
+   "cmc": 7.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Vivid — When this creature enters, create X 1/1 green and white Kithkin creature tokens, where X is the number of colors among permanents you control.\nTap three untapped creatures you control: This creature gets +3/+0 and gains flying until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vivid"
+   ],
+   "collector_number": "23",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Kithkin",
+     "type_line": "Token Creature — Kithkin",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color.",
+    "The value of X is calculated only once, as Kithkeeper's first ability resolves."
+   ]
+  },
+  {
+   "name": "Liminal Hold",
+   "oracle_id": "101407b4-e7e8-4aff-84a2-a97947358b88",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, exile up to one target nonland permanent an opponent controls until this enchantment leaves the battlefield. You gain 2 life.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "24",
+   "set": "ecl",
+   "rulings": [
+    "Auras attached to the exiled permanent will be put into their owners' graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist. When the card returns to the battlefield, it will be a new object with no connection to the card that was exiled.",
+    "If Liminal Hold leaves the battlefield before its ability resolves, the target nonland permanent won't be exiled. You'll still gain life if that permanent remains a legal target.",
+    "If an Aura is exiled this way, its owner chooses what it will enchant as it returns to the battlefield. An Aura put onto the battlefield this way doesn't target anything (so it could be attached to a permanent with shroud, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, it remains in exile for the rest of the game.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield."
+   ]
+  },
+  {
+   "name": "Meanders Guide",
+   "oracle_id": "8229954b-e1ef-4503-8443-2356e2a87663",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Merfolk Scout",
+   "oracle_text": "Whenever this creature attacks, you may tap another untapped Merfolk you control. When you do, return target creature card with mana value 3 or less from your graveyard to the battlefield.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "25",
+   "set": "ecl",
+   "rulings": [
+    "If a card in a graveyard has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "You don't choose a target for Meanders Guide's ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you tap another untapped Merfolk you control this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  }
+ ]
+}

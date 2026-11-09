@@ -1,0 +1,257 @@
+{
+ "batch": 67,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Luminollusk",
+   "oracle_id": "c8bf2dce-7bcd-45cb-bf15-f53e24333a01",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Deathtouch\nVivid — When this creature enters, you gain life equal to the number of colors among permanents you control.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vivid",
+    "Deathtouch"
+   ],
+   "collector_number": "179",
+   "set": "ecl",
+   "rulings": [
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color.",
+    "The colors are white, blue, black, red, and green. Colorless is not a color."
+   ]
+  },
+  {
+   "name": "Lys Alana Informant",
+   "oracle_id": "b5058b5c-0359-42ec-ba9e-ae1371bb9c22",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Scout",
+   "oracle_text": "When this creature enters or dies, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "181",
+   "set": "ecl"
+  },
+  {
+   "name": "Midnight Tilling",
+   "oracle_id": "79bc2c6d-b03d-4ceb-b468-293378ec73ae",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Mill four cards, then you may return a permanent card from among them to your hand. (To mill four cards, put the top four cards of your library into your graveyard.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "182",
+   "set": "ecl"
+  },
+  {
+   "name": "Mistmeadow Council",
+   "oracle_id": "9acfec0d-05a0-4b28-a883-e6863f1cb773",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Kithkin Advisor",
+   "oracle_text": "This spell costs {1} less to cast if you control a Kithkin.\nWhen this creature enters, draw a card.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "183",
+   "set": "ecl"
+  },
+  {
+   "name": "Moon-Vigil Adherents",
+   "oracle_id": "d0fa43f6-d8f6-4674-b538-6d546b7dcf40",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "Trample\nThis creature gets +1/+1 for each creature you control and each creature card in your graveyard.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "184",
+   "set": "ecl",
+   "rulings": [
+    "Because damage remains marked on creatures until the damage is removed as the turn ends, nonlethal damage dealt to Moon-Vigil Adherents may become lethal if the number of creatures you control or creature cards in your graveyard changes."
+   ]
+  },
+  {
+   "name": "Morcant's Eyes",
+   "oracle_id": "c55a27cc-8e25-4714-b1da-86e5c1c6661a",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Kindred Enchantment — Elf",
+   "oracle_text": "At the beginning of your upkeep, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{4}{G}{G}, Sacrifice this enchantment: Create X 2/2 black and green Elf creature tokens, where X is the number of Elf cards in your graveyard. Activate only as a sorcery.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "185",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Elf",
+     "type_line": "Token Creature — Elf",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The value of X is calculated only once, as Morcant's Eyes's last ability resolves. In most cases, Morcant's Eyes will be in your graveyard at that time, so it will count toward the value of X.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield."
+   ]
+  },
+  {
+   "name": "Pitiless Fists",
+   "oracle_id": "0d46a97a-b1d6-4bf3-b3ba-a5cdfd4c8bf5",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature you control\nWhen this Aura enters, enchanted creature fights up to one target creature an opponent controls. (Each deals damage equal to its power to the other.)\nEnchanted creature gets +2/+2.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight",
+    "Enchant"
+   ],
+   "collector_number": "187",
+   "set": "ecl"
+  },
+  {
+   "name": "Prismabasher",
+   "oracle_id": "f75be4f2-d1a7-40c7-a0e4-ba8b03556ac6",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Trample\nVivid — When this creature enters, up to X target creatures you control get +X/+X until end of turn, where X is the number of colors among permanents you control.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Vivid"
+   ],
+   "collector_number": "188",
+   "set": "ecl",
+   "rulings": [
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "The value of X is calculated when Prismabasher's last ability triggers for the purpose of defining the maximum number of target creatures. It is calculated again when the ability resolves to determine the amount of the power and toughness bonus.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color."
+   ]
+  },
+  {
+   "name": "Prismatic Undercurrents",
+   "oracle_id": "27a3aa64-1de7-4b0c-af23-52886e7d258a",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Vivid — When this enchantment enters, search your library for up to X basic land cards, where X is the number of colors among permanents you control. Reveal those cards, put them into your hand, then shuffle.\nYou may play an additional land on each of your turns.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vivid"
+   ],
+   "collector_number": "189",
+   "set": "ecl",
+   "rulings": [
+    "The value of X is calculated only once, as Prismatic Undercurrents's first ability resolves.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color.",
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "The effect of Prismatic Undercurrents's last ability is cumulative with similar effects. For example, if you control two Prismatic Undercurrents, you'll be able to play three lands during each of your turns."
+   ]
+  },
+  {
+   "name": "Pummeler for Hire",
+   "oracle_id": "ffa23c3a-76a8-414f-aa3b-fc09aabd78c5",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Giant Mercenary",
+   "oracle_text": "Reach, vigilance\nWard {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nWhen this creature enters, you gain X life, where X is the greatest power among Giants you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Ward"
+   ],
+   "collector_number": "190",
+   "set": "ecl",
+   "rulings": [
+    "The value of X is calculated only once, as Pummeler for Hire's last ability resolves."
+   ]
+  }
+ ]
+}

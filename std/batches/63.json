@@ -1,0 +1,226 @@
+{
+ "batch": 63,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Rimekin Recluse",
+   "oracle_id": "ad99e430-e13f-4819-a2ee-bf3332ef517d",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elemental Wizard",
+   "oracle_text": "When this creature enters, return up to one other target creature to its owner's hand.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "66",
+   "set": "ecl"
+  },
+  {
+   "name": "Shinestriker",
+   "oracle_id": "1b94ee87-a2f4-47f1-9fc7-4a167cad1b3b",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Flying\nVivid — When this creature enters, draw cards equal to the number of colors among permanents you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vivid"
+   ],
+   "collector_number": "68",
+   "set": "ecl",
+   "rulings": [
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color."
+   ]
+  },
+  {
+   "name": "Silvergill Peddler",
+   "oracle_id": "08688903-d9cc-4d57-ba91-14a8523551b9",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Merfolk Citizen",
+   "oracle_text": "Whenever this creature becomes tapped, draw a card, then discard a card.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "70",
+   "set": "ecl"
+  },
+  {
+   "name": "Spell Snare",
+   "oracle_id": "38877c68-b69b-4ee1-8e8f-5137a184a8f7",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter target spell with mana value 2.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "71",
+   "set": "ecl"
+  },
+  {
+   "name": "Stratosoarer",
+   "oracle_id": "36ab41b7-bcfb-4618-bbfb-70d608dba15a",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Flying\nWhen this creature enters, target creature gains flying until end of turn.\nBasic landcycling {1}{U} ({1}{U}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Landcycling",
+    "Basic landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "72",
+   "set": "ecl"
+  },
+  {
+   "name": "Summit Sentinel",
+   "oracle_id": "e7b88da3-7dd1-45f8-b555-98ad838b2917",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elemental Soldier",
+   "oracle_text": "When this creature dies, draw a card.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "73",
+   "set": "ecl"
+  },
+  {
+   "name": "Sunderflock",
+   "oracle_id": "c01b221f-3993-43ab-8cde-b42fb344e2a7",
+   "layout": "normal",
+   "mana_cost": "{7}{U}{U}",
+   "cmc": 9.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "This spell costs {X} less to cast, where X is the greatest mana value among Elementals you control.\nFlying\nWhen this creature enters, if you cast it, return all non-Elemental creatures to their owners' hands.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "74",
+   "set": "ecl",
+   "rulings": [
+    "If an Elemental on the battlefield has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "To determine Sunderflock's total cost, start with the mana cost (or an alternative cost if another card's effect allows you to pay one instead), add any cost increases, then apply any cost reductions. Sunderflock's mana value remains unchanged, no matter what the total cost to cast it was.",
+    "Once you announce you're casting a spell, no player may take actions until the spell has been paid for. Notably, opponents can't try to remove Elementals you control from the battlefield at that time.",
+    "Once you determine the cost to cast Sunderflock, you may activate mana abilities to pay that cost. If the greatest mana value among Elementals you control changes while activating mana abilities (probably because you sacrificed one or more Elementals), the cost to cast Sunderflock remains what you previously determined."
+   ]
+  },
+  {
+   "name": "Swat Away",
+   "oracle_id": "79090b00-d920-4134-a838-fb434cf3ee4d",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell costs {2} less to cast if a creature is attacking you.\nThe owner of target spell or creature puts it on their choice of the top or bottom of their library.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "75",
+   "set": "ecl"
+  },
+  {
+   "name": "Tanufel Rimespeaker",
+   "oracle_id": "bf8de96b-0a75-4459-a123-dcf95e1b89f2",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental Wizard",
+   "oracle_text": "Whenever you cast a spell with mana value 4 or greater, draw a card.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "77",
+   "set": "ecl",
+   "rulings": [
+    "If a spell has {X} in its mana cost, use the value chosen for that X to determine the mana value of that spell."
+   ]
+  },
+  {
+   "name": "Thirst for Identity",
+   "oracle_id": "045ece1e-23aa-4122-8726-86b2af4345ba",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Draw three cards. Then discard two cards unless you discard a creature card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "ecl"
+  }
+ ]
+}

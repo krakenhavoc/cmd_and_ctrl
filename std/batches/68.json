@@ -1,0 +1,263 @@
+{
+ "batch": 68,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Safewright Cavalry",
+   "oracle_id": "6e04a375-303e-43ba-bca1-4e959711a7f6",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elf Warrior",
+   "oracle_text": "This creature can't be blocked by more than one creature.\n{5}: Target Elf you control gets +2/+2 until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "191",
+   "set": "ecl",
+   "rulings": [
+    "If Safewright Cavalry gains menace and still has its first ability, it can't be blocked at all."
+   ]
+  },
+  {
+   "name": "Shimmerwilds Growth",
+   "oracle_id": "c63402b2-1f8c-4004-82d8-48ea26bfe3fc",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant land\nAs this Aura enters, choose a color.\nEnchanted land is the chosen color.\nWhenever enchanted land is tapped for mana, its controller adds an additional one mana of the chosen color.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "194",
+   "set": "ecl",
+   "rulings": [
+    "Shimmerwilds Growth's last ability is a mana ability. It doesn't use the stack and can't be responded to.",
+    "If Shimmerwilds Growth is somehow on the battlefield without a chosen color, its last ability won't add any mana."
+   ]
+  },
+  {
+   "name": "Spry and Mighty",
+   "oracle_id": "04cc9177-1ffc-4ac8-a64d-7995b4f33d23",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose exactly two creatures you control. You draw X cards and the chosen creatures get +X/+X and gain trample until end of turn, where X is the difference between the chosen creatures' powers.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "195",
+   "set": "ecl",
+   "rulings": [
+    "If you don't control two creatures as Spry and Mighty resolves, the spell won't do anything.",
+    "To find the difference between the power of the chosen creatures, subtract the smaller of those two numbers from the larger one. For example, the difference between the power of a 3/3 creature and a 5/3 creature is 2."
+   ]
+  },
+  {
+   "name": "Surly Farrier",
+   "oracle_id": "ef67c170-68aa-4ada-8cee-261a4dbb1b5d",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Kithkin Citizen",
+   "oracle_text": "{T}: Target creature you control gets +1/+1 and gains vigilance until end of turn. Activate only as a sorcery.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "196",
+   "set": "ecl"
+  },
+  {
+   "name": "Tend the Sprigs",
+   "oracle_id": "91363d71-eef0-48e8-9a68-8f363ff2790e",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control seven or more lands and/or Treefolk, create a 3/4 green Treefolk creature token with reach. (It can block creatures with flying.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "197",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Treefolk",
+     "type_line": "Token Creature — Treefolk",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Thoughtweft Charge",
+   "oracle_id": "a8cdcaa0-8e25-4c17-b5ce-16f72b535123",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +3/+3 until end of turn. If a creature entered the battlefield under your control this turn, draw a card.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "198",
+   "set": "ecl",
+   "rulings": [
+    "If the target creature is an illegal target as Thoughtweft Charge tries to resolve, it won't resolve and none of its effects will happen. You won't draw a card."
+   ]
+  },
+  {
+   "name": "Trystan, Callous Cultivator // Trystan, Penitent Culler",
+   "oracle_id": "961d1128-a022-480c-918e-16ba0abf844b",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elf Druid // Legendary Creature — Elf Warlock",
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Transform",
+    "Mill",
+    "Deathtouch"
+   ],
+   "collector_number": "199",
+   "set": "ecl",
+   "card_faces": [
+    {
+     "name": "Trystan, Callous Cultivator",
+     "mana_cost": "{2}{G}",
+     "type_line": "Legendary Creature — Elf Druid",
+     "oracle_text": "Deathtouch\nWhenever this creature enters or transforms into Trystan, Callous Cultivator, mill three cards. Then if there is an Elf card in your graveyard, you gain 2 life.\nAt the beginning of your first main phase, you may pay {B}. If you do, transform Trystan.",
+     "power": "3",
+     "toughness": "4"
+    },
+    {
+     "name": "Trystan, Penitent Culler",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Elf Warlock",
+     "oracle_text": "Deathtouch\nWhenever this creature transforms into Trystan, Penitent Culler, mill three cards, then you may exile an Elf card from your graveyard. If you do, each opponent loses 2 life.\nAt the beginning of your first main phase, you may pay {G}. If you do, transform Trystan.",
+     "power": "3",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Oko, Lorwyn Liege's color identity is green and blue, since its front face is blue, its rules text contains a green mana symbol, and its back face has a green color indicator as well as a blue mana symbol in its rules text.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "In some rare cases, this permanent might transform while its triggered ability that allows you to pay mana to transform it is still on the stack. (For example, another effect might cause that ability to trigger an additional time.) In such a case, even if you pay mana as the triggered ability resolves, this permanent won't transform because it already transformed while the triggered ability was on the stack.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up."
+   ]
+  },
+  {
+   "name": "Unforgiving Aim",
+   "oracle_id": "be7e220e-272e-45ca-8265-8d78da2cd2a7",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Destroy target creature with flying.\n• Destroy target enchantment.\n• Create a 2/2 black and green Elf creature token.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "200",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Elf",
+     "type_line": "Token Creature — Elf",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Vinebred Brawler",
+   "oracle_id": "5fffd840-1e6e-4f5d-b847-802f9a25eb5c",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Berserker",
+   "oracle_text": "This creature must be blocked if able.\nWhenever this creature attacks, another target Elf you control gets +2/+1 until end of turn.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "201",
+   "set": "ecl"
+  },
+  {
+   "name": "Wildvine Pummeler",
+   "oracle_id": "6c34674f-856b-4062-87d5-6ed73d9a9855",
+   "layout": "normal",
+   "mana_cost": "{6}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Giant Berserker",
+   "oracle_text": "Vivid — This spell costs {1} less to cast for each color among permanents you control.\nReach, trample",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Trample",
+    "Vivid"
+   ],
+   "collector_number": "203",
+   "set": "ecl",
+   "rulings": [
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color."
+   ]
+  }
+ ]
+}

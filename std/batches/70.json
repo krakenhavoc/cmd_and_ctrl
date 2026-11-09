@@ -1,0 +1,301 @@
+{
+ "batch": 70,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Morcant's Loyalist",
+   "oracle_id": "b2c30683-cc7f-4341-add1-b08cb9b93eeb",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Warrior",
+   "oracle_text": "Other Elves you control get +1/+1.\nWhen this creature dies, return another target Elf card from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "236",
+   "set": "ecl"
+  },
+  {
+   "name": "Noggle Robber",
+   "oracle_id": "a2f33166-6cfc-4dc5-8edc-088bf40f06b5",
+   "layout": "normal",
+   "mana_cost": "{1}{R/G}{R/G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Noggle Rogue",
+   "oracle_text": "When this creature enters or dies, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "237",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Prideful Feastling",
+   "oracle_id": "faf2f368-a7e7-4427-bc03-929f294b1e03",
+   "layout": "normal",
+   "mana_cost": "{2}{W/B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "Changeling (This card is every creature type.)\nLifelink",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Changeling"
+   ],
+   "collector_number": "238",
+   "set": "ecl",
+   "rulings": [
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten.",
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield."
+   ]
+  },
+  {
+   "name": "Sanar, Innovative First-Year",
+   "oracle_id": "2676ba6d-e7a7-48cf-9c86-6e2a11f03096",
+   "layout": "normal",
+   "mana_cost": "{2}{U/R}{U/R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Goblin Sorcerer",
+   "oracle_text": "Vivid — At the beginning of your first main phase, reveal cards from the top of your library until you reveal X nonland cards, where X is the number of colors among permanents you control. For each of those colors, you may exile a card of that color from among the revealed cards. Then shuffle. You may cast the exiled cards this turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Vivid"
+   ],
+   "collector_number": "241",
+   "set": "ecl",
+   "rulings": [
+    "The value of X is calculated only once, as Sanar's ability resolves.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color.",
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "You pay all costs and follow all timing rules for cards cast this way. For example, if an exiled card is a sorcery card, you may cast it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Shadow Urchin",
+   "oracle_id": "86bd332f-ba61-49a4-ad31-de4d7e3638c6",
+   "layout": "normal",
+   "mana_cost": "{2}{B/R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Ouphe",
+   "oracle_text": "Whenever this creature attacks, blight 1. (Put a -1/-1 counter on a creature you control.)\nWhenever a creature you control with one or more counters on it dies, exile that many cards from the top of your library. Until your next end step, you may play those cards.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Blight"
+   ],
+   "collector_number": "242",
+   "set": "ecl",
+   "rulings": [
+    "If you can't place -1/-1 counters on any creatures you control (probably because you control no creatures), you can't choose to blight.",
+    "All of the -1/-1 counters must be put on a single creature. You can't choose to split them up between multiple creatures.",
+    "If a creature has +1/+1 counters and -1/-1 counters on it, state-based actions remove the same number of each so that it has only one kind of those counters on it. For example, if a creature has three +1/+1 counters on it and two -1/-1 counters are put on it, state-based actions will remove two of each of those kinds of counters, leaving the creature with just one +1/+1 counter.",
+    "If a creature that has +1/+1 counters on it receives enough -1/-1 counters to cause it to be destroyed by lethal damage or put into its owner's graveyard for having 0 or less toughness, effects that refer to the counters on that creature when it died will see all of those +1/+1 and -1/-1 counters.",
+    "The creature you choose to put -1/-1 counters on doesn't have to have enough toughness to survive the process. For example, if you blight 2, you can choose to put the counters on a 1/1 creature you control.",
+    "You pay all costs and follow all timing rules for cards played this way. For example, if an exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "Once you've announced that you're casting a spell or activating an ability, players can't take actions until you've finished doing so. Notably, opponents can't try to destroy or otherwise remove your creatures to stop you from blighting as part of paying the cost of that spell or ability."
+   ]
+  },
+  {
+   "name": "Stoic Grove-Guide",
+   "oracle_id": "96c4b51c-8a10-428c-a948-e1ba9c652bfd",
+   "layout": "normal",
+   "mana_cost": "{4}{B/G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "{1}{B/G}, Exile this card from your graveyard: Create a 2/2 black and green Elf creature token. Activate only as a sorcery.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "243",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Elf",
+     "type_line": "Token Creature — Elf",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Sygg's Command",
+   "oracle_id": "7fe5baab-b182-4cd9-bea5-912ce9b1464a",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Kindred Sorcery — Merfolk",
+   "oracle_text": "Choose two —\n• Create a token that's a copy of target Merfolk you control.\n• Creatures target player controls gain lifelink until end of turn.\n• Target player draws a card.\n• Tap target creature. Put a stun counter on it.",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "244",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "Any enters abilities of the copied permanent will trigger when the token enters. Any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities of the copied permanent will also work.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone.",
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "One or more stun counters on a permanent create a single replacement effect that stops the permanent from untapping. That effect is \"If a permanent with a stun counter on it would become untapped, instead remove a stun counter from it.\"",
+    "The token created by the first mode of Sygg's Command copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If all of Sygg's Command's targets are illegal as it tries to resolve, it will do nothing. If at least one target is still legal, it will resolve and do as much as it can."
+   ]
+  },
+  {
+   "name": "Tam, Mindful First-Year",
+   "oracle_id": "096a878e-cff0-430a-90b5-031ecb9bfe1b",
+   "layout": "normal",
+   "mana_cost": "{1}{G/U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Gorgon Wizard",
+   "oracle_text": "Each other creature you control has hexproof from each of its colors.\n{T}: Target creature you control becomes all colors until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "245",
+   "set": "ecl",
+   "rulings": [
+    "\"Hexproof from each color\" is shorthand for hexproof from white, from blue, from black, from red, and from green. Colorless is not a color."
+   ]
+  },
+  {
+   "name": "Thoughtweft Lieutenant",
+   "oracle_id": "50dd9e17-6dae-4ff6-8a38-50088c71283f",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Kithkin Soldier",
+   "oracle_text": "Whenever this creature or another Kithkin you control enters, target creature you control gets +1/+1 and gains trample until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "246",
+   "set": "ecl"
+  },
+  {
+   "name": "Twinflame Travelers",
+   "oracle_id": "341cf69a-246c-4eb5-910c-18c13a4c3dce",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental Sorcerer",
+   "oracle_text": "Flying\nIf a triggered ability of another Elemental you control triggers, it triggers an additional time.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "248",
+   "set": "ecl",
+   "rulings": [
+    "In some cases involving linked abilities, an ability requires information about \"the exiled card.\" When this happens, the ability gets multiple answers. If these answers are being used to determine the value of a variable, the sum is used. For example, if Elite Arcanist's enters-the-battlefield ability triggers twice, two cards are exiled. The value of X in the activation cost of Elite Arcanist's other ability is the sum of the two cards' mana values. As the ability resolves, you create copies of both cards and can cast none, one, or both of the copies in any order.",
+    "If a triggered ability is linked to a second ability, additional instances of that triggered ability are also linked to that second ability. If the second ability refers to \"the exiled card,\" it refers to all cards exiled by instances of the triggered ability.",
+    "Twinflame Travelers's ability doesn't copy the triggered ability; it just causes the ability to trigger an additional time. Any choices made as you put the ability onto the stack, such as modes and targets, are made separately for each instance of the ability. Any choices made on resolution, such as whether to put counters on a permanent, are also made individually.",
+    "Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\" Some keyword abilities, such as mobilize (from the Tarkir: Dragonstorm release), are triggered abilities and will have \"when,\" \"whenever,\" or \"at\" in their reminder text. Replacement effects are unaffected by Twinflame Travelers's ability. For example, a 1/1 Elemental creature that enters under your control \"with a +1/+1 counter on it\" won't receive an additional +1/+1 counter.",
+    "Abilities that apply \"as [this creature] enters\" or \"as [this creature] is turned face up\" are also unaffected by Twinflame Travelers's ability."
+   ]
+  }
+ ]
+}

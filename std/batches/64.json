@@ -1,0 +1,268 @@
+{
+ "batch": 64,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Unexpected Assistance",
+   "oracle_id": "c452e748-8a2a-4f68-8869-e294925a8b0b",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDraw three cards, then discard a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Convoke"
+   ],
+   "collector_number": "80",
+   "set": "ecl",
+   "rulings": [
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn."
+   ]
+  },
+  {
+   "name": "Unwelcome Sprite",
+   "oracle_id": "d0a38e8c-c42c-4c99-8a44-d390ff2511ff",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie Rogue",
+   "oracle_text": "Flying\nWhenever you cast a spell during an opponent's turn, surveil 2. (Look at the top two cards of your library. You may put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil"
+   ],
+   "collector_number": "81",
+   "set": "ecl"
+  },
+  {
+   "name": "Wanderwine Distracter",
+   "oracle_id": "6c0f6673-bc24-4c84-b4e7-736283ffd60e",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Wizard",
+   "oracle_text": "Whenever this creature becomes tapped, target creature an opponent controls gets -3/-0 until end of turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "82",
+   "set": "ecl"
+  },
+  {
+   "name": "Wanderwine Farewell",
+   "oracle_id": "7e1da4a1-5922-4a2e-8bbc-25fbcbf20935",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Kindred Sorcery — Merfolk",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nReturn one or two target nonland permanents to their owners' hands. Then if you control a Merfolk, create a 1/1 white and blue Merfolk creature token for each permanent returned to its owner's hand this way.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Convoke"
+   ],
+   "collector_number": "83",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Merfolk",
+     "type_line": "Token Creature — Merfolk",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking."
+   ]
+  },
+  {
+   "name": "Bloodline Bidding",
+   "oracle_id": "bdb9e933-f679-4930-b669-0d123db09d16",
+   "layout": "normal",
+   "mana_cost": "{6}{B}{B}",
+   "cmc": 8.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nChoose a creature type. Return all creature cards of the chosen type from your graveyard to the battlefield.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Convoke"
+   ],
+   "collector_number": "91",
+   "set": "ecl",
+   "rulings": [
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "You choose the creature type as Bloodline Bidding resolves. Once Bloodline Bidding starts to resolve, players can't respond to the choice or take any actions until Bloodline Bidding finishes resolving.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn."
+   ]
+  },
+  {
+   "name": "Dawnhand Dissident",
+   "oracle_id": "2cabf7a4-17af-45c7-b314-a84f5dc0d070",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Creature — Elf Warlock",
+   "oracle_text": "{T}, Blight 1: Surveil 1.\n{T}, Blight 2: Exile target card from a graveyard.\nDuring your turn, you may cast creature spells from among cards you own exiled with this creature by removing three counters from among creatures you control in addition to paying their other costs.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Blight",
+    "Surveil"
+   ],
+   "collector_number": "98",
+   "set": "ecl",
+   "rulings": [
+    "Dawnhand Dissident must be under your control in order for you to start casting a creature spell using its last ability, but it doesn't need to stay under your control throughout that process or be under your control as the spell resolves. If, for example, you sacrifice Dawnhand Dissident to pay an additional cost of the spell or it's destroyed in response, the spell will still resolve normally.",
+    "All of the -1/-1 counters must be put on a single creature. You can't choose to split them up between multiple creatures.",
+    "Once you've announced that you're casting a spell or activating an ability, players can't take actions until you've finished doing so. Notably, opponents can't try to destroy or otherwise remove your creatures to stop you from blighting as part of paying the cost of that spell or ability.",
+    "If a creature that has +1/+1 counters on it receives enough -1/-1 counters to cause it to be destroyed by lethal damage or put into its owner's graveyard for having 0 or less toughness, effects that refer to the counters on that creature when it died will see all of those +1/+1 and -1/-1 counters.",
+    "If you can't place -1/-1 counters on any creatures you control (probably because you control no creatures), you can't choose to blight.",
+    "You must still pay all costs and follow any timing restrictions and permissions for creature spells you cast from exile this way. Normally, you'll be able to cast them only during your main phase while the stack is empty.",
+    "If a creature has +1/+1 counters and -1/-1 counters on it, state-based actions remove the same number of each so that it has only one kind of those counters on it. For example, if a creature has three +1/+1 counters on it and two -1/-1 counters are put on it, state-based actions will remove two of each of those kinds of counters, leaving the creature with just one +1/+1 counter.",
+    "The creature you choose to put -1/-1 counters on doesn't have to have enough toughness to survive the process. For example, if you blight 2, you can choose to put the counters on a 1/1 creature you control."
+   ]
+  },
+  {
+   "name": "Dose of Dawnglow",
+   "oracle_id": "f852bc33-e2f8-43be-9e6e-7badd1f894ef",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Return target creature card from your graveyard to the battlefield. Then if it isn't your main phase, blight 2. (Put two -1/-1 counters on a creature you control.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Blight"
+   ],
+   "collector_number": "100",
+   "set": "ecl",
+   "rulings": [
+    "The creature you choose to put -1/-1 counters on doesn't have to have enough toughness to survive the process. For example, if you blight 2, you can choose to put the counters on a 1/1 creature you control.",
+    "If you can't place -1/-1 counters on any creatures you control (probably because you control no creatures), you can't choose to blight.",
+    "If a creature that has +1/+1 counters on it receives enough -1/-1 counters to cause it to be destroyed by lethal damage or put into its owner's graveyard for having 0 or less toughness, effects that refer to the counters on that creature when it died will see all of those +1/+1 and -1/-1 counters.",
+    "Once you've announced that you're casting a spell or activating an ability, players can't take actions until you've finished doing so. Notably, opponents can't try to destroy or otherwise remove your creatures to stop you from blighting as part of paying the cost of that spell or ability.",
+    "All of the -1/-1 counters must be put on a single creature. You can't choose to split them up between multiple creatures.",
+    "If a creature has +1/+1 counters and -1/-1 counters on it, state-based actions remove the same number of each so that it has only one kind of those counters on it. For example, if a creature has three +1/+1 counters on it and two -1/-1 counters are put on it, state-based actions will remove two of each of those kinds of counters, leaving the creature with just one +1/+1 counter."
+   ]
+  },
+  {
+   "name": "Heirloom Auntie",
+   "oracle_id": "cc9523da-f48e-49ab-9989-a4031dafb426",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Goblin Warlock",
+   "oracle_text": "This creature enters with two -1/-1 counters on it.\nWhenever another creature you control dies, surveil 1, then remove a -1/-1 counter from this creature. (To surveil 1, look at the top card of your library. You may put it into your graveyard.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "107",
+   "set": "ecl",
+   "rulings": [
+    "If Heirloom Auntie dies at the same time as one or more other creatures you control, its last ability will trigger for each of those other creatures."
+   ]
+  },
+  {
+   "name": "Moonglove Extractor",
+   "oracle_id": "980affa7-6308-4acd-af64-f804e574a89b",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Warlock",
+   "oracle_text": "Whenever this creature attacks, you draw a card and lose 1 life.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "109",
+   "set": "ecl"
+  },
+  {
+   "name": "Moonshadow",
+   "oracle_id": "a3635b3f-839c-4fe5-83a5-7c70e8630184",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Menace\nThis creature enters with six -1/-1 counters on it.\nWhenever one or more permanent cards are put into your graveyard from anywhere while this creature has a -1/-1 counter on it, remove a -1/-1 counter from this creature.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "110",
+   "set": "ecl"
+  }
+ ]
+}

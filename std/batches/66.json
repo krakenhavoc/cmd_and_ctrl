@@ -1,0 +1,264 @@
+{
+ "batch": 66,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Impolite Entrance",
+   "oracle_id": "b77764fe-bc79-410a-995a-ac392f5b46b8",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target creature gains trample and haste until end of turn.\nDraw a card.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "146",
+   "set": "ecl",
+   "rulings": [
+    "If the target creature is an illegal target as Impolite Entrance tries to resolve, it won't resolve and none of its effects will happen. You won't draw a card."
+   ]
+  },
+  {
+   "name": "Kulrath Zealot",
+   "oracle_id": "d18ca75c-3572-4851-9580-27bafe10edd6",
+   "layout": "normal",
+   "mana_cost": "{5}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental Warrior",
+   "oracle_text": "When this creature enters, exile the top card of your library. Until the end of your next turn, you may play that card.\nBasic landcycling {1}{R} ({1}{R}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Landcycling",
+    "Basic landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "148",
+   "set": "ecl",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Meek Attack",
+   "oracle_id": "b9fff42d-31cf-4edf-8353-4a3b996bb77b",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "{1}{R}: You may put a creature card with total power and toughness 5 or less from your hand onto the battlefield. That creature gains haste. At the beginning of the next end step, sacrifice that creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "151",
+   "set": "ecl",
+   "rulings": [
+    "You sacrifice the creature only if you still control it. If that creature has left the battlefield, even if it came back, you don't sacrifice it."
+   ]
+  },
+  {
+   "name": "Reckless Ransacking",
+   "oracle_id": "ebcd198e-7fbd-46e0-a6d9-ff499e541978",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +3/+2 until end of turn. Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "152",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the target creature is an illegal target as Reckless Ransacking tries to resolve, it won't resolve and none of its effects will happen. You won't create a Treasure token."
+   ]
+  },
+  {
+   "name": "Sizzling Changeling",
+   "oracle_id": "60ad7aaa-8ce6-4449-8e8d-4ccf925010db",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "Changeling (This card is every creature type.)\nWhen this creature dies, exile the top card of your library. Until the end of your next turn, you may play that card.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Changeling"
+   ],
+   "collector_number": "155",
+   "set": "ecl",
+   "rulings": [
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten.",
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter."
+   ]
+  },
+  {
+   "name": "Squawkroaster",
+   "oracle_id": "6b79404b-2fae-41fb-994c-d4cd895e8f09",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Double strike\nVivid — Squawkroaster's power is equal to the number of colors among permanents you control.",
+   "power": "*",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Double strike",
+    "Vivid"
+   ],
+   "collector_number": "160",
+   "set": "ecl",
+   "rulings": [
+    "The ability that defines Squawkroaster's power applies in all zones, not just the battlefield.",
+    "The colors are white, blue, black, red, and green. Colorless is not a color.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color."
+   ]
+  },
+  {
+   "name": "Tweeze",
+   "oracle_id": "9a294cbd-df18-4ee0-acaa-e31390a7f508",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Tweeze deals 3 damage to any target. You may discard a card. If you do, draw a card.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "162",
+   "set": "ecl",
+   "rulings": [
+    "If the target is illegal as Tweeze tries to resolve, it won't resolve and none of its effects will happen. You won't have the opportunity to discard a card to draw a card."
+   ]
+  },
+  {
+   "name": "Aurora Awakener",
+   "oracle_id": "cf9d13e2-bdcc-4c66-95ad-654ef795dbd3",
+   "layout": "normal",
+   "mana_cost": "{6}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Giant Druid",
+   "oracle_text": "Trample\nVivid — When this creature enters, reveal cards from the top of your library until you reveal X permanent cards, where X is the number of colors among permanents you control. Put any number of those permanent cards onto the battlefield, then put the rest of the revealed cards on the bottom of your library in a random order.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Vivid"
+   ],
+   "collector_number": "165",
+   "set": "ecl",
+   "rulings": [
+    "The value of X is calculated only once, as Aurora Awakener's triggered ability resolves.",
+    "An Aura being put onto the battlefield this way can't enchant anything else that is being put onto the battlefield at the same time.",
+    "If an Aura is put onto the battlefield without being cast, the Aura's controller-to-be chooses what it will enchant as it enters the battlefield. An Aura put onto the battlefield this way doesn't target anything (so it could be attached to an opponent's permanent with hexproof, for example), but the Aura's enchant ability restricts what it can be attached to. If the Aura can't legally be attached to anything, it remains in its current zone.",
+    "Lands are normally colorless permanents, even if they tap for mana of a certain color.",
+    "The colors are white, blue, black, red, and green. Colorless is not a color."
+   ]
+  },
+  {
+   "name": "Celestial Reunion",
+   "oracle_id": "ba0a815c-1dfe-47c1-890f-496c670124f3",
+   "layout": "normal",
+   "mana_cost": "{X}{G}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, you may choose a creature type and behold two creatures of that type.\nSearch your library for a creature card with mana value X or less, reveal it, put it into your hand, then shuffle. If this spell's additional cost was paid and the revealed card is the chosen type, put that card onto the battlefield instead of putting it into your hand.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Behold"
+   ],
+   "collector_number": "170",
+   "set": "ecl",
+   "rulings": [
+    "If a card in a library has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "To behold two creatures of a specified creature type, you can reveal two creature cards of that type from your hand, choose two creatures you control of that type on the battlefield, or reveal one card and choose one creature on the battlefield.",
+    "If an effect refers to a \"[subtype] card,\" it refers only to a card that has that subtype. For example, Glen Elendra's Answer creates a Faerie token and features a Faerie in its art, but it isn't a Faerie card.",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that's still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand.",
+    "Notably, Celestial Reunion's behold instruction is limited to \"creatures.\" It doesn't allow you to behold kindred cards or kindred permanents, which are permitted for most other behold instructions."
+   ]
+  },
+  {
+   "name": "Great Forest Druid",
+   "oracle_id": "5cb6ebf7-6a75-4464-9e39-e171fcb52de3",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Treefolk Druid",
+   "oracle_text": "{T}: Add one mana of any color.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "178",
+   "set": "ecl"
+  }
+ ]
+}

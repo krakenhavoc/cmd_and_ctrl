@@ -1,0 +1,250 @@
+{
+ "batch": 71,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Voracious Tome-Skimmer",
+   "oracle_id": "25b0876e-c995-486e-8536-6e68b76b9c86",
+   "layout": "normal",
+   "mana_cost": "{U/B}{U/B}{U/B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Faerie Rogue",
+   "oracle_text": "Flying\nWhenever you cast a spell during an opponent's turn, you may pay 1 life. If you do, draw a card.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "250",
+   "set": "ecl"
+  },
+  {
+   "name": "Wary Farmer",
+   "oracle_id": "63eed1f5-442f-433d-989c-397b88543162",
+   "layout": "normal",
+   "mana_cost": "{1}{G/W}{G/W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Kithkin Citizen",
+   "oracle_text": "At the beginning of your end step, if another creature entered the battlefield under your control this turn, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "251",
+   "set": "ecl",
+   "rulings": [
+    "Wary Farmer's ability will check as your end step starts to see if another creature entered the battlefield under your control this turn. If none did, the ability won't trigger at all. A creature entering the battlefield under your control during your end step won't cause the ability to trigger."
+   ]
+  },
+  {
+   "name": "Dawn-Blessed Pennant",
+   "oracle_id": "311eef28-21e9-44fa-96df-d281f0a9ba34",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact",
+   "oracle_text": "As this artifact enters, choose Elemental, Elf, Faerie, Giant, Goblin, Kithkin, Merfolk, or Treefolk.\nWhenever a permanent you control of the chosen type enters, you gain 1 life.\n{2}, {T}, Sacrifice this artifact: Return target card of the chosen type from your graveyard to your hand.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "254",
+   "set": "ecl"
+  },
+  {
+   "name": "Firdoch Core",
+   "oracle_id": "126c75c0-414b-4e55-8747-2b5566ce716f",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Kindred Artifact — Shapeshifter",
+   "oracle_text": "Changeling (This card is every creature type.)\n{T}: Add one mana of any color.\n{4}: This artifact becomes a 4/4 artifact creature until end of turn.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Changeling"
+   ],
+   "collector_number": "255",
+   "set": "ecl",
+   "rulings": [
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter.",
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "Effects that modify a creature's power and/or toughness, such as the effect of Appeal to Eirdu, will apply to the creature no matter when they started to take effect. The same is true for any counters that change its power and/or toughness and effects that switch its power and toughness.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "Firdoch Core's last ability overwrites all previous effects that set its base power and toughness to specific values. Any power- or toughness-setting effects that start to apply after the ability resolves will overwrite this effect.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten."
+   ]
+  },
+  {
+   "name": "Foraging Wickermaw",
+   "oracle_id": "11ceb2db-021e-422d-976e-7bfe3b67a8aa",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Scarecrow",
+   "oracle_text": "When this creature enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{1}: Add one mana of any color. This creature becomes that color until end of turn. Activate only once each turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "256",
+   "set": "ecl"
+  },
+  {
+   "name": "Gathering Stone",
+   "oracle_id": "9f6d6e90-7462-46e5-bf2f-725b4badc394",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact",
+   "oracle_text": "As this artifact enters, choose a creature type.\nSpells you cast of the chosen type cost {1} less to cast.\nWhen this artifact enters and at the beginning of your upkeep, look at the top card of your library. If it's a card of the chosen type, you may reveal it and put it into your hand. If you don't put the card into your hand, you may put it into your graveyard.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "257",
+   "set": "ecl",
+   "rulings": [
+    "You don't have to reveal the card you look at with Gathering Stone's third ability even if it's a card of the chosen type. If you choose not to reveal it this way, you can still put it into your graveyard.",
+    "Gathering Stone's second ability applies only to generic mana in the total cost of spells you cast of the chosen type.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying (such as a flashback cost), add any cost increases (such as kicker costs), then apply any cost reductions (such as that of this ability). The mana value of the spell is determined by only its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "Puca's Eye",
+   "oracle_id": "499b4cf9-2aaa-45a0-8362-77b727b7f7cc",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "When this artifact enters, draw a card, then choose a color. This artifact becomes the chosen color.\n{3}, {T}: Draw a card. Activate only if there are five colors among permanents you control.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "259",
+   "set": "ecl"
+  },
+  {
+   "name": "Stalactite Dagger",
+   "oracle_id": "064c3269-c012-4fc7-84c3-5f147a82a03c",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, create a 1/1 colorless Shapeshifter creature token with changeling. (It's every creature type.)\nEquipped creature gets +1/+1 and is all creature types.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "261",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Shapeshifter",
+     "type_line": "Token Creature — Shapeshifter",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten.",
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter."
+   ]
+  },
+  {
+   "name": "Eclipsed Realms",
+   "oracle_id": "5715ed43-395c-4877-99a7-8e28e7bf9dce",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "As this land enters, choose Elemental, Elf, Faerie, Giant, Goblin, Kithkin, Merfolk, or Treefolk.\n{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a spell of the chosen type or activate an ability of a source of the chosen type.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "263",
+   "set": "ecl",
+   "rulings": [
+    "Sources of the chosen creature type include any objects with the chosen subtype. For example, if you chose Kithkin, you could spend the mana to activate the ability of a Kithkin permanent you control or a Kithkin card in your hand or graveyard."
+   ]
+  },
+  {
+   "name": "Brigid, Clachan's Heart // Brigid, Doun's Mind",
+   "oracle_id": "60fc89a1-cc6f-4a32-84c3-09abf7a4a1df",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Kithkin Warrior // Legendary Creature — Kithkin Soldier",
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "285",
+   "set": "ecl",
+   "card_faces": [
+    {
+     "name": "Brigid, Clachan's Heart",
+     "mana_cost": "{2}{W}",
+     "type_line": "Legendary Creature — Kithkin Warrior",
+     "oracle_text": "Whenever this creature enters or transforms into Brigid, Clachan's Heart, create a 1/1 green and white Kithkin creature token.\nAt the beginning of your first main phase, you may pay {G}. If you do, transform Brigid.",
+     "power": "3",
+     "toughness": "2"
+    },
+    {
+     "name": "Brigid, Doun's Mind",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Kithkin Soldier",
+     "oracle_text": "{T}: Add X {G} or X {W}, where X is the number of other creatures you control.\nAt the beginning of your first main phase, you may pay {W}. If you do, transform Brigid.",
+     "power": "3",
+     "toughness": "2"
+    }
+   ],
+   "related": [
+    {
+     "name": "Kithkin",
+     "type_line": "Token Creature — Kithkin",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Oko, Lorwyn Liege's color identity is green and blue, since its front face is blue, its rules text contains a green mana symbol, and its back face has a green color indicator as well as a blue mana symbol in its rules text.",
+    "The first ability of Brigid, Doun's Mind is a mana ability. It doesn't use the stack and can't be responded to.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In some rare cases, this permanent might transform while its triggered ability that allows you to pay mana to transform it is still on the stack. (For example, another effect might cause that ability to trigger an additional time.) In such a case, even if you pay mana as the triggered ability resolves, this permanent won't transform because it already transformed while the triggered ability was on the stack.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so."
+   ]
+  }
+ ]
+}

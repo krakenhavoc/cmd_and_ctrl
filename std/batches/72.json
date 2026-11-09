@@ -1,0 +1,354 @@
+{
+ "batch": 72,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Sygg, Wanderwine Wisdom // Sygg, Wanderbrine Shield",
+   "oracle_id": "9cc91ac5-6f2b-4fc0-b810-cdc92eebe6de",
+   "layout": "transform",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Merfolk Wizard // Legendary Creature — Merfolk Rogue",
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "288",
+   "set": "ecl",
+   "card_faces": [
+    {
+     "name": "Sygg, Wanderwine Wisdom",
+     "mana_cost": "{1}{U}",
+     "type_line": "Legendary Creature — Merfolk Wizard",
+     "oracle_text": "Sygg can't be blocked.\nWhenever this creature enters or transforms into Sygg, Wanderwine Wisdom, target creature gains \"Whenever this creature deals combat damage to a player or planeswalker, draw a card\" until end of turn.\nAt the beginning of your first main phase, you may pay {W}. If you do, transform Sygg.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "Sygg, Wanderbrine Shield",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Merfolk Rogue",
+     "oracle_text": "Sygg can't be blocked.\nWhenever this creature transforms into Sygg, Wanderbrine Shield, target creature you control gains protection from each color until your next turn.\nAt the beginning of your first main phase, you may pay {U}. If you do, transform Sygg.",
+     "power": "2",
+     "toughness": "2"
+    }
+   ],
+   "rulings": [
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In some rare cases, this permanent might transform while its triggered ability that allows you to pay mana to transform it is still on the stack. (For example, another effect might cause that ability to trigger an additional time.) In such a case, even if you pay mana as the triggered ability resolves, this permanent won't transform because it already transformed while the triggered ability was on the stack.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "\"Protection from each color\" is shorthand for protection from white, from blue, from black, from red, and from green. Colorless is not a color.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Oko, Lorwyn Liege's color identity is green and blue, since its front face is blue, its rules text contains a green mana symbol, and its back face has a green color indicator as well as a blue mana symbol in its rules text.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up."
+   ]
+  },
+  {
+   "name": "Grub, Storied Matriarch // Grub, Notorious Auntie",
+   "oracle_id": "180286e4-67fa-44d5-9e90-4a4e99c016a7",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Goblin Warlock // Legendary Creature — Goblin Warrior",
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Blight",
+    "Transform",
+    "Menace"
+   ],
+   "collector_number": "289",
+   "set": "ecl",
+   "card_faces": [
+    {
+     "name": "Grub, Storied Matriarch",
+     "mana_cost": "{2}{B}",
+     "type_line": "Legendary Creature — Goblin Warlock",
+     "oracle_text": "Menace\nWhenever this creature enters or transforms into Grub, Storied Matriarch, return up to one target Goblin card from your graveyard to your hand.\nAt the beginning of your first main phase, you may pay {R}. If you do, transform Grub.",
+     "power": "2",
+     "toughness": "1"
+    },
+    {
+     "name": "Grub, Notorious Auntie",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Goblin Warrior",
+     "oracle_text": "Menace\nWhenever Grub attacks, you may blight 1. If you do, create a tapped and attacking token that's a copy of the blighted creature, except it has \"At the beginning of the end step, sacrifice this token.\"\nAt the beginning of your first main phase, you may pay {B}. If you do, transform Grub.",
+     "power": "2",
+     "toughness": "1"
+    }
+   ],
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If a creature's toughness is reduced to 0 while blighting during the resolution of Grub, Notorious Auntie's second ability, that creature won't die until after the ability finishes resolving. The same is true if the -1/-1 counter would cause damage already marked on that creature to become lethal.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In some rare cases, this permanent might transform while its triggered ability that allows you to pay mana to transform it is still on the stack. (For example, another effect might cause that ability to trigger an additional time.) In such a case, even if you pay mana as the triggered ability resolves, this permanent won't transform because it already transformed while the triggered ability was on the stack.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Oko, Lorwyn Liege's color identity is green and blue, since its front face is blue, its rules text contains a green mana symbol, and its back face has a green color indicator as well as a blue mana symbol in its rules text.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "The token created by Grub, Notorious Auntie's second ability copies exactly what was printed on the original creature and nothing else, with the listed exception (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Any enters abilities of the copied creature will trigger when the token enters. Any \"as [this creature] enters\" or \"[this creature] enters with\" abilities of the copied creature will also work.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "If the copied creature is copying something else, then the token enters as whatever that creature copied, with the listed exception.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all.",
+    "If the copied creature is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token, with the listed exception.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so."
+   ]
+  },
+  {
+   "name": "Slumbering Walker",
+   "oracle_id": "6d972501-4174-4bf0-a26b-2edef31b3a0c",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Giant Warrior",
+   "oracle_text": "This creature enters with two -1/-1 counters on it.\nAt the beginning of your end step, you may remove a counter from this creature. When you do, return target creature card with power 2 or less from your graveyard to the battlefield.",
+   "power": "4",
+   "toughness": "7",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "302",
+   "set": "ecl",
+   "rulings": [
+    "You don't choose a target for Slumbering Walker's ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you remove a counter from Slumbering Walker this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Flitterwing Nuisance",
+   "oracle_id": "9148f2cb-5594-463c-a21b-a67706ec46d1",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Creature — Faerie Rogue",
+   "oracle_text": "Flying\nThis creature enters with a -1/-1 counter on it.\n{2}{U}, Remove a counter from this creature: Whenever a creature you control deals combat damage to a player or planeswalker this turn, draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "304",
+   "set": "ecl"
+  },
+  {
+   "name": "Glen Elendra's Answer",
+   "oracle_id": "11ed8209-2184-4416-a8f0-72de00599574",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell can't be countered.\nCounter all spells your opponents control and all abilities your opponents control. Create a 1/1 blue and black Faerie creature token with flying for each spell and ability countered this way.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "306",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Activated abilities are written in the form \"[Cost]: [Effect].\" Some keyword abilities, such as equip and crew, are activated abilities and will have colons in their reminder texts.",
+    "Glen Elendra's Answer counters only spells, activated abilities, and triggered abilities your opponents control that are already on the stack. It doesn't prevent spells from being cast or abilities from being activated or triggering later in the turn, and it has no effect on static abilities.",
+    "A spell or ability that counters spells can still target Glen Elendra's Answer. When that spell or ability resolves, Glen Elendra's Answer won't be countered, but any additional effects of the countering spell or ability will still happen.",
+    "Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\" Some keyword abilities, such as mobilize (from the Tarkir: Dragonstorm release), are triggered abilities and will have \"when,\" \"whenever,\" or \"at\" in their reminder text.",
+    "Glen Elendra's Answer can't target mana abilities. An activated mana ability is one that could add mana as it resolves, doesn't have a target, and isn't a loyalty ability. A triggered mana ability is one that could add mana as it resolves and triggers based on an activated mana ability."
+   ]
+  },
+  {
+   "name": "Mirrorform",
+   "oracle_id": "81cb888c-c4d3-45a2-a03e-bfd91a2af2be",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Instant",
+   "oracle_text": "Each nonland permanent you control becomes a copy of target non-Aura permanent.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "308",
+   "set": "ecl",
+   "rulings": [
+    "Because the permanents aren't entering the battlefield when they become copies of the target permanent, any \"When [this permanent] enters\" or \"[This permanent] enters with\" abilities of the copied permanent won't apply.",
+    "The permanents copy exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else; see below). They don't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied permanent is copying something else, then the permanents become copies of whatever that permanent copied.",
+    "If the copied permanent has {X} in its mana cost, X is 0."
+   ]
+  },
+  {
+   "name": "Twilight Diviner",
+   "oracle_id": "05d7222b-cc08-4f1f-8e35-6058599572ba",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Cleric",
+   "oracle_text": "When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nWhenever one or more other creatures you control enter, if they entered or were cast from a graveyard, create a token that's a copy of one of them. This ability triggers only once each turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "315",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token created by Twilight Diviner's last ability copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied creature is copying something else, then the token enters as whatever that creature copied.",
+    "Any enters abilities of the copied creature will trigger when the token enters. Any \"as [this creature] enters\" or \"[this creature] enters with\" abilities of the copied permanent will also work.",
+    "If the copied creature has {X} in its mana cost, X is 0."
+   ]
+  },
+  {
+   "name": "Lavaleaper",
+   "oracle_id": "a107fb84-6874-4964-a729-4425dad98330",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "All creatures have haste.\nWhenever a player taps a basic land for mana, that player adds one mana of any type that land produced.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "318",
+   "set": "ecl",
+   "rulings": [
+    "Lavaleaper's last ability is a mana ability. It doesn't use the stack and can't be responded to."
+   ]
+  },
+  {
+   "name": "Mutable Explorer",
+   "oracle_id": "34b93a66-de1e-4133-a479-e0d90ba94a3a",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "Changeling (This card is every creature type.)\nWhen this creature enters, create a tapped Mutavault token. (It's a land with \"{T}: Add {C}\" and \"{1}: This token becomes a 2/2 creature with all creature types until end of turn. It's still a land.\")",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Changeling"
+   ],
+   "collector_number": "327",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Mutavault",
+     "type_line": "Token Land",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Mutable Explorer's last ability creates a token that's a copy of the card Mutavault in the Oracle card reference. Official text for Mutavault can be found using the Gatherer card database at Gatherer.Wizards.com.",
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten."
+   ]
+  },
+  {
+   "name": "Ashling's Command",
+   "oracle_id": "9651d197-a408-4665-a292-58d5471f4ffc",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{R}",
+   "cmc": 5.0,
+   "type_line": "Kindred Instant — Elemental",
+   "oracle_text": "Choose two —\n• Create a token that's a copy of target Elemental you control.\n• Target player draws two cards.\n• Ashling's Command deals 2 damage to each creature target player controls.\n• Target player creates two Treasure tokens.",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "330",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    },
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "The token created by the first mode of Ashling's Command copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied permanent is copying something else, then the token enters as whatever that creature copied.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "If all of Ashling's Command's targets are illegal as it tries to resolve, it will do nothing. If at least one target is still legal, it will resolve and do as much as it can.",
+    "Any enters abilities of the copied permanent will trigger when the token enters. Any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities of the copied permanent will also work."
+   ]
+  }
+ ]
+}

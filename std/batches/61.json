@@ -1,0 +1,232 @@
+{
+ "batch": 61,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Moonlit Lamenter",
+   "oracle_id": "ce009bd4-5ffb-46a4-a9dd-b9c060926467",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Treefolk Cleric",
+   "oracle_text": "This creature enters with a -1/-1 counter on it.\n{1}{W}, Remove a counter from this creature: Draw a card. Activate only as a sorcery.",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "26",
+   "set": "ecl"
+  },
+  {
+   "name": "Protective Response",
+   "oracle_id": "c840b89b-81be-4644-8bb5-35d14b1bc620",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDestroy target attacking or blocking creature.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Convoke"
+   ],
+   "collector_number": "29",
+   "set": "ecl",
+   "rulings": [
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value."
+   ]
+  },
+  {
+   "name": "Reluctant Dounguard",
+   "oracle_id": "162dcfa0-36e4-41cd-8322-08e810ff04d4",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Kithkin Soldier",
+   "oracle_text": "This creature enters with two -1/-1 counters on it.\nWhenever another creature you control enters while this creature has a -1/-1 counter on it, remove a -1/-1 counter from this creature.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "31",
+   "set": "ecl",
+   "rulings": [
+    "If Reluctant Dounguard enters at the same time as one or more other creatures you control, its last ability will trigger for each of those creatures (unless it somehow entered without -1/-1 counters on it.)"
+   ]
+  },
+  {
+   "name": "Riverguard's Reflexes",
+   "oracle_id": "0bdebad7-a05e-439a-b5a9-241a2d09f943",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +2/+2 and gains first strike until end of turn. Untap it.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "33",
+   "set": "ecl"
+  },
+  {
+   "name": "Shore Lurker",
+   "oracle_id": "4288ba56-ddd0-4bd9-ba61-daf03e9f2d7f",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Scout",
+   "oracle_text": "Flying\nWhen this creature enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil"
+   ],
+   "collector_number": "34",
+   "set": "ecl"
+  },
+  {
+   "name": "Sun-Dappled Celebrant",
+   "oracle_id": "27c87371-697e-4ca6-a7f4-d99215d908bc",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Treefolk Cleric",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nVigilance",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Convoke"
+   ],
+   "collector_number": "37",
+   "set": "ecl",
+   "rulings": [
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn.",
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke."
+   ]
+  },
+  {
+   "name": "Thoughtweft Imbuer",
+   "oracle_id": "9dee8c0b-71e0-4a94-b411-78b29b599847",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Kithkin Advisor",
+   "oracle_text": "Whenever a creature you control attacks alone, it gets +X/+X until end of turn, where X is the number of Kithkin you control.",
+   "power": "0",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "38",
+   "set": "ecl",
+   "rulings": [
+    "The value of X is calculated only once, as Thoughtweft Imbuer's ability resolves."
+   ]
+  },
+  {
+   "name": "Timid Shieldbearer",
+   "oracle_id": "8bef3511-ceeb-4d57-972a-ab363ecacd5b",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Kithkin Soldier",
+   "oracle_text": "{4}{W}: Creatures you control get +1/+1 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "39",
+   "set": "ecl"
+  },
+  {
+   "name": "Tributary Vaulter",
+   "oracle_id": "991f4eec-cf3e-4554-ba88-c44bb0d255f0",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Merfolk Warrior",
+   "oracle_text": "Flying\nWhenever this creature becomes tapped, another target Merfolk you control gets +2/+0 until end of turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "40",
+   "set": "ecl"
+  },
+  {
+   "name": "Wanderbrine Preacher",
+   "oracle_id": "4b4dcdb1-0017-494f-8d83-6706b188e575",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Cleric",
+   "oracle_text": "Whenever this creature becomes tapped, you gain 2 life.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "41",
+   "set": "ecl"
+  }
+ ]
+}

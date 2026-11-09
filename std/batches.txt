@@ -57,3 +57,18 @@
 57: Bramble Familiar // Fetch Quest; Will, Scion of Peace; Storyteller Pixie; Experimental Confectioner; Charging Hooligan; Farsight Ritual; The End; Rankle's Prank; Specter of Mortality; Tangled Colony
 58: Goddric, Cloaked Reveler; Redcap Gutter-Dweller; Feral Encounter; Gruff Triplets; Sentinel of Lost Lore; Thunderous Debut; Agatha of the Vile Cauldron; Hylda of the Icy Crown; Yenna, Redtooth Regent; Hylda's Crown of Winter
 59: Faerie Slumber Party; Malevolent Witchkite; Faerie Dreamthief
+60: Rooftop Percher; Ajani, Outland Chaperone; Bark of Doran; Curious Colossus; Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight; Keep Out; Kinscaer Sentry; Kithkeeper; Liminal Hold; Meanders Guide
+61: Moonlit Lamenter; Protective Response; Reluctant Dounguard; Riverguard's Reflexes; Shore Lurker; Sun-Dappled Celebrant; Thoughtweft Imbuer; Timid Shieldbearer; Tributary Vaulter; Wanderbrine Preacher
+62: Wanderbrine Trapper; Gravelgill Scoundrel; Illusion Spinners; Kulrath Mystic; Lofty Dreams; Noggle the Mind; Oko, Lorwyn Liege // Oko, Shadowmoor Scion; Omni-Changeling; Pestered Wellguard; Rime Chill
+63: Rimekin Recluse; Shinestriker; Silvergill Peddler; Spell Snare; Stratosoarer; Summit Sentinel; Sunderflock; Swat Away; Tanufel Rimespeaker; Thirst for Identity
+64: Unexpected Assistance; Unwelcome Sprite; Wanderwine Distracter; Wanderwine Farewell; Bloodline Bidding; Dawnhand Dissident; Dose of Dawnglow; Heirloom Auntie; Moonglove Extractor; Moonshadow
+65: Nightmare Sower; Perfect Intimidation; Retched Wretch; Scarblade Scout; Scarblade's Malice; Shimmercreep; Unbury; Collective Inferno; End-Blaze Epiphany; Flamebraider
+66: Impolite Entrance; Kulrath Zealot; Meek Attack; Reckless Ransacking; Sizzling Changeling; Squawkroaster; Tweeze; Aurora Awakener; Celestial Reunion; Great Forest Druid
+67: Luminollusk; Lys Alana Informant; Midnight Tilling; Mistmeadow Council; Moon-Vigil Adherents; Morcant's Eyes; Pitiless Fists; Prismabasher; Prismatic Undercurrents; Pummeler for Hire
+68: Safewright Cavalry; Shimmerwilds Growth; Spry and Mighty; Surly Farrier; Tend the Sprigs; Thoughtweft Charge; Trystan, Callous Cultivator // Trystan, Penitent Culler; Unforgiving Aim; Vinebred Brawler; Wildvine Pummeler
+69: Abigale, Eloquent First-Year; Bre of Clan Stoutarm; Chaos Spewer; Doran, Besieged by Time; Dream Harvest; Figure of Fable; Hovel Hurler; Lluwen, Imperfect Naturalist; Merrow Skyswimmer; Mischievous Sneakling
+70: Morcant's Loyalist; Noggle Robber; Prideful Feastling; Sanar, Innovative First-Year; Shadow Urchin; Stoic Grove-Guide; Sygg's Command; Tam, Mindful First-Year; Thoughtweft Lieutenant; Twinflame Travelers
+71: Voracious Tome-Skimmer; Wary Farmer; Dawn-Blessed Pennant; Firdoch Core; Foraging Wickermaw; Gathering Stone; Puca's Eye; Stalactite Dagger; Eclipsed Realms; Brigid, Clachan's Heart // Brigid, Doun's Mind
+72: Sygg, Wanderwine Wisdom // Sygg, Wanderbrine Shield; Grub, Storied Matriarch // Grub, Notorious Auntie; Slumbering Walker; Flitterwing Nuisance; Glen Elendra's Answer; Mirrorform; Twilight Diviner; Lavaleaper; Mutable Explorer; Ashling's Command
+73: Brigid's Command; Grub's Command; Trystan's Command; Chronicle of Victory; Champions of the Shoal; Rimefire Torque; Champion of the Weird; Champion of the Path; Kirol, Attentive First-Year; Maralen, Fae Ascendant
+74: Mirrormind Crown; Winnowing; Personify; Iron-Shield Elf; Sear

@@ -1,0 +1,331 @@
+{
+ "batch": 73,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Brigid's Command",
+   "oracle_id": "6487fc1b-5c83-4d09-94d3-175725bcb922",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Kindred Sorcery — Kithkin",
+   "oracle_text": "Choose two —\n• Create a token that's a copy of target Kithkin you control.\n• Target player creates a 1/1 green and white Kithkin creature token.\n• Target creature you control gets +3/+3 until end of turn.\n• Target creature you control fights target creature an opponent controls.",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Fight"
+   ],
+   "collector_number": "332",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Kithkin",
+     "type_line": "Token Creature — Kithkin",
+     "component": "token"
+    },
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If all of Brigid's Command's targets are illegal as it tries to resolve, it will do nothing. If at least one target is still legal, it will resolve and do as much as it can.",
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "Any enters abilities of the copied permanent will trigger when the token enters. Any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities of the copied permanent will also work.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone.",
+    "The token created by the first mode of Brigid's Command copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on."
+   ]
+  },
+  {
+   "name": "Grub's Command",
+   "oracle_id": "8173e160-9a22-43f7-90d1-9ada043bc1b7",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{R}",
+   "cmc": 5.0,
+   "type_line": "Kindred Sorcery — Goblin",
+   "oracle_text": "Choose two —\n• Create a token that's a copy of target Goblin you control.\n• Creatures target player controls get +1/+1 and gain haste until end of turn.\n• Destroy target artifact or creature.\n• Target player mills five cards, then puts each Goblin card milled this way into their hand.",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "340",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "If all of Grub's Command's targets are illegal as it tries to resolve, it will do nothing. If at least one target is still legal, it will resolve and do as much as it can.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied.",
+    "The token created by the first mode of Grub's Command copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Any enters abilities of the copied permanent will trigger when the token enters. Any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities of the copied permanent will also work.",
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone."
+   ]
+  },
+  {
+   "name": "Trystan's Command",
+   "oracle_id": "ecc4e230-a546-4cb4-987c-87300060bbe2",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{G}",
+   "cmc": 6.0,
+   "type_line": "Kindred Sorcery — Elf",
+   "oracle_text": "Choose two —\n• Create a token that's a copy of target Elf you control.\n• Return one or two target permanent cards from your graveyard to your hand.\n• Destroy target creature or enchantment.\n• Creatures target player controls get +3/+3 until end of turn. Untap them.",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "344",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If all of Trystan's Command's targets are illegal as it tries to resolve, it will do nothing. If at least one target is still legal, it will resolve and do as much as it can.",
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token.",
+    "Any enters abilities of the copied permanent will trigger when the token enters. Any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities of the copied permanent will also work.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "The token created by the first mode of Trystan's Command copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Kindred is a card type that allows noncreature cards to have creature types. For example, Morcant's Eyes is an Elf (although not a creature) while on the battlefield and an Elf card (although not a creature card) in zones other than the battlefield.",
+    "Some older cards were originally printed with the \"tribal\" card type. That card type has been replaced with \"kindred.\" This change does not affect the gameplay function of these cards.",
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied.",
+    "While it appears only on cards that already have other card types, kindred is a card type and will be counted by effects that refer to the number of card types among cards in a zone."
+   ]
+  },
+  {
+   "name": "Chronicle of Victory",
+   "oracle_id": "e949b362-4988-4482-ac51-c1049af9040c",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "As Chronicle of Victory enters, choose a creature type.\nCreatures you control of the chosen type get +2/+2 and have first strike and trample.\nWhenever you cast a spell of the chosen type, draw a card.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "346",
+   "set": "ecl",
+   "rulings": [
+    "You must choose an existing creature type, such as Goblin or Elemental. Card types such as artifact and supertypes such as legendary can't be chosen.",
+    "Chronicle of Victory's last ability resolves before the spell that causes it to trigger. The ability will resolve even if that spell is countered or otherwise leaves the stack.",
+    "The choice of creature type is made as Chronicle of Victory enters. Players can't take any actions between the time the choice is made and the time the appropriate creatures begin to get +2/+2."
+   ]
+  },
+  {
+   "name": "Champions of the Shoal",
+   "oracle_id": "fc76ec95-f001-44df-89b2-b0f1b10c8e11",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Soldier",
+   "oracle_text": "As an additional cost to cast this spell, behold a Merfolk and exile it. (Exile a Merfolk you control or a Merfolk card from your hand.)\nWhenever this creature enters or becomes tapped, tap up to one target creature and put a stun counter on it.\nWhen this creature leaves the battlefield, return the exiled card to its owner's hand.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Behold"
+   ],
+   "collector_number": "356",
+   "set": "ecl",
+   "rulings": [
+    "If Champions of the Shoal is countered or otherwise fails to resolve, the beheld card will remain in exile indefinitely.",
+    "If an effect refers to a \"[subtype] card,\" it refers only to a card that has that subtype. For example, Glen Elendra's Answer creates a Faerie token and features a Faerie in its art, but it isn't a Faerie card.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "One or more stun counters on a permanent create a single replacement effect that stops the permanent from untapping. That effect is \"If a permanent with a stun counter on it would become untapped, instead remove a stun counter from it.\"",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that's still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand."
+   ]
+  },
+  {
+   "name": "Rimefire Torque",
+   "oracle_id": "c33e99c6-189e-4dcf-8b6a-64937dbad361",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "As this artifact enters, choose a creature type.\nWhenever a permanent you control of the chosen type enters, put a charge counter on this artifact.\n{T}, Remove three charge counters from this artifact: When you next cast an instant or sorcery spell this turn, copy it. You may choose new targets for the copy.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "358",
+   "set": "ecl",
+   "rulings": [
+    "If the spell has any targets, the copy will have the same targets unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode or modes. You can't choose different ones.",
+    "You can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can't be changed. If you choose new targets, you must choose the same number of targets.",
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell (such as conspire's triggered ability that creates a copy of the spell) won't trigger."
+   ]
+  },
+  {
+   "name": "Champion of the Weird",
+   "oracle_id": "1726f9cd-6f18-4509-b95b-bca82ba795a4",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Goblin Berserker",
+   "oracle_text": "As an additional cost to cast this spell, behold a Goblin and exile it. (Exile a Goblin you control or a Goblin card from your hand.)\nPay 1 life, Blight 2: Target opponent blights 2. Activate only as a sorcery.\nWhen this creature leaves the battlefield, return the exiled card to its owner's hand.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Blight",
+    "Behold"
+   ],
+   "collector_number": "360",
+   "set": "ecl",
+   "rulings": [
+    "If you can't place -1/-1 counters on any creatures you control (probably because you control no creatures), you can't choose to blight.",
+    "If Champion of the Weird is countered or otherwise fails to resolve, the beheld card will remain in exile indefinitely.",
+    "If a creature that has +1/+1 counters on it receives enough -1/-1 counters to cause it to be destroyed by lethal damage or put into its owner's graveyard for having 0 or less toughness, effects that refer to the counters on that creature when it died will see all of those +1/+1 and -1/-1 counters.",
+    "Once you've announced that you're casting a spell or activating an ability, players can't take actions until you've finished doing so. Notably, opponents can't try to destroy or otherwise remove your creatures to stop you from blighting as part of paying the cost of that spell or ability.",
+    "All of the -1/-1 counters must be put on a single creature. You can't choose to split them up between multiple creatures.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "If a creature has +1/+1 counters and -1/-1 counters on it, state-based actions remove the same number of each so that it has only one kind of those counters on it. For example, if a creature has three +1/+1 counters on it and two -1/-1 counters are put on it, state-based actions will remove two of each of those kinds of counters, leaving the creature with just one +1/+1 counter.",
+    "The creature you choose to put -1/-1 counters on doesn't have to have enough toughness to survive the process. For example, if you blight 2, you can choose to put the counters on a 1/1 creature you control.",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that's still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand.",
+    "If an effect refers to a \"[subtype] card,\" it refers only to a card that has that subtype. For example, Glen Elendra's Answer creates a Faerie token and features a Faerie in its art, but it isn't a Faerie card."
+   ]
+  },
+  {
+   "name": "Champion of the Path",
+   "oracle_id": "b326ccd5-8ad2-441c-9d73-82ee6390dd36",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental Sorcerer",
+   "oracle_text": "As an additional cost to cast this spell, behold an Elemental and exile it. (Exile an Elemental you control or an Elemental card from your hand.)\nWhenever another Elemental you control enters, it deals damage equal to its power to each opponent.\nWhen this creature leaves the battlefield, return the exiled card to its owner's hand.",
+   "power": "7",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Behold"
+   ],
+   "collector_number": "362",
+   "set": "ecl",
+   "rulings": [
+    "If Champion of the Path is countered or otherwise fails to resolve, the beheld card will remain in exile indefinitely.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "If an effect refers to a \"[subtype] card,\" it refers only to a card that has that subtype. For example, Glen Elendra's Answer creates a Faerie token and features a Faerie in its art, but it isn't a Faerie card.",
+    "If an Elemental you control that isn't a creature enters (probably because it's a kindred permanent with the Elemental subtype), Champion of the Path's second ability will still trigger. If that Elemental still isn't a creature when the ability resolves, the ability won't deal any damage.",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that's still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand.",
+    "If the Elemental that caused Champion of the Path's second ability to trigger is no longer on the battlefield when that ability resolves, use that Elemental's power as it last existed on the battlefield to determine how much damage is dealt."
+   ]
+  },
+  {
+   "name": "Kirol, Attentive First-Year",
+   "oracle_id": "3a272fa9-5f28-43a4-95de-10cb511f1b43",
+   "layout": "normal",
+   "mana_cost": "{1}{R/W}{R/W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vampire Cleric",
+   "oracle_text": "Tap two untapped creatures you control: Copy target triggered ability you control. You may choose new targets for the copy. Activate only once each turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "374",
+   "set": "ecl",
+   "rulings": [
+    "Any choices made when the ability resolves won't have been made yet when it's copied by Kirol's ability. Any such choices will be made separately when the copy resolves. If a triggered ability asks you to pay a cost, you pay that cost for the copy separately.",
+    "If the ability copied by Kirol's ability divides damage or distributes counters among a number of targets, the division and number of targets can't be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the ability copied by Kirol's ability is modal (that is, if it says, \"Choose one —\" or similar), the mode is copied and can't be changed.",
+    "Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\" Some keyword abilities, such as mobilize (from the Tarkir: Dragonstorm release), are triggered abilities and will have \"when,\" \"whenever,\" or \"at\" in their reminder text. The source of the copy created by Kirol's ability is the same as the source of the original ability.",
+    "If an ability is linked to a second ability, copies of that ability are also linked to that second ability. If the second ability refers to \"the exiled card,\" it refers to all cards exiled by the ability and the copy. For example, if Tidehollow Sculler's enters-the-battlefield ability is copied and two cards are exiled, they both return when Tidehollow Sculler leaves the battlefield."
+   ]
+  },
+  {
+   "name": "Maralen, Fae Ascendant",
+   "oracle_id": "114e1d2c-cefc-4e2a-922e-3b2ceed1871d",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elf Faerie Noble",
+   "oracle_text": "Flying\nWhenever Maralen or another Elf or Faerie you control enters, exile the top two cards of target opponent's library.\nOnce each turn, you may cast a spell with mana value less than or equal to the number of Elves and Faeries you control from among cards exiled with Maralen this turn without paying its mana cost.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "376",
+   "set": "ecl",
+   "rulings": [
+    "If an exiled card has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Since you are using an alternative cost to cast the spell, you can't pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, you must pay those.",
+    "If Maralen enters at the same time as one or more other Elves or Faeries you control, its first ability will trigger for each of those other Elves and Faeries as well as itself."
+   ]
+  }
+ ]
+}

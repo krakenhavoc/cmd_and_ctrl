@@ -1,0 +1,138 @@
+{
+ "batch": 74,
+ "set": [
+  "ecl"
+ ],
+ "cards": [
+  {
+   "name": "Mirrormind Crown",
+   "oracle_id": "353db389-b829-4e66-85d5-6018bc87c3e0",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "As long as this Equipment is attached to a creature, the first time you would create one or more tokens each turn, you may instead create that many tokens that are copies of equipped creature.\nEquip {2}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "381",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If the copied creature is copying something else, then the tokens enter as whatever that creature copied.",
+    "The tokens created by Mirrormind Crown's ability copy exactly what was printed on the equipped creature and nothing else (unless that creature is copying something else or is a token; see below). They don't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied creature is a token, the tokens that are created copy the original characteristics of that token as stated by the effect that created that token.",
+    "Any enters abilities of the copied creature will trigger when the tokens enter. Any \"as [this creature] enters\" or \"[this creature] enters with\" abilities of the copied creature will also work."
+   ]
+  },
+  {
+   "name": "Winnowing",
+   "oracle_id": "8b834f83-951b-4b5c-b9f1-3d860baa3c0e",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFor each player, you choose a creature that player controls. Then each player sacrifices all other creatures they control that don't share a creature type with the chosen creature they control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Convoke"
+   ],
+   "collector_number": "392",
+   "set": "ecl",
+   "rulings": [
+    "When calculating a spell's total cost, include any alternative costs, additional costs, or anything else that increases or reduces the cost to cast the spell. Convoke applies after the total cost is calculated. Convoke doesn't change a spell's mana cost or mana value.",
+    "Tapping an untapped creature that's attacking or blocking to convoke a spell won't cause that creature to stop attacking or blocking.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability while casting a spell with convoke will result in the creature being tapped before you pay the spell's costs. You won't be able to tap it again for convoke. Similarly, if you sacrifice a creature to activate a mana ability while casting a spell with convoke, that creature won't be on the battlefield when you pay the spell's costs, so you won't be able to tap it for convoke.",
+    "You can tap any untapped creature you control to convoke a spell, even one you haven't controlled continuously since the beginning of your most recent turn."
+   ]
+  },
+  {
+   "name": "Personify",
+   "oracle_id": "e1708ad9-35d4-4243-92ca-ddf9d129aa32",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile target creature you control, then return that card to the battlefield under its owner's control. Create a 1/1 colorless Shapeshifter creature token with changeling. (It's every creature type.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "402",
+   "set": "ecl",
+   "related": [
+    {
+     "name": "Shapeshifter",
+     "type_line": "Token Creature — Shapeshifter",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The subtype Shapeshifter that appears on the type line is mostly there to reinforce the flavor. A creature card with changeling is just as much a Kithkin, a Goblin, a Merfolk, and a Brushwagg as it is a Shapeshifter.",
+    "If an effect causes a creature with changeling to become a new creature type, it will be only that new creature type (unless the effect says \"in addition\" or similar). It will still have changeling; the effect making it all creature types will simply be overwritten.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield.",
+    "Changeling is a characteristic-defining ability. It functions in all zones, not only while a card that has it is on the battlefield.",
+    "Auras attached to the exiled creature will be put into their owners' graveyards. Equipment attached to the exiled creature will become unattached and remain on the battlefield. Any counters on the exiled creature will cease to exist.",
+    "If an effect causes a creature with changeling to lose all abilities, it will remain all creature types, even though it will no longer have changeling. This is because changeling applies before the effect that removes it."
+   ]
+  },
+  {
+   "name": "Iron-Shield Elf",
+   "oracle_id": "1c77b4da-b580-4ce9-b127-76de674f5694",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Warrior",
+   "oracle_text": "Discard a card: This creature gains indestructible until end of turn. Tap it. (Damage and effects that say \"destroy\" don't destroy it. If its toughness is 0 or less, it still dies.)",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "404",
+   "set": "ecl",
+   "rulings": [
+    "You can activate Iron-Shield Elf's ability even if Iron-Shield Elf is already tapped."
+   ]
+  },
+  {
+   "name": "Sear",
+   "oracle_id": "23b11fdc-61b5-4f5e-ad80-f81b729fc91d",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Sear deals 4 damage to target creature or planeswalker.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "405",
+   "set": "ecl"
+  }
+ ]
+}
