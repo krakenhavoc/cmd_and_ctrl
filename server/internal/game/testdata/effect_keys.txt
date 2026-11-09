@@ -359,6 +359,7 @@ body warren-torchmaster/haste
 body weapons-vendor/attach
 body weeping-angel/owner-shuffles-it-in
 body wicks-patrol/shrink
+body wildborn-preserver/counters
 body winter-tormented-loner/edict
 body wolf-in-blank-clothing/shrink
 body yunas-whistle/counters
@@ -1369,6 +1370,7 @@ payunless pay-unless/island-fish-jasconius-untap
 payunless pay-unless/itzquinth-dinosaur-bites
 payunless pay-unless/jace-multiverse-architect-cant-attack
 payunless pay-unless/jolted-awake-return
+payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/kavaron-harrier-robot
 payunless pay-unless/kazuul-ogre
 payunless pay-unless/koya-death-from-above-return
@@ -1438,6 +1440,7 @@ payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weapons-vendor-attach
+payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zoraline-cosmos-caller-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
@@ -2163,6 +2166,7 @@ tail outlaw-stitcher/token-counters
 tail overlord-of-the-balemurk/after-mill
 tail oversimplify/counters-put
 tail oversimplify/fractal-made
+tail ovika-enigma-goliath/goblins-haste
 tail oviya-automech-artisan/two-counters-on-an-artifact
 tail palantir-of-orthanc/ask-opponent
 tail palantir-of-orthanc/opponent-loses-total-mana-value
