@@ -2,6 +2,8 @@ package effects
 
 import (
 	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // planes_b11_test.go — Planechase plane cards, batches 11 and 12 (the gold-
@@ -89,3 +91,81 @@ func TestFblthpChaosLootsTwo(t *testing.T) {
 		t.Fatalf("chaos put %d items on the stack, want 1", n)
 	}
 }
+
+var (
+	planeBlackLotusLounge = planeFixture{"ddea0dcf-e8d1-44ea-9ce4-009fa8bbfb95", "Black Lotus Lounge", "Plane — MagicCon"}
+	planeLilGiri          = planeFixture{"5b35fbd0-65a0-4973-b2c9-841b11c0d426", "Li'l Giri Saves the Day", "Plane — Secret Lair"}
+)
+
+func TestBlackLotusLoungeMakesALotusOnPlaneswalkAndUpkeep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeBlackLotusLounge)
+	g, _ := newPlaneGame(t, planeBlackLotusLounge)
+	advanceToMain(t, g)
+	planeswalkToPlane(t, g, planeBlackLotusLounge.Oracle)
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Black Lotus"); n != 1 {
+		t.Fatalf("%d Black Lotus tokens after planeswalking here, want 1", n)
+	}
+	toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Black Lotus"); n != 2 {
+		t.Errorf("%d Black Lotus tokens after the next upkeep, want 2", n)
+	}
+}
+
+func TestBlackLotusLoungeChaosDrawsPerArtifactToken(t *testing.T) {
+	g, _ := newPlaneGame(t, planeBlackLotusLounge)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	other := opponentOf(g)
+	for range 2 {
+		g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TreasureToken(), 1) })
+	}
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(other.ID, TreasureToken(), 1) })
+	b12Permanent(g, me.ID, "Nontoken Rock", "Artifact")
+	myHand, theirHand := me.Hand.Size(), other.Hand.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != myHand+2 {
+		t.Errorf("the planar controller drew %d, want 2 (two artifact tokens)", got-myHand)
+	}
+	if got := other.Hand.Size(); got != theirHand+1 {
+		t.Errorf("the other player drew %d, want 1", got-theirHand)
+	}
+}
+
+func TestLilGiriMakesLilGiriAndProtectsLegendaryFood(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeLilGiri)
+	g, _ := newPlaneGame(t, planeLilGiri)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	planeswalkToPlane(t, g, planeLilGiri.Oracle)
+	passPriorityAroundTable(t, g)
+	ids := tmtB1Named(g, "Li'l Giri")
+	if len(ids) != 1 {
+		t.Fatalf("%d Li'l Giri after planeswalking here, want 1", len(ids))
+	}
+	c := tmtB1Card(t, g, ids[0])
+	if !c.IsLegendary() || !c.IsCreature() || !c.IsArtifact() || !c.HasSubtypeWord("Food") || !c.HasSubtypeWord("Warrior") || c.CurrentPower() != 1 || c.CurrentToughness() != 1 {
+		t.Errorf("Li'l Giri is %q %d/%d", c.TypeLine, c.CurrentPower(), c.CurrentToughness())
+	}
+	if !game.HasKeyword(&c, "hexproof") || !game.HasKeyword(&c, "indestructible") {
+		t.Errorf("Li'l Giri lacks hexproof or indestructible: %v", c.Effective().Abilities)
+	}
+	plain := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	if game.HasKeyword(planesB11Ptr(tmtB1Card(t, g, plain)), "hexproof") {
+		t.Error("a nonlegendary nonFood creature has hexproof")
+	}
+	// Chaos: X = planar die rolls this turn.
+	g.WithWriteLock(func() { g.Planechase.DieTurnSeq, g.Planechase.DieRolls = g.Turn.Seq, 3 })
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, ids[0])
+	passPriorityAroundTable(t, g)
+	if p := tmtB1Card(t, g, ids[0]).CurrentPower(); p != 4 {
+		t.Errorf("Li'l Giri is %d power after 3 rolls' chaos, want 4", p)
+	}
+	_ = game.CounterPlusOne
+}
+
+func planesB11Ptr[T any](v T) *T { return &v }
