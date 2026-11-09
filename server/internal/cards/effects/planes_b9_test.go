@@ -35,6 +35,7 @@ var (
 	planeTrail    = planeFixture{"b2c95c7a-a04c-46ef-a879-6eb08e444093", "Trail of the Mage-Rings", "Plane — Vryn"}
 	planeStairs   = planeFixture{"7a425df4-7010-462e-9cb5-20389bac721c", "Stairs to Infinity", "Plane — Xerex"}
 	planePrahv    = planeFixture{"34a31865-b701-4ce1-8912-29fc41ecdda3", "Prahv", "Plane — Ravnica"}
+	planeMaelstrm = planeFixture{"e28deac5-d3c4-48e9-974c-093e3122f317", "The Maelstrom", "Plane — Alara"}
 	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -823,5 +824,66 @@ func TestPrahvChaosGainsLifeForTheHandSize(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if me.Life != life+hand {
 		t.Errorf("life %d, want %d", me.Life, life+hand)
+	}
+}
+
+// --- The Maelstrom -----------------------------------------------------------
+
+func maelstromTop(g *game.Game, me *game.Player, name, typeLine string) uuid.UUID {
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Library.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: typeLine, Owner: me.ID, Controller: me.ID})
+	})
+	return id
+}
+
+func TestMaelstromRevealsAndMayPutAPermanentOntoTheBattlefield(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeMaelstrm)
+	g, _ := newPlaneGame(t, planeMaelstrm)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := maelstromTop(g, me, "Top Bear", "Creature — Bear")
+	planeswalkToPlane(t, g, planeMaelstrm.Oracle)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	answerMayChoice(t, g, me.ID, true)
+	if !planeOnBattlefield(g, bear) {
+		t.Fatal("the revealed permanent card did not enter")
+	}
+
+	// Declined, a permanent card goes to the bottom; so does a sorcery.
+	for _, tc := range []struct{ name, typeLine string }{{"Declined Bear", "Creature — Bear"}, {"Top Sorcery", "Sorcery"}} {
+		id := maelstromTop(g, me, tc.name, tc.typeLine)
+		toNextUpkeep(t, g)
+		for g.Seats[g.Turn.ActiveSeat].ID != me.ID {
+			toNextUpkeep(t, g)
+		}
+		passPriorityAroundTable(t, g)
+		answerMayChoice(t, g, me.ID, true)
+		if tc.typeLine != "Sorcery" {
+			answerMayChoice(t, g, me.ID, false)
+		}
+		if bottom, _ := me.Library.Bottom(); bottom.InstanceID != id {
+			t.Errorf("%s was not put on the bottom of the library", tc.name)
+		}
+	}
+}
+
+func TestMaelstromChaosReturnsAPermanentCard(t *testing.T) {
+	g, _ := newPlaneGame(t, planeMaelstrm)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := pushGraveyardCardWithTypeLineID(me, "Dead Bear", "Creature — Bear")
+	spell := pushGraveyardCardWithTypeLineID(me, "Dead Spell", "Instant")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(spell)); err == nil {
+		t.Fatal("an instant card was accepted")
+	}
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	if !planeOnBattlefield(g, bear) {
+		t.Error("the permanent card did not return to the battlefield")
 	}
 }
