@@ -5659,6 +5659,15 @@ on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
 
+On a PERMANENT spell the exile is also linked to the spell object and, as
+the spell becomes a permanent, relinked to it (CR 607.2q,
+`relinkCostExilesLocked`, as behold-and-exile does), so the permanent's own
+"each card exiled with it" reads the creature the cost exiled beside the
+cards its abilities exile: Fear of Abduction's leave trigger is
+`b36ReturnCardsExiledWithToOwnersHands` and its enters trigger exiles with
+`ExileTarget{Linked: true}`. An instant or sorcery links nothing (Soul
+Exchange).
+
 **Return a permanent you control as an additional cost (#5247):** "As an
 additional cost to cast this spell, return a permanent you control to its
 owner's hand" is `AdditionalCost: ReturnPermanentToHandCost("a permanent
