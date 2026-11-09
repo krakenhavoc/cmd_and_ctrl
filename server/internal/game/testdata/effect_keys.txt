@@ -43,6 +43,7 @@ body all-out-assault/untap-each-creature-you-control
 body angel-of-suffering/mill-twice
 body annihilator/sacrifice
 body ant-man-colony-commander/counter
+body anthropede/destroy-room
 body arcane-denial/draws
 body ascend/exile-listed-unless-citys-blessing
 body attach/sacrifice-the-returned-creature
@@ -130,6 +131,7 @@ body espers-to-magicite/copy
 body evoke/sacrifice
 body evolve/grow
 body exalted/pump
+body exile-top/play-until-end-of-your-next-turn
 body exile/listed-cards
 body explosion-of-riches/damage
 body extra-combat/untap-all-you-control
@@ -519,6 +521,7 @@ choose choose-cards/incinerator-of-the-guilty-collect-evidence-x
 choose choose-cards/intuition-settle
 choose choose-cards/invasion-of-tarkir-reveal
 choose choose-cards/iron-man-titan-of-innovation-sacrifice
+choose choose-cards/irreverent-gremlin-discard-draw
 choose choose-cards/isochron-scepter-imprint
 choose choose-cards/izoni-center-of-the-web-collect-evidence
 choose choose-cards/jiang-yanggu-alone-rest
@@ -780,6 +783,7 @@ choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
+choose choose-cards/trial-of-agony-chosen
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-prophet-take
@@ -878,6 +882,7 @@ condition damage/that-creature-combat-to-opponent
 condition damage/that-creature-combat-to-player
 condition damage/your-creature-combat-damage-to-a-player
 condition dies/a-creature
+condition dies/a-creature-you-control
 condition dies/another-creature-than-the-source
 condition dies/each-creature
 condition dies/reckless-blaze-that-creature-under-your-control
@@ -920,6 +925,7 @@ confirm confirm/braids-sacrifice
 confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
+confirm confirm/cathartic-parting-shuffle
 confirm confirm/chain-sacrifice-a-land
 confirm confirm/channel-harm-deal
 confirm confirm/charismatic-conqueror-tap
@@ -1305,6 +1311,7 @@ payunless pay-unless/aetherstorm-roc-counter-and-tap
 payunless pay-unless/aetherstream-leopard-pump
 payunless pay-unless/ant-man-colony-commander-counter
 payunless pay-unless/antagonist-incorporator-borg
+payunless pay-unless/anthropede-destroy-room
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
 payunless pay-unless/ashling-transform
