@@ -1,6 +1,13 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+	"strings"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // planes_b9_helpers.go holds the shapes the ninth and tenth batches of plane
 // cards (ADR 0216 slice 4, #4870) share. Append-only.
@@ -24,10 +31,12 @@ func b9AllCreaturesHave(keyword string) game.StaticAbility {
 // b9AllCreaturesGetPT is "<match> creatures get +N/+M" as a layer-7c static.
 func b9AllCreaturesGetPT(label string, applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
-		Label:     label,
-		Layer:     game.Layer7PT,
-		SubLayer:  game.SubLayer7C_Modify,
-		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool { return target.IsCreature() && applies(target, g, source) },
+		Label:    label,
+		Layer:    game.Layer7PT,
+		SubLayer: game.SubLayer7C_Modify,
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			return target.IsCreature() && applies(target, g, source)
+		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			c.Power += power
 			c.Toughness += toughness
@@ -43,4 +52,33 @@ func b9DestroyEachNonlandPermanent(ctx *Context, spared CardPredicate) error {
 		match = And(Nonland(), Not(spared))
 	}
 	return DestroyAllMatching{Match: match}.Apply(ctx)
+}
+
+// b9OwnedByNthOpponent passes for a card owned by the n-th seat (1-based)
+// after the chooser's in turn order: a graveyard is always its owner's.
+func b9OwnedByNthOpponent(n int) CardPredicate {
+	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
+		p := g.OpponentSeatAfter(chooser, n)
+		return p != nil && c.Owner == p.ID
+	}
+}
+
+// b9PerOpponentGraveyardClauses is "for each opponent, <verb> up to one
+// target <noun> card from that player's graveyard": one "up to one" clause
+// per possible opponent, the n-th bound to the n-th seat after the planar
+// controller's. A seat that is not at the table, or is eliminated, offers
+// nothing (opponent_clauses.go's reasoning).
+func b9PerOpponentGraveyardClauses(noun string, what ...CardPredicate) *game.TargetSpec {
+	var out []*game.TargetSpec
+	for n := 1; n <= game.MaxPlayers-1; n++ {
+		out = append(out, TargetCardInGraveyard(
+			"up to one target "+noun+" card from the "+nthOpponentWords[n]+" opponent after you's graveyard",
+			append([]CardPredicate{b9OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
+	}
+	return Clauses(out[0], out[1:]...)
+}
+
+// b9IsBlack reports whether a card on the battlefield is black.
+func b9IsBlack(c game.Card) bool {
+	return slices.ContainsFunc(c.Effective().Colors, func(col string) bool { return strings.EqualFold(col, "B") })
 }

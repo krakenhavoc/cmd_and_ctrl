@@ -21,6 +21,16 @@ var (
 	planeNorns    = planeFixture{"9d58f647-3f83-4f65-a944-c6236db7c422", "Norn's Dominion", "Plane — New Phyrexia"}
 	planeOnakke   = planeFixture{"69f06edb-dade-4e94-b563-e36a05e567f0", "Onakke Catacomb", "Plane — Shandalar"}
 	planeRavens   = planeFixture{"b53e06af-be18-4f75-9dd0-7494ec867b13", "Raven's Run", "Plane — Shadowmoor"}
+	planeShiv     = planeFixture{"70edae19-e278-401d-9772-508bd66320a6", "Shiv", "Plane — Dominaria"}
+	planeVelisVel = planeFixture{"1c4e174e-19fb-4c0a-b762-ef6d927392c9", "Velis Vel", "Plane — Lorwyn"}
+	planeZephyr   = planeFixture{"2d84be6d-49a5-4200-8cd3-d8653dfd0899", "The Zephyr Maze", "Plane — Kyneth"}
+	planeHippo    = planeFixture{"cde8d8c4-5e2b-452f-b3e9-bb9f2e745ec9", "The Hippodrome", "Plane — Segovia"}
+	planeTakenuma = planeFixture{"de53c948-b371-4f79-a965-33c44d0b44de", "Takenuma", "Plane — Kamigawa"}
+	planeTember   = planeFixture{"bbb1d13c-a3ce-4151-883a-cce9bbd584d0", "Tember City", "Plane — Kinshala"}
+	planeBarony   = planeFixture{"5503c308-560d-4d5f-a86a-4b06d9947ddc", "The Dark Barony", "Plane — Ulgrotha"}
+	planeEonFog   = planeFixture{"a04d05ed-1b9b-4407-8780-c75c102a94dd", "The Eon Fog", "Plane — Equilor"}
+	planeFourth   = planeFixture{"13e801cd-e537-4ea6-8c3d-21b142bdc026", "The Fourth Sphere", "Plane — Phyrexia"}
+	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
 // planeLand puts a basic land on the battlefield under `owner`.
@@ -288,4 +298,343 @@ func TestRavensRunChaosPutsOneTwoAndThreeCounters(t *testing.T) {
 			t.Errorf("creature %d has %d -1/-1 counters, want %d", i, got.Counters[game.CounterMinusOne], i+1)
 		}
 	}
+}
+
+// --- Shiv --------------------------------------------------------------------
+
+func TestShivGivesEveryCreatureARedPumpAndChaosMakesADragon(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeShiv)
+	g, plane := newPlaneGame(t, planeShiv)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
+	g.BumpLayerVersionForTest()
+	floatMana(t, g, me, "{R}")
+	if err := g.ActivateCatalogAbility(me.ID, bear, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("the granted pump cannot be activated: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if p, _ := mkmMPPT(t, g, bear); p != 3 {
+		t.Errorf("power %d after the pump, want 3", p)
+	}
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatal("a blank triggered the chaos ability")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Dragon"); n != 1 {
+		t.Errorf("%d Dragons, want 1", n)
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	g.BumpLayerVersionForTest()
+	floatMana(t, g, me, "{R}")
+	if err := g.ActivateCatalogAbility(me.ID, bear, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Error("the pump survived planeswalking away from Shiv")
+	}
+}
+
+// --- Velis Vel ---------------------------------------------------------------
+
+func TestVelisVelCountsSharedTypesAndChaosGivesAllTypes(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeVelisVel)
+	g, _ := newPlaneGame(t, planeVelisVel)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	s1 := b12Creature(g, me.ID, "Shaman One", "Creature — Elemental Shaman", 2, 2)
+	s2 := b12Creature(g, opp.ID, "Shaman Two", "Creature — Elemental Shaman", 2, 2)
+	sp := b12Creature(g, me.ID, "Spirit", "Creature — Elemental Spirit", 2, 2)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	for id, want := range map[uuid.UUID]int{s1: 4, s2: 4, sp: 4, bear: 2} {
+		if got := effectivePower(t, g, id); got != want {
+			t.Errorf("power %d, want %d", got, want)
+		}
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	// The Bear now shares a type with every other creature: +3/+3.
+	if got := effectivePower(t, g, bear); got != 5 {
+		t.Errorf("the Bear with all creature types has power %d, want 5", got)
+	}
+}
+
+// --- The Zephyr Maze ---------------------------------------------------------
+
+func TestZephyrMazeFlyersGrowGroundedShrinkAndChaosGrantsFlying(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeZephyr)
+	g, _ := newPlaneGame(t, planeZephyr)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	flyer := pushVanillaCreature(g, me.ID, "Flyer", 2, 2)
+	walker := pushVanillaCreature(g, me.ID, "Walker", 3, 3)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == flyer {
+				g.Battlefield.Cards[i].Keywords = append(g.Battlefield.Cards[i].Keywords, "flying")
+			}
+		}
+	})
+	g.BumpLayerVersionForTest()
+	if got := effectivePower(t, g, flyer); got != 4 {
+		t.Errorf("flyer power %d, want 4", got)
+	}
+	if got := effectivePower(t, g, walker); got != 1 {
+		t.Errorf("grounded creature power %d, want 1", got)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, walker)
+	passPriorityAroundTable(t, g)
+	if got := effectivePower(t, g, walker); got != 5 {
+		t.Errorf("the creature given flying has power %d, want 5", got)
+	}
+}
+
+// --- The Hippodrome ----------------------------------------------------------
+
+func TestHippodromeShrinksPowerAndChaosMayDestroyAPowerlessCreature(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeHippo)
+	g, _ := newPlaneGame(t, planeHippo)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	small := pushVanillaCreature(g, me.ID, "Small", 3, 3)
+	big := pushVanillaCreature(g, me.ID, "Big", 7, 7)
+	g.BumpLayerVersionForTest()
+	if got := effectivePower(t, g, small); got != -2 {
+		t.Errorf("power %d, want -2", got)
+	}
+	// A creature whose power is above 0 is a legal target but is not destroyed.
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, big)
+	passPriorityAroundTable(t, g)
+	if !planeOnBattlefield(g, big) {
+		t.Fatal("a creature with positive power was destroyed")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, small)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
+	if !planeOnBattlefield(g, small) {
+		t.Fatal("declining still destroyed the creature")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, small)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	if planeOnBattlefield(g, small) {
+		t.Error("the powerless creature was not destroyed")
+	}
+}
+
+// --- Takenuma ----------------------------------------------------------------
+
+func TestTakenumaDrawsForTheCreaturesControllerAndChaosBounces(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTakenuma)
+	g, _ := newPlaneGame(t, planeTakenuma)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	theirs := pushVanillaCreature(g, opp.ID, "Theirs", 2, 2)
+	mine := pushVanillaCreature(g, me.ID, "Mine", 2, 2)
+	rock := b12Permanent(g, opp.ID, "Rock", "Artifact")
+	oppHand, myHand := opp.Hand.Size(), me.Hand.Size()
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{theirs, rock}) })
+	passPriorityAroundTable(t, g)
+	if got := opp.Hand.Size(); got != oppHand+1 {
+		t.Errorf("the creature's controller drew %d, want 1", got-oppHand)
+	}
+	if got := me.Hand.Size(); got != myHand {
+		t.Errorf("the planar controller drew %d for another player's creature", got-myHand)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, mine)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(mine) {
+		t.Error("the creature did not return to its owner's hand")
+	}
+	if got := me.Hand.Size(); got != myHand+2 {
+		t.Errorf("hand %d, want %d: the bounced creature and the card its leaving drew", got, myHand+2)
+	}
+}
+
+// --- Tember City -------------------------------------------------------------
+
+func TestTemberCityPingsLandTappersAndChaosIsAnEdict(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTember)
+	g, _ := newPlaneGame(t, planeTember)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mine1 := b12Permanent(g, me.ID, "Mine", "Artifact")
+	_ = mine1
+	theirs := b12Permanent(g, opp.ID, "Theirs", "Artifact")
+	theirLand := planeLand(g, opp.ID)
+	myLand := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	lives := [2]int{me.Life, opp.Life}
+	if err := g.ActivateManaAbility(me.ID, myLand, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Life != lives[0]-1 || opp.Life != lives[1] {
+		t.Errorf("lives %d/%d after tapping a land, want %d/%d", me.Life, opp.Life, lives[0]-1, lives[1])
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		if p.ID != me.ID {
+			answerSacrifice(t, g, p.ID, theirs)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if planeOnBattlefield(g, theirs) {
+		t.Error("the opponent kept their nonland permanent")
+	}
+	if !planeOnBattlefield(g, theirLand) || !planeOnBattlefield(g, mine1) {
+		t.Error("a land or the planar controller's permanent was sacrificed")
+	}
+}
+
+// --- The Dark Barony ---------------------------------------------------------
+
+func TestDarkBaronyCostsLifeForNonblackCardsInGraveyardsAndChaosDiscards(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeBarony)
+	g, _ := newPlaneGame(t, planeBarony)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	g.WithWriteLock(func() {
+		opp.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Dark One", TypeLine: "Creature — Bat", Colors: []string{"B"}, Owner: opp.ID, Controller: opp.ID})
+	})
+	before := opp.Life
+	g.WithWriteLock(func() { _ = g.MillNForEffect(opp.ID, 1) })
+	passPriorityAroundTable(t, g)
+	if opp.Life != before {
+		t.Errorf("a black card cost %d life", before-opp.Life)
+	}
+	g.WithWriteLock(func() { _ = g.MillNForEffect(opp.ID, 2) })
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("life %d after two nonblack cards, want %d", opp.Life, before-2)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		if p.ID == me.ID {
+			continue
+		}
+		if discardOwed(g, p.ID) != 1 {
+			t.Fatalf("%s was not asked to discard a card", p.Name)
+		}
+		answerDiscard(t, g, p.ID, p.Hand.Cards[0].InstanceID)
+	}
+}
+
+// --- The Eon Fog -------------------------------------------------------------
+
+func TestEonFogSkipsUntapAndChaosUntapsYourPermanents(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeEonFog)
+	g, _ := newPlaneGame(t, planeEonFog)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	next := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	rock := b12Permanent(g, next.ID, "Rock", "Artifact")
+	mine := b12Permanent(g, me.ID, "Mine", "Artifact")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			g.Battlefield.Cards[i].Tapped = true
+		}
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if c, _ := g.LookupCardForEffect(mine); c.Tapped {
+		t.Error("chaos left the planar controller's permanent tapped")
+	}
+	if c, _ := g.LookupCardForEffect(rock); !c.Tapped {
+		t.Error("chaos untapped another player's permanent")
+	}
+	if active := toNextUpkeep(t, g); active.ID != next.ID {
+		t.Fatalf("active player %s, want %s", active.Name, next.Name)
+	}
+	if c, _ := g.LookupCardForEffect(rock); !c.Tapped {
+		t.Error("a permanent untapped in an untap step on The Eon Fog")
+	}
+}
+
+// --- The Fourth Sphere -------------------------------------------------------
+
+func TestFourthSphereSacrificesANonblackCreatureAtUpkeepAndChaosMakesAZombie(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeFourth)
+	g, _ := newPlaneGame(t, planeFourth)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	next := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	black := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Black", TypeLine: "Creature — Bat",
+		Colors: []string{"B"}, Power: 1, Toughness: 1, Owner: next.ID, Controller: next.ID})
+	green := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Green", TypeLine: "Creature — Bear",
+		Colors: []string{"G"}, Power: 2, Toughness: 2, Owner: next.ID, Controller: next.ID})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Zombie"); n != 1 {
+		t.Fatalf("%d Zombies, want 1", n)
+	}
+	toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	answerChooseCards(t, g, next.ID, green)
+	passPriorityAroundTable(t, g)
+	if planeOnBattlefield(g, green) {
+		t.Error("the nonblack creature was not sacrificed")
+	}
+	if !planeOnBattlefield(g, black) {
+		t.Error("the black creature was sacrificed")
+	}
+}
+
+// --- Orzhova -----------------------------------------------------------------
+
+func TestOrzhovaChaosExilesOpponentCreatureCardsAndPlaneswalkingReturnsAll(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeOrzhova)
+	g, _ := newPlaneGame(t, planeOrzhova)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mineDead := pushGraveyardCardWithTypeLineID(me, "My Bear", "Creature — Bear")
+	theirDead := pushGraveyardCardWithTypeLineID(opp, "Their Bear", "Creature — Bear")
+	theirSpell := pushGraveyardCardWithTypeLineID(opp, "Their Ritual", "Sorcery")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(theirSpell)); err == nil {
+		t.Fatal("a noncreature card was accepted")
+	}
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(mineDead)); err == nil {
+		t.Fatal("the planar controller's own graveyard was accepted")
+	}
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(theirDead)); err != nil {
+		t.Fatalf("ResolvePickTarget: %v", err)
+	}
+	for pickTargetOpen(g) {
+		ch := pickTargetPrompt(t, g)
+		if err := g.ResolvePickTarget(ch.ID, ch.Chooser, game.TargetRef{}); err != nil {
+			break
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Graveyard.Contains(theirDead) {
+		t.Error("the opponent's creature card was not exiled")
+	}
+	other := pushGraveyardCardWithTypeLineID(opp, "Other Bear", "Creature — Bear")
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	passPriorityAroundTable(t, g)
+	if !planeOnBattlefield(g, mineDead) || !planeOnBattlefield(g, other) {
+		t.Error("creature cards did not return from every graveyard")
+	}
+	if !opp.Graveyard.Contains(theirSpell) {
+		t.Error("a noncreature card left the graveyard")
+	}
+}
+
+func pickTargetOpen(g *game.Game) bool {
+	return latestChoiceOfKind(g, game.PendingChoicePickTarget) != nil
 }
