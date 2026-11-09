@@ -464,3 +464,89 @@ func TestStdB43AssembleThePlayersCastsABigDisguiseCreatureFaceDown(t *testing.T)
 		t.Fatalf("a power 5 disguise creature cast face down from the top: %v", err)
 	}
 }
+
+const stdIntrudeOracle = "eedb1527-548a-435a-a3e1-8ad7d9d6d8a9"
+
+func stdIntrudeThopter(g *game.Game, owner uuid.UUID) (game.Card, bool) {
+	var out game.Card
+	var ok bool
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Controller == owner && c.Name == "Thopter" {
+				out, ok = c, true
+			}
+		}
+	})
+	return out, ok
+}
+
+// You separate the five cards; the opponent you name chooses the pile that
+// goes to your hand; the Thopter gets one counter per card binned.
+func TestStdB43IntrudeOnTheMindPutsThePileInHandAndCountsTheRest(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	revealed := seedFactOrFictionLibrary(me, "IM One", "IM Two", "IM Three", "IM Four", "IM Five")
+	hand, graves := me.Hand.Size(), me.Graveyard.Size()
+
+	castCatalogSpell(t, g, "Intrude on the Mind", "Instant", stdIntrudeOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerChoosePlayer(t, g, me.ID, opp)
+	split := latestRevealPickFor(g, me.ID)
+	if split == nil {
+		t.Fatalf("the caster separates the piles: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveRevealPick(split.ID, me.ID, revealed[:2]); err != nil {
+		t.Fatalf("ResolveRevealPick: %v", err)
+	}
+	pick := latestOptionPickFor(g, opp.ID)
+	if pick == nil {
+		t.Fatalf("the named opponent chooses a pile: %+v", g.PendingChoices)
+	}
+	// Take the pile of three (the second option): two cards are binned.
+	answerOptionPick(t, g, opp.ID, 1)
+	passPriorityAroundTable(t, g)
+
+	if me.Hand.Size() != hand+3 {
+		t.Errorf("hand %d -> %d, want +3", hand, me.Hand.Size())
+	}
+	if me.Graveyard.Size() != graves+3 {
+		t.Errorf("graveyard %d -> %d, want +3 (two binned cards and the spell)", graves, me.Graveyard.Size())
+	}
+	th, ok := stdIntrudeThopter(g, me.ID)
+	if !ok {
+		t.Fatal("no Thopter")
+	}
+	if th.Counters["+1/+1"] != 2 || th.CurrentPower() != 2 || !hasKeywordOnBattlefield(t, g, th.InstanceID, "flying") {
+		t.Errorf("Thopter %d/%d with %d counters, want a 2/2 flyer", th.CurrentPower(), th.CurrentToughness(), th.Counters["+1/+1"])
+	}
+}
+
+func TestStdB43IntrudeOnTheMindMakesAZeroZeroThopterWhenNothingIsBinned(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	revealed := seedFactOrFictionLibrary(me, "IM One", "IM Two", "IM Three", "IM Four", "IM Five")
+	castCatalogSpell(t, g, "Intrude on the Mind", "Instant", stdIntrudeOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerChoosePlayer(t, g, me.ID, opp)
+	split := latestRevealPickFor(g, me.ID)
+	if err := g.ResolveRevealPick(split.ID, me.ID, revealed); err != nil {
+		t.Fatalf("ResolveRevealPick: %v", err)
+	}
+	// All five in one pile, and the opponent hands it over.
+	pick := latestOptionPickFor(g, opp.ID)
+	if pick == nil {
+		t.Fatalf("no pile choice: %+v", g.PendingChoices)
+	}
+	for i, o := range pick.PickOptions {
+		if len(o.Cards) == 5 {
+			answerOptionPick(t, g, opp.ID, i)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	// A 0/0 with no counters dies as state-based actions are checked.
+	if _, ok := stdIntrudeThopter(g, me.ID); ok {
+		t.Error("a 0/0 Thopter with no counters stayed on the battlefield")
+	}
+}

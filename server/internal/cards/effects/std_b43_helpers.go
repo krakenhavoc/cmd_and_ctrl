@@ -21,6 +21,8 @@ func init() {
 	for key, card := range map[string]game.Card{
 		// Soul Search, Teysa, Opulent Oligarch.
 		"1/1 white and black Spirit with flying": {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 1, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
+		// Intrude on the Mind: the card's own Thopter is a 0/0 that takes counters.
+		"0/0 colorless Thopter artifact with flying": {Name: "Thopter", TypeLine: "Token Artifact Creature — Thopter", Power: 0, Toughness: 0, Keywords: []string{"flying"}, PrintedPTKnown: true},
 		// Tolsimir, Midnight's Light.
 		"5/5 green and white Legendary Wolf named Voja Fenstalker": {Name: "Voja Fenstalker", TypeLine: "Token Legendary Creature — Wolf", Power: 5, Toughness: 5, Colors: []string{"G", "W"}, Keywords: []string{"trample"}},
 	} {
