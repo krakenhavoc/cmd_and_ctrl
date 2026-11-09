@@ -40,6 +40,7 @@ const (
 	b35RoxanneOracle             = "11765eaf-87a1-48bd-90c1-7a5f21be5918"
 	b35DocAurlockOracle          = "3ca32660-bf5f-4398-bef6-a0ec8bc767cf"
 	b35BonnyPallOracle           = "fcb811a8-c6e6-4bc4-b64b-8963a7183669"
+	b35KambalOracle              = "619e0686-e88c-4238-8364-75395e733533"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -73,6 +74,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35RoxanneOracle:             "Roxanne, Starfall Savant",
 		b35DocAurlockOracle:          "Doc Aurlock, Grizzled Genius",
 		b35BonnyPallOracle:           "Bonny Pall, Clearcutter",
+		b35KambalOracle:              "Kambal, Profiteering Mayor",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1324,5 +1326,33 @@ func TestB35BonnyPallDrawsOnAttackAndMayPutALandFromHandOrGraveyard(t *testing.T
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(gyLand) {
 		t.Error("the graveyard land did not enter the battlefield")
+	}
+}
+
+func TestB35KambalCopiesEachOpponentTokenOnceEachTurnAndDrainsForYours(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Kambal, Profiteering Mayor", "Legendary Creature — Human Advisor", b35KambalOracle, 2, 3)
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TreasureToken(), 2) })
+	passPriorityAroundTable(t, g)
+	mine, tapped := countTokensNamed(g, me.ID, "Treasure")
+	if mine != 2 || tapped != 2 {
+		t.Fatalf("%d Treasures (%d tapped) under you, want 2 tapped copies", mine, tapped)
+	}
+	if got := countTreasures(g, opp.ID); got != 2 {
+		t.Errorf("the opponent has %d Treasures, want their own 2", got)
+	}
+	// Only once each turn.
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TreasureToken(), 1) })
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Treasure"); n != 2 {
+		t.Errorf("a second batch the same turn made copies: %d Treasures under you", n)
+	}
+	// Your own tokens drain, once per batch.
+	life, oppLife := lifeOf(g, me.ID), lifeOf(g, opp.ID)
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, ClueToken(), 3) })
+	passPriorityAroundTable(t, g)
+	if lifeOf(g, me.ID) != life+1 || lifeOf(g, opp.ID) != oppLife-1 {
+		t.Errorf("drain: you %d (from %d), them %d (from %d)", lifeOf(g, me.ID), life, lifeOf(g, opp.ID), oppLife)
 	}
 }
