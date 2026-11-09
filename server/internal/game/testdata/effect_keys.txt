@@ -113,6 +113,7 @@ body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
 body dr-leonard-mccoy/return-at-next-end-step
 body dr-leonard-mccoy/when-it-dies-this-turn
+body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
