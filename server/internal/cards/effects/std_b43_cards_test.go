@@ -716,3 +716,83 @@ func TestStdB44NivMizzetHasHexproofFromMulticolored(t *testing.T) {
 		t.Errorf("a monocolored spell could not target Niv-Mizzet: %v", err)
 	}
 }
+
+const stdCodebreakerOracle = "af2b36ee-2945-41d3-a186-8fd28f3cde16"
+
+func stdCodebreakerFaceDown(t *testing.T, g *game.Game, graveInstants int) (*game.Player, uuid.UUID) {
+	t.Helper()
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < graveInstants; i++ {
+		me.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: "Spent", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+	}
+	// A creature card in the graveyard does not count.
+	me.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: "Dead Bear", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID})
+	id := mkmMPCastFaceDown(t, g, "Fugitive Codebreaker", "Creature — Goblin Rogue", stdCodebreakerOracle, 2, 2)
+	return me, id
+}
+
+func TestStdB44FugitiveCodebreakerDisguiseCostIsReducedPerInstantAndSorcery(t *testing.T) {
+	g := newCatalogGame(t)
+	me, id := stdCodebreakerFaceDown(t, g, 3)
+	// {5}{R} less three generic is {2}{R}: two mana is short.
+	g.WithWriteLock(func() { me.ManaPool.AddMana(manaTokens("R", "C")...) })
+	if err := g.PerformSpecialAction(me.ID, id, game.SpecialActionTurnFaceUp, game.SpecialActionParams{Strict: true}); err == nil {
+		t.Fatal("turned face up for {R}{C}: the cost is {2}{R} after three reductions")
+	}
+	g.WithWriteLock(func() { me.ManaPool.AddMana(manaTokens("C")...) })
+	if err := g.PerformSpecialAction(me.ID, id, game.SpecialActionTurnFaceUp, game.SpecialActionParams{Strict: true}); err != nil {
+		t.Fatalf("turn face up for {2}{R}: %v", err)
+	}
+}
+
+func TestStdB44FugitiveCodebreakerReductionNeverTouchesTheColoredSymbol(t *testing.T) {
+	g := newCatalogGame(t)
+	me, id := stdCodebreakerFaceDown(t, g, 9)
+	g.WithWriteLock(func() { me.ManaPool.AddMana(manaTokens("C")...) })
+	if err := g.PerformSpecialAction(me.ID, id, game.SpecialActionTurnFaceUp, game.SpecialActionParams{Strict: true}); err == nil {
+		t.Fatal("turned face up with no {R}")
+	}
+	g.WithWriteLock(func() { me.ManaPool.AddMana(manaTokens("R")...) })
+	if err := g.PerformSpecialAction(me.ID, id, game.SpecialActionTurnFaceUp, game.SpecialActionParams{Strict: true}); err != nil {
+		t.Fatalf("turn face up for {R}: %v", err)
+	}
+}
+
+func TestStdB44FugitiveCodebreakerDiscardsTheHandThenDrawsThree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, id := stdCodebreakerFaceDown(t, g, 4)
+	for i := 0; i < 5; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Draw", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	me.Hand.Cards = nil
+	for i := 0; i < 2; i++ {
+		me.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Held", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	graves := me.Graveyard.Size()
+	mkmMPTurnFaceUp(t, g, me, id, "R", "C")
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != 3 {
+		t.Errorf("hand %d, want 3 drawn cards (the two held cards discarded)", got)
+	}
+	if got := me.Graveyard.Size() - graves; got != 2 {
+		t.Errorf("graveyard grew by %d, want the 2 discarded cards", got)
+	}
+}
+
+func TestStdB44FugitiveCodebreakerStillDrawsThreeWithAnEmptyHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me, id := stdCodebreakerFaceDown(t, g, 4)
+	for i := 0; i < 5; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Draw", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	me.Hand.Cards = nil
+	mkmMPTurnFaceUp(t, g, me, id, "R", "C")
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != 3 {
+		t.Errorf("hand %d, want 3", got)
+	}
+}

@@ -59,3 +59,34 @@ func differentColorPairsAmong(g *game.Game, controller uuid.UUID) int {
 	}
 	return len(pairs)
 }
+
+// FaceUpCostLess is "This cost is reduced by {1} for each …" printed on a
+// morph or disguise cost (Fugitive Codebreaker, #4452): count is read as the
+// turn-face-up cost is priced, for the player turning the permanent up, and
+// reduces its generic mana (never below zero). `ac` is copied, never
+// modified.
+func FaceUpCostLess(ac game.AlternativeCost, count func(g *game.Game, controller uuid.UUID) int) game.AlternativeCost {
+	if ac.FaceDown == nil {
+		panic("effects.FaceUpCostLess: " + ac.Key + " is not a face-down cast")
+	}
+	fd := *ac.FaceDown
+	fd.FaceUpCostLess = &game.FaceUpCostReduction{Count: count}
+	ac.FaceDown = &fd
+	return ac
+}
+
+// instantAndSorceryCardsInGraveyard is how many instant and sorcery cards
+// `player`'s graveyard holds.
+func instantAndSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+	p := g.PlayerByIDForEffect(player)
+	if p == nil || p.Graveyard == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range p.Graveyard.Cards {
+		if c.IsInstant() || c.IsSorcery() {
+			n++
+		}
+	}
+	return n
+}

@@ -1284,6 +1284,9 @@ func (g *Game) SpecialActionManaCostForEffect(actor uuid.UUID, card Card, kind S
 		// component is not made of mana, so the pass has no subject.
 		return base, nil
 	}
+	if kind == SpecialActionTurnFaceUp && sa.Route != TurnFaceUpByManaCost {
+		base = g.faceUpCostLessLocked(base, actor, card)
+	}
 	return g.applyCostModifiersLocked(base, g.specialActionCostQueryLocked(actor, card, kind, sa.Zone))
 }
 

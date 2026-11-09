@@ -321,6 +321,28 @@ type FaceDownCast struct {
 	// row the running one did. A pointer, so FaceDownCast stays
 	// comparable.
 	AsTurnedFaceUp *AsTurnedFaceUpCounters
+
+	// FaceUpCostLess is "this cost is reduced by {1} for each ..." printed
+	// on the morph or disguise cost itself (Fugitive Codebreaker's "Disguise
+	// {5}{R}. This cost is reduced by {1} for each instant and sorcery card in
+	// your graveyard", #4452). Nil for every card that prints none. It
+	// reduces the generic part of the turn-face-up cost as it is priced
+	// (CR 118.7: never a coloured symbol, never below zero generic), before
+	// any other cost modifier is applied, on every route that pays the
+	// keyword's cost; the view's charged cost, the enumerator and the
+	// performer all price through SpecialActionManaCostForEffect, so they
+	// agree. A pointer, so FaceDownCast stays comparable.
+	FaceUpCostLess *FaceUpCostReduction
+}
+
+// FaceUpCostReduction is the payload of FaceDownCast.FaceUpCostLess.
+type FaceUpCostReduction struct {
+	// Count is how many generic mana the cost is reduced by, read as the
+	// cost is priced with g.mu held: read the board through the ForEffect
+	// accessors and mutate nothing. controller is the player turning the
+	// permanent face up ("your graveyard"). A catalog row, never a field of
+	// Game (the closure ratchet).
+	Count func(g *Game, controller uuid.UUID) int
 }
 
 // AsTurnedFaceUpCounters is "put N +1/+1 counters on it" as a
@@ -377,14 +399,17 @@ func FaceDownCastFor(catalogKey string) *AlternativeCost {
 // answers "" — a face-down permanent has no text, no abilities and no
 // catalog entry (ADR 0069 decision 4).
 //
-// So it is unexported and it has exactly TWO callers, both named
-// here and both asking about a price the CARD prints:
+// So it is unexported and it has exactly THREE callers, all named
+// here and all asking about a price the CARD prints:
 //
 //  1. TurnFaceUpOffers — CR 708.6's morph cost, above.
 //  2. castOfferKey — the CR 601.2b re-derivation of the
 //     alternative cost a face-down cast is ALREADY paying, below.
+//  3. faceUpCostLessLocked (face_up_cost_less.go, #4452) — the
+//     "this cost is reduced by" printed on that same morph or disguise
+//     cost, read when CR 708.6's price is quoted.
 //
-// A third caller is a rules bug. It caches nothing and materialises
+// A fourth caller is a rules bug. It caches nothing and materialises
 // nothing: the read is a pure function of the card, taken at the
 // moment the price is quoted, and the instant ClearFaceDown runs
 // CatalogKey answers on its own again.
