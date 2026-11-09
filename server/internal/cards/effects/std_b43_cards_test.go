@@ -1930,3 +1930,84 @@ func TestStdB46BreakOutDeclinedGoesToHandAndNoCreatureMeansAllToTheBottom(t *tes
 		t.Errorf("library %d, want all 8 still there", me2.Library.Size())
 	}
 }
+
+const stdGorgonCaseOracle = "a89f9072-cf06-429f-a9b8-c11b5731ddd3"
+
+func TestStdB46CaseOfTheGorgonsKissDestroysADamagedCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	hurt := reqCreature(g, opp.ID, "Hurt Bear", "", 4, 4)
+	healthy := reqCreature(g, opp.ID, "Healthy Bear", "", 4, 4)
+	g.WithWriteLock(func() {
+		if err := g.DealDamageToCreatureForEffect(uuid.Nil, hurt, 1); err != nil {
+			t.Fatalf("damage: %v", err)
+		}
+	})
+	castCatalogSpell(t, g, "Case of the Gorgon's Kiss", "Enchantment — Case", stdGorgonCaseOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("no target prompt: %+v", g.PendingChoices)
+	}
+	if len(pick.PickTargetCards) != 1 || pick.PickTargetCards[0] != hurt {
+		t.Fatalf("offered %v, want only the damaged creature (not %v)", pick.PickTargetCards, healthy)
+	}
+	pickCard(t, g, me.ID, hurt)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, hurt); ok {
+		t.Error("the damaged creature survived")
+	}
+	if _, ok := battlefieldCard(g, healthy); !ok {
+		t.Error("the undamaged creature was destroyed")
+	}
+}
+
+func TestStdB46CaseOfTheGorgonsKissSolvesAndBecomesAFourFourGorgon(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	caseID := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Case of the Gorgon's Kiss", TypeLine: "Enchantment — Case", OracleID: stdGorgonCaseOracle,
+		Owner: me.ID, Controller: me.ID,
+	})
+	for i := 0; i < 2; i++ {
+		id := reqCreature(g, me.ID, "Dying Bear", "", 1, 1)
+		g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{id}) })
+	}
+	g.RunStateChecksForTest()
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if c := tmtB1Card(t, g, caseID); c.Solved || c.IsCreature() {
+		t.Fatal("solved with only two creature cards put into graveyards")
+	}
+	// A third one, then the next end step... this turn is over, so solve in a fresh turn.
+	g2 := newCatalogGame(t)
+	me2 := g2.Seats[g2.Turn.ActiveSeat]
+	advanceToMain(t, g2)
+	case2 := pushBattlefieldCardWithTimestamp(g2, game.Card{
+		InstanceID: uuid.New(), Name: "Case of the Gorgon's Kiss", TypeLine: "Enchantment — Case", OracleID: stdGorgonCaseOracle,
+		Owner: me2.ID, Controller: me2.ID,
+	})
+	var tokenGone uuid.UUID
+	for i := 0; i < 3; i++ {
+		id := reqCreature(g2, g2.Seats[1].ID, "Dying Bear", "", 1, 1) // any player's creature cards count
+		g2.WithWriteLock(func() { g2.DestroyPermanentsForEffect([]uuid.UUID{id}) })
+	}
+	tokenGone = pushBattlefieldCardWithTimestamp(g2, game.Card{InstanceID: uuid.New(), Name: "Token", TypeLine: "Token Creature — Bear", Power: 1, Toughness: 1, Owner: me2.ID, Controller: me2.ID})
+	g2.WithWriteLock(func() { g2.DestroyPermanentsForEffect([]uuid.UUID{tokenGone}) })
+	g2.RunStateChecksForTest()
+	advanceTo(t, g2, game.StepEnd)
+	passPriorityAroundTable(t, g2)
+	c := tmtB1Card(t, g2, case2)
+	if !c.Solved {
+		t.Fatal("not solved after three creature cards were put into graveyards")
+	}
+	if p, tough := mkmMPPT(t, g2, case2); !c.IsCreature() || p != 4 || tough != 4 || !c.HasSubtype("Gorgon") || !c.HasSubtype("Case") {
+		t.Errorf("solved Case is %d/%d creature %v, want a 4/4 Gorgon Case creature", p, tough, c.IsCreature())
+	}
+	for _, kw := range []string{"deathtouch", "lifelink"} {
+		if !hasKeywordOnBattlefield(t, g2, case2, kw) {
+			t.Errorf("the solved Case lacks %s", kw)
+		}
+	}
+}
