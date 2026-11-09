@@ -28,6 +28,8 @@ const (
 	sb11GlidecarOracle    = "8f40d73b-9106-448e-8649-5d62939f0d38"
 	sb11StrategistOracle  = "1b788680-28e3-4378-9607-bd42acb4fbad"
 	sb11HarrierOracle     = "23102d8a-3a93-4e83-af5b-401c85ba9dbc"
+	sb11ShapethiefOracle  = "6c540822-4ceb-4ebf-b777-da172ada3f1b"
+	sb11JunkerOracle      = "88075828-a76e-412d-b738-182f50e3a133"
 	sb11DeathBegetsOracle = "53e86135-3b24-4618-bcc0-af4d81e672dd"
 )
 
@@ -992,6 +994,125 @@ func TestSb11SpikeshellHarrierFromMaxSpeedEndsMaxSpeed(t *testing.T) {
 	sb11Harrier(t, g, bear)
 	if g.SpeedOf(opp.ID) != game.MaxSpeed-1 {
 		t.Errorf("speed is %d, want %d", g.SpeedOf(opp.ID), game.MaxSpeed-1)
+	}
+}
+
+// --- Waxen Shapethief ---------------------------------------------------------
+
+func TestSb11WaxenShapethiefOffersOnlyYourArtifactsAndCreatures(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 4, 4)
+	ring := b12Permanent(g, me.ID, "Sol Ring", "Artifact")
+	b12Permanent(g, me.ID, "Pacifism", "Enchantment — Aura")
+	b12Permanent(g, me.ID, "Forest", "Basic Land — Forest")
+	seedCopyableCreature(g, opp.ID, "Runeclaw Bear", "Creature — Bear", 2, 2)
+	b12Permanent(g, opp.ID, "Their Rock", "Artifact")
+	castCatalogSpell(t, g, "Waxen Shapethief", "Creature — Shapeshifter", sb11ShapethiefOracle, nil)
+	for i := 0; i < 8 && copyPrompt(g) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	pc := copyPrompt(g)
+	if pc == nil {
+		t.Fatal("no copy prompt")
+	}
+	if len(pc.CopyOptions) != 2 || !hasID(pc.CopyOptions, bear) || !hasID(pc.CopyOptions, ring) {
+		t.Fatalf("CopyOptions = %v, want only my Bear and my Sol Ring", pc.CopyOptions)
+	}
+}
+
+func TestSb11WaxenShapethiefEntersAsACopyOfACreatureYouControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 4, 4)
+	id := castCatalogSpell(t, g, "Waxen Shapethief", "Creature — Shapeshifter", sb11ShapethiefOracle, nil)
+	resolveWithCopyChoice(t, g, bear)
+	got := copyBattlefieldCard(t, g, id)
+	if got.Name != "Grizzly Bears" || got.CurrentPower() != 4 || got.CurrentToughness() != 4 || !got.IsCopy() {
+		t.Errorf("entered as %q %d/%d (copy %v), want a 4/4 Grizzly Bears copy", got.Name, got.CurrentPower(), got.CurrentToughness(), got.IsCopy())
+	}
+}
+
+func TestSb11WaxenShapethiefCopyingAnArtifactStaysANoncreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ring := b12Permanent(g, me.ID, "Sol Ring", "Artifact")
+	id := castCatalogSpell(t, g, "Waxen Shapethief", "Creature — Shapeshifter", sb11ShapethiefOracle, nil)
+	resolveWithCopyChoice(t, g, ring)
+	got := copyBattlefieldCard(t, g, id)
+	if got.Name != "Sol Ring" || !got.IsArtifact() || got.IsCreature() {
+		t.Errorf("entered as %q (artifact %v, creature %v), want a Sol Ring copy", got.Name, got.IsArtifact(), got.IsCreature())
+	}
+}
+
+// --- Demonic Junker -------------------------------------------------------------
+
+func sb11JunkerTable(t *testing.T, mineToo bool) (g *game.Game, junker, mine, theirs uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	mine = b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	theirs = b12Creature(g, g.Seats[(g.Turn.ActiveSeat+1)%4].ID, "Their Bear", "Creature — Bear", 2, 2)
+	junker = castHoldCreature(t, g, "Demonic Junker", "Artifact — Vehicle", sb11JunkerOracle, 4, 3)
+	for i := 0; i < 4 && latestPickTarget(g, me.ID) != nil; i++ {
+		pick := latestPickTarget(g, me.ID)
+		switch {
+		case hasID(pick.PickTargetCards, mine) && mineToo:
+			pickCard(t, g, me.ID, mine)
+		case hasID(pick.PickTargetCards, theirs):
+			pickCard(t, g, me.ID, theirs)
+		default:
+			b26DeclinePickTarget(t, g, me.ID)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	return g, junker, mine, theirs
+}
+
+func TestSb11DemonicJunkerDestroysOneCreaturePerPlayerAndGrowsWhenYoursDied(t *testing.T) {
+	g, junker, mine, theirs := sb11JunkerTable(t, true)
+	if g.Battlefield.Contains(mine) || g.Battlefield.Contains(theirs) {
+		t.Fatal("a chosen creature survived")
+	}
+	if got := countersOn(g, junker, game.CounterPlusOne); got != 2 {
+		t.Errorf("%d +1/+1 counters, want 2: a creature you controlled was destroyed", got)
+	}
+}
+
+func TestSb11DemonicJunkerGetsNoCountersWhenNoneOfYoursDied(t *testing.T) {
+	g, junker, mine, theirs := sb11JunkerTable(t, false)
+	if !g.Battlefield.Contains(mine) {
+		t.Error("my creature was destroyed though not chosen")
+	}
+	if g.Battlefield.Contains(theirs) {
+		t.Error("their creature survived")
+	}
+	if got := countersOn(g, junker, game.CounterPlusOne); got != 0 {
+		t.Errorf("%d counters, want 0", got)
+	}
+}
+
+func TestSb11DemonicJunkerAffinityForArtifactsCutsTheCost(t *testing.T) {
+	cast := func(artifacts int) error {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		for i := 0; i < artifacts; i++ {
+			b12Permanent(g, me.ID, "Rock", "Artifact")
+		}
+		id := uuid.New()
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Demonic Junker", TypeLine: "Artifact — Vehicle", ManaCost: "{6}{B}",
+			OracleID: sb11JunkerOracle, Power: 4, Toughness: 3, Colors: []string{"B"}, Owner: me.ID, Controller: me.ID})
+		floatForTest(g, me, "CCB")
+		return g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true})
+	}
+	if err := cast(0); err == nil {
+		t.Error("{2}{B} paid for a {6}{B} spell with no artifacts")
+	}
+	if err := cast(4); err != nil {
+		t.Errorf("with four artifacts the spell costs {2}{B}: %v", err)
 	}
 }
 
