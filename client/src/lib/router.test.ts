@@ -120,3 +120,12 @@ describe("parseHash", () => {
     expect(parseHash("#/nowhere")).toEqual({ name: "login" });
   });
 });
+
+describe("pods routes (ADR 0220 §11)", () => {
+  it("parses #/pods, a pod and an invite link", () => {
+    expect(parseHash("#/pods")).toEqual({ name: "pods" });
+    expect(parseHash("#/pods/abc-123")).toEqual({ name: "pod", id: "abc-123" });
+    expect(parseHash("#/pods/join/tok_en-1")).toEqual({ name: "podJoin", token: "tok_en-1" });
+    expect(parseHash("#/pods/join")).toEqual({ name: "pods" });
+  });
+});

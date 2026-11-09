@@ -221,6 +221,17 @@ registered, or when this file is stale.
 | `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `siteMenu` | `Site menu` | button | aria | `lib/components/SiteHeader.svelte` | the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877) |
+| `navPods` | `Pods` | link | text | `lib/components/SiteHeader.svelte`<br>`routes/Stats.svelte` | the signed-in nav's link to #/pods, after Stats, and the Pods link on #/stats (ADR 0220 §11) |
+| `newPod` | `New pod` | button | text | `routes/Pods.svelte` | #/pods' one primary: asks for a name and makes a pod with you as its owner (ADR 0220 §5) |
+| `acceptPodInvite` | `Join pod` | button | text | `routes/Pods.svelte` | accepts a friend's invite to a pod, on #/pods; the invite's own yes (ADR 0220 §3a) |
+| `declinePodInvite` | `Decline` | button | text | `routes/Pods.svelte` | takes a pod invite off your list, silently: the pod still sees it pending (ADR 0220 §3a) |
+| `inviteToPod` | `Invite a friend` | button | text | `routes/Pod.svelte` | opens the friend picker on a pod's page; any member can invite one of their own friends (ADR 0220 §3a) |
+| `leavePod` | `Leave pod` | button | text | `routes/Pod.svelte` | leaves a pod after a one-line confirm; silent, nobody is told (ADR 0220 §3) |
+| `removePodMember` | `Remove` | button | text | `routes/Pod.svelte` | the owner's removal of a member, with its Also make a new invite link checkbox (ADR 0220 §3) |
+| `makePodOwner` | `Make owner` | button | text | `routes/Pod.svelte` | the owner hands the pod to a member and stays a member (ADR 0220 §2) |
+| `makePodLink` | `New link` | button | text | `routes/Pod.svelte` | mints or rotates the pod's invite link; the old one stops at once and the new one is shown once (ADR 0220 §3b) |
+| `copyPodLink` | `Copy invite link` | button | text | `routes/Pod.svelte` | copies the just-minted invite link; the token is never shown again (ADR 0220 §3b) |
+| `joinPod` | `Join` | button | text | `routes/PodJoin.svelte` | the invite link page's yes: joins the pod (ADR 0220 §3b) |
 | `friendsButton` | `Friends` | button | aria | `lib/components/SiteHeader.svelte` | the site header's people button, for someone signed in with Discord (ADR 0213 §9; it read People you've played with in slice 2); opens the friends drawer, which fetches then and never polls |
 | `friendsDrawer` | `Friends list` | dialog | aria | `lib/components/PlayedWithDrawer.svelte` | the header's drawer (ADR 0213 §9): Requests, Friends and Played with, each Played with row with Add friend and Invite; covers the page at tablet width (it was the Played with dialog in slice 2) |
 | `playedWith` | `Played with` | heading | text | `lib/components/PlayedWithDrawer.svelte` | the friends drawer's section of the people you have shared a table with and are not friends with yet, newest first (ADR 0213 §1) |

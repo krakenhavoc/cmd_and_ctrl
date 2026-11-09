@@ -127,7 +127,7 @@ describe("the site header's menu button", () => {
     await settle();
     expect(
       [...panel(inn.container).querySelectorAll(".grp a")].map((a) => a.textContent?.trim()),
-    ).toEqual([L.navTables, "Stats", "Decks", "Catalog", "Roadmap"]);
+    ).toEqual([L.navTables, "Stats", L.navPods, "Decks", "Catalog", "Roadmap"]);
   });
 
   it("keeps Sign in and the account button in the row, outside the panel", async () => {
