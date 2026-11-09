@@ -37,6 +37,7 @@ const (
 	b35LilahOracle               = "0757c5a7-e51b-4c39-bb4d-b32657c10cb4"
 	b35TinybonesOracle           = "7bc4c7e2-6758-4a85-84e7-03ab93981106"
 	b35VraskaSilencerOracle      = "e7c5a568-3855-4a20-9edf-01a8a6a4ba97"
+	b35RoxanneOracle             = "11765eaf-87a1-48bd-90c1-7a5f21be5918"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -67,6 +68,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35LilahOracle:               "Lilah, Undefeated Slickshot",
 		b35TinybonesOracle:           "Tinybones, the Pickpocket",
 		b35VraskaSilencerOracle:      "Vraska, the Silencer",
+		b35RoxanneOracle:             "Roxanne, Starfall Savant",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1170,5 +1172,39 @@ func TestB35VraskaTheSilencerReturnsAnOpponentsCreatureAsATappedTreasure(t *test
 	}
 	if grantedManaRowsOf(g, theirs) != 1 {
 		t.Error("the Treasure has no sacrifice-for-mana ability")
+	}
+}
+
+func TestB35RoxanneMakesATappedMeteoriteThatShocksAndDoublesTokenMana(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	life := lifeOf(g, opp.ID)
+	msc17Play(t, g, me, game.Card{Name: "Roxanne, Starfall Savant", TypeLine: "Legendary Creature — Cat Druid",
+		ManaCost: "{3}{R}{G}", OracleID: b35RoxanneOracle, Power: 4, Toughness: 4})
+	// The Roxanne trigger makes the Meteorite, whose own trigger asks for a target.
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if got := lifeOf(g, opp.ID); got != life-2 {
+		t.Errorf("life %d, want %d from Meteorite's 2 damage", got, life-2)
+	}
+	var meteorite uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Meteorite" && c.IsToken() {
+			meteorite = c.InstanceID
+			if !c.Tapped || !c.IsArtifact() || len(c.Colors) != 0 {
+				t.Errorf("Meteorite tapped=%v artifact=%v colors=%v, want a tapped colorless artifact", c.Tapped, c.IsArtifact(), c.Colors)
+			}
+		}
+	}
+	if meteorite == uuid.Nil {
+		t.Fatal("no Meteorite")
+	}
+	untapForTest(g, meteorite)
+	if err := g.ActivateManaAbility(me.ID, meteorite, 0, game.ManaAbilityParams{Colors: []string{"R"}}); err != nil {
+		t.Fatalf("tap Meteorite for mana: %v", err)
+	}
+	if got := me.ManaPool.CountColor("R"); got != 2 {
+		t.Errorf("%d {R} after tapping Meteorite for red under Roxanne, want 2", got)
 	}
 }
