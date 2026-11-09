@@ -34,6 +34,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{2}{U}, Remove a counter from this creature: Whenever a creature you control deals combat damage to a player or planeswalker this turn, draw a card.",
 			Cost:  Plus(ManaCost("{2}{U}"), RemoveCountersFromThis("", 1)),
+			// The draws come later, off combat damage: value, no answer.
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DelayedOnEvent{
 					Label:     "Flitterwing Nuisance — draw a card",
