@@ -79,7 +79,7 @@ func (g *Game) LandManaOptionsForEffect(player, land uuid.UUID) (opts []LandMana
 			continue
 		}
 		if ab.SacrificeOther != nil || !ab.TapOthers.Empty() || ab.DiscardCards != nil || ab.ExileCards != nil ||
-			!ab.ExilePermanents.Empty() || ab.ExileSelf {
+			!ab.ExilePermanents.Empty() || ab.ExileSelf || ab.Branched() {
 			continue
 		}
 		if ab.TapCost && (card.Tapped || g.ActivationSummoningSickLocked(card, player)) {

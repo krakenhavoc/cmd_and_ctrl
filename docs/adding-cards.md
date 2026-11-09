@@ -4620,9 +4620,22 @@ WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // 
   `PaidCost.Foraged`, read through `ctx.Foraged()` for "if you foraged";
   the cards are on `ctx.Exiled()` and the Food on
   `ctx.SacrificedPermanents()`.
-- Not yet: forage on a MANA ability (Thornvault Forager's "{T}, Forage: Add
-  two mana"), which has no either/or cost, and "cast … by foraging in
-  addition to paying their other costs" (Osteomancer Adept).
+- On a MANA ability (#5397, Thornvault Forager's "{T}, Forage: Add two
+  mana in any combination of colors") the cost is a field, not `Forage()`:
+
+  ```go
+  Cost: ManaAbilityCost{Tap: true, Forage: true},
+  ```
+
+  The activator names the way as `activate_mana_ability.cost_branch`
+  (0 exiles three graveyard cards on `exile_ids`, 1 sacrifices a Food on
+  `sacrifice_ids`); `game.ChosenManaAbilityShape` folds it into the plain
+  `ExileCards` or `SacrificeOther` clause, so declare neither beside it
+  (`Register` refuses it, and a forage off the battlefield). The
+  auto-tapper never plans the row, so give the card its plain mana row
+  too when it prints one.
+- Not yet: "cast … by foraging in addition to paying their other costs"
+  (Osteomancer Adept).
 
 ### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
 

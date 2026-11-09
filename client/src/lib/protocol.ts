@@ -5722,6 +5722,13 @@ export interface ManaAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // #5397: an either/or part of the cost — forage, Thornvault Forager's
+  // "{T}, Forage: Add two mana in any combination of colors" (exile three
+  // cards from your graveyard, or sacrifice a Food). The same entries
+  // ActivatedAbilityView.cost_branches carries; the client asks which
+  // first, folds the branch into the row (withCostBranch) and sends its
+  // index on activate_mana_ability as `cost_branch`.
+  cost_branches?: AbilityCostBranchView[];
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1

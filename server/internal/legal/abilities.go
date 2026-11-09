@@ -2248,6 +2248,10 @@ type manaParams struct {
 	// ADR 0131 §2: how many symbols of the mana component are paid with
 	// 2 life each — ManaAbilityParams.PhyrexianLife.
 	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// #5397: the branch of an either/or cost the move pays (forage: 0
+	// exiles three graveyard cards named in exile_ids, 1 sacrifices the
+	// Food named in sacrifice_ids) — activateParams.CostBranch's field.
+	CostBranch *int `json:"cost_branch,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents and —
@@ -2341,7 +2345,12 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		return
 	}
 	abilities, origins := game.ManaAbilitiesWithOrigins(*source)
-	for idx, ab := range abilities {
+	// #5397: an either/or cost (forage) is walked once per branch, each
+	// folded by game.ChosenManaAbilityShape — the engine's own fold — so
+	// a move pays exactly the branch it names, and a branch the seat
+	// can't pay is no move (CR 118.3).
+	for _, mr := range expandManaCostBranches(abilities) {
+		idx, ab := mr.row, mr.ab
 		// CR 113.6 (#1228): the ability has to function from the zone
 		// the card is in. Same predicate the engine gates on, so a
 		// Forest sitting in a hand is never offered as a mana source
@@ -2580,6 +2589,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						}
 						label += sacrificeLabel(g, sacs)
 						label += exileLabel(g, exiles)
+						// #5397: a forage's graveyard branch names its
+						// cards, as the Food branch's sacrifice label does.
+						if mr.branch != nil {
+							label += exileLabel(g, manaExileIDs)
+						}
 						label += tapLabel(g, taps)
 						label += cc.label(g)
 						handN := e.handDiscardCount(ab.DiscardCards, source.InstanceID)
@@ -2630,6 +2644,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								ExilePermanentIDs: idStrings(exiles),
 								AutoTap:           ab.ManaCost != "",
 								PhyrexianLife:     manaLife,
+								CostBranch:        mr.branch,
 							}),
 						})
 					}
