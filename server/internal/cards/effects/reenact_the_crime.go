@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -45,10 +43,3 @@ var reenactTheCrimeCopy = CardTail("tail/reenact-the-crime-copy", func(ctx *Cont
 	}
 	return CopyAndCast{Cards: o.IDs, Free: true}.Apply(ctx)
 })
-
-// PutIntoAGraveyardThisTurn is "that was put there from anywhere this turn":
-// the card is in a graveyard and arrived during the current turn, from any
-// zone (Card.PutInGraveyardThisTurn).
-func PutIntoAGraveyardThisTurn() CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.PutInGraveyardThisTurn }
-}
