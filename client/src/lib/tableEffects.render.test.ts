@@ -2584,20 +2584,20 @@ describe("a drain, the monarch and the initiative (#4450)", () => {
     expect(effects()).toHaveLength(0);
   });
 
-  it.each([
-    ["monarch", "#4450"],
-    ["initiative", "#4450"],
-  ] as const)("%s: a glint on the new holder's panel and one sound", (kind) => {
-    frame([crown(kind, 1)]);
-    const [cue] = effects(kind);
-    expect(cue).toBeTruthy();
-    expect(cue.style.left).toBe(`${OPP.left + OPP.width / 2}px`);
-    expect(cue.style.top).toBe(`${OPP.top + OPP.height / 2}px`);
-    expect(cue.querySelector(".glint-ring")).toBeTruthy();
-    expect(cue.querySelectorAll(".glint-spark").length).toBeGreaterThan(0);
-    expect(sounds(kind)).toEqual([[kind, { volume: 1, batch: "g1:10" }]]);
-    for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS[kind] + 1e-6);
-  });
+  it.each(["monarch", "initiative"] as const)(
+    "%s: a glint on the new holder's panel and one sound",
+    (kind) => {
+      frame([crown(kind, 1)]);
+      const [cue] = effects(kind);
+      expect(cue).toBeTruthy();
+      expect(cue.style.left).toBe(`${OPP.left + OPP.width / 2}px`);
+      expect(cue.style.top).toBe(`${OPP.top + OPP.height / 2}px`);
+      expect(cue.querySelector(".glint-ring")).toBeTruthy();
+      expect(cue.querySelectorAll(".glint-spark").length).toBeGreaterThan(0);
+      expect(sounds(kind)).toEqual([[kind, { volume: 1, batch: "g1:10" }]]);
+      for (const ms of runEnds()) expect(ms).toBeLessThanOrEqual(EFFECT_BASE_MS[kind] + 1e-6);
+    },
+  );
 
   it("Short plays the same cue, speed scales it", () => {
     updateSettings("animations", "effects", "short");
