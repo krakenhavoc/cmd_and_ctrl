@@ -30,6 +30,9 @@ const (
 	b35JoleneOracle              = "fb8efd6e-b8f8-4da8-ac65-5b745c02d2bb"
 	b35BucolicRanchOracle        = "8f5902bf-4bc4-4d0c-84ea-a425307a4eb2"
 	b35FrontierSeekerOracle      = "466cf331-2d9c-4ebc-84f6-30c890e1b637"
+	b35KellanJoinsUpOracle       = "9b3ddd31-c058-4846-8784-25c7a9bbcb31"
+	b35OkoRingleaderOracle       = "4372b729-dc3d-4469-8fc5-811cc787d653"
+	b35JaceReawakenedOracle      = "cbd483b5-5554-43ed-a729-535d01b0d5d3"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -53,6 +56,9 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35JoleneOracle:              "Jolene, Plundering Pugilist",
 		b35BucolicRanchOracle:        "Bucolic Ranch",
 		b35FrontierSeekerOracle:      "Frontier Seeker",
+		b35KellanJoinsUpOracle:       "Kellan Joins Up",
+		b35OkoRingleaderOracle:       "Oko, the Ringleader",
+		b35JaceReawakenedOracle:      "Jace Reawakened",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -765,5 +771,191 @@ func TestB35BucolicRanchTapsForAnyColorOnlyForMountSpells(t *testing.T) {
 	}
 	if len(spec.ManaAbilities[1].Restrictions) == 0 {
 		t.Error("the any-color mana has no Mount restriction")
+	}
+}
+
+func TestB35KellanJoinsUpPlotsASmallCardAndGrowsOnALegend(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	me.Hand.Cards = nil
+	cheap := putInHand(me, game.Card{Name: "Cheap Spell", TypeLine: "Instant", ManaCost: "{1}{R}", Owner: me.ID, Controller: me.ID})
+	dear := putInHand(me, game.Card{Name: "Dear Spell", TypeLine: "Sorcery", ManaCost: "{3}{R}", Owner: me.ID, Controller: me.ID})
+	land := putInHand(me, game.Card{Name: "Spare Land", TypeLine: "Basic Land — Mountain", Owner: me.ID, Controller: me.ID})
+	msc17Play(t, g, me, game.Card{Name: "Kellan Joins Up", TypeLine: "Legendary Enchantment",
+		ManaCost: "{G}{W}{U}", OracleID: b35KellanJoinsUpOracle})
+	prompt := latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no exile prompt")
+	}
+	if len(prompt.ChooseCards) != 1 || prompt.ChooseCards[0] != cheap {
+		t.Fatalf("offered %v, want only the mana value 2 nonland card (not %v or %v)", prompt.ChooseCards, dear, land)
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{cheap}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Contains(cheap) {
+		t.Error("the card stayed in hand")
+	}
+	inExile := false
+	g.ReadSnapshot(func() {
+		for _, c := range g.Exile.Cards {
+			if c.InstanceID == cheap {
+				inExile = true
+			}
+		}
+	})
+	if !inExile {
+		t.Fatal("the card is not in exile")
+	}
+	// A legendary creature entering puts a counter on each creature.
+	other := b12Creature(g, me.ID, "Other Bear", "Creature — Bear", 2, 2)
+	msc17Play(t, g, me, game.Card{Name: "Famous Bear", TypeLine: "Legendary Creature — Bear",
+		ManaCost: "{2}", Power: 2, Toughness: 2})
+	if p, _ := ptOf(t, g, other); p != 3 {
+		t.Errorf("the other creature has power %d, want 3", p)
+	}
+	// A nonlegendary creature does not.
+	msc17Play(t, g, me, game.Card{Name: "Plain Bear", TypeLine: "Creature — Bear", ManaCost: "{2}", Power: 2, Toughness: 2})
+	if p, _ := ptOf(t, g, other); p != 3 {
+		t.Errorf("a nonlegendary creature grew the board: power %d", p)
+	}
+}
+
+func TestB35JaceReawakenedCantBeCastInYourFirstThreeTurns(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	id := putInHand(me, game.Card{Name: "Jace Reawakened", TypeLine: "Legendary Planeswalker — Jace",
+		ManaCost: "{U}{U}", OracleID: b35JaceReawakenedOracle, Owner: me.ID, Controller: me.ID})
+	b06AddMana(me, "U", "U")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err == nil {
+		t.Fatal("cast Jace Reawakened on your first turn")
+	}
+}
+
+func b35Planeswalker(g *game.Game, me *game.Player, name, typeLine, oracle string, loyalty int) uuid.UUID {
+	id := pushCatalogPermanent(g, me.ID, name, typeLine, oracle, false)
+	findBattlefieldCardForTest(g, id).Counters = map[string]int{game.CounterLoyalty: loyalty}
+	return id
+}
+
+func TestB35JaceReawakenedPlusOneDrawsAndDiscards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	jace := b35Planeswalker(g, me, "Jace Reawakened", "Legendary Planeswalker — Jace", b35JaceReawakenedOracle, 3)
+	hand := len(me.Hand.Cards)
+	pr7Activate(t, g, me.ID, jace, 0, game.ActivateAbilityParams{})
+	discardFromHand(t, g, me.ID)
+	if got := len(me.Hand.Cards); got != hand {
+		t.Errorf("hand %d, want %d after loot", got, hand)
+	}
+}
+
+func TestB35JaceReawakenedMinusSixCopiesEverySpellThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	jace := b35Planeswalker(g, me, "Jace Reawakened", "Legendary Planeswalker — Jace", b35JaceReawakenedOracle, 7)
+	pr7Activate(t, g, me.ID, jace, 2, game.ActivateAbilityParams{})
+	life := lifeOf(g, opp.ID)
+	castBoltAtAndKeepTheCopysTarget(t, g, me.ID, opp.ID, 1)
+	castBoltAtAndKeepTheCopysTarget(t, g, me.ID, opp.ID, 1)
+	if got := lifeOf(g, opp.ID); got != life-12 {
+		t.Errorf("life %d after two copied Bolts, want %d", got, life-12)
+	}
+}
+
+func TestB35OkoRingleaderMakesElkAndLoots(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	oko := b35Planeswalker(g, me, "Oko, the Ringleader", "Legendary Planeswalker — Oko", b35OkoRingleaderOracle, 3)
+	pr7Activate(t, g, me.ID, oko, 1, game.ActivateAbilityParams{})
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Elk" && c.Controller == me.ID && c.IsCreature() {
+			n++
+			if p, tt := ptOf(t, g, c.InstanceID); p != 3 || tt != 3 {
+				t.Errorf("the Elk is %d/%d", p, tt)
+			}
+		}
+	}
+	if n != 1 {
+		t.Fatalf("%d Elk, want 1", n)
+	}
+}
+
+func TestB35OkoRingleaderPlusOneDiscardsTwoWithoutACrime(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	oko := b35Planeswalker(g, me, "Oko, the Ringleader", "Legendary Planeswalker — Oko", b35OkoRingleaderOracle, 3)
+	hand := len(me.Hand.Cards)
+	pr7Activate(t, g, me.ID, oko, 0, game.ActivateAbilityParams{})
+	discardFromHand(t, g, me.ID)
+	if got := len(me.Hand.Cards); got != hand+2-2 {
+		t.Errorf("hand %d, want %d: draw two, discard two", got, hand)
+	}
+}
+
+func TestB35OkoRingleaderPlusOneDiscardsOneAfterACrime(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	oko := b35Planeswalker(g, me, "Oko, the Ringleader", "Legendary Planeswalker — Oko", b35OkoRingleaderOracle, 3)
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventBecomesTarget, CrimeCommitted: true, Actor: me.ID})
+	})
+	hand := len(me.Hand.Cards)
+	pr7Activate(t, g, me.ID, oko, 0, game.ActivateAbilityParams{})
+	discardFromHand(t, g, me.ID)
+	if got := len(me.Hand.Cards); got != hand+1 {
+		t.Errorf("hand %d, want %d: draw two, discard one", got, hand+1)
+	}
+}
+
+func TestB35OkoRingleaderMinusFiveCopiesEachOtherNonlandPermanent(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	oko := b35Planeswalker(g, me, "Oko, the Ringleader", "Legendary Planeswalker — Oko", b35OkoRingleaderOracle, 6)
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	gaPut(g, me.ID, "Forest", "Basic Land — Forest", "")
+	pushToken(g, me.ID, ClueToken())
+	before := len(g.Battlefield.Cards)
+	pr7Activate(t, g, me.ID, oko, 2, game.ActivateAbilityParams{})
+	if got := len(g.Battlefield.Cards); got != before+2 {
+		t.Errorf("%d permanents, want %d: a Bear and a Clue copied, not the land or Oko", got, before+2)
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Bear"); n != 1 {
+		t.Errorf("%d Bear tokens, want 1", n)
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 2 {
+		t.Errorf("%d Clues, want 2", n)
+	}
+}
+
+func TestB35OkoRingleaderBecomesAHexproofCopyAtBeginningOfCombat(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	oko := b35Planeswalker(g, me, "Oko, the Ringleader", "Legendary Planeswalker — Oko", b35OkoRingleaderOracle, 3)
+	beast := apaPush(g, me.ID, me.ID, game.Card{Name: "Beast", TypeLine: "Creature — Beast", Power: 4, Toughness: 4, Colors: []string{"G"}})
+	advanceTo(t, g, game.StepBeginCombat)
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, beast)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	c := findBattlefieldCardForTest(g, oko)
+	if c == nil || !c.IsCreature() || c.IsPlaneswalker() {
+		t.Fatal("Oko is not a creature copy of the Beast")
+	}
+	if p, tt := ptOf(t, g, oko); p != 4 || tt != 4 {
+		t.Errorf("Oko is %d/%d, want 4/4", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, oko, "hexproof") {
+		t.Error("the copy has no hexproof")
 	}
 }
