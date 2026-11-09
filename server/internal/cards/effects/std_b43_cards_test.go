@@ -866,3 +866,84 @@ func TestStdB44WorldsoulsRageMayPutNone(t *testing.T) {
 		t.Error("a land entered although none were chosen")
 	}
 }
+
+const stdPrideOracle = "bbd7b756-bbee-451e-9446-06019791cb36"
+
+func stdPrideCast(t *testing.T, toughness int, pool ...string) error {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	if toughness > 0 {
+		reqCreature(g, me.ID, "Wall", "", 0, toughness)
+	}
+	reqCreature(g, g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID, "Their Wall", "", 0, 50) // not yours
+	id := handCardFull(me, "The Pride of Hull Clade", "Legendary Creature — Crocodile Elk Turtle", "{10}{G}", stdPrideOracle, []string{"G"})
+	advanceToMain(t, g)
+	b06AddMana(me, pool...)
+	return g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true})
+}
+
+func TestStdB44PrideOfHullCladeCostsLessByTotalToughnessDownToItsColoredSymbol(t *testing.T) {
+	if err := stdPrideCast(t, 12, "G"); err != nil {
+		t.Fatalf("12 toughness should leave {G}: %v", err)
+	}
+	if err := stdPrideCast(t, 4, "G", "C", "C", "C", "C", "C", "C"); err != nil {
+		t.Fatalf("4 toughness should leave {6}{G}: %v", err)
+	}
+	if err := stdPrideCast(t, 4, "G", "C", "C", "C", "C", "C"); err == nil {
+		t.Fatal("cast for {5}{G} with only 4 toughness among your creatures")
+	}
+	if err := stdPrideCast(t, 12, "C"); err == nil {
+		t.Fatal("cast without the {G}")
+	}
+}
+
+func TestStdB44PrideOfHullCladeGrantsTheDrawTheDefenderWaiverAndPower(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pride := b12Push(g, me.ID, "The Pride of Hull Clade", "Legendary Creature — Crocodile Elk Turtle", stdPrideOracle, 5, 5)
+	wall := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Wall", TypeLine: "Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"},
+		Owner: me.ID, Controller: me.ID,
+	})
+	for i := 0; i < 6; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	advanceToMain(t, g)
+	floatForTest(g, me, "CCUU")
+	if err := g.ActivateCatalogAbility(me.ID, pride, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: wall}}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if p, _ := mkmMPPT(t, g, wall); p != 1 {
+		t.Errorf("Wall power %d, want 1", p)
+	}
+	hand := me.Hand.Size()
+	dealCombatDamageToPlayer(g, wall, opp.ID, 1)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 4 {
+		t.Errorf("drew %d cards, want 4 (the Wall's toughness)", got)
+	}
+}
+
+func TestStdB44PrideOfHullCladeLetsADefenderAttack(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pride := b12Push(g, me.ID, "The Pride of Hull Clade", "Legendary Creature — Crocodile Elk Turtle", stdPrideOracle, 5, 5)
+	wall := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Wall", TypeLine: "Creature — Wall", Power: 0, Toughness: 4, Keywords: []string{"defender"},
+		Owner: me.ID, Controller: me.ID,
+	})
+	advanceToMain(t, g)
+	floatForTest(g, me, "CCUU")
+	if err := g.ActivateCatalogAbility(me.ID, pride, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: wall}}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	advanceToDeclareAttackersOf(t, g, g.Turn.ActiveSeat)
+	if err := g.DeclareAttacker(wall, opp.ID); err != nil {
+		t.Fatalf("the Wall could not attack: %v", err)
+	}
+}
