@@ -1040,6 +1040,7 @@ events[].last_known_all_creature_types	bool
 events[].last_known_colors	array
 events[].last_known_colors[]	string
 events[].last_known_controller	custom(uuid.UUID)
+events[].last_known_face_down	bool
 events[].last_known_keywords	array
 events[].last_known_keywords[]	string
 events[].last_known_subtypes	array
@@ -1820,6 +1821,7 @@ followUpParks[].then.asked.trigger.Event.last_known_all_creature_types	bool
 followUpParks[].then.asked.trigger.Event.last_known_colors	array
 followUpParks[].then.asked.trigger.Event.last_known_colors[]	string
 followUpParks[].then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+followUpParks[].then.asked.trigger.Event.last_known_face_down	bool
 followUpParks[].then.asked.trigger.Event.last_known_keywords	array
 followUpParks[].then.asked.trigger.Event.last_known_keywords[]	string
 followUpParks[].then.asked.trigger.Event.last_known_subtypes	array
@@ -2037,6 +2039,8 @@ followUpParks[].then.permission.filter.notOwnedByHolder	bool
 followUpParks[].then.permission.filter.notSubtype	string
 followUpParks[].then.permission.filter.ownedByHolder	bool
 followUpParks[].then.permission.filter.permanentOnly	bool
+followUpParks[].then.permission.filter.powerAtMost	number:int
+followUpParks[].then.permission.filter.powerCapped	bool
 followUpParks[].then.permission.filter.powerOrToughnessAtMost	number:int
 followUpParks[].then.permission.filter.powerOrToughnessCapped	bool
 followUpParks[].then.permission.filter.putInGraveyardThisTurn	bool
@@ -2438,6 +2442,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_all_creatu
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -2655,6 +2660,8 @@ frozenEntries[].event.counterTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.counterTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.counterTail.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.counterTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -3035,6 +3042,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_all_cr
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.last_known_subtypes	array
@@ -3252,6 +3260,8 @@ frozenEntries[].event.damageTail.each.each.permission.filter.notOwnedByHolder	bo
 frozenEntries[].event.damageTail.each.each.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.permanentOnly	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.powerAtMost	number:int
+frozenEntries[].event.damageTail.each.each.permission.filter.powerCapped	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
@@ -3623,6 +3633,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_all_cr
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.last_known_subtypes	array
@@ -3840,6 +3851,8 @@ frozenEntries[].event.damageTail.each.then.permission.filter.notOwnedByHolder	bo
 frozenEntries[].event.damageTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.damageTail.each.then.permission.filter.powerCapped	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -4383,6 +4396,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_all_creatur
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -4600,6 +4614,8 @@ frozenEntries[].event.damageTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.damageTail.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.damageTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -5091,6 +5107,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes	array
@@ -5308,6 +5325,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notOwn
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -5755,6 +5774,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_all_cr
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.last_known_subtypes	array
@@ -5972,6 +5992,8 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.notOwnedByHolder	bo
 frozenEntries[].event.entryTail.batch.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.entryTail.batch.then.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
@@ -6343,6 +6365,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_all_creatur
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.last_known_subtypes	array
@@ -6560,6 +6583,8 @@ frozenEntries[].event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.powerAtMost	number:int
+frozenEntries[].event.entryTail.keyed.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
@@ -6963,6 +6988,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_kn
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -7180,6 +7206,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notOwnedB
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerAtMost	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -7571,6 +7599,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_all_c
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.last_known_subtypes	array
@@ -7788,6 +7817,8 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.notOwnedByHolder	b
 frozenEntries[].event.entryTail.tokens.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.filter.powerCapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
@@ -8582,6 +8613,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_all_
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -8799,6 +8831,8 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.notOwnedByHolder	
 frozenEntries[].event.keywordActionTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.keywordActionTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -9192,6 +9226,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_all_crea
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.last_known_subtypes	array
@@ -9409,6 +9444,8 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.lifeTail.each.then.permission.filter.powerCapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -9783,6 +9820,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_all_creature_
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -10000,6 +10038,8 @@ frozenEntries[].event.lifeTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.lifeTail.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.lifeTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -11175,6 +11215,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_all_creat
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.last_known_subtypes	array
@@ -11392,6 +11433,8 @@ frozenEntries[].event.millTail.run.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.millTail.run.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.millTail.run.then.permission.filter.powerCapped	bool
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
@@ -11761,6 +11804,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_all_creature_
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -11978,6 +12022,8 @@ frozenEntries[].event.millTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.millTail.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.millTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -12700,6 +12746,7 @@ frozenEntries[].event.stackItem.trigger.Event.last_known_all_creature_types	bool
 frozenEntries[].event.stackItem.trigger.Event.last_known_colors	array
 frozenEntries[].event.stackItem.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.stackItem.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.stackItem.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.stackItem.trigger.Event.last_known_keywords	array
 frozenEntries[].event.stackItem.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.stackItem.trigger.Event.last_known_subtypes	array
@@ -13285,6 +13332,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_all_creature
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -13502,6 +13550,8 @@ frozenEntries[].event.tokenTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.tokenTail.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.tokenTail.then.permission.filter.powerCapped	bool
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -15105,6 +15155,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_kno
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes	array
@@ -15322,6 +15373,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedBy
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
@@ -15725,6 +15778,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.la
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -15942,6 +15996,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notO
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtMost	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -16311,6 +16367,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_al
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -16528,6 +16585,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolde
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -16917,6 +16976,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -17134,6 +17194,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHol
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerCapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -17589,6 +17651,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_face_down	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -17806,6 +17869,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHo
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerAtMost	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerCapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -19751,6 +19816,7 @@ lastKnownStack[].item.trigger.Event.last_known_all_creature_types	bool
 lastKnownStack[].item.trigger.Event.last_known_colors	array
 lastKnownStack[].item.trigger.Event.last_known_colors[]	string
 lastKnownStack[].item.trigger.Event.last_known_controller	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.last_known_face_down	bool
 lastKnownStack[].item.trigger.Event.last_known_keywords	array
 lastKnownStack[].item.trigger.Event.last_known_keywords[]	string
 lastKnownStack[].item.trigger.Event.last_known_subtypes	array
@@ -20055,6 +20121,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_all_creatu
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -20272,6 +20339,8 @@ movesAwaitingTokens[].counterTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].counterTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -20652,6 +20721,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_all_cr
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.last_known_subtypes	array
@@ -20869,6 +20939,8 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.notOwnedByHolder	bo
 movesAwaitingTokens[].damageTail.each.each.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.filter.powerCapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
@@ -21240,6 +21312,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_all_cr
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.last_known_subtypes	array
@@ -21457,6 +21530,8 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.notOwnedByHolder	bo
 movesAwaitingTokens[].damageTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -22000,6 +22075,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_all_creatur
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -22217,6 +22293,8 @@ movesAwaitingTokens[].damageTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].damageTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -22708,6 +22786,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes	array
@@ -22925,6 +23004,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notOwn
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -23372,6 +23453,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_all_cr
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.last_known_subtypes	array
@@ -23589,6 +23671,8 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.notOwnedByHolder	bo
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
@@ -23960,6 +24044,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_all_creatur
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.last_known_subtypes	array
@@ -24177,6 +24262,8 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
@@ -24580,6 +24667,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_kn
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -24797,6 +24885,8 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notOwnedB
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -25188,6 +25278,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_all_c
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.last_known_subtypes	array
@@ -25405,6 +25496,8 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notOwnedByHolder	b
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
@@ -26199,6 +26292,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_all_
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -26416,6 +26510,8 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.notOwnedByHolder	
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -26809,6 +26905,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_all_crea
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.last_known_subtypes	array
@@ -27026,6 +27123,8 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -27400,6 +27499,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_all_creature_
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -27617,6 +27717,8 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].lifeTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -28792,6 +28894,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_all_creat
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.last_known_subtypes	array
@@ -29009,6 +29112,8 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].millTail.run.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
@@ -29378,6 +29483,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_all_creature_
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -29595,6 +29701,8 @@ movesAwaitingTokens[].millTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].millTail.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].millTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].millTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -30317,6 +30425,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.last_known_all_creature_types	bool
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].stackItem.trigger.Event.last_known_subtypes	array
@@ -30902,6 +31011,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_all_creature
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -31119,6 +31229,8 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].tokenTail.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -32722,6 +32834,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_kno
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes	array
@@ -32939,6 +33052,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notOwnedBy
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
@@ -33342,6 +33457,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.la
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -33559,6 +33675,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notO
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -33928,6 +34046,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_al
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -34145,6 +34264,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notOwnedByHolde
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -34534,6 +34655,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -34751,6 +34873,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notOwnedByHol
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -35206,6 +35330,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_face_down	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -35423,6 +35548,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHo
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerAtMost	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerCapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -36401,6 +36528,7 @@ pausedModeWalk.item.trigger.Event.last_known_all_creature_types	bool
 pausedModeWalk.item.trigger.Event.last_known_colors	array
 pausedModeWalk.item.trigger.Event.last_known_colors[]	string
 pausedModeWalk.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.last_known_face_down	bool
 pausedModeWalk.item.trigger.Event.last_known_keywords	array
 pausedModeWalk.item.trigger.Event.last_known_keywords[]	string
 pausedModeWalk.item.trigger.Event.last_known_subtypes	array
@@ -36728,6 +36856,7 @@ pausedResolutionTail.item.trigger.Event.last_known_all_creature_types	bool
 pausedResolutionTail.item.trigger.Event.last_known_colors	array
 pausedResolutionTail.item.trigger.Event.last_known_colors[]	string
 pausedResolutionTail.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pausedResolutionTail.item.trigger.Event.last_known_face_down	bool
 pausedResolutionTail.item.trigger.Event.last_known_keywords	array
 pausedResolutionTail.item.trigger.Event.last_known_keywords[]	string
 pausedResolutionTail.item.trigger.Event.last_known_subtypes	array
@@ -37049,6 +37178,7 @@ pausedStepWalk.item.trigger.Event.last_known_all_creature_types	bool
 pausedStepWalk.item.trigger.Event.last_known_colors	array
 pausedStepWalk.item.trigger.Event.last_known_colors[]	string
 pausedStepWalk.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pausedStepWalk.item.trigger.Event.last_known_face_down	bool
 pausedStepWalk.item.trigger.Event.last_known_keywords	array
 pausedStepWalk.item.trigger.Event.last_known_keywords[]	string
 pausedStepWalk.item.trigger.Event.last_known_subtypes	array
@@ -37235,6 +37365,7 @@ pendingChoices[].asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].asked.trigger.Event.last_known_colors	array
 pendingChoices[].asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].asked.trigger.Event.last_known_keywords	array
 pendingChoices[].asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].asked.trigger.Event.last_known_subtypes	array
@@ -37449,6 +37580,7 @@ pendingChoices[].assist.spend.Colors[]	string
 pendingChoices[].assist.spend.Controller	custom(uuid.UUID)
 pendingChoices[].assist.spend.CostHasX	bool
 pendingChoices[].assist.spend.Equip	bool
+pendingChoices[].assist.spend.FaceDownSpell	bool
 pendingChoices[].assist.spend.ManaCostHasX	bool
 pendingChoices[].assist.spend.ManaValue	number:int
 pendingChoices[].assist.spend.ManaValueKnown	bool
@@ -38404,6 +38536,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_all_creature_ty
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.last_known_subtypes	array
@@ -38621,6 +38754,8 @@ pendingChoices[].attackSplit.tail.permission.filter.notOwnedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.notSubtype	string
 pendingChoices[].attackSplit.tail.permission.filter.ownedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.permanentOnly	bool
+pendingChoices[].attackSplit.tail.permission.filter.powerAtMost	number:int
+pendingChoices[].attackSplit.tail.permission.filter.powerCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.putInGraveyardThisTurn	bool
@@ -39583,6 +39718,7 @@ pendingChoices[].copyWalk.item.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].copyWalk.item.trigger.Event.last_known_colors	array
 pendingChoices[].copyWalk.item.trigger.Event.last_known_colors[]	string
 pendingChoices[].copyWalk.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.trigger.Event.last_known_face_down	bool
 pendingChoices[].copyWalk.item.trigger.Event.last_known_keywords	array
 pendingChoices[].copyWalk.item.trigger.Event.last_known_keywords[]	string
 pendingChoices[].copyWalk.item.trigger.Event.last_known_subtypes	array
@@ -40396,6 +40532,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_all_creature_types
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.last_known_subtypes	array
@@ -40613,6 +40750,8 @@ pendingChoices[].diceRoll.then.permission.filter.notOwnedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.notSubtype	string
 pendingChoices[].diceRoll.then.permission.filter.ownedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.permanentOnly	bool
+pendingChoices[].diceRoll.then.permission.filter.powerAtMost	number:int
+pendingChoices[].diceRoll.then.permission.filter.powerCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.putInGraveyardThisTurn	bool
@@ -41363,6 +41502,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_all_creat
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_colors	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.last_known_subtypes	array
@@ -41580,6 +41720,8 @@ pendingChoices[].divideShield.walk.each.permission.filter.notOwnedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.permanentOnly	bool
+pendingChoices[].divideShield.walk.each.permission.filter.powerAtMost	number:int
+pendingChoices[].divideShield.walk.each.permission.filter.powerCapped	bool
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].divideShield.walk.each.permission.filter.putInGraveyardThisTurn	bool
@@ -41951,6 +42093,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_all_creat
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.last_known_subtypes	array
@@ -42168,6 +42311,8 @@ pendingChoices[].divideShield.walk.then.permission.filter.notOwnedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.permanentOnly	bool
+pendingChoices[].divideShield.walk.then.permission.filter.powerAtMost	number:int
+pendingChoices[].divideShield.walk.then.permission.filter.powerCapped	bool
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].divideShield.walk.then.permission.filter.putInGraveyardThisTurn	bool
@@ -42545,6 +42690,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_all_creature_t
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.last_known_subtypes	array
@@ -42762,6 +42908,8 @@ pendingChoices[].libraryOrder.then.permission.filter.notOwnedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.notSubtype	string
 pendingChoices[].libraryOrder.then.permission.filter.ownedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.permanentOnly	bool
+pendingChoices[].libraryOrder.then.permission.filter.powerAtMost	number:int
+pendingChoices[].libraryOrder.then.permission.filter.powerCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.putInGraveyardThisTurn	bool
@@ -43189,6 +43337,7 @@ pendingChoices[].nameThen.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].nameThen.asked.trigger.Event.last_known_colors	array
 pendingChoices[].nameThen.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].nameThen.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].nameThen.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].nameThen.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].nameThen.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].nameThen.asked.trigger.Event.last_known_subtypes	array
@@ -43406,6 +43555,8 @@ pendingChoices[].nameThen.permission.filter.notOwnedByHolder	bool
 pendingChoices[].nameThen.permission.filter.notSubtype	string
 pendingChoices[].nameThen.permission.filter.ownedByHolder	bool
 pendingChoices[].nameThen.permission.filter.permanentOnly	bool
+pendingChoices[].nameThen.permission.filter.powerAtMost	number:int
+pendingChoices[].nameThen.permission.filter.powerCapped	bool
 pendingChoices[].nameThen.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].nameThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].nameThen.permission.filter.putInGraveyardThisTurn	bool
@@ -43784,6 +43935,7 @@ pendingChoices[].ordered.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].ordered.asked.trigger.Event.last_known_colors	array
 pendingChoices[].ordered.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].ordered.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].ordered.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].ordered.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].ordered.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].ordered.asked.trigger.Event.last_known_subtypes	array
@@ -44248,6 +44400,7 @@ pendingChoices[].pickTail.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].pickTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].pickTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].pickTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].pickTail.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].pickTail.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].pickTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].pickTail.asked.trigger.Event.last_known_subtypes	array
@@ -44465,6 +44618,8 @@ pendingChoices[].pickTail.permission.filter.notOwnedByHolder	bool
 pendingChoices[].pickTail.permission.filter.notSubtype	string
 pendingChoices[].pickTail.permission.filter.ownedByHolder	bool
 pendingChoices[].pickTail.permission.filter.permanentOnly	bool
+pendingChoices[].pickTail.permission.filter.powerAtMost	number:int
+pendingChoices[].pickTail.permission.filter.powerCapped	bool
 pendingChoices[].pickTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].pickTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].pickTail.permission.filter.putInGraveyardThisTurn	bool
@@ -44880,6 +45035,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.la
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -45097,6 +45253,8 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notO
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -45477,6 +45635,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.last_known_subtypes	array
@@ -45694,6 +45853,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
@@ -46065,6 +46226,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.last_known_subtypes	array
@@ -46282,6 +46444,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -46825,6 +46989,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.las
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -47042,6 +47207,8 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notOw
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -47533,6 +47700,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.last_known_subtypes	array
@@ -47750,6 +47918,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -48197,6 +48367,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.last_known_subtypes	array
@@ -48414,6 +48585,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
@@ -48785,6 +48958,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.las
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.last_known_subtypes	array
@@ -49002,6 +49176,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notOw
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
@@ -49405,6 +49581,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -49622,6 +49799,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -50013,6 +50192,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.last_known_subtypes	array
@@ -50230,6 +50410,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
@@ -51024,6 +51206,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -51241,6 +51424,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -51634,6 +51819,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.last_known_subtypes	array
@@ -51851,6 +52037,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.no
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -52225,6 +52413,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -52442,6 +52631,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notOwne
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -53617,6 +53808,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.l
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.last_known_subtypes	array
@@ -53834,6 +54026,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.not
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
@@ -54203,6 +54397,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -54420,6 +54615,8 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.notOwne
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -55142,6 +55339,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_all_
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.last_known_subtypes	array
@@ -55727,6 +55925,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.last_known_subtypes	array
@@ -55944,6 +56143,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notOwn
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -57547,6 +57748,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.last_known_subtypes	array
@@ -57764,6 +57966,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
@@ -58167,6 +58371,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -58384,6 +58589,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -58753,6 +58960,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -58970,6 +59178,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -59359,6 +59569,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -59576,6 +59787,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -60031,6 +60244,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.last_known_subtypes	array
@@ -60248,6 +60462,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerAtMost	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -61048,6 +61264,7 @@ pendingChoices[].scryThen.asked.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].scryThen.asked.trigger.Event.last_known_colors	array
 pendingChoices[].scryThen.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].scryThen.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].scryThen.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].scryThen.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].scryThen.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].scryThen.asked.trigger.Event.last_known_subtypes	array
@@ -61265,6 +61482,8 @@ pendingChoices[].scryThen.permission.filter.notOwnedByHolder	bool
 pendingChoices[].scryThen.permission.filter.notSubtype	string
 pendingChoices[].scryThen.permission.filter.ownedByHolder	bool
 pendingChoices[].scryThen.permission.filter.permanentOnly	bool
+pendingChoices[].scryThen.permission.filter.powerAtMost	number:int
+pendingChoices[].scryThen.permission.filter.powerCapped	bool
 pendingChoices[].scryThen.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].scryThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].scryThen.permission.filter.putInGraveyardThisTurn	bool
@@ -61681,6 +61900,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_all_c
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_colors	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_colors[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_face_down	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_keywords	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_keywords[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.last_known_subtypes	array
@@ -61898,6 +62118,8 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notOwnedByHolder	b
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.permanentOnly	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerAtMost	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerCapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -63086,6 +63308,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.last_known_all_creature_types	bo
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_colors	array
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_colors[]	string
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.trigger.Event.last_known_face_down	bool
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_keywords	array
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_keywords[]	string
 pendingChoices[].targetWalk.frame.trigger.Event.last_known_subtypes	array
@@ -63826,6 +64049,7 @@ pendingChoices[].triggerFrame.trigger.Event.last_known_all_creature_types	bool
 pendingChoices[].triggerFrame.trigger.Event.last_known_colors	array
 pendingChoices[].triggerFrame.trigger.Event.last_known_colors[]	string
 pendingChoices[].triggerFrame.trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingChoices[].triggerFrame.trigger.Event.last_known_face_down	bool
 pendingChoices[].triggerFrame.trigger.Event.last_known_keywords	array
 pendingChoices[].triggerFrame.trigger.Event.last_known_keywords[]	string
 pendingChoices[].triggerFrame.trigger.Event.last_known_subtypes	array
@@ -64155,6 +64379,7 @@ pendingTriggers[].trigger.Event.last_known_all_creature_types	bool
 pendingTriggers[].trigger.Event.last_known_colors	array
 pendingTriggers[].trigger.Event.last_known_colors[]	string
 pendingTriggers[].trigger.Event.last_known_controller	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.last_known_face_down	bool
 pendingTriggers[].trigger.Event.last_known_keywords	array
 pendingTriggers[].trigger.Event.last_known_keywords[]	string
 pendingTriggers[].trigger.Event.last_known_subtypes	array
@@ -65801,6 +66026,7 @@ promptRuns[].asked.trigger.Event.last_known_all_creature_types	bool
 promptRuns[].asked.trigger.Event.last_known_colors	array
 promptRuns[].asked.trigger.Event.last_known_colors[]	string
 promptRuns[].asked.trigger.Event.last_known_controller	custom(uuid.UUID)
+promptRuns[].asked.trigger.Event.last_known_face_down	bool
 promptRuns[].asked.trigger.Event.last_known_keywords	array
 promptRuns[].asked.trigger.Event.last_known_keywords[]	string
 promptRuns[].asked.trigger.Event.last_known_subtypes	array
@@ -66546,6 +66772,7 @@ resolving.item.trigger.Event.last_known_all_creature_types	bool
 resolving.item.trigger.Event.last_known_colors	array
 resolving.item.trigger.Event.last_known_colors[]	string
 resolving.item.trigger.Event.last_known_controller	custom(uuid.UUID)
+resolving.item.trigger.Event.last_known_face_down	bool
 resolving.item.trigger.Event.last_known_keywords	array
 resolving.item.trigger.Event.last_known_keywords[]	string
 resolving.item.trigger.Event.last_known_subtypes	array
@@ -67364,6 +67591,8 @@ seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.notSubtype	string
 seats[].castPermissions[].filter.ownedByHolder	bool
 seats[].castPermissions[].filter.permanentOnly	bool
+seats[].castPermissions[].filter.powerAtMost	number:int
+seats[].castPermissions[].filter.powerCapped	bool
 seats[].castPermissions[].filter.powerOrToughnessAtMost	number:int
 seats[].castPermissions[].filter.powerOrToughnessCapped	bool
 seats[].castPermissions[].filter.putInGraveyardThisTurn	bool
@@ -70836,6 +71065,8 @@ seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
 seats[].statics[].cantBeCountered.filter.notSubtype	string
 seats[].statics[].cantBeCountered.filter.ownedByHolder	bool
 seats[].statics[].cantBeCountered.filter.permanentOnly	bool
+seats[].statics[].cantBeCountered.filter.powerAtMost	number:int
+seats[].statics[].cantBeCountered.filter.powerCapped	bool
 seats[].statics[].cantBeCountered.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].cantBeCountered.filter.powerOrToughnessCapped	bool
 seats[].statics[].cantBeCountered.filter.putInGraveyardThisTurn	bool
@@ -70876,6 +71107,8 @@ seats[].statics[].castBan.filter.notOwnedByHolder	bool
 seats[].statics[].castBan.filter.notSubtype	string
 seats[].statics[].castBan.filter.ownedByHolder	bool
 seats[].statics[].castBan.filter.permanentOnly	bool
+seats[].statics[].castBan.filter.powerAtMost	number:int
+seats[].statics[].castBan.filter.powerCapped	bool
 seats[].statics[].castBan.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].castBan.filter.powerOrToughnessCapped	bool
 seats[].statics[].castBan.filter.putInGraveyardThisTurn	bool
@@ -70966,6 +71199,8 @@ seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
 seats[].statics[].nextSpell.filter.notSubtype	string
 seats[].statics[].nextSpell.filter.ownedByHolder	bool
 seats[].statics[].nextSpell.filter.permanentOnly	bool
+seats[].statics[].nextSpell.filter.powerAtMost	number:int
+seats[].statics[].nextSpell.filter.powerCapped	bool
 seats[].statics[].nextSpell.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].nextSpell.filter.powerOrToughnessCapped	bool
 seats[].statics[].nextSpell.filter.putInGraveyardThisTurn	bool
@@ -71011,6 +71246,8 @@ seats[].statics[].timing.filter.notOwnedByHolder	bool
 seats[].statics[].timing.filter.notSubtype	string
 seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.permanentOnly	bool
+seats[].statics[].timing.filter.powerAtMost	number:int
+seats[].statics[].timing.filter.powerCapped	bool
 seats[].statics[].timing.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].timing.filter.powerOrToughnessCapped	bool
 seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
@@ -71754,6 +71991,7 @@ stackMeta[].trigger.Event.last_known_all_creature_types	bool
 stackMeta[].trigger.Event.last_known_colors	array
 stackMeta[].trigger.Event.last_known_colors[]	string
 stackMeta[].trigger.Event.last_known_controller	custom(uuid.UUID)
+stackMeta[].trigger.Event.last_known_face_down	bool
 stackMeta[].trigger.Event.last_known_keywords	array
 stackMeta[].trigger.Event.last_known_keywords[]	string
 stackMeta[].trigger.Event.last_known_subtypes	array

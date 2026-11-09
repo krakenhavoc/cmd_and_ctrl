@@ -2122,3 +2122,94 @@ func TestStdB44ReenactTheCrimeCopiesAndCastsACardPutIntoAGraveyardThisTurn(t *te
 		t.Errorf("opponent life %d -> %d, want 3 damage from the copied Bolt", life, opp.Life)
 	}
 }
+
+const stdAnzragOracle = "ce690a21-8117-420e-be00-cd6d9923a812"
+
+func TestStdB44AnzragsRampageDestroysTheirArtifactsThenExilesAndReturnsACreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	myArtifact := b12Permanent(g, me.ID, "My Rock", "Artifact")
+	theirs := []uuid.UUID{b12Permanent(g, opp.ID, "Their Rock", "Artifact"), b12Permanent(g, opp.ID, "Their Gem", "Artifact")}
+	me.Library.Cards = nil
+	filler := uuid.New()
+	me.Library.PushTop(game.Card{InstanceID: filler, Name: "Filler", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	runner := uuid.New()
+	me.Library.PushTop(game.Card{InstanceID: runner, Name: "Runner", TypeLine: "Creature — Goblin", ManaCost: "{R}", Power: 2, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	third := uuid.New()
+	me.Library.PushTop(game.Card{InstanceID: third, Name: "Third", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	// One of MY artifacts went to a graveyard earlier this turn: it counts for X.
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{myArtifact}) })
+	g.RunStateChecksForTest()
+
+	b06AddMana(me, "R", "R", "C", "C", "C")
+	id := handCardFull(me, "Anzrag's Rampage", "Sorcery", "{3}{R}{R}", stdAnzragOracle, []string{"R"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, a := range theirs {
+		if g.Battlefield.Contains(a) {
+			t.Error("an artifact I don't control survived")
+		}
+	}
+	// X = 3: my artifact and their two. The top three cards of my library are exiled.
+	for _, c := range []uuid.UUID{third, runner, filler} {
+		if !g.Exile.Contains(c) {
+			t.Errorf("a card among the top three was not exiled")
+		}
+	}
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if pick == nil {
+		t.Fatalf("no creature pick: %+v", g.PendingChoices)
+	}
+	if len(pick.ChooseCards) != 1 || pick.ChooseCards[0] != runner {
+		t.Fatalf("offered %v, want only the creature card", pick.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{runner}); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	var entered game.Card
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Runner" {
+				entered = c
+			}
+		}
+	})
+	if entered.InstanceID == uuid.Nil || !hasKeywordOnBattlefield(t, g, entered.InstanceID, "haste") {
+		t.Fatalf("the creature is not on the battlefield with haste: %+v", entered)
+	}
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if found := func() bool {
+		in := false
+		g.ReadSnapshot(func() {
+			for _, c := range me.Hand.Cards {
+				if c.Name == "Runner" {
+					in = true
+				}
+			}
+		})
+		return in
+	}(); !found {
+		t.Error("the creature was not returned to my hand at the next end step")
+	}
+}
+
+func TestStdB44AnzragsRampageDoesNothingFurtherWithNoArtifactsInGraveyards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	lib := me.Library.Size()
+	b06AddMana(me, "R", "R", "C", "C", "C")
+	id := handCardFull(me, "Anzrag's Rampage", "Sorcery", "{3}{R}{R}", stdAnzragOracle, []string{"R"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Library.Size() != lib {
+		t.Errorf("library %d -> %d: X was 0 so nothing is exiled", lib, me.Library.Size())
+	}
+}
