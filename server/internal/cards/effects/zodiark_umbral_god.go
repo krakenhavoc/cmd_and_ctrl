@@ -29,7 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			TriggerEdict(WhenThisEnters("Zodiark — each player sacrifices half the non-God creatures they control",
 				Do(Instruction(eachPlayerSacrificesHalfTheirNonGodCreatures)))),
-			On(game.EventSacrifice, anotherCreatureWasSacrificed, counterLabel,
+			On(game.EventSacrifice, anotherCreatureEvent, counterLabel,
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
