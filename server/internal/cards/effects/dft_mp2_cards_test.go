@@ -41,11 +41,7 @@ func TestDftMP2EveryCardIsRegisteredFull(t *testing.T) {
 			t.Errorf("%s: name %q, completeness %s, caveats %v", name, spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
-	// Mimeoplasm, Revered One is left out: its "as it enters, exile up to
-	// X creature cards from your graveyard" has no entry-choice seam.
-	if _, ok := Lookup("2b8c2882-dbca-466a-a0af-dd1d65edfe7c"); ok {
-		t.Error("Mimeoplasm, Revered One is registered; update #4464's skip note")
-	}
+	// Mimeoplasm, Revered One is registered by batch 14 (dft_b13_cards_test.go).
 }
 
 // --- fixtures ------------------------------------------------------------------

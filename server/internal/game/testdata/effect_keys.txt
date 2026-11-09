@@ -624,6 +624,7 @@ choose choose-cards/mill-then-take-first-contact-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-then-take-temporal-anomaly-pick
 choose choose-cards/mill-three-return-land-tapped
+choose choose-cards/mimeoplasm-exile-creature-cards
 choose choose-cards/minas-tirith-garrison-tap-humans
 choose choose-cards/mind-extraction-discard-b
 choose choose-cards/mind-extraction-discard-bg
@@ -1032,6 +1033,7 @@ confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
 confirm confirm/shirei-return
+confirm confirm/sita-varma-base-pt
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
 confirm confirm/smellerbee-rebel-fighter-discard-hand
 confirm confirm/snort-wheel
@@ -1903,6 +1905,7 @@ tail dominion-infiltration/haste-and-exile-copies
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
 tail dredge/return-then-draw
+tail dredgers-insight/after-mill
 tail each-player/exile-top-step
 tail each-player/mill-step
 tail each-player/mill-until-land-step
@@ -2222,6 +2225,7 @@ tail put-from-library/rest-into-hand
 tail put-from-library/rest-on-bottom-in-random-order
 tail put-from-library/songbirds-blessing-hand-or-bottom
 tail q-stacking-the-deck/gains-copy-ability
+tail quag-feast/after-mill
 tail queens-bay-paladin/lose-life
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
@@ -2492,6 +2496,7 @@ tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
 tail then/protection-from-chosen-color-until-eot
+tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
 tail then/put-found-lands-onto-battlefield-tapped
 tail then/pygmy-hippo-schedule-lost-mana
 tail then/radiant-lotus-color-chosen

@@ -944,6 +944,23 @@ func ExileAnyNumberFromGraveyardWithSymbols(label, color string, atLeast int, ma
 	}}
 }
 
+// ExileXFromGraveyardAsCost is "Exile X <kind> cards from your graveyard"
+// as a CR 602 activated ability's cost, with X in no other part of the
+// cost (Winter, Cursed Rider's exhaust, #4464): the activator announces X
+// by naming that many matching cards (game.ExileCost.CountIsX), and the
+// effect reads X back as len(ctx.Exiled()).
+//
+//	Plus(ManaCost("{2}{U}{B}"), TapCost(), ExileXFromGraveyardAsCost("X artifact cards", artifactCard))
+func ExileXFromGraveyardAsCost(label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{
+		AnyNumber: true,
+		CountIsX:  true,
+		Label:     label,
+		From:      game.ZoneGraveyard,
+		Match:     match,
+	}}
+}
+
 // ExileFromHand is "Exile N <kind> cards from your hand" as a CR 602
 // activated ability's cost (#1297) — Holistic Wisdom's "{2}, Exile a
 // card from your hand:". The mana ability's component (#1283) wrapped

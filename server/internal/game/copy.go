@@ -143,6 +143,10 @@ type PrintedValues struct {
 	// card's text (CR 707.2).
 	ManaAbilityText PrintedFact
 
+	// NoAbilitiesText is Card.NoAbilitiesText (#4464): whether the printed
+	// text is empty. A copy takes the copied card's text (CR 707.2).
+	NoAbilitiesText PrintedFact
+
 	Power           int
 	Toughness       int
 	StartingLoyalty int
@@ -283,6 +287,7 @@ func printedValuesOf(src Card) PrintedValues {
 		ColorCDADropped:   src.ColorCDADropped,
 		PrintsTapAbility:  src.PrintsTapAbility,
 		ManaAbilityText:   src.ManaAbilityText,
+		NoAbilitiesText:   src.NoAbilitiesText,
 		Power:             src.Power,
 		Toughness:         src.Toughness,
 		VariableToughness: src.VariableToughness,
@@ -326,6 +331,21 @@ func (v *PrintedValues) SetName(name string) {
 	v.Name = name
 	if v.ActiveFace >= 0 && v.ActiveFace < len(v.Faces) {
 		v.Faces[v.ActiveFace].Name = name
+	}
+}
+
+// SetPowerToughness overrides the copied power and toughness: "except it's
+// 0/0" (Mimeoplasm, Revered One, #4464). Also rewrites the active face's
+// stats and drops the variable-toughness stand-in, so the flat printed
+// fields still equal Faces[ActiveFace] and a copy of a `*/*` creature is a
+// plain 0/0 rather than a characteristic-defined one.
+func (v *PrintedValues) SetPowerToughness(power, toughness int) {
+	v.Power, v.Toughness = power, toughness
+	v.VariableToughness = false
+	v.PrintedPTKnown = true
+	if v.ActiveFace >= 0 && v.ActiveFace < len(v.Faces) {
+		f := &v.Faces[v.ActiveFace]
+		f.Power, f.Toughness, f.VariableToughness = power, toughness, false
 	}
 }
 
@@ -703,6 +723,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.ColorCDADropped = v.ColorCDADropped
 	c.PrintsTapAbility = v.PrintsTapAbility
 	c.ManaAbilityText = v.ManaAbilityText
+	c.NoAbilitiesText = v.NoAbilitiesText
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
@@ -755,6 +776,7 @@ func (c *Card) restorePrintedSelf() {
 	c.ColorCDADropped = v.ColorCDADropped
 	c.PrintsTapAbility = v.PrintsTapAbility
 	c.ManaAbilityText = v.ManaAbilityText
+	c.NoAbilitiesText = v.NoAbilitiesText
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness

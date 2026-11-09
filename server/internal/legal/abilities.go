@@ -2767,6 +2767,22 @@ func handDiscardLabel(dc *game.DiscardCost, n int) string {
 // A nil component is a payment of nothing and ok. ok is false when the
 // pile cannot cover the count, which means the ability is not offered.
 func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, taken []uuid.UUID) ([]uuid.UUID, bool) {
+	if ec != nil && ec.AnyNumber && ec.CountIsX {
+		// "Exile X <kind> cards" (Winter, Cursed Rider): the number named is
+		// X. A bot announces X = 1, the cheapest fuel, and does not offer
+		// the ability with nothing to exile: an exhaust ability is spent
+		// once, and X = 0 does nothing.
+		skip := make(map[uuid.UUID]bool, len(taken))
+		for _, id := range taken {
+			skip[id] = true
+		}
+		for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, sourceID, ec)) {
+			if !skip[id] {
+				return []uuid.UUID{id}, true
+			}
+		}
+		return nil, false
+	}
 	if ec != nil && ec.AnyNumber {
 		// "Exile any number of … with a total" (Baron Helmut Zemo's boast):
 		// the cheapest fuel first, until the floor is reached; the ability
