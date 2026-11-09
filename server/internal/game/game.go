@@ -2099,6 +2099,13 @@ type CastTally struct {
 	// spell while Artifact is still 0: a cost is determined (CR 601.2f)
 	// before the spell is counted here.
 	Artifact int `json:"artifact,omitempty"`
+	// LegendaryCreature counts the legendary creature spells the player
+	// cast this turn, read as each spell became cast like Artifact:
+	// Serah Farron's "the first legendary creature spell you cast each
+	// turn costs {2} less" prices a spell while it is still 0 (a cost is
+	// determined, CR 601.2f, before the spell is counted here). Additive
+	// within the snapshot version.
+	LegendaryCreature int `json:"legendaryCreature,omitempty"`
 	// ManaValue is the total mana value of the spells the player cast
 	// this turn (CR 202.3), read as each spell became cast, off the
 	// spell on the stack (CR 601.2i): an X spell counts the X it was

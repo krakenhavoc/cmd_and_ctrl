@@ -1859,6 +1859,7 @@ type delayedTriggerSnapshot struct {
 	// stronger) and reads a mana record as a no-op.
 	Repeats        bool   `json:"repeats,omitempty"`
 	OncePerBatch   bool   `json:"oncePerBatch,omitempty"`
+	ThroughCleanup bool   `json:"throughCleanup,omitempty"`
 	ManaTapSubtype string `json:"manaTapSubtype,omitempty"`
 	ManaAdds       string `json:"manaAdds,omitempty"`
 
@@ -3413,6 +3414,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Due:                d.Due,
 		Repeats:            d.Repeats,
 		OncePerBatch:       d.OncePerBatch,
+		ThroughCleanup:     d.ThroughCleanup,
 		ManaTapSubtype:     d.ManaTapSubtype,
 		ManaAdds:           d.ManaAdds,
 
@@ -4534,6 +4536,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Due:              d.Due,
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
+		ThroughCleanup:   d.ThroughCleanup,
 		ManaTapSubtype:   d.ManaTapSubtype,
 		ManaAdds:         d.ManaAdds,
 

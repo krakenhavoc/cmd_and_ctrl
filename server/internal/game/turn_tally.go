@@ -72,6 +72,13 @@ type PlayerTurnTally struct {
 	// CombatDamageToPlayers is the combat damage this player's
 	// creatures dealt to players.
 	CombatDamageToPlayers int `json:"combatDamageToPlayers,omitempty"`
+	// CombatDamageTaken is the combat damage dealt TO this player this
+	// turn, from any source (the recipient's side of CombatDamageToPlayers):
+	// damage actually dealt, so prevented damage is not counted, and infect
+	// damage still is (it is dealt, it just loses no life). Sidequest: Play
+	// Blitzball's "if a player was dealt 6 or more combat damage this turn"
+	// reads it through Game.CombatDamageTakenThisTurn. Additive.
+	CombatDamageTaken int `json:"combatDamageTaken,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
 	// per card, CR 701.9a), whatever the discard's cause or eventual
 	// destination — a madness card exiled instead of binned, or one
@@ -893,6 +900,12 @@ func (g *Game) objectEpochLocked(source uuid.UUID) int {
 // Caller must hold g.mu.
 func (g *Game) EnergyPaidOrLostThisTurn(playerID uuid.UUID) int {
 	return g.TurnTally.Players[playerID].EnergyPaidOrLost
+}
+
+// CombatDamageTakenThisTurn is the combat damage dealt to playerID this turn
+// by any source (PlayerTurnTally.CombatDamageTaken). Caller must hold g.mu.
+func (g *Game) CombatDamageTakenThisTurn(playerID uuid.UUID) int {
+	return g.TurnTally.Players[playerID].CombatDamageTaken
 }
 
 // TurnTallyFor returns playerID's tally for the current turn (the
@@ -1890,6 +1903,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// damage and damage to a locked life total lose no life.
 		if lost := ev.DamageLifeLoss(); lost > 0 {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += lost })
+		}
+		if ev.Combat {
+			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.CombatDamageTaken += ev.Amount })
 		}
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".

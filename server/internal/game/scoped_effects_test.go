@@ -688,7 +688,7 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
 		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
 		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource, WhileSourceAttachedToPinned,
-		WhileSourceOnceItLands} {
+		WhileSourceOnceItLands, WhilePlayerIsMonarch} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}

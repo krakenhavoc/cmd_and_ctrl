@@ -143,6 +143,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 green Elf":                                                    {Name: "Elf", TypeLine: "Token Creature — Elf", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Snake":                                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"5/4 green Snake":                                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 5, Toughness: 4, Colors: []string{"G"}},
+	"1/1 green Frog":                                                   {Name: "Frog", TypeLine: "Token Creature — Frog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Insect":                                                 {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Insect with flying and deathtouch":                      {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying", "deathtouch"}},
 	"2/1 white Insect with flying":                                     {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 2, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -238,6 +239,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white Samurai with double strike":                             {Name: "Samurai", TypeLine: "Token Creature — Samurai", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"double strike"}},
 	"2/2 green Boar":                                                   {Name: "Boar", TypeLine: "Token Creature — Boar", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 red Human Knight with trample and haste":                      {Name: "Human Knight", TypeLine: "Token Creature — Human Knight", Power: 2, Toughness: 2, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
+	"2/2 white and blue and black and red and green Elemental":         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"W", "U", "B", "R", "G"}},
 	"2/2 green Elemental":                                              {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 green Spider with reach":                                      {Name: "Spider", TypeLine: "Token Creature — Spider", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
 	"2/2 green Wolf":                                                   {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 2, Toughness: 2, Colors: []string{"G"}},
@@ -302,6 +304,8 @@ var tokenTable = map[string]game.Card{
 	"3/3 blue Angel with flying":                                       {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"3/3 green Legendary Dog named Mowu":                               {Name: "Mowu", TypeLine: "Token Legendary Creature — Dog", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Legendary Dog named Porthos":                            {Name: "Porthos", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"1/1 green and white Legendary Dog named Angelo":                   {Name: "Angelo", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
+	"2/2 white and black Legendary Dog named Darkstar":                 {Name: "Darkstar", TypeLine: "Token Legendary Creature — Dog", Power: 2, Toughness: 2, Colors: []string{"W", "B"}},
 	"3/3 colorless Illusion artifact":                                  {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 	"3/3 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"3/3 white Knight":                                                 {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 3, Toughness: 3, Colors: []string{"W"}},
@@ -396,4 +400,8 @@ var tokenTable = map[string]game.Card{
 
 	// #4467: Bloomburrow's Otter (Stormchaser's Talent).
 	"1/1 blue and red Otter with prowess": {Name: "Otter", TypeLine: "Token Creature — Otter", Power: 1, Toughness: 1, Colors: []string{"U", "R"}, Keywords: []string{"prowess"}},
+
+	// #4462: Final Fantasy's Robot Warrior (Retrieve the Esper) and Horror (The Final Days).
+	"3/3 blue Robot Warrior artifact": {Name: "Robot Warrior", TypeLine: "Token Artifact Creature — Robot Warrior", Power: 3, Toughness: 3, Colors: []string{"U"}},
+	"2/2 black Horror":                {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }
