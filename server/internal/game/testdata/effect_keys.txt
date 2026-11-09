@@ -54,6 +54,7 @@ body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
 body blitz/sacrifice
+body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body brass-infiniscope/draw-and-gain-half-x
 body breeches/blast
@@ -210,6 +211,7 @@ body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
 body melee/pump
 body merry-bards/young-hero-role
+body miasma-demon/shrink
 body miracle/granted-offer
 body miracle/offer
 body modular/move-counters
@@ -612,6 +614,7 @@ choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
 choose choose-cards/memory-theft-adventure-to-graveyard
+choose choose-cards/miasma-demon-discarded
 choose choose-cards/mill-then-take-cache-grab-pick
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
 choose choose-cards/mill-then-take-first-contact-pick
@@ -1223,6 +1226,7 @@ option option-pick/null-chamber-opponent
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
+option option-pick/osseous-sticktwister-answer
 option option-pick/pavel-chekov-first-posting-kind
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
@@ -1383,6 +1387,8 @@ payunless pay-unless/marchesa-dealer-of-death-look
 payunless pay-unless/marooned-tap-enchanted-permanent
 payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
+payunless pay-unless/meathook-massacre-ii-opponent-declined
+payunless pay-unless/meathook-massacre-ii-you-paid
 payunless pay-unless/mendicant-core-guidelight-copy-spell
 payunless pay-unless/merry-bards-young-hero
 payunless pay-unless/mtenda-lion-prevent-combat-damage
@@ -1500,6 +1506,7 @@ run prompt-run/automated-warfare-system-draw
 run prompt-run/beetle-headed-merchants-draw-and-counter
 run prompt-run/benthic-criminologists-sacrifice
 run prompt-run/berserkers-frenzy-block
+run prompt-run/boilerbilges-ripper-sacrifice
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
@@ -1529,6 +1536,7 @@ run prompt-run/exploit-overcharged-amalgam
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
+run prompt-run/fanatic-of-the-harrowing-draw
 run prompt-run/fatal-grudge-draw
 run prompt-run/final-showdown-indestructible
 run prompt-run/fire-lord-ozai-add-red
@@ -1570,6 +1578,8 @@ run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
 run prompt-run/namazu-trader-surveil
+run prompt-run/osseous-sticktwister-discarded
+run prompt-run/osseous-sticktwister-sacrificed
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
 run prompt-run/plunge-into-darkness-sacrifice
@@ -2233,6 +2243,7 @@ tail roving-actuator/copy-exiled
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
+tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
