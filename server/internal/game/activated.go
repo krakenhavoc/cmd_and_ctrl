@@ -2413,7 +2413,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// item is built so the leaves-triggers it queues sit ABOVE the
 	// ability (CR 603.3b). Not a sacrifice: no EventSacrifice, and
 	// nothing dies.
-	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
 	if err != nil {
 		return err
 	}

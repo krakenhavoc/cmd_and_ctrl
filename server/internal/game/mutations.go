@@ -2299,7 +2299,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// same reason — with the spell on the stack, so a leaves-the-battlefield
 	// watcher lands above it. Not a sacrifice: nothing dies.
 	if len(params.ExilePermanentIDs) > 0 {
-		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
+		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, g.permanentSpellCostLinkLocked(cardID)); err != nil {
 			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
@@ -8517,7 +8517,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// it queues wait for the state-check pass on the way out, so they
 	// reach the stack with the mana already in the pool (CR 605.3a).
 	if len(params.ExilePermanentIDs) > 0 {
-		exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+		exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
 		if err != nil {
 			return err
 		}
