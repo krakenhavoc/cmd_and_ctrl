@@ -470,3 +470,125 @@ func TestFinB9DestinedThiefLootsOrDrawsThree(t *testing.T) {
 		t.Errorf("hand %d → %d, want +3 with a full party", hand, me.Hand.Size())
 	}
 }
+
+const finB9ChocoOracle = "7979bf83-5091-4e62-8885-ca1833a97306"
+
+func TestFinB9ChocoLooksAtOneCardPerBirdPutsOneInHandLandsInPlayAndTheRestInTheYard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	choco := b12Push(g, me.ID, "Choco, Seeker of Paradise", "Legendary Creature — Bird", finB9ChocoOracle, 3, 5)
+	bird := b12Creature(g, me.ID, "Bird", "Creature — Bird", 1, 1)
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	// Top to bottom: spell, land, land, then an unlooked card.
+	deep := topCard(me, "Deep", "Creature — Bear", "{1}")
+	land2 := topCard(me, "Forest B", "Basic Land — Forest", "")
+	land1 := topCard(me, "Forest A", "Basic Land — Forest", "")
+	spell := topCard(me, "Spell", "Sorcery", "{1}")
+	_ = land2
+	finABAttack(t, g, opp.ID, choco, bird)
+	passPriorityAroundTable(t, g)
+	// Three cards are NOT looked at: two Birds attacked, so two cards.
+	answerChooseCards(t, g, me.ID, spell)
+	if !me.Hand.Contains(spell) {
+		t.Fatal("the chosen card did not reach your hand")
+	}
+	answerChooseCards(t, g, me.ID, land1)
+	if !g.Battlefield.Contains(land1) {
+		t.Fatal("the land did not enter")
+	}
+	if c, _ := g.LookupCardForEffect(land1); !c.Tapped {
+		t.Error("the land entered untapped")
+	}
+	if !me.Library.Contains(deep) || !me.Library.Contains(land2) {
+		t.Error("an unlooked card left the library")
+	}
+}
+
+func TestFinB9ChocoLandfallPumps(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	choco := b12Push(g, me.ID, "Choco, Seeker of Paradise", "Legendary Creature — Bird", finB9ChocoOracle, 3, 5)
+	b31PlayLand(t, g, "Forest", "Basic Land — Forest", "")
+	passPriorityAroundTable(t, g)
+	if v := s58p6View(t, g, choco); v.CurrentPower() != 4 {
+		t.Errorf("Choco power %d, want 4", v.CurrentPower())
+	}
+}
+
+func TestFinB9ChocoSendsUnchosenCardsToTheGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	choco := b12Push(g, me.ID, "Choco, Seeker of Paradise", "Legendary Creature — Bird", finB9ChocoOracle, 3, 5)
+	land := topCard(me, "Forest", "Basic Land — Forest", "")
+	spell := topCard(me, "Spell", "Sorcery", "{1}")
+	bear := topCard(me, "Bear", "Creature — Bear", "{1}")
+	_ = bear
+	finABAttack(t, g, opp.ID, choco)
+	passPriorityAroundTable(t, g)
+	// One Bird attacked: the look is one card, the top one.
+	answerChooseCards(t, g, me.ID)
+	if me.Graveyard.Size() != 1 {
+		t.Fatalf("graveyard %d, want the one looked-at card", me.Graveyard.Size())
+	}
+	if !me.Library.Contains(land) || !me.Library.Contains(spell) {
+		t.Error("an unlooked card left the library")
+	}
+}
+
+const finB9ChocoboOracle = "2e5675d3-3fb0-43b5-a65c-95aacbe48bf9"
+
+func TestFinB9TravelingChocoboPlaysLandsAndCastsBirdsFromTheTopOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Traveling Chocobo", "Creature — Bird", finB9ChocoboOracle, 3, 2)
+	bird := topCard(me, "Sparrow", "Creature — Bird", "")
+	bear := topCard(me, "Bear", "Creature — Bear", "")
+	land := topCard(me, "Forest", "Basic Land — Forest", "")
+	// Top to bottom: land, bear, bird.
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{Strict: true, FromZone: "library"}); err == nil {
+		t.Error("a Bear under the land was cast")
+	}
+	if err := g.CastSpell(me.ID, land, game.CastSpellParams{Strict: true, FromZone: "library"}); err != nil {
+		t.Fatalf("playing the land from the top: %v", err)
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Fatal("the land did not enter")
+	}
+	if err := g.CastSpell(me.ID, bird, game.CastSpellParams{Strict: true, FromZone: "library"}); err == nil {
+		t.Error("a Bird below the Bear was cast")
+	}
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{Strict: true, FromZone: "library"}); err == nil {
+		t.Error("a Bear on top was cast")
+	}
+}
+
+func TestFinB9TravelingChocoboCastsABirdFromTheTop(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Traveling Chocobo", "Creature — Bird", finB9ChocoboOracle, 3, 2)
+	bird := topCard(me, "Sparrow", "Creature — Bird", "")
+	if err := g.CastSpell(me.ID, bird, game.CastSpellParams{Strict: true, FromZone: "library"}); err != nil {
+		t.Fatalf("casting a Bird from the top: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(bird) {
+		t.Error("the Bird did not enter")
+	}
+}
+
+func TestFinB9TravelingChocoboDoublesLandfallForYourLandsOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Traveling Chocobo", "Creature — Bird", finB9ChocoboOracle, 3, 2)
+	choco := b12Push(g, me.ID, "Choco, Seeker of Paradise", "Legendary Creature — Bird", finB9ChocoOracle, 3, 5)
+	b31PlayLand(t, g, "Forest", "Basic Land — Forest", "")
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	if v := s58p6View(t, g, choco); v.CurrentPower() != 5 {
+		t.Errorf("Choco power %d, want 5 (landfall twice)", v.CurrentPower())
+	}
+}
