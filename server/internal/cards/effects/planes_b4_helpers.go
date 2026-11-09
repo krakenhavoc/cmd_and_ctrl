@@ -126,3 +126,18 @@ func revealUntilToHandRestOnBottom(ctx *Context, match func(game.Card) bool, rea
 var revealedRestOnBottomInRandomOrder = CardTail("planes/reveal-until-to-hand-rest-on-bottom", func(ctx *Context, o game.TailOutcome) error {
 	return ctx.Game.PutOnBottomInRandomOrderForEffect(ctx.Controller(), game.ZoneLibrary, cardsStillInALibrary(ctx.Game, o.Tail.Carry))
 })
+
+// untilNonlandPermanentRef stops "exile cards from the top of your library
+// until you exile a nonland permanent card" (Ketria): the last card
+// exiled is a permanent card that isn't a land. Registered (ledgered
+// "milluntil until/nonland-permanent-card"): never renamed, never reused.
+var untilNonlandPermanentRef = game.RegisterMillUntil("until/nonland-permanent-card", func(landed []game.Card, _ int) bool {
+	if len(landed) == 0 {
+		return false
+	}
+	last := landed[len(landed)-1]
+	return !last.IsLand() && isPermanentCard(last)
+})
+
+// UntilNonlandPermanent is "until they exile a nonland permanent card".
+var UntilNonlandPermanent = game.MillUntil{Ref: untilNonlandPermanentRef}

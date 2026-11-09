@@ -605,3 +605,58 @@ func TestTheGoldenCityOfOrazcaMakesTreasureDrawsWithTheBlessingAndChaosPutsAPerm
 		t.Error("the land card did not enter tapped")
 	}
 }
+
+// --- Strixhaven -------------------------------------------------------------------------------
+
+func TestStrixhavenGivesEveryInstantAndSorceryDemonstrate(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeStrixhaven)
+	g, _ := newPlaneGame(t, planeStrixhaven)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	g.WithWriteLock(func() {
+		_ = AddMana{Player: me.ID, Produced: "{C}{C}{C}{C}"}.Apply(NewContext(g, &game.StackItem{Controller: me.ID}))
+	})
+	spell := pushHandCardWithManaCost(me, "Test Ritual", "Sorcery", "{1}")
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	// The caster is asked, not the planar controller's opponent.
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if latestOptionPickFor(g, me.ID) == nil {
+		t.Fatal("the caster was not asked to choose an opponent after copying")
+	}
+	answerChoosePlayer(t, g, me.ID, opp)
+	n := 0
+	g.ReadSnapshot(func() { n = len(g.StackMeta) })
+	if n != 3 {
+		t.Errorf("%d objects on the stack, want 3 (the spell, the caster's copy and the opponent's copy)", n)
+	}
+	// A creature spell does not demonstrate.
+	before := len(g.PendingTriggers)
+	bear := pushHandCardWithManaCost(me, "Test Bear", "Creature — Bear", "{1}")
+	_ = g.CastSpell(me.ID, bear, game.CastSpellParams{})
+	if len(g.PendingTriggers) != before {
+		t.Error("a creature spell triggered demonstrate")
+	}
+}
+
+func TestStrixhavenChaosReturnsAnInstantOrSorceryFromAnyGraveyard(t *testing.T) {
+	g, _ := newPlaneGame(t, planeStrixhaven)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	theirs := pushGraveyardCardWithTypeLineID(opp, "Their Bolt", "Instant")
+	bear := pushGraveyardCardWithTypeLineID(me, "Bear", "Creature — Bear")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(bear)); err == nil {
+		t.Fatal("a creature card was accepted")
+	}
+	answerPickTarget(t, g, theirs)
+	passPriorityAroundTable(t, g)
+	if !opp.Hand.Contains(theirs) {
+		t.Error("the card did not go to its owner's hand")
+	}
+}

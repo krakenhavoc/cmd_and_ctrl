@@ -594,7 +594,18 @@ func spellsCastStaticIsLiveLocked(g *Game) bool {
 //
 // Caller must hold g.mu.
 func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
-	if g.Battlefield == nil || CatalogStaticAbilities == nil {
+	if CatalogStaticAbilities == nil {
+		return false
+	}
+	// A face-up plane's statics function from the command zone (CR 901.7).
+	for i := 0; g.PlanarFaceUp != nil && i < len(g.PlanarFaceUp.Cards); i++ {
+		for _, ab := range staticAbilitiesOf(&g.PlanarFaceUp.Cards[i]) {
+			if want(ab) {
+				return true
+			}
+		}
+	}
+	if g.Battlefield == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {

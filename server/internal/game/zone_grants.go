@@ -127,20 +127,27 @@ type zoneGrantSource struct {
 // Caller must hold g.mu (write); the source pointers are into the
 // battlefield slice and are good only for this pass.
 func (g *Game) zoneGrantSourcesLocked() []zoneGrantSource {
-	if g.Battlefield == nil || CatalogStaticAbilities == nil {
+	if CatalogStaticAbilities == nil {
 		return nil
 	}
 	var out []zoneGrantSource
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
+	gather := func(src *Card) {
 		if !declaresZoneGrant(catalogKeyOf(src)) || src.HasLostAllAbilities() {
-			continue
+			return
 		}
 		for _, ab := range staticAbilitiesOf(src) {
 			if ab.GrantZone != "" && ab.AppliesTo != nil && len(ab.GrantAbilities) > 0 {
 				out = append(out, zoneGrantSource{ability: ab, source: src, ts: src.layerTimestamp()})
 			}
 		}
+	}
+	for i := 0; g.Battlefield != nil && i < len(g.Battlefield.Cards); i++ {
+		gather(&g.Battlefield.Cards[i])
+	}
+	// A face-up plane's static functions from the command zone (CR 901.7):
+	// Naktamun's "each creature card in your graveyard has embalm".
+	for i := 0; g.PlanarFaceUp != nil && i < len(g.PlanarFaceUp.Cards); i++ {
+		gather(&g.PlanarFaceUp.Cards[i])
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].ts < out[j].ts })
 	return out
