@@ -1073,3 +1073,62 @@ func TestStdB45ProftsEideticMemoryDrawsWhenItEntersAndRemovesTheHandLimit(t *tes
 		t.Errorf("hand size statics %+v, want no maximum for you", spec.HandSize)
 	}
 }
+
+const stdHideOracle = "94b15f1d-827b-45e9-a684-5d0c52ea0a09"
+
+func TestStdB45HideInPlainSightCloaksTwoAndBottomsTheRest(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	me.Library.Cards = nil
+	var ids []uuid.UUID
+	for i := 0; i < 8; i++ {
+		id := uuid.New()
+		tl := "Creature — Bear"
+		if i == 6 {
+			tl = "Sorcery" // a nonpermanent card may be cloaked too
+		}
+		me.Library.PushTop(game.Card{InstanceID: id, Name: "Lib", TypeLine: tl, ManaCost: "{1}{G}", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
+		ids = append(ids, id)
+	}
+	top5 := []uuid.UUID{ids[7], ids[6], ids[5], ids[4], ids[3]}
+	castCatalogSpell(t, g, "Hide in Plain Sight", "Sorcery", stdHideOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if pick == nil {
+		t.Fatalf("no pick: %+v", g.PendingChoices)
+	}
+	if len(pick.ChooseCards) != 5 {
+		t.Fatalf("%d candidates, want the top five", len(pick.ChooseCards))
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{ids[6]}); err == nil {
+		t.Fatal("one card accepted for \"cloak two\"")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{ids[6], ids[4]}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{ids[6], ids[4]} {
+		c, ok := battlefieldCard(g, id)
+		if !ok || !c.FaceDownIsPermanent() || c.FaceDownKind != game.FaceDownCloaked || c.Controller != me.ID {
+			t.Fatalf("card %s: on battlefield %v face down %v kind %q, want a cloaked permanent", id, ok, c.FaceDown, c.FaceDownKind)
+		}
+		if p, tough := mkmMPPT(t, g, id); p != 2 || tough != 2 || !c.FaceDownKind.HasWard() {
+			t.Errorf("cloaked card is %d/%d (ward %v), want a 2/2 with ward", p, tough, c.FaceDownKind.HasWard())
+		}
+	}
+	// Three cards were not chosen: they are at the bottom, below the three
+	// cards that were never looked at.
+	if me.Library.Size() != 6 {
+		t.Fatalf("library %d, want 6", me.Library.Size())
+	}
+	bottom := map[uuid.UUID]bool{}
+	for _, c := range me.Library.Cards[:3] {
+		bottom[c.InstanceID] = true
+	}
+	for _, id := range []uuid.UUID{ids[7], ids[5], ids[3]} {
+		if !bottom[id] {
+			t.Errorf("unchosen card %s is not among the bottom three", id)
+		}
+	}
+	_ = top5
+}
