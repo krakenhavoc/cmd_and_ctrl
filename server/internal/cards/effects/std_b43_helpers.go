@@ -90,3 +90,24 @@ func instantAndSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
 	}
 	return n
 }
+
+// DealtDamageAsASourceThisTurn is "a creature that dealt damage this turn"
+// (Treacherous Greed): the permanent was the source of a damage event this
+// turn that dealt more than 0 (damage actually dealt, after prevention). CR
+// 400.7: an entry after the damage makes a new object that dealt none, so an
+// entry wipes the record. Combat and noncombat damage both count, and the
+// recipient does not have to still exist (the ruling).
+func DealtDamageAsASourceThisTurn() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		dealt := false
+		for _, ev := range g.EventsThisTurn() {
+			switch {
+			case ev.Kind == game.EventZoneMove && ev.CardID == c.InstanceID && ev.NewZone == game.ZoneBattlefield:
+				dealt = false
+			case ev.Kind == game.EventDealDamage && ev.Source == c.InstanceID && ev.Amount > 0:
+				dealt = true
+			}
+		}
+		return dealt
+	}
+}

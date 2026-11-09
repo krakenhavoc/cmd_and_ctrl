@@ -947,3 +947,56 @@ func TestStdB44PrideOfHullCladeLetsADefenderAttack(t *testing.T) {
 		t.Fatalf("the Wall could not attack: %v", err)
 	}
 }
+
+// --- batch 45 ------------------------------------------------------------
+
+const stdGreedOracle = "5483f787-7aca-4efe-a39a-ea29f8c07f0d"
+
+func stdGreedCast(t *testing.T, dealt bool) (*game.Game, *game.Player, error, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	fighter := reqCreature(g, me.ID, "Fighter", "", 2, 2, "haste")
+	idle := reqCreature(g, me.ID, "Idle", "", 2, 2)
+	for i := 0; i < 4; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	if dealt {
+		dealCombatDamageToPlayer(g, fighter, opp.ID, 2)
+		passPriorityAroundTable(t, g)
+	}
+	b06AddMana(me, "C", "W", "B")
+	id := handCardFull(me, "Treacherous Greed", "Instant", "{1}{W}{B}", stdGreedOracle, []string{"W", "B"})
+	victim := idle
+	if dealt {
+		victim = fighter
+	}
+	return g, me, g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, SacrificeIDs: []uuid.UUID{victim}}), victim
+}
+
+func TestStdB45TreacherousGreedSacrificesADamageDealerAndDrains(t *testing.T) {
+	g, me, err, victim := stdGreedCast(t, true)
+	if err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	opp := g.Seats[1]
+	hand, oppLife, myLife := me.Hand.Size(), opp.Life, me.Life
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(victim) {
+		t.Error("the creature was not sacrificed")
+	}
+	if got := me.Hand.Size() - hand; got != 3 {
+		t.Errorf("drew %d, want 3", got)
+	}
+	if opp.Life != oppLife-3 || me.Life != myLife+3 {
+		t.Errorf("life: opponent %d -> %d, mine %d -> %d; want -3 and +3", oppLife, opp.Life, myLife, me.Life)
+	}
+}
+
+func TestStdB45TreacherousGreedRefusesACreatureThatDealtNoDamage(t *testing.T) {
+	_, _, err, _ := stdGreedCast(t, false)
+	if err == nil {
+		t.Fatal("sacrificed a creature that dealt no damage this turn")
+	}
+}
