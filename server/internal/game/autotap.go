@@ -2000,7 +2000,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if !a.ExilePermanents.Empty() || a.Branched() {
 		return false
 	}
-	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil {
+	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil || a.SourceBecomesProducedColor {
 		return false
 	}
 	return true

@@ -123,6 +123,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			RestrictionsFunc:          a.RestrictionsFunc,
 			SpendRiders:               a.SpendRiders,
 		}
+		out[i].SourceBecomesProducedColor = a.SourceBecomesProducedColor
 	}
 	return out
 }

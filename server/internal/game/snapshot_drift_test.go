@@ -1112,6 +1112,10 @@ var pendingChoiceFields = plan(
 	// abilities. A restored Birds pick that lost it would put the mana
 	// in the pool and skip Wild Growth's {G}.
 	"ManaTapped", carried, "",
+	// The "becomes that color" rider of the pick's ability (Foraging
+	// Wickermaw): a restored pick that lost it would leave the source
+	// its old colour.
+	"ManaRecolorsSource", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	// #4289: a keyed MayPayX's "choose X" holds no frame, so its bounds are

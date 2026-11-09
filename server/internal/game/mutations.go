@@ -8865,6 +8865,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				nil,
 			)...)
 		}
+		if ab.SourceBecomesProducedColor {
+			g.sourceBecomesManaColorLocked(cardID, settled)
+		}
 	} else {
 		// Queue the first pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
@@ -8901,6 +8904,8 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			ManaSettled:   settled,
 			ManaPicksLeft: picks[1:],
 		}
+		// The "becomes that color" rider waits for the colour too.
+		choice.ManaRecolorsSource = ab.SourceBecomesProducedColor
 		if first := picks[0]; first.Different > 0 {
 			g.queueDifferentColorsPickLocked(choice, first.Options, first.Different, ab.Label)
 		} else {

@@ -43059,6 +43059,7 @@ pendingChoices[].manaPicksLeft[].amounts{}	number:int
 pendingChoices[].manaPicksLeft[].different	number:int
 pendingChoices[].manaPicksLeft[].options	array
 pendingChoices[].manaPicksLeft[].options[]	string
+pendingChoices[].manaRecolorsSource	bool
 pendingChoices[].manaRestrictions	array
 pendingChoices[].manaRestrictions[]	string
 pendingChoices[].manaRiders	array

@@ -765,6 +765,17 @@ type ManaAbilityShape struct {
 	// effects.Register refuses a blank one.
 	OncePerTurn bool
 
+	// SourceBecomesProducedColor is the rider "This creature becomes
+	// that color until end of turn" after an "Add one mana of any
+	// color" clause (Foraging Wickermaw). It is DATA rather than a
+	// Rider because the colour is often not known when the Rider runs:
+	// a pick answered later (ResolveManaChoice) is the moment it is.
+	// The engine applies it wherever the activation's colours become
+	// known (sourceBecomesManaColorLocked, mana_source_color.go): a
+	// layer 5 colour-setting effect (CR 613.1e) on the source, pinned
+	// to the object it is now, for the turn.
+	SourceBecomesProducedColor bool
+
 	// AnyPlayer is the mana ability's printed "Any player may activate
 	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment
 	// 2026-10-16, #1864) — Mana Cache's "Remove a charge counter from
