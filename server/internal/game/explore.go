@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"sync"
+
+	"github.com/google/uuid"
+)
 
 // explore.go — the CR 701.44 keyword action "<permanent> explores"
 // (#2720).
@@ -53,7 +57,86 @@ const EventExplored EventKind = "explored"
 //
 // Caller must hold g.mu.
 func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller uuid.UUID) error {
-	done := func(g *Game) error { return g.finishExploreLocked(source, explorer.ID, controller) }
+	// CR 614: "If a creature you control would explore, instead you scry 1,
+	// then that creature explores" (Twists and Turns). One replacement per
+	// copy, each applying once to what the one before it made (CR 614.5), so
+	// N copies are N scries and then the explore.
+	if n := g.exploreScryCountLocked(controller); n > 0 {
+		tail := KeyedTail{
+			Ref: exploreAfterScryTail, Player: controller, Source: source,
+			Carry: []uuid.UUID{explorer.ID}, Nums: []int{explorer.Epoch}, N: n - 1,
+		}
+		g.ScryKeyedForEffect(controller, source, 1, tail)
+		return nil
+	}
+	return g.exploreNowLocked(source, explorer, controller)
+}
+
+// exploreScryKeys are the catalog keys of the permanents that print "If a
+// creature you control would explore, instead you scry 1, then that
+// creature explores" (RegisterExploreScryKey). Written at init only.
+var exploreScryKeys = struct {
+	sync.RWMutex
+	keys map[string]bool
+}{keys: map[string]bool{}}
+
+// RegisterExploreScryKey registers a card's catalog key as the explore
+// replacement above. Call it once from the card's init.
+func RegisterExploreScryKey(key string) {
+	exploreScryKeys.Lock()
+	defer exploreScryKeys.Unlock()
+	exploreScryKeys.keys[key] = true
+}
+
+// exploreScryCountLocked is how many of those replacements `controller`'s
+// permanents carry: through the catalog key that says the ability is still
+// there, so a Twists and Turns that lost its abilities replaces nothing.
+// Caller must hold g.mu.
+func (g *Game) exploreScryCountLocked(controller uuid.UUID) int {
+	if g.Battlefield == nil {
+		return 0
+	}
+	exploreScryKeys.RLock()
+	defer exploreScryKeys.RUnlock()
+	if len(exploreScryKeys.keys) == 0 {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != controller {
+			continue
+		}
+		if key := catalogAbilityKeyOf(c); key != "" && exploreScryKeys.keys[key] {
+			n++
+		}
+	}
+	return n
+}
+
+// exploreAfterScryTail is the explore once the replacement's scries are
+// done: the next scry while any are owed (the tail's N), then the explore
+// itself, of the object the ability named (Carry and Nums). An on-disk key:
+// never renamed, never reused.
+var exploreAfterScryTail = RegisterTail("engine/explore-after-scry", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 || len(o.Tail.Nums) == 0 {
+		return nil
+	}
+	if o.Tail.N > 0 {
+		next := o.Tail
+		next.N--
+		g.ScryKeyedForEffect(next.Player, next.Source, 1, next)
+		return nil
+	}
+	return g.exploreNowLocked(o.Tail.Source, ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.Nums[0]}, o.Tail.Player)
+})
+
+// exploreNowLocked is the explore itself (CR 701.44a), with no replacement
+// left to apply.
+//
+// Caller must hold g.mu.
+func (g *Game) exploreNowLocked(source uuid.UUID, explorer ObjectRef, controller uuid.UUID) error {
+	done := func(g *Game) error { return g.finishExploreLocked(source, explorer.ID, controller, uuid.Nil) }
 	p := g.playerByIDLocked(controller)
 	if p == nil || p.Eliminated {
 		return done(g)
@@ -75,7 +158,7 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 			DstOwner: controller,
 			Actor:    controller,
 			Source:   source,
-		}, exploreDone(source, explorer.ID, controller))
+		}, exploreDone(source, explorer.ID, controller, top.InstanceID))
 	}
 	// #4253 slice 7: the question is the counter's keyed tail (the explorer
 	// and the revealed card ride it as data), so a CR 616 ordering prompt over
@@ -113,23 +196,28 @@ var exploreDoneTail = RegisterTail("engine/explore-done", func(g *Game, o TailOu
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	return g.finishExploreLocked(o.Tail.Source, o.Tail.Carry[0], o.Tail.Player)
+	revealed := uuid.Nil
+	if len(o.Tail.Carry) > 1 {
+		revealed = o.Tail.Carry[1]
+	}
+	return g.finishExploreLocked(o.Tail.Source, o.Tail.Carry[0], o.Tail.Player, revealed)
 })
 
 // exploreDone is exploreDoneTail for one explore.
-func exploreDone(source, explorer, controller uuid.UUID) KeyedTail {
-	return KeyedTail{Ref: exploreDoneTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer}}
+func exploreDone(source, explorer, controller, revealed uuid.UUID) KeyedTail {
+	return KeyedTail{Ref: exploreDoneTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer, revealed}}
 }
 
 // finishExploreLocked is CR 701.44b: the permanent has explored.
 //
 // Caller must hold g.mu.
-func (g *Game) finishExploreLocked(source, explorer, controller uuid.UUID) error {
+func (g *Game) finishExploreLocked(source, explorer, controller, revealed uuid.UUID) error {
 	g.EmitEvent(Event{
-		Kind:   EventExplored,
-		Actor:  controller,
-		CardID: explorer,
-		Source: source,
+		Kind:            EventExplored,
+		Actor:           controller,
+		CardID:          explorer,
+		Source:          source,
+		ExploreRevealed: revealed,
 	})
 	return nil
 }
@@ -162,7 +250,7 @@ var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", fu
 		return nil
 	}
 	revealed, explorer, controller, source := r.Carry[0], r.Carry[1], r.Chooser, r.Source
-	done := func(g *Game) error { return g.finishExploreLocked(source, explorer, controller) }
+	done := func(g *Game) error { return g.finishExploreLocked(source, explorer, controller, revealed) }
 	if !r.Accepted {
 		return done(g)
 	}
@@ -176,7 +264,7 @@ var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", fu
 		DstOwner: controller,
 		Actor:    controller,
 		Source:   source,
-	}, exploreDone(source, explorer, controller))
+	}, exploreDone(source, explorer, controller, revealed))
 })
 
 // exploreReason is the reveal banner: "<name> explores".

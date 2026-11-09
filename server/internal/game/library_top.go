@@ -104,11 +104,21 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 		// The gate is "has no catalog entry", not "has no oracle ID"
 		// (ADR 0083 decision 3): a TOKEN has a key of its own since
 		// #521, and an object CR 708.2a has silenced has none.
-		key := catalogAbilityKeyOf(c)
-		if key == "" {
-			continue
+		v := LibraryTopHidden
+		if key := catalogAbilityKeyOf(c); key != "" {
+			v = CatalogLibraryTopVisible(key)
 		}
-		v := CatalogLibraryTopVisible(key)
+		// A bundle a layer-6 effect gave the permanent says it too: Glowcap
+		// Lantern's equipped creature has "You may look at the top card of
+		// your library any time" (AbilityGrant.LibraryTopVisible). It is the
+		// permanent's controller's library, as a printed one is.
+		if c.Controller == playerID {
+			for _, gr := range layeredGrants(c) {
+				if gv := CatalogLibraryTopVisible(gr.Key); gv > v {
+					v = gv
+				}
+			}
+		}
 		switch {
 		case v == LibraryTopRevealedEachPlayer:
 			// #1997: every player's library, whoever controls it.

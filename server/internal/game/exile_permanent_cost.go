@@ -677,6 +677,15 @@ func movedSourceAlso(sourceID uuid.UUID, exileSelf bool, lists ...[]uuid.UUID) [
 //
 // Caller must hold g.mu.
 func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) ([]uuid.UUID, error) {
+	return g.payExilePermanentsCostKindLocked(playerID, sourceID, ids, answers, MoveCauseCost)
+}
+
+// payExilePermanentsCostKindLocked is payExilePermanentsCostLocked with the
+// move cause named: MoveCauseCraftCost for the materials of a craft
+// ability (CR 702.167a), so "exiled while you're activating a craft
+// ability" (Market Gnome) can tell them from any other exile cost.
+// Caller must hold g.mu.
+func (g *Game) payExilePermanentsCostKindLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool, kind MoveCauseKind) ([]uuid.UUID, error) {
 	var moved []uuid.UUID
 	for _, id := range ids {
 		// ADR 0137: a craft material in the activator's graveyard goes
@@ -692,7 +701,7 @@ func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []
 			Dst:           ZoneExile,
 			Actor:         playerID,
 			Source:        sourceID,
-			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
+			Cause:         MoveCause{Kind: kind, Controller: playerID},
 			MustSettleNow: true,
 			// #1397: the owner's CR 903.9 answer, asked before the
 			// payment by askCostCommanderLocked.

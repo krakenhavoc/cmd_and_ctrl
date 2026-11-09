@@ -5072,6 +5072,10 @@ type ActivatedAbilityView struct {
 	// like `return_self`: the grantor (`granted_by`) is the payment, so
 	// nothing is collected and nothing rides the payload.
 	ExileGrantor bool `json:"exile_grantor,omitempty"`
+	// SacrificeGrantor is a granted row's "Sacrifice <the permanent that
+	// grants this>" cost component: Deconstruction Hammer. Advisory, like
+	// `exile_grantor`.
+	SacrificeGrantor bool `json:"sacrifice_grantor,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -13610,28 +13614,29 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// ADR 0155 Decision 10: the lender of a borrowed row, and
 			// its label with the lender's name read as this card's
 			// (CR 201.5b).
-			BorrowedFrom:  borrowedFromView(g, origins.At(i)),
-			Label:         game.BorrowedLabel(a.Label, origins.At(i), c.Name),
-			TapCost:       a.Cost.Tap,
-			SacrificeSelf: a.Cost.SacrificeSelf,
-			DiscardSelf:   a.Cost.DiscardSelf,
-			ExileSelf:     a.Cost.ExileSelf,
-			ReturnSelf:    a.Cost.ReturnSelf,
-			BottomSelf:    a.Cost.BottomSelf,
-			ExileGrantor:  a.Cost.ExileGrantor,
-			Exert:         a.Cost.Exert,
-			ManaCost:      a.Cost.Mana,
-			LifeCost:      a.Cost.Life,
-			SorcerySpeed:  a.SorcerySpeed,
-			LoyaltyCost:   a.Cost.Loyalty,
-			LoyaltyCostX:  a.Cost.LoyaltyX,
-			AnyPlayer:     a.AnyPlayer,
-			OpponentsOnly: a.OpponentsOnly,
-			OwnerOnly:     a.OwnerOnly,
-			GrantorOnly:   a.GrantorOnly,
-			Equip:         a.Equip,
-			Reconfigure:   a.Reconfigure,
-			UntapSelf:     a.UntapSelf,
+			BorrowedFrom:     borrowedFromView(g, origins.At(i)),
+			Label:            game.BorrowedLabel(a.Label, origins.At(i), c.Name),
+			TapCost:          a.Cost.Tap,
+			SacrificeSelf:    a.Cost.SacrificeSelf,
+			DiscardSelf:      a.Cost.DiscardSelf,
+			ExileSelf:        a.Cost.ExileSelf,
+			ReturnSelf:       a.Cost.ReturnSelf,
+			BottomSelf:       a.Cost.BottomSelf,
+			ExileGrantor:     a.Cost.ExileGrantor,
+			SacrificeGrantor: a.Cost.SacrificeGrantor,
+			Exert:            a.Cost.Exert,
+			ManaCost:         a.Cost.Mana,
+			LifeCost:         a.Cost.Life,
+			SorcerySpeed:     a.SorcerySpeed,
+			LoyaltyCost:      a.Cost.Loyalty,
+			LoyaltyCostX:     a.Cost.LoyaltyX,
+			AnyPlayer:        a.AnyPlayer,
+			OpponentsOnly:    a.OpponentsOnly,
+			OwnerOnly:        a.OwnerOnly,
+			GrantorOnly:      a.GrantorOnly,
+			Equip:            a.Equip,
+			Reconfigure:      a.Reconfigure,
+			UntapSelf:        a.UntapSelf,
 		}
 		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
 		// "Only you may activate" row is open to.

@@ -38,6 +38,10 @@ type AbilityCostBranchView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// ManaCost is a mana branch's cost ("{3}": Bloodthorn Flail's "Pay {3}
+	// or discard a card"). Always offered as payable: whether the pool can
+	// meet it is the payment's own check, as for any ability's mana.
+	ManaCost string `json:"mana_cost,omitempty"`
 }
 
 // abilityCostBranchViews projects the branches of an either/or cost,
@@ -57,6 +61,9 @@ func abilityCostBranchViews(g *game.Game, caster, sourceID uuid.UUID, cost game.
 			continue
 		}
 		b := AbilityCostBranchView{Label: cost.Either[i].BranchLabel(), Payable: true}
+		if cost.Either[i].Kind == game.AbilityCostBranchMana {
+			b.ManaCost = cost.Either[i].Mana
+		}
 		if sc := folded.SacrificeOther; sc != nil {
 			b.SacrificeLabel = sc.Label
 			b.SacrificeOptions = sacrificeCostOptions(g, caster, sc, sourceID,

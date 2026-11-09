@@ -1024,6 +1024,7 @@ events[].exiled_with_ability.key	string
 events[].exiled_with_ability.name	string
 events[].exiled_with_ability.ref	string
 events[].exiled_with_ability.slot	string
+events[].explore_revealed	custom(uuid.UUID)
 events[].from_radiation	bool
 events[].kind	string
 events[].label	string
@@ -1799,6 +1800,7 @@ followUpParks[].then.asked.trigger.Event.exiled_with_ability.key	string
 followUpParks[].then.asked.trigger.Event.exiled_with_ability.name	string
 followUpParks[].then.asked.trigger.Event.exiled_with_ability.ref	string
 followUpParks[].then.asked.trigger.Event.exiled_with_ability.slot	string
+followUpParks[].then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.from_radiation	bool
 followUpParks[].then.asked.trigger.Event.kind	string
 followUpParks[].then.asked.trigger.Event.label	string
@@ -2037,6 +2039,8 @@ followUpParks[].then.permission.gainsAbilities	array
 followUpParks[].then.permission.gainsAbilities[]	string
 followUpParks[].then.permission.gainsKeywords	array
 followUpParks[].then.permission.gainsKeywords[]	string
+followUpParks[].then.permission.gainsSubtypes	array
+followUpParks[].then.permission.gainsSubtypes[]	string
 followUpParks[].then.permission.grantsHaste	bool
 followUpParks[].then.permission.graveyardsAreYours	bool
 followUpParks[].then.permission.ifNotCast	string
@@ -2415,6 +2419,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.exiled_with_ability.k
 frozenEntries[].event.counterTail.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.counterTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.label	string
@@ -2653,6 +2658,8 @@ frozenEntries[].event.counterTail.then.permission.gainsAbilities	array
 frozenEntries[].event.counterTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.counterTail.then.permission.gainsKeywords	array
 frozenEntries[].event.counterTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.counterTail.then.permission.gainsSubtypes	array
+frozenEntries[].event.counterTail.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.counterTail.then.permission.grantsHaste	bool
 frozenEntries[].event.counterTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.counterTail.then.permission.ifNotCast	string
@@ -3010,6 +3017,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exiled_with_abili
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.kind	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.label	string
@@ -3248,6 +3256,8 @@ frozenEntries[].event.damageTail.each.each.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords[]	string
+frozenEntries[].event.damageTail.each.each.permission.gainsSubtypes	array
+frozenEntries[].event.damageTail.each.each.permission.gainsSubtypes[]	string
 frozenEntries[].event.damageTail.each.each.permission.grantsHaste	bool
 frozenEntries[].event.damageTail.each.each.permission.graveyardsAreYours	bool
 frozenEntries[].event.damageTail.each.each.permission.ifNotCast	string
@@ -3596,6 +3606,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exiled_with_abili
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.kind	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.label	string
@@ -3834,6 +3845,8 @@ frozenEntries[].event.damageTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords[]	string
+frozenEntries[].event.damageTail.each.then.permission.gainsSubtypes	array
+frozenEntries[].event.damageTail.each.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.damageTail.each.then.permission.grantsHaste	bool
 frozenEntries[].event.damageTail.each.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.damageTail.each.then.permission.ifNotCast	string
@@ -4353,6 +4366,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.exiled_with_ability.ke
 frozenEntries[].event.damageTail.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.damageTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.label	string
@@ -4591,6 +4605,8 @@ frozenEntries[].event.damageTail.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.then.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.damageTail.then.permission.gainsSubtypes	array
+frozenEntries[].event.damageTail.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.damageTail.then.permission.grantsHaste	bool
 frozenEntries[].event.damageTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.damageTail.then.permission.ifNotCast	string
@@ -5057,6 +5073,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exil
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.label	string
@@ -5295,6 +5312,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilitie
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsSubtypes	array
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.ifNotCast	string
@@ -5718,6 +5737,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exiled_with_abili
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.label	string
@@ -5956,6 +5976,8 @@ frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.batch.then.permission.gainsSubtypes	array
+frozenEntries[].event.entryTail.batch.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.entryTail.batch.then.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.batch.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.batch.then.permission.ifNotCast	string
@@ -6304,6 +6326,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.ke
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.label	string
@@ -6542,6 +6565,8 @@ frozenEntries[].event.entryTail.keyed.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.keyed.permission.gainsSubtypes	array
+frozenEntries[].event.entryTail.keyed.permission.gainsSubtypes[]	string
 frozenEntries[].event.entryTail.keyed.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.keyed.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.keyed.permission.ifNotCast	string
@@ -6922,6 +6947,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.label	string
@@ -7160,6 +7186,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities	a
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsSubtypes	array
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsSubtypes[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.ifNotCast	string
@@ -7528,6 +7556,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exiled_with_abil
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.kind	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.label	string
@@ -7766,6 +7795,8 @@ frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.tokens.then.permission.gainsSubtypes	array
+frozenEntries[].event.entryTail.tokens.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.tokens.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.tokens.then.permission.ifNotCast	string
@@ -8533,6 +8564,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exiled_with_abi
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.label	string
@@ -8771,6 +8803,8 @@ frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.keywordActionTail.then.permission.gainsSubtypes	array
+frozenEntries[].event.keywordActionTail.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.keywordActionTail.then.permission.grantsHaste	bool
 frozenEntries[].event.keywordActionTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.keywordActionTail.then.permission.ifNotCast	string
@@ -9141,6 +9175,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.kind	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.label	string
@@ -9379,6 +9414,8 @@ frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities[]	string
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords[]	string
+frozenEntries[].event.lifeTail.each.then.permission.gainsSubtypes	array
+frozenEntries[].event.lifeTail.each.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.lifeTail.each.then.permission.grantsHaste	bool
 frozenEntries[].event.lifeTail.each.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.lifeTail.each.then.permission.ifNotCast	string
@@ -9730,6 +9767,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.exiled_with_ability.key	
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.label	string
@@ -9968,6 +10006,8 @@ frozenEntries[].event.lifeTail.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords	array
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.lifeTail.then.permission.gainsSubtypes	array
+frozenEntries[].event.lifeTail.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.lifeTail.then.permission.grantsHaste	bool
 frozenEntries[].event.lifeTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.lifeTail.then.permission.ifNotCast	string
@@ -11112,6 +11152,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.exiled_with_ability.
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.kind	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.label	string
@@ -11350,6 +11391,8 @@ frozenEntries[].event.millTail.run.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities[]	string
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords	array
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords[]	string
+frozenEntries[].event.millTail.run.then.permission.gainsSubtypes	array
+frozenEntries[].event.millTail.run.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.millTail.run.then.permission.grantsHaste	bool
 frozenEntries[].event.millTail.run.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.millTail.run.then.permission.ifNotCast	string
@@ -11696,6 +11739,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.exiled_with_ability.key	
 frozenEntries[].event.millTail.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.millTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.millTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.label	string
@@ -11934,6 +11978,8 @@ frozenEntries[].event.millTail.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.millTail.then.permission.gainsKeywords	array
 frozenEntries[].event.millTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.millTail.then.permission.gainsSubtypes	array
+frozenEntries[].event.millTail.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.millTail.then.permission.grantsHaste	bool
 frozenEntries[].event.millTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.millTail.then.permission.ifNotCast	string
@@ -12631,6 +12677,7 @@ frozenEntries[].event.stackItem.trigger.Event.exiled_with_ability.key	string
 frozenEntries[].event.stackItem.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.stackItem.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.stackItem.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.stackItem.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.from_radiation	bool
 frozenEntries[].event.stackItem.trigger.Event.kind	string
 frozenEntries[].event.stackItem.trigger.Event.label	string
@@ -13212,6 +13259,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.exiled_with_ability.key
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.kind	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.label	string
@@ -13450,6 +13498,8 @@ frozenEntries[].event.tokenTail.then.permission.gainsAbilities	array
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords	array
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.tokenTail.then.permission.gainsSubtypes	array
+frozenEntries[].event.tokenTail.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.tokenTail.then.permission.grantsHaste	bool
 frozenEntries[].event.tokenTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.tokenTail.then.permission.ifNotCast	string
@@ -15018,6 +15068,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_w
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.label	string
@@ -15256,6 +15307,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	ar
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsSubtypes	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
@@ -15636,6 +15689,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ex
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.label	string
@@ -15874,6 +15928,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilit
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes	array
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	string
@@ -16220,6 +16276,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_a
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.label	string
@@ -16458,6 +16515,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsSubtypes	array
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.ifNotCast	string
@@ -16824,6 +16883,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.label	string
@@ -17062,6 +17122,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsSubtypes	array
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.ifNotCast	string
@@ -17493,6 +17555,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_wit
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.from_radiation	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.label	string
@@ -17731,6 +17794,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	arra
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsSubtypes	array
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsSubtypes[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.ifNotCast	string
@@ -19640,6 +19705,7 @@ lastKnownStack[].item.trigger.Event.exiled_with_ability.key	string
 lastKnownStack[].item.trigger.Event.exiled_with_ability.name	string
 lastKnownStack[].item.trigger.Event.exiled_with_ability.ref	string
 lastKnownStack[].item.trigger.Event.exiled_with_ability.slot	string
+lastKnownStack[].item.trigger.Event.explore_revealed	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.from_radiation	bool
 lastKnownStack[].item.trigger.Event.kind	string
 lastKnownStack[].item.trigger.Event.label	string
@@ -19944,6 +20010,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exiled_with_ability.k
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.label	string
@@ -20182,6 +20249,8 @@ movesAwaitingTokens[].counterTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].counterTail.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].counterTail.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].counterTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].counterTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].counterTail.then.permission.ifNotCast	string
@@ -20539,6 +20608,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exiled_with_abili
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.kind	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.label	string
@@ -20777,6 +20847,8 @@ movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords[]	string
+movesAwaitingTokens[].damageTail.each.each.permission.gainsSubtypes	array
+movesAwaitingTokens[].damageTail.each.each.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.grantsHaste	bool
 movesAwaitingTokens[].damageTail.each.each.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].damageTail.each.each.permission.ifNotCast	string
@@ -21125,6 +21197,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exiled_with_abili
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.label	string
@@ -21363,6 +21436,8 @@ movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].damageTail.each.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].damageTail.each.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.grantsHaste	bool
 movesAwaitingTokens[].damageTail.each.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].damageTail.each.then.permission.ifNotCast	string
@@ -21882,6 +21957,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exiled_with_ability.ke
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.label	string
@@ -22120,6 +22196,8 @@ movesAwaitingTokens[].damageTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].damageTail.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].damageTail.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].damageTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].damageTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].damageTail.then.permission.ifNotCast	string
@@ -22586,6 +22664,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exil
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.label	string
@@ -22824,6 +22903,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilitie
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.ifNotCast	string
@@ -23247,6 +23328,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exiled_with_abili
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.label	string
@@ -23485,6 +23567,8 @@ movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.batch.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].entryTail.batch.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.ifNotCast	string
@@ -23833,6 +23917,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exiled_with_ability.ke
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.label	string
@@ -24071,6 +24156,8 @@ movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.keyed.permission.gainsSubtypes	array
+movesAwaitingTokens[].entryTail.keyed.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.keyed.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.keyed.permission.ifNotCast	string
@@ -24451,6 +24538,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exiled_
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.label	string
@@ -24689,6 +24777,8 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities	a
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsSubtypes	array
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.ifNotCast	string
@@ -25057,6 +25147,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exiled_with_abil
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.label	string
@@ -25295,6 +25386,8 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].entryTail.tokens.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.ifNotCast	string
@@ -26062,6 +26155,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exiled_with_abi
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.label	string
@@ -26300,6 +26394,8 @@ movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].keywordActionTail.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].keywordActionTail.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.ifNotCast	string
@@ -26670,6 +26766,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exiled_with_ability
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.label	string
@@ -26908,6 +27005,8 @@ movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].lifeTail.each.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].lifeTail.each.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.grantsHaste	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.ifNotCast	string
@@ -27259,6 +27358,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exiled_with_ability.key	
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.label	string
@@ -27497,6 +27597,8 @@ movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].lifeTail.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].lifeTail.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].lifeTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].lifeTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].lifeTail.then.permission.ifNotCast	string
@@ -28641,6 +28743,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exiled_with_ability.
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.label	string
@@ -28879,6 +28982,8 @@ movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].millTail.run.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].millTail.run.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].millTail.run.then.permission.grantsHaste	bool
 movesAwaitingTokens[].millTail.run.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].millTail.run.then.permission.ifNotCast	string
@@ -29225,6 +29330,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.exiled_with_ability.key	
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.label	string
@@ -29463,6 +29569,8 @@ movesAwaitingTokens[].millTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].millTail.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].millTail.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].millTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].millTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].millTail.then.permission.ifNotCast	string
@@ -30160,6 +30268,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.exiled_with_ability.key	string
 movesAwaitingTokens[].stackItem.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].stackItem.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].stackItem.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].stackItem.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].stackItem.trigger.Event.kind	string
 movesAwaitingTokens[].stackItem.trigger.Event.label	string
@@ -30741,6 +30850,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exiled_with_ability.key
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.label	string
@@ -30979,6 +31089,8 @@ movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].tokenTail.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].tokenTail.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].tokenTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].tokenTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].tokenTail.then.permission.ifNotCast	string
@@ -32547,6 +32659,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_w
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.label	string
@@ -32785,6 +32898,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities	ar
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
@@ -33165,6 +33280,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.ex
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.label	string
@@ -33403,6 +33519,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilit
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	string
@@ -33749,6 +33867,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_a
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.label	string
@@ -33987,6 +34106,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.ifNotCast	string
@@ -34353,6 +34474,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.label	string
@@ -34591,6 +34713,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.ifNotCast	string
@@ -35022,6 +35146,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_wit
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.from_radiation	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.label	string
@@ -35260,6 +35385,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities	arra
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsSubtypes	array
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsSubtypes[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.ifNotCast	string
@@ -36210,6 +36337,7 @@ pausedModeWalk.item.trigger.Event.exiled_with_ability.key	string
 pausedModeWalk.item.trigger.Event.exiled_with_ability.name	string
 pausedModeWalk.item.trigger.Event.exiled_with_ability.ref	string
 pausedModeWalk.item.trigger.Event.exiled_with_ability.slot	string
+pausedModeWalk.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.from_radiation	bool
 pausedModeWalk.item.trigger.Event.kind	string
 pausedModeWalk.item.trigger.Event.label	string
@@ -36536,6 +36664,7 @@ pausedResolutionTail.item.trigger.Event.exiled_with_ability.key	string
 pausedResolutionTail.item.trigger.Event.exiled_with_ability.name	string
 pausedResolutionTail.item.trigger.Event.exiled_with_ability.ref	string
 pausedResolutionTail.item.trigger.Event.exiled_with_ability.slot	string
+pausedResolutionTail.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.from_radiation	bool
 pausedResolutionTail.item.trigger.Event.kind	string
 pausedResolutionTail.item.trigger.Event.label	string
@@ -36856,6 +36985,7 @@ pausedStepWalk.item.trigger.Event.exiled_with_ability.key	string
 pausedStepWalk.item.trigger.Event.exiled_with_ability.name	string
 pausedStepWalk.item.trigger.Event.exiled_with_ability.ref	string
 pausedStepWalk.item.trigger.Event.exiled_with_ability.slot	string
+pausedStepWalk.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.from_radiation	bool
 pausedStepWalk.item.trigger.Event.kind	string
 pausedStepWalk.item.trigger.Event.label	string
@@ -37042,6 +37172,7 @@ pendingChoices[].asked.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.from_radiation	bool
 pendingChoices[].asked.trigger.Event.kind	string
 pendingChoices[].asked.trigger.Event.label	string
@@ -38196,6 +38327,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.exiled_with_ability.key	st
 pendingChoices[].attackSplit.tail.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].attackSplit.tail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Event.kind	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.label	string
@@ -38434,6 +38566,8 @@ pendingChoices[].attackSplit.tail.permission.gainsAbilities	array
 pendingChoices[].attackSplit.tail.permission.gainsAbilities[]	string
 pendingChoices[].attackSplit.tail.permission.gainsKeywords	array
 pendingChoices[].attackSplit.tail.permission.gainsKeywords[]	string
+pendingChoices[].attackSplit.tail.permission.gainsSubtypes	array
+pendingChoices[].attackSplit.tail.permission.gainsSubtypes[]	string
 pendingChoices[].attackSplit.tail.permission.grantsHaste	bool
 pendingChoices[].attackSplit.tail.permission.graveyardsAreYours	bool
 pendingChoices[].attackSplit.tail.permission.ifNotCast	string
@@ -39368,6 +39502,7 @@ pendingChoices[].copyWalk.item.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].copyWalk.item.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].copyWalk.item.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].copyWalk.item.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].copyWalk.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.from_radiation	bool
 pendingChoices[].copyWalk.item.trigger.Event.kind	string
 pendingChoices[].copyWalk.item.trigger.Event.label	string
@@ -40176,6 +40311,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.exiled_with_ability.key	strin
 pendingChoices[].diceRoll.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].diceRoll.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].diceRoll.then.asked.trigger.Event.kind	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.label	string
@@ -40414,6 +40550,8 @@ pendingChoices[].diceRoll.then.permission.gainsAbilities	array
 pendingChoices[].diceRoll.then.permission.gainsAbilities[]	string
 pendingChoices[].diceRoll.then.permission.gainsKeywords	array
 pendingChoices[].diceRoll.then.permission.gainsKeywords[]	string
+pendingChoices[].diceRoll.then.permission.gainsSubtypes	array
+pendingChoices[].diceRoll.then.permission.gainsSubtypes[]	string
 pendingChoices[].diceRoll.then.permission.grantsHaste	bool
 pendingChoices[].diceRoll.then.permission.graveyardsAreYours	bool
 pendingChoices[].diceRoll.then.permission.ifNotCast	string
@@ -41139,6 +41277,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.exiled_with_ability.
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.from_radiation	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.kind	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.label	string
@@ -41377,6 +41516,8 @@ pendingChoices[].divideShield.walk.each.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities[]	string
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords	array
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords[]	string
+pendingChoices[].divideShield.walk.each.permission.gainsSubtypes	array
+pendingChoices[].divideShield.walk.each.permission.gainsSubtypes[]	string
 pendingChoices[].divideShield.walk.each.permission.grantsHaste	bool
 pendingChoices[].divideShield.walk.each.permission.graveyardsAreYours	bool
 pendingChoices[].divideShield.walk.each.permission.ifNotCast	string
@@ -41725,6 +41866,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.exiled_with_ability.
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.kind	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.label	string
@@ -41963,6 +42105,8 @@ pendingChoices[].divideShield.walk.then.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities[]	string
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords	array
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords[]	string
+pendingChoices[].divideShield.walk.then.permission.gainsSubtypes	array
+pendingChoices[].divideShield.walk.then.permission.gainsSubtypes[]	string
 pendingChoices[].divideShield.walk.then.permission.grantsHaste	bool
 pendingChoices[].divideShield.walk.then.permission.graveyardsAreYours	bool
 pendingChoices[].divideShield.walk.then.permission.ifNotCast	string
@@ -42317,6 +42461,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.exiled_with_ability.key	s
 pendingChoices[].libraryOrder.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].libraryOrder.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Event.kind	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.label	string
@@ -42555,6 +42700,8 @@ pendingChoices[].libraryOrder.then.permission.gainsAbilities	array
 pendingChoices[].libraryOrder.then.permission.gainsAbilities[]	string
 pendingChoices[].libraryOrder.then.permission.gainsKeywords	array
 pendingChoices[].libraryOrder.then.permission.gainsKeywords[]	string
+pendingChoices[].libraryOrder.then.permission.gainsSubtypes	array
+pendingChoices[].libraryOrder.then.permission.gainsSubtypes[]	string
 pendingChoices[].libraryOrder.then.permission.grantsHaste	bool
 pendingChoices[].libraryOrder.then.permission.graveyardsAreYours	bool
 pendingChoices[].libraryOrder.then.permission.ifNotCast	string
@@ -42959,6 +43106,7 @@ pendingChoices[].nameThen.asked.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].nameThen.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].nameThen.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].nameThen.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].nameThen.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.from_radiation	bool
 pendingChoices[].nameThen.asked.trigger.Event.kind	string
 pendingChoices[].nameThen.asked.trigger.Event.label	string
@@ -43197,6 +43345,8 @@ pendingChoices[].nameThen.permission.gainsAbilities	array
 pendingChoices[].nameThen.permission.gainsAbilities[]	string
 pendingChoices[].nameThen.permission.gainsKeywords	array
 pendingChoices[].nameThen.permission.gainsKeywords[]	string
+pendingChoices[].nameThen.permission.gainsSubtypes	array
+pendingChoices[].nameThen.permission.gainsSubtypes[]	string
 pendingChoices[].nameThen.permission.grantsHaste	bool
 pendingChoices[].nameThen.permission.graveyardsAreYours	bool
 pendingChoices[].nameThen.permission.ifNotCast	string
@@ -43552,6 +43702,7 @@ pendingChoices[].ordered.asked.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].ordered.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].ordered.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].ordered.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].ordered.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.from_radiation	bool
 pendingChoices[].ordered.asked.trigger.Event.kind	string
 pendingChoices[].ordered.asked.trigger.Event.label	string
@@ -44009,6 +44160,7 @@ pendingChoices[].pickTail.asked.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].pickTail.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].pickTail.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].pickTail.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].pickTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].pickTail.asked.trigger.Event.kind	string
 pendingChoices[].pickTail.asked.trigger.Event.label	string
@@ -44247,6 +44399,8 @@ pendingChoices[].pickTail.permission.gainsAbilities	array
 pendingChoices[].pickTail.permission.gainsAbilities[]	string
 pendingChoices[].pickTail.permission.gainsKeywords	array
 pendingChoices[].pickTail.permission.gainsKeywords[]	string
+pendingChoices[].pickTail.permission.gainsSubtypes	array
+pendingChoices[].pickTail.permission.gainsSubtypes[]	string
 pendingChoices[].pickTail.permission.grantsHaste	bool
 pendingChoices[].pickTail.permission.graveyardsAreYours	bool
 pendingChoices[].pickTail.permission.ifNotCast	string
@@ -44639,6 +44793,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.ex
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.label	string
@@ -44877,6 +45032,8 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilit
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.counterTail.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.ifNotCast	string
@@ -45234,6 +45391,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.label	string
@@ -45472,6 +45630,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAb
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.ifNotCast	string
@@ -45820,6 +45980,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.label	string
@@ -46058,6 +46219,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAb
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.ifNotCast	string
@@ -46577,6 +46740,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exi
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.label	string
@@ -46815,6 +46979,8 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbiliti
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.damageTail.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.ifNotCast	string
@@ -47281,6 +47447,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.label	string
@@ -47519,6 +47686,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.ifNotCast	string
@@ -47942,6 +48111,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.label	string
@@ -48180,6 +48350,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAb
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.ifNotCast	string
@@ -48528,6 +48700,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exi
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.label	string
@@ -48766,6 +48939,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbiliti
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.ifNotCast	string
@@ -49146,6 +49321,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.label	string
@@ -49384,6 +49560,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.ifNotCast	string
@@ -49752,6 +49930,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.label	string
@@ -49990,6 +50169,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsA
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.ifNotCast	string
@@ -50757,6 +50938,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.label	string
@@ -50995,6 +51177,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gains
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.ifNotCast	string
@@ -51365,6 +51549,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.label	string
@@ -51603,6 +51788,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbil
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.ifNotCast	string
@@ -51954,6 +52141,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exile
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.label	string
@@ -52192,6 +52380,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.ifNotCast	string
@@ -53336,6 +53526,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.e
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.label	string
@@ -53574,6 +53765,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbili
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.ifNotCast	string
@@ -53920,6 +54113,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exile
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.label	string
@@ -54158,6 +54352,8 @@ pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.millTail.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.millTail.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.millTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.ifNotCast	string
@@ -54855,6 +55051,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.exiled_with_abi
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.label	string
@@ -55436,6 +55633,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exil
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.label	string
@@ -55674,6 +55872,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilitie
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.ifNotCast	string
@@ -57242,6 +57442,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.label	string
@@ -57480,6 +57681,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
@@ -57860,6 +58063,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.label	string
@@ -58098,6 +58302,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	string
@@ -58444,6 +58650,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.label	string
@@ -58682,6 +58889,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.ifNotCast	string
@@ -59048,6 +59257,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.label	string
@@ -59286,6 +59496,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.g
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.ifNotCast	string
@@ -59717,6 +59929,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.from_radiation	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.label	string
@@ -59955,6 +60168,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsSubtypes	array
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsSubtypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.ifNotCast	string
@@ -60728,6 +60943,7 @@ pendingChoices[].scryThen.asked.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].scryThen.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].scryThen.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].scryThen.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].scryThen.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.from_radiation	bool
 pendingChoices[].scryThen.asked.trigger.Event.kind	string
 pendingChoices[].scryThen.asked.trigger.Event.label	string
@@ -60966,6 +61182,8 @@ pendingChoices[].scryThen.permission.gainsAbilities	array
 pendingChoices[].scryThen.permission.gainsAbilities[]	string
 pendingChoices[].scryThen.permission.gainsKeywords	array
 pendingChoices[].scryThen.permission.gainsKeywords[]	string
+pendingChoices[].scryThen.permission.gainsSubtypes	array
+pendingChoices[].scryThen.permission.gainsSubtypes[]	string
 pendingChoices[].scryThen.permission.grantsHaste	bool
 pendingChoices[].scryThen.permission.graveyardsAreYours	bool
 pendingChoices[].scryThen.permission.ifNotCast	string
@@ -61359,6 +61577,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exiled_with_abil
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.from_radiation	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.kind	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.label	string
@@ -61597,6 +61816,8 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords[]	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.gainsSubtypes	array
+pendingChoices[].searchPrompt.spec.thenTail.permission.gainsSubtypes[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.grantsHaste	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.graveyardsAreYours	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.ifNotCast	string
@@ -62757,6 +62978,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].targetWalk.frame.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].targetWalk.frame.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].targetWalk.frame.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].targetWalk.frame.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.from_radiation	bool
 pendingChoices[].targetWalk.frame.trigger.Event.kind	string
 pendingChoices[].targetWalk.frame.trigger.Event.label	string
@@ -63492,6 +63714,7 @@ pendingChoices[].triggerFrame.trigger.Event.exiled_with_ability.key	string
 pendingChoices[].triggerFrame.trigger.Event.exiled_with_ability.name	string
 pendingChoices[].triggerFrame.trigger.Event.exiled_with_ability.ref	string
 pendingChoices[].triggerFrame.trigger.Event.exiled_with_ability.slot	string
+pendingChoices[].triggerFrame.trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.from_radiation	bool
 pendingChoices[].triggerFrame.trigger.Event.kind	string
 pendingChoices[].triggerFrame.trigger.Event.label	string
@@ -63820,6 +64043,7 @@ pendingTriggers[].trigger.Event.exiled_with_ability.key	string
 pendingTriggers[].trigger.Event.exiled_with_ability.name	string
 pendingTriggers[].trigger.Event.exiled_with_ability.ref	string
 pendingTriggers[].trigger.Event.exiled_with_ability.slot	string
+pendingTriggers[].trigger.Event.explore_revealed	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.from_radiation	bool
 pendingTriggers[].trigger.Event.kind	string
 pendingTriggers[].trigger.Event.label	string
@@ -65453,6 +65677,7 @@ promptRuns[].asked.trigger.Event.exiled_with_ability.key	string
 promptRuns[].asked.trigger.Event.exiled_with_ability.name	string
 promptRuns[].asked.trigger.Event.exiled_with_ability.ref	string
 promptRuns[].asked.trigger.Event.exiled_with_ability.slot	string
+promptRuns[].asked.trigger.Event.explore_revealed	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.from_radiation	bool
 promptRuns[].asked.trigger.Event.kind	string
 promptRuns[].asked.trigger.Event.label	string
@@ -66193,6 +66418,7 @@ resolving.item.trigger.Event.exiled_with_ability.key	string
 resolving.item.trigger.Event.exiled_with_ability.name	string
 resolving.item.trigger.Event.exiled_with_ability.ref	string
 resolving.item.trigger.Event.exiled_with_ability.slot	string
+resolving.item.trigger.Event.explore_revealed	custom(uuid.UUID)
 resolving.item.trigger.Event.from_radiation	bool
 resolving.item.trigger.Event.kind	string
 resolving.item.trigger.Event.label	string
@@ -67027,6 +67253,8 @@ seats[].castPermissions[].gainsAbilities	array
 seats[].castPermissions[].gainsAbilities[]	string
 seats[].castPermissions[].gainsKeywords	array
 seats[].castPermissions[].gainsKeywords[]	string
+seats[].castPermissions[].gainsSubtypes	array
+seats[].castPermissions[].gainsSubtypes[]	string
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].graveyardsAreYours	bool
 seats[].castPermissions[].ifNotCast	string
@@ -71358,6 +71586,7 @@ stackMeta[].trigger.Event.exiled_with_ability.key	string
 stackMeta[].trigger.Event.exiled_with_ability.name	string
 stackMeta[].trigger.Event.exiled_with_ability.ref	string
 stackMeta[].trigger.Event.exiled_with_ability.slot	string
+stackMeta[].trigger.Event.explore_revealed	custom(uuid.UUID)
 stackMeta[].trigger.Event.from_radiation	bool
 stackMeta[].trigger.Event.kind	string
 stackMeta[].trigger.Event.label	string

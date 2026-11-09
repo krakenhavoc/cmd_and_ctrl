@@ -463,6 +463,10 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileGrantor {
 			out.ExileGrantor = true
 		}
+		// and the sacrifice-the-grantor component (Deconstruction Hammer).
+		if c.SacrificeGrantor {
+			out.SacrificeGrantor = true
+		}
 		// #4799: and the unattach component; dropped, Captain America's
 		// throw would deal damage for {3} and keep the Equipment on him.
 		if c.UnattachEquipment != 0 {
@@ -514,6 +518,13 @@ func OrCost(branches ...game.AbilityCostBranch) game.AbilityCost {
 // permanents the activator controls matching `of`.
 func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCostBranch {
 	return game.AbilityCostBranch{Kind: game.AbilityCostBranchSacrifice, Count: n, Label: label, Of: of}
+}
+
+// ManaBranch is "Pay <cost>" as a branch of an OrCost (Bloodthorn Flail's
+// "Equip—Pay {3} or discard a card"): the branch folds into the ability's
+// mana cost, so the cost it is composed with must have none.
+func ManaBranch(cost string) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchMana, Mana: cost}
 }
 
 // DiscardBranch is "Discard <n> <label>" as a branch of an OrCost:
@@ -696,6 +707,14 @@ func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
 // never beside a component that picks permanents: Register refuses
 // anything else. Compose it with Plus like any other component.
 func ExileTheGrantor() game.AbilityCost { return game.AbilityCost{ExileGrantor: true} }
+
+// SacrificeTheGrantor is "Sacrifice <the permanent that grants this
+// ability>" as a cost: Deconstruction Hammer's equipped creature has
+// "{3}, {T}, Sacrifice Deconstruction Hammer: …". The grantor is
+// sacrificed through the ordinary sacrifice payment, so only its
+// controller can pay it (game.AbilityCost.SacrificeGrantor). Only in an
+// AbilityGrant bundle given to battlefield permanents.
+func SacrificeTheGrantor() game.AbilityCost { return game.AbilityCost{SacrificeGrantor: true} }
 
 // PutThisOnTheBottomOfItsOwnersLibrary is "Put this creature on the
 // bottom of its owner's library" as a cost (#2726).

@@ -1973,7 +1973,14 @@ type Event struct {
 	// log's `sacrifice` line says. Added with #1320.
 	Cause           MoveCauseKind `json:"cause,omitempty"`
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
-	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
+
+	// ExploreRevealed is, on EventExplored, the card the explore revealed
+	// (CR 701.44a): "explores a land card" and "explores a nonland card"
+	// (Nicanzil, Current Conductor) read it where it is now (hand, library
+	// or graveyard). Nil when the library was empty and nothing was
+	// revealed. Engine-internal, like Cause.
+	ExploreRevealed uuid.UUID `json:"explore_revealed,omitempty"`
+	CauseItem       uuid.UUID `json:"cause_item,omitempty"`
 
 	// CauseSource and CauseAbility say WHICH ability put a permanent
 	// onto the battlefield, on its EventETB (#3933, entry_provenance.go):
