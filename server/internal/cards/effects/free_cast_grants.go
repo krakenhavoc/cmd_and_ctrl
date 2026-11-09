@@ -99,7 +99,8 @@ func offerResolutionCastOver(g *game.Game, controller, source uuid.UUID, name, k
 // offer over it (#4250). A card that does not reach exile (its owner sent
 // a commander to the command zone) is offered nothing. An empty name heads
 // the offer with the exiled card's own.
-func exileWithPermissionThenOffer(g *game.Game, cardID, source uuid.UUID, perm game.CastPermission, name, keyword string) error {
+func exileWithPermissionThenOffer(g *game.Game, cardID, source uuid.UUID, perm game.CastPermission, name string) error {
+	const keyword = game.MayCastKeywordFreeCast
 	if z := g.FindCardZoneForEffect(cardID); z != nil && z.Kind == game.ZoneExile {
 		exiledWithPermissionOffer(g, cardID, source, perm, name, keyword)
 		return nil

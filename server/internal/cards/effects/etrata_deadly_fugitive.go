@@ -97,5 +97,5 @@ func etrataTurnFaceUpOrCast(g *game.Game, item *game.StackItem) error {
 		SourceName:  "Etrata, Deadly Fugitive",
 		Label:       "Etrata, Deadly Fugitive — cast the exiled card without paying its mana cost",
 	}
-	return exileWithPermissionThenOffer(g, self, self, perm, "Etrata, Deadly Fugitive", game.MayCastKeywordFreeCast)
+	return exileWithPermissionThenOffer(g, self, self, perm, "Etrata, Deadly Fugitive")
 }
