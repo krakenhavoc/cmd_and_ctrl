@@ -41,8 +41,8 @@ func init() {
 			"Ashiok, Wicked Manipulator — exile that many cards from the top of your library instead of paying life")},
 		Activated: []ActivatedAbility{
 			{
-				Label:   "+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.",
-				Cost:    LoyaltyCost(1),
+				Label: "+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.",
+				Cost:  LoyaltyCost(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					player := ctx.Controller()
