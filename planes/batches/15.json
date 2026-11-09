@@ -1,0 +1,77 @@
+{
+ "batch": 15,
+ "cards": [
+  {
+   "name": "The Food Court",
+   "oracle_id": "5c28d927-7c8b-4a31-8767-ce053159dfdc",
+   "type_line": "Plane — Eldraine",
+   "oracle_text": "Artifacts are Foods in addition to their other types (They have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\")\nSacrifice three Foods: Add {W}{U}{B}{R}{G}. Activate only once each turn and only during your turn.\nChaos: You become the Monarch. If you are already the Monarch, draw a card.",
+   "set": "punk",
+   "collector_number": "PLA014",
+   "border_color": "gold"
+  },
+  {
+   "name": "The Pro Tour",
+   "oracle_id": "05540922-3bd4-4853-a55a-720524042621",
+   "type_line": "Plane — MagicCon",
+   "oracle_text": "Draft—When you planeswalk here, each player opens a booster pack, drafts a card, and exiles it face down. Each player may play the card they drafted for as long as it remains exiled. Players may spend any type of mana to cast spells this way.\nStandard—Whenever chaos ensues, each player draws cards equal to the number of differently named Standard-legal cards they control. (Basic lands count. Tokens don't.)",
+   "set": "punk",
+   "collector_number": "PLA045",
+   "border_color": "gold"
+  },
+  {
+   "name": "The Sphere",
+   "oracle_id": "bc7a3c30-79af-4c60-83b7-8b1984a12e61",
+   "type_line": "Plane — Las Vegas",
+   "oracle_text": "Whenever a creature you control becomes blocked, round both its power and toughness up to the nearest 5. (A creature with 5 power would round up to 5.)\nWhenever Chaos ensues, Amass Fans 5. (Put five +1/+1 counters on an Army you control. It's also a Fan. If you don't control an army, create a 0/0 red Fan Army creature token first.)",
+   "set": "punk",
+   "collector_number": "PLA037",
+   "border_color": "gold"
+  },
+  {
+   "name": "The Windy City",
+   "oracle_id": "04491781-0e6a-4a30-a69f-db226702adfc",
+   "type_line": "Plane — Chicago",
+   "oracle_text": "When you planeswalk here and at the beginning of your upkeep, put a flying counter on target nontoken creature you control without flying.\nWhenever chaos ensues, exile target creature with flying. For as long as it remains exiled, its owner may cast it by paying {2} rather than paying its mana cost.\nWhen you planeswalk away from The Windy City, remove all flying counters from all creatures.",
+   "set": "punk",
+   "collector_number": "PLA009",
+   "border_color": "black"
+  },
+  {
+   "name": "Unknown Event",
+   "oracle_id": "87ff5801-1f16-463a-af2c-3223cef0a532",
+   "type_line": "Phenomenon",
+   "oracle_text": "When you encounter this, Each player opens a Magic the Gathering booster pack. They may select up to two cards from that pack and exile them face down. For the rest of the game, players may look at and play cards exiled this way without paying their mana costs. (Then Planeswalk away from this phenomenon.)",
+   "set": "punk",
+   "collector_number": "PLA010",
+   "border_color": "black"
+  },
+  {
+   "name": "Welcome to Valley",
+   "oracle_id": "870ca595-9887-48f9-9ea8-60c0d511726e",
+   "type_line": "Plane — Bloomburrow",
+   "oracle_text": "Whenever you cast an animal spell, draw a card. (Animals are any non-human creature types that are animals in real life.)\nWhenever Chaos ensues, create a token that's a copy of target creature you control, except it's a 1/1.",
+   "set": "punk",
+   "collector_number": "PLA038",
+   "border_color": "gold"
+  },
+  {
+   "name": "Windmill Farm",
+   "oracle_id": "5b76612b-b2d3-457d-8049-1bf01b8ec28b",
+   "type_line": "Plane — Amsterdam",
+   "oracle_text": "When you planeswalk here and at the beginning of your upkeep, create a Tulip Petal artifact token that has \"{T}, Sacrifice this artifact: Add one mana of any color.\"\nChaos: Spin this plane until the arrow lands on a permanent. If the plane rotated at least 360 degrees during the spin, create a token that's a copy of that permanent.",
+   "set": "punk",
+   "collector_number": "PLA024",
+   "border_color": "gold"
+  },
+  {
+   "name": "Year-End Review",
+   "oracle_id": "370e2b01-5d06-4c9e-9a78-85082afb71d4",
+   "type_line": "Phenomenon",
+   "oracle_text": "Each player may choose a nontoken creature they own on the battlefield, reveal a creature card from their hand, or choose a creature card in their graveyard. Those cards become promoted to commander. Each player may put their new commander into the com- mand zone. Then planeswalk away from this phenom- enon. (All original commanders are still commanders.)",
+   "set": "punk",
+   "collector_number": "PLA046",
+   "border_color": "gold"
+  }
+ ]
+}

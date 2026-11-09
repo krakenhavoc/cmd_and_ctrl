@@ -1,0 +1,113 @@
+{
+ "batch": 14,
+ "cards": [
+  {
+   "name": "Raiders' Allegiance",
+   "oracle_id": "33ed1120-82b1-4936-b210-2f0323a9401c",
+   "type_line": "Plane — Ixalan",
+   "oracle_text": "Raid — At the beginning of your second main phase, for each player dealt combat damage this turn, you get a point counter and create a 2/2 black Pirate creature token with menace.\nWhenever you planeswalk away from here, each player with the most point counters or tied for the most point counters creates three Treasure tokens and draws three cards. Then remove all point counters from each player.\nWhenever Chaos ensues, proliferate for each Pirate you control.",
+   "set": "punk",
+   "collector_number": "PLA035",
+   "border_color": "gold"
+  },
+  {
+   "name": "Royal Booster",
+   "oracle_id": "0c77d974-a9fe-4c70-b47a-3a957180bd92",
+   "type_line": "Phenomenon",
+   "oracle_text": "When you encounter this phenomenon, open a Magic: The Gathering booster pack and shuffle it without looking at its contents. Those cards become the booster deck. You become the monarch. For the rest of the game, at the beginning of the monarch's end step, that player draws a card from the booster deck. They may spend mana of any type to cast those cards. (Then Planeswalk away from this phenomenon.)",
+   "set": "punk",
+   "collector_number": "PLA020",
+   "border_color": "gold"
+  },
+  {
+   "name": "Shrinking Plane",
+   "oracle_id": "19d28483-5d14-4205-a817-c66083a4d049",
+   "type_line": "Plane — Foldaria",
+   "oracle_text": "When you planeswalk here and at the beginning of your upkeep, fold this plane in half. Draw cards equal to the number of times it's been folded. If you can't fold it, planeswalk.\nChaos: Completely unfold this plane. Each opponent discards two cards.",
+   "set": "punk",
+   "collector_number": "PLA021",
+   "border_color": "gold"
+  },
+  {
+   "name": "Shy Town",
+   "oracle_id": "05226c5f-1f56-4608-b09a-614d0198ad1b",
+   "type_line": "Plane — Chicago",
+   "oracle_text": "Whenever you planeswalk here and whenever chaos ensues, for each opponent, put a shy counter on up to one target creature they control. That creature becomes a Coward in addition to its other types.\nAt the beginning of your upkeep, create a 2/2 red Warrior creature token with haste and \"Cowards can't block Warriors.\"",
+   "set": "punk",
+   "collector_number": "PLA007",
+   "border_color": "black"
+  },
+  {
+   "name": "Sky Deck",
+   "oracle_id": "8baa42cf-32bc-4d1f-b4bd-02a4fce376c4",
+   "type_line": "Plane — Chicago",
+   "oracle_text": "Whenever you planeswalk here, at the beginning of your upkeep, or whenever chaos ensues, put a glass counter on up to one target nonland permanent.\nWhen you planeswalk away from here, destroy all permanents with glass counters on them.",
+   "set": "punk",
+   "collector_number": "PLA008",
+   "border_color": "black"
+  },
+  {
+   "name": "Sorin's Remastered Manor",
+   "oracle_id": "bfb3a244-ff5c-4ed0-8b19-e96394a97284",
+   "type_line": "Plane — Innistrad",
+   "oracle_text": "When you planeswalk here and at the beginning your upkeep, put a spooky counter on target creature you control.\nSpooky creatures you control have +1/+1 and menace. (A creature is spooky if it has a spooky counter or it could be a horror movie monster.)\nA Murder at Markov Manor — Whenever chaos ensues, target spooky creature you control bites target opponent or creature an opponent controls. (The creature deals damage equal to its power to the creature your opponent controls. You gain that much life.)",
+   "set": "punk",
+   "collector_number": "PLA042",
+   "border_color": "gold"
+  },
+  {
+   "name": "Stroopwafel Cafe",
+   "oracle_id": "152e7c62-e18b-40a8-b224-9e45732e029b",
+   "type_line": "Plane — Amsterdam",
+   "oracle_text": "Players may look at the top card of their library at any time and may play cards from the top of their library.\nThe top card of each player's library is a Food artifact. (It's an artifact with \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\" Activate this ability from the top of the library.)\nChaos: You may sacrifice a Food. If you do, draw a card, gain three life and each opponent loses 3 life.",
+   "set": "punk",
+   "collector_number": "PLA022",
+   "border_color": "gold"
+  },
+  {
+   "name": "Tarnation",
+   "oracle_id": "08081904-4115-4afd-ac82-f00421e54038",
+   "type_line": "Plane — Thunder Junction",
+   "oracle_text": "Whenever a player commits a crime, they may draw a card. (Targeting opponents, anything they control, and/or cards in their graveyards is a crime.)\nWhenever chaos ensues, Tarnation deals 1 damage to any target.",
+   "set": "punk",
+   "collector_number": "PLA023",
+   "border_color": "gold"
+  },
+  {
+   "name": "Team-Up!",
+   "oracle_id": "7a7fbcc2-b139-44c7-a524-6d69651067d3",
+   "type_line": "Phenomenon",
+   "oracle_text": "Whenever you encounter this Phenomenon, for the rest of the game, each player wins the game if the players to their left and right are eliminated. (Multiple players can win the game this way.)",
+   "set": "punk",
+   "collector_number": "PLA036",
+   "border_color": "gold"
+  },
+  {
+   "name": "That's Enough Slices",
+   "oracle_id": "701361ae-d3c0-4fba-bccd-2f2464911c6f",
+   "type_line": "Phenome-nom",
+   "oracle_text": "When you encounter this phenome-nom, each player creates a Pizza token. If that player has the least life or is tied for the least life, they create two Pizza tokens instead. Then planeswalk away from this phenome-nom. (A Pizza token is a Food artifact with \"{2}, {T}, Sacrifice this token: You gain 6 life.\")",
+   "set": "punk",
+   "collector_number": "PLA043",
+   "border_color": "gold"
+  },
+  {
+   "name": "The Bean",
+   "oracle_id": "b977ff66-6c52-4f33-8f25-e310d835be8b",
+   "type_line": "Plane — Chicago",
+   "oracle_text": "When you planeswalk here, each player chooses a creature they control and creates a token that's a copy of it, except it's a Reflection in addition to its other types.\nAll Reflections have shadow. (They can block or be blocked only by creatures with shadow.)\nWhenever chaos ensues, create a token that's a copy of a creature you control, except it's a Reflection in addition to its other types.",
+   "set": "punk",
+   "collector_number": "PLA002a",
+   "border_color": "gold"
+  },
+  {
+   "name": "The Command Zone",
+   "oracle_id": "eaa5979c-86d3-4647-9a45-fd80ba4bf192",
+   "type_line": "Plane — MagicCon",
+   "oracle_text": "When you planeswalk here, each player who controls their commander draws a card. Other players may put their commander from the command zone onto the battlefield.\nIf an ability of your commander would trigger during your turn, that ability triggers an additional time.\nWhenever chaos ensues, the number of times each commander has been cast from the command zone becomes 0. (This resets commander tax.)",
+   "set": "punk",
+   "collector_number": "PLA044",
+   "border_color": "gold"
+  }
+ ]
+}

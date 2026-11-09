@@ -1,0 +1,113 @@
+{
+ "batch": 12,
+ "cards": [
+  {
+   "name": "Bicycle Rack",
+   "oracle_id": "9580cf0a-0c0d-4e78-a6cc-bb14c5cc5d23",
+   "type_line": "Plane — Amsterdam",
+   "oracle_text": "Cards in each player's hand have cycling {2}.\nChaos: Until end of turn, creatures you control have \"This creature gets +1/+1 for each card you've discarded this turn.\"",
+   "set": "punk",
+   "collector_number": "PLA011",
+   "border_color": "gold"
+  },
+  {
+   "name": "Black Lotus Lounge",
+   "oracle_id": "ddea0dcf-e8d1-44ea-9ce4-009fa8bbfb95",
+   "type_line": "Plane — MagicCon",
+   "oracle_text": "When you planeswalk here and at the beginning of your upkeep, create a Black Lotus artifact token.\nWhenever Chaos ensues, each player draws a card for each artifact token they control.",
+   "set": "punk",
+   "collector_number": "PLA003a",
+   "border_color": "gold"
+  },
+  {
+   "name": "Circus of the Sun",
+   "oracle_id": "fb061505-a3d6-45a4-a9ba-2adb1883c77d",
+   "type_line": "Plane — Las Vegas",
+   "oracle_text": "Whenever you planeswalk here or at the beginning of your upkeep, create two 1/1 red performer creature tokens with flying and haste.\nWhenever one or more creatures you control with flying deal combat damage to a player, you may return it to your hand. If you do, draw cards equal to its power.\nWhenever Chaos ensues, put a flying counter on up to one target creature. It becomes a Performer in addition to its other types.",
+   "set": "punk",
+   "collector_number": "PLA026",
+   "border_color": "gold"
+  },
+  {
+   "name": "City Hall",
+   "oracle_id": "36aac8aa-d6f0-4e53-a280-73b01e040f35",
+   "type_line": "Plane — Chicago",
+   "oracle_text": "When you planeswalk here, you become the Monarch.\nWhenever Chaos ensues, each player may create two tapped treasure tokens. Each player who does can't attack you during their next turn.",
+   "set": "punk",
+   "collector_number": "PLA004a",
+   "border_color": "gold"
+  },
+  {
+   "name": "Clamilton Estate",
+   "oracle_id": "e60e8f90-8c9d-4e9d-823e-2c9c4ab21443",
+   "type_line": "Plane — Clamhattan",
+   "oracle_text": "If a wordy permanent entering the battlefield would cause an ability of that permanent or another wordy permanent to trigger, that ability triggers an additional time. (A permanent is wordy if it has four or more lines of rules text.)\nWhenever Chaos ensues, exile cards from the top of your library until you exile a wordy nonland card, Put that card into your hand. Put each card not cast this way on the bottom of your library in a random order.",
+   "set": "punk",
+   "collector_number": "PLA012",
+   "border_color": "gold"
+  },
+  {
+   "name": "Elvish Impersonation Contest",
+   "oracle_id": "23a1cd82-75bc-4e3b-bbab-8a1ca9b9be88",
+   "type_line": "Plane — Las Vegas",
+   "oracle_text": "Whenever you planeswalk here and at the beginning of your upkeep, create an Elvish Impersonators token. (It's a {3}{G} Elf creature with \"As this creature enters, roll a six-sided die twice. Its base power becomes the first result and its base toughness becomes the second result.\")\nThank you very much—Whenever Chaos ensues, target Elvish Impersonators becomes a 6/6. Its controller creates a Treasure token.",
+   "set": "punk",
+   "collector_number": "PLA027",
+   "border_color": "gold"
+  },
+  {
+   "name": "Event Horizon",
+   "oracle_id": "41babf95-a5f8-42a8-92f5-df2032b1ba2a",
+   "type_line": "Plane — Blind Eternities",
+   "oracle_text": "Nonbasic lands are Wastes.\nWhenever you tap a permanent for {C}, add an additional {C}.\nWhenever chaos ensues, choose one —\n• Draw four cards.\n• Destroy target permanent.\n• You may return target creature card from your graveyard to the battlefield.",
+   "set": "punk",
+   "collector_number": "PLA013",
+   "border_color": "gold"
+  },
+  {
+   "name": "Game Knights Live",
+   "oracle_id": "6d606b8c-5f9c-4a65-a321-403d85451c9c",
+   "type_line": "Plane — MagicCon",
+   "oracle_text": "Whenever a player casts their commander or attacks with their commander, they may say \"Only one may stand.\" If they do, that commander becomes a Knight in addition to its other types until a player planeswalks away from Game Knights Live.\nKnights you control have double strike and trample.\nWhenever chaos ensues, commanders you control can't be blocked this turn and gain \"Whenever this creature deals combat damage to a player, draw a card\" until end of turn.",
+   "set": "punk",
+   "collector_number": "PLA039",
+   "border_color": "gold"
+  },
+  {
+   "name": "Ghirapur Grand Prix",
+   "oracle_id": "6515e8d6-26ff-4716-a62d-a5847d0933e7",
+   "type_line": "Plane — Avishkar",
+   "oracle_text": "When you planeswalk here, all players start their engines! (If you have no speed, it starts at 1. It increases once on each of your turns when an opponent loses life. Max speed is 4.)\nAt the beginning of your end step, put X +1/+1 counters on target creature you control, where X is your speed.\nWhen you planeswalk away from Ghirapur Grand Prix, each player with the highest speed among players creates three Treasure tokens.",
+   "set": "punk",
+   "collector_number": "PLA040",
+   "border_color": "gold"
+  },
+  {
+   "name": "High Noon At Thunder Junction",
+   "oracle_id": "88386fa3-4f4f-4af1-a159-2c87d9890596",
+   "type_line": "Plane — Thunder Junction",
+   "oracle_text": "Whenever a player draws their second card each turn, any of their opponents may say \"DRAW!\". The first opponent to do so clashes with that player. The player that wins the clash creates two 1/1 black Assassin creature tokens. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.)\nWhenever Chaos ensues, draw a card.",
+   "set": "punk",
+   "collector_number": "PLA015",
+   "border_color": "gold"
+  },
+  {
+   "name": "High and Dry Black Market",
+   "oracle_id": "4b0e9c83-867a-4dc1-ac15-3b00952f75c7",
+   "type_line": "Phenomenon",
+   "oracle_text": "Whenever you planeswalk here, starting with you, each player chooses up to 5 ♦ worth of modes and may choose the same mode more than once. (Then Planeswalk away from this phenomenon.)\n♦ — Create a Treasure Token.\n♦ ♦ — Draw a card.\n♦ ♦ ♦ — Create a 3/2 colorless Shapeshifter creature token with Changeling.",
+   "set": "punk",
+   "collector_number": "PLA028",
+   "border_color": "gold"
+  },
+  {
+   "name": "Jalira's Show",
+   "oracle_id": "eea700a1-a5f5-4b9e-aa03-8e092deb7396",
+   "type_line": "Plane — Las Vegas",
+   "oracle_text": "Whenever you attack, create a 1/1 red Performer creature token with flying.\nWhenever you planeswalk here or chaos ensues, destroy up to one target creature. When you do, its controller reveals cards from the top of their library until they reveal a creature card. The player puts that card onto the battlefield, then puts the rest on the bottom of their library in a random order.",
+   "set": "punk",
+   "collector_number": "PLA029",
+   "border_color": "gold"
+  }
+ ]
+}

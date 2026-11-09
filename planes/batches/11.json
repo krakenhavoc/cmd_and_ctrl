@@ -1,0 +1,113 @@
+{
+ "batch": 11,
+ "cards": [
+  {
+   "name": "Deceptive Divination",
+   "oracle_id": "97f33045-8b89-47fb-ba28-fa06f42c4b5e",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "Change the text of each sorcery spell and sorcery card not on the stack by replacing \"sorcery\" with \"instant.\"\nWhenever chaos ensues, choose two target players. Each of them searches their library for a card, then shuffles and puts that card on top.",
+   "set": "pssc",
+   "collector_number": "1",
+   "border_color": "gold"
+  },
+  {
+   "name": "Fblthp: Completely, Utterly, Totally Lost",
+   "oracle_id": "ec2f6e72-8a2b-44f0-8241-7fe29c601d96",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "When you planeswalk to this plane and at the beginning of your upkeep, create a Map token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\")\nWhenever chaos ensues, draw two cards, then discard two cards. Untap up to three lands.",
+   "set": "pssc",
+   "collector_number": "2",
+   "border_color": "gold"
+  },
+  {
+   "name": "Finally! Left-Handed Magic Cards",
+   "oracle_id": "9befbb7e-a44d-448a-802f-5a0cfa616d91",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "Each creature's base power is equal to its printed toughness.\nEach creature's base toughness is equal to its printed power.\nWhenever chaos ensues, draw a card from the bottom of your library.",
+   "set": "pssc",
+   "collector_number": "3",
+   "border_color": "gold"
+  },
+  {
+   "name": "Happy Yargle Day!",
+   "oracle_id": "c62f3f46-530d-4002-be8c-d78008dce98a",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "At the beginning of each player's end step, if that player doesn't control a creature named Yargle, Glutton of Urborg, that player puts a bargle counter on a creature they control. It becomes a copy of Yargle, Glutton of Urborg, except it isn't legendary.\nWhenever chaos ensues, choose Swords to Plowshares, Opt, Fatal Push, Anger of the Gods, or Explore at random. Copy the chosen card. You may cast the copy without paying its mana cost.",
+   "set": "pssc",
+   "collector_number": "4",
+   "border_color": "gold"
+  },
+  {
+   "name": "Imaginary Friends (Plane)",
+   "oracle_id": "ae9aa9e8-a522-4a9a-9acf-0b1c6d48e8e8",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "Players may cast spells as though they were other cards legal in this game's format with the same type and mana cost. (Mana cost includes color.)\nWhenever chaos ensues, exile cards from the top of your library until you reveal a nonland card. You may cast that card without paying its mana cost, but only as another card following this plane's first ability. Put the rest on the bottom of your library in a random order.",
+   "set": "pssc",
+   "collector_number": "5",
+   "border_color": "gold"
+  },
+  {
+   "name": "Li'l Giri Saves the Day",
+   "oracle_id": "5b35fbd0-65a0-4973-b2c9-841b11c0d426",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "Legendary Food tokens you control have hexproof and indestructible.\nWhen you planeswalk to this plane, create Li'l Giri, a legendary 1/1 colorless Food Warrior artifact creature token.\nWhenever chaos ensues, put X +1/+1 counters on target legendary artifact creature you control, where X is the number of times you've rolled the planar die this turn.",
+   "set": "pssc",
+   "collector_number": "6",
+   "border_color": "gold"
+  },
+  {
+   "name": "Math is for Blockers (Plane)",
+   "oracle_id": "22463f1b-4331-4200-bf11-49a5a2cdc9b3",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "Whenever a nontoken creature attacks, exile it. Return it to the battlefield under its owner's control tapped and attacking at the beginning of that player's next declare attackers step.\nWhenever chaos ensues, goad target creature. (Until your next turn, It attacks each combat if able and attacks a player other than you if able.)",
+   "set": "pssc",
+   "collector_number": "7",
+   "border_color": "gold"
+  },
+  {
+   "name": "Mycosynthwave",
+   "oracle_id": "422f0c13-6bd5-40d1-af03-00af5c01780e",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "All permanents are artifacts in addition to their other types.\nAll cards that aren't on the battlefield, spells, and permanents are colorless.\nPlayers may spend mana as though it were mana of any color.\nWhenever chaos ensues, the next spell you cast this turn has affinity for artifacts.",
+   "set": "pssc",
+   "collector_number": "8",
+   "border_color": "gold"
+  },
+  {
+   "name": "We Hope You Like Squirrels",
+   "oracle_id": "7aac9628-f112-4840-91b4-7bb5cd896685",
+   "type_line": "Plane — Secret Lair",
+   "oracle_text": "At the beginning of each player's upkeep and whenever a player casts a spell, that player creates a 1/1 green Squirrel creature token.\nWhenever chaos ensues, put a +1/+1 counter on each Squirrel you control.",
+   "set": "pssc",
+   "collector_number": "10",
+   "border_color": "gold"
+  },
+  {
+   "name": "sAnS mERcY",
+   "oracle_id": "acda5786-0a30-4fc4-accb-dd3485d11336",
+   "type_line": "pLAnE — sECreT LaIR",
+   "oracle_text": "wHeN YoU pLAnESWalK tO tHIs pLAnE, eACh pLAyER cHoOSeS a nOnBlACk cREaTuRE tHEy cONtrOl. dEsTRoy tHOsE cREatUReS.\nwHeNEveR cHoAS EnSUEs, pERfoRm tHe foLLowiNG pROceSs X tiMEs, wHErE X iS tHe nUmBEr oF tImeS yOU'vE roLLeD tHe PlaNAr diE tHIs tuRN. eAcH oPPonENt LOseS 3 LiFE uNLeSs tHAt pLAyEr sAcRiFicEs A nOnLaND pErManENt OR diSCaRds a cArD.",
+   "set": "pssc",
+   "collector_number": "9",
+   "border_color": "gold"
+  },
+  {
+   "name": "Artist Alley",
+   "oracle_id": "e72339e4-222e-44a2-89ad-bef9835fb1d7",
+   "type_line": "Plane — MagicCon",
+   "oracle_text": "Whenever you planeswalk here and at the beginning of your upkeep, exile the top card of your library. You may play that card this turn.\nWhenever Chaos ensues, exile the top six cards of your library. An opponent or player outside the game chooses a nonland card with their favorite art. Then you may cast that spell without paying its mana cost.",
+   "set": "punk",
+   "collector_number": "PLA001a",
+   "border_color": "gold"
+  },
+  {
+   "name": "Asmoranomardicadaistinaculdacar's Kitchen",
+   "oracle_id": "1d2bad25-dbe3-4b51-a78b-4a95dd5669fe",
+   "type_line": "Plane — Hell",
+   "oracle_text": "Whenever you planeswalk here and whenever a creature enters under your control, create a Food token.\nWhenever you gain life, target opponent loses that much life.\nWhenever Chaos ensues, you may sacrifice any number of artifacts or creatures. Draw that many cards and lose that much life.",
+   "set": "punk",
+   "collector_number": "PLA025",
+   "border_color": "gold"
+  }
+ ]
+}
