@@ -1447,6 +1447,12 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		return
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	if alt == nil && item.AltCost == GrantedAltCostWarp {
+		// Tannuk, Steadfast Second: "cards in your hand have warp {2}{R}".
+		// The offer is a static's, not the card's, so the card has no row
+		// to look the key up in; the warp clause is the same one.
+		alt = &AlternativeCost{Key: GrantedAltCostWarp, Label: "Warp", WarpExile: true}
+	}
 	if alt == nil {
 		return
 	}
@@ -1589,6 +1595,7 @@ func warpExile(g *Game, it *StackItem, p EffectParams) error {
 			// owns the card.
 			Duration:     WhileInZoneDuration(),
 			NotBeforeSeq: p.Amount,
+			Warped:       true,
 			Label:        "Warp — cast it from exile",
 		}); err != nil {
 			return err

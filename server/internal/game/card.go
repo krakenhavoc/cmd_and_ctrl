@@ -2083,6 +2083,11 @@ func (c Card) CountedPower(use CostPowerUse) int {
 		}
 	}
 	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 && r.UseToughnessIfGreater && t > p {
+			p = t
+		}
+	}
+	for _, r := range eff.CostPower {
 		if r.Uses&use != 0 && r.Multiplier > 1 {
 			p = SaturatingMul(p, r.Multiplier)
 		}

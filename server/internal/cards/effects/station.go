@@ -179,8 +179,13 @@ func stationEffect(g *game.Game, item *game.StackItem) error {
 	// CR 702.184c: "Sulu stations Spacecraft as though his power were
 	// tripled" changes what a Spacecraft's station reads, and only a
 	// Spacecraft's (a Planet's is the plain power).
-	if src, found := g.LookupCardForEffect(item.SourceCardID); ok && found && src.HasSubtype("Spacecraft") {
-		power, ok = ctx.TappedStationPower()
+	if src, found := g.LookupCardForEffect(item.SourceCardID); ok && found {
+		if src.HasSubtype("Spacecraft") {
+			power, ok = ctx.TappedStationPower()
+		} else {
+			// Tapestry Warden: "stations permanents using its toughness".
+			power, ok = ctx.TappedStationAnyPower()
+		}
 	}
 	if !ok || power <= 0 {
 		return nil

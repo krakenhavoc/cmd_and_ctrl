@@ -357,6 +357,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
 	// token, +1/+1, equip {2}.
 	printedBlacksmithsSwordToken,
+
+	// Station Monitor's Drone: flying, and it can block only creatures
+	// with flying (Edge of Eternities, #4461).
+	printedDroneBlocksOnlyFliersToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

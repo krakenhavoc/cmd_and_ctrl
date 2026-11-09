@@ -54,6 +54,16 @@ type RevealCost struct {
 	// "return the exiled card" reads it. Behold only, on the mandatory
 	// slot only: effects.Register refuses it anywhere else.
 	Exile bool
+	// ChooseCreatureOrWarped is Close Encounter's "As an additional cost to
+	// cast this spell, choose a creature you control or a warped creature
+	// card you own in exile" (CR 702.185b): the one object named on
+	// RevealIDs is a creature the caster controls or a warped creature card
+	// they own in exile. Nothing is revealed or moved, so nothing about it
+	// is hidden or paid but the choice, and the chosen object rides the
+	// spell's payment record (payChosenLocked) for the power it is read for
+	// at resolution. Mandatory slot only; Subtype, Color, Behold and Exile
+	// are unused with it.
+	ChooseCreatureOrWarped bool
 }
 
 // matches reports whether `c` satisfies the clause's quality: the
@@ -109,6 +119,9 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil
+	}
+	if rc.ChooseCreatureOrWarped {
+		return g.creatureOrWarpedChoicesLocked(playerID)
 	}
 	text := g.costTextLocked(castID)
 	var out []uuid.UUID
@@ -168,6 +181,10 @@ func (g *Game) validateRevealLocked(playerID, castID uuid.UUID, plan []costPayme
 func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	rc := planReveal(plan)
 	if rc == nil || len(ids) != 1 {
+		return nil
+	}
+	if rc.ChooseCreatureOrWarped {
+		g.payChosenLocked(castID, ids[0])
 		return nil
 	}
 	if rc.Exile {
@@ -242,4 +259,81 @@ func (g *Game) payBeholdLocked(playerID, castID uuid.UUID, rc *RevealCost, label
 		reason = c.Name + " — " + reason
 	}
 	g.RevealForEffect(RevealSpec{Player: playerID, Source: castID, Reason: reason, Cards: shown})
+}
+
+// creatureOrWarpedChoicesLocked lists what `playerID` may choose to pay a
+// ChooseCreatureOrWarped cost: the creatures they control, in battlefield
+// order, then the warped creature cards they own in exile (CR 702.185b), in
+// exile order.
+//
+// Caller must hold g.mu.
+func (g *Game) creatureOrWarpedChoicesLocked(playerID uuid.UUID) []uuid.UUID {
+	g.RecomputeLayersIfStaleLocked()
+	var out []uuid.UUID
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == playerID && c.IsCreature() {
+			out = append(out, c.InstanceID)
+		}
+	}
+	for _, c := range g.WarpedCardsOwnedInExileForEffect(playerID) {
+		if c.IsCreature() {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
+}
+
+// WarpedCardsOwnedInExileForEffect is the warped cards `owner` owns in exile
+// (CR 702.185b): the cards exiled by a warp ability's delayed trigger that are
+// still in exile as the same objects. The record is the cast permission warp
+// leaves over the card (CastPermission.Warped), which names the object by its
+// epoch, so a card that was cast, returned or exiled again is no longer one.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) WarpedCardsOwnedInExileForEffect(owner uuid.UUID) []Card {
+	var out []Card
+	for _, c := range g.Exile.Cards {
+		if c.Owner != owner {
+			continue
+		}
+		for _, p := range g.Seats {
+			if p == nil {
+				continue
+			}
+			warped := false
+			for i := range p.CastPermissions {
+				perm := &p.CastPermissions[i]
+				if perm.Warped && perm.CoversCard(c, ZoneExile) {
+					warped = true
+					break
+				}
+			}
+			if warped {
+				out = append(out, c)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// payChosenLocked records the object a ChooseCreatureOrWarped cost chose on
+// the spell's payment record, in the slot a tap-another cost records the
+// creature it tapped (PaidCost.TappedOthers: an object, its power when
+// chosen, rewritten with its last-known power if it leaves the battlefield,
+// CR 608.2h). Close Encounter taps nothing, so the slot is free, and the
+// resolution reads it through Context.TappedPower.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) payChosenLocked(castID, chosen uuid.UUID) {
+	item := g.StackMeta[castID]
+	if item == nil {
+		return
+	}
+	c, ok := g.LookupCardForEffect(chosen)
+	if !ok {
+		return
+	}
+	item.Paid.TappedOthers = paidTapsFrom([]Card{c})
 }
