@@ -32,21 +32,6 @@ func stdB63GreatestElementalManaValue() func(q game.CostQuery) int {
 	}
 }
 
-// stdB63CreatureAttackingYou is Swat Away's "if a creature is attacking
-// you": a creature on the battlefield attacking the caster themself, not
-// a planeswalker or battle they control (CR 508.3e's reading).
-func stdB63CreatureAttackingYou(q game.CostQuery) bool {
-	if q.Game == nil || q.Game.Battlefield == nil {
-		return false
-	}
-	for _, c := range q.Game.Battlefield.Cards {
-		if c.IsCreature() && c.AttackingTarget == q.Controller {
-			return true
-		}
-	}
-	return false
-}
-
 // stdB63ThirstForIdentityDiscard is "then discard two cards unless you
 // discard a creature card" (Thirst for Discovery's shape over creature
 // cards).

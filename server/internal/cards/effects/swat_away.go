@@ -26,7 +26,7 @@ func init() {
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetSpellOrPermanent("target spell or creature", nil, Creature()),
 		SelfCostModifiers: []game.CostModifier{
-			CostsLess(2, "This spell costs {2} less to cast if a creature is attacking you.", stdB63CreatureAttackingYou),
+			CostsLess(2, "This spell costs {2} less to cast if a creature is attacking you.", aCreatureIsAttackingYou()),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return stdB63OwnerTucksTargetTopOrBottom(ctx, "Swat Away — put it on your choice of the top or bottom of your library")

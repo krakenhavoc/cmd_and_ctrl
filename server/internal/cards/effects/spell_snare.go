@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Spell Snare — Instant {U} (Lorwyn Eclipsed, #4458):
 //
 //	"Counter target spell with mana value 2."
@@ -17,11 +15,6 @@ func init() {
 		Name:         "Spell Snare",
 		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell with mana value 2", b03ManaValueIs(2)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return CounterTarget{StackID: item.Targets[0].ID}.Apply(ctx)
-		},
+		OnResolve:    counterTheTargetSpell,
 	})
 }

@@ -186,6 +186,10 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    resolution; a creature removed from combat in response is illegal,
    and a source that has left is read from its last-known blocks
    (#1863, ADR 0019 amendment 2026-10-07).
+   "Two target creature cards that share a creature type" in a graveyard (Unbury)
+   is `SharesACreatureTypeWithTargetCard(spec, slot)` on the second clause, the
+   graveyard twin of `SharesACreatureTypeWithTarget`: the anchor is read wherever
+   its card is now, so a card that left still anchors the other.
    "Target card in exile" is `TargetCardInExile(label, preds…)`, picked
    in the zone browser's exile tab like a graveyard card; "target face-up
    exiled card" adds `FaceUp()` (Pull from Eternity). "Target creature
@@ -3031,6 +3035,11 @@ move and `EventETB`, pinned to that object by its epoch:
 - It lasts as long as that object is on the battlefield. A flicker or a
   reanimation is a new object without it (CR 400.7), and a copy copies
   the printed card (CR 707.2).
+
+"…and it loses all abilities" (Retched Wretch's return) is
+`EntersAs{LosesAllAbilities: true}`, a layer 6 `LoseAllAbilitiesMod` pinned to
+that object like the rest of the record; an overwrite that names no type may
+carry only this field.
 
 "In addition to its other types" is the same overwrite with the add
 fields instead of `Types` (#4834): Excava, the Risen Past's "It's a 1/1

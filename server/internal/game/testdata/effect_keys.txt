@@ -124,6 +124,7 @@ body electric-seaweed/one-damage-to-each-non-wall-creature
 body electro-assaulting-battery/damage
 body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
+body end-blaze-epiphany/exile-and-choose
 body erica-ortegas/return-a-land-you-control
 body espers-to-magicite/copy
 body evoke/sacrifice
@@ -207,6 +208,7 @@ body mana-drain/refund
 body mana-rider/dispatch
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
+body meek-attack/sacrifice
 body megatron-destructive-force/strike
 body melee/pump
 body merry-bards/young-hero-role
@@ -299,6 +301,7 @@ body sample-collector/counter
 body sandbender-scavengers/return-to-battlefield
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
+body scarblades-malice/elf
 body searing-blood/3-to-its-controller
 body seasoned-cryomancer/tap-and-stun
 body seven-of-nine-tertiary-adjunct/charge
@@ -463,6 +466,7 @@ choose choose-cards/discard-then-scarlet-spider-counter
 choose choose-cards/discard-two-unless-artifact
 choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
+choose choose-cards/discard-two-unless-creature-identity
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
@@ -476,6 +480,7 @@ choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elven-passage-behold
 choose choose-cards/emergent-ultimatum-picked
 choose choose-cards/emeritus-of-ideation-exile-eight
+choose choose-cards/end-blaze-epiphany-play
 choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
@@ -1084,6 +1089,7 @@ drawthen development-after-draw
 drawthen discard-two-unless-artifact
 drawthen discard-two-unless-basic-land
 drawthen discard-two-unless-creature
+drawthen discard-two-unless-creature-identity
 drawthen discard-unless-attacked
 drawthen discard-unless-three-lessons
 drawthen discard-unless-threshold
@@ -1878,6 +1884,7 @@ tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail distant-memories/offer
 tail dominion-infiltration/haste-and-exile-copies
+tail dose-of-dawnglow/blight
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
 tail dredge/return-then-draw
@@ -2034,6 +2041,7 @@ tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail harried-dronesmith/haste-then-sacrifice
+tail heirloom-auntie/remove-counter
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
 tail herald-of-amity/after-exile
@@ -2123,6 +2131,7 @@ tail mass/the-battle-of-bywater-food
 tail mass/worlds-within-worlds-exiled
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
+tail meek-attack/entered
 tail memory-vessel/ban-hands
 tail mill-then-take/cache-grab
 tail mill-then-take/first-contact
@@ -2359,6 +2368,7 @@ tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
+tail then/bloodline-bidding-type-chosen
 tail then/bonehoard-dracosaur-exiled
 tail then/boommobile-color-chosen
 tail then/boseiju-who-endures-search
@@ -2404,6 +2414,7 @@ tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elesh-norn-argent-etchings-flicker
+tail then/end-blaze-epiphany-choose
 tail then/expressive-iteration-exile
 tail then/face-down-piles-to-hand
 tail then/fact-or-fiction-take
@@ -2572,6 +2583,7 @@ tail virtue-of-loyalty/untap-those-creatures
 tail vision-quest/haste
 tail volatile-fault/create-treasure
 tail wakanda-forever/hand-then-graveyard
+tail wanderwine-farewell/merfolk-tokens
 tail waste-management/rogue-per-creature
 tail whiskervale-forerunner/after-put
 tail white-suns-twilight/destroy-all-other-creatures

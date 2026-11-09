@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Unbury — Instant {1}{B} (Lorwyn Eclipsed, #4458):
 //
 //	"Choose one —
@@ -27,28 +25,14 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Return target creature card from your graveyard to your hand.",
 				TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
-				unburyReturn),
+				eoeABCharmReturn),
 			ModeDoing("Return two target creature cards that share a creature type from your graveyard to your hand.",
 				Clauses(
 					TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
 					Distinct(SharesACreatureTypeWithTargetCard(
 						TargetCardInGraveyard("another target creature card from your graveyard that shares a creature type with it", Creature(), YouOwn()), 0)),
 				),
-				unburyReturn),
+				eoeABCharmReturn),
 		),
 	})
-}
-
-// unburyReturn returns each still-legal target card of the chosen bullet to
-// its owner's hand.
-func unburyReturn(_ *game.StackItem, ctx *Context, occ int) error {
-	for _, t := range ctx.ModeTargets(occ) {
-		if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
-			continue
-		}
-		if err := (ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }
