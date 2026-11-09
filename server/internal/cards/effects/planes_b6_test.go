@@ -54,3 +54,46 @@ func TestGreatAerieChaosDealsToughnessBothWays(t *testing.T) {
 		}
 	})
 }
+
+var planeGreatForest = planeFixture{"8c56bb41-a8d8-4b0f-bbb7-be8466dc9ed1", "The Great Forest", "Plane — Lorwyn"}
+
+func TestGreatForestCreaturesAssignDamageByToughness(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeGreatForest)
+	g, _ := newPlaneGame(t, planeGreatForest)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	wall := pushVanillaCreature(g, me.ID, "Wall", 0, 4)
+	glass := pushVanillaCreature(g, me.ID, "Glass Cannon", 5, 1)
+	life := opp.Life
+	pr7bAttack(t, g, opp.ID, wall, glass)
+	advanceTo(t, g, game.StepEndCombat)
+	if got := life - opp.Life; got != 5 {
+		t.Errorf("the defender lost %d life, want 4 (toughness of the wall) + 1 (toughness of the cannon)", got)
+	}
+}
+
+func TestGreatForestChaosGivesPlusTwoToughnessAndTrample(t *testing.T) {
+	g, _ := newPlaneGame(t, planeGreatForest)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	bear := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
+	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	rollBlank(t, g, me.ID)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if !hasEffectiveKeyword(t, g, bear, "trample") {
+		t.Error("no trample on my creature")
+	}
+	if hasEffectiveKeyword(t, g, theirs, "trample") {
+		t.Error("trample on an opposing creature")
+	}
+	var tough int
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		c, _ := g.LookupCardForEffect(bear)
+		tough = c.CurrentToughness()
+	})
+	if tough != 4 {
+		t.Errorf("toughness %d, want 4", tough)
+	}
+}

@@ -413,6 +413,13 @@ type Characteristic struct {
 	// when it snapshots every combatant's amount.
 	DamageByToughness bool `json:",omitempty"`
 
+	// DamageByToughnessAlways is the unconditional "assigns combat damage
+	// equal to its toughness rather than its power" (CR 510.1c, The Great
+	// Forest): combatDamagePower answers with the toughness even when it is
+	// the smaller. Distinct from DamageByToughness, which Ghalta's "greater
+	// than its power" gates.
+	DamageByToughnessAlways bool `json:",omitempty"`
+
 	// DamageAsPositivePower is "if this creature's power is negative, it
 	// assigns combat damage as though its power were positive" (Loot,
 	// the Anomaly, #3505): combatDamagePower answers with the absolute
