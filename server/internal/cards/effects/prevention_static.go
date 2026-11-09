@@ -63,6 +63,10 @@ const (
 	// ToCreaturesYouControl without the permanent that has the static
 	// (Vigor, #2038).
 	ToAnotherCreatureYouControl
+	// ToCreaturesAndPlaneswalkersYouControl is "to creatures and
+	// planeswalkers you control" (The Western Cloud): a battlefield
+	// creature or planeswalker the static's controller controls.
+	ToCreaturesAndPlaneswalkersYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -247,6 +251,9 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	case ToAnotherCreatureYouControl:
 		return target != src.InstanceID && staticProtects(ToCreaturesYouControl, target, g, src)
+	case ToCreaturesAndPlaneswalkersYouControl:
+		c, ok := g.LookupCardForEffect(target)
+		return ok && (c.IsCreature() || c.IsPlaneswalker()) && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	}
 	return false
 }

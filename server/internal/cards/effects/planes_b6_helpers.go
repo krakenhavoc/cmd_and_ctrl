@@ -40,3 +40,30 @@ func b6ToughnessDamagePair(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// b6TreasuresPingEverything is The Western Cloud's chaos ability: create
+// three tapped Treasure tokens, and each of them deals 1 damage to each
+// creature and each planeswalker. The permanents are listed once, as the
+// tokens enter (the Treasures are artifacts, so not among them), and each
+// Treasure is the source of its own damage.
+func b6TreasuresPingEverything(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	tokens, err := g.CreateTokensForEffect(item.Controller, ctx.TextToken(TreasureToken()), 3, game.TokenEntryOptions{Tapped: true})
+	if err != nil {
+		return err
+	}
+	var victims []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.IsCreature() || c.IsPlaneswalker() {
+			victims = append(victims, c.InstanceID)
+		}
+	}
+	for _, tok := range tokens {
+		for _, v := range victims {
+			if err := (DealDamage{Source: tok, Target: v, Amount: 1}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

@@ -171,3 +171,39 @@ func TestThePitChaosEachPlayerSacrificesANonartifactCreature(t *testing.T) {
 		}
 	})
 }
+
+var planeWesternCloud = planeFixture{"4abae901-eb47-4318-bf64-322a893c2833", "The Western Cloud", "Plane — Gobakhan"}
+
+func TestWesternCloudPreventsDamageToThePlanarControllersCreatures(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeWesternCloud)
+	g, _ := newPlaneGame(t, planeWesternCloud)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mine := pushVanillaCreature(g, me.ID, "Mine", 2, 2)
+	theirs := pushVanillaCreature(g, opp.ID, "Theirs", 4, 4)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	treasures := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Treasure" && c.Controller == me.ID && c.Tapped {
+				treasures++
+			}
+		}
+		if z := g.FindCardZoneForEffect(mine); z == nil || z.Kind != game.ZoneBattlefield {
+			t.Error("the planar controller's creature died despite the prevention")
+		}
+		if z := g.FindCardZoneForEffect(theirs); z == nil || z.Kind != game.ZoneBattlefield {
+			t.Error("a 4/4 died to three 1-damage pings")
+		}
+	})
+	if treasures != 3 {
+		t.Errorf("%d tapped Treasures, want 3", treasures)
+	}
+	if got := damageOn(t, g, mine); got != 0 {
+		t.Errorf("%d damage marked on my creature, want 0", got)
+	}
+	if got := damageOn(t, g, theirs); got != 3 {
+		t.Errorf("%d damage marked on the opposing creature, want 3", got)
+	}
+}
