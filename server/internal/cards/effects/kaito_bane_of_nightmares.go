@@ -39,7 +39,7 @@ func init() {
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-					return target.IsCreature() && target.Controller == source.Controller && target.HasSubtype("Ninja")
+					return target.IsCreature() && target.Controller == source.Controller && target.HasSubtypeWord("Ninja")
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power++

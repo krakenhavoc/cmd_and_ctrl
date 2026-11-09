@@ -34,8 +34,9 @@ func init() {
 				wickSnail),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{U}{B}{R}, Sacrifice a Snail: Wick deals damage equal to the sacrificed creature's power to each opponent. Then draw cards equal to the sacrificed creature's power.",
-			Cost:  Plus(ManaCost("{U}{B}{R}"), SacrificeN(1, "a Snail", Subtype("Snail"))),
+			Label:   "{U}{B}{R}, Sacrifice a Snail: Wick deals damage equal to the sacrificed creature's power to each opponent. Then draw cards equal to the sacrificed creature's power.",
+			Cost:    Plus(ManaCost("{U}{B}{R}"), SacrificeN(1, "a Snail", Subtype("Snail"))),
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Effect: Do(
 				Instruction(func(ctx *Context) error {
 					return DamageEachOpponent{N: ctx.SacrificedPower()}.Apply(ctx)

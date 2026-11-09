@@ -75,34 +75,32 @@ func mistbreathElderMayReturnSelf(ctx *Context) error {
 // hand, puts the counter on the Elder; if it did not, "otherwise" applies.
 // An on-disk key.
 var mistbreathElderPicked = askedPick("choose-cards/mistbreath-elder-return", func(ctx *Context, r game.CardsChosen) error {
-	g := ctx.Game
-	returned := false
 	for _, id := range r.Picked {
-		if !onBattlefield(g, id) {
-			continue
+		if onBattlefield(ctx.Game, id) {
+			return BounceToHand{Target: id, ThenTail: ctx.ItemTail(mistbreathElderBounced)}.Apply(ctx)
 		}
-		if err := g.BounceToHandForEffect(id); err != nil {
-			return err
-		}
-		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneHand {
-			returned = true
-		}
-	}
-	if returned {
-		if !onBattlefield(g, ctx.Source()) {
-			return nil
-		}
-		return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 	}
 	return mistbreathElderMayReturnSelf(ctx)
+})
+
+// mistbreathElderBounced is "if you do, put a +1/+1 counter on this
+// creature" once the bounce settled, and "otherwise" when the creature did
+// not reach a hand. An on-disk key.
+var mistbreathElderBounced = CardTail("mistbreath-elder/after-bounce", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return mistbreathElderMayReturnSelf(ctx)
+	}
+	if !onBattlefield(ctx.Game, ctx.Source()) || ctx.Game.AbilitySourceIsNewObjectForEffect(ctx.Item) {
+		return nil
+	}
+	return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 })
 
 // mistbreathElderAnswered is the "otherwise, you may" answer: a yes returns
 // the Elder. An on-disk key.
 var mistbreathElderAnswered = MayYes("confirm/mistbreath-elder-return-self", func(ctx *Context, _ game.ConfirmAnswer) error {
-	g := ctx.Game
-	if !onBattlefield(g, ctx.Source()) {
+	if !onBattlefield(ctx.Game, ctx.Source()) {
 		return nil
 	}
-	return g.BounceToHandForEffect(ctx.Source())
+	return BounceToHand{Target: ctx.Source()}.Apply(ctx)
 })

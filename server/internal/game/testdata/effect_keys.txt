@@ -2198,6 +2198,7 @@ tail mill-then-take/first-contact-first-spell
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
 tail mirkwood-nurturer/counter
+tail mistbreath-elder/after-bounce
 tail mister-negative/draw
 tail model-of-unity/ask-next
 tail mole-module/after-mill
