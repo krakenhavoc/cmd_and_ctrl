@@ -152,3 +152,137 @@ func TestFinB9RinoaEntersWithAngelo(t *testing.T) {
 		t.Errorf("%d Angelo tokens, want 1", n)
 	}
 }
+
+const (
+	finB9FangOracle     = "04ac8b2c-95e9-40e9-8cc0-af9b075a94c0"
+	finB9RagnarokOracle = "14b839ef-80b1-4e7d-b2fd-38e973899cde"
+)
+
+func TestFinB9FangDrawsAndLosesLifeOncePerTurnPerBatch(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Fang, Fearless l'Cie", "Legendary Creature — Human Warrior", finB9FangOracle, 2, 3)
+	a := pushGraveyardPermanent(me, "A", "Creature — Bear", "{1}")
+	b := pushGraveyardPermanent(me, "B", "Creature — Bear", "{1}")
+	c := pushGraveyardPermanent(me, "C", "Creature — Bear", "{1}")
+	exile := func(id uuid.UUID) {
+		if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID}, game.ZoneRef{Kind: game.ZoneExile}, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hand, life := me.Hand.Size(), me.Life
+	exile(a)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 || me.Life != life-1 {
+		t.Fatalf("hand %d→%d life %d→%d, want +1 card and -1 life", hand, me.Hand.Size(), life, me.Life)
+	}
+	exile(b)
+	exile(c)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 || me.Life != life-1 {
+		t.Errorf("a second batch the same turn changed hand %d or life %d", me.Hand.Size(), me.Life)
+	}
+}
+
+func TestFinB9RagnarokDiesDestroysAndReturnsANonlegendaryPermanent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	rag := b12Push(g, me.ID, "Ragnarok, Divine Deliverance", "Legendary Creature — Beast Avatar", finB9RagnarokOracle, 7, 6)
+	for _, k := range []string{"reach", "vigilance", "menace", "trample", "haste"} {
+		if !hasEffectiveKeyword(t, g, rag, k) {
+			t.Errorf("no %s", k)
+		}
+	}
+	victim := b12Creature(g, opp.ID, "Ogre", "Creature — Ogre", 3, 3)
+	bear := pushGraveyardPermanent(me, "Bear", "Creature — Bear", "{1}{G}")
+	legend := pushGraveyardPermanent(me, "Legend", "Legendary Creature — Human", "{1}{G}")
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(rag) })
+	pickCard(t, g, me.ID, victim)
+	pickCard(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	if !opp.Graveyard.Contains(victim) {
+		t.Error("the target permanent was not destroyed")
+	}
+	if !onBattlefield(g, bear) {
+		t.Error("the nonlegendary card did not return")
+	}
+	if onBattlefield(g, legend) {
+		t.Error("the legendary card returned")
+	}
+}
+
+const finB9HopeOracle = "187a110c-032a-42e1-be2d-3cfaaa9495f8"
+
+func TestFinB9HopeMillsEachOpponentByLifeGainedThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Hope Estheim", "Legendary Creature — Human Wizard", finB9HopeOracle, 2, 2)
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 3) })
+	passPriorityAroundTable(t, g)
+	sizes := map[uuid.UUID]int{}
+	for _, p := range g.Seats[1:] {
+		sizes[p.ID] = p.Library.Size()
+	}
+	advanceToStepOf(t, g, 0, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats[1:] {
+		if p.Library.Size() != sizes[p.ID]-3 {
+			t.Errorf("opponent library %d → %d, want -3", sizes[p.ID], p.Library.Size())
+		}
+	}
+	if g.Seats[0].Library.Size() == 0 {
+		t.Error("you milled")
+	}
+}
+
+const finB9SeiferOracle = "7088a901-0489-41c3-9f2f-633939514de8"
+
+func TestFinB9SeiferGivesALoneAttackerDoubleStrikeAndFireCrossCastsFree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	seifer := b12Push(g, me.ID, "Seifer Almasy", "Legendary Creature — Human Knight", finB9SeiferOracle, 3, 4)
+	spell := gyCard(me, "Old Sorcery", "Sorcery", "{2}{R}", "")
+	dear := gyCard(me, "Big Sorcery", "Sorcery", "{3}{R}", "")
+	finABAttack(t, g, opp.ID, seifer)
+	passPriorityAroundTable(t, g)
+	if !hasEffectiveKeyword(t, g, seifer, "double strike") {
+		t.Fatal("the lone attacker did not gain double strike")
+	}
+	for i := 0; i < 12 && latestPickTarget(g, me.ID) == nil; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			break
+		}
+	}
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no Fire Cross target prompt")
+	}
+	if !hasID(p.PickTargetCards, spell) || hasID(p.PickTargetCards, dear) {
+		t.Errorf("offered %v: want only the mana value 3 sorcery", p.PickTargetCards)
+	}
+	pickCard(t, g, me.ID, spell)
+	passPriorityAroundTable(t, g)
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, spell)
+	if err := castThroughResolutionCast(t, g, me.ID, spell, game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedCost}); err != nil {
+		t.Fatalf("casting for free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Graveyard.Contains(spell) || !inExile(g, spell) {
+		t.Error("the spell should be exiled, not back in the graveyard")
+	}
+}
+
+func TestFinB9SeiferGivesNoDoubleStrikeWhenTwoAttack(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	seifer := b12Push(g, me.ID, "Seifer Almasy", "Legendary Creature — Human Knight", finB9SeiferOracle, 3, 4)
+	other := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	finABAttack(t, g, opp.ID, seifer, other)
+	passPriorityAroundTable(t, g)
+	if hasEffectiveKeyword(t, g, seifer, "double strike") || hasEffectiveKeyword(t, g, other, "double strike") {
+		t.Error("double strike with two attackers")
+	}
+}
