@@ -1190,6 +1190,7 @@ option option-pick/choose-land-type
 option option-pick/choose-option-as-enters
 option option-pick/choose-player-as-enters
 option option-pick/choose-second-player-as-enters
+option option-pick/city-hall-treasures
 option option-pick/cloak-and-dagger-entwined-choice
 option option-pick/coin-of-fate-opponent
 option option-pick/court-of-ambition-answer-3

@@ -306,3 +306,114 @@ func TestJalirasShowPlaneswalkingHereAlsoTriggers(t *testing.T) {
 		t.Error("planeswalking here did not destroy the target")
 	}
 }
+
+var (
+	planeCityHall = planeFixture{"36aac8aa-d6f0-4e53-a280-73b01e040f35", "City Hall", "Plane — Chicago"}
+	planeGhirapur = planeFixture{"6515e8d6-26ff-4716-a62d-a5847d0933e7", "Ghirapur Grand Prix", "Plane — Avishkar"}
+)
+
+func TestCityHallMakesThePlanarControllerTheMonarch(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeCityHall)
+	g, _ := newPlaneGame(t, planeCityHall)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	planeswalkToPlane(t, g, planeCityHall.Oracle)
+	passPriorityAroundTable(t, g)
+	if g.Monarch != me.ID {
+		t.Errorf("the monarch is %v, want the planar controller", g.Monarch)
+	}
+}
+
+func TestCityHallChaosTreasuresForThoseWhoAcceptAndTheyCantAttackYou(t *testing.T) {
+	g, _ := newPlaneGame(t, planeCityHall)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	// Turn order from the active player: me says no, the next says yes, the rest no.
+	for _, p := range seatsFromActiveForTest(g) {
+		yes := p == opp.ID
+		answerOptionFor(t, g, p, map[bool]int{true: 0, false: 1}[yes])
+	}
+	tapped := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Treasure" && c.Controller == opp.ID && c.Tapped {
+			tapped++
+		}
+		if c.Name == "Treasure" && c.Controller != opp.ID {
+			t.Errorf("a player who declined got a Treasure")
+		}
+	}
+	if tapped != 2 {
+		t.Errorf("%d tapped Treasures for the player who accepted, want 2", tapped)
+	}
+}
+
+func seatsFromActiveForTest(g *game.Game) []uuid.UUID {
+	var out []uuid.UUID
+	for i := range g.Seats {
+		out = append(out, g.Seats[(g.Turn.ActiveSeat+i)%len(g.Seats)].ID)
+	}
+	return out
+}
+
+func answerOptionFor(t *testing.T, g *game.Game, who uuid.UUID, idx int) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceOptionPick && c.Chooser == who {
+			if err := g.ResolveOptionPick(c.ID, who, idx); err != nil {
+				t.Fatalf("ResolveOptionPick: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no option prompt open for %v", who)
+}
+
+func TestGhirapurGrandPrixSpeedCountersAndTreasures(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeGhirapur)
+	g, _ := newPlaneGame(t, planeGhirapur)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	// The harness walks away from the face-up plane first (its own
+	// planeswalk-away ability), then back to it: two triggers to order.
+	planeswalkToPlane(t, g, planeGhirapur.Oracle)
+	answerAnyTriggerOrderPrompt(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		if p.Speed != 1 {
+			t.Fatalf("%v has speed %d after the planeswalk, want 1 (all: %d %d %d %d; pending %d stack %d)", p.ID, p.Speed,
+				g.Seats[0].Speed, g.Seats[1].Speed, g.Seats[2].Speed, g.Seats[3].Speed, len(g.PendingTriggers), len(g.StackMeta))
+		}
+	}
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	g.SetSpeedForTest(me.ID, 3)
+	advanceTo(t, g, game.StepEnd)
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	if p := tmtB1Card(t, g, bear).CurrentPower(); p != 5 {
+		t.Errorf("the bear is %d power, want 5 (three counters)", p)
+	}
+}
+
+func TestGhirapurGrandPrixPlaneswalkingAwayPaysTheFastest(t *testing.T) {
+	g, _ := newPlaneGame(t, planeGhirapur)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	g.SetSpeedForTest(me.ID, 3)
+	g.SetSpeedForTest(opp.ID, 2)
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	passPriorityAroundTable(t, g)
+	mine, theirs := 0, 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Treasure" && c.Controller == me.ID {
+			mine++
+		}
+		if c.Name == "Treasure" && c.Controller == opp.ID {
+			theirs++
+		}
+	}
+	if mine != 3 || theirs != 0 {
+		t.Errorf("Treasures gained: planar controller %d, opponent %d; want 3 and 0", mine, theirs)
+	}
+}
