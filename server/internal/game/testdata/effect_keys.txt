@@ -620,6 +620,7 @@ choose choose-cards/mairsil-cage
 choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
+choose choose-cards/marina-vendrells-grimoire-lose-if-empty
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/memories-returning-bottom
 choose choose-cards/memories-returning-take
@@ -687,6 +688,7 @@ choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
+choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/patient-naturalist-land
 choose choose-cards/pia-aether-ascetic-search
@@ -946,6 +948,7 @@ confirm confirm/commander-spock-land
 confirm confirm/copy-this-spell
 confirm confirm/cori-steel-cutter-attach
 confirm confirm/corruption-of-towashi-draw
+confirm confirm/crawling-barrens-animate
 confirm confirm/create-tokens
 confirm confirm/dance-with-calamity-exile-top
 confirm confirm/daretti-sacrifice
@@ -1272,6 +1275,7 @@ option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
+option option-pick/sorcerous-spyglass-look
 option option-pick/starseer-mentor-punisher
 option option-pick/tap-or-untap-that-permanent
 option option-pick/teferis-realm-phase-out
@@ -1353,6 +1357,7 @@ payunless pay-unless/descendant-of-storms-endure
 payunless pay-unless/digsite-conservator-discover
 payunless pay-unless/divert-change-target
 payunless pay-unless/divert-disaster-lander
+payunless pay-unless/dont-make-a-sound-surveil
 payunless pay-unless/draw-a-card
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
@@ -2165,6 +2170,7 @@ tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
 tail mass/worlds-within-worlds-exiled
 tail mass/zero-point-ballad-return
+tail mazes-end/win-the-game
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
@@ -2563,6 +2569,8 @@ tail then/the-key-to-the-vault-bottom-then-cast
 tail then/the-misty-mountains-cold-dragon
 tail then/the-neutrinos-return-attacking
 tail then/the-ring-goes-south-reveal
+tail then/the-tale-of-tamiyo-copy-and-cast
+tail then/the-tale-of-tamiyo-milled
 tail then/this-is-how-it-ends-shuffle-choice
 tail then/thornplate-intimidator-punisher-sacrificed
 tail then/tibalts-trickery-exile-until
