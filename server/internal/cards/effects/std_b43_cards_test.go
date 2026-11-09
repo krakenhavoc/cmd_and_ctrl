@@ -1743,3 +1743,94 @@ func TestStdB46TeysaMakesASpiritOnlyOnceEachTurnForAClue(t *testing.T) {
 		t.Fatalf("%d Spirits, want 1 (once each turn)", n)
 	}
 }
+
+const stdRakdosOracle = "d08ce18a-0fd9-47ac-ad2f-6934b60070f1"
+
+// stdRakdosEndStep starts Rakdos' end-step trigger against the first opponent,
+// who controls `perms` nonland nontoken permanents (and a land and a token
+// that never count). Returns the table and the opponent's permanents.
+func stdRakdosEndStep(t *testing.T, perms int) (*game.Game, *game.Player, *game.Player, []uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Rakdos, Patron of Chaos", "Legendary Creature — Demon", stdRakdosOracle, 6, 6)
+	var mine []uuid.UUID
+	for i := 0; i < perms; i++ {
+		mine = append(mine, reqCreature(g, opp.ID, "Their Perm", "", 2, 2))
+	}
+	b12Permanent(g, opp.ID, "Forest", "Basic Land — Forest")
+	pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Token", TypeLine: "Token Creature — Bear", Power: 1, Toughness: 1, Owner: opp.ID, Controller: opp.ID})
+	for i := 0; i < 5; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	advanceTo(t, g, game.StepEnd)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	return g, me, opp, mine
+}
+
+func TestStdB46RakdosLetsYouDrawTwoWhenTheyDecline(t *testing.T) {
+	g, me, opp, mine := stdRakdosEndStep(t, 3)
+	hand := me.Hand.Size()
+	c := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, opp.ID)
+	if c == nil {
+		t.Fatalf("the opponent was not asked: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveConfirm(c.ID, opp.ID, false); err != nil {
+		t.Fatalf("ResolveConfirm: %v", err)
+	}
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("drew %d, want 2", got)
+	}
+	for _, id := range mine {
+		if _, ok := battlefieldCard(g, id); !ok {
+			t.Error("a permanent was sacrificed although they declined")
+		}
+	}
+}
+
+func TestStdB46RakdosTakesTwoSacrificesAndNoCards(t *testing.T) {
+	g, me, opp, mine := stdRakdosEndStep(t, 3)
+	hand := me.Hand.Size()
+	c := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, opp.ID)
+	if err := g.ResolveConfirm(c.ID, opp.ID, true); err != nil {
+		t.Fatalf("ResolveConfirm: %v", err)
+	}
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, opp.ID)
+	if pick == nil {
+		t.Fatalf("no pick: %+v", g.PendingChoices)
+	}
+	if len(pick.ChooseCards) != 3 {
+		t.Errorf("%d candidates, want 3 (not the land or the token)", len(pick.ChooseCards))
+	}
+	if err := g.ResolveChooseCards(pick.ID, opp.ID, mine[:1]); err == nil {
+		t.Fatal("one permanent accepted for \"two\"")
+	}
+	if err := g.ResolveChooseCards(pick.ID, opp.ID, mine[:2]); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, id := range mine[:2] {
+		if _, ok := battlefieldCard(g, id); ok {
+			t.Error("a chosen permanent was not sacrificed")
+		}
+	}
+	if _, ok := battlefieldCard(g, mine[2]); !ok {
+		t.Error("the third permanent was sacrificed")
+	}
+	if me.Hand.Size() != hand {
+		t.Errorf("drew %d although they sacrificed", me.Hand.Size()-hand)
+	}
+}
+
+func TestStdB46RakdosDrawsWithoutAskingWhenTheyHaveFewerThanTwoPermanents(t *testing.T) {
+	g, me, opp, _ := stdRakdosEndStep(t, 1)
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, opp.ID); c != nil {
+		t.Fatal("asked an opponent who cannot sacrifice two permanents")
+	}
+	// The draw step's card, then Rakdos' two.
+	if got := g.TurnTallyFor(me.ID).CardsDrawn; got != 3 {
+		t.Errorf("drew %d cards this turn, want 3", got)
+	}
+}
