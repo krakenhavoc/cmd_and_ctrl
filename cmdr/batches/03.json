@@ -1,0 +1,259 @@
+{
+ "batch": 3,
+ "set": [
+  "fdc"
+ ],
+ "cards": [
+  {
+   "name": "Thraben Watcher",
+   "oracle_id": "53cd9d9f-c1a7-404e-9934-4542415e3431",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying, vigilance\nOther nontoken creatures you control get +1/+1 and have vigilance.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "54",
+   "set": "fdc"
+  },
+  {
+   "name": "Wojek Investigator",
+   "oracle_id": "ab41243d-b178-4ebe-a7ac-bea37427be99",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Angel Detective",
+   "oracle_text": "Flying, vigilance\nAt the beginning of your upkeep, investigate once for each opponent who has more cards in hand than you. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Investigate",
+    "Vigilance"
+   ],
+   "collector_number": "57",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  },
+  {
+   "name": "Broodstar",
+   "oracle_id": "428cc1cb-a491-4cc4-9436-28ee8acc37d6",
+   "layout": "normal",
+   "mana_cost": "{8}{U}{U}",
+   "cmc": 10.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nFlying\nBroodstar's power and toughness are each equal to the number of artifacts you control.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Affinity"
+   ],
+   "collector_number": "60",
+   "set": "fdc"
+  },
+  {
+   "name": "Fall from Favor",
+   "oracle_id": "e89e1fae-bac3-4cc0-a233-24b9e08a5290",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, tap enchanted creature and you become the monarch.\nEnchanted creature doesn't untap during its controller's untap step unless that player is the monarch.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "63",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "The Monarch",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If the target creature is an illegal target by the time Fall from Favor tries to resolve, it doesn't resolve. It won't enter the battlefield, so its enters-the-battlefield ability won't trigger.",
+    "The game starts with no monarch. Once an effect makes one player the monarch, the game will have exactly one monarch from that point forward. As a player becomes the monarch, the current monarch (if any) ceases being the monarch.",
+    "There are two inherent triggered abilities associated with being the monarch. These triggered abilities have no source and are controlled by the player who was the monarch at the time the abilities triggered. The full texts of these abilities are \"At the beginning of the monarch's end step, that player draws a card\" and \"Whenever a creature deals combat damage to the monarch, its controller becomes the monarch.\"",
+    "If the triggered ability that causes the monarch to draw a card goes on the stack and a different player becomes the monarch before that ability resolves, the first player will still draw the card.",
+    "If the monarch leaves the game during another player's turn, that player becomes the monarch. If the monarch leaves the game during their turn, the next player in turn order becomes the monarch.",
+    "If combat damage dealt to the monarch causes that player to lose the game, the triggered ability that causes the controller of the attacking creature to become the monarch doesn't resolve. In most cases, the controller of the attacking creature will still become the monarch as it is likely their turn."
+   ]
+  },
+  {
+   "name": "Launch Mishap",
+   "oracle_id": "5d4ed768-0a37-4604-8121-43920ed9fb4a",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter target creature or planeswalker spell. Create a 1/1 colorless Thopter artifact creature token with flying.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "65",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Thopter",
+     "type_line": "Token Artifact Creature — Thopter",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Research Thief",
+   "oracle_id": "ba5055ce-6809-47a4-bee6-fb97a5b60f8a",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Moonfolk Wizard",
+   "oracle_text": "Flash\nFlying\nWhenever an artifact creature you control deals combat damage to a player, draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "74",
+   "set": "fdc"
+  },
+  {
+   "name": "Shimmer Dragon",
+   "oracle_id": "de1316f2-1cca-4ac4-aead-0fd8b4036d88",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nAs long as you control four or more artifacts, this creature has hexproof. (It can't be the target of spells or abilities your opponents control.)\nTap two untapped artifacts you control: Draw a card.",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "75",
+   "set": "fdc"
+  },
+  {
+   "name": "Tamiyo's Logbook",
+   "oracle_id": "d9356199-4ce3-44fa-9463-90fc134088f9",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Book",
+   "oracle_text": "{5}{U}, {T}: Draw a card. This ability costs {1} less to activate for each other artifact you control.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "76",
+   "set": "fdc",
+   "rulings": [
+    "The cost reduction of the activated ability applies only to the generic mana component of the activation cost. It can't reduce colored mana costs. Even if you have five or more artifacts, it still costs {U} to activate."
+   ]
+  },
+  {
+   "name": "Bad Moon",
+   "oracle_id": "fc5d3341-cbce-49e5-93cc-8add92479dca",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Black creatures get +1/+1.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "87",
+   "set": "fdc"
+  },
+  {
+   "name": "Eternal Taskmaster",
+   "oracle_id": "a7c000a8-1864-4bb2-80fa-a61d74dbd966",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Zombie",
+   "oracle_text": "This creature enters tapped.\nWhenever this creature attacks, you may pay {2}{B}. If you do, return target creature card from your graveyard to your hand.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "98",
+   "set": "fdc",
+   "rulings": [
+    "You can't pay {2}{B} more than once each time Eternal Taskmaster's ability resolves."
+   ]
+  }
+ ]
+}

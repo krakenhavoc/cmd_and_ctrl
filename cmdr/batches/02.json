@@ -1,0 +1,278 @@
+{
+ "batch": 2,
+ "set": [
+  "fdc"
+ ],
+ "cards": [
+  {
+   "name": "Merchant of Truth",
+   "oracle_id": "84275aab-f718-4896-b61c-63bf49fb483b",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Angel Detective",
+   "oracle_text": "Flying\nWhenever a nontoken creature you control dies, investigate.\nClues you control have exalted. (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn for each instance of exalted among permanents you control.)",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Investigate"
+   ],
+   "collector_number": "39",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If Merchant of Truth dies at the same time as one or more other nontoken creatures you control, its second ability will trigger for each of those creatures.",
+    "A creature attacks alone if it’s the only creature declared as an attacker during the declare attackers step (including creatures controlled by your teammates, if applicable). For example, exalted won’t trigger if you attack with multiple creatures and all but one of them are removed from combat. Similarly, creatures that enter the battlefield attacking later in combat won’t affect exalted abilities that have already triggered or resolved.",
+    "If you control multiple Merchants of Truth, Clues you control will have multiple instances of exalted.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it’s never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth’s activated ability.",
+    "You can’t sacrifice a Clue to pay multiple costs. For example, you can’t sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth’s ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won’t resolve. You won’t create any Clue tokens.",
+    "Some abilities trigger “whenever you sacrifice a Clue”. Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue’s activated ability."
+   ]
+  },
+  {
+   "name": "Metropolis Reformer",
+   "oracle_id": "baec04a1-3bc9-4618-afab-e42013e36648",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Angel Cleric",
+   "oracle_text": "Flying, vigilance\nYou have hexproof.\nWhenever this creature is dealt damage, you gain that much life.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "40",
+   "set": "fdc"
+  },
+  {
+   "name": "Norn's Choirmaster",
+   "oracle_id": "bad6a5a9-7010-418d-b042-182926aa999d",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Phyrexian Angel",
+   "oracle_text": "Flying, first strike\nWhenever a commander you control enters or attacks, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "First strike",
+    "Proliferate"
+   ],
+   "collector_number": "41",
+   "set": "fdc",
+   "rulings": [
+    "To proliferate, you can choose any permanent that has a counter, including ones controlled by opponents. You can choose any player who has a counter, including opponents. You can't choose cards in any zone other than the battlefield, even if they have counters on them.",
+    "You don't have to choose every permanent or player that has a counter, only the ones you want to add another counter to. Since \"any number\" includes zero, you don't have to choose any permanents at all, and you don't have to choose any players at all.",
+    "If a player or permanent has more than one kind of counter on it, and you choose for it to get additional counters, it must get one of each kind of counter it already has. You can't have it get just one kind of counter it already has and not the others.",
+    "An ability that triggers \"Whenever you proliferate\" triggers even if you chose no permanents or players while doing so.",
+    "Players can respond to a spell or ability whose effect includes proliferating. Once that spell or ability starts to resolve, however, and its controller chooses which permanents and players will get new counters, it's too late for anyone to respond.",
+    "If a permanent ever has both +1/+1 counters and -1/-1 counters on it at the same time, they're removed in pairs as a state-based action so that the permanent has only one of those kinds of counters on it."
+   ]
+  },
+  {
+   "name": "Reya Dawnbringer",
+   "oracle_id": "08d1a5d1-141d-48e3-ac22-c2529191cb13",
+   "layout": "normal",
+   "mana_cost": "{6}{W}{W}{W}",
+   "cmc": 9.0,
+   "type_line": "Legendary Creature — Angel",
+   "oracle_text": "Flying\nAt the beginning of your upkeep, you may return target creature card from your graveyard to the battlefield.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "42",
+   "set": "fdc"
+  },
+  {
+   "name": "Search the Premises",
+   "oracle_id": "0232418d-1c52-4573-b488-c62345ca1c8d",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a creature attacks you or a planeswalker you control, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "44",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Segovian Angel",
+   "oracle_id": "50372c54-359c-4ee6-9e21-1e40ba53652d",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying, vigilance",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "46",
+   "set": "fdc"
+  },
+  {
+   "name": "Seraph of the Sword",
+   "oracle_id": "84ee74e9-b3e3-4f47-8b3c-5c1a70f5cad6",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying\nPrevent all combat damage that would be dealt to this creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "48",
+   "set": "fdc",
+   "rulings": [
+    "If Seraph of the Sword blocks a creature with trample, that creature’s controller must assign 3 damage to Seraph of the Sword (assuming it’s blocking no other creatures, there was no damage marked on it, and nothing has changed its toughness). The remainder can be assigned to the defending player or planeswalker."
+   ]
+  },
+  {
+   "name": "Serra Avenger",
+   "oracle_id": "b91b65b3-b35c-460e-a49b-333000a9a519",
+   "layout": "normal",
+   "mana_cost": "{W}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "You can't cast Serra Avenger during your first, second, or third turns of the game.\nFlying, vigilance",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "49",
+   "set": "fdc",
+   "rulings": [
+    "Serra Avenger cares about how many turns you have taken, not necessarily how many turns the game has had, in case you take an extra turn.",
+    "If the game is restarted (by Karn Liberated), you can't cast Serra Avenger in your first, second, or third turn in the new game.",
+    "You can cast Serra Avenger during another player's first, second, or third turns of the game if some other effect (such as Vedalken Orrery) enables that."
+   ]
+  },
+  {
+   "name": "Starnheim Aspirant",
+   "oracle_id": "e7b92789-47a9-430a-ad57-be7b6c3d63cb",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "Angel spells you cast cost {2} less to cast.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "51",
+   "set": "fdc",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions (such as that of Starnheim Aspirant). The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "The cost reduction applies only to generic mana in the costs of Angel spells you cast. It can't reduce requirements of specific colors of mana.",
+    "An Angel spell is a creature spell with the creature type Angel. Instant, sorcery, and enchantment cards that may create Angel tokens are not Angel spells."
+   ]
+  },
+  {
+   "name": "Sunblast Angel",
+   "oracle_id": "8b34d1df-4024-497d-bd28-a7caa8c3fa24",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying\nWhen this creature enters, destroy all tapped creatures.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "52",
+   "set": "fdc",
+   "rulings": [
+    "The second ability destroys each creature that's tapped at the time it resolves, including creatures you control. If Sunblast Angel has become tapped by the time its ability resolves, it will be destroyed too."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,289 @@
+{
+ "batch": 21,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Migration Path",
+   "oracle_id": "db4907f3-4071-47c4-9329-96b4813435be",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "262",
+   "set": "tdc"
+  },
+  {
+   "name": "Overgrown Battlement",
+   "oracle_id": "585f62dc-4461-42f1-a3a4-b19a1e550d2d",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Wall",
+   "oracle_text": "Defender\n{T}: Add {G} for each creature you control with defender.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "264",
+   "set": "tdc",
+   "rulings": [
+    "Overgrown Battlement's last ability is a mana ability. It doesn't use the stack and can't be responded to (such as by removing creatures with defender you control)."
+   ]
+  },
+  {
+   "name": "Sylvan Caryatid",
+   "oracle_id": "13d4c46b-c2d6-44cc-a252-4a991d471854",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Plant",
+   "oracle_text": "Defender, hexproof\n{T}: Add one mana of any color.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Hexproof",
+    "Defender"
+   ],
+   "collector_number": "272",
+   "set": "tdc"
+  },
+  {
+   "name": "Timeless Witness",
+   "oracle_id": "a52a06aa-56fc-4845-bbcd-a54f16369b34",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Shaman",
+   "oracle_text": "When this creature enters, return target card from your graveyard to your hand.\nEternalize {5}{G}{G} ({5}{G}{G}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Human Shaman with no mana cost. Eternalize only as a sorcery.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Eternalize"
+   ],
+   "collector_number": "274",
+   "set": "tdc",
+   "rulings": [
+    "If a creature card with eternalize is put into your graveyard during your main phase, you'll have priority immediately afterward. You can activate its eternalize ability before any player can try to exile it.",
+    "Once you've activated an eternalize ability, the card is immediately exiled. Opponents can't try to stop the ability by exiling the card.",
+    "The token copies exactly what was printed on the original card and nothing else, except the characteristics specifically modified by eternalize. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "The token is a Zombie in addition to its other types and is black instead of its other colors. Its base power and toughness are 4/4. It has no mana cost, and thus its mana value is 0. These are copiable values of the token that other effects may copy."
+   ]
+  },
+  {
+   "name": "Tower Defense",
+   "oracle_id": "58853200-efbe-41cc-87f1-720841308f4d",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Creatures you control get +0/+5 and gain reach until end of turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "275",
+   "set": "tdc",
+   "rulings": [
+    "Only creatures you control when Tower Defense resolves will get the bonuses. Creatures that come under your control later that turn will not."
+   ]
+  },
+  {
+   "name": "Towering Titan",
+   "oracle_id": "a95309ac-f920-474d-81b5-0f68c8a54f34",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Giant",
+   "oracle_text": "This creature enters with X +1/+1 counters on it, where X is the total toughness of other creatures you control.\nSacrifice a creature with defender: All creatures gain trample until end of turn.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "276",
+   "set": "tdc",
+   "rulings": [
+    "If another creature is entering the battlefield at the same time as Towering Titan, its toughness won’t contribute to the +1/+1 counters on Towering Titan.",
+    "Once Towering Titan has entered the battlefield, it doesn’t gain or lose counters as the total toughness of other creatures you control changes."
+   ]
+  },
+  {
+   "name": "Aron, Benalia's Ruin",
+   "oracle_id": "d8b06606-9b1f-4e72-a280-12a6e912bb50",
+   "layout": "normal",
+   "mana_cost": "{W}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Phyrexian Human",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\n{W}{B}, {T}, Sacrifice another creature: Put a +1/+1 counter on each creature you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "280",
+   "set": "tdc"
+  },
+  {
+   "name": "Atarka, World Render",
+   "oracle_id": "c0b3bbce-977c-42a9-afcb-dabdfc717c97",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{G}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Dragon",
+   "oracle_text": "Flying, trample\nWhenever a Dragon you control attacks, it gains double strike until end of turn.",
+   "power": "6",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample"
+   ],
+   "collector_number": "281",
+   "set": "tdc"
+  },
+  {
+   "name": "Baral and Kari Zev",
+   "oracle_id": "386a6fa7-db5b-4e82-bd25-fd86d910ed0c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human",
+   "oracle_text": "First strike, menace\nWhenever you cast your first instant or sorcery spell each turn, you may cast a spell with lesser mana value that shares a card type with it from your hand without paying its mana cost. If you don't, create First Mate Ragavan, a legendary 2/1 red Monkey Pirate creature token. It gains haste until end of turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "First strike",
+    "Menace"
+   ],
+   "collector_number": "282",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "First Mate Ragavan",
+     "type_line": "Token Legendary Creature — Monkey Pirate",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the spell has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Baral and Kari Zev will count any instant or sorcery spell you cast during a turn, even if it wasn’t on the battlefield at the time. This means if you cast an instant or sorcery spell, then Baral and Kari Zev comes under your control, its triggered ability won’t trigger that turn.",
+    "The spell you cast from your hand without paying its mana cost is cast during the resolution of the triggered ability. Timing restrictions of that spell based on card type are ignored. It will resolve before the spell that caused the ability to trigger.",
+    "If you cast a spell without paying its mana cost, you can’t choose to cast it for any alternative costs. You can, however, pay any additional costs. If the spell has any mandatory additional costs, you must pay those."
+   ]
+  },
+  {
+   "name": "Expansion // Explosion",
+   "oracle_id": "af6f771f-5154-4fb3-8ed4-768d71eea568",
+   "layout": "split",
+   "mana_cost": "{U/R}{U/R} // {X}{U}{U}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Instant // Instant",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "287",
+   "set": "tdc",
+   "card_faces": [
+    {
+     "name": "Expansion",
+     "mana_cost": "{U/R}{U/R}",
+     "type_line": "Instant",
+     "oracle_text": "Copy target instant or sorcery spell with mana value 4 or less. You may choose new targets for the copy."
+    },
+    {
+     "name": "Explosion",
+     "mana_cost": "{X}{U}{U}{R}{R}",
+     "type_line": "Instant",
+     "oracle_text": "Explosion deals X damage to any target. Target player draws X cards."
+    }
+   ],
+   "rulings": [
+    "If one of Explosion's two targets becomes illegal, the other is affected as appropriate.",
+    "The copy will have the same targets as the spell it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. If, for one of the targets, you can't choose a new legal target, then it remains unchanged (even if the current target is illegal).",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode or modes. You can't choose different ones.",
+    "If the spell that's copied has an X whose value was determined as it was cast (like Banefire does), the copy will have the same value of X.",
+    "If the spell has damage divided as it was cast, the division can't be changed (although the targets receiving that damage still can). The same is true of spells that distribute counters.",
+    "The controller of a copy can't choose to pay any alternative or additional costs for the copy. However, effects based on any alternative or additional costs that were paid for the original spell are copied as though those same costs were paid for the copy.",
+    "Any choices made as a spell resolves won't have been made yet once it's copied. Any such choices will be made separately as the copy resolves.",
+    "If you copy a spell, you control the copy. It will resolve before the original spell does.",
+    "Expansion can copy any instant or sorcery spell with an appropriate mana value, not just one with targets.",
+    "If a spell has {X} in its mana cost, include the value chosen for that X when determining the mana value of that spell.",
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell won't trigger.",
+    "Split cards have two card faces on a single card. The characteristics of the half you didn't cast are ignored while the spell is on the stack.",
+    "Each split card is a single card. For example, if you discard a split card, you've discarded one card, not two. If an effect counts the number of sorcery cards in your graveyard, Assault // Battery counts once, not twice.",
+    "Each split card has two names. If an effect instructs you to choose a card name, you may choose one of those names, but not both.",
+    "A split card's characteristics are a combination of its two halves while it is not on the stack. For example, Assault // Battery has a mana value of 5 while it is in your library. If an effect allows you to search your library for a card with mana value 4 or less, you can't find Assault // Battery.",
+    "If an effect allows you to cast a spell with certain characteristics, consider only the characteristics of the half you're casting. For example, if an effect allows you to cast a sorcery spell with mana value 2 or less from among cards in your graveyard, you could cast Assault this way, but not Battery.",
+    "If you copy a spell that's half of a split card, the copy copies that same half. For example, if you copy Assault, the copy is also Assault, not Battery.",
+    "To cast a split card, choose one of its halves to cast. There's no way to cast both halves of this split card."
+   ]
+  }
+ ]
+}

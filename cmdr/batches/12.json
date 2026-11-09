@@ -1,0 +1,233 @@
+{
+ "batch": 12,
+ "set": [
+  "eoc",
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Crystalline Crawler",
+   "oracle_id": "5ea3e672-ae14-49a4-badb-f713497dd126",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Converge — This creature enters with a +1/+1 counter on it for each color of mana spent to cast it.\nRemove a +1/+1 counter from this creature: Add one mana of any color.\n{T}: Put a +1/+1 counter on this creature.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Converge"
+   ],
+   "collector_number": "133",
+   "set": "eoc",
+   "rulings": [
+    "If you cast a spell with converge without spending any mana to cast it (perhaps because an effect allowed you to cast it without paying its mana cost), then the number of colors spent to cast it will be zero.",
+    "The colors of mana are white, blue, black, red, and green. Colorless is not a color.",
+    "Unless a spell or ability allows you to, you can't choose to pay more mana for a spell with a converge ability just to spend more colors of mana. Likewise, if a spell or ability reduces the amount of mana it costs you to cast a spell with converge, you can't ignore that cost reduction in order to spend more colors of mana.",
+    "If there are any alternative or additional costs to cast a spell with a converge ability, the mana spent to pay those costs will count. For example, if an effect makes Crystalline Crawler cost {1} more to cast, you could pay {W}{U}{B}{R}{G} to cast it and have it enter the battlefield with five +1/+1 counters."
+   ]
+  },
+  {
+   "name": "Golem Foundry",
+   "oracle_id": "8e96c09f-c064-4dd8-85ee-0f48d86ab670",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever you cast an artifact spell, you may put a charge counter on this artifact.\nRemove three charge counters from this artifact: Create a 3/3 colorless Golem artifact creature token.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "138",
+   "set": "eoc",
+   "related": [
+    {
+     "name": "Golem",
+     "type_line": "Token Artifact Creature — Golem",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Whenever you cast an artifact spell, Golem Foundry's first ability triggers and goes on the stack on top of it. It will resolve before the artifact spell does."
+   ]
+  },
+  {
+   "name": "Mindless Automaton",
+   "oracle_id": "e7441107-57b1-4e88-a9d8-3eb7c338ef07",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "This creature enters with two +1/+1 counters on it.\n{1}, Discard a card: Put a +1/+1 counter on this creature.\nRemove two +1/+1 counters from this creature: Draw a card.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "142",
+   "set": "eoc",
+   "rulings": [
+    "If removing two +1/+1 counters from Mindless Automaton causes the amount of damage already marked on Mindless Automaton to be equal to or greater than its toughness, it will be put into its owner's graveyard as a state-based action before the ability can be activated again and before the card is drawn."
+   ]
+  },
+  {
+   "name": "Titan Forge",
+   "oracle_id": "3b02dfca-bcaa-4e22-b143-401ed250d016",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "{3}, {T}: Put a charge counter on this artifact.\n{T}, Remove three charge counters from this artifact: Create a 9/9 colorless Golem artifact creature token.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "146",
+   "set": "eoc",
+   "related": [
+    {
+     "name": "Golem",
+     "type_line": "Token Artifact Creature — Golem",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Dakmor Salvage",
+   "oracle_id": "cdc4048a-73ec-4ec1-a179-2b36c397bf1a",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {B}.\nDredge 2 (If you would draw a card, you may mill two cards instead. If you do, return this card from your graveyard to your hand.)",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Dredge",
+    "Mill"
+   ],
+   "collector_number": "156",
+   "set": "eoc",
+   "rulings": [
+    "You can't attempt to use a dredge ability if you don't have enough cards in your library.",
+    "If you're drawing multiple cards, each draw is performed one at a time. For example, if you're instructed to draw two cards and you replace the first draw with a dredge ability, another card with a dredge ability (including one that was milled by the first dredge ability) may be used to replace the second draw.",
+    "Dredge can replace any card draw, not only the one during your draw step.",
+    "If an effect puts a card into your hand without specifically using the word \"draw,\" you're not drawing a card. Dredge can't replace this event.",
+    "One card draw can't be replaced by multiple dredge abilities.",
+    "Once you've announced that you're applying a card's dredge ability to replace a draw, players can't take any actions until you've put that card into your hand and milled cards."
+   ]
+  },
+  {
+   "name": "Lonely Sandbar",
+   "oracle_id": "765863c8-1be0-4bb1-9e9c-db7701cffde3",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {U}.\nCycling {U} ({U}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "166",
+   "set": "eoc"
+  },
+  {
+   "name": "Razortide Bridge",
+   "oracle_id": "6cb37ac1-dd11-4a8c-bca5-ef44d828059f",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Artifact Land",
+   "oracle_text": "This land enters tapped.\nIndestructible\n{T}: Add {W} or {U}.",
+   "colors": [],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "171",
+   "set": "eoc"
+  },
+  {
+   "name": "Rustvale Bridge",
+   "oracle_id": "a3faf70d-c034-4692-9e92-1922029e3852",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Artifact Land",
+   "oracle_text": "This land enters tapped.\nIndestructible\n{T}: Add {R} or {W}.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "175",
+   "set": "eoc"
+  },
+  {
+   "name": "Silverbluff Bridge",
+   "oracle_id": "081bfd50-a436-463b-9d2c-5bc8a32b387c",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Artifact Land",
+   "oracle_text": "This land enters tapped.\nIndestructible\n{T}: Add {U} or {R}.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "180",
+   "set": "eoc"
+  },
+  {
+   "name": "Elsha, Threefold Master",
+   "oracle_id": "d8ccbd72-6429-43cb-a0a9-ab56e97a2d53",
+   "layout": "normal",
+   "mana_cost": "{U}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Djinn Monk",
+   "oracle_text": "Trample\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhenever Elsha deals combat damage to a player, create that many 1/1 white Monk creature tokens with prowess.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Prowess",
+    "Trample"
+   ],
+   "collector_number": "2",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Monk",
+     "type_line": "Token Creature — Monk",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

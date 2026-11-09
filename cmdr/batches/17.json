@@ -1,0 +1,294 @@
+{
+ "batch": 17,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Release the Dogs",
+   "oracle_id": "b97d21b4-d730-479f-872f-3e1645b66751",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create four 1/1 white Dog creature tokens.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "127",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Dog",
+     "type_line": "Token Creature — Dog",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Shalai, Voice of Plenty",
+   "oracle_id": "a0c47ab6-dfb4-46ee-a3f7-9e1521b4bb4b",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Angel",
+   "oracle_text": "Flying\nYou, planeswalkers you control, and other creatures you control have hexproof.\n{4}{G}{G}: Put a +1/+1 counter on each creature you control.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "130",
+   "set": "tdc"
+  },
+  {
+   "name": "Twilight Drover",
+   "oracle_id": "b0d60856-80f9-4c64-9768-28a0a690ecb1",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "Whenever a creature token leaves the battlefield, put a +1/+1 counter on this creature.\n{2}{W}, Remove a +1/+1 counter from this creature: Create two 1/1 white Spirit creature tokens with flying.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "136",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The first ability only cares that creature tokens leave the battlefield. It doesn't matter where they went.",
+    "If a player leaves a multiplayer game, all creature tokens that player owns also leave the game. Twilight Drover's ability will trigger once per token.",
+    "If Spirit tokens created by Twilight Drover leave the battlefield, they will trigger its first ability.",
+    "Note that Twilight Drover doesn't have any way to sacrifice tokens or otherwise cause them to leave the battlefield."
+   ]
+  },
+  {
+   "name": "Wakestone Gargoyle",
+   "oracle_id": "11284767-7095-4e0e-bc60-c69d58098348",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Gargoyle",
+   "oracle_text": "Defender, flying\n{1}{W}: Creatures you control with defender can attack this turn as though they didn't have defender.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Defender"
+   ],
+   "collector_number": "137",
+   "set": "tdc",
+   "rulings": [
+    "Wakestone Gargoyle’s ability allows itself to attack.",
+    "Wakestone Gargoyle’s ability will affect creatures with defender that come under your control after the ability resolves but before you declare attackers (though those creatures still can’t attack unless they have haste)."
+   ]
+  },
+  {
+   "name": "Wingmantle Chaplain",
+   "oracle_id": "99e24041-910e-4ae2-a55b-b938d752eeff",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "Defender\nWhen this creature enters, create a 1/1 white Bird creature token with flying for each creature with defender you control.\nWhenever another creature you control with defender enters, create a 1/1 white Bird creature token with flying.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "141",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Bird",
+     "type_line": "Token Creature — Bird",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Count the number of creatures with defender you control as the second ability resolves to determine how many Bird tokens you create. If Wingmantle Chaplain’s still under your control at that time, it will count itself.",
+    "If Wingmantle Chaplain enters the battlefield under your control at the same time as other creatures with defender, the second ability will trigger once and the last ability will trigger once for each of those other creatures."
+   ]
+  },
+  {
+   "name": "Amphin Mutineer",
+   "oracle_id": "8910f79a-66c9-41b3-b55a-e3e651ae6f26",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Salamander Pirate",
+   "oracle_text": "When this creature enters, exile up to one target non-Salamander creature. That creature's controller creates a 4/3 blue Salamander Warrior creature token.\nEncore {4}{U}{U} ({4}{U}{U}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "143",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Salamander Warrior",
+     "type_line": "Token Creature — Salamander Warrior",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect stops a token from attacking a specific player, that token can attack any player, planeswalker, or battle, or not attack at all. If the effect stops the token from attacking a specific player unless a cost is paid, you don't have to pay that cost unless you want to attack that player.",
+    "Exiling the card with encore is a cost to activate the ability. Once you announce that you're activating it, no player may take actions until you've finished. They can't try to remove the card from your graveyard to stop you from paying the cost.",
+    "Opponents who have left the game aren't counted when determining how many tokens to create.",
+    "The tokens copy only what's on the original card. Effects that modified that creature when it was previously on the battlefield won't be copied.",
+    "If the target non-Salamander creature is an illegal target by the time Amphin Mutineer's ability tries to resolve, the ability doesn't resolve. No player creates a Salamander Warrior token.",
+    "If one of the tokens can't attack for any reason (such as being tapped), then it doesn't attack. If there's a cost associated with having it attack, you aren't forced to pay that cost, so it doesn't have to attack in that case either.",
+    "If one of the tokens somehow is under another player's control as the delayed triggered ability resolves, you can't sacrifice that token. It remains on the battlefield indefinitely, even if you regain control of it later.",
+    "Each token must attack the appropriate player if able."
+   ]
+  },
+  {
+   "name": "Baral's Expertise",
+   "oracle_id": "a1cdcb8c-1e12-4d39-aa4a-db678a80df9c",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return up to three target artifacts and/or creatures to their owners' hands.\nYou may cast a spell with mana value 4 or less from your hand without paying its mana cost.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "146",
+   "set": "tdc",
+   "rulings": [
+    "The mana value of a split card is determined by the combined mana cost of its two halves. If an expertise spell allows you to cast a split card, you may cast either half or, if that split card has fuse, both halves.",
+    "If the card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "The card that you cast may be an artifact or creature that was returned to your hand by this spell.",
+    "If the Expertise spell you cast has any targets, and those targets become illegal before the spell resolves, the spell doesn't resolve and none of its effects happen. You won't get to cast a free spell.",
+    "Effects that allow you to \"cast\" a card don't allow you to play a land card.",
+    "If you cast a card \"without paying its mana cost,\" you can't choose to cast it for any alternative costs, such as emerge costs. You can, however, pay additional costs. If the card has any mandatory additional costs, such as that of Cathartic Reunion, you must pay those to cast the card.",
+    "While you're casting your free spell, the Expertise spell is still on the stack. It will be put into its owner's graveyard after the free spell is cast. The free spell can't target the Expertise card in your graveyard. It can target the Expertise spell on the stack, but the Expertise spell will become an illegal target before the free spell resolves.",
+    "Any triggered abilities that trigger while performing the Expertise spell's first effect won't be put onto the stack until after you're done casting your free spell. They're put onto the stack at the same time as any abilities that triggered while casting that spell regardless of the order in which those abilities triggered.",
+    "A card's mana value is determined solely by the mana symbols printed in its upper right corner. The mana value is the total amount of mana in that cost, regardless of color. For example, a card with mana cost {1}{U}{U} has mana value 3. Ignore any alternative costs, additional costs, cost increases, or cost reductions that could apply to it. A card with no mana cost has a mana value of 0."
+   ]
+  },
+  {
+   "name": "Draconic Lore",
+   "oracle_id": "440881ad-48cf-4b82-8bb5-f506d1a51755",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell costs {2} less to cast if you control a Dragon.\nDraw three cards.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "151",
+   "set": "tdc",
+   "rulings": [
+    "The cost of Draconic Lore is determined and locked in as you cast it before any mana abilities are activated and before any player can respond. Notably, this means that no player can respond to remove your Dragon before the cost is reduced, and if you sacrifice that Dragon as part of a mana ability, the cost won't be increased."
+   ]
+  },
+  {
+   "name": "Forbidden Alchemy",
+   "oracle_id": "66d65cda-e3d1-4a00-8ff3-c6d5ef0ab0c1",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Look at the top four cards of your library. Put one of them into your hand and the rest into your graveyard.\nFlashback {6}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "152",
+   "set": "tdc",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "If you have fewer than four cards in your library, you'll look at all the cards there and put one into your hand and the rest into your graveyard."
+   ]
+  },
+  {
+   "name": "Haughty Djinn",
+   "oracle_id": "44036bb5-f300-40bd-9180-6b246315d886",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Djinn",
+   "oracle_text": "Flying\nHaughty Djinn's power is equal to the number of instant and sorcery cards in your graveyard.\nInstant and sorcery spells you cast cost {1} less to cast.",
+   "power": "*",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "154",
+   "set": "tdc",
+   "rulings": [
+    "The ability that defines Haughty Djinn's power functions in all zones.",
+    "A split card in your graveyard only counts once for Haughty Djinn's power, even if it's both an instant and a sorcery."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,297 @@
+{
+ "batch": 13,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Eshki, Temur's Roar",
+   "oracle_id": "1b162dd3-3be6-406d-bf86-f7cc9eff098d",
+   "layout": "normal",
+   "mana_cost": "{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Whenever you cast a creature spell, put a +1/+1 counter on Eshki. If that spell's power is 4 or greater, draw a card. If that spell's power is 6 or greater, Eshki deals damage equal to Eshki's power to each opponent.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "3",
+   "set": "tdc"
+  },
+  {
+   "name": "Felothar the Steadfast",
+   "oracle_id": "2b3f791a-d672-46fb-a03a-96e19f2c3121",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Each creature you control assigns combat damage equal to its toughness rather than its power.\nCreatures you control can attack as though they didn't have defender.\n{3}, {T}, Sacrifice another creature: Draw cards equal to the sacrificed creature's toughness, then discard cards equal to its power.",
+   "power": "0",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "4",
+   "set": "tdc",
+   "rulings": [
+    "Felothar’s first ability doesn’t actually change any creature’s power. It changes only the amount of combat damage those creatures assign. All other rules and effects that check power or toughness use the real values."
+   ]
+  },
+  {
+   "name": "Kotis, Sibsig Champion",
+   "oracle_id": "0177b410-b559-491f-b393-ac3ed774653c",
+   "layout": "normal",
+   "mana_cost": "{B}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Zombie Warrior",
+   "oracle_text": "Once during each of your turns, you may cast a creature spell from your graveyard by exiling three other cards from your graveyard in addition to paying its other costs.\nWhenever one or more creatures you control enter, if one or more of them entered from a graveyard or was cast from a graveyard, put two +1/+1 counters on Kotis.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "5",
+   "set": "tdc"
+  },
+  {
+   "name": "Shiko and Narset, Unified",
+   "oracle_id": "40ed32a6-ad56-48c7-aecf-b4238c34c212",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Spirit Dragon",
+   "oracle_text": "Flying, vigilance\nFlurry — Whenever you cast your second spell each turn, copy that spell if it targets a permanent or player, and you may choose new targets for the copy. If you don't copy a spell this way, draw a card.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Flurry",
+    "Vigilance"
+   ],
+   "collector_number": "7",
+   "set": "tdc",
+   "rulings": [
+    "If the second spell you cast targets a permanent or player, you must copy that spell, even if it won’t be possible to choose legal targets for the copy. You can’t choose not to copy it in order to draw a card.",
+    "Shiko and Narset, Unified’s last ability and the copy it creates resolve before the spell it’s copying. They resolve even if the original spell is countered before the copy is created.",
+    "An Aura spell requires a target, as defined by its enchant ability.",
+    "The copy will have the same targets unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that’s copied is modal (that is, it says “Choose one —” or the like), the copy will have the same mode or modes. You can’t choose different ones.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can’t be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that’s copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can’t choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy is created on the stack, so it’s not “cast.” Abilities that trigger when a player casts a spell won’t trigger.",
+    "A resolving copy of a permanent spell becomes a token. That token isn’t “created” and won’t interact with abilities that care about tokens being created.",
+    "Spells that were cast before a permanent with flurry count. If that permanent was the first spell you cast that turn, the next spell you cast that turn is your second spell."
+   ]
+  },
+  {
+   "name": "Zurgo Stormrender",
+   "oracle_id": "0f93d88c-9d2e-416d-a10b-99483360b1fb",
+   "layout": "normal",
+   "mana_cost": "{R}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Orc Warrior",
+   "oracle_text": "Mobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)\nWhenever a creature token you control leaves the battlefield, draw a card if it was attacking. Otherwise, each opponent loses 1 life.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Mobilize"
+   ],
+   "collector_number": "10",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Warrior",
+     "type_line": "Token Creature — Warrior",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If Zurgo Stormrender leaves the battlefield at the same time as one or more creature tokens you control, its last ability will trigger once for each of those creature tokens.",
+    "You choose the player, planeswalker, or battle each Warrior token is attacking. They don’t all have to attack the same one, and they don’t have to attack the same player, planeswalker, or battle as the creature with mobilize.",
+    "Although the Warrior tokens enter as attacking creatures, they were never declared as attacking creatures. Abilities that trigger whenever a creature attacks won’t trigger when the tokens enter attacking."
+   ]
+  },
+  {
+   "name": "Reunion of the House",
+   "oracle_id": "ad5ff61f-79d6-4dd9-b4fe-17f7a0055c44",
+   "layout": "normal",
+   "mana_cost": "{5}{W}{W}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return any number of target creature cards with total power 10 or less from your graveyard to the battlefield. Exile Reunion of the House.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "15",
+   "set": "tdc",
+   "rulings": [
+    "Reunion of the House can return any combination of creature cards whose powers total 10 or less. For example, it could target ten 1/1 creature cards, two 5/5 creature cards, and so on. Regardless of what other creature cards you choose as targets, you can also choose any number of creature cards with power 0 as targets.",
+    "Use the power of the creature cards as they exist in your graveyard to determine whether they can be the targets of Reunion of the House. For example, a 0/0 creature card that will enter the battlefield as a copy of a 15/15 creature can be returned, as can five 0/0 creature cards that will each enter the battlefield with three +1/+1 counters on them.",
+    "If the power of the target creature cards changes while in your graveyard, most likely because one has a characteristic-defining ability that defines a * in its power, the total power of the creature cards may become greater than 10. If this happens, the entire selection of targets is illegal. In this case, Reunion of the House won’t resolve and none of its effects will happen. Nothing will be returned to the battlefield, and Reunion of the House will be put into its owner’s graveyard."
+   ]
+  },
+  {
+   "name": "Tempest Technique",
+   "oracle_id": "e86bd848-d712-47c5-a82b-8fd5ce1de76a",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies. Copies become tokens.)\nEnchant creature you control\nEnchanted creature gets +1/+1 for each enchantment you control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Storm",
+    "Enchant"
+   ],
+   "collector_number": "16",
+   "set": "tdc",
+   "rulings": [
+    "The copies are put directly onto the stack. They aren’t cast and won’t be counted by other spells with storm cast later in the turn.",
+    "Spells cast from zones other than a player’s hand and spells that were countered or otherwise failed to resolve are counted by the storm ability.",
+    "A copy of a spell can be countered like any other spell, but it must be countered individually. Countering a spell with storm won’t affect the copies.",
+    "The triggered ability that creates the copies can itself be countered by anything that can counter a triggered ability. If it is countered, no copies will be put onto the stack.",
+    "A resolving copy of a permanent spell becomes a token. That token isn’t “created” and won’t interact with abilities that care about tokens being created."
+   ]
+  },
+  {
+   "name": "Deceptive Frostkite",
+   "oracle_id": "96d7b761-b0b2-4ba3-98bd-3a9191ba544e",
+   "layout": "normal",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nYou may have this creature enter as a copy of a creature you control with power 4 or greater, except it's a Dragon in addition to its other types and it has flying.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "19",
+   "set": "tdc",
+   "rulings": [
+    "Deceptive Frostkite copies exactly what was printed on the original creature and nothing else, with the listed exceptions (unless that creature is copying something else or is a token; see below). It doesn’t copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If the copied creature is a token, Deceptive Frostkite copies the original characteristics of that token as stated by the effect that created the token, with the listed exceptions.",
+    "If the copied creature is copying something else, then Deceptive Frostkite enters as whatever that creature copied, with the listed exceptions.",
+    "Any enters abilities of the copied creature will trigger when Deceptive Frostkite enters. Any “as [this creature] enters” or “[this creature] enters with” abilities of the copied permanent will also work.",
+    "You can choose not to have Deceptive Frostkite enter as a copy of another creature. If you do, it will just be a 1/1 Dragon with flying."
+   ]
+  },
+  {
+   "name": "Transcendent Dragon",
+   "oracle_id": "e83a629e-2d74-48e2-ad4d-f390067cc51a",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flash\nFlying\nWhen this creature enters, if you cast it, counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard, then you may cast it without paying its mana cost.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "22",
+   "set": "tdc",
+   "rulings": [
+    "If you wish to cast the exiled card, you do so as part of the resolution of Transcendent Dragon’s last ability. You can’t wait to cast it later. Timing permissions based on the card’s type are ignored.",
+    "If you cast a spell “without paying its mana cost,” you can’t choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs those must be paid to cast the spell.",
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Voracious Bibliophile",
+   "oracle_id": "dcc323d6-ddae-4fd9-9c9e-466b07895d73",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying, vigilance\nWhenever you cast a spell with one or more targets, draw that many cards.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "23",
+   "set": "tdc",
+   "rulings": [
+    "An Aura spell requires a target, as defined by its enchant ability."
+   ]
+  }
+ ]
+}

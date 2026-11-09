@@ -1,0 +1,293 @@
+{
+ "batch": 26,
+ "set": [
+  "drc"
+ ],
+ "cards": [
+  {
+   "name": "Pia and Kiran Nalaar",
+   "oracle_id": "86084ed9-b8bb-4289-9579-6056194787bc",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "When Pia and Kiran Nalaar enters, create two 1/1 colorless Thopter artifact creature tokens with flying.\n{2}{R}, Sacrifice an artifact: Pia and Kiran Nalaar deals 2 damage to any target.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "105",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Thopter",
+     "type_line": "Token Artifact Creature — Thopter",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Bootleggers' Stash",
+   "oracle_id": "d1deba03-b26a-4a0d-b242-24bb3a3f9ea6",
+   "layout": "normal",
+   "mana_cost": "{5}{G}",
+   "cmc": 6.0,
+   "type_line": "Artifact",
+   "oracle_text": "Lands you control have \"{T}: Create a Treasure token.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "110",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Gleaming Overseer",
+   "oracle_id": "f7716dff-5de7-4b52-966e-72ee3adc8d9a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Zombie Wizard",
+   "oracle_text": "When this creature enters, amass Zombies 1. (Put a +1/+1 counter on an Army you control. It's also a Zombie. If you don't control an Army, create a 0/0 black Zombie Army creature token first.)\nZombie tokens you control have hexproof and menace.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Amass"
+   ],
+   "collector_number": "116",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Zombie Army",
+     "type_line": "Token Creature — Zombie Army",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Amass abilities are now written as \"amass [subtype] N.\" Previous cards with amass have received errata to say \"amass Zombies N.\"",
+    "To amass Zombies N, if you don't control an Army creature, create a 0/0 black Zombie Army creature token. Then you choose an Army creature you control and put N +1/+1 counters on it. If that Army isn't already a Zombie, it becomes a Zombie in addition to its other types.",
+    "Amass Orcs works the same way, except you create a 0/0 black Orc Army creature token if you don't control an Army. If the Army creature you chose isn't already an Orc, it becomes an Orc in addition to its other types. By combining cards with amass Orcs and amass Zombies, you can end up with an Orc Zombie Army.",
+    "In the rare case that you control multiple Army creatures (perhaps because you played a creature with changeling) while you amass Zombies, you choose which of your Army creatures to put the +1/+1 counters on. If that creature isn't a Zombie, it becomes a Zombie in addition to its other types.",
+    "If you don't control an Army, the Zombie Army token you create enters the battlefield as a 0/0 creature before receiving counters. Any abilities that trigger when a creature with a certain power enters the battlefield, such as that of Mentor of the Meek, will see the token enter as a 0/0 creature before it gets +1/+1 counters.",
+    "Some cards refer to the \"amassed Army.\" That means the Army creature you chose to receive counters, even if no counters were placed on it for some reason.",
+    "Some cards that cause you to amass Zombies also provide bonuses to \"Zombie tokens.\" These affect any token that happens to be a Zombie, not just a Zombie Army you've amassed."
+   ]
+  },
+  {
+   "name": "Lazotep Chancellor",
+   "oracle_id": "c3e67b8f-1c91-4a2f-b924-35bbaff4bab9",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Zombie Wizard",
+   "oracle_text": "Whenever you discard a card, you may pay {1}. If you do, amass Zombies 2. (Put two +1/+1 counters on an Army you control. It's also a Zombie. If you don't control an Army, create a 0/0 black Zombie Army creature token first.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Amass"
+   ],
+   "collector_number": "117",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Zombie Army",
+     "type_line": "Token Creature — Zombie Army",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Amass abilities are now written as \"amass [subtype] N.\" Previous cards with amass have received errata to say \"amass Zombies N.\"",
+    "To amass Zombies N, if you don't control an Army creature, create a 0/0 black Zombie Army creature token. Then you choose an Army creature you control and put N +1/+1 counters on it. If that Army isn't already a Zombie, it becomes a Zombie in addition to its other types.",
+    "Amass Orcs works the same way, except you create a 0/0 black Orc Army creature token if you don't control an Army. If the Army creature you chose isn't already an Orc, it becomes an Orc in addition to its other types. By combining cards with amass Orcs and amass Zombies, you can end up with an Orc Zombie Army.",
+    "In the rare case that you control multiple Army creatures (perhaps because you played a creature with changeling) while you amass Zombies, you choose which of your Army creatures to put the +1/+1 counters on. If that creature isn't a Zombie, it becomes a Zombie in addition to its other types.",
+    "If you don't control an Army, the Zombie Army token you create enters the battlefield as a 0/0 creature before receiving counters. Any abilities that trigger when a creature with a certain power enters the battlefield, such as that of Mentor of the Meek, will see the token enter as a 0/0 creature before it gets +1/+1 counters.",
+    "Some cards refer to the \"amassed Army.\" That means the Army creature you chose to receive counters, even if no counters were placed on it for some reason."
+   ]
+  },
+  {
+   "name": "Gate to the Afterlife",
+   "oracle_id": "5a682ec5-78e6-4238-b5c2-e94b7a8f8066",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card.\n{2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "130",
+   "set": "drc",
+   "related": [
+    {
+     "name": "God-Pharaoh's Gift",
+     "type_line": "Artifact",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If Gate to the Afterlife is put into a graveyard at the same time a nontoken creature you control dies, its first ability triggers for that creature.",
+    "There is no card named God-Pharaoh’s Gift in this set. During the upcoming Hour of Devastation set, you may prove worthy of receiving it."
+   ]
+  },
+  {
+   "name": "God-Pharaoh's Gift",
+   "oracle_id": "9f2d2fda-f098-4375-8fe9-63f929e3928c",
+   "layout": "normal",
+   "mana_cost": "{7}",
+   "cmc": 7.0,
+   "type_line": "Artifact",
+   "oracle_text": "At the beginning of combat on your turn, you may exile a creature card from your graveyard. If you do, create a token that's a copy of that card, except it's a 4/4 black Zombie. It gains haste until end of turn.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "131",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Gate to the Afterlife",
+     "type_line": "Artifact",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The ability of God-Pharaoh's Gift doesn't target the creature card you'll exile. You choose one as the ability resolves. No player may take actions between the time you choose a creature card to exile and the time you create the token.",
+    "The token copies exactly what was printed on the original card and nothing else, except the characteristics it specifically modifies. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "The token is a Zombie instead of its other types (unlike Zombies created by an eternalize ability) and is black instead of its other colors. Its power and toughness are 4/4. These are copiable values of the token that other effects may copy.",
+    "Unlike the tokens created by an eternalize ability, this token has the mana cost and thus mana value of the card it's copying.",
+    "If the card copied by the token had any \"when [this permanent] enters the battlefield\" abilities, then the token also has those abilities and will trigger them when it's created. Similarly, any \"as [this permanent] enters the battlefield\" or \"[this permanent] enters the battlefield with\" abilities that the token has copied will also work."
+   ]
+  },
+  {
+   "name": "Retrofitter Foundry",
+   "oracle_id": "aaadfe41-b2be-4183-b45e-a70e53a59d2e",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact",
+   "oracle_text": "{3}: Untap this artifact.\n{2}, {T}: Create a 1/1 colorless Servo artifact creature token.\n{1}, {T}, Sacrifice a Servo: Create a 1/1 colorless Thopter artifact creature token with flying.\n{T}, Sacrifice a Thopter: Create a 4/4 colorless Construct artifact creature token.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "136",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Thopter",
+     "type_line": "Token Artifact Creature — Thopter",
+     "component": "token"
+    },
+    {
+     "name": "Servo",
+     "type_line": "Token Artifact Creature — Servo",
+     "component": "token"
+    },
+    {
+     "name": "Construct",
+     "type_line": "Token Artifact Creature — Construct",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Desert of the Glorified",
+   "oracle_id": "190e664b-9875-4335-af46-353886ed18ff",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "This land enters tapped.\n{T}: Add {B}.\nCycling {1}{B} ({1}{B}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "149",
+   "set": "drc",
+   "rulings": [
+    "Desert is a land subtype with no special meaning. It doesn't grant the land an intrinsic mana ability. Other cards may care about which lands are Deserts."
+   ]
+  },
+  {
+   "name": "Desert of the Mindful",
+   "oracle_id": "508f9e7e-2ff7-4593-b0a9-0612d7b5d646",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "This land enters tapped.\n{T}: Add {U}.\nCycling {1}{U} ({1}{U}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "150",
+   "set": "drc",
+   "rulings": [
+    "Desert is a land subtype with no special meaning. It doesn’t grant the land an intrinsic mana ability. Other cards may care about which lands are Deserts."
+   ]
+  },
+  {
+   "name": "Desert of the True",
+   "oracle_id": "2672e0ca-8d5c-449f-8483-35d0e697fbb2",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "This land enters tapped.\n{T}: Add {W}.\nCycling {1}{W} ({1}{W}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "151",
+   "set": "drc",
+   "rulings": [
+    "Desert is a land subtype with no special meaning. It doesn't grant the land an intrinsic mana ability. Other cards may care about which lands are Deserts."
+   ]
+  }
+ ]
+}

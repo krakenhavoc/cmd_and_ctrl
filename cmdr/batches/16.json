@@ -1,0 +1,237 @@
+{
+ "batch": 16,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Arbor Adherent",
+   "oracle_id": "9640225a-8f31-495f-b9de-53ed348ff24b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dog Druid",
+   "oracle_text": "{T}: Add one mana of any color.\n{T}: Add X mana of any one color, where X is the greatest toughness among other creatures you control.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "82",
+   "set": "tdc"
+  },
+  {
+   "name": "Become the Avalanche",
+   "oracle_id": "e5fcbbaf-9431-4fa8-ac11-12ace1f2054c",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Draw a card for each creature you control with power 4 or greater. Then creatures you control get +X/+X until end of turn, where X is the number of cards in your hand.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "83",
+   "set": "tdc"
+  },
+  {
+   "name": "Broodcaller Scourge",
+   "oracle_id": "16aa790a-8f7c-401c-9d43-dc9440a6f585",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhenever one or more Dragons you control deal combat damage to a player, you may put a permanent card with mana value less than or equal to that damage from your hand onto the battlefield.",
+   "power": "5",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "84",
+   "set": "tdc",
+   "rulings": [
+    "If a card in your hand has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Rampart Architect",
+   "oracle_id": "b0edba6f-8f54-4dc4-b952-20b57a797d60",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elephant Advisor",
+   "oracle_text": "Whenever this creature enters or attacks, create a 1/3 white Wall creature token with defender.\nWhenever a creature you control with defender dies, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "87",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Wall",
+     "type_line": "Token Creature — Wall",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Tree of Redemption",
+   "oracle_id": "1372dd15-cdb9-470c-b3e8-3423697e46e8",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Plant",
+   "oracle_text": "Defender\n{T}: Exchange your life total with this creature's toughness.",
+   "power": "0",
+   "toughness": "13",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "97",
+   "set": "tdc",
+   "rulings": [
+    "If Tree of Redemption isn't on the battlefield when its activated ability resolves, the exchange can't happen and the ability will have no effect.",
+    "When its activated ability resolves, Tree of Redemption's toughness will become your former life total and you will gain or lose an amount of life necessary so that your life total equals Tree of Redemption's former toughness. Other effects that interact with life gain or life loss will interact with this effect accordingly.",
+    "Any toughness-modifying effects, counters, Auras, or Equipment will apply after its toughness is set to your former life total. For example, say Tree of Redemption is enchanted with Lunarch Mantle (which makes it 2/15) and your life total is 7. After the exchange, Tree of Redemption would be a 2/9 creature (its toughness became 7, which was then modified by Lunarch Mantle) and your life total would be 15."
+   ]
+  },
+  {
+   "name": "Shadow Summoning",
+   "oracle_id": "b9225046-03aa-4729-89fa-32c049407229",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create two tapped 1/1 white Spirit creature tokens with flying.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "101",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Temple of the Dragon Queen",
+   "oracle_id": "169a26d2-7bc9-4403-9c92-98d4bd5ca4f3",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "As this land enters, you may reveal a Dragon card from your hand. This land enters tapped unless you revealed a Dragon card this way or you control a Dragon.\nAs this land enters, choose a color.\n{T}: Add one mana of the chosen color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "104",
+   "set": "tdc",
+   "rulings": [
+    "A Dragon card is a card with the creature type Dragon in its type line. Similarly, a creature on the battlefield is a Dragon if it has the Dragon creature type. A card that has \"Dragon\" in the name (such as Temple of the Dragon Queen) isn't a Dragon card unless it also has the Dragon creature type."
+   ]
+  },
+  {
+   "name": "Baldin, Century Herdmaster",
+   "oracle_id": "14493624-fdc7-4630-9b1e-f35668651108",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "During your turn, each creature assigns combat damage equal to its toughness rather than its power.\nWhenever Baldin attacks, up to one hundred target creatures each get +0/+X until end of turn, where X is the number of cards in your hand.",
+   "power": "0",
+   "toughness": "7",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "110",
+   "set": "tdc",
+   "rulings": [
+    "For the purposes of deck construction, format legality, and all rules, abilities, and effects that refer to a card’s name, this card’s name is the same as that of E. Honda, Sumo Champion."
+   ]
+  },
+  {
+   "name": "Commander's Insignia",
+   "oracle_id": "979a5d92-1c67-4fa4-b932-638b0cc1adcd",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control get +1/+1 for each time you've cast your commander from the command zone this game.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "111",
+   "set": "tdc",
+   "rulings": [
+    "Commander’s Insignia counts each time you’ve cast your commander, even the times it was countered or when your commander spell is still on the stack.",
+    "Certain cards in other sets with the partner keyword may allow you to have more than one commander. If you do, Commander’s Insignia counts the total number of times you’ve cast each of your commanders."
+   ]
+  },
+  {
+   "name": "Goldnight Commander",
+   "oracle_id": "3dc51dfc-7a60-41bf-b944-6afad6b06c22",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Cleric Soldier",
+   "oracle_text": "Whenever another creature you control enters, creatures you control get +1/+1 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "117",
+   "set": "tdc",
+   "rulings": [
+    "The creature that entered will also get +1/+1 until end of turn if it's still on the battlefield when the ability resolves."
+   ]
+  }
+ ]
+}

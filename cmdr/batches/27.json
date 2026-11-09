@@ -1,0 +1,62 @@
+{
+ "batch": 27,
+ "set": [
+  "drc"
+ ],
+ "cards": [
+  {
+   "name": "Slagwoods Bridge",
+   "oracle_id": "e040a8e6-b90c-42d1-a1b1-771d954c61ab",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Artifact Land",
+   "oracle_text": "This land enters tapped.\nIndestructible\n{T}: Add {R} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "171",
+   "set": "drc"
+  },
+  {
+   "name": "Tanglepool Bridge",
+   "oracle_id": "29cd8a7c-108a-43d1-af63-f603a27c24f2",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Artifact Land",
+   "oracle_text": "This land enters tapped.\nIndestructible\n{T}: Add {G} or {U}.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "175",
+   "set": "drc"
+  },
+  {
+   "name": "Unholy Grotto",
+   "oracle_id": "c28211c6-a5ee-40c3-bb6a-da3e7e73fd95",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{B}, {T}: Put target Zombie card from your graveyard on top of your library.",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "182",
+   "set": "drc"
+  }
+ ]
+}

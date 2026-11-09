@@ -1,0 +1,317 @@
+{
+ "batch": 25,
+ "set": [
+  "drc"
+ ],
+ "cards": [
+  {
+   "name": "Binding Mummy",
+   "oracle_id": "5adc9d0d-3393-4d91-be85-1f9dd344698b",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Zombie",
+   "oracle_text": "Whenever another Zombie you control enters, you may tap target artifact or creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "63",
+   "set": "drc"
+  },
+  {
+   "name": "Cast Out",
+   "oracle_id": "f90b00f6-36e0-4988-9409-57297483a952",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Flash\nWhen this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield.\nCycling {W} ({W}, Discard this card: Draw a card.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flash",
+    "Cycling"
+   ],
+   "collector_number": "64",
+   "set": "drc",
+   "rulings": [
+    "If Cast Out leaves the battlefield before its triggered ability resolves, the target permanent won't be exiled.",
+    "Auras attached to the exiled permanent will be put into their owners' graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield.",
+    "The exiled card returns to the battlefield immediately after Cast Out leaves the battlefield. Nothing happens between the two events, including state-based actions.",
+    "In a multiplayer game, if Cast Out's owner leaves the game, the exiled card will return to the battlefield. Because the one-shot effect that returns the card isn't an ability that goes on the stack, it won't cease to exist along with the leaving player's spells and abilities on the stack."
+   ]
+  },
+  {
+   "name": "Timeless Dragon",
+   "oracle_id": "a5ae93e9-0385-47fd-9d8f-306e9a6b7fe6",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nPlainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand, then shuffle.)\nEternalize {2}{W}{W} ({2}{W}{W}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Dragon with no mana cost. Eternalize only as a sorcery.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Plainscycling",
+    "Landcycling",
+    "Typecycling",
+    "Cycling",
+    "Eternalize"
+   ],
+   "collector_number": "67",
+   "set": "drc",
+   "rulings": [
+    "If a creature card with eternalize is put into your graveyard during your main phase, you'll have priority immediately afterward. You can activate its eternalize ability before any player can try to exile it, if it's legal for you to do so.",
+    "Once you've activated an eternalize ability, the card is immediately exiled. Opponents can't try to stop the ability by exiling the card.",
+    "The token copies exactly what was printed on the original card and nothing else, except the characteristics specifically modified by eternalize. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "The token is a Zombie in addition to its other types and is black instead of its other colors. Its base power and toughness are 4/4. It has no mana cost, and thus its mana value is 0. These are copiable values of the token that other effects may copy.",
+    "Unlike the normal cycling ability, typecycling doesn't allow you to draw a card. Rather, it lets you search your library for a card with the type or types indicated by the ability name. For example, a card with basic landcycling lets you search for a basic land card, and a card with Wizardcycling lets you search for a Wizard card.",
+    "Typecycling is a form of cycling. Any ability that triggers on a card being cycled also triggers on a card being typecycled. Any ability that stops a cycling ability from being activated also stops a typecycling ability from being activated."
+   ]
+  },
+  {
+   "name": "Champion of Wits",
+   "oracle_id": "3fd8ba0c-75ec-43ea-8706-f71e6cf1d236",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Snake Wizard",
+   "oracle_text": "When this creature enters, you may draw cards equal to its power. If you do, discard two cards.\nEternalize {5}{U}{U} ({5}{U}{U}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Snake Wizard with no mana cost. Eternalize only as a sorcery.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Eternalize"
+   ],
+   "collector_number": "72",
+   "set": "drc",
+   "rulings": [
+    "Use Champion of Wits's power as the first ability resolves to determine if you want to use the ability and how many cards you draw if you do. If you use the ability, you discard two cards regardless of how many cards you draw. If Champion of Wits leaves the battlefield before that ability resolves, use its last known power.",
+    "For each card with eternalize, a corresponding game play supplement token can be found in some Hour of Devastation booster packs. These supplements are not required to play with cards with eternalize; you can use the same items to represent an eternalized token as you would any other token.",
+    "If a creature card with eternalize is put into your graveyard during your main phase, you'll have priority immediately afterward. You can activate its eternalize ability before any player can try to exile it, such as with Crook of Condemnation, if it's legal for you to do so.",
+    "Once you've activated an eternalize ability, the card is immediately exiled. Opponents can't try to stop the ability by exiling the card with an effect such as that of Crook of Condemnation.",
+    "The token copies exactly what was printed on the original card and nothing else, except the characteristics specifically modified by eternalize. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "The token is a Zombie in addition to its other types and is black instead of its other colors. Its base power and toughness are 4/4. It has no mana cost, and thus its mana value is 0. These are copiable values of the token that other effects may copy.",
+    "If the card copied by the token had any “when [this permanent] enters the battlefield” abilities, then the token also has those abilities and will trigger them when it's created. Similarly, any “as [this permanent] enters the battlefield” or “[this permanent] enters the battlefield with” abilities that the token has copied will also work."
+   ]
+  },
+  {
+   "name": "Vizier of Many Faces",
+   "oracle_id": "55bceb83-bbba-477f-98ce-6e0a80b91080",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Shapeshifter Cleric",
+   "oracle_text": "You may have this creature enter as a copy of any creature on the battlefield, except if this creature was embalmed, the token has no mana cost, it's white, and it's a Zombie in addition to its other types.\nEmbalm {3}{U}{U}",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Embalm"
+   ],
+   "collector_number": "84",
+   "set": "drc",
+   "rulings": [
+    "If a spell or ability puts a creature card with embalm into your graveyard during your main phase, you'll have priority immediately after that spell or ability resolves. You can activate the creature card's embalm ability before any player can exile it with an effect, such as that of Crook of Condemnation, if it's legal for you to do so.",
+    "Once you've activated an embalm ability, the card is immediately exiled. Opponents can't try to stop the ability by exiling the card with an effect such as that of Crook of Condemnation.",
+    "If the chosen creature has {X} in its mana cost, X is considered to be 0.",
+    "If the chosen creature is copying something else (for example, if the chosen creature is another Vizier of Many Faces), then Vizier of Many Faces enters the battlefield as whatever the chosen creature copied.",
+    "If the chosen creature is a token, Vizier of Many Faces copies the original characteristics of that token as stated by the effect that created the token. Vizier of Many Faces is not a token in this case unless it's embalmed.",
+    "Any enters-the-battlefield abilities of the copied creature will trigger when Vizier of Many Faces enters the battlefield. Any \"as [this creature] enters the battlefield\" or \"[this creature] enters the battlefield with\" abilities of the chosen creature will also work.",
+    "Vizier of Many Faces copies exactly what was printed on the original creature (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.",
+    "For each card with embalm, a corresponding game play supplement token can be found in some Amonkhet booster packs. These supplements are not required to play with cards with embalm; you can use the same items to represent an embalmed token as you would any other token.",
+    "The token copies exactly what was printed on the original card and nothing else. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "The token is a Zombie in addition to its other types and is white instead of its other colors. It has no mana cost, and thus its mana value is 0. These are copiable values of the token that other effects may copy.",
+    "If the card copied by the token had any \"when [this permanent] enters the battlefield\" abilities, then the token also has those abilities and will trigger them when it's created. Similarly, any \"as [this permanent] enters the battlefield\" or \"[this permanent] enters the battlefield with\" abilities that the token has copied will also work.",
+    "If Vizier of Many Faces somehow enters the battlefield at the same time as another creature, Vizier of Many Faces can't become a copy of that creature. You may choose only a creature that's already on the battlefield.",
+    "The characteristics Vizier of Many Faces gains as part of its copy effect are copiable values that other effects may copy."
+   ]
+  },
+  {
+   "name": "Whirler Rogue",
+   "oracle_id": "7060f2c8-fca0-4b7a-bddf-37682f434596",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Rogue Artificer",
+   "oracle_text": "When this creature enters, create two 1/1 colorless Thopter artifact creature tokens with flying.\nTap two untapped artifacts you control: Target creature can't be blocked this turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "85",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Thopter",
+     "type_line": "Token Artifact Creature — Thopter",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You may tap any two untapped artifacts you control, including artifact creatures that haven't been under your control continuously since the beginning of your most recent turn.",
+    "Activating the second ability of Whirler Rogue after a creature has become blocked won't cause it to become unblocked."
+   ]
+  },
+  {
+   "name": "Lord of the Accursed",
+   "oracle_id": "3f372107-6c52-4f1f-8bf0-7b3fa21b2cae",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Zombie",
+   "oracle_text": "Other Zombies you control get +1/+1.\n{1}{B}, {T}: All Zombies gain menace until end of turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "95",
+   "set": "drc"
+  },
+  {
+   "name": "Never // Return",
+   "oracle_id": "bf276236-18a6-4a48-b47d-5227832d26e6",
+   "layout": "split",
+   "mana_cost": "{1}{B}{B} // {3}{B}",
+   "cmc": 7.0,
+   "type_line": "Sorcery // Sorcery",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Aftermath"
+   ],
+   "collector_number": "96",
+   "set": "drc",
+   "card_faces": [
+    {
+     "name": "Never",
+     "mana_cost": "{1}{B}{B}",
+     "type_line": "Sorcery",
+     "oracle_text": "Destroy target creature or planeswalker."
+    },
+    {
+     "name": "Return",
+     "mana_cost": "{3}{B}",
+     "type_line": "Sorcery",
+     "oracle_text": "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nExile target card from a graveyard. Create a 2/2 black Zombie creature token."
+    }
+   ],
+   "related": [
+    {
+     "name": "Zombie",
+     "type_line": "Token Creature — Zombie",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Once you've started to cast a spell with aftermath from your graveyard, the card is immediately moved to the stack. Opponents can't try to stop the ability by exiling the card with an effect such as that of Crook of Condemnation.",
+    "All split cards have two card faces on a single card, and you put a split card onto the stack with only the half you're casting. The characteristics of the half of the card you didn't cast are ignored while the spell is on the stack. For example, if an effect prevents you from casting green spells, you can cast Destined of Destined // Lead, but not Lead.",
+    "Each split card is a single card. For example, if you discard one, you've discarded one card, not two. If an effect counts the number of instant and sorcery cards in your graveyard, Destined // Lead counts once, not twice.",
+    "Each split card has two names. If an effect instructs you to choose a card name, you may choose one, but not both.",
+    "While not on the stack, the characteristics of a split card are the combination of its two halves. For example, Destined // Lead is a green and black card, it is both an instant card and a sorcery card, and its mana value is 6. This means that if an effect allows you to cast a card with mana value 2 from your hand, you can't cast Destined. This is a change from the previous rules for split cards.",
+    "Split cards with aftermath have a new frame treatment—the half you can cast from your hand is oriented the same as other cards you'd cast from your hand, while the half you can cast from your graveyard is a traditional split card half. This frame treatment is for your convenience and has no rules significance.",
+    "If another effect allows you to cast a split card with aftermath from any zone other than a graveyard, you can't cast the half with aftermath.",
+    "If another effect allows you to cast a split card with aftermath from a graveyard, you may cast either half. If you cast the half that has aftermath, you'll exile the card if it would leave the stack.",
+    "A spell with aftermath cast from a graveyard will always be exiled afterward, whether it resolves, it's countered, or it leaves the stack in some other way.",
+    "If you cast the first half of a split card with aftermath during your turn, you'll have priority immediately after it resolves. You can cast the half with aftermath from your graveyard before any player can take any other action if it's legal for you to do so."
+   ]
+  },
+  {
+   "name": "Rot Hulk",
+   "oracle_id": "36117e99-a2bc-46f9-8e17-bd2e2a9c31f4",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Creature — Zombie",
+   "oracle_text": "Menace\nWhen this creature enters, return up to X target Zombie cards from your graveyard to the battlefield, where X is the number of opponents you have.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "98",
+   "set": "drc"
+  },
+  {
+   "name": "Twisted Abomination",
+   "oracle_id": "139af10d-a3e5-4ade-b876-87324e6c8017",
+   "layout": "normal",
+   "mana_cost": "{5}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Zombie Mutant",
+   "oracle_text": "{B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)\nSwampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Heal",
+    "Landcycling",
+    "Regenerate",
+    "Typecycling",
+    "Cycling",
+    "Swampcycling"
+   ],
+   "collector_number": "99",
+   "set": "drc",
+   "rulings": [
+    "Unlike the normal cycling ability, Swampcycling doesn't allow you to draw a card. Instead, it lets you search your library for a Swamp card. After you find a Swamp card in your library, you reveal it, put it into your hand, then shuffle your library.",
+    "Swampcycling is a form of cycling. Any ability that triggers on a card being cycled also triggers on Swampcycling this card. Any ability that stops a cycling ability from being activated also stops Swampcycling from being activated.",
+    "Swampcycling is an activated ability. Effects that interact with activated abilities (such as Stifle or Rings of Brighthearth) will interact with Swampcycling. Effects that interact with spells (such as Remove Soul or Faerie Tauntings) will not.",
+    "You can choose to find any card with the Swamp land type, including nonbasic lands. You can also choose not to find a card, even if there is a Swamp card in your library."
+   ]
+  }
+ ]
+}

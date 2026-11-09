@@ -1,0 +1,258 @@
+{
+ "batch": 19,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Wall of Limbs",
+   "oracle_id": "1aabb6bd-8061-42a5-9a71-f9eac718bd22",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Zombie Wall",
+   "oracle_text": "Defender (This creature can't attack.)\nWhenever you gain life, put a +1/+1 counter on this creature.\n{5}{B}{B}, Sacrifice this creature: Target player loses X life, where X is this creature's power.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "200",
+   "set": "tdc",
+   "rulings": [
+    "The ability triggers just once for each life-gaining event, whether it’s 1 life from Soulmender or 8 life from Meditation Puzzle.",
+    "Use Wall of Limbs’s power as it last existed on the battlefield, including any +1/+1 counters it had, to determine the value of X.",
+    "If you gain life at the same time Wall of Limbs is dealt lethal damage (probably because you control a blocking creature with lifelink), Wall of Limbs’s triggered ability will trigger, but Wall of Limbs will be destroyed before the ability resolves."
+   ]
+  },
+  {
+   "name": "Electrodominance",
+   "oracle_id": "4a59d86e-405d-4c70-b2a5-c64f5cecfd9e",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Electrodominance deals X damage to any target. You may cast a spell with mana value X or less from your hand without paying its mana cost.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "212",
+   "set": "tdc",
+   "rulings": [
+    "If the target is illegal as Electrodominance tries to resolve, it won't resolve and none of its effects will happen. You won't get to cast a spell from your hand.",
+    "Effects that allow you to cast a spell don't allow you to play a land.",
+    "If the target is dealt lethal damage this way, it will still be on the battlefield while you cast a spell from your hand. It won't die until after Electrodominance is finished resolving. If any of its abilities trigger while you cast that spell, those abilities will trigger but won't resolve until after the target has died.",
+    "You cast the spell during the resolution of Electrodominance. Ignore timing restrictions based on the spell's type.",
+    "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs, such as that of Bankrupt in Blood, those must be paid to cast the card.",
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Gadrak, the Crown-Scourge",
+   "oracle_id": "42d7ec93-0943-43e2-9b65-b7edc3349410",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Dragon",
+   "oracle_text": "Flying\nGadrak can't attack unless you control four or more artifacts.\nAt the beginning of your end step, create a Treasure token for each nontoken creature that died this turn. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Treasure"
+   ],
+   "collector_number": "214",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Once Gadrak has attacked, it will remain an attacking creature even if you no longer control four or more artifacts.",
+    "Gadrak's last ability counts creatures that died during the entire turn, even ones that died before Gadrak entered the battlefield."
+   ]
+  },
+  {
+   "name": "Grenzo, Havoc Raiser",
+   "oracle_id": "80788290-1569-4c7f-b263-b4da7b31a9d1",
+   "layout": "normal",
+   "mana_cost": "{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Goblin Rogue",
+   "oracle_text": "Whenever a creature you control deals combat damage to a player, choose one —\n• Goad target creature that player controls.\n• Exile the top card of that player's library. Until end of turn, you may cast that card and you may spend mana as though it were mana of any color to cast that spell.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Goad"
+   ],
+   "collector_number": "216",
+   "set": "tdc",
+   "rulings": [
+    "If a creature you control has been goaded by multiple opponents, it must attack one of your opponents that hasn't goaded it, as that fulfills the maximum number of goad requirements. If a creature you control has been goaded by each of your opponents, the creature must attack an opponent (rather than a planeswalker or battle), but you choose which opponent it attacks.",
+    "If, during a player's declare attackers step, a creature that player controls that's been goaded is tapped, is affected by a spell or ability that says it can't attack, or hasn't been under that player's control continuously since the turn began (and doesn't have haste), then it doesn't attack. If there's a cost associated with having a creature attack a player, its controller isn't forced to pay that cost, so it doesn't have to attack that player.",
+    "If the creature doesn't meet any of the above exceptions and can attack, it must attack a player other than the controller of the spell or ability that goaded it if able. If the creature can't attack any of those players but could otherwise attack, it must attack a planeswalker an opponent controls, a battle an opponent controls, or a player who goaded it.",
+    "Being goaded isn't an ability the creature has. Once it's been goaded, it must attack as detailed above even if it loses all abilities.",
+    "Attacking with a goaded creature doesn't cause it to stop being goaded. If there is an additional combat phase that turn, or if another player gains control of it before it stops being goaded, it must attack again if able.",
+    "If you exile a land card this way, you can't play it.",
+    "Casting the exiled card follows the normal rules for casting that card. You must pay its costs, and you must follow all applicable timing rules. For example, if you exile a creature card this way, you must wait until your main phase to cast it.",
+    "If you don't cast the card, it will remain in exile.",
+    "The card exiled by the second mode is exiled face up."
+   ]
+  },
+  {
+   "name": "Hellkite Courser",
+   "oracle_id": "c5abd58f-3e00-447b-a978-64cb88ad501b",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhen this creature enters, you may put a commander you own from the command zone onto the battlefield. It gains haste. Return it to the command zone at the beginning of the next end step.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "218",
+   "set": "tdc",
+   "rulings": [
+    "Putting your commander onto the battlefield this way isn't the same as casting that commander. The \"commander tax\" won't increase.",
+    "You'll return the commander to the command zone only if it's still on the battlefield as the delayed triggered ability resolves. If it's in another zone, it will stay where it is."
+   ]
+  },
+  {
+   "name": "Nogi, Draco-Zealot",
+   "oracle_id": "3d04aa8c-7bff-42c6-bed3-0b18d2cb1529",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Kobold Shaman",
+   "oracle_text": "Dragon spells you cast cost {1} less to cast.\nWhenever Nogi attacks, if you control three or more Dragons, until end of turn, Nogi becomes a Dragon with base power and toughness 5/5 and gains flying.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "226",
+   "set": "tdc"
+  },
+  {
+   "name": "Ogre Battledriver",
+   "oracle_id": "c834c4b5-c122-4c63-81c7-884ca4c0dc3b",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Ogre Warrior",
+   "oracle_text": "Whenever another creature you control enters, that creature gets +2/+0 and gains haste until end of turn. (It can attack and {T} this turn.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "227",
+   "set": "tdc"
+  },
+  {
+   "name": "Opportunistic Dragon",
+   "oracle_id": "46f46bdd-52b8-436f-9a39-f5360a84b2cd",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhen this creature enters, choose target Human or artifact an opponent controls. For as long as this creature remains on the battlefield, gain control of that permanent, it loses all abilities, and it can't attack or block.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "228",
+   "set": "tdc",
+   "rulings": [
+    "If Opportunistic Dragon leaves the battlefield before its triggered ability resolves, your opponent keeps control of their Human or artifact, it doesn't lose any abilities, and it can still attack or block as normal. You don't gain control of it at all.",
+    "Opportunistic Dragon's effect doesn't expire if another player gains control of it or if it loses all abilities. The effect only expires once it's no longer on the battlefield.",
+    "If another player gains control of the permanent Opportunistic Dragon has kidnapped, that permanent doesn't regain its abilities and still can't attack or block.",
+    "If the stolen permanent normally has any abilities that would trigger when Opportunistic Dragon dies, those abilities won't trigger."
+   ]
+  },
+  {
+   "name": "Spit Flame",
+   "oracle_id": "f63278e0-3c67-421d-87ce-67725e5e74df",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Spit Flame deals 4 damage to target creature.\nWhenever a Dragon you control enters, you may pay {R}. If you do, return this card from your graveyard to your hand.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "234",
+   "set": "tdc"
+  },
+  {
+   "name": "Storm's Wrath",
+   "oracle_id": "eeb6f5eb-0e16-468e-9dfe-6ec8d8172f86",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Storm's Wrath deals 4 damage to each creature and each planeswalker.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "236",
+   "set": "tdc"
+  }
+ ]
+}

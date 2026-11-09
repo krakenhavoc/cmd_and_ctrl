@@ -1,0 +1,237 @@
+{
+ "batch": 11,
+ "set": [
+  "eoc"
+ ],
+ "cards": [
+  {
+   "name": "Centaur Vinecrasher",
+   "oracle_id": "90629e9c-83c0-4eca-b4ed-d0494ded6704",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Plant Centaur",
+   "oracle_text": "Trample\nThis creature enters with a number of +1/+1 counters on it equal to the number of land cards in all graveyards.\nWhenever a land card is put into a graveyard from anywhere, you may pay {G}{G}. If you do, return this card from your graveyard to your hand.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "94",
+   "set": "eoc",
+   "rulings": [
+    "If Centaur Vinecrasher and a land card are put into your graveyard at the same time, Centaur Vinecrasher's last ability will trigger. It doesn't matter what zone Centaur Vinecrasher was previously in."
+   ]
+  },
+  {
+   "name": "Groundskeeper",
+   "oracle_id": "f2c19fba-9b06-461f-bb5e-e827ba41204d",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "{1}{G}: Return target basic land card from your graveyard to your hand.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "97",
+   "set": "eoc"
+  },
+  {
+   "name": "Loamcrafter Faun",
+   "oracle_id": "2fbfdbcc-5f89-47b2-bd8d-49c797e0624f",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Satyr Druid",
+   "oracle_text": "When this creature enters, you may discard one or more land cards. When you do, return up to that many target nonland permanent cards from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "99",
+   "set": "eoc",
+   "rulings": [
+    "You don't choose targets for Loamcrafter Faun's ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you discard one or more land cards this way. You choose targets for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "World Breaker",
+   "oracle_id": "deeb7e22-b207-42de-b9d4-f790403d52a9",
+   "layout": "normal",
+   "mana_cost": "{6}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Eldrazi",
+   "oracle_text": "Devoid (This card has no color.)\nWhen you cast this spell, exile target artifact, enchantment, or land.\nReach\n{2}{C}, Sacrifice a land: Return this card from your graveyard to your hand. ({C} represents colorless mana.)",
+   "power": "5",
+   "toughness": "7",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Devoid"
+   ],
+   "collector_number": "112",
+   "set": "eoc",
+   "rulings": [
+    "You can activate the last ability only if World Breaker is in your graveyard."
+   ]
+  },
+  {
+   "name": "Enthusiastic Mechanaut",
+   "oracle_id": "c9722086-23e8-43dc-8a8c-541ff6962318",
+   "layout": "normal",
+   "mana_cost": "{U}{R}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Goblin Artificer",
+   "oracle_text": "Flying\nArtifact spells you cast cost {1} less to cast.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "114",
+   "set": "eoc"
+  },
+  {
+   "name": "Soul of Windgrace",
+   "oracle_id": "2d73a3bd-f052-4f48-9a72-12db03e27249",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Cat Avatar",
+   "oracle_text": "Whenever Soul of Windgrace enters or attacks, you may put a land card from a graveyard onto the battlefield tapped under your control.\n{G}, Discard a land card: You gain 3 life.\n{1}{R}, Discard a land card: Draw a card.\n{2}{B}, Discard a land card: Soul of Windgrace gains indestructible until end of turn. Tap it.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "126",
+   "set": "eoc",
+   "rulings": [
+    "If Soul of Windgrace enters the battlefield attacking, its first ability triggers only once that combat.",
+    "You choose the land card as the triggered ability resolves. Once the ability has begun to resolve, no player may take actions until it finishes resolving. Notably, they can't respond to the land you choose by removing it from your graveyard.",
+    "You may activate Soul of Windgrace's last ability even if it's already tapped. It will still gain indestructible."
+   ]
+  },
+  {
+   "name": "Uurg, Spawn of Turg",
+   "oracle_id": "0191a93a-f304-4c20-9af4-7cdea82c07cf",
+   "layout": "normal",
+   "mana_cost": "{B}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Frog Beast",
+   "oracle_text": "Uurg's power is equal to the number of land cards in your graveyard.\nAt the beginning of your upkeep, surveil 1. (Look at the top card of your library. You may put that card into your graveyard.)\n{B}{G}, Sacrifice a land: You gain 2 life.",
+   "power": "*",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "127",
+   "set": "eoc",
+   "rulings": [
+    "The ability that defines Uurg, Spawn of Turg's power works in all zones, not just on the battlefield.",
+    "If you don't put the card into your graveyard, it stays on top of your library."
+   ]
+  },
+  {
+   "name": "Wake the Past",
+   "oracle_id": "34143cfa-aa48-481c-af42-1240af174b80",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{W}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return all artifact cards from your graveyard to the battlefield. They gain haste until end of turn.",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "128",
+   "set": "eoc"
+  },
+  {
+   "name": "Worldsoul's Rage",
+   "oracle_id": "3b6ef144-bb98-4686-9718-204f1c3cf020",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Worldsoul's Rage deals X damage to any target. Put up to X land cards from your hand and/or graveyard onto the battlefield tapped.",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "130",
+   "set": "eoc"
+  },
+  {
+   "name": "Coretapper",
+   "oracle_id": "66e37011-f3d2-41ed-8e09-7bba9464e8c3",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Myr",
+   "oracle_text": "{T}: Put a charge counter on target artifact.\nSacrifice this creature: Put two charge counters on target artifact.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "132",
+   "set": "eoc"
+  }
+ ]
+}

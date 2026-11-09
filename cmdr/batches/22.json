@@ -1,0 +1,302 @@
+{
+ "batch": 22,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Grisly Salvage",
+   "oracle_id": "a89ebf63-63c9-42cd-98b4-ec852cd9b0a8",
+   "layout": "normal",
+   "mana_cost": "{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Reveal the top five cards of your library. You may put a creature or land card from among them into your hand. Put the rest into your graveyard.",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "290",
+   "set": "tdc"
+  },
+  {
+   "name": "Harbinger of the Hunt",
+   "oracle_id": "3256029f-6558-4fcc-9fa1-74ceba3e5c92",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\n{2}{R}: This creature deals 1 damage to each creature without flying.\n{2}{G}: This creature deals 1 damage to each other creature with flying.",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "291",
+   "set": "tdc",
+   "rulings": [
+    "If Harbinger of the Hunt loses flying, its first activated ability will cause it to deal damage to itself."
+   ]
+  },
+  {
+   "name": "Kaya, Geist Hunter",
+   "oracle_id": "e0edb2fc-2533-407c-85e5-4337f4233f05",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Planeswalker — Kaya",
+   "oracle_text": "+1: Creatures you control gain deathtouch until end of turn. Put a +1/+1 counter on up to one target creature token you control.\n−2: Until end of turn, if one or more tokens would be created under your control, twice that many of those tokens are created instead.\n−6: Exile all cards from all graveyards, then create a 1/1 white Spirit creature token with flying for each card exiled this way.",
+   "loyalty": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "294",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The tokens that Kaya's second ability creates are exact copies of the tokens that were being created in the first place."
+   ]
+  },
+  {
+   "name": "Meren of Clan Nel Toth",
+   "oracle_id": "0310dfdb-0498-488d-9f1a-279f8239e024",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Shaman",
+   "oracle_text": "Whenever another creature you control dies, you get an experience counter.\nAt the beginning of your end step, choose target creature card in your graveyard. If that card's mana value is less than or equal to the number of experience counters you have, return it to the battlefield. Otherwise, put it into your hand.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "297",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Experience",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If Meren of Clan Nel Toth leaves the battlefield at the same time as other creatures you control die, its first ability will trigger for each of those creatures.",
+    "You can’t choose to put the creature card into your hand if its mana value is less than or equal to the number of experience counters you have as the ability resolves.",
+    "If a creature card in your graveyard has {X} in its mana cost, X is 0.",
+    "Experience counters are the second kind of counters a player can have, joining poison.",
+    "All experience counters are identical, no matter how you got them. For example, the last ability will count experience counters that you got from the first ability, from another ability, from proliferating, and so on.",
+    "Each game pack includes a card labeled “Experience” with the suggestion “Place your experience counters here.” This card isn’t required for play. It’s simply a convenient spot to put your experience counters, which can be represented with dice, glass beads, or other small items."
+   ]
+  },
+  {
+   "name": "Sarkhan, Soul Aflame",
+   "oracle_id": "bbcae463-ba05-4cfe-9c25-13f2e64698c7",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Shaman",
+   "oracle_text": "Dragon spells you cast cost {1} less to cast.\nWhenever a Dragon you control enters, you may have Sarkhan become a copy of it until end of turn, except its name is Sarkhan, Soul Aflame and it's legendary in addition to its other types.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "301",
+   "set": "tdc",
+   "rulings": [
+    "Sarkhan's first ability doesn't change the mana cost or mana value of any Dragon spell. It changes only the total cost you pay.",
+    "That ability can't reduce the amount of colored mana you pay for a Dragon spell. It reduces only the generic component of that cost.",
+    "Sarkhan copies exactly what was printed on the original Dragon and nothing else, with the noted exceptions (unless that creature is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on in response to Sarkhan's ability.",
+    "If the copied Dragon has {X} in its mana cost, X is 0.",
+    "If the copied Dragon is a token, Sarkhan copies the original characteristics of that token as stated by the effect that created that token, with the noted exceptions.",
+    "In some unusual cases, the Dragon that entered the battlefield will be copying something else by the time Sarkhan's ability resolves. In such a case, Sarkhan will copy whatever the Dragon is copying, with the noted exceptions.",
+    "If the Dragon that enters the battlefield is legendary and you have Sarkhan copy it, the two Dragons will have different names (unless the entering Dragon is somehow named Sarkhan, Soul Aflame). The \"legend rule\" won't apply."
+   ]
+  },
+  {
+   "name": "Sidar Kondo of Jamuraa",
+   "oracle_id": "331b6834-6bb4-40fa-b80b-22d67b34734f",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Knight",
+   "oracle_text": "Flanking (Whenever a creature without flanking blocks this creature, the blocking creature gets -1/-1 until end of turn.)\nCreatures your opponents control without flying or reach can't block creatures with power 2 or less.\nPartner (You can have two commanders if both have partner.)",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Flanking",
+    "Partner"
+   ],
+   "collector_number": "303",
+   "set": "tdc",
+   "rulings": [
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens.",
+    "Sidar Kondo's blocking restriction applies to creatures your opponents control even when an opponent is being attacked by a player other than you.",
+    "Once an attacking creature has been blocked by a creature without flying or reach, reducing its power to 2 or less won't change or undo that block.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Falthis and Kediss are your commanders, your deck may contain cards with black and/or red in their color identity, but not cards with green, white, or blue.",
+    "Both commanders start in the command zone, and the remaining 98 cards (or 58 cards in a Commander Draft game) of your deck are shuffled to become your library.",
+    "To have two commanders, both must have the partner ability as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "You can choose two commanders with partner that are the same color or colors. In Commander Draft, you can even choose two of the same commander with partner if you drafted them. If you do this, make sure you keep the number of times you've cast each from the command zone clear for \"commander tax\" purposes."
+   ]
+  },
+  {
+   "name": "Thalisse, Reverent Medium",
+   "oracle_id": "77cf4fb1-593f-4240-96d9-6ae9084baeac",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Cleric",
+   "oracle_text": "At the beginning of each end step, create X 1/1 white Spirit creature tokens with flying, where X is the number of tokens you created this turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "306",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Thalisse's ability counts all tokens you created that turn prior to the ability resolving, including both noncreature tokens and creature tokens. It doesn't matter if those tokens are still on the battlefield or still under your control.",
+    "If an effect creates a copy of a permanent spell, that spell becomes a token on the battlefield under your control, but that token has not been \"created.\" It won't count for Thalisse's ability."
+   ]
+  },
+  {
+   "name": "Velomachus Lorehold",
+   "oracle_id": "43832745-5d7d-4957-8e30-2072ad012564",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{W}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Elder Dragon",
+   "oracle_text": "Flying, vigilance, haste\nWhenever Velomachus Lorehold attacks, look at the top seven cards of your library. You may cast an instant or sorcery spell with mana value less than or equal to Velomachus Lorehold's power from among them without paying its mana cost. Put the rest on the bottom of your library in a random order.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance",
+    "Haste"
+   ],
+   "collector_number": "309",
+   "set": "tdc",
+   "rulings": [
+    "When Velomachus Lorehold’s triggered ability resolves, it lets you cast a spell immediately, ignoring timing restrictions. It does not let you cast that spell later in the turn.",
+    "If you choose not to cast a spell this way, all of the cards will be put on the bottom of the library in a random order.",
+    "If you’re casting a spell with {X} in its cost without paying its mana cost, you must choose 0 for the value of X."
+   ]
+  },
+  {
+   "name": "Colfenor's Urn",
+   "oracle_id": "920c4df3-9517-44cd-8304-28b1ef69d60e",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever a creature with toughness 4 or greater is put into your graveyard from the battlefield, you may exile it.\nAt the beginning of the end step, if three or more cards have been exiled with this artifact, sacrifice it. If you do, return those cards to the battlefield under their owner's control.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "315",
+   "set": "tdc",
+   "rulings": [
+    "The second ability checks how many creatures have been exiled with Colfenor’s Urn over the course of the entire game.",
+    "The second ability forces you to sacrifice Colfenor’s Urn. If the ability triggers and the Urn isn’t sacrificed (because it left the battlefield or changed controllers, for example), the exiled cards won’t be returned to the battlefield.",
+    "The first ability triggers when a token creature with toughness 4 or greater is put into your graveyard. However, that token will cease to exist before Colfenor’s Plans can exile it."
+   ]
+  },
+  {
+   "name": "Steel Hellkite",
+   "oracle_id": "6e64f1e0-ddd6-4ee7-8797-086e234b02e8",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Artifact Creature — Dragon",
+   "oracle_text": "Flying\n{2}: This creature gets +1/+0 until end of turn.\n{X}: Destroy each nonland permanent with mana value X whose controller was dealt combat damage by this creature this turn. Activate only once each turn.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "327",
+   "set": "tdc",
+   "rulings": [
+    "Steel Hellkite's last ability destroys only nonland permanents whose mana value is exactly equal to X, and only those controlled by players who have been dealt combat damage by Steel Hellkite this turn.",
+    "It doesn't matter who controlled those permanents at the time Steel Hellkite dealt combat damage, or if those permanents were even on the battlefield at that time.",
+    "You may activate the last ability even if Steel Hellkite hasn't dealt combat damage to any players that turn. If you do, the ability won't do anything.",
+    "If Steel Hellkite's third ability is activated with X equal to 0, it will destroy each nonland permanent with mana value 0 the appropriate players control.",
+    "The mana value of a permanent is determined solely by the mana symbols printed in its upper right corner, unless it's copying something else (see below). The mana value is the total amount of mana in that cost, regardless of color. For example, a card with mana cost {3}{U}{U} has mana value 5.",
+    "If a permanent is copying something else, its mana value is the mana value of whatever it's copying.",
+    "In all cases, ignore any alternative costs or additional costs (such as kicker) paid when the permanent was cast.",
+    "If the mana cost of a permanent includes {X}, X is 0 for the purpose of determining its mana value.",
+    "If a nonland permanent has no mana symbols in its upper right corner (because it's a token that's not copying something else, for example), its mana value is 0."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,251 @@
+{
+ "batch": 5,
+ "set": [
+  "fdc"
+ ],
+ "cards": [
+  {
+   "name": "Soulless One",
+   "oracle_id": "27d98b94-a8a1-442b-8940-4ffab51b5164",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Zombie Avatar",
+   "oracle_text": "Soulless One's power and toughness are each equal to the number of Zombies on the battlefield plus the number of Zombie cards in all graveyards.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "126",
+   "set": "fdc"
+  },
+  {
+   "name": "Tendrils of Corruption",
+   "oracle_id": "84ee0da2-d886-4603-9aaa-bc5326a424d7",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Tendrils of Corruption deals X damage to target creature and you gain X life, where X is the number of Swamps you control.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "128",
+   "set": "fdc",
+   "rulings": [
+    "If the target creature is an illegal target by the time Tendrils of Corruption tries to resolve, the spell doesn't resolve. You don't gain X life."
+   ]
+  },
+  {
+   "name": "Bitter Reunion",
+   "oracle_id": "173e86f4-17f3-44f5-8073-78e7e2e12c4a",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, you may discard a card. If you do, draw two cards.\n{1}, Sacrifice this enchantment: Creatures you control gain haste until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "139",
+   "set": "fdc"
+  },
+  {
+   "name": "Breath Weapon",
+   "oracle_id": "f3dd1f6d-f7d7-4358-8139-7495404f29c7",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Breath Weapon deals 2 damage to each non-Dragon creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "142",
+   "set": "fdc"
+  },
+  {
+   "name": "Dragonhawk, Fate's Tempest",
+   "oracle_id": "f7f435bc-1716-4412-9505-a1f2f2d83d08",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bird Dragon",
+   "oracle_text": "Flying\nWhenever Dragonhawk enters or attacks, exile the top X cards of your library, where X is the number of creatures you control with power 4 or greater. You may play those cards until your next end step. At the beginning of your next end step, Dragonhawk deals 2 damage to each opponent for each of those cards that are still exiled.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "151",
+   "set": "fdc",
+   "rulings": [
+    "The value of X is calculated only once, as Dragonhawk's last ability resolves.",
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "The delayed triggered ability created by Dragonhawk's last ability counts only cards that were exiled by the ability that created it. It doesn't count cards exiled by previous instances of Dragonhawk's last ability or by the abilities of other Dragonhawks you may have controlled previously."
+   ]
+  },
+  {
+   "name": "Goddric, Cloaked Reveler",
+   "oracle_id": "35b2b172-5fbc-4e4d-a011-390ee1b6c848",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Haste\nCelebration — As long as two or more nonland permanents entered the battlefield under your control this turn, Goddric is a Dragon with base power and toughness 4/4, flying, and \"{R}: Dragons you control get +1/+0 until end of turn.\" (He loses all other creature types.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Celebration",
+    "Haste"
+   ],
+   "collector_number": "158",
+   "set": "fdc",
+   "rulings": [
+    "If an effect causes Goddric to lose all abilities during a turn in which it has already become a Dragon, he's still a Dragon creature with base power and toughness 4/4.",
+    "Goddric's activated ability affects only Dragons you control at the time it resolves. Any Dragons that come under your control later in the turn won't be affected.",
+    "Each celebration ability has a different effect.",
+    "Some celebration abilities trigger at specific parts of the turn and check whether two or more nonland permanents entered the battlefield under your control already in that turn.",
+    "Others are static abilities that give creatures abilities or power and toughness increases as long as two or more nonland permanents entered the battlefield under your control that turn.",
+    "Celebration abilities only care if two or more nonland permanents entered the battlefield under your control in a turn. They won't get more powerful if more than two permanents entered the battlefield under your control in a turn.",
+    "The permanents that entered the battlefield don't need to remain on the battlefield or under your control. Celebration abilities are checking for past events, not the current game state."
+   ]
+  },
+  {
+   "name": "Magmaquake",
+   "oracle_id": "a52037df-0be1-4c99-b9eb-b033157af203",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Magmaquake deals X damage to each creature without flying and each planeswalker.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "164",
+   "set": "fdc",
+   "rulings": [
+    "Magmaquake doesn't target any creature or planeswalker. For example, it will deal damage to a creature without flying that has hexproof."
+   ]
+  },
+  {
+   "name": "Minion of the Mighty",
+   "oracle_id": "058062c7-071b-4b14-903d-ae8d2876b37f",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Creature — Kobold",
+   "oracle_text": "Menace\nPack tactics — Whenever this creature attacks, if you attacked with creatures with total power 6 or greater this combat, you may put a Dragon creature card from your hand onto the battlefield tapped and attacking.",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Pack tactics",
+    "Menace"
+   ],
+   "collector_number": "166",
+   "set": "fdc",
+   "rulings": [
+    "A Dragon creature card is a creature card with the creature type Dragon, not necessarily a creature card with the word “Dragon” in its name.",
+    "You choose which player or planeswalker the Dragon is attacking as you put it onto the battlefield. It doesn't have to be the same player or planeswalker Minion of the Mighty is attacking.",
+    "The creature card is already tapped and attacking as it's put onto the battlefield. Any abilities that trigger whenever a creature becomes tapped or whenever a creature attacks won't trigger."
+   ]
+  },
+  {
+   "name": "Orb of Dragonkind",
+   "oracle_id": "d9c36ed5-629c-4709-bff5-2f10fcde608a",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{1}, {T}: Add two mana in any combination of colors. Spend this mana only to cast Dragon spells or activate abilities of Dragons.\n{R}, {T}, Sacrifice this artifact: Look at the top seven cards of your library. You may reveal a Dragon card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "168",
+   "set": "fdc",
+   "rulings": [
+    "A Dragon card is a card with the creature type Dragon in its type line. Similarly, a creature on the battlefield is a Dragon if it has the Dragon creature type. A card that has “Dragon” in the name (such as Orb of Dragonkind) isn't a Dragon card unless it also has the Dragon creature type."
+   ]
+  },
+  {
+   "name": "Sarkhan, Dragon Ascendant",
+   "oracle_id": "71cb48e2-2328-471c-a04a-7b6461f378f4",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Druid",
+   "oracle_text": "When Sarkhan enters, you may behold a Dragon. If you do, create a Treasure token. (To behold a Dragon, choose a Dragon you control or reveal a Dragon card from your hand.)\nWhenever a Dragon you control enters, put a +1/+1 counter on Sarkhan. Until end of turn, Sarkhan becomes a Dragon in addition to his other types and gains flying.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Behold",
+    "Treasure"
+   ],
+   "collector_number": "172",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a “[subtype] card,” it refers only to a card that has that subtype. For example, Teeming Dragonstorm is a card that cares about Dragons and features Dragons in its art, but it isn’t a Dragon card.",
+    "Effects that say “If a [quality] was beheld” only care if a card of that quality was revealed or a permanent you control of that quality was chosen. No matter what happens to that card or permanent after that, it was still beheld, and any additional effects that depend on that card or permanent being beheld will still happen.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that’s still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand."
+   ]
+  }
+ ]
+}

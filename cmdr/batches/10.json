@@ -1,0 +1,250 @@
+{
+ "batch": 10,
+ "set": [
+  "eoc"
+ ],
+ "cards": [
+  {
+   "name": "Moxite Refinery",
+   "oracle_id": "3fe9367b-def1-4820-9e23-92ce3d7a4afc",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{2}, {T}, Remove X counters from an artifact or creature you control: Choose one. Activate only as a sorcery.\n• Put X charge counters on target artifact.\n• Put X +1/+1 counters on target creature.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "17",
+   "set": "eoc"
+  },
+  {
+   "name": "Surge Conductor",
+   "oracle_id": "dc11d9dc-7d18-45dc-955b-d0ba71fc0db8",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Whenever another nontoken artifact you control enters, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Proliferate"
+   ],
+   "collector_number": "19",
+   "set": "eoc",
+   "rulings": [
+    "Players can respond to a spell or ability whose effect includes proliferating. Once that spell or ability starts to resolve, however, and its controller chooses which permanents and players will get new counters, it’s too late for anyone to respond.",
+    "If Surge Conductor and one or more other nontoken artifacts you control enter the battlefield at the same time, Surge Conductor’s ability will trigger for each of those nontoken artifacts.",
+    "When you proliferate, you can choose any permanent that has a counter, including ones controlled by opponents. You can choose any player who has a counter, including opponents. You can’t choose cards in any zone other than the battlefield, even if they have counters on them.",
+    "You don’t have to choose every permanent or player that has a counter—only the ones you want to add counters to. Since “any number” includes zero, you don’t have to choose any permanents at all, and you don’t have to choose any players at all.",
+    "If a permanent or player has more than one kind of counter on them, and you choose for that permanent or player to get additional counters, that permanent or player must get one of each kind of counter they already have. You can’t have them get just one kind of counter they already have and not the others."
+   ]
+  },
+  {
+   "name": "Depthshaker Titan",
+   "oracle_id": "23bf0648-7097-41df-a539-1d36ac42cf9c",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "When this creature enters, any number of target noncreature artifacts you control become 3/3 artifact creatures. Sacrifice them at the beginning of the next end step.\nEach artifact creature you control has melee, trample, and haste. (Whenever a creature with melee attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "29",
+   "set": "eoc",
+   "rulings": [
+    "If Depthshaker Titan’s first ability causes a Vehicle to become an artifact creature, it doesn’t count as “crewing” that Vehicle for any ability that would trigger due to a Vehicle becoming crewed.",
+    "If Depthshaker Titan’s first ability causes a Vehicle to become an artifact creature, its base power and toughness will be set to 3/3. Crewing that Vehicle will not restore its power and toughness. Similarly, if the ability causes a permanent with station to become an artifact creature, putting an amount of charge counters on it greater than or equal to the amount required for it to become an artifact creature won’t overwrite the base power and toughness set by Depthshaker Titan’s first ability."
+   ]
+  },
+  {
+   "name": "Planetary Annihilation",
+   "oracle_id": "1d45f248-5b83-4377-a3ba-4eae48e63ca1",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each player chooses six lands they control, then sacrifices the rest. Planetary Annihilation deals 6 damage to each creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "32",
+   "set": "eoc"
+  },
+  {
+   "name": "Exploration Broodship",
+   "oracle_id": "8a83ecee-092b-456c-803f-a9aaa17c4da9",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n3+ | You may play an additional land on each of your turns.\n8+ | Flying\nOnce during each of your turns, you may cast a permanent spell from your graveyard by sacrificing a land in addition to paying its other costs.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "34",
+   "set": "eoc",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards cast with the permission granted by Exploration Broodship’s last ability. For example, you may cast a creature spell from your graveyard only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Scouring Swarm",
+   "oracle_id": "aa64f830-b9b6-4d5e-9a5d-f9e120089335",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "Flying\nWhenever you sacrifice a land, create a tapped token that's a copy of this creature if seven or more land cards are in your graveyard. Otherwise, create a tapped 1/1 black Insect creature token with flying.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "36",
+   "set": "eoc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    },
+    {
+     "name": "Insect",
+     "type_line": "Token Creature — Insect",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token doesn’t copy whether Scouring Swarm is tapped or untapped, whether it has any counters on it or Auras or Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Scouring Swarm’s last ability counts the number of land cards in your graveyard as it resolves. This will usually include the land you sacrificed.",
+    "The token copy will have Scouring Swarm’s abilities and will be able to create more copies of itself.",
+    "If Scouring Swarm leaves the battlefield before its triggered ability resolves and seven or more land cards are in your graveyard when the ability resolves, the token will still enter as a copy of Scouring Swarm, using Scouring Swarm’s copiable values from when it was last on the battlefield.",
+    "In the unusual case where Scouring Swarm becomes a copy of something else while its triggered ability is on the stack but before it resolves and seven or more land cards are in your graveyard when the ability resolves, the token will enter as a copy of whatever Scouring Swarm is copying. (Swarms come in many forms.)"
+   ]
+  },
+  {
+   "name": "Eumidian Hatchery",
+   "oracle_id": "5b6d933e-2830-4f5a-b244-a421aa9615dc",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}, Pay 1 life: Add {B}. Put a hatchling counter on this land.\nWhen this land is put into a graveyard from the battlefield, for each hatchling counter on it, create a 1/1 black Insect creature token with flying.",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "40",
+   "set": "eoc",
+   "related": [
+    {
+     "name": "Insect",
+     "type_line": "Token Creature — Insect",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Gavel of the Righteous",
+   "oracle_id": "204a5616-9f19-4d4c-aeb0-d1ec486b9ace",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "At the beginning of combat on your turn, put a charge counter on this Equipment.\nEquipped creature gets +1/+1 for each counter on this Equipment.\nAs long as this Equipment has four or more counters on it, equipped creature has double strike.\nEquip—Pay {3} or remove a counter from this Equipment.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "55",
+   "set": "eoc"
+  },
+  {
+   "name": "Experimental Augury",
+   "oracle_id": "2ee08dcd-5558-45be-b619-8a550f3865ad",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Look at the top three cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Proliferate"
+   ],
+   "collector_number": "73",
+   "set": "eoc",
+   "rulings": [
+    "To proliferate, you can choose any permanent that has a counter, including ones controlled by opponents. You can choose any player who has a counter, including opponents. You can't choose cards in any zone other than the battlefield, even if they have counters on them.",
+    "You don't have to choose every permanent or player that has a counter, only the ones you want to add another counter to. Since \"any number\" includes zero, you don't have to choose any permanents at all, and you don't have to choose any players at all.",
+    "If a player or permanent has more than one kind of counter on it, and you choose for it to get additional counters, it must get one of each kind of counter it already has. You can't have it get just one kind of counter it already has and not the others.",
+    "An ability that triggers \"Whenever you proliferate\" triggers even if you chose no permanents or players while doing so.",
+    "Players can respond to a spell or ability whose effect includes proliferating. Once that spell or ability starts to resolve, however, and its controller chooses which permanents and players will get new counters, it's too late for anyone to respond.",
+    "If a permanent ever has both +1/+1 counters and -1/-1 counters on it at the same time, they're removed in pairs as a state-based action so that the permanent has only one of those kinds of counters on it."
+   ]
+  },
+  {
+   "name": "Sprouting Goblin",
+   "oracle_id": "b0871e12-b156-4fa6-b01c-acaae222b3a5",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Goblin Druid",
+   "oracle_text": "Kicker {G} (You may pay an additional {G} as you cast this spell.)\nWhen this creature enters, if it was kicked, search your library for a land card with a basic land type, reveal it, put it into your hand, then shuffle.\n{R}, {T}, Sacrifice a land: Draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "90",
+   "set": "eoc",
+   "rulings": [
+    "You may search for any land card with one of the basic land types, even if that land isn't a basic land. The basic land types are Plains, Island, Swamp, Mountain, and Forest."
+   ]
+  }
+ ]
+}

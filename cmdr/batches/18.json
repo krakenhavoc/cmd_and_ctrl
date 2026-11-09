@@ -1,0 +1,267 @@
+{
+ "batch": 18,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Keiga, the Tide Star",
+   "oracle_id": "521b1598-58c6-47a0-a7b3-021d70bf2b05",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Dragon Spirit",
+   "oracle_text": "Flying\nWhen Keiga dies, gain control of target creature.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "156",
+   "set": "tdc",
+   "rulings": [
+    "Keiga's effect lasts indefinitely. It doesn't wear off during the cleanup step."
+   ]
+  },
+  {
+   "name": "Behind the Scenes",
+   "oracle_id": "e84837bd-4f94-43e1-876e-d82cae6ee247",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control have skulk. (They can't be blocked by creatures with greater power.)\n{4}{W}: Creatures you control get +1/+1 until end of turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "172",
+   "set": "tdc",
+   "rulings": [
+    "Skulk matters only as blockers are chosen. Modifying either creature’s power after blockers are chosen won’t cause the attacking creature to become unblocked.",
+    "If you cause a creature to have 0 power or less, use the actual value (which may be negative) to determine whether it can block or be blocked. A creature with skulk and 0 or less power most likely won’t be blocked, but it won’t deal combat damage and won’t trigger any abilities that trigger when combat damage is dealt."
+   ]
+  },
+  {
+   "name": "Blight Pile",
+   "oracle_id": "1c0fc9b4-177e-4529-827f-a1e17ff7a752",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Phyrexian",
+   "oracle_text": "Defender\n{2}{B}, {T}: Each opponent loses X life, where X is the number of creatures with defender you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "174",
+   "set": "tdc",
+   "rulings": [
+    "In a Two-Headed Giant game, Blight Pile causes the opposing team to lose X life twice."
+   ]
+  },
+  {
+   "name": "Chittering Witch",
+   "oracle_id": "8b1aa532-4f19-407e-83a5-13b3160ad8c2",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warlock",
+   "oracle_text": "When this creature enters, create a number of 1/1 black Rat creature tokens equal to the number of opponents you have.\n{1}{B}, Sacrifice a creature: Target creature gets -2/-2 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "175",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You can sacrifice Chittering Witch to pay the cost of its last ability.",
+    "In a multiplayer game, opponents who have left the game aren't counted by Chittering Witch's triggered ability."
+   ]
+  },
+  {
+   "name": "Junji, the Midnight Sky",
+   "oracle_id": "78a48f4e-ba4c-4d8d-938a-9ddb342a885b",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Dragon Spirit",
+   "oracle_text": "Flying, menace\nWhen Junji dies, choose one —\n• Each opponent discards two cards and loses 2 life.\n• Put target non-Dragon creature card from a graveyard onto the battlefield under your control. You lose 2 life.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Menace"
+   ],
+   "collector_number": "183",
+   "set": "tdc"
+  },
+  {
+   "name": "Lord of the Forsaken",
+   "oracle_id": "3a25d1e2-63d8-4a93-b0ce-f9307736b3f9",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Demon",
+   "oracle_text": "Flying, trample\n{B}, Sacrifice another creature: Target player mills three cards.\nPay 1 life: Add {C}. Spend this mana only to cast a spell from your graveyard.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample",
+    "Mill"
+   ],
+   "collector_number": "186",
+   "set": "tdc"
+  },
+  {
+   "name": "Mindblade Render",
+   "oracle_id": "028dcef2-3de9-4dde-ba17-f9e077b3190d",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Azra Warrior",
+   "oracle_text": "Whenever your opponents are dealt combat damage, if any of that damage was dealt by a Warrior, you draw a card and you lose 1 life.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "187",
+   "set": "tdc",
+   "rulings": [
+    "Mindblade Render's ability triggers only once, regardless of how many opponents were dealt damage, how much damage they were dealt, or how many Warriors dealt damage.",
+    "Mindblade Render's ability triggers if a Warrior an opponent controls deals combat damage to another player who's also your opponent. You can't choose not to draw a card or lose 1 life if this happens."
+   ]
+  },
+  {
+   "name": "Necromantic Selection",
+   "oracle_id": "b48a149c-aead-43b2-a99e-c964d6d28aa0",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy all creatures, then return a creature card put into a graveyard this way to the battlefield under your control. It's a black Zombie in addition to its other colors and types. Exile Necromantic Selection.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "189",
+   "set": "tdc",
+   "rulings": [
+    "Necromantic Selection doesn't overwrite any of the creature's colors or types. Rather, it adds another color and another creature type.",
+    "If the creature is normally colorless, it will simply become black. It can't be both black and colorless."
+   ]
+  },
+  {
+   "name": "Necropolis Fiend",
+   "oracle_id": "bb714bc6-9f32-42f6-9064-f28a383675b5",
+   "layout": "normal",
+   "mana_cost": "{7}{B}{B}",
+   "cmc": 9.0,
+   "type_line": "Creature — Demon",
+   "oracle_text": "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\nFlying\n{X}, {T}, Exile X cards from your graveyard: Target creature gets -X/-X until end of turn.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Delve"
+   ],
+   "collector_number": "190",
+   "set": "tdc",
+   "rulings": [
+    "Delve doesn't change a spell's mana cost or mana value. For example, Treasure Cruise's mana value is 8 even if you exiled three cards to cast it.",
+    "You can exile cards to pay only for generic mana, and you can't exile more cards than the generic mana requirement of a spell with delve. For example, you can't exile more than seven cards from your graveyard to cast Treasure Cruise unless an effect has increased its cost.",
+    "Because delve isn't an alternative cost, it can be used in conjunction with alternative costs, such as flashback. It can also be used to pay for additional costs that include generic mana."
+   ]
+  },
+  {
+   "name": "Tasigur, the Golden Fang",
+   "oracle_id": "837e3fde-241f-4826-ad04-f146fdcf2278",
+   "layout": "normal",
+   "mana_cost": "{5}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Shaman",
+   "oracle_text": "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\n{2}{G/U}{G/U}: Mill two cards, then return a nonland card of an opponent's choice from your graveyard to your hand.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Delve",
+    "Mill"
+   ],
+   "collector_number": "197",
+   "set": "tdc",
+   "rulings": [
+    "The chosen opponent can choose any nonland card in your graveyard, not just one of the milled cards.",
+    "You can exile cards to pay only for generic mana, and you can't exile more cards than the generic mana requirement of a spell with delve. For example, you can't exile more than seven cards from your graveyard to cast Treasure Cruise unless an effect has increased its cost.",
+    "Because delve isn't an alternative cost, it can be used in conjunction with alternative costs, such as flashback. It can also be used to pay for additional costs that include generic mana.",
+    "Tasigur's last ability doesn't target any card or player. You choose an opponent and that player chooses a nonland card only after you mill two cards.",
+    "Delve doesn't change a spell's mana cost or mana value. For example, Treasure Cruise's mana value is 8 even if you exiled three cards to cast it.",
+    "The chosen opponent can choose any nonland card in your graveyard, not just one of the cards that was just put there.",
+    "Tasigur's last ability doesn't target any card or player. You choose an opponent as the ability resolves and that player chooses a nonland card after you put the top two cards of your library into your graveyard."
+   ]
+  }
+ ]
+}

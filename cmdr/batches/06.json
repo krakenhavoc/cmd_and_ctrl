@@ -1,0 +1,291 @@
+{
+ "batch": 6,
+ "set": [
+  "fdc"
+ ],
+ "cards": [
+  {
+   "name": "Scourge of the Throne",
+   "oracle_id": "06496a05-7f1a-402c-9594-304cd82bfefd",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nDethrone (Whenever this creature attacks the player with the most life or tied for most life, put a +1/+1 counter on it.)\nWhenever this creature attacks for the first time each turn, if it's attacking the player with the most life or tied for most life, untap all attacking creatures. After this phase, there is an additional combat phase.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Dethrone"
+   ],
+   "collector_number": "173",
+   "set": "fdc",
+   "rulings": [
+    "Dethrone doesn't trigger if the creature attacks a planeswalker, even if its controller has the most life. The same is true if the creature attacks a battle, even if its protector has the most life.",
+    "Scourge of the Throne's ability has an intervening \"if\" clause. It must be attacking the player with the most life or tied with the most life both when it's declared as an attacker and as it starts to resolve for it to have any effect. If, at either time, the player isn't the one with the most life or tied for the most life, the ability will have no effect. Notably, this is different than how dethrone works. (Dethrone checks only once to see if the ability triggers.)",
+    "Once dethrone triggers, it doesn't matter what happens to the players' life totals before the ability resolves. You'll put a +1/+1 counter on the creature even if the defending player doesn't have the most life as the ability resolves.",
+    "The +1/+1 counter is put on the creature before blockers are declared.",
+    "In a Two-Headed Giant game, dethrone will trigger if the creature attacks either player on the team with the most life or tied for the most life."
+   ]
+  },
+  {
+   "name": "Scourge of Valkas",
+   "oracle_id": "0a147009-a57c-4ac1-ab81-d8bd8b737631",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhenever this creature or another Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control.\n{R}: This creature gets +1/+0 until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "174",
+   "set": "fdc",
+   "rulings": [
+    "The amount of damage dealt by the Dragon that entered the battlefield is based on the number of Dragons you control when the ability resolves.",
+    "If a Dragon entering the battlefield causes Scourge of Valkas's ability to trigger but leaves the battlefield before that ability resolves, that Dragon still deals damage."
+   ]
+  },
+  {
+   "name": "Skyline Despot",
+   "oracle_id": "c0ce54a1-14a1-45f3-91d0-c57b581afc63",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhen this creature enters, you become the monarch.\nAt the beginning of your upkeep, if you're the monarch, create a 5/5 red Dragon creature token with flying.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "176",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Dragon",
+     "type_line": "Token Creature — Dragon",
+     "component": "token"
+    },
+    {
+     "name": "The Monarch",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The last ability of Skyline Despot checks to see if you're the monarch as your upkeep begins. If you're not, the ability won't trigger at all. You won't be able to do anything that would make you the monarch during your upkeep in time to have that ability trigger. The ability will also check to see if you're the monarch as it tries to resolve. If you're not the monarch at that time, the ability will have no effect.",
+    "The game starts with no monarch. Once an effect makes one player the monarch, the game will have exactly one monarch from that point forward.",
+    "Being the monarch carries two inherent triggered abilities. “At the beginning of the monarch's end step, that player draws a card” and “Whenever a creature deals combat damage to the monarch, its controller becomes the monarch.”",
+    "Abilities that trigger whenever you “become the monarch” trigger only if you aren't already the monarch. For example, if you are already the monarch as Custodi Lich enters the battlefield, its last ability won't trigger.",
+    "If the triggered ability that causes the monarch to draw a card goes on the stack, and a different player becomes the monarch before that ability resolves, the first player will still draw the card."
+   ]
+  },
+  {
+   "name": "Tyrant's Familiar",
+   "oracle_id": "63394e24-a456-4cc6-9885-8c62447b050a",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying, haste\nLieutenant — As long as you control your commander, this creature gets +2/+2 and has \"Whenever this creature attacks, it deals 7 damage to target creature defending player controls.\"",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Haste",
+    "Lieutenant"
+   ],
+   "collector_number": "183",
+   "set": "fdc",
+   "rulings": [
+    "Lieutenant abilities apply only if your commander is on the battlefield and under your control.",
+    "Lieutenant abilities refer only to whether you control your commander, not any other player’s commander.",
+    "If you gain control of a creature with a lieutenant ability owned by another player, that ability will check to see if you control your commander and will apply if you do. It won’t check whether its owner controls their commander.",
+    "If you lose control of your commander, lieutenant abilities of creatures you control will immediately stop applying. If this causes a creature’s toughness to become less than or equal to the amount of damage marked on it, the creature will be destroyed.",
+    "If a triggered ability granted by a lieutenant ability triggers, and in response to that trigger you lose control of your commander (causing the lieutenant to lose that ability), that triggered ability will still resolve."
+   ]
+  },
+  {
+   "name": "Challenger Troll",
+   "oracle_id": "78cb1f05-edad-4430-9095-f3eabd80bf41",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Troll",
+   "oracle_text": "Each creature you control with power 4 or greater can't be blocked by more than one creature.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "194",
+   "set": "fdc",
+   "rulings": [
+    "Challenger Troll’s ability affects itself as long as its power remains 4 or greater.",
+    "Once a creature you control with power 3 or less has become blocked by two or more creatures, changing its power won’t cause either blocking creature to stop blocking it.",
+    "If a creature you control with power 4 or greater has menace, it can’t be blocked by only one creature and it can’t be blocked by more than one creature, so it simply can’t be blocked."
+   ]
+  },
+  {
+   "name": "Dungrove Elder",
+   "oracle_id": "32083c9f-04c6-4b6f-9e24-cc8f3cae3e3e",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Treefolk",
+   "oracle_text": "Hexproof (This creature can't be the target of spells or abilities your opponents control.)\nDungrove Elder's power and toughness are each equal to the number of Forests you control.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Hexproof"
+   ],
+   "collector_number": "199",
+   "set": "fdc",
+   "rulings": [
+    "Dungrove Elder’s power and toughness are each equal to the number of lands you control with the land type Forest, not necessarily lands named Forest.",
+    "Dungrove Elder’s power and toughness will change as the number of Forests you control changes.",
+    "Dungrove Elder’s ability sets its power and toughness in all zones, not just the battlefield."
+   ]
+  },
+  {
+   "name": "Elder Gargaroth",
+   "oracle_id": "397b9dcf-690a-4a58-8637-bb9baab7cc2f",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Reach, vigilance, trample\nWhenever this creature attacks or blocks, choose one —\n• Create a 3/3 green Beast creature token.\n• You gain 3 life.\n• Draw a card.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Trample"
+   ],
+   "collector_number": "200",
+   "set": "fdc",
+   "related": [
+    {
+     "name": "Beast",
+     "type_line": "Token Creature — Beast",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you create a Beast token, that token can't attack or block during the same combat, even if it gains haste.",
+    "Players can cast spells after Elder Gargaroth's triggered ability has resolved but before blockers are declared (if it's attacking) or before combat damage is dealt (if it's blocking)."
+   ]
+  },
+  {
+   "name": "Monstrous Onslaught",
+   "oracle_id": "52be3da7-1e55-44c4-88bc-fb578a635ec0",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Monstrous Onslaught deals X damage divided as you choose among any number of target creatures, where X is the greatest power among creatures you control as you cast this spell.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "217",
+   "set": "fdc",
+   "rulings": [
+    "You divide the damage among the target creatures as you cast Monstrous Onslaught. Each target must be assigned at least 1 damage.",
+    "The value of X is determined at the time you divide damage. It won't change later, even if the greatest power among creatures you control changes.",
+    "If some of the targets become illegal, the original division of damage still applies. The damage that was divided among the illegal targets simply isn't dealt; it isn't re-assigned to remaining legal targets.",
+    "The damage is dealt by Monstrous Onslaught, not by the creature with the greatest power among creatures you control."
+   ]
+  },
+  {
+   "name": "Paradise Druid",
+   "oracle_id": "e119869d-1f66-402b-8251-d351965cf0d3",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "This creature has hexproof as long as it's untapped. (It can't be the target of spells or abilities your opponents control.)\n{T}: Add one mana of any color.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "219",
+   "set": "fdc"
+  },
+  {
+   "name": "Ram Through",
+   "oracle_id": "4b1befff-48fa-47a3-832e-bdaf43495c02",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature you control deals damage equal to its power to target creature you don't control. If the creature you control has trample, excess damage is dealt to that creature's controller instead.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "221",
+   "set": "fdc",
+   "rulings": [
+    "If either creature is an illegal target as Ram Through tries to resolve, the creature you control won’t deal damage to any creature or player.",
+    "Excess damage caused by a spell or ability is similar to how combat damage from a creature with trample is handled. Start with the amount of damage being dealt to the creature and determine what is “lethal.” This is the creature’s toughness minus the amount of damage that it already has marked on it, but ignoring any replacement or prevention effects that will modify this damage. Also ignore whether the creature has an ability such as indestructible that will result in it not being destroyed by this damage.",
+    "If the target creature you control has deathtouch, 1 damage from it is lethal.",
+    "Once you’ve determined how much damage is excess, the creature you control simultaneously deals damage to the creature and to its controller. This damage may be modified by replacement or prevention effects."
+   ]
+  }
+ ]
+}

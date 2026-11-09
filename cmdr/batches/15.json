@@ -1,0 +1,289 @@
+{
+ "batch": 15,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Adaptive Training Post",
+   "oracle_id": "a6657fcf-f08c-4b03-8ec8-cb0b194eb553",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever you cast an instant or sorcery spell, if this artifact has fewer than three charge counters on it, put a charge counter on it.\nRemove three charge counters from this artifact: When you next cast an instant or sorcery spell this turn, copy it and you may choose new targets for the copy.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "58",
+   "set": "tdc",
+   "rulings": [
+    "After Adaptive Training Post’s last ability resolves, the next instant or sorcery spell you cast that turn will be copied whether or not it has targets.",
+    "The copy created by Adaptive Training Post’s last ability resolves before the spell it’s copying. It resolves even if the original spell is countered before the copy is created.",
+    "If the spell has any targets, the copy will have the same targets unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that’s copied is modal (that is, it says “Choose one —” or the like), the copy will have the same mode or modes. You can’t choose different ones.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can’t be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that’s copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can’t choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy is created on the stack, so it’s not “cast.” Abilities that trigger when a player casts a spell won’t trigger."
+   ]
+  },
+  {
+   "name": "Diviner of Mist",
+   "oracle_id": "abf4dcd8-5176-4f4a-b7c1-5ce24ff181bf",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhenever this creature attacks, mill four cards. You may cast an instant or sorcery spell from your graveyard with mana value 4 or less without paying its mana cost. If that spell would be put into your graveyard, exile it instead.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Mill"
+   ],
+   "collector_number": "60",
+   "set": "tdc"
+  },
+  {
+   "name": "Hammerhead Tyrant",
+   "oracle_id": "7830f600-c7c7-48f8-8020-3493c5745eed",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhenever you cast a spell, return up to one target nonland permanent an opponent controls with mana value less than or equal to that spell's mana value to its owner's hand.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "61",
+   "set": "tdc",
+   "rulings": [
+    "If a permanent has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "If a spell has {X} in its mana cost, use the value of X chosen as it was cast to determine that spell’s mana value."
+   ]
+  },
+  {
+   "name": "Will of the Temur",
+   "oracle_id": "ebe1448e-21c5-4b73-8296-03d3e5097c50",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Create a token that's a copy of target permanent, except it's a 4/4 Dragon creature with flying in addition to its other types.\n• Target player draws cards equal to the greatest mana value among permanents you control.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "64",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token created by Will of the Temur’s first mode copies exactly what was printed on the original permanent and nothing else, with the listed exceptions (unless that permanent is copying something else or is a token; see below). It doesn’t copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.",
+    "If the copied permanent is a token, the token that’s created copies the original characteristics of that token as stated by the effect that created the token, with the listed exceptions.",
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied, with the listed exceptions.",
+    "Any enters abilities of the copied permanent will trigger when the token enters. Any “as [this permanent] enters” or “[this permanent] enters with” abilities of the copied permanent will also work.",
+    "If a permanent has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "The commander you control doesn’t have to be your commander.",
+    "Once you’ve announced that you’re casting this spell, players can’t take any actions until you’ve finished doing so. Notably, opponents can’t try to remove your commander to change how many modes you may choose.",
+    "Whether or not you control a commander is determined only once, as you choose the modes for this spell. If you somehow lose control of that commander before you finish casting the spell (perhaps because you sacrifice it to activate a mana ability), it won’t change the number of modes chosen."
+   ]
+  },
+  {
+   "name": "Jaws of Defeat",
+   "oracle_id": "46327e52-b04a-4155-bda6-9559e46fb9ed",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a creature you control enters, target opponent loses life equal to the difference between that creature's power and its toughness.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "67",
+   "set": "tdc",
+   "rulings": [
+    "To find the difference between a creature’s power and its toughness, subtract the smaller of those two numbers from the larger one. For example, the difference between the power and toughness of a 3/5 creature is 2. The difference between the power and toughness of a 5/3 creature is also 2."
+   ]
+  },
+  {
+   "name": "Welcome the Dead",
+   "oracle_id": "affa0b6c-a9fd-49fc-b9ce-9a3486af8320",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Draw two cards, then discard a card and you lose 2 life. Create X tapped 2/2 black Zombie Druid creature tokens, where X is the number of cards that were put into your graveyard from your hand or library this turn.\nFlashback {5}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "70",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Zombie Druid",
+     "type_line": "Token Creature — Zombie Druid",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Goldlust Triad",
+   "oracle_id": "86d76078-9af3-45a7-90d6-72946afdc78b",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nMyriad (Whenever this creature attacks, for each opponent other than defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at end of combat.)\nWhenever this creature deals combat damage to a player, create a Treasure token.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Myriad",
+    "Flying",
+    "Treasure"
+   ],
+   "collector_number": "74",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The term “defending player” in the myriad rules (or any other ability of an attacking creature) refers to the player the creature with myriad was attacking, the controller of the planeswalker it was attacking, or the protector of the battle it was attacking at the time the ability resolves. If that creature is no longer attacking, it refers to the appropriate player based on who or what the creature was last attacking.",
+    "If the defending player is your only opponent, no tokens are put onto the battlefield.",
+    "You choose whether each token is attacking the player or a planeswalker they control as the token is created. If it’s attacking a planeswalker, you choose which one. You can’t have any of the tokens attack a battle.",
+    "Although the tokens enter attacking, they were never declared as attackers. Abilities that trigger whenever a creature attacks won’t trigger, including the myriad ability of the tokens. If there are any costs to have a creature attack, those costs won’t apply to the tokens.",
+    "The tokens created by a single instance of myriad all enter at the same time.",
+    "Each token copies exactly what was printed on the original creature and nothing else. It doesn’t copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Any “enters” abilities of the copied creature will trigger when the tokens enter. Any “as [this creature] enters” or “[this creature] enters with” abilities of the copied creature will also work.",
+    "If an instance of myriad creates more than one token for any given player (due to an effect such as the one Doubling Season creates), you may choose separately for each token whether it’s attacking the player or a planeswalker they control."
+   ]
+  },
+  {
+   "name": "Thundermane Dragon",
+   "oracle_id": "a1602bd0-f346-43cf-86ec-1dd300a7f2ed",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nYou may look at the top card of your library any time.\nYou may cast creature spells with power 4 or greater from the top of your library. If you cast a creature spell this way, it gains haste until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "78",
+   "set": "tdc",
+   "rulings": [
+    "Thundermane Dragon lets you look at the top card of your library whenever you want (with one restriction—see below), even if you don’t have priority. This action doesn’t use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If the top card of your library changes while you’re casting a spell, playing a land, activating an ability, or taking a special action, you can’t look at the new top card until you finish doing so. This means that if you cast the top card of your library, you can’t look at the next one until you’re done paying for that spell.",
+    "Thundermane Dragon’s last ability allows you to cast the top card of your library if the resulting spell is a creature spell with power 4 or greater, it’s your main phase, and the stack is empty. If that creature spell has flash, you’ll be able to cast it any time you could cast an instant, even on an opponent’s turn."
+   ]
+  },
+  {
+   "name": "Transforming Flourish",
+   "oracle_id": "9fb7e7ca-ad2f-4677-859c-7a9adf8fb5fd",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Demonstrate (When you cast this spell, you may copy it. If you do, choose an opponent to also copy it. Players may choose new targets for their copies.)\nDestroy target artifact or creature you don't control. If that permanent is destroyed this way, its controller exiles cards from the top of their library until they exile a nonland card, then they may cast that card without paying its mana cost.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Demonstrate"
+   ],
+   "collector_number": "79",
+   "set": "tdc",
+   "rulings": [
+    "You choose whether to make a copy as the demonstrate ability resolves. This happens before the original spell resolves. Your copy goes on the stack above the original spell.",
+    "If you copy a spell with demonstrate, you then immediately choose an opponent. If they copy the spell, it goes on top of the stack.",
+    "If the spell requires targets, you choose the target of the original spell as you cast it. If you create a copy of the spell, you may choose new targets for the copy as you create that copy. Similarly, the opponent you chose to create a copy may choose new targets for that copy as it’s created. In other words, your opponent will know the targets of your original spell and your copy when choosing the new targets, if any, for their copy.",
+    "If you cast a spell with demonstrate and both you and an opponent copy it, the opponent’s copy will resolve first, then your copy will resolve, and finally the original spell will resolve.",
+    "If you cast the spell and choose not to copy it, no opponent will get to copy it either.",
+    "If the destroyed permanent’s controller chooses to cast the exiled card without paying its mana cost, they can’t choose to cast it for any alternative costs. They can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs, those must be paid to cast the spell.",
+    "If the exiled card has {X} in its mana cost, the destroyed permanent’s controller must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Will of the Jeskai",
+   "oracle_id": "2c3e6377-d09c-46b6-8a83-ada4a2930b14",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Each player may discard their hand and draw five cards.\n• Each instant and sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "80",
+   "set": "tdc",
+   "rulings": [
+    "A player may discard their hand even if their hand contains zero cards.",
+    "The commander you control doesn’t have to be your commander.",
+    "Once you’ve announced that you’re casting this spell, players can’t take any actions until you’ve finished doing so. Notably, opponents can’t try to remove your commander to change how many modes you may choose.",
+    "Whether or not you control a commander is determined only once, as you choose the modes for this spell. If you somehow lose control of that commander before you finish casting the spell (perhaps because you sacrifice it to activate a mana ability), it won’t change the number of modes chosen."
+   ]
+  }
+ ]
+}

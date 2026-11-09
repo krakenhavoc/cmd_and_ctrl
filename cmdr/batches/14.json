@@ -1,0 +1,278 @@
+{
+ "batch": 14,
+ "set": [
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Afterlife from the Loam",
+   "oracle_id": "151c867f-cc77-42de-9ae5-5fd2233ccdab",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}{B}",
+   "cmc": 8.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\nFor each player, choose up to one target creature card in that player's graveyard. Put those cards onto the battlefield under your control. They're Zombies in addition to their other types.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Delve"
+   ],
+   "collector_number": "25",
+   "set": "tdc"
+  },
+  {
+   "name": "Bone Devourer",
+   "oracle_id": "0ee41ef9-0b39-4d00-a68e-7914839a7175",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flash\nFlying\nThis creature enters with a number of +1/+1 counters on it equal to the number of creatures that died this turn.\nWhen this creature dies, you draw X cards and you lose X life, where X is the number of +1/+1 counters on it.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "26",
+   "set": "tdc",
+   "rulings": [
+    "If Bone Devourer has +1/+1 counters put on it, and then enough -1/-1 counters are put on it to cause its toughness to be 0, X is equal to the number of +1/+1 counters it had at the time those -1/-1 counters were put on it."
+   ]
+  },
+  {
+   "name": "Tip the Scales",
+   "oracle_id": "f7cac691-960f-4e36-8eae-f24bcdc1269b",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Sacrifice a creature. When you do, all creatures get -X/-X until end of turn, where X is the sacrificed creature's toughness.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "29",
+   "set": "tdc",
+   "rulings": [
+    "You don’t choose which creature to sacrifice until Tip the Scales resolves. You must sacrifice exactly one creature if you control one at that time. Doing so causes a “reflexive” ability to trigger. Players may respond to that ability knowing the value of X.",
+    "Use the sacrificed creature’s toughness as it last existed on the battlefield to determine the value of X."
+   ]
+  },
+  {
+   "name": "Within Range",
+   "oracle_id": "cc8c1e21-4540-4e74-a513-eb6c17372de1",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create two 1/1 red Warrior creature tokens.\nWhenever you attack, each opponent loses life equal to the number of creatures attacking them.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "32",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Warrior",
+     "type_line": "Token Creature — Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Infantry Shield",
+   "oracle_id": "71c68002-1489-4858-a8fb-1f575641983e",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature has menace and mobilize X, where X is its power. (Whenever it attacks, create X tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)\nEquip {2}",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "35",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Warrior",
+     "type_line": "Token Creature — Warrior",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You choose the player, planeswalker, or battle each Warrior token is attacking. They don’t all have to attack the same one, and they don’t have to attack the same player, planeswalker, or battle as the creature with mobilize.",
+    "Although the Warrior tokens enter as attacking creatures, they were never declared as attacking creatures. Abilities that trigger whenever a creature attacks won’t trigger when the tokens enter attacking."
+   ]
+  },
+  {
+   "name": "Canopy Gargantuan",
+   "oracle_id": "ec1e69b1-f664-494b-8da2-c7199872b08b",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying, ward {2}\nAt the beginning of your upkeep, put a number of +1/+1 counters on each other creature you control equal to that creature's toughness.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Flying",
+    "Ward"
+   ],
+   "collector_number": "45",
+   "set": "tdc"
+  },
+  {
+   "name": "Floral Evoker",
+   "oracle_id": "4da17e9e-df3e-4c46-a0cf-baafbe67186f",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Snake Druid",
+   "oracle_text": "Landfall — Whenever a land you control enters, put a +1/+1 counter on this creature.\n{G}, Discard a creature card: Return target land card from your graveyard to the battlefield tapped.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "46",
+   "set": "tdc",
+   "rulings": [
+    "A landfall ability triggers whenever a land you control enters for any reason. It triggers whenever you play a land, as well as whenever a spell or ability puts a land onto the battlefield under your control.",
+    "A landfall ability doesn’t trigger if a permanent already on the battlefield becomes a land.",
+    "Whenever a land you control enters, each landfall ability of the permanents you control will trigger. You can put them on the stack in any order. The last ability you put on the stack will be the first one to resolve. (As a result, you can have those abilities resolve in the order of your choosing.)"
+   ]
+  },
+  {
+   "name": "Aligned Heart",
+   "oracle_id": "ae61b2ef-2e60-499a-8708-e37b9bd5620e",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Flurry — Whenever you cast your second spell each turn, put a rally counter on this enchantment. Then create a 1/1 white Monk creature token with prowess for each rally counter on it. (Whenever you cast a noncreature spell, the token gets +1/+1 until end of turn.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flurry"
+   ],
+   "collector_number": "52",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Monk",
+     "type_line": "Token Creature — Monk",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Spells that were cast before a permanent with flurry count. If that permanent was the first spell you cast that turn, the next spell you cast that turn is your second spell."
+   ]
+  },
+  {
+   "name": "Ironwill Forger",
+   "oracle_id": "eee99fdc-b116-4f06-9f9f-7b7dda5743c1",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Orc Artificer",
+   "oracle_text": "Lieutenant — At the beginning of combat on your turn, if you control your commander, target nonlegendary creature you control gains myriad until end of turn. (Whenever it attacks, for each opponent other than defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at end of combat.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lieutenant"
+   ],
+   "collector_number": "53",
+   "set": "tdc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The term “defending player” in the myriad rules (or any other ability of an attacking creature) refers to the player the creature with myriad was attacking, the controller of the planeswalker it was attacking, or the protector of the battle it was attacking at the time the ability resolves. If that creature is no longer attacking, it refers to the appropriate player based on who or what the creature was last attacking.",
+    "If the defending player is your only opponent, no tokens are put onto the battlefield.",
+    "You choose whether each token is attacking the player or a planeswalker they control as the token is created. If it’s attacking a planeswalker, you choose which one. You can’t have any of the tokens attack a battle.",
+    "Although the tokens enter attacking, they were never declared as attackers. Abilities that trigger whenever a creature attacks won’t trigger, including the myriad ability of the tokens. If there are any costs to have a creature attack, those costs won’t apply to the tokens.",
+    "The tokens created by a single instance of myriad all enter at the same time.",
+    "Each token copies exactly what was printed on the original creature and nothing else. It doesn’t copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "Any “enters” abilities of the copied creature will trigger when the tokens enter. Any “as [this creature] enters” or “[this creature] enters with” abilities of the copied creature will also work.",
+    "If an instance of myriad creates more than one token for any given player (due to an effect such as the one Doubling Season creates), you may choose separately for each token whether it’s attacking the player or a planeswalker they control."
+   ]
+  },
+  {
+   "name": "Protector of the Wastes",
+   "oracle_id": "4534e260-06fd-4054-8077-505c2f6c5767",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhen this creature enters or becomes monstrous, exile up to two target artifacts and/or enchantments controlled by different players.\n{4}{W}: Monstrosity 3. (If this creature isn't monstrous, put three +1/+1 counters on it and it becomes monstrous.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Monstrosity"
+   ],
+   "collector_number": "54",
+   "set": "tdc",
+   "rulings": [
+    "Once a creature becomes monstrous, it can’t become monstrous again. If the creature is already monstrous when the monstrosity ability resolves, nothing happens.",
+    "Monstrous isn’t an ability that a creature has. It’s just something true about that creature. If the creature stops being a creature or loses its abilities, it will continue to be monstrous."
+   ]
+  }
+ ]
+}

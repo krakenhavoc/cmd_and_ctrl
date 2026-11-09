@@ -1,0 +1,27 @@
+01: Giada, Font of Hope; Always Watching; Angelic Sleuth; Archangel of Tithes; Defy Death; Emeria Shepherd; Grasp of Fate; Herald of War; Invoke the Divine; Linvala, the Preserver
+02: Merchant of Truth; Metropolis Reformer; Norn's Choirmaster; Reya Dawnbringer; Search the Premises; Segovian Angel; Seraph of the Sword; Serra Avenger; Starnheim Aspirant; Sunblast Angel
+03: Thraben Watcher; Wojek Investigator; Broodstar; Fall from Favor; Launch Mishap; Research Thief; Shimmer Dragon; Tamiyo's Logbook; Bad Moon; Eternal Taskmaster
+04: Graveborn Muse; Josu Vess, Lich Knight; Liliana's Mastery; Liliana's Reaver; Marchesa's Decree; Mire Triton; Moan of the Unhallowed; Mutilate; Necrotic Hex; Razorlash Transmogrant
+05: Soulless One; Tendrils of Corruption; Bitter Reunion; Breath Weapon; Dragonhawk, Fate's Tempest; Goddric, Cloaked Reveler; Magmaquake; Minion of the Mighty; Orb of Dragonkind; Sarkhan, Dragon Ascendant
+06: Scourge of the Throne; Scourge of Valkas; Skyline Despot; Tyrant's Familiar; Challenger Troll; Dungrove Elder; Elder Gargaroth; Monstrous Onslaught; Paradise Druid; Ram Through
+07: Rhonas the Indomitable; Ripjaw Raptor; Steel Leaf Champion; Surrak and Goreclaw; Tangleweave Armor; Thickest in the Thicket; Whiptongue Hydra; Whisperer of the Wilds; Yeva, Nature's Herald; Darksteel Juggernaut
+08: Graaz, Unstoppable Juggernaut; Hazoret's Monument; Infernal Idol; Nettlecyst; Rhonas's Monument; Shimmer Myr; Spire Golem; Barren Moor; Foundry of the Consuls; Haven of the Spirit Dragon
+09: Secluded Steppe; Tranquil Thicket; Hearthhull, the Worldseed; Inspirit, Flagship Vessel; Kilo, Apogee Mind; Szarel, Genesis Shepherd; Patrolling Peacemaker; Eumidian Wastewaker; Evendo Brushrazer; Baloth Prime
+10: Moxite Refinery; Surge Conductor; Depthshaker Titan; Planetary Annihilation; Exploration Broodship; Scouring Swarm; Eumidian Hatchery; Gavel of the Righteous; Experimental Augury; Sprouting Goblin
+11: Centaur Vinecrasher; Groundskeeper; Loamcrafter Faun; World Breaker; Enthusiastic Mechanaut; Soul of Windgrace; Uurg, Spawn of Turg; Wake the Past; Worldsoul's Rage; Coretapper
+12: Crystalline Crawler; Golem Foundry; Mindless Automaton; Titan Forge; Dakmor Salvage; Lonely Sandbar; Razortide Bridge; Rustvale Bridge; Silverbluff Bridge; Elsha, Threefold Master
+13: Eshki, Temur's Roar; Felothar the Steadfast; Kotis, Sibsig Champion; Shiko and Narset, Unified; Zurgo Stormrender; Reunion of the House; Tempest Technique; Deceptive Frostkite; Transcendent Dragon; Voracious Bibliophile
+14: Afterlife from the Loam; Bone Devourer; Tip the Scales; Within Range; Infantry Shield; Canopy Gargantuan; Floral Evoker; Aligned Heart; Ironwill Forger; Protector of the Wastes
+15: Adaptive Training Post; Diviner of Mist; Hammerhead Tyrant; Will of the Temur; Jaws of Defeat; Welcome the Dead; Goldlust Triad; Thundermane Dragon; Transforming Flourish; Will of the Jeskai
+16: Arbor Adherent; Become the Avalanche; Broodcaller Scourge; Rampart Architect; Tree of Redemption; Shadow Summoning; Temple of the Dragon Queen; Baldin, Century Herdmaster; Commander's Insignia; Goldnight Commander
+17: Release the Dogs; Shalai, Voice of Plenty; Twilight Drover; Wakestone Gargoyle; Wingmantle Chaplain; Amphin Mutineer; Baral's Expertise; Draconic Lore; Forbidden Alchemy; Haughty Djinn
+18: Keiga, the Tide Star; Behind the Scenes; Blight Pile; Chittering Witch; Junji, the Midnight Sky; Lord of the Forsaken; Mindblade Render; Necromantic Selection; Necropolis Fiend; Tasigur, the Golden Fang
+19: Wall of Limbs; Electrodominance; Gadrak, the Crown-Scourge; Grenzo, Havoc Raiser; Hellkite Courser; Nogi, Draco-Zealot; Ogre Battledriver; Opportunistic Dragon; Spit Flame; Storm's Wrath
+20: Tempt with Vengeance; Territorial Hellkite; Verix Bladewing; Arboreal Grazer; Assault Formation; Axebane Guardian; Carven Caryatid; Crawling Sensation; Hornet Nest; Jaddi Offshoot
+21: Migration Path; Overgrown Battlement; Sylvan Caryatid; Timeless Witness; Tower Defense; Towering Titan; Aron, Benalia's Ruin; Atarka, World Render; Baral and Kari Zev; Expansion // Explosion
+22: Grisly Salvage; Harbinger of the Hunt; Kaya, Geist Hunter; Meren of Clan Nel Toth; Sarkhan, Soul Aflame; Sidar Kondo of Jamuraa; Thalisse, Reverent Medium; Velomachus Lorehold; Colfenor's Urn; Steel Hellkite
+23: Walking Bulwark; Bountiful Landscape; Crypt of Agadeem; Deceptive Landscape; Foreboding Landscape; Pia Nalaar, Chief Mechanic; Saheeli, Radiant Creator; Temmet, Naktamun's Will; Prophet of the Scarab; Adaptive Omnitool
+24: Priest of the Crossing; Wizened Mentor; Lost Monarch of Ifnir; Accursed Duneyard; Commence the Endgame; Corpse Augur; Cryptbreaker; Zombie Master; Druid of Purification; Angel of Sanctions
+25: Binding Mummy; Cast Out; Timeless Dragon; Champion of Wits; Vizier of Many Faces; Whirler Rogue; Lord of the Accursed; Never // Return; Rot Hulk; Twisted Abomination
+26: Pia and Kiran Nalaar; Bootleggers' Stash; Gleaming Overseer; Lazotep Chancellor; Gate to the Afterlife; God-Pharaoh's Gift; Retrofitter Foundry; Desert of the Glorified; Desert of the Mindful; Desert of the True
+27: Slagwoods Bridge; Tanglepool Bridge; Unholy Grotto

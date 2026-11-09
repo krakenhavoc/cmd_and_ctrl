@@ -1,0 +1,267 @@
+{
+ "batch": 23,
+ "set": [
+  "drc",
+  "tdc"
+ ],
+ "cards": [
+  {
+   "name": "Walking Bulwark",
+   "oracle_id": "8ad0d89b-beef-40f7-8ce8-65589e3970be",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Golem",
+   "oracle_text": "Defender\n{2}: Until end of turn, target creature with defender gains haste, can attack as though it didn't have defender, and assigns combat damage equal to its toughness rather than its power. Activate only as a sorcery.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "334",
+   "set": "tdc",
+   "rulings": [
+    "Walking Bulwark’s last ability doesn’t actually change any creature’s power. It changes only the amount of combat damage it assigns. All other rules and effects that check power or toughness use the real values. For example, since having two creatures fight doesn’t result in combat damage, an effect that causes the affected creature to fight another creature will still use its power to determine how much damage is dealt."
+   ]
+  },
+  {
+   "name": "Bountiful Landscape",
+   "oracle_id": "2eb69a8f-9456-4852-b868-85ae609d3441",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}, Sacrifice this land: Search your library for a basic Forest, Island, or Mountain card, put it onto the battlefield tapped, then shuffle.\nCycling {G}{U}{R} ({G}{U}{R}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "342",
+   "set": "tdc"
+  },
+  {
+   "name": "Crypt of Agadeem",
+   "oracle_id": "4fe8af73-c84a-44bd-9739-ee5c8b027874",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {B}.\n{2}, {T}: Add {B} for each black creature card in your graveyard.",
+   "colors": [],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "354",
+   "set": "tdc"
+  },
+  {
+   "name": "Deceptive Landscape",
+   "oracle_id": "1831fe12-dbe0-437f-8fc8-f01bbb701fe1",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}, Sacrifice this land: Search your library for a basic Plains, Swamp, or Forest card, put it onto the battlefield tapped, then shuffle.\nCycling {W}{B}{G} ({W}{B}{G}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "356",
+   "set": "tdc"
+  },
+  {
+   "name": "Foreboding Landscape",
+   "oracle_id": "bcfe1653-e602-4d38-abe7-bfcc7f203f9d",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}, Sacrifice this land: Search your library for a basic Swamp, Forest, or Island card, put it onto the battlefield tapped, then shuffle.\nCycling {B}{G}{U} ({B}{G}{U}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "365",
+   "set": "tdc"
+  },
+  {
+   "name": "Pia Nalaar, Chief Mechanic",
+   "oracle_id": "31cb87bf-1020-4fd5-95f7-8ecb197d823b",
+   "layout": "normal",
+   "mana_cost": "{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Whenever one or more artifact creatures you control deal combat damage to a player, you get {E}{E} (two energy counters).\nAt the beginning of your end step, you may pay one or more {E}. If you do, create an X/X colorless Vehicle artifact token named Nalaar Aetherjet with flying and crew 2, where X is the amount of {E} paid this way.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "2",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Energy Reserve",
+     "type_line": "Card",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Nalaar Aetherjet",
+     "type_line": "Token Artifact — Vehicle",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Keep track of how many energy counters each player has. Potential ways to track this include writing them down on paper or using dice, but any method that is clear and mutually agreeable is fine.",
+    "{E} is the energy symbol. It represents one energy counter.",
+    "Energy counters are a kind of counter that a player may have. They’re not associated with any specific permanents.",
+    "If an effect says you get one or more {E}, you get that many energy counters. To pay one or more {E}, you lose that many energy counters. You can’t pay more energy counters than you have. Any effects that interact with counters a player gets, has, or loses can interact with energy counters.",
+    "Energy counters aren’t mana. They don’t go away as steps, phases, and turns end, and effects that add mana “of any type” can’t give you energy counters.",
+    "Some spells and abilities say that you “may pay” a certain amount of {E}. You can’t pay that amount multiple times to multiply the effect. You simply choose whether or not to pay that amount of {E} as the ability resolves.",
+    "Some spells and abilities say that you “may pay” a certain amount of {E}, then describes an effect that happens “if you do.” In that case, no player may take actions to try to stop the ability’s effect after you make your choice. If the payment is instead followed by the phrase “when you do” followed by an effect, then after you choose to pay {E}, a new triggered ability called a reflexive trigger is put on the stack, and you choose targets for the reflexive trigger (if the effect asks for targets). Players may respond as normal to this new triggered ability. Once that reflexive trigger resolves, the effect will finally occur.",
+    "Some spells and abilities which give you {E} or say you “may pay” some amount of {E} require one or more targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won’t resolve. None of its effects will happen, you won’t get any {E} from it, and you won’t get the chance to pay any {E} for its effects even if you want to."
+   ]
+  },
+  {
+   "name": "Saheeli, Radiant Creator",
+   "oracle_id": "20f602b3-814f-406c-b7eb-2d1fc98f8cf1",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Whenever you cast an Artificer or artifact spell, you get {E} (an energy counter).\nAt the beginning of combat on your turn, you may pay {E}{E}{E}. When you do, create a token that's a copy of target permanent you control, except it's a 5/5 artifact creature in addition to its other types and has haste. Sacrifice it at the beginning of the next end step.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "3",
+   "set": "drc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    },
+    {
+     "name": "Energy Reserve",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "{E} is the energy symbol. It represents one energy counter.",
+    "Energy counters are a kind of counter that a player may have. They’re not associated with any specific permanents.",
+    "The token you create copies the original characteristics of the permanent as printed on the card or, for a token, as stated by the effect that created that token (unless it’s copying something else; see below). It doesn’t copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras or Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "If the copied permanent is copying something else, then the token enters the battlefield as whatever that permanent copied.",
+    "Any abilities of the copied permanent that trigger when that permanent enters will trigger. Any “as [this permanent] enters” or “[this permanent] enters with” abilities of the chosen permanent will also work.",
+    "Keep track of how many energy counters each player has. Potential ways to track this include writing them down on paper or using dice, but any method that is clear and mutually agreeable is fine.",
+    "If an effect says you get one or more {E}, you get that many energy counters. To pay one or more {E}, you lose that many energy counters. You can’t pay more energy counters than you have. Any effects that interact with counters a player gets, has, or loses can interact with energy counters.",
+    "Energy counters aren’t mana. They don’t go away as steps, phases, and turns end, and effects that add mana “of any type” can’t give you energy counters.",
+    "Some spells and abilities say that you “may pay” a certain amount of {E}. You can’t pay that amount multiple times to multiply the effect. You simply choose whether or not to pay that amount of {E} as the ability resolves.",
+    "Some spells and abilities say that you “may pay” a certain amount of {E}, then describes an effect that happens “if you do.” In that case, no player may take actions to try to stop the ability’s effect after you make your choice. If the payment is instead followed by the phrase “when you do” followed by an effect, then after you choose to pay {E}, a new triggered ability called a reflexive trigger is put on the stack, and you choose targets for the reflexive trigger (if the effect asks for targets). Players may respond as normal to this new triggered ability. Once that reflexive trigger resolves, the effect will finally occur.",
+    "Some spells and abilities which give you {E} or say you “may pay” some amount of {E} require one or more targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won’t resolve. None of its effects will happen, you won’t get any {E} from it, and you won’t get the chance to pay any {E} for its effects even if you want to."
+   ]
+  },
+  {
+   "name": "Temmet, Naktamun's Will",
+   "oracle_id": "3dc43ffe-f6b0-4cdc-86b3-01c0f41df0ae",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{U}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Zombie Wizard",
+   "oracle_text": "Vigilance, menace\nWhenever you attack, draw a card, then discard a card.\nWhenever you draw a card, Zombies you control get +1/+1 until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Menace"
+   ],
+   "collector_number": "4",
+   "set": "drc"
+  },
+  {
+   "name": "Prophet of the Scarab",
+   "oracle_id": "eefe2d53-4856-465d-a900-77836ef9ae07",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Zombie Wizard",
+   "oracle_text": "Vigilance\nWhen this creature enters, draw cards equal to the number of Zombies you control or the number of Zombie cards in your graveyard, whichever is greater.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "9",
+   "set": "drc"
+  },
+  {
+   "name": "Adaptive Omnitool",
+   "oracle_id": "e91240bc-4a13-4131-9379-5ddac6555f4a",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +1/+1 for each artifact you control.\nWhenever equipped creature attacks, look at the top six cards of your library. You may reveal an artifact card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\nEquip {3}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "16",
+   "set": "drc"
+  }
+ ]
+}

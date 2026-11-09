@@ -1,0 +1,294 @@
+{
+ "batch": 9,
+ "set": [
+  "eoc",
+  "fdc"
+ ],
+ "cards": [
+  {
+   "name": "Secluded Steppe",
+   "oracle_id": "8dec6fcf-1254-4b1b-ba23-7a3e492a7241",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {W}.\nCycling {W} ({W}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "312",
+   "set": "fdc"
+  },
+  {
+   "name": "Tranquil Thicket",
+   "oracle_id": "9f8fe514-77ed-41b4-a6f3-c6f095bb97be",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {G}.\nCycling {G} ({G}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "316",
+   "set": "fdc"
+  },
+  {
+   "name": "Hearthhull, the Worldseed",
+   "oracle_id": "8d6f82d9-5c5b-4c41-8857-c0936f2d894c",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n2+ | {1}, {T}, Sacrifice a land: Draw two cards. You may play an additional land this turn.\n8+ | Flying, vigilance, haste\nWhenever you sacrifice a land, each opponent loses 2 life.",
+   "power": "6",
+   "toughness": "7",
+   "colors": [
+    "B",
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "1",
+   "set": "eoc",
+   "rulings": [
+    "The effect of Hearthhull’s second ability is cumulative with similar effects. For example, if you control Icetill Explorer and you activate Hearthhull’s ability, you’ll be able to play three lands on that turn.",
+    "Hearthhull’s second ability doesn’t allow you to play lands on other players’ turns."
+   ]
+  },
+  {
+   "name": "Inspirit, Flagship Vessel",
+   "oracle_id": "554df866-3dbb-4811-8573-6033481591aa",
+   "layout": "normal",
+   "mana_cost": "{U}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Spacecraft",
+   "oracle_text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n1+ | At the beginning of combat on your turn, put your choice of a +1/+1 counter or two charge counters on up to one other target artifact.\n8+ | Flying\nOther artifacts you control have hexproof and indestructible.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "2",
+   "set": "eoc"
+  },
+  {
+   "name": "Kilo, Apogee Mind",
+   "oracle_id": "7a884166-de5a-43ba-8855-4999f39f2059",
+   "layout": "normal",
+   "mana_cost": "{U}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact Creature — Robot Artificer",
+   "oracle_text": "Haste\nWhenever Kilo becomes tapped, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Haste",
+    "Proliferate"
+   ],
+   "collector_number": "3",
+   "set": "eoc",
+   "rulings": [
+    "If Kilo is tapped to station a permanent, its last ability will resolve before the station ability resolves.",
+    "When you proliferate, you can choose any permanent that has a counter, including ones controlled by opponents. You can choose any player who has a counter, including opponents. You can’t choose cards in any zone other than the battlefield, even if they have counters on them.",
+    "You don’t have to choose every permanent or player that has a counter—only the ones you want to add counters to. Since “any number” includes zero, you don’t have to choose any permanents at all, and you don’t have to choose any players at all.",
+    "If a permanent or player has more than one kind of counter on them, and you choose for that permanent or player to get additional counters, that permanent or player must get one of each kind of counter they already have. You can’t have them get just one kind of counter they already have and not the others.",
+    "Players can respond to a spell or ability whose effect includes proliferating. Once that spell or ability starts to resolve, however, and its controller chooses which permanents and players will get new counters, it’s too late for anyone to respond."
+   ]
+  },
+  {
+   "name": "Szarel, Genesis Shepherd",
+   "oracle_id": "1f3c3365-7dc8-47e1-b304-2a09aa229292",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Insect Druid",
+   "oracle_text": "Flying\nYou may play lands from your graveyard.\nWhenever you sacrifice another nontoken permanent during your turn, put a number of +1/+1 counters equal to Szarel's power on up to one other target creature.",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "4",
+   "set": "eoc",
+   "rulings": [
+    "Szarel’s second ability doesn’t change the times when you can play those land cards. You can still play lands only during your main phase when you have priority and the stack is empty.",
+    "Szarel’s second ability doesn’t allow you to activate abilities (such as cycling) of land cards in your graveyard.",
+    "If Szarel leaves the battlefield at the same time as you sacrifice one or more other nontoken permanents during your turn (probably because you also sacrificed Szarel), its last ability triggers for each of those other nontoken permanents.",
+    "If Szarel leaves the battlefield before its last ability resolves, use its power as it last existed on the battlefield to determine how many +1/+1 counters to put on the target creature."
+   ]
+  },
+  {
+   "name": "Patrolling Peacemaker",
+   "oracle_id": "aa44171d-1c76-40a7-82fc-5ef2abbca647",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Robot Soldier",
+   "oracle_text": "This creature enters with two +1/+1 counters on it.\nWhenever an opponent commits a crime, proliferate. (They commit a crime if they target an opponent, anything an opponent controls, and/or cards in an opponent's graveyard. To proliferate, you choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Proliferate"
+   ],
+   "collector_number": "5",
+   "set": "eoc",
+   "rulings": [
+    "A player commits a crime as they cast a spell, activate an ability, or put a triggered ability on the stack that targets at least one opponent, at least one permanent, spell, or ability an opponent controls, and/or at least one card in an opponent’s graveyard.",
+    "The spell or ability that constituted a crime doesn’t have to have resolved yet or at all. As soon as you’re finished casting the spell, activating the ability, or putting the triggered ability on the stack, you’ve committed a crime.",
+    "For example, an ability that triggers when you cast a spell that targets an opponent will trigger at the same time as an ability that triggers whenever you commit a crime. Those abilities can be put on the stack in either order (if you control them both), and they’ll both resolve before the spell that caused them to trigger.",
+    "Changing the target or targets of a spell or ability won’t affect whether the controller of that spell or ability has committed a crime. Only the initial targets chosen for that spell or ability are used to determine whether its controller committed a crime.",
+    "You don’t have to choose every permanent or player that has a counter—only the ones you want to add counters to. Since “any number” includes zero, you don’t have to choose any permanents at all, and you don’t have to choose any players at all.",
+    "When you proliferate, you can choose any permanent that has a counter, including ones controlled by opponents. You can choose any player who has a counter, including opponents. You can’t choose cards in any zone other than the battlefield, even if they have counters on them.",
+    "Players can respond to a spell or ability whose effect includes proliferating. Once that spell or ability starts to resolve, however, and its controller chooses which permanents and players will get new counters, it’s too late for anyone to respond.",
+    "A player can commit only one crime per spell or ability they control. Targeting multiple opponents, permanents, spells, abilities, and/or cards with the same spell or ability doesn’t constitute committing multiple crimes.",
+    "If a permanent or player has more than one kind of counter on them, and you choose for that permanent or player to get additional counters, that permanent or player must get one of each kind of counter they already have. You can’t have them get just one kind of counter they already have and not the others."
+   ]
+  },
+  {
+   "name": "Eumidian Wastewaker",
+   "oracle_id": "72a570a2-0a22-4680-ac88-a1724faf17de",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect Cleric",
+   "oracle_text": "Whenever this creature attacks, you and defending player each discard a card or sacrifice a permanent. You draw a card for each land card put into a graveyard this way.\nEncore {6}{B}{B} ({6}{B}{B}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "8",
+   "set": "eoc",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect stops a token from attacking a specific player, that token can attack any player, planeswalker, or battle, or not attack at all. If the effect stops the token from attacking a specific player unless a cost is paid, you don’t have to pay that cost unless you want to attack that player.",
+    "Opponents who have left the game aren’t counted when determining how many tokens to create.",
+    "Each token must attack the appropriate player if able.",
+    "If one of the tokens somehow is under another player’s control as the delayed triggered ability resolves, you can’t sacrifice that token. It remains on the battlefield indefinitely, even if you regain control of it later.",
+    "When Eumidian Wastewaker’s first ability resolves, you choose to discard a card or sacrifice a permanent, and then defending player chooses to discard a card or sacrifice a permanent. If one of those players can’t discard a card (such as by having no cards in hand), that player must sacrifice a permanent.",
+    "You’ll draw cards equal to the number of land cards put into graveyards from the discards and sacrifices. Only count the cards that are land cards in the graveyard. If a player sacrifices a land token, you won’t draw a card for it. Similarly, if a player sacrifices Ashaya, Soul of the Wild (which has an ability that makes it a land on the battlefield), it is a creature card in the graveyard, not a land card, so you won’t draw a card for it.",
+    "Encore is an activated ability that functions from the graveyard. “Encore [cost]” means “[Cost], Exile this card from your graveyard: For each opponent, create a token that’s a copy of this card that attacks that opponent this turn if able. The tokens gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.”",
+    "Exiling the card with encore is a cost to activate the encore ability. Once you announce that you’re activating it, no player may take actions until you’ve finished. They can’t try to remove the card from your graveyard to stop you from paying the cost.",
+    "The tokens copy only what’s on the original card. Effects that modified that creature when it was previously on the battlefield won’t be copied.",
+    "If one of the tokens can’t attack for any reason (such as being tapped), then it doesn’t attack. If there’s a cost associated with having it attack, you aren’t forced to pay that cost, so it doesn’t have to attack in that case either."
+   ]
+  },
+  {
+   "name": "Evendo Brushrazer",
+   "oracle_id": "795bc0b0-4b0a-49d6-ac8e-a52a10a93be8",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Insect Warrior",
+   "oracle_text": "Whenever you sacrifice a nontoken permanent, exile the top card of your library.\nDuring your turn, as long as you've sacrificed a nontoken permanent this turn, you may play cards exiled with this creature.\n{T}, Sacrifice a land: Add {R}{R}.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "10",
+   "set": "eoc",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played with the permission granted by Evendo Brushrazer’s second ability. For example, if an exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Baloth Prime",
+   "oracle_id": "dba3dcc1-2177-4a8c-8cf3-7d4fb83c7a16",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "This creature enters tapped with six stun counters on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nWhenever you sacrifice a land, create a tapped 4/4 green Beast creature token and untap this creature.\n{4}, Sacrifice a land: You gain 2 life.",
+   "power": "10",
+   "toughness": "10",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "13",
+   "set": "eoc",
+   "related": [
+    {
+     "name": "Beast",
+     "type_line": "Token Creature — Beast",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If Baloth Prime leaves the battlefield at the same time as you sacrifice one or more lands (probably because you also sacrificed Baloth Prime), its second ability triggers for each of those lands."
+   ]
+  }
+ ]
+}
