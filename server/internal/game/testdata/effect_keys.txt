@@ -1014,6 +1014,7 @@ confirm confirm/mystic-remora-draw
 confirm confirm/narset-jeskai-waymaster-discard-hand
 confirm confirm/necroskitter-return
 confirm confirm/niv-mizzet-ghost-counsel-pay-and-draw
+confirm confirm/norns-dominion-fate-counter
 confirm confirm/oblivious-bookworm-draw
 confirm confirm/ogre-head-helm-sacrifice
 confirm confirm/opening-hand-offer
@@ -1038,6 +1039,7 @@ confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
 confirm confirm/sail-into-the-west-embark
+confirm confirm/sanctum-of-serra-life-20
 confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
@@ -1050,6 +1052,7 @@ confirm confirm/snort-wheel
 confirm confirm/social-snub-copy
 confirm confirm/spm-cheering-crowd
 confirm confirm/staff-room-face-up-or-counter
+confirm confirm/stairs-to-infinity-bottom
 confirm confirm/star-athlete-sacrifice-or-damage
 confirm confirm/stromgald-spy-reveal-hand
 confirm confirm/sunfire-torch-sacrifice
@@ -1064,7 +1067,10 @@ confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others
 confirm confirm/the-falcon-sacrifice
+confirm confirm/the-hippodrome-destroy
 confirm confirm/the-legend-of-yangchen-draw
+confirm confirm/the-maelstrom-put
+confirm confirm/the-maelstrom-reveal
 confirm confirm/the-second-doctor-draw
 confirm confirm/titan-of-littjara-loot
 confirm confirm/transcendent-archaic-draw
@@ -1133,7 +1139,9 @@ drawthen the-theorist/counters-equal-to-hand
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
 maycast may-cast/free-play-back-land-or-hand
+maycast may-cast/free-play-back-land-or-stay
 maycast may-cast/free-play-land-or-hand
+maycast may-cast/free-play-land-or-stay
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
 milluntil until/creature-card-or-count
