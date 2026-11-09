@@ -100,6 +100,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 black Insect":                                                 {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat":                                                    {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Rat with lifelink":                                      {Name: "Rat", TypeLine: "Token Creature — Rat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"lifelink"}},
+	"1/1 black Snail":                                                  {Name: "Snail", TypeLine: "Token Creature — Snail", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Slug":                                                   {Name: "Slug", TypeLine: "Token Creature — Slug", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Thrull":                                                 {Name: "Thrull", TypeLine: "Token Creature — Thrull", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 blue Bird Illusion with flying":                               {Name: "Bird Illusion", TypeLine: "Token Creature — Bird Illusion", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
