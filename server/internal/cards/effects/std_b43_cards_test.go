@@ -1132,3 +1132,58 @@ func TestStdB45HideInPlainSightCloaksTwoAndBottomsTheRest(t *testing.T) {
 	}
 	_ = top5
 }
+
+const stdVannifarOracle = "e8aa0d7d-e5f6-4d66-bdc1-315483e1b256"
+
+func TestStdB45VannifarCloaksACardFromYourHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Vannifar, Evolved Enigma", "Legendary Creature — Elf Ooze Wizard", stdVannifarOracle, 3, 3)
+	me.Hand.Cards = nil
+	keep := handCardFull(me, "Kept", "Sorcery", "{1}", "", nil)
+	cloak := handCardFull(me, "Cloaked Card", "Instant", "{U}", "", []string{"U"})
+	advanceTo(t, g, game.StepBeginCombat)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceModePick, me.ID)
+	if err := g.ResolveModePick(pick.ID, me.ID, []int{0}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	choose := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if choose == nil {
+		t.Fatalf("no card pick: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveChooseCards(choose.ID, me.ID, []uuid.UUID{cloak}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	c, ok := battlefieldCard(g, cloak)
+	if !ok || !c.FaceDownIsPermanent() || c.FaceDownKind != game.FaceDownCloaked {
+		t.Fatalf("the chosen card: on battlefield %v, kind %q; want cloaked", ok, c.FaceDownKind)
+	}
+	if !me.Hand.Contains(keep) {
+		t.Error("the other card left the hand")
+	}
+}
+
+func TestStdB45VannifarPutsCountersOnColorlessCreaturesOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Vannifar, Evolved Enigma", "Legendary Creature — Elf Ooze Wizard", stdVannifarOracle, 3, 3)
+	stdColored(g, me.ID, "Green", "G")
+	colorless := reqCreature(g, me.ID, "Golem", "", 2, 2)
+	theirs := reqCreature(g, g.Seats[1].ID, "Their Golem", "", 2, 2)
+	faceDown := mkmMPCastFaceDown(t, g, "Pyrotechnic Performer", mkmMPPerformerTypeLine, mkmMPPerformerOracle, 3, 2)
+	advanceTo(t, g, game.StepBeginCombat)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceModePick, me.ID)
+	if err := g.ResolveModePick(pick.ID, me.ID, []int{1}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for id, want := range map[uuid.UUID]int{colorless: 1, faceDown: 1, theirs: 0} {
+		if c := tmtB1Card(t, g, id); c.Counters["+1/+1"] != want {
+			t.Errorf("%s has %d counters, want %d", c.Name, c.Counters["+1/+1"], want)
+		}
+	}
+}
