@@ -763,3 +763,50 @@ func TestAretopolisScrollsGainLifeDrawCardsAndPlaneswalkAtTen(t *testing.T) {
 		t.Error("Aretopolis stayed face up with ten scroll counters")
 	}
 }
+
+var planeAstralArena = planeFixture{"805f9dc2-e172-481d-bae7-9a136a3d1e49", "Astral Arena", "Plane — Kolbahan"}
+
+func TestAstralArenaAllowsOneAttackerAndOneBlocker(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeAstralArena)
+	g, _ := newPlaneGame(t, planeAstralArena)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	a := pushVanillaCreature(g, me.ID, "A", 2, 2)
+	b := pushVanillaCreature(g, me.ID, "B", 2, 2)
+	b1 := pushVanillaCreature(g, opp.ID, "Block 1", 2, 2)
+	b2 := pushVanillaCreature(g, opp.ID, "Block 2", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(a, opp.ID); err != nil {
+		t.Fatalf("the first attacker was refused: %v", err)
+	}
+	if err := g.DeclareAttacker(b, opp.ID); err == nil {
+		t.Fatal("a second attacker was accepted")
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if err := g.DeclareBlocker(b1, a); err != nil {
+		t.Fatalf("the first blocker was refused: %v", err)
+	}
+	if err := g.DeclareBlocker(b2, a); err == nil {
+		t.Fatal("a second blocker was accepted")
+	}
+}
+
+func TestAstralArenaChaosDamagesEveryCreature(t *testing.T) {
+	g, _ := newPlaneGame(t, planeAstralArena)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	small := pushVanillaCreature(g, me.ID, "Small", 2, 2)
+	big := pushVanillaCreature(g, opp.ID, "Big", 3, 3)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	g.ReadSnapshot(func() {
+		if z := g.FindCardZoneForEffect(small); z != nil && z.Kind == game.ZoneBattlefield {
+			t.Error("a 2/2 survived 2 damage")
+		}
+	})
+	if got := damageOn(t, g, big); got != 2 {
+		t.Errorf("%d damage on the 3/3, want 2", got)
+	}
+}

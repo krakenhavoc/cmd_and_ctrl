@@ -204,15 +204,14 @@ type attackLimitSource struct {
 //
 // Caller must hold g.mu. Reads only.
 func (g *Game) activeAttackLimitsLocked() []attackLimitSource {
-	if CatalogAttackLimits == nil || g.Battlefield == nil {
+	if CatalogAttackLimits == nil {
 		return nil
 	}
 	var out []attackLimitSource
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
+	collect := func(src *Card) {
 		key := catalogAbilityKeyOf(src)
 		if key == "" {
-			continue
+			return
 		}
 		for _, l := range CatalogAttackLimits(key) {
 			if l.Max <= 0 || (l.While != nil && !l.While(g, src)) {
@@ -221,6 +220,16 @@ func (g *Game) activeAttackLimitsLocked() []attackLimitSource {
 			out = append(out, attackLimitSource{limit: l, source: src})
 		}
 	}
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			collect(&g.Battlefield.Cards[i])
+		}
+	}
+	// A face-up plane's limits too (CR 901.7; Astral Arena, ADR 0216 slice 4).
+	g.forEachPlanarSourceLocked(func(src *Card) bool {
+		collect(src)
+		return true
+	})
 	return out
 }
 
