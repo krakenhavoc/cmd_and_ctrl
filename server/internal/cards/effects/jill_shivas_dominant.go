@@ -41,14 +41,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Jill, Shiva's Dominant — return up to one other target nonland permanent to its owner's hand",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return BounceToHand{Target: id}.Apply(ctx)
-				}), upToOne),
+				bounceTheTargetToHand), upToOne),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{3}{U}{U}, {T}: Exile Jill, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",

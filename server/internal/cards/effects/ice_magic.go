@@ -25,8 +25,8 @@ func init() {
 	bullet := func(label, cost string, apply func(ctx *Context, id uuid.UUID) error) game.ModeOption {
 		return ModeWithPurpose(SpreeModeDoing(label, cost, TargetCreature("target creature"),
 			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok {
+				t, picked := ModeTarget(ctx, occ)
+				if !picked {
 					return nil
 				}
 				return apply(ctx, t.ID)
@@ -45,10 +45,7 @@ func init() {
 				}),
 			bullet("Blizzaga — Target creature's owner shuffles it into their library.", "{5}{U}",
 				func(ctx *Context, id uuid.UUID) error {
-					c, ok := ctx.Game.LookupCardForEffect(id)
-					if !ok {
-						return nil
-					}
+					c, _ := ctx.Game.LookupCardForEffect(id)
 					return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: c.Owner})
 				}),
 		),

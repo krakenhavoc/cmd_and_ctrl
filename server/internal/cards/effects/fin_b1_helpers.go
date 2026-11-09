@@ -17,3 +17,17 @@ func (finB1CondEightInYourGraveyard) Holds(ctx *Context) bool {
 func (finB1CondEightInYourGraveyard) condition() (game.FootprintStep, bool) {
 	return condStep(game.FootprintCondGraveyard, 0), true
 }
+
+// finB1TapAndStun is "tap target <permanent>. Put a stun counter on it":
+// the announced target, if still legal (Ice Flan).
+func finB1TapAndStun(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
+		return err
+	}
+	return AddCounter{Target: id, Kind: game.CounterStun, N: 1}.Apply(ctx)
+}

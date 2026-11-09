@@ -351,6 +351,7 @@ body villainous-syndication/return
 body vronos/phase-out-the-objects
 body warp/exile
 body warren-torchmaster/haste
+body weapons-vendor/attach
 body weeping-angel/owner-shuffles-it-in
 body wicks-patrol/shrink
 body winter-tormented-loner/edict
@@ -1038,6 +1039,7 @@ confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
+confirm fin-b1/sidequest-catch-a-fish-take
 drawinstead dredge-2
 drawinstead dredge-3
 drawinstead dredge-4
@@ -1399,6 +1401,7 @@ payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/voltaic-brawler-pump
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
+payunless pay-unless/weapons-vendor-attach
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zoraline-cosmos-caller-return
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
@@ -2297,6 +2300,7 @@ tail then/breeches-the-blastmaker-flip
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
 tail then/caustic-bronco-life
+tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
 tail then/chain-lightning-offer-red-payment
 tail then/chain-of-vapor-offer-chain

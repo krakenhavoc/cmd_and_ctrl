@@ -67,8 +67,8 @@ func init() {
 			Targeting(AtBeginningOfYourCombat("Hydaelyn, the Mothercrystal — Blessing of Light: +1/+1 counter and indestructible until your next turn on another target creature you control; draw if legendary",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
+					id, found := b16FirstLegalTargetCard(ctx)
+					if !found {
 						return nil
 					}
 					if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
@@ -82,7 +82,7 @@ func init() {
 					}).Apply(ctx); err != nil {
 						return err
 					}
-					if c, ok := g.LookupCardForEffect(id); ok && c.IsLegendary() {
+					if c, seen := g.LookupCardForEffect(id); seen && c.IsLegendary() {
 						return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 					}
 					return nil

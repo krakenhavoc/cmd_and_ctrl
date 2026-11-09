@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	const equipLabel = "Chaosbringer — Equip—Pay 3 life. Activate only once each turn."
+	const equipLabel = "Equip—Pay 3 life. Activate only once each turn."
 	equip := EquipPayingAbility(equipLabel, PayLife(3))
 	equip.Condition = OncePerTurnActivation(equipLabel)
 	Register(Spec{

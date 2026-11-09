@@ -21,17 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Ice Flan — tap target artifact or creature an opponent controls and put a stun counter on it",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-						return err
-					}
-					return AddCounter{Target: id, Kind: game.CounterStun, N: 1}.Apply(ctx)
-				}), TargetPermanent("target artifact or creature an opponent controls", Or(Artifact(), Creature()), OpponentControls())),
+				finB1TapAndStun), TargetPermanent("target artifact or creature an opponent controls", Or(Artifact(), Creature()), OpponentControls())),
 		},
 		Activated: []ActivatedAbility{
 			Typecycling("Islandcycling", "{2}", "an Island card", IsLandWithSubtype("Island")),
