@@ -340,11 +340,14 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 			v.fold(st.Timing, card, zone)
 		}
 	}
-	if g.Battlefield == nil || CatalogCastTimings == nil {
+	if CatalogCastTimings == nil {
 		return v
 	}
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
+	// fold reads one source's statements. A permanent is a source; so is
+	// a face-up planar card in the command zone (CR 901.7, ADR 0216 slice
+	// 4: Akoum's "players may cast enchantment spells as though they had
+	// flash").
+	fold := func(src *Card) {
 		// CatalogAbilityKey, not CatalogKey, for the reason
 		// standingCastPermissionsLocked gives: "you may cast spells
 		// as though they had flash" is a static ability, and an
@@ -353,7 +356,7 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 		// its own since #521 (ADR 0083 decision 3).
 		key := catalogAbilityKeyOf(src)
 		if key == "" {
-			continue
+			return
 		}
 		for _, t := range CatalogCastTimings(key) {
 			if !castTimingAffects(t.Affects, src.Controller, playerID) {
@@ -380,6 +383,15 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 			v.fold(t, card, zone)
 		}
 	}
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			fold(&g.Battlefield.Cards[i])
+		}
+	}
+	g.forEachPlanarSourceLocked(func(src *Card) bool {
+		fold(src)
+		return true
+	})
 	return v
 }
 

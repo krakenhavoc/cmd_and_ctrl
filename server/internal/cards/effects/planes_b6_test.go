@@ -677,9 +677,60 @@ func TestAgyremChaosStopsAttacksUntilAPlaneswalk(t *testing.T) {
 	}
 	// A planeswalk ends it: the next turn's attacker may attack the roller.
 	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(next.ID) })
-	for _, pl := range g.Seats[0].Statics {
-		if pl.CantAttack.Protected != uuid.Nil {
-			t.Error("the can't-attack restriction outlived the planeswalk")
+	for _, seat := range g.Seats {
+		for _, pl := range seat.Statics {
+			if pl.CantAttack.Protected != uuid.Nil {
+				t.Error("the can't-attack restriction outlived the planeswalk")
+			}
 		}
 	}
+}
+
+var planeAkoum = planeFixture{"25650a32-4014-4065-ad01-7357c3ad3995", "Akoum", "Plane — Zendikar"}
+
+func TestAkoumLetsEveryoneCastEnchantmentsAtInstantSpeed(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeAkoum)
+	g, _ := newPlaneGame(t, planeAkoum)
+	advanceToMain(t, g)
+	advanceTo(t, g, game.StepBeginCombat)
+	me := g.Seats[g.Turn.ActiveSeat]
+	ench := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: ench, Name: "Shrine", TypeLine: "Enchantment", Owner: me.ID, Controller: me.ID})
+	bear := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: bear, Name: "Bear", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID})
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{}); err == nil {
+		t.Fatal("a creature was cast at the beginning of combat")
+	}
+	if err := g.CastSpell(me.ID, ench, game.CastSpellParams{}); err != nil {
+		t.Errorf("an enchantment could not be cast with flash: %v", err)
+	}
+}
+
+func TestAkoumChaosDestroysAnUnenchantedCreature(t *testing.T) {
+	g, _ := newPlaneGame(t, planeAkoum)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	plain := pushVanillaCreature(g, opp.ID, "Plain", 2, 2)
+	aura := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Aura", TypeLine: "Enchantment — Aura", Owner: opp.ID, Controller: opp.ID})
+	enchanted := pushVanillaCreature(g, opp.ID, "Enchanted", 2, 2)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == aura {
+				g.Battlefield.Cards[i].AttachedTo = cardRef(enchanted)
+			}
+		}
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(enchanted)); err == nil {
+		t.Fatal("an enchanted creature was accepted as the target")
+	}
+	answerPickTarget(t, g, plain)
+	passPriorityAroundTable(t, g)
+	g.ReadSnapshot(func() {
+		if z := g.FindCardZoneForEffect(plain); z != nil && z.Kind == game.ZoneBattlefield {
+			t.Error("the unenchanted creature survived")
+		}
+	})
 }

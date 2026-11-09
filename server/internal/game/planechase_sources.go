@@ -119,3 +119,19 @@ func (g *Game) appendPlanarCostModifiersLocked(out []boundCostModifier, q CostQu
 	}
 	return out
 }
+
+// forEachPlanarSourceLocked calls fn with every face-up planar card until fn
+// returns false: the planar half of forEachCommandSourceLocked, for the
+// readers that walk the battlefield's sources themselves (cast timing).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) forEachPlanarSourceLocked(fn func(src *Card) bool) {
+	if g.PlanarFaceUp == nil {
+		return
+	}
+	for i := range g.PlanarFaceUp.Cards {
+		if !fn(&g.PlanarFaceUp.Cards[i]) {
+			return
+		}
+	}
+}
