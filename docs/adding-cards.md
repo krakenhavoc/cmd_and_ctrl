@@ -3041,6 +3041,15 @@ keyword, layer 7b base power and toughness, one record). `Problem`
 refuses an overwrite that both sets and adds types. See
 `excava_the_risen_past.go`.
 
+"... and has no abilities" is `EntersAs.LoseAllAbilities` (Xu-Ifit,
+Osteoharmonist: "It's a Skeleton in addition to its other types and has no
+abilities", `EntersAs{AddSubtypes: ctx.TextSubtypes("Skeleton"),
+LoseAllAbilities: true}`). It rides the same record, registered before the
+zone move and `EventETB`, so the card's own "when this enters" triggers and
+enters-tapped or enters-with-counters clauses never apply. A subtype-only or
+abilities-only overwrite is valid (`Problem` no longer demands a card type
+when one of those is set). See `xu_ifit_osteoharmonist.go`.
+
 A "dies, if it was a creature, return it" trigger (Tom, Bert, and
 William) reads `lki.Types` in `AppliesTo`. The returned artifact was
 not a creature when it died, so it does not loop. See

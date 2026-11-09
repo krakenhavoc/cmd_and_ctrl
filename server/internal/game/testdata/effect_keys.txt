@@ -467,6 +467,7 @@ choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
 choose choose-cards/draw-instead-graveyard-return
 choose choose-cards/duelists-flame-exile
+choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
@@ -726,6 +727,8 @@ choose choose-cards/smugglers-surprise-put-creatures
 choose choose-cards/smugglers-surprise-take-milled
 choose choose-cards/soldier-military-program-counters
 choose choose-cards/sorin-the-mirthless-take
+choose choose-cards/sothera-exile-creature
+choose choose-cards/sothera-put-exiled-creature
 choose choose-cards/sparring-dummy-milled-land
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spellweaver-volute-reattach
@@ -1324,6 +1327,7 @@ payunless pay-unless/cradle-of-vitality-counters
 payunless pay-unless/cumulative-upkeep-flip-coins
 payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
+payunless pay-unless/descendant-of-storms-endure
 payunless pay-unless/digsite-conservator-discover
 payunless pay-unless/divert-change-target
 payunless pay-unless/draw-a-card
@@ -1855,6 +1859,7 @@ tail dawnhand-eulogist/after-mill
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
+tail devastating-onslaught/haste-and-sacrifice-copies
 tail dice/ancient-copper-dragon-treasures
 tail dice/ancient-gold-dragon-tokens
 tail dice/ancient-silver-dragon-draw
@@ -2165,6 +2170,8 @@ tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
 tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
+tail pinnacle-starcage/record-returns
+tail pinnacle-starcage/robots-then-sacrifice
 tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
@@ -2291,6 +2298,7 @@ tail smugglers-surprise/protect
 tail sold-out/clue
 tail solstice-revelations/cast-or-to-hand
 tail sorin-vengeful-bloodlord/vampires
+tail sothera-the-supervoid/put-exiled-creature
 tail soul-shackled-zombie/drain-if-creature
 tail sparring-dummy/after-mill
 tail speak-secrets/after-mill

@@ -91,6 +91,14 @@ type EntersAs struct {
 	// 612.8): Princess Yue's "She's a land named Moon." Empty keeps the
 	// card's own.
 	Name string `json:"name,omitempty"`
+	// LoseAllAbilities makes the permanent have no abilities (layer 6, CR
+	// 613.1f): Xu-Ifit, Osteoharmonist's "It's a Skeleton in addition to its
+	// other types and has no abilities." It rides the same record as the
+	// rest of the overwrite, registered before the zone move and EventETB,
+	// so an "enters" trigger, an enters-tapped or enters-with-counters
+	// replacement and an "as this enters" clause of the card never apply
+	// (the Xu-Ifit rulings). An ability granted after it lands is kept.
+	LoseAllAbilities bool `json:"loseAllAbilities,omitempty"`
 }
 
 // EntersAsPT is an entry overwrite's base power and toughness.
@@ -127,6 +135,9 @@ func (e *EntersAs) mods() []Mod {
 	if e.BasePT != nil {
 		mods = append(mods, SetBasePowerMod(e.BasePT.Power), SetBaseToughnessMod(e.BasePT.Toughness))
 	}
+	if e.LoseAllAbilities {
+		mods = append(mods, LoseAllAbilitiesMod())
+	}
 	return mods
 }
 
@@ -136,7 +147,7 @@ func (e *EntersAs) Problem() string {
 	if e == nil {
 		return ""
 	}
-	if len(e.Types) == 0 && len(e.AddTypes) == 0 {
+	if len(e.Types) == 0 && len(e.AddTypes) == 0 && len(e.AddSubtypes) == 0 && !e.LoseAllAbilities {
 		return "an entry overwrite names no card type"
 	}
 	if len(e.Types) > 0 && (len(e.AddTypes) > 0 || len(e.AddSubtypes) > 0 || len(e.CreatureTypes) > 0) {
@@ -165,7 +176,7 @@ func copyEntersAs(e *EntersAs) *EntersAs {
 	}
 	out := &EntersAs{Types: copyStrings(e.Types), Subtypes: copyStrings(e.Subtypes), Grants: copyStrings(e.Grants), Label: e.Label,
 		AddTypes: copyStrings(e.AddTypes), AddSubtypes: copyStrings(e.AddSubtypes), Keywords: copyStrings(e.Keywords),
-		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name}
+		CreatureTypes: copyStrings(e.CreatureTypes), Name: e.Name, LoseAllAbilities: e.LoseAllAbilities}
 	if e.BasePT != nil {
 		pt := *e.BasePT
 		out.BasePT = &pt
