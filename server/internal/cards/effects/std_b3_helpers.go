@@ -75,30 +75,8 @@ func WarpForArtifactAndRedCreatureCardsInHand(cost string) game.GrantedAlternati
 	}
 }
 
-// printedDroneBlocksOnlyFliersToken is Station Monitor's Drone: a 1/1
-// colorless Drone artifact creature token with flying and "This token can
-// block only creatures with flying." (teoe 3). Into the Fae Court's Faerie
-// block rule on an artifact. Its slug is an on-disk identity: never
-// renamed, never reused.
-func printedDroneBlocksOnlyFliersToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "drone-blocks-only-fliers",
-		Card: game.Card{
-			Name:      "Drone",
-			TypeLine:  "Token Artifact Creature — Drone",
-			Power:     1,
-			Toughness: 1,
-			Keywords:  []string{"flying"},
-		},
-		BlockRules: []game.BlockRule{
-			CantBlockAttackers(OnSelf(), OnMatching(WithoutKeyword("flying")), "it can block only creatures with flying"),
-		},
-		Text: "Flying\nThis token can block only creatures with flying.",
-	}
-}
-
 // StdB3DroneToken is the Drone's card value for CreateToken.
-func StdB3DroneToken() game.Card { return tokenFromCatalog(printedDroneBlocksOnlyFliersToken) }
+func StdB3DroneToken() game.Card { return tokenFromCatalog(printedDroneToken) }
 
 // stdB3ArtifactsYouControl is "artifacts you control": the source's
 // controller's permanents that are artifacts, read post-layer.

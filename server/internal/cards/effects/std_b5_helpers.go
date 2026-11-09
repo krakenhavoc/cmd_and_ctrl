@@ -27,26 +27,7 @@ func EntersSacrificeUnlessYouTap(name, noun, plural string, of game.PermanentQue
 		})
 }
 
-// printedDroneBlockerToken is Pinnacle Emissary's 1/1 colorless Drone
-// artifact creature with flying and "This token can block only creatures
-// with flying." (Edge of Eternities token, teoe 3). Its slug is an on-disk
-// identity: never renamed, never reused.
-func printedDroneBlockerToken() tokenTemplate {
-	return tokenTemplate{
-		Slug: "drone-blocks-only-fliers",
-		Card: game.Card{
-			Name:      "Drone",
-			TypeLine:  "Token Artifact Creature — Drone",
-			Power:     1,
-			Toughness: 1,
-			Keywords:  []string{"flying"},
-		},
-		BlockRules: []game.BlockRule{
-			CantBlockAttackers(OnSelf(), OnMatching(WithoutKeyword("flying")), "it can block only creatures with flying"),
-		},
-		Text: "Flying\nThis token can block only creatures with flying.",
-	}
-}
-
 // DroneBlockerToken is the Drone's card value for CreateToken.
-func DroneBlockerToken() game.Card { return tokenFromCatalog(printedDroneBlockerToken) }
+// DroneBlockerToken is Pinnacle Emissary's Drone: the same printed token as
+// Desculpting Blast's (printedDroneToken, slug drone-blocks-only-fliers).
+func DroneBlockerToken() game.Card { return tokenFromCatalog(printedDroneToken) }
