@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Protective Response — Instant {2}{W} (Lorwyn Eclipsed, #4458):
 //
 //	"Convoke (Your creatures can help cast this spell. Each creature you
@@ -22,12 +20,6 @@ func init() {
 		Completeness: CompletenessFull,
 		TapCost:      Convoke(),
 		Targets:      TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return DestroyTarget{Target: id}.Apply(ctx)
-		},
+		OnResolve:    destroyTheTargetPermanent,
 	})
 }

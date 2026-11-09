@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Keep Out — Instant {1}{W} (Lorwyn Eclipsed, #4458):
 //
 //	"Choose one —
@@ -21,22 +19,10 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Keep Out deals 4 damage to target tapped creature.",
 				TargetCreature("target tapped creature", tappedPermanent()),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 4}.Apply(ctx)
-				}),
+				DealFixedDamageToModesTarget(4)),
 			ModeDoing("Destroy target enchantment.",
 				TargetPermanent("target enchantment", Enchantment()),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok {
-						return nil
-					}
-					return DestroyTarget{Target: t.ID}.Apply(ctx)
-				}),
+				DestroyTheModesTarget),
 		),
 	})
 }
