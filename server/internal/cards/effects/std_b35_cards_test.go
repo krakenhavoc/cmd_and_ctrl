@@ -43,6 +43,7 @@ const (
 	b35KambalOracle              = "619e0686-e88c-4238-8364-75395e733533"
 	b35DuplicatorOracle          = "0752fe67-9b8a-42c0-90e3-087d426b2f3b"
 	b35LootOracle                = "542be13f-b9c0-4b79-b486-be576c531a82"
+	b35JasperFlintOracle         = "bd7c5a8b-cf62-41e1-a664-b16e3e5d142b"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -79,6 +80,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35KambalOracle:              "Kambal, Profiteering Mayor",
 		b35DuplicatorOracle:          "Esoteric Duplicator",
 		b35LootOracle:                "Loot, the Key to Everything",
+		b35JasperFlintOracle:         "Laughing Jasper Flint",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1433,5 +1435,34 @@ func TestB35LootExilesAsManyCardsAsCardTypesAmongYourOtherNonlandPermanents(t *t
 	}
 	if n := len(g.Exile.Cards); n < 3 {
 		t.Errorf("%d cards in exile, want at least 3", n)
+	}
+}
+
+func TestB35LaughingJasperFlintMakesStolenCreaturesMercenariesAndExilesXOffAnOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Laughing Jasper Flint", "Legendary Creature — Lizard Rogue", b35JasperFlintOracle, 3, 3)
+	own := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	stolen := b12Creature(g, opp.ID, "Stolen Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		if c := findBattlefieldCardForTest(g, stolen); c != nil {
+			c.Controller = me.ID
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	pushCatalogPermanent(g, me.ID, "Poke", "Creature — Bear", "", false) // forces a layer pass
+	if c, ok := battlefieldCard(g, stolen); !ok || !c.HasSubtype("Mercenary") {
+		t.Error("the stolen creature is not a Mercenary")
+	}
+	if c, ok := battlefieldCard(g, own); !ok || c.HasSubtype("Mercenary") {
+		t.Error("your own creature became a Mercenary")
+	}
+	advanceToUpkeepOf(t, g, 0)
+	before := len(g.Exile.Cards)
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if got := len(g.Exile.Cards) - before; got != 2 {
+		t.Errorf("exiled %d cards off the opponent's library, want 2 (Jasper Flint and the stolen Mercenary)", got)
 	}
 }
