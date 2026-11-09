@@ -305,6 +305,7 @@ body sandbender-scavengers/return-to-battlefield
 body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
 body searing-blood/3-to-its-controller
+body season-of-the-bold/damage
 body seasoned-cryomancer/tap-and-stun
 body selfcraft-mechan/counter-and-draw
 body seven-of-nine-tertiary-adjunct/charge
