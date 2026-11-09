@@ -1187,3 +1187,87 @@ func TestStdB45VannifarPutsCountersOnColorlessCreaturesOnly(t *testing.T) {
 		}
 	}
 }
+
+const stdEtrataOracle = "87957d09-7e22-40fe-8770-ff66d1934a38"
+
+func stdEtrataBoard(t *testing.T) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Etrata, Deadly Fugitive", "Legendary Creature — Vampire Assassin", stdEtrataOracle, 2, 3)
+	return g, me
+}
+
+func TestStdB45EtrataGivesFaceDownCreaturesATurnFaceUpAbility(t *testing.T) {
+	g, me := stdEtrataBoard(t)
+	perf := mkmMPCastFaceDown(t, g, "Pyrotechnic Performer", mkmMPPerformerTypeLine, mkmMPPerformerOracle, 3, 2)
+	floatForTest(g, me, "CCUB")
+	if err := g.ActivateCatalogAbility(me.ID, perf, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate the granted ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if findCardAnywhere(t, g, perf).FaceDown {
+		t.Fatal("the creature is still face down")
+	}
+}
+
+func TestStdB45EtrataExilesAndOffersAFreeCastWhenItCannotTurnFaceUp(t *testing.T) {
+	g, me := stdEtrataBoard(t)
+	opp := g.Seats[1]
+	bolt := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: bolt, Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", OracleID: lightningBoltOracle,
+		Colors: []string{"R"}, Owner: me.ID, Controller: me.ID})
+	g.WithWriteLock(func() {
+		if err := g.PutCardsFromHandOntoBattlefieldKeyedForEffect([]uuid.UUID{bolt},
+			game.HandEntryOptions{Controller: me.ID, FaceDown: game.FaceDownCloaked}, game.KeyedTail{}); err != nil {
+			t.Fatalf("cloak: %v", err)
+		}
+	})
+	if c, ok := battlefieldCard(g, bolt); !ok || !c.FaceDownIsPermanent() {
+		t.Fatal("the cloaked Bolt is not a face-down permanent")
+	}
+	floatForTest(g, me, "CCUB")
+	if err := g.ActivateCatalogAbility(me.ID, bolt, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate the granted ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(bolt) {
+		t.Fatal("an instant that cannot be turned face up was not exiled")
+	}
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
+	if offer == nil {
+		t.Fatalf("no free cast offer: %+v", g.PendingChoices)
+	}
+	if err := g.CastForResolutionChoice(me.ID, offer.ID, bolt, game.CastSpellParams{FromZone: "exile",
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("cast the exiled Bolt for free: %v", err)
+	}
+}
+
+func TestStdB45EtrataCloaksTheTopCardWhenAnAssassinHitsAnOpponent(t *testing.T) {
+	g, me := stdEtrataBoard(t)
+	opp := g.Seats[1]
+	topID := uuid.New()
+	opp.Library.PushTop(game.Card{InstanceID: topID, Name: "Their Top", TypeLine: "Creature — Bear", Power: 4, Toughness: 4, Owner: opp.ID, Controller: opp.ID})
+	assassin := reqCreature(g, me.ID, "Hired Knife", "", 1, 1)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == assassin {
+				g.Battlefield.Cards[i].TypeLine = "Creature — Human Assassin"
+			}
+		}
+	})
+	other := reqCreature(g, me.ID, "Plain Bear", "", 1, 1)
+	dealCombatDamageToPlayer(g, other, opp.ID, 1)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, topID); ok {
+		t.Fatal("a non-Assassin's damage cloaked a card")
+	}
+	dealCombatDamageToPlayer(g, assassin, opp.ID, 1)
+	passPriorityAroundTable(t, g)
+	c, ok := battlefieldCard(g, topID)
+	if !ok || c.FaceDownKind != game.FaceDownCloaked || c.Controller != me.ID || c.Owner != opp.ID {
+		t.Fatalf("their top card: on battlefield %v kind %q controller %v, want cloaked under my control", ok, c.FaceDownKind, c.Controller == me.ID)
+	}
+}
