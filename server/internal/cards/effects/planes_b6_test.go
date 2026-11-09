@@ -298,3 +298,51 @@ func b6AnswerSacrifices(t *testing.T, g *game.Game) {
 		passPriorityAroundTable(t, g)
 	}
 }
+
+var planeTowashi = planeFixture{"0c1cb8e2-8ed4-4a0e-926b-4df5466c607c", "Towashi", "Plane — Kamigawa"}
+
+func TestTowashiModifiedCreaturesTrampleAndDraw(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTowashi)
+	g, _ := newPlaneGame(t, planeTowashi)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	plain := pushVanillaCreature(g, me.ID, "Plain", 2, 2)
+	modded := pushVanillaCreature(g, me.ID, "Modded", 2, 2)
+	g.WithWriteLock(func() { _ = g.AddCounterByForEffect(me.ID, modded, game.CounterPlusOne, 1) })
+	g.BumpLayerVersionForTest()
+	if hasEffectiveKeyword(t, g, plain, "trample") {
+		t.Error("an unmodified creature has trample")
+	}
+	if !hasEffectiveKeyword(t, g, modded, "trample") {
+		t.Fatal("a modified creature has no trample")
+	}
+	before := me.Hand.Size()
+	life := opp.Life
+	pr7bAttack(t, g, opp.ID, plain, modded)
+	advanceTo(t, g, game.StepEndCombat)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before; got != 1 {
+		t.Errorf("drew %d cards, want 1 (only the modified attacker)", got)
+	}
+	if opp.Life >= life {
+		t.Error("no combat damage dealt")
+	}
+}
+
+func TestTowashiChaosDistributesThreeCounters(t *testing.T) {
+	g, _ := newPlaneGame(t, planeTowashi)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	a := pushVanillaCreature(g, me.ID, "A", 1, 1)
+	b := pushVanillaCreature(g, me.ID, "B", 1, 1)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTargetsDivided(ch.ID, ch.Chooser, []game.TargetRef{cardRef(a), cardRef(b)}, map[uuid.UUID]int{a: 1, b: 2}); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if x, y := countersOn(g, a, game.CounterPlusOne), countersOn(g, b, game.CounterPlusOne); x != 1 || y != 2 {
+		t.Errorf("counters %d and %d, want 1 and 2", x, y)
+	}
+}
