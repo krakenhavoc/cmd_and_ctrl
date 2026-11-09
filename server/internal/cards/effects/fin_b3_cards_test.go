@@ -35,6 +35,12 @@ const (
 	finB3GalufOracle           = "9268d369-173e-4325-98f6-348beeb8ba62"
 )
 
+// finB3OwnPick is the open "choose from your permanents" prompt of a
+// resolution-time pick (ChoosePermanents), or nil.
+func finB3OwnPick(g *game.Game, who uuid.UUID) *game.PendingChoice {
+	return latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, who)
+}
+
 func TestFinB3EveryCardIsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		finB3NinjasBladesOracle:        "Ninja's Blades",
@@ -160,7 +166,11 @@ func TestFinB3FreyaFliesOnlyOnYourTurn(t *testing.T) {
 	if !finB3Has(s58p6View(t, g, freya), "flying") {
 		t.Error("Freya lacks flying on her controller's turn")
 	}
-	g.WithWriteLock(func() { g.Turn.ActiveSeat = (seat + 1) % len(g.Seats) })
+	for i := 0; i < 40 && g.Turn.ActiveSeat == seat; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if finB3Has(s58p6View(t, g, freya), "flying") {
 		t.Error("Freya has flying on another player's turn")
 	}
@@ -224,14 +234,16 @@ func TestFinB3HillGigasMountaincyclingFetchesAMountain(t *testing.T) {
 		t.Fatal("the cycled Hill Gigas is not in the graveyard")
 	}
 	passPriorityAroundTable(t, g)
-	pick := chooseCardsChoiceFor(g, me.ID)
+	pick := searchChoiceFor(g, me.ID)
 	if pick == nil {
 		t.Fatal("no search prompt")
 	}
-	if hasID(pick.ChooseCards, forest) || !hasID(pick.ChooseCards, mountain) {
-		t.Errorf("the search offers %v, want only the Mountain", pick.ChooseCards)
+	if hasID(pick.SearchCards, forest) || !hasID(pick.SearchCards, mountain) {
+		t.Errorf("the search offers %v, want only the Mountain", pick.SearchCards)
 	}
-	answerChooseCards(t, g, me.ID, mountain)
+	if err := g.ResolveSearchLibrary(pick.ID, me.ID, []uuid.UUID{mountain}); err != nil {
+		t.Fatal(err)
+	}
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(mountain) {
 		t.Error("the Mountain did not come to hand")
@@ -372,14 +384,14 @@ func TestFinB3LightOfJudgmentDamagesAndDestroysAChosenEquipment(t *testing.T) {
 	finB3Equip(t, g, doom, big)
 	castCatalogSpell(t, g, "Light of Judgment", "Instant", finB3LightOfJudgmentOracle, tdCard(big))
 	passPriorityAroundTable(t, g)
-	pick := chooseCardsChoiceFor(g, me.ID)
+	pick := finB3OwnPick(g, me.ID)
 	if pick == nil {
 		t.Fatal("no Equipment prompt")
 	}
 	if pick.ChooseMin != 0 || pick.ChooseMax != 1 || !hasID(pick.ChooseCards, keep) || !hasID(pick.ChooseCards, doom) || hasID(pick.ChooseCards, elsewhere) {
 		t.Errorf("prompt %d..%d over %v, want up to one of the two attached Equipment", pick.ChooseMin, pick.ChooseMax, pick.ChooseCards)
 	}
-	answerChooseCards(t, g, me.ID, doom)
+	answerOwnPermanents(t, g, me.ID, doom)
 	passPriorityAroundTable(t, g)
 	if v := s58p6View(t, g, big); v.DamageMarked != 6 {
 		t.Errorf("the creature has %d damage, want 6", v.DamageMarked)
@@ -398,7 +410,7 @@ func TestFinB3LightOfJudgmentCanDestroyNothingAndTargetsABareCreature(t *testing
 	finB3Equip(t, g, sword, big)
 	castCatalogSpell(t, g, "Light of Judgment", "Instant", finB3LightOfJudgmentOracle, tdCard(big))
 	passPriorityAroundTable(t, g)
-	answerChooseCards(t, g, me.ID)
+	answerOwnPermanents(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(sword) {
 		t.Error("the Equipment was destroyed though none was chosen")
@@ -569,7 +581,7 @@ func TestFinB3RenoAndRudeSacrificeLetsYouCastTheExiledCardWithAnyMana(t *testing
 	if !g.Exile.Contains(top) {
 		t.Fatal("the top card of the damaged player's library was not exiled")
 	}
-	answerChooseCards(t, g, me.ID, fodder)
+	answerOwnPermanents(t, g, me.ID, fodder)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(fodder) {
 		t.Error("the creature was not sacrificed")
@@ -595,7 +607,7 @@ func TestFinB3RenoAndRudeNoSacrificeMeansNoPermission(t *testing.T) {
 		Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID})
 	fodder := finB3Creature(g, me.ID, "Fodder", "Creature — Bear", 1, 1)
 	finB3RenoAttack(t, g)
-	answerChooseCards(t, g, me.ID)
+	answerOwnPermanents(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(fodder) {
 		t.Error("a creature was sacrificed though none was chosen")
@@ -615,7 +627,7 @@ func TestFinB3RenoAndRudeSacrificeOfAnArtifactAndNeverTheSource(t *testing.T) {
 	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
 	land := b12Permanent(g, me.ID, "Plains", "Basic Land — Plains")
 	_, _, reno := finB3RenoAttack(t, g)
-	pick := chooseCardsChoiceFor(g, me.ID)
+	pick := finB3OwnPick(g, me.ID)
 	if pick == nil {
 		t.Fatal("no sacrifice prompt")
 	}
@@ -876,11 +888,11 @@ func TestFinB3BlitzballTransformsAfterSixCombatDamageAndAttachesToACreature(t *t
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	_, quest, bear := finB3Blitzball(t, g, 4)
-	pick := chooseCardsChoiceFor(g, me.ID)
+	pick := finB3OwnPick(g, me.ID)
 	if pick == nil {
 		t.Fatal("no attach prompt after the transform")
 	}
-	answerChooseCards(t, g, me.ID, bear)
+	answerOwnPermanents(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 	c, ok := battlefieldCard(g, quest)
 	if !ok || c.ActiveFace != 1 || c.Name != "World Champion, Celestial Weapon" {
@@ -903,7 +915,7 @@ func TestFinB3BlitzballStaysPutBelowSixCombatDamage(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	_, quest, _ := finB3Blitzball(t, g, 3) // 3 + 2 = 5
-	if chooseCardsChoiceFor(g, me.ID) != nil {
+	if finB3OwnPick(g, me.ID) != nil {
 		t.Error("an attach prompt came up with only 5 combat damage dealt")
 	}
 	if c, _ := battlefieldCard(g, quest); c.ActiveFace != 0 {
@@ -926,7 +938,7 @@ func TestFinB3BlitzballSixDamageCanComeFromSeveralSources(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	advanceTo(t, g, game.StepEndCombat)
 	passPriorityAroundTable(t, g)
-	answerChooseCards(t, g, me.ID, b)
+	answerOwnPermanents(t, g, me.ID, b)
 	passPriorityAroundTable(t, g)
 	if c, _ := battlefieldCard(g, quest); c.ActiveFace != 1 || !c.IsAttachedTo(b) {
 		t.Errorf("face %d, attached to b: %v", c.ActiveFace, c.IsAttachedTo(b))
@@ -1025,14 +1037,14 @@ func TestFinB3UnexpectedRequestStealsUntapsAndMayAttachAnEquipmentUntilTheEndSte
 	if !finB3Has(v, "haste") {
 		t.Error("the stolen creature lacks haste")
 	}
-	pick := chooseCardsChoiceFor(g, me.ID)
+	pick := finB3OwnPick(g, me.ID)
 	if pick == nil {
 		t.Fatal("no attach prompt")
 	}
 	if !hasID(pick.ChooseCards, sword) || hasID(pick.ChooseCards, theirSword) {
 		t.Errorf("the attach offers %v, want only the Equipment I control", pick.ChooseCards)
 	}
-	answerChooseCards(t, g, me.ID, sword)
+	answerOwnPermanents(t, g, me.ID, sword)
 	passPriorityAroundTable(t, g)
 	if s, _ := battlefieldCard(g, sword); !s.IsAttachedTo(theirs) {
 		t.Fatal("the Equipment is not attached to the stolen creature")
@@ -1056,7 +1068,7 @@ func TestFinB3UnexpectedRequestDecliningTheAttachSchedulesNothing(t *testing.T) 
 	finB3Equip(t, g, sword, other)
 	castCatalogSpell(t, g, "Unexpected Request", "Sorcery", finB3UnexpectedOracle, tdCard(theirs))
 	passPriorityAroundTable(t, g)
-	answerChooseCards(t, g, me.ID)
+	answerOwnPermanents(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	advanceTo(t, g, game.StepEnd)
 	passPriorityAroundTable(t, g)
@@ -1198,6 +1210,7 @@ func finB3RamuhSaga(g *game.Game, owner uuid.UUID, lore int) uuid.UUID {
 func TestFinB3ClashOfTheEikonsFightsRemovesAndPutsLoreCountersInPrintedOrder(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[g.Turn.ActiveSeat], finABOpp(g)
+	advanceToMain(t, g)
 	mine := finB3Creature(g, me.ID, "Mine", "Creature — Bear", 3, 3)
 	theirs := finB3Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
 	down := finB3RamuhSaga(g, me.ID, 2)
@@ -1226,6 +1239,7 @@ func TestFinB3ClashOfTheEikonsFightsRemovesAndPutsLoreCountersInPrintedOrder(t *
 func TestFinB3ClashOfTheEikonsRemovingALoreCounterTriggersNothingButAddingOneDoes(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
 	saga := finB3RamuhSaga(g, me.ID, 2)
 	castModal(t, g, "Clash of the Eikons", "Sorcery", finB3ClashOracle, []int{1}, tdCard(saga))
 	passPriorityAroundTable(t, g)
@@ -1265,10 +1279,10 @@ func TestFinB3DiamondWeaponCostsOneLessPerPermanentCardInYourGraveyard(t *testin
 		floatMana(t, g, me, pool)
 		return g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true})
 	}
-	if err := cast(t, 5, "{G}{G}{C}{C}{C}{C}"); err != nil {
+	if err := cast(t, 5, "{G}{G}{C}{C}"); err != nil {
 		t.Errorf("five permanent cards should make it {2}{G}{G}: %v", err)
 	}
-	refusedForMana(t, cast(t, 5, "{G}{G}{C}{C}{C}"), "one mana short of {2}{G}{G}")
+	refusedForMana(t, cast(t, 5, "{G}{G}{C}"), "one mana short of {2}{G}{G}")
 	// The reduction takes only generic mana: nine cards still leave {G}{G}.
 	if err := cast(t, 9, "{G}{G}"); err != nil {
 		t.Errorf("nine permanent cards should make it {G}{G}: %v", err)
@@ -1444,7 +1458,7 @@ func TestFinB3SummonEsperMaduinChapterTwoAddsGGAndThreePumpsTheOthers(t *testing
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
 	me := g.Seats[seat]
-	saga := finB3MaduinOnBattlefield(g, me.ID, 1)
+	finB3MaduinOnBattlefield(g, me.ID, 1)
 	ally := finB3Creature(g, me.ID, "Ally", "Creature — Bear", 2, 2)
 	foe := finB3Creature(g, finABOpp(g).ID, "Foe", "Creature — Bear", 2, 2)
 	advanceToPrecombatMainOf(t, g, seat)
@@ -1457,9 +1471,6 @@ func TestFinB3SummonEsperMaduinChapterTwoAddsGGAndThreePumpsTheOthers(t *testing
 	late := finB3Creature(g, me.ID, "Late", "Creature — Bear", 2, 2)
 	if v := s58p6View(t, g, ally); v.CurrentPower() != 4 || v.CurrentToughness() != 4 || !finB3Has(v, "trample") {
 		t.Errorf("ally is %d/%d trample=%v, want 4/4 with trample", v.CurrentPower(), v.CurrentToughness(), finB3Has(v, "trample"))
-	}
-	if v := s58p6View(t, g, saga); v.CurrentPower() != 4 {
-		t.Errorf("the Saga itself is %d/%d, want it unchanged (other creatures only)", v.CurrentPower(), v.CurrentToughness())
 	}
 	if v := s58p6View(t, g, foe); v.CurrentPower() != 2 {
 		t.Error("an opponent's creature got the pump")

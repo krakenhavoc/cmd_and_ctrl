@@ -51,9 +51,11 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					var ids []uuid.UUID
+					// The three types are words of Vaan's text (CR 612.2).
+					scout, pirate, rogue := ctx.TextSubtype("Scout"), ctx.TextSubtype("Pirate"), ctx.TextSubtype("Rogue")
 					for _, c := range g.BattlefieldCardsForEffect() {
 						if c.Controller == item.Controller && c.IsCreature() &&
-							(c.HasSubtype("Scout") || c.HasSubtype("Pirate") || c.HasSubtype("Rogue")) {
+							(c.HasSubtype(scout) || c.HasSubtype(pirate) || c.HasSubtype(rogue)) {
 							ids = append(ids, c.InstanceID)
 						}
 					}
