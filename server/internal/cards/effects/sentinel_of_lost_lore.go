@@ -32,7 +32,7 @@ func init() {
 			TargetCardInExile("target card you don't own in exile that has an Adventure", FaceUp(), Not(YouOwn()), HasAnAdventure()),
 			sentinelBottomTheirs),
 		ModeDoing("Exile target player's graveyard.", TargetPlayer("target player"),
-			sentinelExileGraveyard),
+			exileTheModesTargetPlayersGraveyard),
 	)
 	Register(Spec{
 		OracleID:     "683775ac-481e-4c26-ab2f-5d2813af0268",
@@ -56,12 +56,4 @@ func sentinelBottomTheirs(_ *game.StackItem, ctx *Context, occ int) error {
 		return nil
 	}
 	return ctx.Game.TuckToLibraryForEffect(id.ID, true)
-}
-
-func sentinelExileGraveyard(item *game.StackItem, ctx *Context, occ int) error {
-	t, ok := ModeTarget(ctx, occ)
-	if !ok || t.Kind != game.TargetPlayer {
-		return nil
-	}
-	return exileGraveyardForEffect(ctx.Game, item, t.ID)
 }

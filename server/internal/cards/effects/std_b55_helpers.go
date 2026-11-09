@@ -132,3 +132,14 @@ func YouTappedAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Chara
 func Enchanted() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool { return isEnchantedByAura(g, c.InstanceID) }
 }
+
+// exileTheModesTargetPlayersGraveyard is the bullet body "Exile target
+// player's graveyard." for a mode whose target clause is a player (Kutzil's
+// Flanker, Sentinel of Lost Lore).
+func exileTheModesTargetPlayersGraveyard(item *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok || t.Kind != game.TargetPlayer {
+		return nil
+	}
+	return exileGraveyardForEffect(ctx.Game, item, t.ID)
+}
