@@ -48,7 +48,8 @@ func init() {
 				"Artifacts you control have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\""),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice a Food: Ragost deals 3 damage to each opponent.",
+			Label:   "{1}, {T}, Sacrifice a Food: Ragost deals 3 damage to each opponent.",
+			Purpose: game.Purpose{Answers: game.AnswerValue, DamageEachOpponent: 3},
 			Cost: Plus(ManaCost("{1}"), TapCost(),
 				game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))}),
 			Effect: Do(DamageEachOpponent{N: 3}),

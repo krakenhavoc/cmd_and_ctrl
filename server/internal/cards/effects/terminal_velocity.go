@@ -46,7 +46,7 @@ func init() {
 					if !ok || c.Controller != item.Controller {
 						return nil
 					}
-					return g.SacrificePermanentForEffect(item.SourceCardID)
+					return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
 				}),
 			},
 			Text: "When this permanent leaves the battlefield, it deals damage equal to its mana value to each creature. At the beginning of your end step, sacrifice this permanent.",

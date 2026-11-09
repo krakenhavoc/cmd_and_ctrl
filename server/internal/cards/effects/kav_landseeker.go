@@ -33,7 +33,7 @@ func init() {
 					return g.CreateTokensKeyedForEffect(game.TokenCreation{
 						Controller: item.Controller,
 						Source:     item.SourceCardID,
-						Groups:     []game.TokenGroup{{Template: b16LanderToken(), Count: 1}},
+						Groups:     []game.TokenGroup{{Template: ctx.TextToken(b16LanderToken()), Count: 1}},
 					}, ctx.ItemTail(kavLandseekerSacrificeLater))
 				}),
 		},

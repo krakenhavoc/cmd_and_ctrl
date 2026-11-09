@@ -322,6 +322,7 @@ body suspend/tick
 body swans-of-bryn-argoll/source-controller-draws
 body sylvia-tilly-joy-of-discovery/counter
 body synthetic-destiny/reveal-that-many-creatures
+body systems-override/remove-ten-charge-counters
 body tarkir/damage
 body teferi-akosa/shuffle-into-library
 body teferi-hero/untap-two-lands
@@ -813,6 +814,7 @@ choose choose-cards/yunas-decision-put
 choose choose-cards/zack-fair-move-equipment
 choose choose-cards/zara-renegade-recruiter-put
 choose choose-cards/zenos-yae-galvus-first-friend
+choose choose-cards/zero-point-ballad-return
 choose choose-cards/zimones-experiment-reveal
 choose choose-source/desperate-gambit
 choose choose-source/shield
@@ -1212,6 +1214,7 @@ option option-pick/memories-returning-opponent
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/multiform-wonder-keyword
+option option-pick/mutinous-massacre-parity
 option option-pick/narset-of-the-ancient-way-mana
 option option-pick/nazgul-battle-mace-pay-or-take
 option option-pick/nesting-grounds-counter-kind
@@ -1387,6 +1390,7 @@ payunless pay-unless/mystic-remora-may-draw
 payunless pay-unless/nadir-kraken-grow-and-tentacle
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 payunless pay-unless/nothing
+payunless pay-unless/oreplate-pangolin-counter
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/pillar-tombs-of-aku-decline
@@ -2057,6 +2061,7 @@ tail janice-rand-essential-aide/reveal-until-land
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kang-prime/time-counters
+tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
 tail kodamas-reach/basic-land-to-hand
@@ -2111,6 +2116,7 @@ tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
 tail mass/worlds-within-worlds-exiled
+tail mass/zero-point-ballad-return
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail memory-vessel/ban-hands
@@ -2132,6 +2138,7 @@ tail msh-a6/origin-of-the-avengers-draw
 tail msh-a7/rick-jones-after-mill
 tail msh-a8/tricksters-stratagem-connive
 tail msh-a9/ultron-robot-villain
+tail mutinous-massacre/steal-everything
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
 tail necropotence/schedule-delivery
@@ -2313,6 +2320,7 @@ tail survival-cache/compare
 tail sword-of-hearth-and-home/put-both
 tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
+tail systems-override/schedule-charge-removal
 tail tablet-of-discovery/after-mill
 tail tail/eagles-are-coming-birds
 tail tail/pumpkin-bombs-after-fuse
@@ -2326,6 +2334,7 @@ tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
+tail terminal-velocity/gift
 tail terra-magical-adept/after-mill
 tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
