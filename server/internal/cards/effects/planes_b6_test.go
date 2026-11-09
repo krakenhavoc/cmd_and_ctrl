@@ -861,3 +861,61 @@ func TestBantChaosPutsADivinityCounterOnlyOnGreenWhiteOrBlue(t *testing.T) {
 		t.Error("indestructible outlived the divinity counter")
 	}
 }
+
+var planeCelestineReef = planeFixture{"2979597d-c3cc-4585-a9b7-7fa15641b030", "Celestine Reef", "Plane — Luvion"}
+
+func TestCelestineReefOnlyFliersAndIslandwalkersAttackAndChaosProtectsUntilAPlaneswalk(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeCelestineReef)
+	g, _ := newPlaneGame(t, planeCelestineReef)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	plain := pushVanillaCreature(g, me.ID, "Plain", 2, 2)
+	flier := pushVanillaCreature(g, me.ID, "Flier", 2, 2)
+	walker := pushVanillaCreature(g, me.ID, "Walker", 2, 2)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			switch c.InstanceID {
+			case flier:
+				c.Keywords = append(c.Keywords, "flying")
+			case walker:
+				c.Keywords = append(c.Keywords, "islandwalk")
+			}
+		}
+	})
+	g.BumpLayerVersionForTest()
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(plain, opp.ID); err == nil {
+		t.Error("a creature without flying or islandwalk attacked")
+	}
+	if err := g.DeclareAttacker(flier, opp.ID); err != nil {
+		t.Errorf("a flier could not attack: %v", err)
+	}
+	if err := g.DeclareAttacker(walker, opp.ID); err != nil {
+		t.Errorf("an islandwalker could not attack: %v", err)
+	}
+}
+
+func TestCelestineReefChaosGatesLastUntilAPlaneswalk(t *testing.T) {
+	g, _ := newPlaneGame(t, planeCelestineReef)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	gates := func() int {
+		n := 0
+		for _, s := range me.Statics {
+			if s.GameEnd.CantLose {
+				n++
+			}
+		}
+		return n
+	}
+	if gates() == 0 {
+		t.Fatal("no can't-lose gate was granted")
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if gates() != 0 {
+		t.Error("the can't-lose gate outlived the planeswalk")
+	}
+}
