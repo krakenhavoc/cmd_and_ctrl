@@ -286,3 +286,187 @@ func TestFinB9SeiferGivesNoDoubleStrikeWhenTwoAttack(t *testing.T) {
 		t.Error("double strike with two attackers")
 	}
 }
+
+const finB9ZidaneOracle = "f267fb54-1881-464c-81af-9e03c3f3b41d"
+
+func TestFinB9ZidaneStealsUntapsAndGrantsLifelinkAndHaste(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	victim := b12Creature(g, opp.ID, "Ogre", "Creature — Ogre", 3, 3)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == victim {
+				g.Battlefield.Cards[i].Tapped = true
+			}
+		}
+	})
+	castCreatureCard(t, g, "Zidane, Tantalus Thief", "Legendary Creature — Human Mutant Scout", finB9ZidaneOracle, 3, 3)
+	pickCard(t, g, me.ID, victim)
+	passPriorityAroundTable(t, g)
+	c, _ := g.LookupCardForEffect(victim)
+	if c.Controller != me.ID {
+		t.Fatal("control not gained")
+	}
+	if c.Tapped {
+		t.Error("not untapped")
+	}
+	if !hasEffectiveKeyword(t, g, victim, "lifelink") || !hasEffectiveKeyword(t, g, victim, "haste") {
+		t.Error("missing lifelink or haste")
+	}
+	// An opponent taking something from you makes a Treasure.
+	zid := b12Push(g, me.ID, "Zidane, Tantalus Thief", "Legendary Creature — Human Mutant Scout", finB9ZidaneOracle, 3, 3)
+	_ = zid
+	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	before := onBattlefieldNamed(g, "Treasure")
+	stealForTest(t, g, mine, opp.ID)
+	passPriorityAroundTable(t, g)
+	if got := onBattlefieldNamed(g, "Treasure"); got != before+1 {
+		t.Errorf("%d Treasures, want %d", got, before+1)
+	}
+}
+
+const (
+	finB9WarriorOracle   = "393a5d32-fc8e-422b-a957-59e545a54cb6"
+	finB9WhiteMageOracle = "c8110200-209e-423a-96b7-81a3ac32447c"
+	finB9ThiefOracle     = "7857c7b6-9676-47ac-bb28-d0b4cbda5fa7"
+	finB9BlackMageOracle = "ef2aa67a-9531-495c-85c7-7f745bc19ce1"
+)
+
+func TestFinB9PartySizeCountsOneCreaturePerTypeBestAssignment(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	size := func(p uuid.UUID) (n int) {
+		g.WithWriteLock(func() { n = finB9PartySize(g, p) })
+		return
+	}
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	if got := size(me.ID); got != 0 {
+		t.Fatalf("party %d with no party members", got)
+	}
+	// A Cleric Wizard and a Wizard: best assignment gives two.
+	b12Creature(g, me.ID, "Cleric Wizard", "Creature — Human Cleric Wizard", 1, 1)
+	b12Creature(g, me.ID, "Wizard", "Creature — Human Wizard", 1, 1)
+	b12Creature(g, me.ID, "Another Wizard", "Creature — Human Wizard", 1, 1)
+	if got := size(me.ID); got != 2 {
+		t.Fatalf("party %d, want 2 (Cleric/Wizard plus Wizard)", got)
+	}
+	b12Creature(g, me.ID, "Rogue", "Creature — Human Rogue", 1, 1)
+	b12Creature(g, opp.ID, "Their Warrior", "Creature — Human Warrior", 1, 1)
+	if got := size(me.ID); got != 3 {
+		t.Fatalf("party %d, want 3", got)
+	}
+	b12Creature(g, me.ID, "Warrior", "Creature — Human Warrior", 1, 1)
+	if got := size(me.ID); got != 4 {
+		t.Fatalf("party %d, want 4", got)
+	}
+	if got := size(opp.ID); got != 1 {
+		t.Errorf("their party %d, want 1", got)
+	}
+}
+
+func finB9FillParty(g *game.Game, owner uuid.UUID, skip string) {
+	for _, ty := range []string{"Cleric", "Rogue", "Warrior", "Wizard"} {
+		if ty != skip {
+			b12Creature(g, owner, "Party "+ty, "Creature — Human "+ty, 1, 1)
+		}
+	}
+}
+
+func TestFinB9DestinedWarriorPumpsByOneOrThreeAndDiscountsPartySpells(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	w := b12Push(g, me.ID, "The Destined Warrior", "Legendary Creature — Human Warrior", finB9WarriorOracle, 3, 3)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	for _, k := range []string{"first strike", "vigilance", "menace"} {
+		if !hasEffectiveKeyword(t, g, w, k) {
+			t.Errorf("no %s", k)
+		}
+	}
+	advanceToStepOf(t, g, 0, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if v := s58p6View(t, g, bear); v.CurrentPower() != 3 {
+		t.Errorf("bear power %d, want 3 (+1/+0)", v.CurrentPower())
+	}
+	if v := s58p6View(t, g, w); v.CurrentPower() != 4 {
+		t.Errorf("Warrior power %d, want 4", v.CurrentPower())
+	}
+}
+
+func TestFinB9DestinedWarriorPumpsByThreeWithAFullParty(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "The Destined Warrior", "Legendary Creature — Human Warrior", finB9WarriorOracle, 3, 3)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	finB9FillParty(g, me.ID, "Warrior") // the Warrior itself is the fourth member
+	advanceToStepOf(t, g, 0, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if v := s58p6View(t, g, bear); v.CurrentPower() != 5 {
+		t.Errorf("bear power %d, want 5 (+3/+0 with a full party)", v.CurrentPower())
+	}
+}
+
+func TestFinB9DestinedWhiteMageCountersOnLifeGainAndThreeWithAFullParty(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	wm := b12Push(g, me.ID, "The Destined White Mage", "Legendary Creature — Human Cleric", finB9WhiteMageOracle, 2, 3)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	gain := func() {
+		g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 1) })
+		pickCard(t, g, me.ID, bear)
+		passPriorityAroundTable(t, g)
+	}
+	gain()
+	if got := countersOn(g, bear, game.CounterPlusOne); got != 1 {
+		t.Fatalf("%d counters, want 1", got)
+	}
+	finB9FillParty(g, me.ID, "Cleric") // the White Mage is the Cleric
+	gain()
+	if got := countersOn(g, bear, game.CounterPlusOne); got != 4 {
+		t.Errorf("%d counters, want 4 (1 + 3 with a full party)", got)
+	}
+	_ = wm
+}
+
+func TestFinB9DestinedBlackMagePingsOneOrThree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "The Destined Black Mage", "Legendary Creature — Human Wizard", finB9BlackMageOracle, 3, 2)
+	cast := func() {
+		id := pushCatalogHandCard(me, "Shock", "Instant", "")
+		if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+			t.Fatalf("cast: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	life := opp.Life
+	cast()
+	if opp.Life != life-1 {
+		t.Fatalf("life %d → %d, want -1", life, opp.Life)
+	}
+	finB9FillParty(g, me.ID, "Wizard")
+	cast()
+	if opp.Life != life-4 {
+		t.Errorf("life %d → %d, want -4 total (1, then 3 with a full party)", life, opp.Life)
+	}
+}
+
+func TestFinB9DestinedThiefLootsOrDrawsThree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	thief := b12Push(g, me.ID, "The Destined Thief", "Legendary Creature — Human Rogue", finB9ThiefOracle, 2, 2)
+	hand := me.Hand.Size()
+	finB9FillParty(g, me.ID, "Rogue")
+	finABAttack(t, g, opp.ID, thief)
+	passPriorityAroundTable(t, g)
+	for i := 0; i < 12 && me.Hand.Size() == hand; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			break
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if me.Hand.Size() != hand+3 {
+		t.Errorf("hand %d → %d, want +3 with a full party", hand, me.Hand.Size())
+	}
+}
