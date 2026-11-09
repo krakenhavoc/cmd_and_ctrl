@@ -84,6 +84,12 @@ type DelayedOnEvent struct {
 	// (Dalkovan Encampment), where the engine emits an EventAttack per
 	// attacking creature (CR 603.2c).
 	OncePerBatch bool
+
+	// ThroughCleanup keeps the trigger listening through the cleanup
+	// step's own duration sweep, until the next turn begins
+	// (game.DelayedTrigger.ThroughCleanup): "when you lose control of that
+	// Equipment this turn" must see the "until end of turn" theft end.
+	ThroughCleanup bool
 }
 
 func (d DelayedOnEvent) Apply(ctx *Context) error {
@@ -104,6 +110,7 @@ func (d DelayedOnEvent) Apply(ctx *Context) error {
 		Params:           d.Params,
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
+		ThroughCleanup:   d.ThroughCleanup,
 	})
 	return nil
 }

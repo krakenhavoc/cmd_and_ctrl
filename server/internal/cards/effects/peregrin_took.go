@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Peregrin Took — Legendary Creature — Halfling Citizen {2}{G}, 2/3:
 //
@@ -51,18 +47,5 @@ func init() {
 // Food token are created instead" — an APPEND to the instruction's
 // groups, not a multiply or a kind rewrite.
 func peregrinTookFoodReplacement() game.ReplacementEffect {
-	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventTokenCreated},
-		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
-			return ev.Kind == game.RepEventCreateTokens && ev.TokenCount() > 0 && ev.TokenController == src.Controller
-		},
-		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{Template: ruleDefinedToken(FoodToken()), Count: 1})
-			return nil
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			return src.Controller
-		},
-		Label: "Peregrin Took: plus an additional Food",
-	}
+	return plusAnAdditionalTokenReplacement("Peregrin Took: plus an additional Food", FoodToken)
 }
