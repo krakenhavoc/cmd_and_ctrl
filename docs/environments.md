@@ -549,14 +549,15 @@ turned **on** in production.
 | Card spawn | `CMDCTRL_DEV_CARD_SPAWN` |
 | Drive all seats from one browser | `CMDCTRL_DEV_SEAT_SWAP` |
 | Replay scrubber | `CMDCTRL_DEV_REPLAY_SCRUBBER` |
+| The Planechase table option ([ADR 0216](decisions/0216-planechase-as-a-table-option.md), owner answer 3: cmd-dev until the plane card batches land) | `CMDCTRL_DEV_PLANECHASE` |
 
 `GET /config` reports the live answer:
 
 ```console
 $ curl -s https://cmd-dev.labxp.io/config
-{"env":"dev","features":{"card_spawn":true,"seat_swap":true,"frame_inspector":true,"replay_scrubber":true},"shops":[],"support":{}}
+{"env":"dev","features":{"card_spawn":true,"seat_swap":true,"frame_inspector":true,"replay_scrubber":true,"planechase":true},"shops":[],"support":{}}
 $ curl -s https://cmd.labxp.io/config
-{"env":"prod","features":{"card_spawn":false,"seat_swap":false,"frame_inspector":false,"replay_scrubber":false},"shops":[],"support":{}}
+{"env":"prod","features":{"card_spawn":false,"seat_swap":false,"frame_inspector":false,"replay_scrubber":false,"planechase":false},"shops":[],"support":{}}
 ```
 
 `shops` is not a dev feature: it lists the shop link templates set by

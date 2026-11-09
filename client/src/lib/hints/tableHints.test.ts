@@ -86,7 +86,7 @@ const withStack = (controller: string): GameView => {
 };
 
 describe("the table's hints", () => {
-  it("are the nine the ADR names, ADR 0130's exert and #3898's blocking, at their versions, under the ids the tutorial will teach", () => {
+  it("are the nine the ADR names, ADR 0130's exert, #3898's blocking and ADR 0216's Planechase, at their versions, under the ids the tutorial will teach", () => {
     expect(TABLE.map((h) => h.id).sort()).toEqual(
       [
         "table.attention",
@@ -97,6 +97,7 @@ describe("the table's hints", () => {
         "table.expand",
         "table.more",
         "table.opening-roll",
+        "table.planechase",
         "table.right-click",
         "table.shortcuts",
         "table.stack",
@@ -175,6 +176,26 @@ describe("each hint's own condition", () => {
     expect(when("table.opening-roll", roll([{ seat: 0, result: 9 }]), { viewerID: null })).toBe(
       false,
     );
+  });
+
+  it("table.planechase waits for a face-up plane at a Planechase table", () => {
+    expect(when("table.planechase", fullView())).toBe(false);
+    const pc = (face: number): GameView =>
+      ({
+        ...fullView(),
+        planechase: {
+          deck_count: 70,
+          face_up: Array.from({ length: face }, (_, i) => ({
+            instance_id: `p${i}`,
+            name: "Plane",
+          })),
+          die_rolls: 0,
+          die_cost: "{0}",
+        },
+      }) as GameView;
+    expect(when("table.planechase", pc(0))).toBe(false);
+    expect(when("table.planechase", pc(1))).toBe(true);
+    expect(anchorOf(byID("table.planechase"), ctxFor(pc(1)))).toEqual({ label: L.planarZone });
   });
 
   it("table.stack needs an item on the stack", () => {

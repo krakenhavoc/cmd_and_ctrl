@@ -400,6 +400,10 @@ func main() {
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
+	// ADR 0216 owner answer 3: the Planechase table option is a dev
+	// feature until the plane card batches land. One switch, read by
+	// the lobby's settings door and the hub's set_table_settings.
+	mgr.SetPlanechaseOffered(cfg.Features.Planechase)
 	// The capacity caps (ADR 0148): installed on the lobby and the hub
 	// BEFORE RestoreFromDisk, which sizes the boot restore against the
 	// load cap.

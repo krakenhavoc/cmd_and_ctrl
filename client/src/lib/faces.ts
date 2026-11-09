@@ -33,13 +33,20 @@ export const LAYOUT_SPLIT = "split";
 export const LAYOUT_FLIP = "flip";
 
 /**
+ * Scryfall's layout for a plane or phenomenon (ADR 0216): a landscape
+ * card, scanned as a portrait image with the card turned a quarter.
+ */
+export const LAYOUT_PLANAR = "planar";
+
+/**
  * isSidewaysArt reports whether a card's printed image has its text
  * turned a quarter-turn: a split card is printed with both halves
- * sideways in one portrait image (#3518). The face picker shows that
- * whole image rotated clockwise so it reads correctly.
+ * sideways in one portrait image (#3518), and a plane is a landscape
+ * card in a portrait scan (ADR 0216 §10). The face picker and the hover
+ * zoom show that whole image rotated clockwise so it reads correctly.
  */
 export function isSidewaysArt(card: Pick<CardView, "layout"> | null | undefined): boolean {
-  return card?.layout === LAYOUT_SPLIT;
+  return card?.layout === LAYOUT_SPLIT || card?.layout === LAYOUT_PLANAR;
 }
 
 /**

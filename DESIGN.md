@@ -251,7 +251,8 @@ and the seat panels' soft drop (`.seat-panel`).
 | `--shadow-glow`, `--ring`, `--ring-gold` | gold glow / 2px accent / 2px `--gold` ring | Stack lanes only (`board/StackLane*.svelte`). |
 
 **Layers.** The table's z-index ladder (ADR 0111 §3, checked in code): game log
-drawer 30, top bar and strip 40, vote panel 50, action dock and its sheets 55,
+drawer 30, the face-up plane at a Planechase table 35 (`board/PlanarZone.svelte`,
+ADR 0216 §10), top bar and strip 40, vote panel 50, action dock and its sheets 55,
 table effects 57 (`board/TableEffects.svelte`, ADR 0209), the tutorial's coach
 58 (`tutorial/TutorialCoach.svelte`, over the cues that cross its corner of the
 board, #4410), hints 59, mana menus 60 and 70, full-screen dialogs 200, hover
@@ -306,6 +307,12 @@ counter, the checks, the button and the live-region line change all the same.
   footer. The bottom-right corner belongs to the action dock; the stack pile is
   left; the hover zoom is top-right; the coach card is bottom-left (ADR 0111 §4,
   ADR 0119 §1). New table UI must not cover the dock (`--dock-w`, `--dock-h`).
+- **The face-up plane** at a Planechase table (ADR 0216 §10) sits at the
+  table's left edge, on the line between the opponents' row and your board,
+  drawn landscape at about a command-zone card's size with its name, the
+  planar deck's count and the planar controller. The stack pile opens right
+  of it; it never covers the dock, the hover zoom or an avatar (checked at
+  820px and 1440px).
 - **Every seat sits at the middle of its hand's edge** (ADR 0204): a top-row
   opponent's avatar at the top centre of their board, in front of their fan; an
   upright one's at the bottom centre; yours just above the middle of your hand,

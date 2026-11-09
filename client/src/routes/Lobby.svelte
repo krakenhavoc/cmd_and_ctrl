@@ -33,6 +33,7 @@
   } from "../lib/api";
   import { inviteURL, reclaimURL, spectatorInviteURL, navigate, route } from "../lib/router";
   import { L } from "../lib/labels";
+  import { devFeature } from "../lib/env";
   import NewTableRow from "../lib/components/NewTableRow.svelte";
   import { session, LobbyApiError } from "../lib/session";
   import { lobbyErrorMessage } from "../lib/serverFull";
@@ -308,6 +309,10 @@
   // by default. The post names the seats, not accounts, so a guest host
   // may tick it.
   let wantResults = $state(false);
+  // ADR 0216 §1: a Planechase table, offered where the server offers it
+  // (owner answer 3: cmd-dev until the plane batches land).
+  let wantPlanechase = $state(false);
+  const planechaseOffered = devFeature("planechase");
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -660,6 +665,7 @@
         voiceRoom: $community.voice && wantVoiceRoom,
         lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
         results: $community.results === true && wantResults,
+        planechase: $planechaseOffered && wantPlanechase,
       });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
@@ -1648,6 +1654,15 @@
               <span class="setup-sum"
                 >when the game ends: the table's name, seat names, commanders and who won</span
               >
+            </span>
+          </label>
+        {/if}
+        {#if $planechaseOffered}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={wantPlanechase} />
+            <span>
+              {L.planechaseSetting}
+              <span class="setup-sum">a shared deck of planes and the planar die</span>
             </span>
           </label>
         {/if}

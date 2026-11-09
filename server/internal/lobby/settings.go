@@ -48,6 +48,13 @@ func (l *Lobby) UpdateSettings(id, actor uuid.UUID, patch game.SettingsPatch) (g
 			broadcast()
 		}
 	}()
+	// ADR 0216 owner answer 3: the option is offered where the
+	// deployment says so, and only there. This is the door POST /games,
+	// PATCH /games/{id}/settings and a scheduled table's opening all go
+	// through; the hub refuses set_table_settings the same way.
+	if patch.TurnsOnPlanechase() && !l.PlanechaseOffered() {
+		return game.TableSettings{}, game.ErrPlanechaseNotOffered
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -73,6 +80,10 @@ func (l *Lobby) UpdateSettings(id, actor uuid.UUID, patch game.SettingsPatch) (g
 	// through.
 	return entry.room.Game.TableSettingsSnapshot(), nil
 }
+
+// PlanechaseOffered reports whether this deployment offers the
+// Planechase table option (ADR 0216, owner answer 3).
+func (l *Lobby) PlanechaseOffered() bool { return l.mgr.PlanechaseOffered() }
 
 // Settings reads the game's table settings without changing them, for
 // GET /games/{id}/settings (#3499). Who may ask is the HTTP edge's

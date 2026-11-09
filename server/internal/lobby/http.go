@@ -1467,6 +1467,12 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		if from != "" && from != setupFromLast {
 			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown setup %q (want %q)", body.Setup, setupFromLast))
 		}
+		// ADR 0216 owner answer 3: refused before a table exists, so a
+		// server that does not offer Planechase never makes a table
+		// the creator did not ask for.
+		if body.Planechase && !c.Lobby.PlanechaseOffered() {
+			return game.ErrPlanechaseNotOffered
+		}
 
 		if strings.TrimSpace(body.Name) == "" && !server {
 			// A blank name is a surprise (#2630); the creator's own name
@@ -4911,7 +4917,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// game's state cannot satisfy (422), which is the documented
 	// rejection and the one a client is expected to pre-empt by
 	// disabling the control.
-	case errors.Is(err, game.ErrInvalidSetting):
+	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered):
 		status = http.StatusBadRequest
 	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked),
 		errors.Is(err, game.ErrPlanechaseLocked):

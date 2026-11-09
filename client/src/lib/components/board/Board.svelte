@@ -84,6 +84,7 @@
   import EliminationFx from "./EliminationFx.svelte";
   import ExtortScales from "./ExtortScales.svelte";
   import DiceLayer from "./DiceLayer.svelte";
+  import PlanarZone from "./PlanarZone.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
@@ -4375,6 +4376,14 @@
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->
   <DiceLayer {view} {boardEl} {beatsPrimeKey} />
+  {#if view.planechase}
+    <!-- ADR 0216 §10: the face-up plane, at the table's edge between the
+         opponents' row and your board (z 35: under the stack pile, 38,
+         and the strip, 40; the dock, 55, is never under it). -->
+    <div class="planar-anchor">
+      <PlanarZone {view} />
+    </div>
+  {/if}
   <!-- ADR 0119 §4: what the stack targets is ringed in every style,
        compact included; and while the viewer chooses targets, the
        source glows and an arrow runs to each pick and to the pointer. -->
@@ -5201,6 +5210,23 @@
       ),
       radial-gradient(120% 100% at 50% 100%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 80%),
       var(--bg-1);
+  }
+  /* ADR 0216 §10: the face-up plane sits at the table's left edge on the
+     line between the opponents' row and your board, where it covers no
+     avatar and no pile; the stack pile opens right of it, and the dock
+     and the hover zoom are on the right. The row and focus layouts split
+     the table evenly, the quadrant layout 0.7 / 1.3. */
+  .planar-anchor {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    z-index: 35;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  :global(:root[data-table-layout="quadrant"]) .board[data-opp-count="2"] .planar-anchor,
+  :global(:root[data-table-layout="quadrant"]) .board[data-opp-count="3"] .planar-anchor {
+    top: 35%;
   }
   .board::before {
     /* Very subtle tiling noise to break up the flat gradients — makes

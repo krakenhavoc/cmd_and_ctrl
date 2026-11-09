@@ -21,6 +21,7 @@ import TableSettingsPanel from "./components/TableSettingsPanel.svelte";
 import type { TableSettingsView } from "./protocol";
 import { DEFAULT_TABLE_SETTINGS, UNDO_UNLIMITED } from "./tableSettings";
 import { render, cleanup, click, flushSync } from "./test/render.svelte";
+import { loadAppConfig, resetAppConfigForTests } from "./env";
 
 afterEach(cleanup);
 
@@ -224,5 +225,47 @@ describe("the table settings panel", () => {
       } as never,
     );
     expect(container.querySelector(".tsp-error")?.textContent).toContain("only the table host");
+  });
+});
+
+// ADR 0216 §1, owner answer 3: the Planechase switch is drawn where the
+// server offers the option, or on a table that already plays it, and is
+// locked once the game starts.
+describe("the Planechase switch", () => {
+  afterEach(() => resetAppConfigForTests());
+
+  async function offer(): Promise<void> {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ env: "dev", features: { planechase: true } }),
+      }),
+    );
+    await loadAppConfig();
+    vi.unstubAllGlobals();
+  }
+
+  it("is not drawn where the server does not offer it", () => {
+    const { container } = mount({});
+    expect(container.querySelector('[data-field="planechase"]')).toBeNull();
+  });
+
+  it("is drawn where it is offered, and sends the one field", async () => {
+    await offer();
+    const sent: Partial<TableSettingsView>[] = [];
+    const { container } = mount({ onpatch: (p) => sent.push(p) });
+    const box = control(container, "planechase");
+    expect(box.checked).toBe(false);
+    click(box);
+    flushSync();
+    expect(sent).toEqual([{ planechase: true }]);
+  });
+
+  it("shows a table that plays it, locked once the game starts", () => {
+    const { container } = mount({ settings: { planechase: true }, gameState: "active" });
+    const box = control(container, "planechase");
+    expect(box.checked).toBe(true);
+    expect(box.disabled).toBe(true);
   });
 });

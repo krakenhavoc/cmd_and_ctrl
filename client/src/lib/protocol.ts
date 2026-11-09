@@ -338,6 +338,25 @@ export interface SnapshotPayload {
 // open opening roll. Round 1 is every seat; each later round is the
 // tied leaders of the one before. `chooser` is present once one leader
 // remains. Everything in it is public.
+/** A planar die face (ADR 0216 §4): the die has no number (CR 901.9d). */
+export type PlanarFace = "blank" | "chaos" | "planeswalk";
+
+/** GameView.planechase (ADR 0216 §9). */
+export interface PlanechaseView {
+  // The planar controller's player ID (CR 901.6): the active player.
+  // Absent until the starting player is known.
+  planar_controller?: string;
+  // The communal planar deck's size. Its cards are on nobody's wire.
+  deck_count: number;
+  // The face-up planar cards, in the order turned up: ordinary
+  // CardViews with layout "planar". Empty until every hand is kept.
+  face_up: CardView[];
+  // How many times the planar die special action was taken this turn,
+  // and what the active player would pay to take it now ("{0}", "{1}").
+  die_rolls: number;
+  die_cost: string;
+}
+
 export interface OpeningRollView {
   rounds: OpeningRollRoundView[];
   chooser?: number;
@@ -497,6 +516,9 @@ export interface GameView {
   // (between Start and the winner's choice). Public to every viewer.
   // While it is present `starting_seat` means nothing (it reads 0).
   opening_roll?: OpeningRollView;
+  // ADR 0216 §9: a Planechase table's planar state. Absent unless the
+  // table plays Planechase. Public to every viewer.
+  planechase?: PlanechaseView;
   // Stack item announce-time metadata (S13.1). Indexed bottom..top —
   // the corresponding spell card (if any) lives in `stack` at the
   // same index. Empty when the stack is empty.
@@ -1519,6 +1541,9 @@ export interface LogEvent {
   text: string;
   // Random-effect details. These are optional so older log entries
   // and future effect families remain wire-compatible.
+  // ADR 0216 §4: a planar die's face on a `roll`, which then has no
+  // `sides` and no `results` (CR 901.9d).
+  planar_face?: PlanarFace;
   sides?: number;
   results?: number[];
   faces?: string[];
@@ -5980,6 +6005,9 @@ export interface TableSettingsView {
   // before the table is offered a way on without it, 0 for never.
   // Absent from an older server, which reads as the default, 3.
   away_after?: number;
+  // ADR 0216 §1: a Planechase table (a communal planar deck and the
+  // planar die). Absent is off. Fixed once the game is active.
+  planechase?: boolean;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

@@ -36,6 +36,32 @@ type RoomManager struct {
 	// boot is the armed boot measurement the next restore pass takes
 	// (deploy_cost.go, #3037); nil when none is armed.
 	boot *bootMeasurement
+	// planechaseOffered is whether this deployment offers the
+	// Planechase table option (ADR 0216, owner answer 3), from
+	// appenv.Features.Planechase. The lobby's settings door and the
+	// hub's set_table_settings both read it, so one switch gates every
+	// way of turning the option on. Off by default: a forgotten call
+	// fails closed.
+	planechaseOffered bool
+}
+
+// SetPlanechaseOffered sets whether tables may turn Planechase on. The
+// server calls it once, at boot, from appenv.Features.Planechase.
+func (m *RoomManager) SetPlanechaseOffered(on bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.planechaseOffered = on
+}
+
+// PlanechaseOffered reports whether tables may turn Planechase on. A
+// nil manager offers nothing.
+func (m *RoomManager) PlanechaseOffered() bool {
+	if m == nil {
+		return false
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.planechaseOffered
 }
 
 // SetRestorePointInterval sets the restore-point interval for rooms

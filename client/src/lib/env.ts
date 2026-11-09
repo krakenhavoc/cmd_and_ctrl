@@ -28,6 +28,9 @@ export interface DevFeatures {
   seat_swap: boolean;
   frame_inspector: boolean;
   replay_scrubber: boolean;
+  // ADR 0216 owner answer 3: the Planechase table option, cmd-dev only
+  // until the plane card batches land. The server refuses it elsewhere.
+  planechase: boolean;
 }
 
 export interface AppConfig {
@@ -46,6 +49,7 @@ export const NO_FEATURES: DevFeatures = {
   seat_swap: false,
   frame_inspector: false,
   replay_scrubber: false,
+  planechase: false,
 };
 
 // PROD_CONFIG is both the initial value and the value every failure
@@ -110,6 +114,7 @@ export function parseConfig(body: unknown): AppConfig {
       seat_swap: raw.seat_swap === true,
       frame_inspector: raw.frame_inspector === true,
       replay_scrubber: raw.replay_scrubber === true,
+      planechase: raw.planechase === true,
     },
     shops,
     support,
