@@ -132,6 +132,24 @@ func (g *Game) earnedDesignationSweepLocked(d *earnedDesignation) bool {
 			break
 		}
 	}
+	// A face-up plane with the keyword is a static ability that functions
+	// from the command zone (CR 901.7): The Golden City of Orazca's ascend
+	// counts for the planar controller (its ruling: "you control ten
+	// permanents but have not yet found" the plane, you don't get it).
+	if g.PlanarFaceUp != nil {
+		for i := range g.PlanarFaceUp.Cards {
+			c := &g.PlanarFaceUp.Cards[i]
+			for s, p := range g.Seats {
+				if s >= MaxPlayers || !waiting[s] || p.ID != c.Controller {
+					continue
+				}
+				if keyed[s] == uuid.Nil && HasKeyword(c, d.keyword) {
+					keyed[s] = c.InstanceID
+				}
+				break
+			}
+		}
+	}
 	granted := false
 	for s, p := range g.Seats {
 		if s >= MaxPlayers || !waiting[s] || keyed[s] == uuid.Nil || counts[s] < d.threshold {

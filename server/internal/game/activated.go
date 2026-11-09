@@ -105,6 +105,17 @@ type AbilityCost struct {
 	// effects.SacrificeN. Every one-permanent constructor stamps 1.
 	SacrificeOther *TargetSpec
 
+	// ManaIsSourceManaCost is "<cost> equal to its mana cost" on an
+	// ability a static grants to a card in a zone (Naktamun's "Each
+	// creature card in your graveyard has embalm. Its embalm cost is
+	// equal to its mana cost.", #4870). The bundle cannot name a price
+	// per recipient, so activatedAbilityRows stamps the recipient's own
+	// printed mana cost into Mana as it builds the row, and every reader
+	// after it (the price, the view, the enumerator) sees an ordinary
+	// cost. A recipient with no mana cost has no payable cost (CR
+	// 118.6) and the row is dropped.
+	ManaIsSourceManaCost bool `json:",omitempty"`
+
 	// Mana is a printed cost string ("{1}{B}") paid from the pool
 	// under the same strict / permissive rules casting uses. Empty
 	// means no mana component.

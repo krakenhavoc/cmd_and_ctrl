@@ -738,6 +738,23 @@ func AlternativeCostsFor(oracleID string) []AlternativeCost {
 	return CatalogAlternativeCosts(oracleID)
 }
 
+// AltCostKeyGrantedBlitz is the key of the blitz offer a static grants a
+// spell ("Creature spells you cast from your hand have blitz {3}", The
+// Caldaia, #4870). Its entry clause is blitz's (haste, the draw on dying,
+// the sacrifice at the next end step); the price is whatever the granting
+// static offered. An on-disk identity: never renamed, never reused.
+const AltCostKeyGrantedBlitz = "granted-blitz"
+
+// entryRiderCostByKey is AlternativeCostByKey for the entry clauses of a
+// cast permanent (queueAltCostEntryTriggerLocked): a card's own offer, or
+// the granted blitz, whose clause no card row carries.
+func entryRiderCostByKey(oracleID, key string) *AlternativeCost {
+	if key == AltCostKeyGrantedBlitz {
+		return &AlternativeCost{Key: key, Label: "Blitz", Blitz: true}
+	}
+	return AlternativeCostByKey(oracleID, key)
+}
+
 // AlternativeCostByKey returns the named alternative cost for a card,
 // or nil when the card offers none by that name. The empty key is
 // how "I am paying the printed mana cost" is spelled on the wire, so
@@ -1446,7 +1463,7 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	if item == nil || item.AltCost == "" {
 		return
 	}
-	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	alt := entryRiderCostByKey(CatalogKey(card), item.AltCost)
 	if alt == nil {
 		return
 	}

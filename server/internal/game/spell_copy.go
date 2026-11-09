@@ -988,7 +988,7 @@ func altCostHasEntryRider(card Card, item *StackItem) bool {
 	if item == nil || item.AltCost == "" {
 		return false
 	}
-	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	alt := entryRiderCostByKey(CatalogKey(card), item.AltCost)
 	return alt != nil && (alt.SacrificeOnEntry || alt.Dash || alt.Blitz || alt.WarpExile)
 }
 

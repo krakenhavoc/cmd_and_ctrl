@@ -1868,6 +1868,11 @@ type delayedTriggerSnapshot struct {
 	// player's tap (stronger than printed for the caster's opponents, so
 	// a stale snapshot is the only way to see it).
 	ManaTapControllerOnly bool `json:"manaTapControllerOnly,omitempty"`
+
+	// #4870: the any-land triggered-mana record (Selesnya Loft Gardens).
+	// Additive: an older binary drops the key and reads the record as a
+	// no-op (weaker, never stronger).
+	ManaAddsProduced bool `json:"manaAddsProduced,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -3419,6 +3424,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		ManaAdds:           d.ManaAdds,
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
+		ManaAddsProduced:      d.ManaAddsProduced,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -3435,7 +3441,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 	// with no Body, and no other path builds one. The only way to meet
 	// one here is a hand-built test fixture, and it is still counted,
 	// because a trigger with nothing to do cannot be restored exactly.
-	if d.Body.key == "" && d.ManaAdds == "" {
+	if d.Body.key == "" && d.ManaAdds == "" && !d.ManaAddsProduced {
 		cen.DelayedTriggerEffects++
 		cen.note("delayed trigger without a body: %s", labelOr(d.Label, d.ID.String()))
 	}
@@ -4541,6 +4547,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		ManaAdds:         d.ManaAdds,
 
 		ManaTapControllerOnly: d.ManaTapControllerOnly,
+		ManaAddsProduced:      d.ManaAddsProduced,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

@@ -430,6 +430,14 @@ type TurnTally struct {
 	// state-based check, and the list outlives it. Additive: omitted
 	// when empty, so an older snapshot reads back as no records.
 	DamageDealers []DamageDealtRecord `json:"damageDealers,omitempty"`
+	// DamageEventsToPlayers counts, per creature OBJECT, the damage
+	// events that creature has dealt to players this turn (Stensia's "for
+	// the first time each turn", #4870): ObjectTallyKey(creature, epoch,
+	// ""), counted at the damage like DamageDealers, which dedupes by
+	// victim and so cannot tell a second hit on the same player from the
+	// first. Tallied ahead of the trigger harvester, so an AppliesTo for
+	// the event itself reads a count of 1 on the first. Additive.
+	DamageEventsToPlayers map[string]int `json:"damageEventsToPlayers,omitempty"`
 	// NoncombatDamage records every amount of noncombat damage dealt
 	// this turn, to any player or permanent, with the source's colours
 	// and controller as they were when it dealt the damage (#2662,
@@ -953,6 +961,13 @@ func (g *Game) NoteDoneThisTurn(source uuid.UUID, label string) {
 		g.TurnTally.Resolved = map[string]int{}
 	}
 	g.TurnTally.Resolved[g.objectTallyKeyLocked(source, label)]++
+}
+
+// DamageEventsToPlayersThisTurn is how many damage events the creature
+// object `cardID` names has dealt to players this turn (Stensia). Caller
+// must hold g.mu.
+func (g *Game) DamageEventsToPlayersThisTurn(cardID uuid.UUID) int {
+	return g.TurnTally.DamageEventsToPlayers[g.objectTallyKeyLocked(cardID, "")]
 }
 
 // TriggeredThisTurn reports how many times the ability labelled
@@ -1825,6 +1840,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.Triggered = copyStringIntMap(t.Triggered)
+	out.DamageEventsToPlayers = copyStringIntMap(t.DamageEventsToPlayers)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
 	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
@@ -1910,6 +1926,12 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".
 		g.recordDamageDealerLocked(g.findCardByIDLocked(ev.Source), ev.Target, ev.Combat)
+		if dealer := g.findCardByIDLocked(ev.Source); dealer != nil && dealer.IsCreature() {
+			if g.TurnTally.DamageEventsToPlayers == nil {
+				g.TurnTally.DamageEventsToPlayers = map[string]int{}
+			}
+			g.TurnTally.DamageEventsToPlayers[ObjectTallyKey(dealer.InstanceID, dealer.ObjectEpoch, "")]++
+		}
 		if ev.Combat && ev.Actor != uuid.Nil {
 			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CombatDamageToPlayers += ev.Amount })
 			// #596, and the reason EventSacrifice records below: WHAT

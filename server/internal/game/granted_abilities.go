@@ -343,6 +343,14 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 		}
 		n := grantOccurrence(grants, gi)
 		for i, a := range abs {
+			if a.Cost.ManaIsSourceManaCost {
+				// "Its <keyword> cost is equal to its mana cost": the
+				// recipient's own printed cost, or no row at all (CR 118.6).
+				if c.ManaCost == "" {
+					continue
+				}
+				a.Cost.Mana = c.ManaCost
+			}
 			out = append(out, a)
 			if wantOrigins {
 				origins = append(origins, AbilityOrigin{

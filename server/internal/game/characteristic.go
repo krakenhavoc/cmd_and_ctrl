@@ -346,6 +346,14 @@ type Characteristic struct {
 	// can see. power_floor.go.
 	AttackBlockPowerFloor int `json:",omitempty"`
 
+	// AttackBlockPowerCeiling, when above zero, is "creatures with power N
+	// or greater can't attack or block" (Hedron Fields of Agadeem, #4870):
+	// AttackBlockPowerFloor's mirror. Written by a layer-6 static over
+	// every creature, read by foldPowerFloorLocked once every layer has
+	// run (CR 613.11), because the condition is the finished power.
+	// power_floor.go.
+	AttackBlockPowerCeiling int `json:",omitempty"`
+
 	// AttackBlockNeedsOtherPower, when above zero, is "this creature
 	// can't attack or block unless you control another creature with
 	// power N or greater" (Tiger-Dillo, #4459, CR 508.1c, 509.1b).

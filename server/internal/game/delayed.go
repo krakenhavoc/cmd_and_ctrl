@@ -333,11 +333,19 @@ type DelayedTrigger struct {
 	// land's controller; they are the same player for every printed
 	// card, and the pool is who the extra mana lands with.
 	ManaTapControllerOnly bool
+
+	// ManaAddsProduced is the any-land twin of ManaTapSubtype and ManaAdds:
+	// "until end of turn, whenever you tap a land for mana, add one mana of
+	// any type that land produced" (Selesnya Loft Gardens' chaos ability,
+	// #4870). It fires for any land and adds what that land produced, read
+	// off the production, so ManaTapSubtype and ManaAdds stay empty.
+	// Combine it with ManaTapControllerOnly for "whenever you".
+	ManaAddsProduced bool
 }
 
 // isManaTrigger reports whether this record is a triggered mana
 // ability set up for the turn rather than a stack trigger.
-func (dt *DelayedTrigger) isManaTrigger() bool { return dt.ManaAdds != "" }
+func (dt *DelayedTrigger) isManaTrigger() bool { return dt.ManaAdds != "" || dt.ManaAddsProduced }
 
 // ScheduleDelayedTriggerForEffect registers a delayed triggered
 // ability. Returns the trigger's ID, or uuid.Nil when the request is
@@ -582,6 +590,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		ManaAdds:           dt.ManaAdds,
 
 		ManaTapControllerOnly: dt.ManaTapControllerOnly,
+		ManaAddsProduced:      dt.ManaAddsProduced,
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration

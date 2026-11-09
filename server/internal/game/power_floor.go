@@ -47,12 +47,18 @@ func (g *Game) foldPowerFloorLocked() {
 		if n := c.effective.AttackBlockNeedsOtherPower; n > 0 && !g.controlsAnotherCreatureWithPowerLocked(c, n) {
 			c.effective.Restrictions |= CantAttackOrBlock
 		}
-		if c.effective.AttackBlockPowerFloor <= 0 {
+		if c.effective.AttackBlockPowerFloor <= 0 && c.effective.AttackBlockPowerCeiling <= 0 {
 			continue
 		}
 		// Counters are not in effective.Power: they are added at read
 		// time, as every power read does (ptWithCounters).
-		if power, _ := ptWithCounters(*c.effective, c.Counters); power < c.effective.AttackBlockPowerFloor {
+		power, _ := ptWithCounters(*c.effective, c.Counters)
+		if f := c.effective.AttackBlockPowerFloor; f > 0 && power < f {
+			c.effective.Restrictions |= CantAttackOrBlock
+		}
+		// Hedron Fields of Agadeem: "creatures with power N or greater
+		// can't attack or block".
+		if n := c.effective.AttackBlockPowerCeiling; n > 0 && power >= n {
 			c.effective.Restrictions |= CantAttackOrBlock
 		}
 	}

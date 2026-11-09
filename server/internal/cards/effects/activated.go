@@ -205,6 +205,11 @@ func SacrificeX(label string, preds ...CardPredicate) game.AbilityCost {
 // else needs declaring.
 func ManaCost(cost string) game.AbilityCost { return game.AbilityCost{Mana: cost} }
 
+// ManaCostOfThis is "equal to its mana cost" for an ability a static
+// grants to cards in a zone (Naktamun's embalm): the recipient's own mana
+// cost, stamped as the granted row is built. Compose it with Plus.
+func ManaCostOfThis() game.AbilityCost { return game.AbilityCost{ManaIsSourceManaCost: true} }
+
 // MinX is the floor the printed text puts on X: "X can't be 0"
 // (Helm of Obedience) is MinX(1). Compose it onto the mana
 // component — Plus(ManaCost("{X}"), TapCost(), MinX(1)).
@@ -293,6 +298,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		}
 		if c.SacrificeSelf {
 			out.SacrificeSelf = true
+		}
+		if c.ManaIsSourceManaCost {
+			out.ManaIsSourceManaCost = true
 		}
 		if c.SacrificeOther != nil {
 			out.SacrificeOther = c.SacrificeOther

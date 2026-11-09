@@ -271,6 +271,27 @@ var CatalogGrantedAlternativeCosts func(abilityKey string) []GrantedAlternativeC
 // CastOffersForLocked and the announce path apply those gates.
 //
 // Caller must hold g.mu.
+// grantedOfferSourcesLocked is the permanents `playerID` controls, then
+// the face-up planes they control as planar controller (CR 901.6, 901.7:
+// a plane's static abilities function from the command zone), in that
+// order: the sources whose granted offers reach their spells.
+//
+// Caller must hold g.mu.
+func (g *Game) grantedOfferSourcesLocked(playerID uuid.UUID) []*Card {
+	var out []*Card
+	for i := 0; g.Battlefield != nil && i < len(g.Battlefield.Cards); i++ {
+		if c := &g.Battlefield.Cards[i]; c.Controller == playerID {
+			out = append(out, c)
+		}
+	}
+	for i := 0; g.PlanarFaceUp != nil && i < len(g.PlanarFaceUp.Cards); i++ {
+		if c := &g.PlanarFaceUp.Cards[i]; c.Controller == playerID {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone ZoneKind) []*AlternativeCost {
 	if playerID == uuid.Nil || card.IsLand() {
 		return nil
@@ -279,15 +300,11 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 	// cast without paying its mana cost" promise (Apex Observatory) is
 	// the same offer, held on the player rather than on a permanent.
 	out := g.nextSpellFreeOffersLocked(playerID, card)
-	if CatalogGrantedAlternativeCosts == nil || g.Battlefield == nil {
+	if CatalogGrantedAlternativeCosts == nil {
 		return out
 	}
 	var seen map[string]bool
-	for i := range g.Battlefield.Cards {
-		src := &g.Battlefield.Cards[i]
-		if src.Controller != playerID {
-			continue
-		}
+	for _, src := range g.grantedOfferSourcesLocked(playerID) {
 		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue

@@ -278,11 +278,18 @@ func (g *Game) manaTriggersExistLocked() bool {
 			return true
 		}
 	}
-	if g.Battlefield == nil || CatalogManaTriggers == nil {
+	if CatalogManaTriggers == nil {
 		return false
 	}
-	for i := range g.Battlefield.Cards {
+	for i := 0; g.Battlefield != nil && i < len(g.Battlefield.Cards); i++ {
 		if len(manaTriggersOf(&g.Battlefield.Cards[i])) > 0 {
+			return true
+		}
+	}
+	// A face-up plane's triggered mana ability functions from the command
+	// zone (CR 901.7; The Fertile Lands of Saulvinia).
+	for i := 0; g.PlanarFaceUp != nil && i < len(g.PlanarFaceUp.Cards); i++ {
+		if len(manaTriggersOf(&g.PlanarFaceUp.Cards[i])) > 0 {
 			return true
 		}
 	}
@@ -322,7 +329,21 @@ func (g *Game) manaTriggerFiringsLocked(prod ManaProduced) []manaTriggerFiring {
 	// the turn (Bubbling Muck). Not tied to a permanent, so they are
 	// read from the delayed queue, in scheduling order.
 	for _, dt := range g.DelayedTriggers {
-		if dt == nil || !dt.isManaTrigger() || !prod.Source.HasSubtype(dt.ManaTapSubtype) {
+		if dt == nil || !dt.isManaTrigger() {
+			continue
+		}
+		adds := dt.ManaAdds
+		if dt.ManaAddsProduced {
+			// Selesnya Loft Gardens: any land, and one mana of any type it
+			// produced.
+			if !prod.Source.IsLand() {
+				continue
+			}
+			adds = prod.ProducedColorPipe()
+			if adds == "" {
+				continue
+			}
+		} else if !prod.Source.HasSubtype(dt.ManaTapSubtype) {
 			continue
 		}
 		// "Whenever YOU tap" (Pyre Rhymer // Molten Tide): an opponent's
@@ -330,35 +351,45 @@ func (g *Game) manaTriggerFiringsLocked(prod ManaProduced) []manaTriggerFiring {
 		if dt.ManaTapControllerOnly && dt.Controller != prod.Controller {
 			continue
 		}
-		fired = append(fired, manaTriggerFiring{source: dt.SourceCardID, label: dt.Label, produced: dt.ManaAdds})
+		fired = append(fired, manaTriggerFiring{source: dt.SourceCardID, label: dt.Label, produced: adds})
 	}
-	for i := 0; g.Battlefield != nil && CatalogManaTriggers != nil && i < len(g.Battlefield.Cards); i++ {
-		source := &g.Battlefield.Cards[i]
-		triggers := manaTriggersOf(source)
-		if len(triggers) == 0 {
+	if CatalogManaTriggers == nil {
+		return fired
+	}
+	for i := 0; g.Battlefield != nil && i < len(g.Battlefield.Cards); i++ {
+		fired = g.appendManaTriggerFiringsLocked(fired, prod, &g.Battlefield.Cards[i])
+	}
+	// Then the face-up planes, whose triggered mana abilities function
+	// from the command zone (CR 901.7).
+	for i := 0; g.PlanarFaceUp != nil && i < len(g.PlanarFaceUp.Cards); i++ {
+		fired = g.appendManaTriggerFiringsLocked(fired, prod, &g.PlanarFaceUp.Cards[i])
+	}
+	return fired
+}
+
+// appendManaTriggerFiringsLocked adds the firings of `source`'s own
+// triggered mana abilities that `prod` satisfies.
+func (g *Game) appendManaTriggerFiringsLocked(fired []manaTriggerFiring, prod ManaProduced, source *Card) []manaTriggerFiring {
+	for _, t := range manaTriggersOf(source) {
+		if t.AppliesTo != nil && !t.AppliesTo(prod, source, g) {
 			continue
 		}
-		for _, t := range triggers {
-			if t.AppliesTo != nil && !t.AppliesTo(prod, source, g) {
-				continue
-			}
-			produced := ""
-			if t.Produced != nil {
-				produced = t.Produced(prod, source, g)
-			}
-			if produced == "" {
-				// "Could add mana" is part of what makes this a mana
-				// ability at all (CR 605.1b); one that would add
-				// nothing does nothing.
-				continue
-			}
-			fired = append(fired, manaTriggerFiring{
-				source:   source.InstanceID,
-				label:    t.Label,
-				produced: produced,
-				skip:     t.TappedSkipsNextUntap,
-			})
+		produced := ""
+		if t.Produced != nil {
+			produced = t.Produced(prod, source, g)
 		}
+		if produced == "" {
+			// "Could add mana" is part of what makes this a mana
+			// ability at all (CR 605.1b); one that would add
+			// nothing does nothing.
+			continue
+		}
+		fired = append(fired, manaTriggerFiring{
+			source:   source.InstanceID,
+			label:    t.Label,
+			produced: produced,
+			skip:     t.TappedSkipsNextUntap,
+		})
 	}
 	return fired
 }
