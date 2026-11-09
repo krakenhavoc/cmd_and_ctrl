@@ -239,6 +239,9 @@ func ExertThis() game.AbilityCost { return game.AbilityCost{Exert: true} }
 // ctx.X() or item.X.
 func PayXEnergy() game.AbilityCost { return game.AbilityCost{EnergyX: true} }
 
+// PayXLife is "Pay X life": the announced X is the amount (AbilityCost.LifeX).
+func PayXLife() game.AbilityCost { return game.AbilityCost{LifeX: true} }
+
 // LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
 // "−3" printed to the left of the ability. Positive adds counters,
 // negative removes them, zero does neither and still spends the
@@ -331,6 +334,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// stronger than printed, the #259 direction.
 		if !c.LifeFrom.IsZero() {
 			out.LifeFrom = c.LifeFrom
+		}
+		// "Pay X life" (Krumar Initiate): dropped, the ability would be
+		// free of its life — stronger than printed, the #259 direction.
+		if c.LifeX {
+			out.LifeX = true
 		}
 		if c.Loyalty != nil {
 			out.Loyalty = c.Loyalty

@@ -375,6 +375,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Station Monitor's Drone: flying, and it can block only creatures
 	// with flying (Edge of Eternities, #4461).
 	printedDroneBlocksOnlyFliersToken,
+
+
+	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
+	printedReliquaryDragonToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

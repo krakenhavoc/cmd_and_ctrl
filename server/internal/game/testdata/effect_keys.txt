@@ -95,6 +95,7 @@ body decayed/sacrifice
 body decayed/schedule
 body delifs-cone/gain-life-equal-to-its-power
 body delifs-cube/no-combat-damage-and-a-cube-counter
+body desperate-measures/draw-two
 body destroy/that-creature-and-klingon-warrior
 body destroy/the-object
 body destroy/the-object-unless-it-attacked
@@ -191,6 +192,7 @@ body itzquinth/dinosaur-bites
 body jace-reality-sculptor/attacker-gets-minus-five
 body kharn-the-betrayer/opponent-gains-control
 body killmonger-scourge-of-wakanda/destroy
+body kishla-trawlers/return-to-hand
 body koya-death-from-above/pay-or-return
 body kravens-last-hunt/damage
 body leatherhead-swamp-stalker/destroy
@@ -887,6 +889,7 @@ condition dies/another-creature-than-the-source
 condition dies/each-creature
 condition dies/reckless-blaze-that-creature-under-your-control
 condition dies/that-creature
+condition dies/that-creature-under-your-control
 condition dies/that-creature-you-control-your-commander
 condition dies/the-listed-object
 condition discard/opponent-caused-yours
@@ -1359,6 +1362,7 @@ payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
 payunless pay-unless/forage-only
 payunless pay-unless/frenzied-goblin-cant-block
+payunless pay-unless/furious-forebear-return
 payunless pay-unless/giants-amulet-giant-and-attach
 payunless pay-unless/glint-sleeve-siphoner-draw-and-lose
 payunless pay-unless/goblin-vandal-destroy-artifact
@@ -1569,6 +1573,7 @@ run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
 run prompt-run/killmonger-sacrificed
+run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/larval-scoutlander-search
@@ -1767,6 +1772,7 @@ tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
 tail attacking-tokens/uss-stargazer-exile-the-illusion
+tail attacking-tokens/war-effort-sacrifice-the-warrior
 tail augusta-order-returned/after-exile
 tail avatar-b24/put-n-counters-on-each-next
 tail avatar-b30/bison-whistle-after-bison
@@ -2086,6 +2092,7 @@ tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
+tail kishla-trawlers/after-exile
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
 tail kotose/grant-play-permission
