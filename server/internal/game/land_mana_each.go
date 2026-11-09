@@ -100,7 +100,7 @@ func (g *Game) LandManaOptionsForEffect(player, land uuid.UUID) (opts []LandMana
 		if !g.CanPayLifeLocked(p, ab.LifeCost) || EnergyShortfall(p, ab.EnergyCost) != nil {
 			continue
 		}
-		if ab.ManaCost != "" {
+		if g.ManaAbilityChargesManaForEffect(player, *card, ab) { // #5382: a tax counts
 			priced, err := g.ManaAbilityManaCostForEffect(player, *card, ab)
 			if err != nil {
 				continue

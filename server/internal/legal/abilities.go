@@ -457,7 +457,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// ADR 0048 addendum §14's rule for a cast, one path over.
 		var basePay abilityManaPayment
 		perTarget := false
-		if ab.Cost.Mana != "" {
+		// #5382: an activation cost increase (Skyseer's Chariot) can
+		// make a cost that prints no mana owe some — a {T}-only, crew or
+		// loyalty ability — so the gate is the engine's own question,
+		// the one ActivateCatalogAbility pays on. Asked with no targets:
+		// a tax that reads them is priced per announcement below.
+		chargesMana := g.AbilityChargesManaForEffect(e.seat, *source, zone, ab, nil) ||
+			(ab.Cost.Mana == "" && g.AbilityPriceReadsTargetsForEffect(ab))
+		if chargesMana {
 			perTarget = g.AbilityPriceReadsTargetsForEffect(ab)
 			if !perTarget {
 				var ok bool
@@ -945,7 +952,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					// has to hold with these named too. An Eldrazi Spawn
 					// that is both the sacrifice and the mana is a move the
 					// engine refuses; offering it is #544.
-					if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
+					if chargesMana && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
 						!e.payableExcluding(abilityMana, xValue, phyrexianLife, e.abilitySpend(source),
 							game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
 						continue
@@ -969,7 +976,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// mana creature that is both the tap and the mana
 							// is a move the engine refuses. #1600: and for the
 							// exiled permanents (ActivationAutoTapExclusions).
-							if ab.Cost.Mana != "" && (len(taps) > 0 || len(perms) > 0) &&
+							if chargesMana && (len(taps) > 0 || len(perms) > 0) &&
 								!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, e.abilitySpend(source),
 									game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps, perms)) {
 								continue
@@ -2439,7 +2446,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			// it affordable, and none when mana pays.
 			manaLife int
 		)
-		if ab.ManaCost != "" {
+		// #5382: a tap-only mana ability an activation cost increase
+		// taxes owes mana too (CR 605.3 through 602.2b).
+		manaCharged := g.ManaAbilityChargesManaForEffect(e.seat, *source, ab)
+		if manaCharged {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
 			if err != nil {
 				continue
@@ -2558,7 +2568,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 					// #2215: the mana component again, now that this
 					// payment's picks are known — none of them may be
 					// tapped for it (ManaActivationAutoTapExclusions).
-					if ab.ManaCost != "" && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
+					if manaCharged && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
 						len(manaDiscardIDs) > 0 || len(manaExileIDs) > 0) &&
 						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
 							game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{
@@ -2628,7 +2638,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								DiscardIDs:        idStrings(manaDiscardIDs),
 								ExileIDs:          idStrings(manaExileIDs),
 								ExilePermanentIDs: idStrings(exiles),
-								AutoTap:           ab.ManaCost != "",
+								AutoTap:           manaCharged,
 								PhyrexianLife:     manaLife,
 							}),
 						})

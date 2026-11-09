@@ -2180,7 +2180,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// and the spend riders are judged on what the payment was FOR.
 	var riderCtx ManaSpendContext
 	var riderSource Card
-	if ab.Cost.Mana != "" {
+	// #5382: an activation cost increase (Skyseer's Chariot) can owe
+	// mana on a cost that printed none — a {T}-only ability, a crew or a
+	// loyalty cost (CR 602.2b through 601.2f, CR 606.4) — so the gate is
+	// the priced cost, with this activation's targets, not the printed
+	// string.
+	if g.AbilityChargesManaForEffect(playerID, *source, srcZone, ab, params.Targets) {
 		riderCtx, riderSource = ManaSpendForAbility(*source), *source
 		// ADR 0155 Decision 7: which row the mana pays for, so a
 		// "spend mana as though any color to activate those abilities"
