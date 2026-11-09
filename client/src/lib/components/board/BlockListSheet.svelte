@@ -28,6 +28,9 @@
     pick: BlockPickState;
     // How many of the viewer's creatures block something now.
     staged: number;
+    // #5375 (ADR 0221): the block tax sentence (blockTaxNote), "" when
+    // blocking is free.
+    taxNote?: string;
     // The button for creature `blocker` on attacker `attacker`.
     onPair: (blocker: string, attacker: string) => void;
     // "No block" on a creature that blocks something.
@@ -36,7 +39,7 @@
     onClose: () => void;
   }
 
-  const { ctx, pick, staged, onPair, onClear, onFinish, onClose }: Props = $props();
+  const { ctx, pick, staged, taxNote = "", onPair, onClear, onFinish, onClose }: Props = $props();
 
   const attackers = $derived(attackersDefendedBy(ctx.view, ctx.viewerID));
   const blockers = $derived(
@@ -81,6 +84,9 @@
   <p class="prompt-hint">
     For each creature, pick the attacker it blocks. The same blocks show on the board.
   </p>
+  {#if taxNote}
+    <p class="prompt-hint" role="status">{taxNote.charAt(0).toUpperCase() + taxNote.slice(1)}.</p>
+  {/if}
   {#if group}
     <p class="group-note" role="status">
       {groupName} needs {group.need} blockers: pick it for {group.need - group.blockers.length} more.

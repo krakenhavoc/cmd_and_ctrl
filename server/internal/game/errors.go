@@ -525,6 +525,15 @@ var (
 	// drop is theirs, and the engine must not make it for them.
 	ErrAttackTaxUnpaid = errors.New("game: the attack tax for this declaration was not paid")
 
+	// ErrBlockTaxUnpaid is returned by finish_blocks, and by a pending
+	// defender's pass, when the defender cannot pay the CR 509.1d cost
+	// of the blocks they staged — Archangel of Tithes' "{1} for each of
+	// those creatures". ADR 0221, #5375. The error actually returned is
+	// a *BlockTaxUnpaidError carrying the price and the payer's reason.
+	// Nothing is spent and the declaration stays pending, blocks
+	// staged: the defender takes blocks back or makes more mana.
+	ErrBlockTaxUnpaid = errors.New("game: the block tax for this declaration was not paid")
+
 	// ErrAttackLimit is returned by the declaration verbs when the
 	// declaration would put more creatures into the attack than a
 	// CR 508.1c count limit allows — Silent Arbiter's "no more than

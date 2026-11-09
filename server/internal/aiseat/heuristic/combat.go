@@ -936,6 +936,16 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		// (losses), and this block costs what that adds to the loss
 		// the group without it was already taking.
 		v -= st.lossValue(atk, gang) - st.lossValue(atk, have)
+		// ADR 0221 / #5375: the CR 509.1d block tax (Archangel of
+		// Tithes attacking). The enumerator only offers blocks the seat
+		// can still pay for, so what is left is whether this one is
+		// worth its mana — priced like an attack tax, off the move's
+		// MoveCost.Mana, the same weight. A chump that saves the game
+		// still outweighs {1}.
+		if tax := attackTaxValue(moves[i]); tax > 0 {
+			v -= float64(tax) * p.cfg.AttackTaxPenalty
+			reason += fmt.Sprintf(" (pays %d)", tax)
+		}
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
 		}

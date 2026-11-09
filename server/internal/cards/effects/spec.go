@@ -893,6 +893,15 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// BlockTaxes is the CR 509.1d block tax: "creatures can't block
+	// unless their controller pays {1} for each of those creatures" —
+	// Archangel of Tithes' "as long as this creature is attacking"
+	// half. ADR 0221. Priced per blocking creature and paid as the
+	// defender's block declaration completes. Build the entries with
+	// BlockTax / BlockTaxWhileAttacking in block_tax.go. Nil for nearly
+	// every card.
+	BlockTaxes []game.BlockTax
+
 	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
 	// cost of the first equip ability you activate each turn" (Kíli the
 	// Resourceful, #4475): a CR 118.9 alternative cost this permanent

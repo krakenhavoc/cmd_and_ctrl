@@ -571,6 +571,14 @@ func (g *Game) bestBlockRequirementAdditionLocked(defender uuid.UUID, assign blo
 		if room <= 0 {
 			continue
 		}
+		// ADR 0221 / CR 509.1c: "If a creature can't block unless a
+		// player pays a cost, that player is not required to pay that
+		// cost". A creature a block tax would charge for (Archangel of
+		// Tithes attacking) is not part of what the declaration owes —
+		// unless it already blocks, when it is paying anyway.
+		if cur == 0 && g.blockTaxedLocked(b) {
+			continue
+		}
 		blks = append(blks, &brBlocker{card: b, room: room, blocking: cur > 0})
 	}
 	if len(blks) == 0 {

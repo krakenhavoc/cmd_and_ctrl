@@ -92,6 +92,14 @@ const (
 	// override, because a tax waived is the card played as a blank.
 	// ADR 0080 (#1063).
 	CodeAttackTaxUnpaid = "attack_tax_unpaid"
+	// CodeBlockTaxUnpaid — a finish_blocks (or a pending defender's
+	// pass_priority) was refused because the defender cannot pay the
+	// CR 509.1d block tax their staged blocks owe (Archangel of
+	// Tithes). The whole price rides ErrorPayload.Reason ("{1}{1}"),
+	// the uncovered symbols ErrorPayload.Missing. Nothing was spent and
+	// the declaration is still open with its blocks staged; there is no
+	// override. ADR 0221 (#5375).
+	CodeBlockTaxUnpaid = "block_tax_unpaid"
 	// CodeIllegalAttack — a declare_attacker or declare_attackers was
 	// refused because the declaration breaks a CR 508.1c restriction
 	// on the whole declaration: today only a count limit (Silent
