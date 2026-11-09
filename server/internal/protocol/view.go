@@ -8212,7 +8212,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 		return
 	}
 	v.ManaValueAtMostX = spec.ManaValueAtMostX
-	v.ManaValueEqualsX = spec.ManaValueEqualsX
+	v.ManaValueEqualsX = spec.ManaValueEqualsX && spec.ManaValueEqualsXPlus == 0
 	v.PowerAtMostX = spec.PowerAtMostX
 	v.ToughnessAtMostX = spec.ToughnessAtMostX
 	v.XFromCountersRemoved = spec.BoundByCountersRemoved

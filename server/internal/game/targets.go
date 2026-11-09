@@ -966,6 +966,15 @@ type TargetSpec struct {
 	// "exactly" are different clauses, never one card's.
 	ManaValueEqualsX bool
 
+	// ManaValueEqualsXPlus is the "plus N" of "with mana value X plus N"
+	// (Sidisi, Regent of the Mire's "target creature card with mana value
+	// X plus 1"): with ManaValueEqualsX set, a candidate admits only at
+	// mana value X + N. Zero is plain "mana value X". Meaningless without
+	// ManaValueEqualsX; the view does not ship the clause as a plain
+	// "mana value X" one, so a client narrowing by X never hides a
+	// candidate the engine accepts.
+	ManaValueEqualsXPlus int
+
 	// PowerAtMostX and ToughnessAtMostX are "with power X or less" and
 	// "with toughness X or less" (ADR 0109 §9, #1842): the same
 	// announced-X bound as ManaValueAtMostX, on another statistic.
@@ -1158,6 +1167,15 @@ func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 // WithCount does.
 func (s *TargetSpec) WithManaValueEqualsX() *TargetSpec {
 	s.ManaValueEqualsX = true
+	return s
+}
+
+// WithManaValueEqualsXPlus marks the clause "with mana value X plus N"
+// (Sidisi, Regent of the Mire). Mutates and returns the receiver, as
+// WithManaValueEqualsX does.
+func (s *TargetSpec) WithManaValueEqualsXPlus(n int) *TargetSpec {
+	s.ManaValueEqualsX = true
+	s.ManaValueEqualsXPlus = n
 	return s
 }
 

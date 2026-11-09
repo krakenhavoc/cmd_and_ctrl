@@ -357,6 +357,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
 	// token, +1/+1, equip {2}.
 	printedBlacksmithsSwordToken,
+
+	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
+	printedReliquaryDragonToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

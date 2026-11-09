@@ -1894,6 +1894,19 @@ the activator's energy, and the enumerator bounds X by it. The view
 stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
 short for.
 
+**"Pay X life" and "Sacrifice a creature with mana value X"** (S79, #4452)
+are the two other X-priced ability components. `PayXLife()` is `AbilityCost.LifeX`
+beside the mana's `{X}`: Krumar Initiate's `Plus(ManaCost("{X}{B}"), TapCost(),
+PayXLife())` pays the announced X as life, and the life total is a ceiling on X
+(`game/life_x_cost.go`, CR 119.4), in the engine's announce gate and in the
+enumerator. `SacrificeAnotherWithManaValueX(label, preds...)` (`effects/
+std_b7_helpers.go`) is Sidisi, Regent of the Mire's cost: X is announced
+(`DemandsX` counts it), the sacrificed permanent must have mana value X
+(`game/sacrifice_mv_x.go`), and the target clause bound to the same X is
+`TargetCardInGraveyard(...).WithManaValueEqualsXPlus(1)`, "mana value X plus 1"
+(`TargetSpec.ManaValueEqualsXPlus`; the view ships such a clause without the
+client's "mana value X" narrowing, which would hide the cards the engine accepts).
+
 **A mana ability that pays energy** (PR 2) declares it on its cost:
 `ManaAbilityCost{Tap: true, Energy: 1}` is Aether Hub's "{T}, Pay {E}:"
 (`anyColorForEnergyRow` in `effects/energy_mana.go` is the whole row).

@@ -2583,6 +2583,10 @@ func checkEnergyCost(name string, i int, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
 			name, i))
 	}
+	if cost.LifeX && (cost.EnergyX || game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d pays X life AND claims X another way — one announced X cannot pay both",
+			name, i))
+	}
 }
 
 // checkLoyaltyX is the boot-time refusal for a −X loyalty cost (#1944):
