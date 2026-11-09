@@ -1891,6 +1891,7 @@ followUpParks[].then.asked.trigger.Object.Supertypes[]	string
 followUpParks[].then.asked.trigger.Object.Token	bool
 followUpParks[].then.asked.trigger.Object.Types	array
 followUpParks[].then.asked.trigger.Object.Types[]	string
+followUpParks[].then.asked.trigger.colorsAmongYours	number:int
 followUpParks[].then.asked.xValue	number:int
 followUpParks[].then.carry	array
 followUpParks[].then.carry[]	custom(uuid.UUID)
@@ -2510,6 +2511,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.counterTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.counterTail.then.asked.xValue	number:int
 frozenEntries[].event.counterTail.then.carry	array
 frozenEntries[].event.counterTail.then.carry[]	custom(uuid.UUID)
@@ -3108,6 +3110,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Supertypes[]	str
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Token	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Types	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Types[]	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.damageTail.each.each.asked.xValue	number:int
 frozenEntries[].event.damageTail.each.each.carry	array
 frozenEntries[].event.damageTail.each.each.carry[]	custom(uuid.UUID)
@@ -3697,6 +3700,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Supertypes[]	str
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Types	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.damageTail.each.then.asked.xValue	number:int
 frozenEntries[].event.damageTail.each.then.carry	array
 frozenEntries[].event.damageTail.each.then.carry[]	custom(uuid.UUID)
@@ -4459,6 +4463,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.damageTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.damageTail.then.asked.xValue	number:int
 frozenEntries[].event.damageTail.then.carry	array
 frozenEntries[].event.damageTail.then.carry[]	custom(uuid.UUID)
@@ -5168,6 +5173,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Sup
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.xValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.carry	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.carry[]	custom(uuid.UUID)
@@ -5833,6 +5839,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Supertypes[]	str
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.batch.then.asked.xValue	number:int
 frozenEntries[].event.entryTail.batch.then.carry	array
 frozenEntries[].event.entryTail.batch.then.carry[]	custom(uuid.UUID)
@@ -6422,6 +6429,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.keyed.asked.xValue	number:int
 frozenEntries[].event.entryTail.keyed.carry	array
 frozenEntries[].event.entryTail.keyed.carry[]	custom(uuid.UUID)
@@ -7043,6 +7051,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Supert
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.xValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.carry	array
 frozenEntries[].event.entryTail.search.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -7652,6 +7661,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Supertypes[]	st
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.xValue	number:int
 frozenEntries[].event.entryTail.tokens.then.carry	array
 frozenEntries[].event.entryTail.tokens.then.carry[]	custom(uuid.UUID)
@@ -8665,6 +8675,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Supertypes[]	s
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.keywordActionTail.then.asked.xValue	number:int
 frozenEntries[].event.keywordActionTail.then.carry	array
 frozenEntries[].event.keywordActionTail.then.carry[]	custom(uuid.UUID)
@@ -9276,6 +9287,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Supertypes[]	strin
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Types	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.lifeTail.each.then.asked.xValue	number:int
 frozenEntries[].event.lifeTail.each.then.carry	array
 frozenEntries[].event.lifeTail.each.then.carry[]	custom(uuid.UUID)
@@ -9868,6 +9880,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.lifeTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.lifeTail.then.asked.xValue	number:int
 frozenEntries[].event.lifeTail.then.carry	array
 frozenEntries[].event.lifeTail.then.carry[]	custom(uuid.UUID)
@@ -11263,6 +11276,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Types	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.millTail.run.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.millTail.run.then.asked.xValue	number:int
 frozenEntries[].event.millTail.run.then.carry	array
 frozenEntries[].event.millTail.run.then.carry[]	custom(uuid.UUID)
@@ -11850,6 +11864,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.millTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.millTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.millTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.millTail.then.asked.xValue	number:int
 frozenEntries[].event.millTail.then.carry	array
 frozenEntries[].event.millTail.then.carry[]	custom(uuid.UUID)
@@ -12792,6 +12807,7 @@ frozenEntries[].event.stackItem.trigger.Object.Supertypes[]	string
 frozenEntries[].event.stackItem.trigger.Object.Token	bool
 frozenEntries[].event.stackItem.trigger.Object.Types	array
 frozenEntries[].event.stackItem.trigger.Object.Types[]	string
+frozenEntries[].event.stackItem.trigger.colorsAmongYours	number:int
 frozenEntries[].event.stackItem.uncopyable	bool
 frozenEntries[].event.stackItem.xValue	number:int
 frozenEntries[].event.startingLoyalty	bool
@@ -13378,6 +13394,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.tokenTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.tokenTail.then.asked.xValue	number:int
 frozenEntries[].event.tokenTail.then.carry	array
 frozenEntries[].event.tokenTail.then.carry[]	custom(uuid.UUID)
@@ -15202,6 +15219,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Superty
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.carry	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.carry[]	custom(uuid.UUID)
@@ -15823,6 +15841,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.S
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.carry	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.carry[]	custom(uuid.UUID)
@@ -16410,6 +16429,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Supertypes[]
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.carry	array
 frozenEntries[].event.zoneRoute.batchLegs.then.carry[]	custom(uuid.UUID)
@@ -17017,6 +17037,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Supertypes
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.carry	array
 frozenEntries[].event.zoneRoute.discardLegs.then.carry[]	custom(uuid.UUID)
@@ -17690,6 +17711,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Supertype
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.carry	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.carry[]	custom(uuid.UUID)
@@ -19860,6 +19882,7 @@ lastKnownStack[].item.trigger.Object.Supertypes[]	string
 lastKnownStack[].item.trigger.Object.Token	bool
 lastKnownStack[].item.trigger.Object.Types	array
 lastKnownStack[].item.trigger.Object.Types[]	string
+lastKnownStack[].item.trigger.colorsAmongYours	number:int
 lastKnownStack[].item.uncopyable	bool
 lastKnownStack[].item.xValue	number:int
 lastKnownTriggerIdentity	map:array
@@ -20164,6 +20187,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].counterTail.then.asked.xValue	number:int
 movesAwaitingTokens[].counterTail.then.carry	array
 movesAwaitingTokens[].counterTail.then.carry[]	custom(uuid.UUID)
@@ -20762,6 +20786,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Supertypes[]	str
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Types	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.xValue	number:int
 movesAwaitingTokens[].damageTail.each.each.carry	array
 movesAwaitingTokens[].damageTail.each.each.carry[]	custom(uuid.UUID)
@@ -21351,6 +21376,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Supertypes[]	str
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.xValue	number:int
 movesAwaitingTokens[].damageTail.each.then.carry	array
 movesAwaitingTokens[].damageTail.each.then.carry[]	custom(uuid.UUID)
@@ -22113,6 +22139,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].damageTail.then.asked.xValue	number:int
 movesAwaitingTokens[].damageTail.then.carry	array
 movesAwaitingTokens[].damageTail.then.carry[]	custom(uuid.UUID)
@@ -22822,6 +22849,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Sup
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.carry	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.carry[]	custom(uuid.UUID)
@@ -23487,6 +23515,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Supertypes[]	str
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.carry	array
 movesAwaitingTokens[].entryTail.batch.then.carry[]	custom(uuid.UUID)
@@ -24076,6 +24105,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.keyed.carry	array
 movesAwaitingTokens[].entryTail.keyed.carry[]	custom(uuid.UUID)
@@ -24697,6 +24727,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Supert
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.carry	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -25306,6 +25337,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Supertypes[]	st
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.carry	array
 movesAwaitingTokens[].entryTail.tokens.then.carry[]	custom(uuid.UUID)
@@ -26319,6 +26351,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Supertypes[]	s
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.xValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.carry	array
 movesAwaitingTokens[].keywordActionTail.then.carry[]	custom(uuid.UUID)
@@ -26930,6 +26963,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Supertypes[]	strin
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.xValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.carry	array
 movesAwaitingTokens[].lifeTail.each.then.carry[]	custom(uuid.UUID)
@@ -27522,6 +27556,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].lifeTail.then.asked.xValue	number:int
 movesAwaitingTokens[].lifeTail.then.carry	array
 movesAwaitingTokens[].lifeTail.then.carry[]	custom(uuid.UUID)
@@ -28917,6 +28952,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].millTail.run.then.asked.xValue	number:int
 movesAwaitingTokens[].millTail.run.then.carry	array
 movesAwaitingTokens[].millTail.run.then.carry[]	custom(uuid.UUID)
@@ -29504,6 +29540,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].millTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].millTail.then.asked.xValue	number:int
 movesAwaitingTokens[].millTail.then.carry	array
 movesAwaitingTokens[].millTail.then.carry[]	custom(uuid.UUID)
@@ -30446,6 +30483,7 @@ movesAwaitingTokens[].stackItem.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].stackItem.trigger.Object.Token	bool
 movesAwaitingTokens[].stackItem.trigger.Object.Types	array
 movesAwaitingTokens[].stackItem.trigger.Object.Types[]	string
+movesAwaitingTokens[].stackItem.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].stackItem.uncopyable	bool
 movesAwaitingTokens[].stackItem.xValue	number:int
 movesAwaitingTokens[].startingLoyalty	bool
@@ -31032,6 +31070,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].tokenTail.then.asked.xValue	number:int
 movesAwaitingTokens[].tokenTail.then.carry	array
 movesAwaitingTokens[].tokenTail.then.carry[]	custom(uuid.UUID)
@@ -32856,6 +32895,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Superty
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.carry	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.carry[]	custom(uuid.UUID)
@@ -33477,6 +33517,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.S
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.carry	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.carry[]	custom(uuid.UUID)
@@ -34064,6 +34105,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Supertypes[]
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.carry	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.carry[]	custom(uuid.UUID)
@@ -34671,6 +34713,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Supertypes
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.carry	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.carry[]	custom(uuid.UUID)
@@ -35344,6 +35387,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Supertype
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.carry	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.carry[]	custom(uuid.UUID)
@@ -36542,6 +36586,7 @@ pausedModeWalk.item.trigger.Object.Supertypes[]	string
 pausedModeWalk.item.trigger.Object.Token	bool
 pausedModeWalk.item.trigger.Object.Types	array
 pausedModeWalk.item.trigger.Object.Types[]	string
+pausedModeWalk.item.trigger.colorsAmongYours	number:int
 pausedModeWalk.item.uncopyable	bool
 pausedModeWalk.item.xValue	number:int
 pausedModeWalk.key	string
@@ -36870,6 +36915,7 @@ pausedResolutionTail.item.trigger.Object.Supertypes[]	string
 pausedResolutionTail.item.trigger.Object.Token	bool
 pausedResolutionTail.item.trigger.Object.Types	array
 pausedResolutionTail.item.trigger.Object.Types[]	string
+pausedResolutionTail.item.trigger.colorsAmongYours	number:int
 pausedResolutionTail.item.uncopyable	bool
 pausedResolutionTail.item.xValue	number:int
 pausedStepWalk	object
@@ -37192,6 +37238,7 @@ pausedStepWalk.item.trigger.Object.Supertypes[]	string
 pausedStepWalk.item.trigger.Object.Token	bool
 pausedStepWalk.item.trigger.Object.Types	array
 pausedStepWalk.item.trigger.Object.Types[]	string
+pausedStepWalk.item.trigger.colorsAmongYours	number:int
 pausedStepWalk.item.uncopyable	bool
 pausedStepWalk.item.xValue	number:int
 pausedStepWalk.key	string
@@ -37378,6 +37425,7 @@ pendingChoices[].asked.trigger.Object.Supertypes[]	string
 pendingChoices[].asked.trigger.Object.Token	bool
 pendingChoices[].asked.trigger.Object.Types	array
 pendingChoices[].asked.trigger.Object.Types[]	string
+pendingChoices[].asked.trigger.colorsAmongYours	number:int
 pendingChoices[].asked.xValue	number:int
 pendingChoices[].askedByHand	string
 pendingChoices[].assist	object
@@ -38549,6 +38597,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Token	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Types	array
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Types[]	string
+pendingChoices[].attackSplit.tail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].attackSplit.tail.asked.xValue	number:int
 pendingChoices[].attackSplit.tail.carry	array
 pendingChoices[].attackSplit.tail.carry[]	custom(uuid.UUID)
@@ -39731,6 +39780,7 @@ pendingChoices[].copyWalk.item.trigger.Object.Supertypes[]	string
 pendingChoices[].copyWalk.item.trigger.Object.Token	bool
 pendingChoices[].copyWalk.item.trigger.Object.Types	array
 pendingChoices[].copyWalk.item.trigger.Object.Types[]	string
+pendingChoices[].copyWalk.item.trigger.colorsAmongYours	number:int
 pendingChoices[].copyWalk.item.uncopyable	bool
 pendingChoices[].copyWalk.item.xValue	number:int
 pendingChoices[].copyWalk.next	array
@@ -40546,6 +40596,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Object.Token	bool
 pendingChoices[].diceRoll.then.asked.trigger.Object.Types	array
 pendingChoices[].diceRoll.then.asked.trigger.Object.Types[]	string
+pendingChoices[].diceRoll.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].diceRoll.then.asked.xValue	number:int
 pendingChoices[].diceRoll.then.carry	array
 pendingChoices[].diceRoll.then.carry[]	custom(uuid.UUID)
@@ -41516,6 +41567,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Token	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Types	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Types[]	string
+pendingChoices[].divideShield.walk.each.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].divideShield.walk.each.asked.xValue	number:int
 pendingChoices[].divideShield.walk.each.carry	array
 pendingChoices[].divideShield.walk.each.carry[]	custom(uuid.UUID)
@@ -42105,6 +42157,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Token	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Types	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Types[]	string
+pendingChoices[].divideShield.walk.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].divideShield.walk.then.asked.xValue	number:int
 pendingChoices[].divideShield.walk.then.carry	array
 pendingChoices[].divideShield.walk.then.carry[]	custom(uuid.UUID)
@@ -42700,6 +42753,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Token	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Types	array
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Types[]	string
+pendingChoices[].libraryOrder.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].libraryOrder.then.asked.xValue	number:int
 pendingChoices[].libraryOrder.then.carry	array
 pendingChoices[].libraryOrder.then.carry[]	custom(uuid.UUID)
@@ -43345,6 +43399,7 @@ pendingChoices[].nameThen.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].nameThen.asked.trigger.Object.Token	bool
 pendingChoices[].nameThen.asked.trigger.Object.Types	array
 pendingChoices[].nameThen.asked.trigger.Object.Types[]	string
+pendingChoices[].nameThen.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].nameThen.asked.xValue	number:int
 pendingChoices[].nameThen.carry	array
 pendingChoices[].nameThen.carry[]	custom(uuid.UUID)
@@ -43941,6 +43996,7 @@ pendingChoices[].ordered.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].ordered.asked.trigger.Object.Token	bool
 pendingChoices[].ordered.asked.trigger.Object.Types	array
 pendingChoices[].ordered.asked.trigger.Object.Types[]	string
+pendingChoices[].ordered.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].ordered.asked.xValue	number:int
 pendingChoices[].ordered.carry	array
 pendingChoices[].ordered.carry[]	custom(uuid.UUID)
@@ -44405,6 +44461,7 @@ pendingChoices[].pickTail.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].pickTail.asked.trigger.Object.Token	bool
 pendingChoices[].pickTail.asked.trigger.Object.Types	array
 pendingChoices[].pickTail.asked.trigger.Object.Types[]	string
+pendingChoices[].pickTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].pickTail.asked.xValue	number:int
 pendingChoices[].pickTail.carry	array
 pendingChoices[].pickTail.carry[]	custom(uuid.UUID)
@@ -45038,6 +45095,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.S
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.carry	array
 pendingChoices[].replacementResume.event.counterTail.then.carry[]	custom(uuid.UUID)
@@ -45636,6 +45694,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Obje
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.xValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.carry	array
 pendingChoices[].replacementResume.event.damageTail.each.each.carry[]	custom(uuid.UUID)
@@ -46225,6 +46284,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Obje
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.carry	array
 pendingChoices[].replacementResume.event.damageTail.each.then.carry[]	custom(uuid.UUID)
@@ -46987,6 +47047,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Su
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.carry	array
 pendingChoices[].replacementResume.event.damageTail.then.carry[]	custom(uuid.UUID)
@@ -47696,6 +47757,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.carry	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.carry[]	custom(uuid.UUID)
@@ -48361,6 +48423,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Obje
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.carry	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.carry[]	custom(uuid.UUID)
@@ -48950,6 +49013,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Su
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.carry	array
 pendingChoices[].replacementResume.event.entryTail.keyed.carry[]	custom(uuid.UUID)
@@ -49571,6 +49635,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.carry	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -50180,6 +50245,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Obj
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.carry	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.carry[]	custom(uuid.UUID)
@@ -51193,6 +51259,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ob
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.carry	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.carry[]	custom(uuid.UUID)
@@ -51804,6 +51871,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.carry	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.carry[]	custom(uuid.UUID)
@@ -52396,6 +52464,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Supe
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.carry	array
 pendingChoices[].replacementResume.event.lifeTail.then.carry[]	custom(uuid.UUID)
@@ -53791,6 +53860,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.carry	array
 pendingChoices[].replacementResume.event.millTail.run.then.carry[]	custom(uuid.UUID)
@@ -54378,6 +54448,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Supe
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.carry	array
 pendingChoices[].replacementResume.event.millTail.then.carry[]	custom(uuid.UUID)
@@ -55320,6 +55391,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Object.Supertypes[]	s
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.stackItem.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.stackItem.uncopyable	bool
 pendingChoices[].replacementResume.event.stackItem.xValue	number:int
 pendingChoices[].replacementResume.event.startingLoyalty	bool
@@ -55906,6 +55978,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Sup
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.carry	array
 pendingChoices[].replacementResume.event.tokenTail.then.carry[]	custom(uuid.UUID)
@@ -57730,6 +57803,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.carry[]	custom(uuid.UUID)
@@ -58351,6 +58425,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.carry[]	custom(uuid.UUID)
@@ -58938,6 +59013,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.carry[]	custom(uuid.UUID)
@@ -59545,6 +59621,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.carry[]	custom(uuid.UUID)
@@ -60218,6 +60295,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.carry[]	custom(uuid.UUID)
@@ -61237,6 +61315,7 @@ pendingChoices[].scryThen.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].scryThen.asked.trigger.Object.Token	bool
 pendingChoices[].scryThen.asked.trigger.Object.Types	array
 pendingChoices[].scryThen.asked.trigger.Object.Types[]	string
+pendingChoices[].scryThen.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].scryThen.asked.xValue	number:int
 pendingChoices[].scryThen.carry	array
 pendingChoices[].scryThen.carry[]	custom(uuid.UUID)
@@ -61871,6 +61950,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Supertypes[]	st
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Token	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Types	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Types[]	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.xValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.carry	array
 pendingChoices[].searchPrompt.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -63279,6 +63359,7 @@ pendingChoices[].targetWalk.frame.trigger.Object.Supertypes[]	string
 pendingChoices[].targetWalk.frame.trigger.Object.Token	bool
 pendingChoices[].targetWalk.frame.trigger.Object.Types	array
 pendingChoices[].targetWalk.frame.trigger.Object.Types[]	string
+pendingChoices[].targetWalk.frame.trigger.colorsAmongYours	number:int
 pendingChoices[].targetWalk.modes	array
 pendingChoices[].targetWalk.modes[]	number:int
 pendingChoices[].targetWalk.picked	array
@@ -64021,6 +64102,7 @@ pendingChoices[].triggerFrame.trigger.Object.Supertypes[]	string
 pendingChoices[].triggerFrame.trigger.Object.Token	bool
 pendingChoices[].triggerFrame.trigger.Object.Types	array
 pendingChoices[].triggerFrame.trigger.Object.Types[]	string
+pendingChoices[].triggerFrame.trigger.colorsAmongYours	number:int
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)
 pendingChoices[].triggerOrderWhy	string
@@ -64351,6 +64433,7 @@ pendingTriggers[].trigger.Object.Supertypes[]	string
 pendingTriggers[].trigger.Object.Token	bool
 pendingTriggers[].trigger.Object.Types	array
 pendingTriggers[].trigger.Object.Types[]	string
+pendingTriggers[].trigger.colorsAmongYours	number:int
 pendingTriggers[].uncopyable	bool
 pendingTriggers[].xValue	number:int
 phaseEffects	array
@@ -66000,6 +66083,7 @@ promptRuns[].asked.trigger.Object.Supertypes[]	string
 promptRuns[].asked.trigger.Object.Token	bool
 promptRuns[].asked.trigger.Object.Types	array
 promptRuns[].asked.trigger.Object.Types[]	string
+promptRuns[].asked.trigger.colorsAmongYours	number:int
 promptRuns[].asked.xValue	number:int
 promptRuns[].carry	array
 promptRuns[].carry[]	custom(uuid.UUID)
@@ -66747,6 +66831,7 @@ resolving.item.trigger.Object.Supertypes[]	string
 resolving.item.trigger.Object.Token	bool
 resolving.item.trigger.Object.Types	array
 resolving.item.trigger.Object.Types[]	string
+resolving.item.trigger.colorsAmongYours	number:int
 resolving.item.uncopyable	bool
 resolving.item.xValue	number:int
 resolving.sourceEpoch	number:int
@@ -71970,6 +72055,7 @@ stackMeta[].trigger.Object.Supertypes[]	string
 stackMeta[].trigger.Object.Token	bool
 stackMeta[].trigger.Object.Types	array
 stackMeta[].trigger.Object.Types[]	string
+stackMeta[].trigger.colorsAmongYours	number:int
 stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
