@@ -79,6 +79,12 @@ const (
 	SearchZoneLibrary   = "library"
 	SearchZoneGraveyard = "graveyard"
 	SearchZoneHand      = "hand"
+	// SearchZoneGraveyardAndHand is search_other_zone's third value
+	// (#5408): "search your graveyard, hand, and/or library" offers both
+	// the graveyard and the hand beside the library. It is never itself an
+	// answer: the searcher names SearchZoneGraveyard and SearchZoneHand
+	// one by one, any non-empty subset of the three.
+	SearchZoneGraveyardAndHand = "graveyard_and_hand"
 )
 
 // ResolveSearchLibrary answers a PendingChoiceSearchLibrary (CR
@@ -318,8 +324,9 @@ func (c *PendingChoice) SearchZonesPending() bool {
 }
 
 // SearchOtherZone is the zone an and/or search offers beside the library,
-// "graveyard" or "hand" (SearchZoneGraveyard, SearchZoneHand), or "" for a
-// prompt that has no such zone.
+// "graveyard" or "hand" (SearchZoneGraveyard, SearchZoneHand), both of them
+// for "your graveyard, hand, and/or library" (SearchZoneGraveyardAndHand,
+// #5408), or "" for a prompt that has no such zone.
 func (c *PendingChoice) SearchOtherZone() string {
 	if c == nil || c.Kind != PendingChoiceSearchLibrary || c.searchResume == nil {
 		return ""
@@ -337,7 +344,9 @@ func (c *PendingChoice) SearchLibrarySkipped() bool {
 
 // ChooseSearchZones answers an and/or search's zone question (#4519, CR
 // 701.23): `zones` names SearchZoneLibrary, the prompt's other zone
-// (SearchOtherZone) or both, at least one. It is what lets the searcher
+// (SearchOtherZone) or both, at least one; on a three-zone prompt
+// (SearchZoneGraveyardAndHand, #5408) any non-empty subset of
+// SearchZoneLibrary, SearchZoneGraveyard and SearchZoneHand. It is what lets the searcher
 // see the candidates: the library's are shown and known to them only if
 // they chose the library, and that choice is what shuffles it afterwards,
 // whatever they then take. A search of the other zone alone never looks at
@@ -377,17 +386,25 @@ func (g *Game) ChooseSearchZones(choiceID, chooserID uuid.UUID, zones []string) 
 	}
 	spec := choice.searchResume.spec()
 	other := spec.otherZoneName()
-	var library, elsewhere bool
+	// #5408: "your graveyard, hand, and/or library" offers the graveyard
+	// and the hand as two zones, each named on its own.
+	threeZones := other == SearchZoneGraveyardAndHand
+	var library, graveyard, inHand bool
 	for _, z := range zones {
 		switch {
 		case z == SearchZoneLibrary:
 			library = true
-		case z != "" && z == other:
-			elsewhere = true
+		case threeZones && z == SearchZoneGraveyard:
+			graveyard = true
+		case threeZones && z == SearchZoneHand:
+			inHand = true
+		case !threeZones && z != "" && z == other:
+			graveyard, inHand = true, true
 		default:
 			return ErrInvalidParam
 		}
 	}
+	elsewhere := graveyard || inHand
 	if !library && !elsewhere {
 		return ErrInvalidParam
 	}
@@ -395,18 +412,21 @@ func (g *Game) ChooseSearchZones(choiceID, chooserID uuid.UUID, zones []string) 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// Which of the zones beside the library each candidate is in, and
+	// whether that zone was chosen.
 	outside := make(map[uuid.UUID]bool, len(choice.SearchGraveyardCards)+len(choice.SearchHandCards))
 	for _, id := range choice.SearchGraveyardCards {
-		outside[id] = true
+		outside[id] = graveyard
 	}
 	for _, id := range choice.SearchHandCards {
-		outside[id] = true
+		outside[id] = inHand
 	}
 	var cards, libraryCards []uuid.UUID
 	for _, id := range choice.SearchCards {
+		chosen, isOutside := outside[id]
 		switch {
-		case outside[id]:
-			if elsewhere {
+		case isOutside:
+			if chosen {
 				cards = append(cards, id)
 			}
 		case library:
@@ -417,8 +437,10 @@ func (g *Game) ChooseSearchZones(choiceID, chooserID uuid.UUID, zones []string) 
 	// Fresh slices, never a write through the old ones, which an undo
 	// snapshot may share.
 	var gy, hand []uuid.UUID
-	if elsewhere {
+	if graveyard {
 		gy = append(gy, choice.SearchGraveyardCards...)
+	}
+	if inHand {
 		hand = append(hand, choice.SearchHandCards...)
 	}
 	choice.SearchCards = cards

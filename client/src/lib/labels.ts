@@ -2328,6 +2328,20 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ChoicePromptModal.svelte`],
     doc: 'the primary of the question a "search your hand and/or library" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards',
   }),
+  searchEveryZone: label({
+    name: "Graveyard, hand and library",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'the primary of the question a "search your graveyard, hand, and/or library" prompt asks before it shows anything (#5408, CR 701.23): search all three zones. The library is shuffled afterwards',
+  }),
+  searchGraveyardAndHand: label({
+    name: "Graveyard and hand",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'a "search your graveyard, hand, and/or library" prompt zone question (#5408): search the graveyard and the hand, not the library; it is never shown or shuffled',
+  }),
   searchLibraryOnly: label({
     name: "Library only",
     kind: "text",
@@ -2340,14 +2354,14 @@ export const LABEL_SPECS = {
     kind: "text",
     role: "button",
     owners: [`${BOARD}ChoicePromptModal.svelte`],
-    doc: 'a "search your library and/or graveyard" prompt zone question (#4519): search the graveyard alone; the library is never shown or shuffled',
+    doc: 'a "search your library and/or graveyard" (or "graveyard, hand, and/or library", #5408) prompt zone question (#4519): search the graveyard alone; the library is never shown or shuffled',
   }),
   searchHandOnly: label({
     name: "Hand only",
     kind: "text",
     role: "button",
     owners: [`${BOARD}ChoicePromptModal.svelte`],
-    doc: 'a "search your hand and/or library" prompt zone question (#4519): search the hand alone; the library is never shown or shuffled',
+    doc: 'a "search your hand and/or library" (or "graveyard, hand, and/or library", #5408) prompt zone question (#4519): search the hand alone; the library is never shown or shuffled',
   }),
   forgetTriggerOrders: dynamicLabel({
     stem: "Forget remembered trigger orders",

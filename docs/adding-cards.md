@@ -6359,8 +6359,11 @@ answers these searches with the helpers (`answerSearchByID` and the others in
 `cards/effects`) searches every zone on offer; one that cares which zones
 were searched answers the question first with `answerSearchZones`. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
-its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
-Prodigy) also reads the hand and is not covered.
+its rule. **`AlsoGraveyard: true` with `AlsoHand: true`** is "search your
+graveyard, hand, and/or library" (#5408, Say Its Name): the question offers
+all three zones (`search_other_zone` `"graveyard_and_hand"`), the searcher
+names any non-empty subset, and the library is shuffled only if it is among
+them. `answerSearchZones` names the zones one by one.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `ThenTail`, a registered tail, not on the next line:
