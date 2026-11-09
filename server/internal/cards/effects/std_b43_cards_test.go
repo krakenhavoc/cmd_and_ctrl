@@ -1323,3 +1323,72 @@ func TestStdB45UnyieldingGatekeeperGivesTheirControllerADetective(t *testing.T) 
 		t.Errorf("I got %d Detectives, want 0", n)
 	}
 }
+
+const stdFalconOracle = "4c495e94-3194-47c7-8129-dd0a0f915daa"
+
+func TestStdB45CovetedFalconGivesPermanentsAwayAndDrawsForEach(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	id := mkmMPCastFaceDown(t, g, "Coveted Falcon", "Artifact Creature — Bird", stdFalconOracle, 2, 2)
+	a := reqCreature(g, me.ID, "Gift A", "", 1, 1)
+	b := reqCreature(g, me.ID, "Gift B", "", 1, 1)
+	for i := 0; i < 4; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	hand := me.Hand.Size()
+	mkmMPTurnFaceUp(t, g, me, id, "U", "C")
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("no target prompt: %+v", g.PendingChoices)
+	}
+	t.Logf("first prompt: players %v cards %v", pick.PickTargetPlayers, pick.PickTargetCards)
+	if err := g.ResolvePickTarget(pick.ID, me.ID, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}); err != nil {
+		t.Fatalf("player: %v", err)
+	}
+	pick = latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("no second prompt: %+v", g.PendingChoices)
+	}
+	t.Logf("second prompt: players %v cards %v", pick.PickTargetPlayers, pick.PickTargetCards)
+	if err := g.ResolvePickTargets(pick.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: a}, {Kind: game.TargetCard, ID: b}}); err != nil {
+		t.Fatalf("cards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, p := range []uuid.UUID{a, b} {
+		if c := tmtB1Card(t, g, p); c.Controller != opp.ID {
+			t.Errorf("%s is controlled by %v, want the opponent", c.Name, c.Controller)
+		}
+	}
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("drew %d, want 2 (one per permanent given)", got)
+	}
+}
+
+func TestStdB45CovetedFalconTakesBackAPermanentYouOwnWhenItAttacks(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	falcon := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Coveted Falcon", TypeLine: "Artifact Creature — Bird", OracleID: stdFalconOracle,
+		Power: 2, Toughness: 2, Keywords: []string{"flying", "haste"}, Owner: me.ID, Controller: me.ID,
+	})
+	mine := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Lent Bear", TypeLine: "Creature — Bear",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: opp.ID})
+	theirs := reqCreature(g, opp.ID, "Their Own Bear", "", 2, 2)
+	attackAndTrigger(t, g, falcon)
+	// Only a permanent I own and don't control is a legal target.
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatalf("no target prompt: %+v", g.PendingChoices)
+	}
+	if len(pick.PickTargetCards) != 1 || pick.PickTargetCards[0] != mine {
+		t.Fatalf("offered %v, want only the lent Bear (not %v)", pick.PickTargetCards, theirs)
+	}
+	pickCard(t, g, me.ID, mine)
+	passPriorityAroundTable(t, g)
+	if c := tmtB1Card(t, g, mine); c.Controller != me.ID {
+		t.Error("the lent Bear was not taken back")
+	}
+}
