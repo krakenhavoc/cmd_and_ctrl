@@ -44,6 +44,7 @@ const (
 	b35DuplicatorOracle          = "0752fe67-9b8a-42c0-90e3-087d426b2f3b"
 	b35LootOracle                = "542be13f-b9c0-4b79-b486-be576c531a82"
 	b35JasperFlintOracle         = "bd7c5a8b-cf62-41e1-a664-b16e3e5d142b"
+	b35GhiredOracle              = "34b36022-0d93-48cc-a2cc-90ca4d65dc31"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -81,6 +82,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35DuplicatorOracle:          "Esoteric Duplicator",
 		b35LootOracle:                "Loot, the Key to Everything",
 		b35JasperFlintOracle:         "Laughing Jasper Flint",
+		b35GhiredOracle:              "Ghired, Mirror of the Wilds",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1464,5 +1466,38 @@ func TestB35LaughingJasperFlintMakesStolenCreaturesMercenariesAndExilesXOffAnOpp
 	passPriorityAroundTable(t, g)
 	if got := len(g.Exile.Cards) - before; got != 2 {
 		t.Errorf("exiled %d cards off the opponent's library, want 2 (Jasper Flint and the stolen Mercenary)", got)
+	}
+}
+
+func TestB35GhiredLetsNontokenCreaturesCopyATokenThatEnteredThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Ghired, Mirror of the Wilds", "Legendary Creature — Human Shaman", b35GhiredOracle, 3, 3)
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, ClueToken(), 1) })
+	clue := uuid.Nil
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Clue" && c.IsToken() {
+			clue = c.InstanceID
+		}
+	}
+	if clue == uuid.Nil {
+		t.Fatal("no Clue")
+	}
+	idx, ref := grantedActivatedIndex(t, g, bear)
+	if idx < 0 {
+		t.Fatal("the nontoken creature has no granted ability")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, bear, idx, game.ActivateAbilityParams{Ref: ref, Targets: b16TargetCard(clue)}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 2 {
+		t.Fatalf("%d Clues, want 2", n)
+	}
+	// A token does not get the ability.
+	if i, _ := grantedActivatedIndex(t, g, clue); i >= 0 {
+		t.Error("a token was granted the ability")
 	}
 }
