@@ -24,6 +24,8 @@ const (
 	b35SwordWealthPowerOracle    = "b3a80545-9a8a-46b2-9d8c-b0d66fb68a5d"
 	b35OltecMatterweaverOracle   = "3cb91696-242f-4e91-806b-61b1bb45a20c"
 	b35WorldwalkerHelmOracle     = "9573c85a-e574-4b4e-aae0-2165c45fd27e"
+	b35CollectorsCageOracle      = "8f5b71fd-469f-4370-a806-9bfefbae03a2"
+	b35OmenpathJourneyOracle     = "8b067e44-2001-4b49-aa4a-2c86f8929751"
 )
 
 func TestB35EveryCardIsRegisteredFull(t *testing.T) {
@@ -40,6 +42,8 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35SwordWealthPowerOracle:    "Sword of Wealth and Power",
 		b35OltecMatterweaverOracle:   "Oltec Matterweaver",
 		b35WorldwalkerHelmOracle:     "Worldwalker Helm",
+		b35CollectorsCageOracle:      "Collector's Cage",
+		b35OmenpathJourneyOracle:     "Omenpath Journey",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -411,5 +415,126 @@ func TestB35WorldwalkerHelmCopiesAnArtifactToken(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 2 {
 		t.Fatalf("%d Clues, want 2", n)
+	}
+}
+
+func TestB35CollectorsCagePlaysTheExiledCardOnlyWithThreeDifferentPowers(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, game.StepPrecombatMain)
+	top := stackTopLibrary(me, "A", "B", "C", "D", "E")
+	cage := game.NewCard("Collector's Cage", me.ID)
+	cage.OracleID = b35CollectorsCageOracle
+	cage.TypeLine = "Artifact"
+	enterWithHideaway(t, g, cage, top[1])
+	two := b12Creature(g, me.ID, "Two", "Creature — Bear", 2, 2)
+	b12Creature(g, me.ID, "Another Two", "Creature — Bear", 2, 2)
+	b12Creature(g, me.ID, "Four", "Creature — Bear", 4, 4)
+	activate := func(target uuid.UUID) {
+		t.Helper()
+		untapForTest(g, cage.InstanceID)
+		floatForTest(g, me, "C")
+		if err := g.ActivateCatalogAbility(me.ID, cage.InstanceID, 0, game.ActivateAbilityParams{Targets: b16TargetCard(target)}); err != nil {
+			t.Fatalf("activate: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	// 2, 2, 4 with a counter on a Two is 3, 2, 4: three different powers,
+	// and it is the counter that makes the third.
+	activate(two)
+	if p, _ := ptOf(t, g, two); p != 3 {
+		t.Fatalf("the counter did not land: power %d", p)
+	}
+	if playHiddenGrant(g, top[1]) == nil {
+		t.Fatal("no grant with powers 3, 2, 4")
+	}
+}
+
+func TestB35CollectorsCageGrantsNothingWithTwoDifferentPowers(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, game.StepPrecombatMain)
+	top := stackTopLibrary(me, "A", "B", "C", "D", "E")
+	cage := game.NewCard("Collector's Cage", me.ID)
+	cage.OracleID = b35CollectorsCageOracle
+	cage.TypeLine = "Artifact"
+	enterWithHideaway(t, g, cage, top[1])
+	four := b12Creature(g, me.ID, "Four", "Creature — Bear", 4, 4)
+	b12Creature(g, me.ID, "Two", "Creature — Bear", 2, 2)
+	b12Creature(g, me.ID, "Another Two", "Creature — Bear", 2, 2)
+	floatForTest(g, me, "C")
+	if err := g.ActivateCatalogAbility(me.ID, cage.InstanceID, 0, game.ActivateAbilityParams{Targets: b16TargetCard(four)}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if playHiddenGrant(g, top[1]) != nil {
+		t.Fatal("granted with powers 5, 2, 2")
+	}
+}
+
+func TestB35OmenpathJourneyExilesDifferentlyNamedLandsAndPutsOneOutEachEndStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	seedSearchLibrary(me,
+		searchTestLand("Plains", "Basic Land — Plains"),
+		searchTestLand("Plains", "Basic Land — Plains"),
+		searchTestLand("Island", "Basic Land — Island"),
+		searchTestLand("Swamp", "Basic Land — Swamp"),
+		searchTestLand("Mountain", "Basic Land — Mountain"),
+		searchTestLand("Forest", "Basic Land — Forest"),
+		searchTestLand("Wastes", "Basic Land"),
+	)
+	saga := castCatalogSpell(t, g, "Omenpath Journey", "Enchantment", b35OmenpathJourneyOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no search prompt")
+	}
+	// Two cards with the same name are refused as a set.
+	var plains []uuid.UUID
+	for _, id := range c.SearchCards {
+		g.ReadSnapshot(func() {
+			if card, ok := g.LookupCardForEffect(id); ok && card.Name == "Plains" {
+				plains = append(plains, id)
+			}
+		})
+	}
+	if len(plains) != 2 {
+		t.Fatalf("%d Plains offered, want 2", len(plains))
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, plains); err == nil {
+		t.Fatal("two lands with the same name were accepted")
+	}
+	answerSearchNamed(t, g, me.ID, "Plains", "Island", "Swamp", "Mountain", "Forest")
+	passPriorityAroundTable(t, g)
+	ref := game.PermissionCardRef(hobA9SagaRef(t, g, saga))
+	var linked int
+	g.ReadSnapshot(func() { linked = len(g.ExiledWithForEffect(ref)) })
+	if linked != 5 {
+		t.Fatalf("%d cards exiled with Omenpath Journey, want 5", linked)
+	}
+	lands := func() int {
+		n := 0
+		for _, c := range g.Battlefield.Cards {
+			if c.Controller == me.ID && c.IsLand() {
+				n++
+			}
+		}
+		return n
+	}
+	before := lands()
+	advanceToEndStepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if got := lands(); got != before+1 {
+		t.Fatalf("lands %d, want %d after the end step", got, before+1)
+	}
+	g.ReadSnapshot(func() { linked = len(g.ExiledWithForEffect(ref)) })
+	if linked != 4 {
+		t.Errorf("%d cards still exiled with it, want 4", linked)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == me.ID && c.IsLand() && !c.Tapped {
+			t.Errorf("%s came in untapped", c.Name)
+		}
 	}
 }
