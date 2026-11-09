@@ -340,7 +340,7 @@ func finB7FangMeldPrint() *game.MeldPrint {
 	return &game.MeldPrint{
 		ResultOracleID:   finB7RagnarokOracle,
 		ResultScryfallID: uuid.NewString(),
-		Result:           game.Face{Name: "Ragnarok, Divine Deliverance", TypeLine: "Legendary Creature — Beast Avatar"},
+		Result:           game.Face{Name: "Ragnarok, Divine Deliverance", TypeLine: "Legendary Creature — Beast Avatar", Power: 7, Toughness: 6},
 	}
 }
 

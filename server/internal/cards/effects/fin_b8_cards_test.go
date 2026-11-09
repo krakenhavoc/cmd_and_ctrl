@@ -80,8 +80,8 @@ func finB8PutFront(t *testing.T, g *game.Game, row cards.Card, p *game.Player) u
 }
 
 func finB8Counters(g *game.Game, id uuid.UUID, kind string) int {
-	c, ok := battlefieldCard(g, id)
-	if !ok {
+	c := findBattlefieldCardByID(g, id)
+	if c == nil {
 		return -1
 	}
 	return c.Counters[kind]
@@ -666,11 +666,11 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 	me, opp := g.Seats[seat], g.Seats[1]
 	garnet := b12Push(g, me.ID, "Garnet, Princess of Alexandria", "Legendary Creature — Human Noble Cleric", finB8GarnetOracle, 2, 2)
 	sagaA := pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Summon: Fenrir", OracleID: finB7FenrirOracle, TypeLine: "Enchantment Creature — Saga Wolf", Owner: me.ID, Controller: me.ID,
+		InstanceID: uuid.New(), Name: "Plain Saga", TypeLine: "Enchantment — Saga", Owner: me.ID, Controller: me.ID,
 		Counters: map[string]int{game.CounterLore: 2},
 	})
 	sagaB := pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Summon: Fenrir", OracleID: finB7FenrirOracle, TypeLine: "Enchantment Creature — Saga Wolf", Owner: me.ID, Controller: me.ID,
+		InstanceID: uuid.New(), Name: "Plain Saga", TypeLine: "Enchantment — Saga", Owner: me.ID, Controller: me.ID,
 		Counters: map[string]int{game.CounterLore: 1},
 	})
 	theirSaga := pushBattlefieldCardWithTimestamp(g, game.Card{
