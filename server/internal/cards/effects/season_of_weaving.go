@@ -47,14 +47,14 @@ func init() {
 						Keyed: seasonOfWeavingCopy,
 					}.Apply(ctx)
 				})),
-			Pawprint(3, ModeDoing("Return each nonland, nontoken permanent to its owner's hand.", nil,
+			Pawprint(3, ModeWithPurpose(ModeDoing("Return each nonland, nontoken permanent to its owner's hand.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					var ids []uuid.UUID
 					for _, c := range MatchingBattlefield(ctx, And(Nonland(), Not(IsTokenPredicate()))) {
 						ids = append(ids, c.InstanceID)
 					}
 					return ReturnAllToHand{Cards: ids}.Apply(ctx)
-				})),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, Partial: true}})),
 		),
 	})
 }
