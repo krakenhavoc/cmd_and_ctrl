@@ -18980,6 +18980,7 @@ lastKnownPermanents{}[].craftedWith	array
 lastKnownPermanents{}[].craftedWith[]	object
 lastKnownPermanents{}[].craftedWith[].epoch	number:int
 lastKnownPermanents{}[].craftedWith[].id	custom(uuid.UUID)
+lastKnownPermanents{}[].damageMarked	number:int
 lastKnownPermanents{}[].delved	array
 lastKnownPermanents{}[].delved[]	object
 lastKnownPermanents{}[].delved[].epoch	number:int

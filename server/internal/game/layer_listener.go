@@ -230,6 +230,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if ev.OldZone == ZoneBattlefield {
 			clearEffectiveCacheLocked(g, ev.CardID)
 		}
+		// A static that reads what is in exile ("as long as you own a card
+		// in exile that has an Adventure", Howling Galefang) declares
+		// DependsOnEvents: EventZoneMove, and has a new answer the moment a
+		// card enters or leaves exile. Gated, so a table with no such
+		// permanent pays one walk of the battlefield per exile move.
+		if (ev.OldZone == ZoneExile || ev.NewZone == ZoneExile) && eventStaticIsLiveLocked(g, EventZoneMove) {
+			g.layerVersion.Add(1)
+		}
 	case EventTokenCreated:
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)

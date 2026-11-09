@@ -130,6 +130,12 @@ type PermanentInfo struct {
 	// Counters is a copy of the counters it had. Nil when it had none.
 	Counters map[string]int `json:"counters,omitempty"`
 
+	// DamageMarked is the damage that was marked on it as it last existed
+	// (Card.DamageMarked): "the amount of damage dealt to it this turn" of
+	// Tangled Colony's dies trigger, read after it has gone (CR 608.2h).
+	// Additive; zero when it carried none.
+	DamageMarked int `json:"damageMarked,omitempty"`
+
 	// AttachedTo is what it was attached to (CR 301.5c / 303.4). An
 	// Aura's "enchanted creature" reads it after the Aura has gone.
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
@@ -292,6 +298,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Toughness:       c.CurrentToughness(),
 		BasePower:       c.BasePower(),
 		Counters:        copyStringIntMap(c.Counters),
+		DamageMarked:    c.DamageMarked,
 		AttachedTo:      c.AttachedTo,
 		Tapped:          c.Tapped,
 		Delved:          append([]ObjectRef(nil), c.Provenance.Delved...),
