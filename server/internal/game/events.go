@@ -2268,6 +2268,12 @@ type Event struct {
 // items' trigger contexts: never rename it, never reuse it.
 const TapCauseTeamwork = "teamwork"
 
+// TapCauseEffect is Event.TapCause for a permanent tapped because a spell
+// or ability instructed it (the tapper is the event's Actor): not a cost, an
+// attack or a mana ability. The string is on disk inside stack items'
+// trigger contexts: never rename it, never reuse it.
+const TapCauseEffect = "effect"
+
 // DamageLifeLoss is the life an EventDealDamage cost the player it was
 // dealt to (#2105, CR 119.2, CR 120.3a): its Amount less the part that
 // cost no life (DamageNotLifeLoss: infect, or a life total that can't

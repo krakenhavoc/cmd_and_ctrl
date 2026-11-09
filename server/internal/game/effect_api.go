@@ -1397,6 +1397,25 @@ func (g *Game) UntapTargetForEffect(cardID uuid.UUID) error {
 // untap in the engine — this one, the untap step's, a sandbox click
 // — announces through the same line of code.
 func (g *Game) setTapStateLocked(cardID uuid.UUID, tapped bool) error {
+	return g.setTapStateByLocked(cardID, tapped, uuid.Nil, "")
+}
+
+// TapTargetByEffectForEffect is TapTargetForEffect for a spell or ability
+// whose controller `tapper` instructs the tap ("tap target creature",
+// "tap all creatures"): the EventTapCard it emits names the tapper as its
+// Actor and carries TapCause TapCauseEffect, so "whenever you tap an untapped
+// creature an opponent controls" (Sharae of Numbing Depths, Hylda of the
+// Icy Crown) can tell a tap an effect of yours instructed from a cost, an
+// attack or a mana ability, and from a tap an opponent was told to make of
+// their own creature. Additive: the event kind and every other field are
+// unchanged. Caller must hold g.mu.
+func (g *Game) TapTargetByEffectForEffect(cardID, tapper uuid.UUID) error {
+	return g.setTapStateByLocked(cardID, true, tapper, TapCauseEffect)
+}
+
+// setTapStateByLocked is setTapStateLocked with the tap event's actor and
+// cause (empty for the engine's own taps).
+func (g *Game) setTapStateByLocked(cardID uuid.UUID, tapped bool, actor uuid.UUID, cause string) error {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.InstanceID != cardID {
@@ -1410,7 +1429,7 @@ func (g *Game) setTapStateLocked(cardID uuid.UUID, tapped bool) error {
 			return nil
 		}
 		c.Tapped = true
-		g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID, Actor: actor, TapCause: cause})
 		return nil
 	}
 	return ErrCardNotFound

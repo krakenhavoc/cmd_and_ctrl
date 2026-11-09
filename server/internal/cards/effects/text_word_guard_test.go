@@ -61,6 +61,11 @@ var textWordLiteralAllowed = map[string]string{
 	// permanent or a spell).
 	"marang_river_prowler.go": "graveyard-only clause",
 
+	// "is a Reflection in addition to its other types" names a type the
+	// token copy gains; it is a template edit of a token being created, not
+	// a word of the Saga's own text a text-changing effect could reach.
+	"the_apprentices_folly.go": "a type a created token gains",
+
 	// An alternative cost's condition ("If you control a Plains, you may
 	// tap an untapped creature you control rather than pay this spell's
 	// mana cost") is judged as the card is cast from a hand (CR 601.2b),
