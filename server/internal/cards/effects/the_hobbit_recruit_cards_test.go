@@ -191,10 +191,11 @@ func TestHobBardsCompanyPumpsOthersRecruitsAndFlashesWithAHuman(t *testing.T) {
 	}
 
 	spec, _ := Lookup(bardsCompanyOracle)
-	if len(spec.AlternativeCosts) != 1 || !spec.AlternativeCosts[0].AsThoughFlash || spec.AlternativeCosts[0].ManaCost != "{2}{W}{U}" {
-		t.Fatalf("the flash offer is %+v, want one as-though-flash offer at {2}{W}{U}", spec.AlternativeCosts)
+	// #5207: a timing permission, not an alternative cost.
+	if len(spec.AlternativeCosts) != 0 || spec.FlashIf == nil || spec.FlashIf.Condition == nil {
+		t.Fatalf("offers %+v, FlashIf %+v; want no offer and a conditional FlashIf", spec.AlternativeCosts, spec.FlashIf)
 	}
-	cond := spec.AlternativeCosts[0].Condition
+	cond := spec.FlashIf.Condition
 	fresh := newCatalogGame(t)
 	var without, with bool
 	fresh.WithWriteLock(func() { without = cond(fresh, fresh.Seats[0].ID) })

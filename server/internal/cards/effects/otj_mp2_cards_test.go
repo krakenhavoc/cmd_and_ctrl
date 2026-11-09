@@ -51,11 +51,7 @@ func TestOtjMP2EveryCardIsRegistered(t *testing.T) {
 		if spec.Name != name {
 			t.Errorf("%s registered as %q", name, spec.Name)
 		}
-		want := CompletenessFull
-		if oracle == otjMP2MysticalTetherOracle {
-			want = CompletenessCaveats
-		}
-		if spec.Completeness != want || (want == CompletenessFull) != (len(spec.Caveats) == 0) {
+		if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: completeness %s, caveats %v", name, spec.Completeness, spec.Caveats)
 		}
 	}
@@ -205,11 +201,13 @@ func TestOtjMP2MysticalTetherHasFlashForTwoMore(t *testing.T) {
 	if !ok {
 		t.Fatal("not registered")
 	}
-	if len(spec.AlternativeCosts) != 1 {
-		t.Fatalf("%d alternative costs, want the flash surcharge only", len(spec.AlternativeCosts))
+	// #5207: an optional additional {2} that opens the window, not an
+	// alternative cost.
+	if len(spec.AlternativeCosts) != 0 || len(spec.OptionalCosts) != 1 {
+		t.Fatalf("%d alternative costs, %d optional costs; want the {2} optional cost only", len(spec.AlternativeCosts), len(spec.OptionalCosts))
 	}
-	if ac := spec.AlternativeCosts[0]; !ac.AsThoughFlash || ac.ManaCost != "{4}{W}" {
-		t.Errorf("flash for {2} more: %+v", ac)
+	if oc := spec.OptionalCosts[0]; !oc.AsThoughFlash || oc.ManaCost != "{2}" {
+		t.Errorf("flash for {2} more: %+v", oc)
 	}
 }
 

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,17 +13,16 @@ import (
 // group a (#5075).
 
 const (
-	avB30aLoAndLiOracle   = "b5018037-cf4e-46d2-86c3-fb8eec6e44d1"
-	avB30aRuthlessOracle  = "100771fd-07db-47be-ada3-935dc918fa33"
-	avB30aScarringOracle  = "63957ec0-89e6-4be2-8740-846ca56ee48c"
-	avB30aDeerDogOracle   = "76c7a339-015b-4074-8e10-14d52b784f9b"
-	avB30aOmashuOracle    = "ea58fb10-3d70-4c25-b317-615dfb20a48d"
-	avB30aFranticOracle   = "a866cc05-69b0-45f2-8829-b6ef08193ed1"
-	avB30aRecruitOracle   = "33e66662-aea6-480c-b69b-1907d987b69e"
-	avB30aLongshotOracle  = "f93c3468-5b1d-4fa7-a281-1009ea0f2062"
-	avB30aLostOracle      = "69ac3757-66f8-47d4-af7b-dda66c96c254"
-	avB30aMokuOracle      = "d6e1b1ff-e4e5-4814-9a20-2d527014463f"
-	avB30aScarringFlashAC = "flash-if-you-control-an-attacking-legendary-creature"
+	avB30aLoAndLiOracle  = "b5018037-cf4e-46d2-86c3-fb8eec6e44d1"
+	avB30aRuthlessOracle = "100771fd-07db-47be-ada3-935dc918fa33"
+	avB30aScarringOracle = "63957ec0-89e6-4be2-8740-846ca56ee48c"
+	avB30aDeerDogOracle  = "76c7a339-015b-4074-8e10-14d52b784f9b"
+	avB30aOmashuOracle   = "ea58fb10-3d70-4c25-b317-615dfb20a48d"
+	avB30aFranticOracle  = "a866cc05-69b0-45f2-8829-b6ef08193ed1"
+	avB30aRecruitOracle  = "33e66662-aea6-480c-b69b-1907d987b69e"
+	avB30aLongshotOracle = "f93c3468-5b1d-4fa7-a281-1009ea0f2062"
+	avB30aLostOracle     = "69ac3757-66f8-47d4-af7b-dda66c96c254"
+	avB30aMokuOracle     = "d6e1b1ff-e4e5-4814-9a20-2d527014463f"
 )
 
 func TestAvatarB30aCardsAreRegistered(t *testing.T) {
@@ -43,12 +43,7 @@ func TestAvatarB30aCardsAreRegistered(t *testing.T) {
 			t.Errorf("%s (%s) is not registered", name, oracle)
 			continue
 		}
-		want, caveats := CompletenessFull, 0
-		if oracle == avB30aScarringOracle {
-			// #5207: its flash is an alternative-cost offer.
-			want, caveats = CompletenessCaveats, 1
-		}
-		if spec.Name != name || spec.Completeness != want || len(spec.Caveats) != caveats {
+		if spec.Name != name || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: name %q, completeness %s, caveats %v", name, spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
@@ -215,8 +210,8 @@ func TestAvatarB30ScarringMemoriesHasFlashOnlyWithAnAttackingLegend(t *testing.T
 	lockInAttacks(t, g)
 	fillPoolColored(me, "B", 4)
 	if _, err := castFromHandErr(g, me, "Scarring Memories", "Sorcery — Lesson", "{3}{B}", avB30aScarringOracle,
-		game.CastSpellParams{Strict: true, Targets: targets, AlternativeCost: avB30aScarringFlashAC}); err == nil {
-		t.Fatal("cast with flash while only a nonlegendary creature attacks")
+		game.CastSpellParams{Strict: true, Targets: targets}); !errors.Is(err, game.ErrSorcerySpeedRequired) {
+		t.Fatalf("cast with flash while only a nonlegendary creature attacks: err = %v, want ErrSorcerySpeedRequired", err)
 	}
 
 	g = newCatalogGame(t)
@@ -229,12 +224,10 @@ func TestAvatarB30ScarringMemoriesHasFlashOnlyWithAnAttackingLegend(t *testing.T
 	}
 	lockInAttacks(t, g)
 	fillPoolColored(me, "B", 4)
+	// #5207: the flash is the card's own timing permission, so the
+	// printed cost is what the instant-speed cast pays.
 	if _, err := castFromHandErr(g, me, "Scarring Memories", "Sorcery — Lesson", "{3}{B}", avB30aScarringOracle,
-		game.CastSpellParams{Strict: true, Targets: targets}); err == nil {
-		t.Fatal("the printed cost was cast at instant speed")
-	}
-	if _, err := castFromHandErr(g, me, "Scarring Memories", "Sorcery — Lesson", "{3}{B}", avB30aScarringOracle,
-		game.CastSpellParams{Strict: true, Targets: targets, AlternativeCost: avB30aScarringFlashAC}); err != nil {
+		game.CastSpellParams{Strict: true, Targets: targets}); err != nil {
 		t.Fatalf("cast with flash while a legendary creature attacks: %v", err)
 	}
 }

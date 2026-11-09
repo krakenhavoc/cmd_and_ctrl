@@ -634,3 +634,48 @@ is shown with two Elementals (`TestKindleTheInnerFlameNeedsThreeElementals` and
 Tests: `cards/effects/kindle_the_inner_flame_test.go`, `legal/flashback_behold_test.go`,
 `protocol/flashback_behold_view_test.go`, `aiseat/heuristic/behold_alt_cost_test.go`, and the picker case in
 `client/src/lib/costSheets.render.test.ts`.
+
+## Amendment (2026-11-09, [#5207](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5207)): "as though it had flash if" is a timing permission, not an offer
+
+The 2026-10-13 amendment's flash surcharge (`FlashForMore`) and per-offer X ceiling (`FlashIfXAtMost`), and the
+`FlashIfTargets` and `Condition`-gated offers built on the same shape, made "You may cast this spell as though it had
+flash if …" an alternative cost at the printed cost that opened the instant-speed window for its own claim
+(`AlternativeCost.AsThoughFlash`). CR 118.9a ("Only one alternative cost can be applied to any one spell as it's being
+cast") then refused a flash cast that also wanted another alternative cost, a free-cast permission or Jodah's
+{W}{U}{B}{R}{G}. On the printed card the clause is a timing permission, so it can. #5211 marked the eleven cards built
+this way as caveats; this amendment retires the shape.
+
+**Decision 1 — a condition on the game or on a choice is `Spec.FlashIf`.** `game.FlashIf` is catalog data (a
+`Condition` func read through `catalogDef`, an `XCeiling`, a narrowed `Targets` clause), so no route from `Game` to a func
+is added. It is step 1c of `castTimingOpenLocked`, beside Necromancy's own flash. A game condition (Bard's Company,
+Fated Clash, Scarring Memories, Serpent of the Pass) is read as the cast begins (CR 601.3: "A player can begin to cast a
+spell only if a rule or effect allows that player to cast it"). A condition on a choice made while casting (Silver
+Scrutiny's X, Timely Ward's target) opens the window and binds the announcement, CR 601.3b: "If any such choices could
+cause that effect to apply, that player may begin to cast that spell as though it had flash." It binds only a cast that
+needs the permission (`Game.FlashIfReliedOnLocked`: the window is open with it and shut without it), so a main-phase
+Silver Scrutiny, or one under a Vedalken Orrery, takes any X, the reading `castUsesOwnFlashLocked` already gives
+Necromancy. The announce gate, the enumerator, the view's card-level `x_max` and `legal_targets`, and the auto-tap preview
+read it. The target narrowing binds the announcement only; resolution reads the printed clause (CR 608.2b).
+
+**Decision 2 — a condition on paying a cost is an optional cost that opens the window.** CR 601.3c: "If an effect allows
+a player to cast a spell as though it had flash only if an alternative or additional cost is paid, that player may begin
+to cast that spell as though it had flash." "If you pay {2} more" (`FlashForMore("{2}")`) and "if you behold a Dragon as
+an additional cost" (`OptionalBeholdOpeningFlash`) are optional additional costs with `AdditionalCost.AsThoughFlash`,
+Quantum Reduction's teamwork shape (#4455), so the {2} is paid on top of any alternative cost (CR 601.2f).
+`OptionalCostView.opens_flash` (additive) tells the client which optional cost opens the window.
+
+**Decision 3 — the guard is inverted.** Coverage's `TestNoFlashIfClauseIsAnAlternativeCost` replaces
+`TestEveryFlashIfOfferCardDeclaresItsCaveat`: every face that prints the clause, in either word order, builds it as
+`Spec.FlashIf` or an optional cost that opens the window, and none as an alternative cost with `AsThoughFlash`.
+`AlternativeCost.AsThoughFlash` stays for what it was built for, Primal Prayers' "If you cast a spell this way, you may
+cast it as though it had flash", which is a property of the claim. `AlternativeCost.XCeiling` stays in the engine with
+no card on it.
+
+No snapshot change: an old stack item whose `AltCost` names a retired offer key (`flash-for-more`, `flash-x-at-most`,
+`flash-if-targets`, `flash-behold`, the `Condition`-gated keys) resolves as a cast for the printed cost, and none of
+those offers changed what the spell does.
+
+Tests: `cards/effects/flash_if_test.go` (a flash cast through Omniscience's free cast, with and without the {2}, the
+condition false, the X and target conditions, the Register checks), `legal/flash_if_test.go`,
+`legal/offer_x_ceiling_test.go`, `protocol/flash_if_view_test.go`, `protocol/offer_x_ceiling_view_test.go`,
+`lobby/auto_tap_preview_offer_x_ceiling_test.go`, and `cards/coverage/flash_if_offer_test.go`.

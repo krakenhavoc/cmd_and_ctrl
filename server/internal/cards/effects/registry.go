@@ -313,6 +313,7 @@ func Register(spec Spec) {
 	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
 	checkTapOthersCost(spec)
 	checkCostOpensFlash(spec)
+	checkFlashIf(spec)
 	// #5240: a collect evidence X sized by the targets, before the
 	// either/or and optional checks so its own refusal is the one read.
 	checkCollectEvidenceFromTargets(spec)

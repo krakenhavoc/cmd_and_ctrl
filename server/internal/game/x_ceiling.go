@@ -159,6 +159,11 @@ func (g *Game) SpellXCeilingForCast(caster uuid.UUID, card Card, params CastSpel
 			alt = nil
 		}
 		ceiling, ok = g.SpellXCeilingForOfferLocked(caster, CatalogKey(card), alt)
+		// #5207, CR 601.3b: and the card's own "as though it had flash if
+		// X is N or less", when this cast needs it — castSpellLocked's
+		// read, with the optional costs the query announces.
+		optionalFlash := OptionalCostsOpenCastWindow(g.OptionalCostsForCastLocked(caster, card), params.OptionalCosts)
+		ceiling, ok = g.FlashIfReliedOnLocked(caster, card, srcKind, grant, alt, optionalFlash).XCeilingUnder(ceiling, ok)
 	})
 	return ceiling, ok
 }

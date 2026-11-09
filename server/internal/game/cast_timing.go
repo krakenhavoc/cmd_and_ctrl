@@ -555,6 +555,13 @@ func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if ownFlash && printsFlashWithCleanupSacrifice(card) {
 		instantSpeed = true
 	}
+	// 1c. The card's own "you may cast this spell as though it had flash
+	// if <condition>" (#5207, flash_if.go): a timing permission, read as
+	// the cast begins (CR 601.3), and not an alternative cost, so it
+	// composes with whichever cost the cast claims.
+	if ownFlash && g.flashIfOpensLocked(playerID, card) {
+		instantSpeed = true
+	}
 	// 2. The permission's override, if it carries one.
 	if perm != nil {
 		switch perm.Timing {
