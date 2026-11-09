@@ -396,4 +396,8 @@ var tokenTable = map[string]game.Card{
 
 	// #4467: Bloomburrow's Otter (Stormchaser's Talent).
 	"1/1 blue and red Otter with prowess": {Name: "Otter", TypeLine: "Token Creature — Otter", Power: 1, Toughness: 1, Colors: []string{"U", "R"}, Keywords: []string{"prowess"}},
+
+	// #4462: Final Fantasy's Robot Warrior (Retrieve the Esper) and Horror (The Final Days).
+	"3/3 blue Robot Warrior artifact": {Name: "Robot Warrior", TypeLine: "Token Artifact Creature — Robot Warrior", Power: 3, Toughness: 3, Colors: []string{"U"}},
+	"2/2 black Horror":                {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
 }
