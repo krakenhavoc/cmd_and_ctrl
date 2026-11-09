@@ -22,11 +22,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:   "{2}{W}, Sacrifice two enchantments: Return this card from your graveyard to your hand.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
-			Cost:    Plus(ManaCost("{2}{W}"), SacrificeN(2, "two enchantments", Enchantment())),
-			Zones:   []game.ZoneKind{game.ZoneGraveyard},
-			Effect:  returnThisCardFromYourGraveyardToYourHand,
+			Label:  "{2}{W}, Sacrifice two enchantments: Return this card from your graveyard to your hand.",
+			Cost:   Plus(ManaCost("{2}{W}"), SacrificeN(2, "two enchantments", Enchantment())),
+			Zones:  []game.ZoneKind{game.ZoneGraveyard},
+			Effect: returnThisCardFromYourGraveyardToYourHand,
 		}},
 	})
 }
