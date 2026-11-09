@@ -1,6 +1,12 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"sort"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // std_b43_helpers.go — shared predicates for Standard set batches 43-46.
 
@@ -31,4 +37,25 @@ func init() {
 		}
 		tokenTable[key] = card
 	}
+}
+
+// differentColorPairsAmong is the number of different color pairs among the
+// permanents `controller` controls that are exactly two colors (Niv-Mizzet,
+// Guildpact): the distinct two-color sets, read through the layered view, out
+// of the ten there are (the ruling). A colorless, monocolored or three-color
+// permanent has no pair.
+func differentColorPairsAmong(g *game.Game, controller uuid.UUID) int {
+	pairs := map[string]bool{}
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != controller {
+			continue
+		}
+		colors := append([]string(nil), c.EffectiveColors()...)
+		if len(colors) != 2 {
+			continue
+		}
+		sort.Strings(colors)
+		pairs[colors[0]+colors[1]] = true
+	}
+	return len(pairs)
 }

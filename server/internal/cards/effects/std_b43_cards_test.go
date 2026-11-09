@@ -550,3 +550,169 @@ func TestStdB43IntrudeOnTheMindMakesAZeroZeroThopterWhenNothingIsBinned(t *testi
 		t.Error("a 0/0 Thopter with no counters stayed on the battlefield")
 	}
 }
+
+// --- batch 44 ------------------------------------------------------------
+
+const (
+	stdExitOracle      = "3d145811-adb2-46a4-b173-bf8152e5de48"
+	stdWispdrinkerOrac = "6317d45a-fe02-4879-b515-bc5327ecb5ae"
+)
+
+func TestStdB44UnauthorizedExitBouncesThenSurveils(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	bear := reqCreature(g, opp.ID, "Their Bear", "", 2, 2)
+	for i := 0; i < 3; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	castCatalogSpell(t, g, "Unauthorized Exit", "Instant", stdExitOracle, []game.TargetRef{{Kind: game.TargetCard, ID: bear}})
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(bear) || !opp.Hand.Contains(bear) {
+		t.Fatal("the target was not returned to its owner's hand")
+	}
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceSurveil, me.ID); c == nil {
+		t.Fatal("no surveil 1 after the bounce")
+	}
+}
+
+func TestStdB44UnauthorizedExitCannotTargetALand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	land := b12Permanent(g, me.ID, "Forest", "Basic Land — Forest")
+	if err := castCatalogSpellErr(t, g, "Unauthorized Exit", "Instant", stdExitOracle, []game.TargetRef{{Kind: game.TargetCard, ID: land}}); err == nil {
+		t.Fatal("a land was targeted")
+	}
+}
+
+func TestStdB44WispdrinkerVampireDrainsForASmallCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opps := mkmMPOpponents(g)
+	b12Push(g, me.ID, "Wispdrinker Vampire", "Creature — Vampire Rogue", stdWispdrinkerOrac, 3, 3)
+	before, mine := mkmMPLives(opps), me.Life
+	castHoldCreature(t, g, "Small Bear", "Creature — Bear", "", 2, 2)
+	passPriorityAroundTable(t, g)
+	for i, p := range opps {
+		if p.Life != before[i]-1 {
+			t.Errorf("opponent %d life %d -> %d, want -1", i, before[i], p.Life)
+		}
+	}
+	if me.Life != mine+1 {
+		t.Errorf("life %d -> %d, want +1", mine, me.Life)
+	}
+}
+
+func TestStdB44WispdrinkerVampireIgnoresABigCreatureAndItself(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opps := mkmMPOpponents(g)
+	before := mkmMPLives(opps)
+	castHoldCreature(t, g, "Wispdrinker Vampire", "Creature — Vampire Rogue", stdWispdrinkerOrac, 2, 2)
+	castHoldCreature(t, g, "Big Bear", "Creature — Bear", "", 3, 3)
+	passPriorityAroundTable(t, g)
+	for i, p := range opps {
+		if p.Life != before[i] {
+			t.Errorf("opponent %d life changed %d -> %d", i, before[i], p.Life)
+		}
+	}
+	_ = me
+}
+
+func TestStdB44WispdrinkerVampireGivesSmallCreaturesDeathtouchAndLifelink(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	vamp := b12Push(g, me.ID, "Wispdrinker Vampire", "Creature — Vampire Rogue", stdWispdrinkerOrac, 3, 3)
+	small := reqCreature(g, me.ID, "Small Bear", "", 2, 2)
+	big := reqCreature(g, me.ID, "Big Bear", "", 4, 4)
+	advanceToMain(t, g)
+	floatForTest(g, me, "CCCCCWB")
+	if err := g.ActivateCatalogAbility(me.ID, vamp, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, kw := range []string{"deathtouch", "lifelink"} {
+		if !hasKeywordOnBattlefield(t, g, small, kw) {
+			t.Errorf("the 2/2 lacks %s", kw)
+		}
+		if hasKeywordOnBattlefield(t, g, big, kw) {
+			t.Errorf("the 4/4 gained %s", kw)
+		}
+	}
+}
+
+const stdNivOracle = "46570366-5e58-40b7-b725-833321a3b7b1"
+
+func stdColored(g *game.Game, owner uuid.UUID, name string, colors ...string) {
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: name, TypeLine: "Creature — Test", Power: 1, Toughness: 1,
+		Colors: colors, Owner: owner, Controller: owner,
+	})
+}
+
+func TestStdB44NivMizzetCountsDifferentTwoColorPairs(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	niv := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Niv-Mizzet, Guildpact", TypeLine: "Legendary Creature — Dragon Avatar", OracleID: stdNivOracle,
+		Colors: []string{"W", "U", "B", "R", "G"}, Power: 6, Toughness: 6, Owner: me.ID, Controller: me.ID,
+	})
+	stdColored(g, me.ID, "WU one", "W", "U")
+	stdColored(g, me.ID, "UW two", "U", "W") // the same pair
+	stdColored(g, me.ID, "BR", "B", "R")
+	stdColored(g, me.ID, "GWU", "G", "W", "U") // three colours: no pair
+	stdColored(g, me.ID, "Mono", "G")
+	stdColored(g, opp.ID, "Their GR", "G", "R") // not yours
+	for i := 0; i < 5; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	oppLife, myLife, hand := opp.Life, me.Life, me.Hand.Size()
+
+	dealCombatDamageToPlayer(g, niv, opp.ID, 6)
+	// Targets: any target (the opponent), then target player (me).
+	pickPlayer(t, g, me.ID, opp.ID)
+	pickPlayer(t, g, me.ID, me.ID)
+	passPriorityAroundTable(t, g)
+
+	if opp.Life != oppLife-2 {
+		t.Errorf("opponent life %d, want %d (2 damage: two different pairs)", opp.Life, oppLife-2)
+	}
+	if me.Life != myLife+2 {
+		t.Errorf("my life %d, want %d", me.Life, myLife+2)
+	}
+	if me.Hand.Size() != hand+2 {
+		t.Errorf("hand %d, want %d", me.Hand.Size(), hand+2)
+	}
+}
+
+func TestStdB44NivMizzetHasHexproofFromMulticolored(t *testing.T) {
+	spec, ok := Lookup(stdNivOracle)
+	if !ok || spec.Completeness != CompletenessFull {
+		t.Fatalf("Niv-Mizzet: %+v", spec)
+	}
+	q, ok := game.ParseHexproofFromQuality(game.HexproofFromMulticolored)
+	if !ok || q.Kind != game.ProtectionQualityMulticolored {
+		t.Fatalf("hexproof from multicolored does not parse: %+v %v", q, ok)
+	}
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	niv := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Niv-Mizzet, Guildpact", TypeLine: "Legendary Creature — Dragon Avatar", OracleID: stdNivOracle,
+		Colors: []string{"W", "U", "B", "R", "G"}, Power: 6, Toughness: 6, Owner: me.ID, Controller: me.ID,
+	})
+	b06AddMana(opp, "R", "R")
+	multi := handCardFull(opp, "Multi Bolt", "Instant", "{R}", lightningBoltOracle, []string{"R", "G"})
+	mono := handCardFull(opp, "Mono Bolt", "Instant", "{R}", lightningBoltOracle, []string{"R"})
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("pass to the opponent: %v", err)
+	}
+	target := []game.TargetRef{{Kind: game.TargetCard, ID: niv}}
+	if err := g.CastSpell(opp.ID, multi, game.CastSpellParams{Strict: true, Targets: target}); err == nil {
+		t.Error("a multicolored spell targeted Niv-Mizzet")
+	}
+	if err := g.CastSpell(opp.ID, mono, game.CastSpellParams{Strict: true, Targets: target}); err != nil {
+		t.Errorf("a monocolored spell could not target Niv-Mizzet: %v", err)
+	}
+}
