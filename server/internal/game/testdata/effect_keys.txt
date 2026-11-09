@@ -224,6 +224,7 @@ body necropotence/deliver-exiled
 body new-way-forward/prevented
 body new-way-forward/strike-back
 body nightmares-and-daydreams/target-player-mills
+body nine-lives-familiar/return
 body nine-lives/incarnation-counter
 body noctis/warp-strike-return
 body novel-nunchaku/fight
@@ -429,6 +430,7 @@ choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-prowler-exile
 choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
+choose choose-cards/chandra-flameshaper-play
 choose choose-cards/chandra-legacy-of-fire-remove
 choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
@@ -1367,6 +1369,7 @@ payunless pay-unless/esper-sentinel-draw
 payunless pay-unless/extort-drain
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
+payunless pay-unless/flamewake-phoenix-return
 payunless pay-unless/forage-only
 payunless pay-unless/frenzied-goblin-cant-block
 payunless pay-unless/furious-forebear-return
@@ -1748,6 +1751,8 @@ steps then-steps/zealot-il-vec-yes
 tail abstract-performance/after-face-down
 tail abstract-performance/after-face-up
 tail abstract-performance/offer-cast
+tail abyssal-harvester/exile-other-nightmares
+tail abyssal-harvester/nightmare-copy
 tail advanced-reconstruction/exile-random
 tail aether-rift/offer-return-of-discarded-creature
 tail afflicted-deserter/damage-controller-if-destroyed
@@ -1839,6 +1844,7 @@ tail cantankerous-keepers/after-mill
 tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
+tail chandra-flameshaper/choose-exiled
 tail charming-prince/after-exile
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy

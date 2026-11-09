@@ -17,36 +17,35 @@ import (
 // name; new ones are b30-prefixed.
 
 const (
-	b30StonespeakerCrystalOracle    = "a494fcee-6885-434c-aad5-6f83640c4472"
-	b30LunarConvocationOracle       = "cb68d1e4-36aa-4a00-b671-8959e7d526d4"
-	b30TolarianWindsOracle          = "686cce6e-18ec-45b0-8d2e-74fa353a905e"
-	b30WoodlandChasmOracle          = "bf5482b6-dd3e-4fb7-bc62-29e23b417a5f"
-	b30RiversRebukeAlreadyOracle    = "c52cfb41-18f3-4e73-b5e7-d75baf74e578"
-	b30DamnablePactOracle           = "28dd0ae4-fc56-4abf-af24-6c6c8d0a10cd"
-	b30HonoredDreyleaderOracle      = "44bffa3e-4d31-4f9b-829c-e2066ab2f641"
-	b30GoblinTrashmasterOracle      = "0283bf5e-ddf2-4a4a-a7cf-d3e27eed7e7d"
-	b30KhalniGardenOracle           = "b2d5ba45-8674-4428-89db-c2bbbf0bf5c5"
-	b30WindgracesJudgmentOracle     = "de1ca6ed-b275-4f62-ba05-f31b3659b352"
-	b30ThrabenCharmOracle           = "7eccd10d-f224-4467-af25-f2b768993f9f"
-	b30SurlyBadgersaurOracle        = "0209dc74-ac49-4deb-907a-e9fa49d27a0f"
-	b30PromisingVeinOracle          = "861eb7d7-7616-4620-a4fd-4b8c3bf00dd1"
-	b30OppressionOracle             = "f488f679-f5d5-4e61-b0c8-0b0eb622df0d"
-	b30PickYourPoisonOracle         = "9af4a832-d634-47aa-91ed-79d44fe08864"
-	b30KeeperOfFablesOracle         = "c8ca3116-e0f0-4e27-aa0f-99ed85927040"
-	b30IronSpiderOracle             = "e123fd7d-ace9-48a4-9510-eedcc837d8e8"
-	b30FavorableWindsOracle         = "2361ca87-6352-4ba3-8d91-b3d71242914d"
-	b30CanopyTacticianOracle        = "8b20d6f4-6322-4435-92d5-acaae74774f4"
-	b30VorelOracle                  = "3001f971-c4db-4176-89b5-e7f4a8890c0f"
-	b30HourOfPromiseOracle          = "51ff3e53-90bb-41bf-80e4-bb3fd51d574a"
-	b30SatoruOracle                 = "7555c429-5f2d-4171-b6b0-8e3c8da7f314"
-	b30BetorOracle                  = "826a0db6-195a-4697-9bd6-f544b279e3cf"
-	b30WakeningSunsAvatarOracle     = "3c2aec69-ffd9-4a34-888c-58adbbb99bb5"
-	b30SavvyHunterOracle            = "602132c2-8ee8-41f8-bfac-cb17d32203f5"
-	b30ExtractFromDarknessOracle    = "e597d8a1-3bbc-4001-b642-f4421447970f"
-	b30DocksideChefOracle           = "fed12a16-8920-403c-be63-0601a9d864b0"
-	b30GrimGuardianOracle           = "c1f1babf-13d0-4fc4-b192-127d2d5db7f1"
-	b30ChainOfSmogSkipOracle        = "ea14c26b-bf2f-48b4-b879-6e63069ded1f"
-	b30ZimoneParadoxSculptorSkipOID = "9dd674a7-becf-4106-b53f-bca88426d92d"
+	b30StonespeakerCrystalOracle = "a494fcee-6885-434c-aad5-6f83640c4472"
+	b30LunarConvocationOracle    = "cb68d1e4-36aa-4a00-b671-8959e7d526d4"
+	b30TolarianWindsOracle       = "686cce6e-18ec-45b0-8d2e-74fa353a905e"
+	b30WoodlandChasmOracle       = "bf5482b6-dd3e-4fb7-bc62-29e23b417a5f"
+	b30RiversRebukeAlreadyOracle = "c52cfb41-18f3-4e73-b5e7-d75baf74e578"
+	b30DamnablePactOracle        = "28dd0ae4-fc56-4abf-af24-6c6c8d0a10cd"
+	b30HonoredDreyleaderOracle   = "44bffa3e-4d31-4f9b-829c-e2066ab2f641"
+	b30GoblinTrashmasterOracle   = "0283bf5e-ddf2-4a4a-a7cf-d3e27eed7e7d"
+	b30KhalniGardenOracle        = "b2d5ba45-8674-4428-89db-c2bbbf0bf5c5"
+	b30WindgracesJudgmentOracle  = "de1ca6ed-b275-4f62-ba05-f31b3659b352"
+	b30ThrabenCharmOracle        = "7eccd10d-f224-4467-af25-f2b768993f9f"
+	b30SurlyBadgersaurOracle     = "0209dc74-ac49-4deb-907a-e9fa49d27a0f"
+	b30PromisingVeinOracle       = "861eb7d7-7616-4620-a4fd-4b8c3bf00dd1"
+	b30OppressionOracle          = "f488f679-f5d5-4e61-b0c8-0b0eb622df0d"
+	b30PickYourPoisonOracle      = "9af4a832-d634-47aa-91ed-79d44fe08864"
+	b30KeeperOfFablesOracle      = "c8ca3116-e0f0-4e27-aa0f-99ed85927040"
+	b30IronSpiderOracle          = "e123fd7d-ace9-48a4-9510-eedcc837d8e8"
+	b30FavorableWindsOracle      = "2361ca87-6352-4ba3-8d91-b3d71242914d"
+	b30CanopyTacticianOracle     = "8b20d6f4-6322-4435-92d5-acaae74774f4"
+	b30VorelOracle               = "3001f971-c4db-4176-89b5-e7f4a8890c0f"
+	b30HourOfPromiseOracle       = "51ff3e53-90bb-41bf-80e4-bb3fd51d574a"
+	b30SatoruOracle              = "7555c429-5f2d-4171-b6b0-8e3c8da7f314"
+	b30BetorOracle               = "826a0db6-195a-4697-9bd6-f544b279e3cf"
+	b30WakeningSunsAvatarOracle  = "3c2aec69-ffd9-4a34-888c-58adbbb99bb5"
+	b30SavvyHunterOracle         = "602132c2-8ee8-41f8-bfac-cb17d32203f5"
+	b30ExtractFromDarknessOracle = "e597d8a1-3bbc-4001-b642-f4421447970f"
+	b30DocksideChefOracle        = "fed12a16-8920-403c-be63-0601a9d864b0"
+	b30GrimGuardianOracle        = "c1f1babf-13d0-4fc4-b192-127d2d5db7f1"
+	b30ChainOfSmogSkipOracle     = "ea14c26b-bf2f-48b4-b879-6e63069ded1f"
 )
 
 // b30Lives snapshots every seat's life total.
@@ -170,19 +169,11 @@ func TestBatch30CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The declared skip must NOT be registered — it needs a seam the
-	// engine does not have, and a spec would ship the card stronger
-	// than printed or as something other than itself. Gemhide Sliver
-	// came off this list with ADR 0093 and ships in gemhide_sliver.go;
-	// Ultima, Origin of Oblivion came off it with ADR 0109 PR 3 and
-	// ships in ultima_origin_of_oblivion.go.
-	for _, skipped := range []string{
-		b30ZimoneParadoxSculptorSkipOID, // a beginning-of-combat trigger event
-	} {
-		if _, ok := Lookup(skipped); ok {
-			t.Errorf("%s is a declared skip and must not be registered", skipped)
-		}
-	}
+	// Gemhide Sliver came off the declared-skip list with ADR 0093 and
+	// ships in gemhide_sliver.go; Ultima, Origin of Oblivion came off it
+	// with ADR 0109 PR 3 and ships in ultima_origin_of_oblivion.go;
+	// Zimone, Paradox Sculptor came off it once its beginning-of-combat
+	// trigger had an event (zimone_paradox_sculptor.go).
 }
 
 // --- lands ---------------------------------------------------------
