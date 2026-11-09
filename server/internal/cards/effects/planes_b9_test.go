@@ -38,6 +38,7 @@ var (
 	planeMaelstrm    = planeFixture{"e28deac5-d3c4-48e9-974c-093e3122f317", "The Maelstrom", "Plane — Alara"}
 	planeQuicksilver = planeFixture{"53517dbf-7b32-423a-af76-afd39b876a1a", "Quicksilver Sea", "Plane — Mirrodin"}
 	planeSkybreen    = planeFixture{"61006acf-de38-420b-ab7a-685fbd64141c", "Skybreen", "Plane — Kaldheim"}
+	planeSeaOfSand   = planeFixture{"edd21d18-98d2-4e3f-8da1-1ba645b8f69c", "Sea of Sand", "Plane — Rabiah"}
 	planeOrzhova     = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -994,5 +995,54 @@ func TestSkybreenChaosCostsLifeForTheHandSize(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if opp.Life != life-hand {
 		t.Errorf("life %d, want %d", opp.Life, life-hand)
+	}
+}
+
+// --- Sea of Sand -------------------------------------------------------------
+
+func TestSeaOfSandRevealsDrawnCardsAndPaysOrChargesThreeLife(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeSeaOfSand)
+	g, _ := newPlaneGame(t, planeSeaOfSand)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	for _, tc := range []struct {
+		player   *game.Player
+		name, tl string
+		delta    int
+	}{
+		{me, "Drawn Forest", "Basic Land — Forest", 3},
+		{me, "Drawn Bear", "Creature — Bear", -3},
+		{opp, "Their Island", "Basic Land — Island", 3},
+		{opp, "Their Bolt", "Instant", -3},
+	} {
+		maelstromTop(g, tc.player, tc.name, tc.tl)
+		life, reveals := tc.player.Life, 0
+		g.WithWriteLock(func() { _ = g.DrawNForEffect(tc.player.ID, 1) })
+		passPriorityAroundTable(t, g)
+		for _, ev := range g.Events {
+			if ev.Kind == game.EventRevealCards && ev.Label == "Sea of Sand — the card being drawn" {
+				reveals++
+			}
+		}
+		if reveals == 0 {
+			t.Errorf("%s: the drawn card was not revealed", tc.name)
+		}
+		if tc.player.Life != life+tc.delta {
+			t.Errorf("%s: life %d, want %d", tc.name, tc.player.Life, life+tc.delta)
+		}
+	}
+}
+
+func TestSeaOfSandChaosPutsAPermanentOnTopOfItsOwnersLibrary(t *testing.T) {
+	g, _ := newPlaneGame(t, planeSeaOfSand)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, theirs)
+	passPriorityAroundTable(t, g)
+	if top, _ := opp.Library.Top(); top.InstanceID != theirs || planeOnBattlefield(g, theirs) {
+		t.Error("the permanent is not on top of its owner's library")
 	}
 }
