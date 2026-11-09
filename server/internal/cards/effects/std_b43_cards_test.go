@@ -1271,3 +1271,55 @@ func TestStdB45EtrataCloaksTheTopCardWhenAnAssassinHitsAnOpponent(t *testing.T) 
 		t.Fatalf("their top card: on battlefield %v kind %q controller %v, want cloaked under my control", ok, c.FaceDownKind, c.Controller == me.ID)
 	}
 }
+
+const stdGatekeeperOracle = "3c8fa799-7f30-4532-8317-f37a7ab787de"
+
+func stdGatekeeperTurnUp(t *testing.T, target func(g *game.Game, me, opp *game.Player) uuid.UUID) (*game.Game, *game.Player, *game.Player, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	id := mkmMPCastFaceDown(t, g, "Unyielding Gatekeeper", "Creature — Elephant Cleric", stdGatekeeperOracle, 2, 2)
+	victim := target(g, me, opp)
+	mkmMPTurnFaceUp(t, g, me, id, "W", "C")
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	pickCard(t, g, me.ID, victim)
+	passPriorityAroundTable(t, g)
+	return g, me, opp, victim
+}
+
+func TestStdB45UnyieldingGatekeeperReturnsYourPermanentTapped(t *testing.T) {
+	g, _, _, _ := stdGatekeeperTurnUp(t, func(g *game.Game, me, _ *game.Player) uuid.UUID {
+		return reqCreature(g, me.ID, "My Bear", "", 2, 2)
+	})
+	// The returned card is a new object (CR 400.7), found by name.
+	var found, tapped int
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "My Bear" {
+				found++
+				if c.Tapped {
+					tapped++
+				}
+			}
+		}
+	})
+	if found != 1 || tapped != 1 {
+		t.Fatalf("%d My Bear on the battlefield, %d tapped; want it back, tapped", found, tapped)
+	}
+}
+
+func TestStdB45UnyieldingGatekeeperGivesTheirControllerADetective(t *testing.T) {
+	g, me, opp, theirs := stdGatekeeperTurnUp(t, func(g *game.Game, _, opp *game.Player) uuid.UUID {
+		return reqCreature(g, opp.ID, "Their Bear", "", 2, 2)
+	})
+	if _, ok := battlefieldCard(g, theirs); ok || !g.Exile.Contains(theirs) {
+		t.Fatal("their permanent was not exiled for good")
+	}
+	if n, _ := countTokensNamed(g, opp.ID, "Detective"); n != 1 {
+		t.Errorf("their controller has %d Detectives, want 1", n)
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Detective"); n != 0 {
+		t.Errorf("I got %d Detectives, want 0", n)
+	}
+}
