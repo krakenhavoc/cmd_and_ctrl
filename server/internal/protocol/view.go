@@ -5683,6 +5683,15 @@ type ManaAbilityView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// CostBranches are the ways to pay an either/or part of a mana
+	// ability's cost (#5397, game.ManaAbilityShape.Either): forage,
+	// Thornvault Forager's "{T}, Forage: Add two mana in any combination
+	// of colors" — exile three cards from your graveyard, or sacrifice a
+	// Food. The same wire name and shape ActivatedAbilityView carries,
+	// so the client asks which branch first, runs that branch's picker,
+	// and sends its index on activate_mana_ability as `cost_branch`.
+	// Absent for every other mana ability.
+	CostBranches []AbilityCostBranchView `json:"cost_branches,omitempty"`
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -7197,6 +7206,10 @@ func publicManaAbilityRow(v ManaAbilityView) (out ManaAbilityView, private bool)
 		private = private || len(v.ExileCostOptions) > 0
 		v.ExileCostOptions = nil
 	}
+	// #5397: an either/or cost's branches, cleared as a CR 602 row's are.
+	var branchesPrivate bool
+	v.CostBranches, branchesPrivate = publicCostBranches(v.CostBranches)
+	private = private || branchesPrivate
 	return v, private
 }
 
@@ -10115,6 +10128,14 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
+		}
+		// #5397: an either/or cost (forage, Thornvault Forager), each
+		// branch projected through the CR 602 row's projection over the
+		// same fold, so the client runs one branch picker for both
+		// ability kinds and sends the index as `cost_branch`.
+		if raw[i].Branched() {
+			views[i].CostBranches = abilityCostBranchViews(g, controller, card.InstanceID,
+				game.AbilityCost{Either: raw[i].Either, Forage: raw[i].Forage})
 		}
 	}
 }

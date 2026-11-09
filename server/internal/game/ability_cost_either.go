@@ -161,3 +161,41 @@ func (b AbilityCostBranch) BranchLabel() string {
 	}
 	return b.Label
 }
+
+// Branched reports whether the mana ability's cost has an either/or part
+// (#5397): forage on a mana ability (Thornvault Forager).
+func (a ManaAbilityShape) Branched() bool { return len(a.Either) > 0 }
+
+// ChosenManaAbilityShape is ChosenAbilityCost for a mana ability
+// (#5397): `a` itself for a cost with no branches, or `a` with branch
+// `*branch` built into its sacrifice or exile clause and Either cleared.
+// The fold is ChosenAbilityCost's own, so the branch a mana ability pays
+// is the clause a CR 602 ability paying the same branch would. The
+// branch is REQUIRED on a branched cost and refused on any other
+// (ErrAbilityCostBranch). effects.Register keeps the rest of a branched
+// mana cost free of both clauses. Pure, so the activation, the
+// enumerator and the view ask it the same question.
+func ChosenManaAbilityShape(a ManaAbilityShape, branch *int) (ManaAbilityShape, error) {
+	if !a.Branched() {
+		if branch != nil {
+			return a, ErrAbilityCostBranch
+		}
+		return a, nil
+	}
+	folded, err := ChosenAbilityCost(AbilityCost{Either: a.Either, Forage: a.Forage}, branch)
+	if err != nil {
+		return a, err
+	}
+	out := a
+	out.Either = nil
+	if folded.SacrificeOther != nil {
+		out.SacrificeOther = folded.SacrificeOther
+	}
+	if folded.DiscardCards != nil {
+		out.DiscardCards = folded.DiscardCards
+	}
+	if folded.ExileCards != nil {
+		out.ExileCards = folded.ExileCards
+	}
+	return out, nil
+}

@@ -1889,6 +1889,14 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if !a.ExilePermanents.Empty() {
 		return false
 	}
+	// #5397: an either/or cost (forage, Thornvault Forager) asks which
+	// way to pay — three cards from the graveyard or a Food — and
+	// spending either is a decision the planner makes none of. A
+	// hand-clicked forage row is a mana source; an auto-tapped one is
+	// never.
+	if a.Branched() {
+		return false
+	}
 	return true
 }
 
@@ -1989,7 +1997,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
 		return false
 	}
-	if !a.ExilePermanents.Empty() {
+	if !a.ExilePermanents.Empty() || a.Branched() {
 		return false
 	}
 	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil {
@@ -2091,7 +2099,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if a.AddCounter != nil || a.RemoveCounters != nil {
 			continue
 		}
-		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() {
+		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
 			continue
 		}
 		return &a

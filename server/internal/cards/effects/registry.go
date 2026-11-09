@@ -903,6 +903,7 @@ func Register(spec Spec) {
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
+		checkManaForage(spec.Name, i, ma)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
 		// ability exiles graveyard cards through this component.
 		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0) {

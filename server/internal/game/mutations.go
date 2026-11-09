@@ -7960,6 +7960,17 @@ type ManaAbilityParams struct {
 	// the auto-tap never claims it (CR 601.2b).
 	PhyrexianLife int
 
+	// CostBranch is the branch of an either/or cost the activator pays
+	// (#5397): forage on a mana ability, Thornvault Forager's "{T},
+	// Forage:" — 0 exiles three cards from the graveyard (named in
+	// ExileIDs), 1 sacrifices a Food (named in SacrificeIDs). The same
+	// field and wire name (`cost_branch`) as ActivateAbilityParams.
+	// CostBranch, with the same rule: required on an ability whose cost
+	// has branches and refused on any other (ErrAbilityCostBranch),
+	// before anything is paid. The auto-tapper never sets it, because
+	// it never plans such an ability.
+	CostBranch *int
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -8064,6 +8075,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// #5397, CR 605.3 / 602.2b / 601.2b: an either/or cost (forage) is
+	// announced with the branch it pays, and from here on the row's cost
+	// IS that branch folded in (ChosenManaAbilityShape). Before every
+	// gate below, so a missing or bad branch is refused with nothing
+	// paid, and every validator and payer reads one ordinary cost.
+	ab, err := ChosenManaAbilityShape(ab, params.CostBranch)
+	if err != nil {
+		return err
+	}
 	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
 	// controller, or anyone for an any-player row.
 	if !MayActivateMana(playerID, *card, srcZone, ab) {
@@ -8603,7 +8623,19 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
 			return err
 		}
+		paid.Exiled = append(paid.Exiled, exiles...)
 		needStateChecks = true
+	}
+	// #5397, CR 701.61a: a forage paid — either branch, now that its
+	// cards or its Food have moved. Recorded as the CR 602 path records
+	// it (PaidCost.Foraged) and announced once (EventForage), so
+	// "whenever you forage" (Corpseberry Cultivator) triggers; the
+	// trigger reaches the stack on the way out, with the mana already
+	// in the pool (CR 605.3b), through the queue drain below.
+	if ab.Forage {
+		paid.Foraged = true
+		paid.CostBranch = *params.CostBranch + 1
+		g.noteForageLocked(playerID, cardID)
 	}
 	// #1228: the exile-this component, LAST — after the discards, for
 	// the reason they are last: it moves the SOURCE and invalidates
