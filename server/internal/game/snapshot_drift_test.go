@@ -410,6 +410,7 @@ var cardFields = plan(
 	"PrintsManaAbility", carried, "",
 	"PrintsTapAbility", carried, "",
 	"ManaAbilityText", carried, "",
+	"NoAbilitiesText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
@@ -637,6 +638,7 @@ var cardFields = plan(
 	// #3172: "has dealt combat damage", the object history behind Ruric
 	// Thar's conditional hexproof, carried for Renowned's reason.
 	"DealtCombatDamage", carried, "",
+	"DealtDamage", carried, "",
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",
@@ -1038,6 +1040,11 @@ var delayedTriggerFields = plan(
 	"OnSeq", carried, "",
 	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
+	// "On your next turn" (Kav Landseeker): AfterThisTurn is the input
+	// half, turned into NotBeforeSeq and cleared as the trigger is
+	// scheduled, so it is never stored; NotBeforeSeq is plain data.
+	"AfterThisTurn", rebuilt, "input only: ScheduleDelayedTriggerForEffect stamps NotBeforeSeq from it and clears it before the trigger is stored",
+	"NotBeforeSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored
 	// game still knows WHAT was owed and until when.

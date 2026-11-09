@@ -28,17 +28,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			victim, ok := firstLegalPlayerTarget(ctx)
-			if !ok {
-				return nil
-			}
-			// Keyed (#4290): the caster and the victim ride the run as
-			// its carry, so a table waiting on the sacrifice is a
-			// restore point.
-			return ctx.Game.PlayerSacrificesThenKeyedForEffect(ctx.Source(), victim,
-				sacrificeSpec("a creature", Creature()),
-				"Consuming Vapors — sacrifice a creature", 1,
-				consumingVaporsGain, []uuid.UUID{ctx.Controller(), victim})
+			return edictGainToughness(ctx, "Consuming Vapors")
 		},
 	})
 }

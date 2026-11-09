@@ -420,6 +420,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			continue
 		}
 		energyCeiling := energyXCeiling(ab.Cost, game.PlayerEnergy(p), e.opts.MaxX)
+		// "Pay X life" (Krumar Initiate): the life left after the printed
+		// part bounds X the way the energy does (CR 119.4).
+		lifeCeiling := g.LifeXCeilingLocked(p, ab.Cost, life, e.opts.MaxX)
 		// CR 602.2b: X is announced with the activation, so the
 		// enumerator has to pick one. It picks the LARGEST
 		// affordable value at or above the cost's printed floor,
@@ -476,6 +479,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			}
 			var ok bool
 			if basePay, ok = capEnergyX(basePay, ab.Cost, energyCeiling,
+				enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())); !ok {
+				continue
+			}
+		}
+		if ab.Cost.LifeX {
+			if perTarget {
+				continue
+			}
+			var ok bool
+			if basePay, ok = capEnergyX(basePay, ab.Cost, lifeCeiling,
 				enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())); !ok {
 				continue
 			}
@@ -780,9 +793,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// for, floor up, as the mana ladder below does.
 				// #1944: and a −X loyalty cost (Liliana, Defiant
 				// Necromancer's "mana value X") every X the loyalty pays.
-				if (ab.Cost.EnergyX || ab.Cost.LoyaltyX) && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
+				if (ab.Cost.EnergyX || ab.Cost.LifeX || ab.Cost.LoyaltyX) && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
 					floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
 					ceiling := energyCeiling
+					if ab.Cost.LifeX {
+						ceiling = lifeCeiling
+					}
 					if ab.Cost.LoyaltyX {
 						ceiling = loyaltyCeiling
 					}
@@ -799,7 +815,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				if game.StepsBoundByCountersRemoved(steps) || ab.Cost.XSlots() == 0 {
 					if !game.StepsBoundByCountersRemoved(steps) &&
 						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) &&
-						!game.DiscardCountFromX(ab.Cost.DiscardCards) && !game.DiscardManaValueX(ab.Cost.DiscardCards) {
+						!game.DiscardCountFromX(ab.Cost.DiscardCards) && !game.DiscardManaValueX(ab.Cost.DiscardCards) &&
+						!game.SacrificeManaValueX(ab.Cost.SacrificeOther) {
 						continue
 					}
 					for _, ts := range e.legalStepSets(abilitySrc, steps, budget) {
@@ -939,6 +956,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							xValue, _ = dc.ParsedManaValue()
 						}
 					}
+					// "Sacrifice a creature with mana value X" (Sidisi): the
+					// announced X is the sacrificed permanent's mana value.
+					if game.SacrificeManaValueX(ab.Cost.SacrificeOther) && len(sacs) == 1 {
+						if sc, ok := g.LookupCardForEffect(sacs[0]); ok {
+							if mv, known := g.ManaValueForEffect(sc); known {
+								xValue = mv
+							}
+						}
+					}
 					// #1242: the engine's auto-tap will not spend what this
 					// payment names (AbilityAutoTapExclusions), so the
 					// affordability answered above — with nothing named —
@@ -1031,7 +1057,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// four-life activation as free. #1594: and
 								// the computed component is `life`, the
 								// amount the engine will charge.
-								cost := withPhyrexianLife(moveCost(life, ab.Cost.LoyaltyDelta(tapXValue)), phyrexianLife)
+								// "Pay X life" (Krumar Initiate): the announced X is
+								// part of the price the engine will charge.
+								lifeAtX := life
+								if ab.Cost.LifeX && tapXValue > 0 {
+									lifeAtX += tapXValue
+								}
+								cost := withPhyrexianLife(moveCost(lifeAtX, ab.Cost.LoyaltyDelta(tapXValue)), phyrexianLife)
 								// ADR 0129 §7: the energy this move removes.
 								cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
 								// ADR 0130 §4: and whether it exerts its source.
@@ -1063,7 +1095,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// tapped permanents, no waterbend taps, no
 								// division.
 								var xv *MoveValue
-								if (ab.Cost.XSlots() > 0 || ab.Cost.EnergyX) && ann.xValue < 0 && !ann.bounded && dist == nil &&
+								if (ab.Cost.XSlots() > 0 || ab.Cost.EnergyX || ab.Cost.LifeX) && ann.xValue < 0 && !ann.bounded && dist == nil &&
 									len(waterbendIDs) == 0 && !game.SacrificeCountFromX(ab.Cost.SacrificeOther) &&
 									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
@@ -2735,6 +2767,22 @@ func handDiscardLabel(dc *game.DiscardCost, n int) string {
 // A nil component is a payment of nothing and ok. ok is false when the
 // pile cannot cover the count, which means the ability is not offered.
 func (e *enumerator) exileCardsPayment(ec *game.ExileCost, sourceID uuid.UUID, taken []uuid.UUID) ([]uuid.UUID, bool) {
+	if ec != nil && ec.AnyNumber && ec.CountIsX {
+		// "Exile X <kind> cards" (Winter, Cursed Rider): the number named is
+		// X. A bot announces X = 1, the cheapest fuel, and does not offer
+		// the ability with nothing to exile: an exhaust ability is spent
+		// once, and X = 0 does nothing.
+		skip := make(map[uuid.UUID]bool, len(taken))
+		for _, id := range taken {
+			skip[id] = true
+		}
+		for _, id := range e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, sourceID, ec)) {
+			if !skip[id] {
+				return []uuid.UUID{id}, true
+			}
+		}
+		return nil, false
+	}
 	if ec != nil && ec.AnyNumber {
 		// "Exile any number of … with a total" (Baron Helmut Zemo's boast):
 		// the cheapest fuel first, until the floor is reached; the ability

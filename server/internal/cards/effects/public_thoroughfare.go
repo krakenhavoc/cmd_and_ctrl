@@ -27,21 +27,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Public Thoroughfare — sacrifice it unless you tap an untapped artifact or land you control",
-				func(g *game.Game, item *game.StackItem) error {
-					if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
-						return nil
-					}
-					pay := TapPayment(1, "artifact or land", "artifacts or lands", QueryTypes("artifact", "land"))
-					words, action := pay.prompt()
-					return UpkeepPayUnless{
-						Chooser:  item.Controller,
-						Cost:     words,
-						Action:   action,
-						Question: "Public Thoroughfare — tap an untapped artifact or land you control or sacrifice Public Thoroughfare?",
-						Else:     upkeepSacrificeSource,
-					}.Apply(NewContext(g, item))
-				}),
+			EntersSacrificeUnlessYouTap("Public Thoroughfare", "artifact or land", "artifacts or lands", QueryTypes("artifact", "land")),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

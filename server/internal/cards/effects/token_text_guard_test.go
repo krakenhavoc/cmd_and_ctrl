@@ -72,6 +72,7 @@ var permissionFilterDerived = map[string]string{
 	"hakoda_selfless_commander.go":    "standing cast permission (stampStandingPermissionLocked)",
 	"mai_and_zuko.go":                 "standing cast timing (castTimingVerdictLocked)",
 	"traveling_chocobo.go":            "standing cast permission (stampStandingPermissionLocked)",
+	"std_b7_helpers.go":               "Dracogenesis's granted alternative cost (grantedAlternativeCostsLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {
