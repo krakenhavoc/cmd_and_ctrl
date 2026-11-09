@@ -686,6 +686,14 @@ export const LABEL_SPECS = {
     doc: "#3898: the block declaration as a list, opened from the block request's Show as list; the keyboard path",
   }),
 
+  opensFlashNeededNow: label({
+    name: "needed to cast it now",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}AlternativeCostModal.svelte`],
+    doc: "#5363: under an optional cost in the cost picker that the chosen cost can be cast with right now only if it is paid (CR 601.3c); the picker ticks it",
+  }),
+
   // -- Dock requests --
   mulligan: label({
     name: "keep or mulligan your hand",

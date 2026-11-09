@@ -1323,6 +1323,34 @@ export function castableAlternativeCostsOf(card: CardView): AlternativeCostView[
   return alternativeCostsOf(card).filter((o) => o.timing_closed !== true);
 }
 
+// opensFlashRequired reports whether the claim `key` (undefined: the
+// printed mana cost) is one the engine accepts RIGHT NOW only with an
+// optional cost marked `opens_flash` announced (#5363, CR 601.3c):
+// Asinine Antics's "pay {2} more" outside a main phase. The server
+// answers it per claim (`opens_flash_required`); the cost picker reads
+// it to pre-select that cost and say why.
+export function opensFlashRequired(card: CardView, key: string | undefined): boolean {
+  if (key === undefined) return card.opens_flash_required === true;
+  return alternativeCostByKey(card, key)?.opens_flash_required === true;
+}
+
+// opensFlashCostToPreselect is the optional cost the picker ticks for a
+// claim that needs one (opensFlashRequired): the first `opens_flash`
+// offer `payable` accepts, or undefined when none is needed, one is
+// already being paid, or none can be paid. `paying` is the picker's
+// per-offer counts.
+export function opensFlashCostToPreselect(
+  card: CardView,
+  key: string | undefined,
+  paying: ReadonlyMap<number, number>,
+  payable: (offer: OptionalCostView) => boolean,
+): number | undefined {
+  if (!opensFlashRequired(card, key)) return undefined;
+  const flashCosts = optionalCostsOf(card).filter((o) => o.opens_flash === true);
+  if (flashCosts.some((o) => (paying.get(o.index) ?? 0) > 0)) return undefined;
+  return flashCosts.find(payable)?.index;
+}
+
 // optionalCostsOf returns the "you may pay an additional cost" offers
 // on a card — kicker, multikicker, buyback — or an empty list for the
 // vast majority that have none (ADR 0073).

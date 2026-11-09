@@ -3520,6 +3520,11 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // #5363, CR 601.3c: the engine accepts THIS claim right now only with
+  // an `opens_flash` optional cost announced (Asinine Antics through
+  // Omniscience at instant speed). `timing_closed` is then absent. Read
+  // by opensFlashCostToPreselect (targeting.ts).
+  opens_flash_required?: boolean;
   // #3225: the largest X the viewer may announce while claiming THIS
   // offer — "you may cast this spell as though it had flash if X is 3
   // or less" (CR 601.3b) — already folded with the card's printed
@@ -4690,6 +4695,11 @@ export interface CastSurfaceView {
   // the zone browser's button label and canCastFromHand's tooltip stay
   // on the zone-and-payability question alone.
   printed_cost_timing_closed?: boolean;
+  // #5363, CR 601.3c: the printed cost is accepted right now only with
+  // an `opens_flash` optional cost announced (Asinine Antics's "pay {2}
+  // more" outside a main phase). The cost picker pre-selects that cost
+  // and says why. Absent for every other card and moment.
+  opens_flash_required?: boolean;
   // ADR 0073 (#664): the "you may pay an additional cost" offers this
   // card makes — kicker, multikicker, buyback. Rendered inside the
   // same picker the alternative costs open, because CR 601.2b
