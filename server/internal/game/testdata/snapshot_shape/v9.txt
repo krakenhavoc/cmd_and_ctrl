@@ -2046,6 +2046,7 @@ followUpParks[].then.permission.lifeEqualToManaValue	bool
 followUpParks[].then.permission.lifeInAddition	number:int
 followUpParks[].then.permission.manaValueBudget	number:int
 followUpParks[].then.permission.maxSpellManaValue	number:int
+followUpParks[].then.permission.minSpellManaValue	number:int
 followUpParks[].then.permission.notBeforeSeq	number:int
 followUpParks[].then.permission.notBeforeTurn	number:int
 followUpParks[].then.permission.perType	array
@@ -2662,6 +2663,7 @@ frozenEntries[].event.counterTail.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.counterTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.counterTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.counterTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.counterTail.then.permission.perType	array
@@ -3257,6 +3259,7 @@ frozenEntries[].event.damageTail.each.each.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.each.permission.lifeInAddition	number:int
 frozenEntries[].event.damageTail.each.each.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValue	number:int
+frozenEntries[].event.damageTail.each.each.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeTurn	number:int
 frozenEntries[].event.damageTail.each.each.permission.perType	array
@@ -3843,6 +3846,7 @@ frozenEntries[].event.damageTail.each.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.damageTail.each.then.permission.lifeInAddition	number:int
 frozenEntries[].event.damageTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.damageTail.each.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.damageTail.each.then.permission.perType	array
@@ -4600,6 +4604,7 @@ frozenEntries[].event.damageTail.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.damageTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.damageTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.damageTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.damageTail.then.permission.perType	array
@@ -5304,6 +5309,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.lifeEqualToMa
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.perType	array
@@ -5965,6 +5971,7 @@ frozenEntries[].event.entryTail.batch.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.entryTail.batch.then.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.batch.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.entryTail.batch.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.batch.then.permission.perType	array
@@ -6551,6 +6558,7 @@ frozenEntries[].event.entryTail.keyed.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.entryTail.keyed.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.keyed.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValue	number:int
+frozenEntries[].event.entryTail.keyed.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.keyed.permission.perType	array
@@ -7169,6 +7177,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.lifeEqualToManaV
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.perType	array
@@ -7775,6 +7784,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.entryTail.tokens.then.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.perType	array
@@ -8780,6 +8790,7 @@ frozenEntries[].event.keywordActionTail.then.permission.lifeEqualToManaValue	boo
 frozenEntries[].event.keywordActionTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.keywordActionTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.keywordActionTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.keywordActionTail.then.permission.perType	array
@@ -9388,6 +9399,7 @@ frozenEntries[].event.lifeTail.each.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.lifeTail.each.then.permission.lifeInAddition	number:int
 frozenEntries[].event.lifeTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.lifeTail.each.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.lifeTail.each.then.permission.perType	array
@@ -9977,6 +9989,7 @@ frozenEntries[].event.lifeTail.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.lifeTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.lifeTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.lifeTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.lifeTail.then.permission.perType	array
@@ -11359,6 +11372,7 @@ frozenEntries[].event.millTail.run.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.millTail.run.then.permission.lifeInAddition	number:int
 frozenEntries[].event.millTail.run.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.millTail.run.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.millTail.run.then.permission.perType	array
@@ -11943,6 +11957,7 @@ frozenEntries[].event.millTail.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.millTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.millTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.millTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.millTail.then.permission.perType	array
@@ -13459,6 +13474,7 @@ frozenEntries[].event.tokenTail.then.permission.lifeEqualToManaValue	bool
 frozenEntries[].event.tokenTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.tokenTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.tokenTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.tokenTail.then.permission.perType	array
@@ -15265,6 +15281,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.lifeEqualToManaVa
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.perType	array
@@ -15883,6 +15900,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.lifeEqualTo
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.perType	array
@@ -16467,6 +16485,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.lifeEqualToManaValue	b
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.perType	array
@@ -17071,6 +17090,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.lifeEqualToManaValue
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.perType	array
@@ -17740,6 +17760,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.lifeEqualToManaValu
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.perType	array
@@ -20191,6 +20212,7 @@ movesAwaitingTokens[].counterTail.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].counterTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].counterTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].counterTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].counterTail.then.permission.perType	array
@@ -20786,6 +20808,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.each.each.permission.lifeInAddition	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.perType	array
@@ -21372,6 +21395,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.each.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.perType	array
@@ -22129,6 +22153,7 @@ movesAwaitingTokens[].damageTail.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].damageTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].damageTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].damageTail.then.permission.perType	array
@@ -22833,6 +22858,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.lifeEqualToMa
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.perType	array
@@ -23494,6 +23520,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.perType	array
@@ -24080,6 +24107,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.keyed.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.perType	array
@@ -24698,6 +24726,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.lifeEqualToManaV
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.perType	array
@@ -25304,6 +25333,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.perType	array
@@ -26309,6 +26339,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.lifeEqualToManaValue	boo
 movesAwaitingTokens[].keywordActionTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.perType	array
@@ -26917,6 +26948,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.perType	array
@@ -27506,6 +27538,7 @@ movesAwaitingTokens[].lifeTail.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].lifeTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].lifeTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].lifeTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].lifeTail.then.permission.perType	array
@@ -28888,6 +28921,7 @@ movesAwaitingTokens[].millTail.run.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].millTail.run.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].millTail.run.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].millTail.run.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].millTail.run.then.permission.perType	array
@@ -29472,6 +29506,7 @@ movesAwaitingTokens[].millTail.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].millTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].millTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].millTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].millTail.then.permission.perType	array
@@ -30988,6 +31023,7 @@ movesAwaitingTokens[].tokenTail.then.permission.lifeEqualToManaValue	bool
 movesAwaitingTokens[].tokenTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].tokenTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].tokenTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].tokenTail.then.permission.perType	array
@@ -32794,6 +32830,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.lifeEqualToManaVa
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.perType	array
@@ -33412,6 +33449,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.lifeEqualTo
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.perType	array
@@ -33996,6 +34034,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.lifeEqualToManaValue	b
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.perType	array
@@ -34600,6 +34639,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.lifeEqualToManaValue
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.perType	array
@@ -35269,6 +35309,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.lifeEqualToManaValu
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.perType	array
@@ -38443,6 +38484,7 @@ pendingChoices[].attackSplit.tail.permission.lifeEqualToManaValue	bool
 pendingChoices[].attackSplit.tail.permission.lifeInAddition	number:int
 pendingChoices[].attackSplit.tail.permission.manaValueBudget	number:int
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValue	number:int
+pendingChoices[].attackSplit.tail.permission.minSpellManaValue	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeSeq	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeTurn	number:int
 pendingChoices[].attackSplit.tail.permission.perType	array
@@ -40423,6 +40465,7 @@ pendingChoices[].diceRoll.then.permission.lifeEqualToManaValue	bool
 pendingChoices[].diceRoll.then.permission.lifeInAddition	number:int
 pendingChoices[].diceRoll.then.permission.manaValueBudget	number:int
 pendingChoices[].diceRoll.then.permission.maxSpellManaValue	number:int
+pendingChoices[].diceRoll.then.permission.minSpellManaValue	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeSeq	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeTurn	number:int
 pendingChoices[].diceRoll.then.permission.perType	array
@@ -41386,6 +41429,7 @@ pendingChoices[].divideShield.walk.each.permission.lifeEqualToManaValue	bool
 pendingChoices[].divideShield.walk.each.permission.lifeInAddition	number:int
 pendingChoices[].divideShield.walk.each.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValue	number:int
+pendingChoices[].divideShield.walk.each.permission.minSpellManaValue	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeSeq	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeTurn	number:int
 pendingChoices[].divideShield.walk.each.permission.perType	array
@@ -41972,6 +42016,7 @@ pendingChoices[].divideShield.walk.then.permission.lifeEqualToManaValue	bool
 pendingChoices[].divideShield.walk.then.permission.lifeInAddition	number:int
 pendingChoices[].divideShield.walk.then.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValue	number:int
+pendingChoices[].divideShield.walk.then.permission.minSpellManaValue	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeSeq	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeTurn	number:int
 pendingChoices[].divideShield.walk.then.permission.perType	array
@@ -42564,6 +42609,7 @@ pendingChoices[].libraryOrder.then.permission.lifeEqualToManaValue	bool
 pendingChoices[].libraryOrder.then.permission.lifeInAddition	number:int
 pendingChoices[].libraryOrder.then.permission.manaValueBudget	number:int
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValue	number:int
+pendingChoices[].libraryOrder.then.permission.minSpellManaValue	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeSeq	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeTurn	number:int
 pendingChoices[].libraryOrder.then.permission.perType	array
@@ -43206,6 +43252,7 @@ pendingChoices[].nameThen.permission.lifeEqualToManaValue	bool
 pendingChoices[].nameThen.permission.lifeInAddition	number:int
 pendingChoices[].nameThen.permission.manaValueBudget	number:int
 pendingChoices[].nameThen.permission.maxSpellManaValue	number:int
+pendingChoices[].nameThen.permission.minSpellManaValue	number:int
 pendingChoices[].nameThen.permission.notBeforeSeq	number:int
 pendingChoices[].nameThen.permission.notBeforeTurn	number:int
 pendingChoices[].nameThen.permission.perType	array
@@ -44256,6 +44303,7 @@ pendingChoices[].pickTail.permission.lifeEqualToManaValue	bool
 pendingChoices[].pickTail.permission.lifeInAddition	number:int
 pendingChoices[].pickTail.permission.manaValueBudget	number:int
 pendingChoices[].pickTail.permission.maxSpellManaValue	number:int
+pendingChoices[].pickTail.permission.minSpellManaValue	number:int
 pendingChoices[].pickTail.permission.notBeforeSeq	number:int
 pendingChoices[].pickTail.permission.notBeforeTurn	number:int
 pendingChoices[].pickTail.permission.perType	array
@@ -44886,6 +44934,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.lifeEqualTo
 pendingChoices[].replacementResume.event.counterTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.perType	array
@@ -45481,6 +45530,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.lifeEqu
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.perType	array
@@ -46067,6 +46117,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.lifeEqu
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.perType	array
@@ -46824,6 +46875,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.lifeEqualToM
 pendingChoices[].replacementResume.event.damageTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.perType	array
@@ -47528,6 +47580,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.perType	array
@@ -48189,6 +48242,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.lifeEqu
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.perType	array
@@ -48775,6 +48829,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.lifeEqualToM
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.perType	array
@@ -49393,6 +49448,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.perType	array
@@ -49999,6 +50055,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.lifeEq
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.perType	array
@@ -51004,6 +51061,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.lifeE
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.perType	array
@@ -51612,6 +51670,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.lifeEqual
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.perType	array
@@ -52201,6 +52260,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.lifeEqualToMan
 pendingChoices[].replacementResume.event.lifeTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.perType	array
@@ -53583,6 +53643,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.lifeEqualT
 pendingChoices[].replacementResume.event.millTail.run.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.perType	array
@@ -54167,6 +54228,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.lifeEqualToMan
 pendingChoices[].replacementResume.event.millTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.perType	array
@@ -55683,6 +55745,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.lifeEqualToMa
 pendingChoices[].replacementResume.event.tokenTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.perType	array
@@ -57489,6 +57552,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.perType	array
@@ -58107,6 +58171,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.perType	array
@@ -58691,6 +58756,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.lif
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.perType	array
@@ -59295,6 +59361,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.l
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.perType	array
@@ -59964,6 +60031,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.perType	array
@@ -60975,6 +61043,7 @@ pendingChoices[].scryThen.permission.lifeEqualToManaValue	bool
 pendingChoices[].scryThen.permission.lifeInAddition	number:int
 pendingChoices[].scryThen.permission.manaValueBudget	number:int
 pendingChoices[].scryThen.permission.maxSpellManaValue	number:int
+pendingChoices[].scryThen.permission.minSpellManaValue	number:int
 pendingChoices[].scryThen.permission.notBeforeSeq	number:int
 pendingChoices[].scryThen.permission.notBeforeTurn	number:int
 pendingChoices[].scryThen.permission.perType	array
@@ -61606,6 +61675,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.lifeEqualToManaValue	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.lifeInAddition	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.manaValueBudget	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValue	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeTurn	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.perType	array
@@ -67036,6 +67106,7 @@ seats[].castPermissions[].lifeEqualToManaValue	bool
 seats[].castPermissions[].lifeInAddition	number:int
 seats[].castPermissions[].manaValueBudget	number:int
 seats[].castPermissions[].maxSpellManaValue	number:int
+seats[].castPermissions[].minSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
 seats[].castPermissions[].perType	array
@@ -70710,12 +70781,15 @@ spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
 spellsCastThisTurn{}.instantSorceryVillain	number:int
+spellsCastThisTurn{}.instants	number:int
 spellsCastThisTurn{}.legendaryCreature	number:int
 spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 spellsCastThisTurn{}.maxManaValue	number:int
 spellsCastThisTurn{}.notFromHand	number:int
+spellsCastThisTurn{}.otterSpellsExceptAlania	number:int
+spellsCastThisTurn{}.sorceries	number:int
 spellsCastThisTurn{}.xSpells	number:int
 splitSecondActive	bool
 stack	object

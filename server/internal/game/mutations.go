@@ -2533,6 +2533,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 					tally.InstantSorceryMaxManaValue = mv
 				}
 			}
+			if characteristicHasType(ch, "Instant") {
+				tally.Instants++
+			}
+			if characteristicHasType(ch, "Sorcery") {
+				tally.Sorceries++
+			}
+			if characteristicHasSubtype(ch, "Otter") && !strings.EqualFold(sc.Name, "Alania, Divergent Storm") {
+				tally.OtterSpellsExceptAlania++
+			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
 				tally.InstantSorceryVillain++

@@ -526,6 +526,12 @@ const (
 	// blocker's name as the refusal sentence reads it. The pinned
 	// attacker(s). Pure data.
 	ModCantBeBlockedByObject ModKind = "cantBeBlockedByObject"
+	// ModCantBeBlockedByMoreThan is "<creature> can't be blocked by more
+	// than N creatures" for a duration (Full Steam Ahead's granted "This
+	// creature can't be blocked by more than one creature", CR 509.1b).
+	// Reads Amount, N. The pinned attacker(s). A count rule: judged on
+	// the whole declaration, the tightest maximum wins.
+	ModCantBeBlockedByMoreThan ModKind = "cantBeBlockedByMoreThan"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -1206,6 +1212,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeBlockedByColor:     {reader: readerBlockRule},
 	ModCantBeBlockedBySubtypes:  {reader: readerBlockRule},
 	ModCantBeBlockedByObject:    {reader: readerBlockRule},
+	ModCantBeBlockedByMoreThan:  {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},
