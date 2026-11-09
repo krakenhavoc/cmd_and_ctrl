@@ -1834,3 +1834,99 @@ func TestStdB46RakdosDrawsWithoutAskingWhenTheyHaveFewerThanTwoPermanents(t *tes
 		t.Errorf("drew %d cards this turn, want 3", got)
 	}
 }
+
+const stdBreakOutOracle = "99eaac39-28d4-4af7-984b-f75fd37902ed"
+
+// stdBreakOutTable stocks the library with eight cards (the top six are
+// looked at): a creature of mana value `mv` at the top, then five others.
+func stdBreakOutTable(t *testing.T, mv string, creatures bool) (*game.Game, *game.Player, uuid.UUID, []uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	me.Library.Cards = nil
+	var rest []uuid.UUID
+	for i := 0; i < 7; i++ {
+		id := uuid.New()
+		me.Library.PushTop(game.Card{InstanceID: id, Name: "Other", TypeLine: "Sorcery", ManaCost: "{1}", Owner: me.ID, Controller: me.ID})
+		rest = append(rest, id)
+	}
+	creature := uuid.New()
+	tl := "Creature — Bear"
+	if !creatures {
+		tl = "Sorcery"
+	}
+	me.Library.PushTop(game.Card{InstanceID: creature, Name: "Prize", TypeLine: tl, ManaCost: mv, Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
+	castCatalogSpell(t, g, "Break Out", "Sorcery", stdBreakOutOracle, nil)
+	passPriorityAroundTable(t, g)
+	return g, me, creature, rest
+}
+
+func TestStdB46BreakOutPutsACheapCreatureOntoTheBattlefieldWithHaste(t *testing.T) {
+	g, me, creature, _ := stdBreakOutTable(t, "{1}{G}", true)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if pick == nil {
+		t.Fatalf("no reveal pick: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{creature}); err != nil {
+		t.Fatalf("reveal: %v", err)
+	}
+	c := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID)
+	if c == nil {
+		t.Fatalf("a mana value 2 creature was not offered the battlefield: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveConfirm(c.ID, me.ID, true); err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	var found game.Card
+	g.ReadSnapshot(func() {
+		for _, bc := range g.Battlefield.Cards {
+			if bc.Name == "Prize" {
+				found = bc
+			}
+		}
+	})
+	if found.InstanceID == uuid.Nil || !hasKeywordOnBattlefield(t, g, found.InstanceID, "haste") {
+		t.Fatalf("the Prize is not on the battlefield with haste: %+v", found)
+	}
+	// Seven cards were left in the library; the five other cards looked at
+	// are at the bottom.
+	if me.Library.Size() != 7 {
+		t.Errorf("library %d, want 7", me.Library.Size())
+	}
+}
+
+func TestStdB46BreakOutPutsAnExpensiveCreatureIntoYourHand(t *testing.T) {
+	g, me, creature, _ := stdBreakOutTable(t, "{3}{G}", true)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{creature}); err != nil {
+		t.Fatalf("reveal: %v", err)
+	}
+	if c := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID); c != nil {
+		t.Fatal("offered the battlefield for a mana value 4 creature")
+	}
+	if !me.Hand.Contains(creature) {
+		t.Error("the revealed creature is not in the hand")
+	}
+}
+
+func TestStdB46BreakOutDeclinedGoesToHandAndNoCreatureMeansAllToTheBottom(t *testing.T) {
+	g, me, creature, _ := stdBreakOutTable(t, "{G}", true)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	_ = g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{creature})
+	c := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID)
+	if err := g.ResolveConfirm(c.ID, me.ID, false); err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+	if !me.Hand.Contains(creature) {
+		t.Error("a declined card did not go to the hand")
+	}
+
+	g2, me2, _, _ := stdBreakOutTable(t, "{1}", false)
+	if p := latestChoiceOfKindFor(g2, game.PendingChoiceChooseCards, me2.ID); p != nil {
+		t.Fatalf("asked to reveal with no creature card among them: %+v", p)
+	}
+	if me2.Library.Size() != 8 {
+		t.Errorf("library %d, want all 8 still there", me2.Library.Size())
+	}
+}
