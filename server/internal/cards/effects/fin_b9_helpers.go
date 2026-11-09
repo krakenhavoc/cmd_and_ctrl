@@ -80,3 +80,23 @@ var (
 
 // finB9RunEffect lets a hand-written Effect stand as one step of a Do.
 func finB9RunEffect(fn Effect) Applier { return runEffect{fn: fn} }
+
+// finB9CreateTappedCopy is "create a tapped token that's a copy of <card>":
+// the copy CreateTokenCopiesTogether makes, entering tapped. `then` runs
+// once the token has landed (or at once when the card cannot be copied).
+func finB9CreateTappedCopy(ctx *Context, id uuid.UUID, then game.KeyedTail) error {
+	tmpl, ok := TokenCopyTemplate(ctx.Game, id)
+	if !ok {
+		return nil
+	}
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: ctx.Controller(),
+		Source:     ctx.Source(),
+		Groups: []game.TokenGroup{{
+			Template: copiedToken(tmpl),
+			Count:    1,
+			Entry:    game.TokenEntryOptions{Tapped: true},
+		}},
+		Together: true,
+	}, then)
+}

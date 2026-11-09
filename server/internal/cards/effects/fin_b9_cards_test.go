@@ -626,3 +626,96 @@ func TestFinB9GarlandCrownsAnOpponentStealsWhileTheyHoldItAndPumpsWhatYouDontOwn
 		t.Errorf("the creature is controlled by %v after they lost the crown, want its owner", c.Controller)
 	}
 }
+
+const finB9CrystalOracle = "b1ffba56-1c1b-44a5-ad8c-097c417ab276"
+
+func TestFinB9BlackCrystalExilesYourNontokenDeadAndReturnsThemWithFinality(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	crystal := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Chaos Shrine's Black Crystal",
+		TypeLine: "Legendary Artifact", OracleID: finB9CrystalOracle, Owner: me.ID, Controller: me.ID})
+	_ = crystal
+	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(mine) })
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(theirs) })
+	passPriorityAroundTable(t, g)
+	if !inExile(g, mine) {
+		t.Fatal("your creature was not exiled")
+	}
+	if inExile(g, theirs) || !opp.Graveyard.Contains(theirs) {
+		t.Error("an opponent's creature was exiled")
+	}
+	// Your next upkeep: put it back with a finality counter.
+	advanceToStepOf(t, g, 0, game.StepUpkeep)
+	for i := 0; i < 12 && latestChooseCards(g, me.ID) == nil; i++ {
+		passPriorityAroundTable(t, g)
+	}
+	if latestChooseCards(g, me.ID) == nil {
+		t.Fatal("no upkeep offer")
+	}
+	answerChooseCards(t, g, me.ID, mine)
+	passPriorityAroundTable(t, g)
+	var back uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Name == "Bear" && c.Controller == me.ID {
+			back = c.InstanceID
+		}
+	}
+	if back == uuid.Nil {
+		t.Fatal("the creature did not return")
+	}
+	if got := countersOn(g, back, game.CounterFinality); got != 1 {
+		t.Errorf("%d finality counters, want 1", got)
+	}
+}
+
+const finB9SinOracle = "3bcc378c-4470-4757-a0d5-025a32c918ea"
+
+func TestFinB9SinCopiesAGraveyardPermanentTappedAndExilesIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := gyCard(me, "Grizzly", "Creature — Bear", "{1}{G}", "")
+	spell := gyCard(me, "Old Sorcery", "Sorcery", "{1}", "")
+	castCreatureCard(t, g, "Sin, Spira's Punishment", "Legendary Creature — Leviathan Avatar", finB9SinOracle, 7, 7)
+	if !inExile(g, bear) || inExile(g, spell) {
+		t.Fatalf("exile: bear %v, sorcery %v; want only the permanent card", inExile(g, bear), inExile(g, spell))
+	}
+	var tok *game.Card
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Name == "Grizzly" {
+			cc := c
+			tok = &cc
+		}
+	}
+	if tok == nil || !tok.IsToken() || !tok.Tapped {
+		t.Fatalf("want a tapped Grizzly token, got %+v", tok)
+	}
+}
+
+func TestFinB9SinRepeatsWhileItExilesLands(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	l1 := gyCard(me, "Forest", "Basic Land — Forest", "", "")
+	l2 := gyCard(me, "Island", "Basic Land — Island", "", "")
+	bear := gyCard(me, "Grizzly", "Creature — Bear", "{1}{G}", "")
+	castCreatureCard(t, g, "Sin, Spira's Punishment", "Legendary Creature — Leviathan Avatar", finB9SinOracle, 7, 7)
+	// The creature is always exiled and copied; the lands follow only
+	// while each pick is a land, and a land pick is always followed by
+	// another pass, so the process stops at the creature or when nothing
+	// is left.
+	if !inExile(g, bear) {
+		t.Fatal("the creature card was not exiled")
+	}
+	exiledLands := 0
+	for _, id := range []uuid.UUID{l1, l2} {
+		if inExile(g, id) {
+			exiledLands++
+		}
+	}
+	tokens := onBattlefieldNamed(g, "Forest") + onBattlefieldNamed(g, "Island") + onBattlefieldNamed(g, "Grizzly")
+	if tokens != exiledLands+1 {
+		t.Errorf("%d tokens for %d lands and the creature exiled", tokens, exiledLands)
+	}
+}
