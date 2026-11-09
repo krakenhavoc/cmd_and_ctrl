@@ -2111,6 +2111,7 @@ tail jace-the-mind-sculptor/tuck-hand-then-shuffle
 tail janice-rand-essential-aide/reveal-until-land
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
+tail kaito-bane-of-nightmares/draw-per-opponent-who-lost-life
 tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
 tail kaya-orzhov-usurper/gain-2-if-creature
