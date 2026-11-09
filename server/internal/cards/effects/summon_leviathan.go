@@ -41,6 +41,9 @@ func init() {
 		OracleID:     "b38d1811-64d7-4a35-a86c-3291eecd8391",
 		Name:         name,
 		Completeness: CompletenessFull,
+		// Chapter I bounces every creature but the five sea types, as
+		// Cresting Mosasaurus does (ADR 0126 owner decision 2).
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{2}"), name+" — ward {2}"),
 			ChapterTrigger(1, SagaChapterLabel(name, 1, "return each creature that isn't a Kraken, Leviathan, Merfolk, Octopus, or Serpent to its owner's hand"),

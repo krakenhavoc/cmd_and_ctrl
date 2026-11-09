@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Targets:      TargetCreature("target blocked creature you control", YouControl(), BlockedCreature()),
-		Purpose:      game.Purpose{Answers: game.AnswerPump},
+		Purpose:      game.Purpose{Answers: game.AnswerPump, Targets: game.ForTargets(PowerXUntilEOT(0, "trample"))},
 		Grants: []AbilityGrant{{
 			Key: duelistsFlameGrant,
 			Triggered: []game.TriggeredAbility{
