@@ -182,6 +182,12 @@ const (
 	// ability never does (ManaSpendContext.ManaCostHasX). A payment
 	// that does not say what it casts refuses it.
 	ManaRestrictSpellXCost = "spell:has-x"
+	// ManaRestrictFaceDownSpell permits the token only on a spell cast
+	// face down (CR 708.4): Tin Street Gossip's "cast face-down spells".
+	// It asks about the spell being cast, so an activation, a unlock or
+	// a turn-face-up never satisfies it; combine it with
+	// ManaRestrictTurnFaceUp through ManaRestrictAnyOf.
+	ManaRestrictFaceDownSpell = "spell:face-down"
 )
 
 // ManaRestrictManaValueAtLeast builds "spend this mana only to cast
@@ -410,6 +416,11 @@ type ManaSpendContext struct {
 	// alternative cost. False for every payment that is not a cast.
 	ManaCostHasX bool
 
+	// FaceDownSpell is set when the spell being cast is cast face down
+	// (CR 708.4): what ManaRestrictFaceDownSpell reads. False for every
+	// payment that is not a cast.
+	FaceDownSpell bool
+
 	// YourCommander is set when the spell being cast is a commander its
 	// caster owns (CR 903.3d): what ManaRestrictYourCommander reads.
 	// Set by ManaSpendForCast; false for every payment that is not a
@@ -600,6 +611,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
 		CostHasX:         strings.Contains(manaCostForValue(c), "{X}"),
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
+		FaceDownSpell:    c.FaceDown,
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
 		wish:             newSpendWish(c),
 	}.withCastManaValue(c)
@@ -682,6 +694,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.YourCommander
 	case ManaRestrictSpellXCost:
 		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
+	case ManaRestrictFaceDownSpell:
+		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:
