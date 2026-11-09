@@ -22,6 +22,8 @@ func init() {
 		OracleID:     "85eefda9-4aab-467d-a08c-be026cb8ff42",
 		Name:         "Amalia Benavides Aguirre",
 		Completeness: CompletenessFull,
+		// ADR 0126 §4: destroys every other creature, but only if its power is exactly 20.
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardLife(3), "Amalia Benavides Aguirre — ward, pay 3 life"),
 			WheneverYouGainLife("Amalia Benavides Aguirre — it explores, then destroy all other creatures if its power is exactly 20",
