@@ -33,7 +33,13 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		CantGainLife:    PlayersCantGainLife(),
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, anotherCreatureEvent, "Rampaging Ferocidon — 1 damage to that creature's controller", rampagingFerocidonPing),
+			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				if ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
+					return false
+				}
+				c, ok := g.LookupCardForEffect(ev.CardID)
+				return ok && c.IsCreature()
+			}, "Rampaging Ferocidon — 1 damage to that creature's controller", rampagingFerocidonPing),
 		},
 	})
 }

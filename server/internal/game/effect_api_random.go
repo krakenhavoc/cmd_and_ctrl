@@ -91,20 +91,13 @@ func (g *Game) FlipCoinsForEffect(d RandomDraw, n int) ([]bool, error) {
 	for i := range faces {
 		faces[i] = r.IntN(2) == 0
 	}
-	// A coin-flip rule (Edgar's Two-Headed Coin) makes the coins heads and
-	// won. Read before this flip's events exist, so "the first time each
-	// turn" sees an earlier flip only.
-	forced := g.coinsComeUpHeadsLocked(d.Player)
 	batch := g.eventSeq + 1
-	for i := range faces {
-		if forced {
-			faces[i] = true
-		}
+	for _, head := range faces {
 		label := "tails"
-		if faces[i] {
+		if head {
 			label = "heads"
 		}
-		g.EmitEvent(Event{Kind: EventFlipCoin, Actor: d.Player, Source: d.Source, Label: label, Won: forced, BatchSeq: batch})
+		g.EmitEvent(Event{Kind: EventFlipCoin, Actor: d.Player, Source: d.Source, Label: label, BatchSeq: batch})
 	}
 	return faces, nil
 }
@@ -212,15 +205,11 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 		r := g.randForLocked(rngStream{kind: rngStreamFlip, player: spec.Flipper, source: spec.Source})
 		result.Faces = make([]bool, spec.Coins)
 		result.Won = make([]bool, spec.Coins)
-		forced := g.coinsComeUpHeadsLocked(spec.Flipper)
 		batch := g.eventSeq + 1
 		for i := range result.Faces {
 			won := r.IntN(2) == 0
-			head := (call == "heads") == won
-			if forced {
-				won, head = true, true
-			}
 			result.Won[i] = won
+			head := (call == "heads") == won
 			result.Faces[i] = head
 			label := "tails"
 			if head {

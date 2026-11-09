@@ -51,7 +51,6 @@ var abilityRowFieldsNotRows = map[string]string{
 	"CantBeCounteredIf":          "a property of the spell on the stack, shown there",
 	"CantBeCopied":               "a property of the spell on the stack (\"This spell can't be copied\"), not an ability of a permanent",
 	"FlashWithCleanupSacrifice":  "the spell's own cast timing, read by the cast gate (#3156)",
-	"FlashIf":                    "the spell's own conditional cast timing, read by the cast gate (#5207)",
 	"CastTimeValues":             "a number the spell fixes as it is cast, read by its own resolution (#3781)",
 	"SpellDamageCantBePrevented": "a property of the spell's damage",
 	"Emblem":                     "an emblem's presentation",

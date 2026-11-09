@@ -34,16 +34,6 @@ func OptionalBehold(article, subtype string) game.AdditionalCost {
 	}
 }
 
-// OptionalBeholdOpeningFlash is OptionalBehold whose announcement also
-// lets the spell be cast as though it had flash: "You may cast this spell
-// as though it had flash if you behold a <subtype> as an additional cost
-// to cast it" (Molten Exhale, CR 601.3c, #5207).
-func OptionalBeholdOpeningFlash(article, subtype string) game.AdditionalCost {
-	c := OptionalBehold(article, subtype)
-	c.AsThoughFlash = true
-	return c
-}
-
 // WasBeheld is "if this spell's additional cost was paid" / "if a Hero
 // was beheld" for a spell with an OptionalBehold cost: the caster took
 // the offer when they cast it (CR 601.2b, 701.4b). False when they

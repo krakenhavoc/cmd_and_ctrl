@@ -14,26 +14,38 @@ import (
 //	 controls each gain indestructible until end of turn. Then destroy
 //	 all creatures."
 //
-// The flash clause is the card's own timing permission (FlashIfYou,
-// Spec.FlashIf, #5207), not an alternative cost, so a flash cast may
-// still claim one (CR 118.9a). The condition is read as the cast begins
-// (CR 601.3): some creature on the battlefield is attacking and some
-// creature is blocking, whoever controls them. Outside that, the card is
-// a sorcery.
+// The flash clause is Timely Ward's and Silver Scrutiny's shape: an
+// offer at the printed cost that opens the instant-speed window for its
+// own claim (AlternativeCost.AsThoughFlash), gated by Condition. The
+// condition is read as the cast begins (CR 601.3): some creature on the
+// battlefield is attacking and some creature is blocking, whoever
+// controls them. Outside that, the card is a sorcery.
 //
 // The two targets are separate clauses (CR 115.1d). Each still-legal one
 // gains indestructible (CR 608.2b), so one that left in response does
 // not stop the other's; then every creature is destroyed, and the
 // indestructible ones survive (CR 702.12b).
 //
-// No simplification.
+// Simplification (#5207): the offer is an alternative cost, so the flash
+// cast can't also take another alternative cost (CR 118.9a). On the
+// printed card the flash is a timing permission, so it could. Declared
+// as the caveat.
 func init() {
 	Register(Spec{
 		OracleID:     "610d9f58-4182-49cb-855c-9b6030e7f714",
 		Name:         "Fated Clash",
-		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
-		FlashIf:      FlashIfYou("if a creature is attacking and a creature is blocking", fatedClashCreaturesInCombat),
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Casting this at instant speed while creatures are attacking and blocking can't be combined with another alternative cost.",
+		},
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
+		AlternativeCosts: []game.AlternativeCost{{
+			Key:           "flash-if-attacking-and-blocking",
+			Label:         "Cast with flash — a creature is attacking and a creature is blocking ({3}{W}{W})",
+			ManaCost:      "{3}{W}{W}",
+			AsThoughFlash: true,
+			Condition:     fatedClashCreaturesInCombat,
+		}},
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			TargetCreature("target creature an opponent controls", OpponentControls()),

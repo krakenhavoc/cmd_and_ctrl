@@ -336,16 +336,6 @@ const (
 	// enum's integer values are written into snapshot files.
 	WhileSourceOnceItLands
 
-	// WhilePlayerIsMonarch — "for as long as they're the monarch"
-	// (Garland, Royal Kidnapper): holds while Duration.Player holds the
-	// monarch designation (CR 725). It reads no object, so it needs no
-	// source or pin; the layer listener bumps the layer version on
-	// EventMonarchChanged, so the next sweep sees the crown move. Once the
-	// crown has left that player the effect is over for good (CR 611.2b),
-	// even if they take it back later. Appended, never inserted: the
-	// enum's integer values are written into snapshot files.
-	WhilePlayerIsMonarch
-
 	// durationConditionEnd is a sentinel, not a condition. Keep it
 	// LAST, for the reason durationKindEnd gives: an unknown condition
 	// would otherwise fall through to a bare "source on battlefield".
@@ -428,15 +418,12 @@ func (d Duration) Problem() string {
 		}
 		return ""
 	}
-	counter, pin, monarch := false, false, false
+	counter, pin := false, false
 	for _, c := range d.conditions() {
-		monarch = monarch || c == WhilePlayerIsMonarch
 		counter = counter || c == WhilePinnedHasCounter
 		pin = pin || c.readsPin()
 	}
 	switch {
-	case monarch && d.Player == uuid.Nil:
-		return "a monarch-held duration names no player"
 	case counter && d.CounterKind == "":
 		return "a counter-held duration names no counter kind"
 	case !counter && d.CounterKind != "":
@@ -872,23 +859,6 @@ func (g *Game) ForAsLongAsPinnedHasCounterDuration(object uuid.UUID, kind string
 	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedHasCounter, CounterKind: kind}, object), true
 }
 
-// ForAsLongAsPlayerIsMonarchDuration is "for as long as <player> is the
-// monarch" (Garland, Royal Kidnapper's steal), pinned to `object` so the
-// effect is swept as soon as the stolen permanent is gone. False, so
-// nothing is registered, when `player` does not hold the crown now or
-// `object` is not on the battlefield.
-//
-// Caller must hold g.mu.
-func (g *Game) ForAsLongAsPlayerIsMonarchDuration(player, object uuid.UUID) (Duration, bool) {
-	if player == uuid.Nil || g.Monarch != player {
-		return Duration{}, false
-	}
-	if _, ok := g.battlefieldCardLocked(object); !ok {
-		return Duration{}, false
-	}
-	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePlayerIsMonarch, Player: player}, object), true
-}
-
 // ForAsLongAsPinnedTappedDuration is "for as long as that creature
 // remains tapped" (ADR 0109 §3): Zygon Infiltrator, about the creature
 // it tapped. Pinned to `object`; false, so nothing is registered, when
@@ -1253,8 +1223,6 @@ func (g *Game) conditionHoldsLocked(d Duration, cond DurationCondition) bool {
 			return false
 		}
 		return src.IsAttachedTo(c.InstanceID)
-	case WhilePlayerIsMonarch:
-		return d.Player != uuid.Nil && g.Monarch == d.Player
 	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhileSourceOnceItLands:
 		return g.sourceConditionHoldsLocked(d, cond)
 	}

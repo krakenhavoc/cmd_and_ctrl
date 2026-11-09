@@ -20,23 +20,30 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // file carries: sacrifice, exile, -X/-X to zero toughness, and the
 // legend rule.
 //
-// The conditional flash is FlashIfTargets: the card's own timing
-// permission (Spec.FlashIf, #5207), which narrows the target clause to a
-// commander for a cast that is open only because of it (CR 601.3b: the
-// target the caster will choose can make the permission apply, so the
-// cast may begin at instant speed and the choice must then satisfy it).
-// The plain cast stays sorcery-speed with any creature. It is not an
-// alternative cost, so a flash cast may still claim one (CR 118.9a).
+// The conditional flash is FlashIfTargets: an offer at the printed cost
+// that opens the instant-speed window for its own claim and narrows the
+// target clause to a commander (CR 601.3b: the target the caster will
+// choose can make the permission apply, so the cast may begin at instant
+// speed and the choice must then satisfy it). The plain cast stays
+// sorcery-speed with any creature.
 //
-// No simplification.
+// Simplification (#5207): the offer is an alternative cost, so the flash
+// cast can't also take another alternative cost (CR 118.9a). On the
+// printed card the flash is a timing permission, so it could. Declared
+// as the caveat.
 func init() {
 	Register(Spec{
 		OracleID:     "8e589dca-d31e-4d2f-81b1-18e5f9198795",
 		Name:         "Timely Ward",
-		Completeness: CompletenessFull,
-		Targets:      EnchantCreature(),
-		Purpose:      game.Purpose{Aura: game.AuraBenefit},
-		FlashIf:      FlashIfTargets("a commander", EnchantCreature(ACommander())),
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Casting this at instant speed on a commander can't be combined with another alternative cost.",
+		},
+		Targets: EnchantCreature(),
+		Purpose: game.Purpose{Aura: game.AuraBenefit},
+		AlternativeCosts: []game.AlternativeCost{
+			FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander())),
+		},
 		Static: []game.StaticAbility{
 			GrantToAttached("indestructible"),
 		},

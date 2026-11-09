@@ -487,11 +487,6 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 		if !timingOpen && !game.OptionalCostsOpenCastWindow(optional, chosen) {
 			continue
 		}
-		// #5207, CR 601.3b: a set whose cast is open only because of the
-		// card's own "as though it had flash if X is N or less / if it
-		// targets <what>" is offered only with the choices that make it
-		// apply — CastSpell's own read (FlashIfReliedOnLocked).
-		flashIf := e.g.FlashIfReliedOnLocked(e.seat, card, kind, perm, offer, game.OptionalCostsOpenCastWindow(optional, chosen))
 		// ADR 0129 §5, CR 118.3: a replicate paid more times than the
 		// seat has energy for (with the offer's own, Nissa's eight) is
 		// a cast the engine refuses, so it is never offered.
@@ -519,7 +514,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 						// #3961: and a "tap any number of untapped
 						// creatures" cost is one per count offered.
 						for _, tapAny := range e.tapAnyPayments(card) {
-							e.castMovesPayingOptional(card, from, perm, offer, flashIf, chosen, to, branch, extra, handExile, tapAny)
+							e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile, tapAny)
 						}
 					}
 				}
@@ -727,10 +722,6 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // of optional additional costs — the unkicked cast, or the kicked
 // one. `chosen` is nil for every card that offers none.
 //
-// `flashIf` is the card's own "as though it had flash if …" when this
-// cast is open only because of it (#5207, game.FlashIfReliedOnLocked),
-// else nil: its X ceiling and target clause bind the moves built here.
-//
 // `giftTo` is the opponent a gift is promised to when `chosen` names a
 // gift cost, and uuid.Nil otherwise (ADR 0089).
 //
@@ -742,7 +733,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, flashIf *game.FlashIf, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -772,9 +763,6 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// promised gift's "instead … target …" (CR 702.174m). The same
 	// function, in the same order, the engine applies at announce.
 	cardSpec = game.TargetSpecUnderOptionalCosts(cardSpec, e.g.OptionalCostsForCastLocked(e.seat, card), chosen)
-	// #5207: and a cast that needs the card's own "as though it had flash
-	// if it targets <what>" names only targets that make it apply.
-	cardSpec = flashIf.TargetSpecUnder(cardSpec)
 
 	// A card the catalog marks as targeted the S13.1 way (free-form
 	// target_mode, no structured spec) cannot be enumerated: the
@@ -948,11 +936,6 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// with no {X} slot as the PRICE of X, which this is not.
 	if cost.XSlots > 0 {
 		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), offer, xLifeCeiling)
-		// #5207: and "as though it had flash if X is N or less", when the
-		// cast needs that permission (CR 601.3b).
-		if c, ok := flashIf.XCeilingUnder(0, false); ok && (xLifeCeiling == noXCeiling || c < xLifeCeiling) {
-			xLifeCeiling = c
-		}
 	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two

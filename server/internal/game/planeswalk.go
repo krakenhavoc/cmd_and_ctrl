@@ -205,10 +205,14 @@ func (g *Game) planeswalkAwayFromLocked(player, cardID uuid.UUID) {
 	}
 	// CR 901.7a: turned face down, it is a new object.
 	c.ClearKnown()
+	c.Counters = nil
 	c.ObjectEpoch++
 	c.EnteredBattlefieldAt = 0
 	g.planarDeckForLocked(c.Owner).PushBottom(c)
 	g.endPlaneswalkAwayDurationsLocked(cardID)
+	// A face-down plane grants nothing: a spell its static gave split
+	// second (Lake Silencio) loses it here (ADR 0216 slice 4).
+	g.refreshSplitSecondForBoardChangeLocked()
 	g.EmitEvent(Event{Kind: EventPlaneswalkFrom, Actor: player, CardID: cardID, PublicNames: map[uuid.UUID]string{cardID: c.Name}})
 }
 
@@ -233,5 +237,6 @@ func (g *Game) planeswalkToTopLocked(player uuid.UUID) {
 	// Its static abilities' CR 613.7 timestamp, as an emblem's is.
 	c.EnteredBattlefieldAt = timeNowUnixNano()
 	g.planarFaceUpLocked().PushTop(c)
+	g.refreshSplitSecondForBoardChangeLocked()
 	g.EmitEvent(Event{Kind: EventPlaneswalkTo, Actor: player, CardID: c.InstanceID, PublicNames: map[uuid.UUID]string{c.InstanceID: c.Name}})
 }

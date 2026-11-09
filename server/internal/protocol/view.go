@@ -1821,13 +1821,6 @@ type OptionalCostView struct {
 	// that contains {X}. The server refuses a kicked cast under it; the
 	// client's X picker opens at it.
 	XMin int `json:"x_min,omitempty"`
-	// OpensFlash marks a cost that, when announced, lets the spell be
-	// cast as though it had flash (AdditionalCost.AsThoughFlash, CR
-	// 601.3c): Quantum Reduction's teamwork, Asinine Antics's "pay {2}
-	// more", Molten Exhale's behold (#5207). When the spell is castable
-	// now only because of it, a cast that leaves it unticked is refused,
-	// so the client can say why and pre-select it.
-	OpensFlash bool `json:"opens_flash,omitempty"`
 	// Energy is the "pay N {E}" each payment of this cost charges (ADR
 	// 0129 §5): Reiterating Bolt's "Replicate—Pay {E}{E}{E}" is 3. For
 	// such a cost MaxTimes is capped at the payments the viewer's energy
@@ -7479,15 +7472,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	}
 	// #2581: the printed X ceiling, read for this caster now — the
 	// count CastSpell will read as X is announced (CR 601.2b).
-	//
-	// #5207, CR 601.3b: and the card's own "as though it had flash if X
-	// is N or less" when the printed cast is open only because of it —
-	// the bound CastSpell then holds that cast to.
-	var flashIf *game.FlashIf
-	if haveLive {
-		flashIf = g.FlashIfReliedOnLocked(caster, live, kind, grant.ForClaim(nil), nil, false)
-	}
-	if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key)); ok {
+	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
 		out.XMax = &ceiling
 	}
 	// S22: convoke / waterbend. Stamped before the target clause
@@ -7713,10 +7698,6 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if spec == nil {
 		return out
 	}
-	// #5207, CR 601.3b: a printed cast open only because of the card's
-	// own "as though it had flash if it targets <what>" is announced
-	// under that clause, so the picker offers only what CastSpell takes.
-	spec = flashIf.TargetSpecUnder(spec)
 	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
 	return out
@@ -8626,7 +8607,6 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			ManaCost:     oc.ManaCost,
 			MaxTimes:     oc.MaxPayments(),
 			XMin:         oc.MinX,
-			OpensFlash:   oc.AsThoughFlash,
 			DiscardCards: oc.DiscardCards,
 		}
 		// ADR 0129 §5: an energy cost is paid only as many times as the

@@ -38,10 +38,6 @@ type permissionCastGains struct {
 	counterKind string
 	counters    int
 	source      uuid.UUID
-	// anyPermanent widens the counter rider from creature spells to any
-	// permanent spell (Noctis, Prince of Lucis: "that artifact enters with
-	// a finality counter on it").
-	anyPermanent bool
 }
 
 // permissionCastGainsOf copies the riders out of the permission the
@@ -59,8 +55,6 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 		counterKind:  p.EntersWithCounterKind,
 		counters:     p.EntersWithCounters,
 		source:       p.Source,
-
-		anyPermanent: p.EntersWithCountersPermanent,
 	}
 }
 
@@ -73,8 +67,7 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 // before the CR 614 pipeline (CR 614.1c, CR 614.12), so replacements
 // that modify counters (Doubling Season) see it.
 //
-// Nothing for a spell that is not a creature spell as cast (a permanent
-// spell, when the permission says EntersWithCountersPermanent): the card on
+// Nothing for a spell that is not a creature spell as cast: the card on
 // the stack has its cast face and bestow status by now, so an
 // Adventure, a modal card's noncreature face and a bestowed Aura spell
 // all read as what they are (CR 702.103b). The mark is on the item, so
@@ -91,7 +84,7 @@ func (g *Game) markPermissionEntryCountersLocked(cardID uuid.UUID, gains permiss
 		return
 	}
 	spell, item := g.spellCardOnStackLocked(cardID), g.StackMeta[cardID]
-	if spell == nil || item == nil || !(spell.IsCreature() || (gains.anyPermanent && spell.IsPermanent())) {
+	if spell == nil || item == nil || !spell.IsCreature() {
 		return
 	}
 	addPromisedCounterLocked(item, PromisedCounter{

@@ -95,11 +95,6 @@ type WardCost struct {
 	Waterbend string
 	// Life is "ward—pay N life", alone or alongside Mana.
 	Life int
-	// LifeEqualToPower is "Ward—Pay life equal to this creature's power"
-	// (Raubahn, Bull of Ala Mhigo): the life is read as the ward
-	// resolves, from the warded permanent's power then, or its last-known
-	// power once it has left (CR 608.2h). Standalone; Life stays zero.
-	LifeEqualToPower bool
 	// Sacrifice is "ward—sacrifice a <thing>".
 	Sacrifice *WardSacrificeCost
 	// Discard is "ward—discard N cards" (#3172): the payer discards
@@ -184,10 +179,6 @@ func WardWaterbend(cost string) WardCost { return WardCost{Waterbend: cost} }
 
 // WardLife builds the "ward—pay N life" cost.
 func WardLife(n int) WardCost { return WardCost{Life: n} }
-
-// WardLifeEqualToPower builds "Ward—Pay life equal to <this creature>'s
-// power". A power of zero or less costs nothing, so the ward is met.
-func WardLifeEqualToPower() WardCost { return WardCost{LifeEqualToPower: true} }
 
 // WardPoison builds the "ward—get N poison counters" cost (The Serpent
 // Society, "Ward—Get five poison counters"). The payer is offered the
@@ -289,9 +280,6 @@ func (c WardCost) validate() {
 		n++
 	}
 	if c.Life > 0 {
-		n++
-	}
-	if c.LifeEqualToPower {
 		n++
 	}
 	if c.Sacrifice != nil {
@@ -471,20 +459,6 @@ func WardGranted(cost WardCost, label string, grants func(target *game.Card, g *
 func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer uuid.UUID, cost WardCost) error {
 	if g.StackItemForEffect(targetingItem) == nil {
 		return nil
-	}
-	if cost.LifeEqualToPower {
-		// The amount is the warded permanent's power as the ability
-		// resolves, or as it last existed if it has gone (CR 608.2h).
-		power := 0
-		if ref, ok := g.PermanentRefForEffect(item.SourceCardID); ok {
-			if info, ok := g.PermanentForEffect(ref); ok {
-				power = info.Power
-			}
-		}
-		if power <= 0 {
-			return nil
-		}
-		cost.LifeEqualToPower, cost.Life = false, power
 	}
 	switch {
 	case len(cost.Either) > 0:

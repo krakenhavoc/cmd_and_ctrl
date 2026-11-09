@@ -123,10 +123,7 @@ func (g *Game) validateManaExileSelfCostLocked(srcZone ZoneKind, ab ManaAbilityS
 	if !ab.ExileSelf {
 		return nil
 	}
-	// The battlefield is a zone too: "{T}, Exile this artifact: Add {U}"
-	// (Ether) pays with the permanent itself, which leaves through the
-	// battlefield arm of the exit primitive like a sacrifice does.
-	if !ManaAbilityFunctionsFromZone(ab, srcZone) {
+	if !ManaAbilityFunctionsFromZone(ab, srcZone) || srcZone == ZoneBattlefield {
 		return ErrActivationZoneNotAllowed
 	}
 	return nil

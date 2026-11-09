@@ -10,20 +10,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	        Daybound"
 //	Back:  "Nightbound"
 //
-// The flash clause is FlashForMore (flash_for_more.go): an optional
-// additional {2} that opens the instant-speed window for the cast that
-// announces it (CR 601.3c), and composes with any alternative cost.
-// Daybound is the keyword token; the back face is its own entry.
+// The flash clause is FlashForMore (flash_for_more.go): an offer that
+// costs the printed {2}{G} plus {2} and opens the instant-speed window
+// for that cast only. Daybound is the keyword token; the back face is
+// its own entry.
 //
-// No simplification.
+// Simplification (#5207): the offer is an alternative cost, so the flash
+// cast can't also take another alternative cost (CR 118.9a). On the
+// printed card the {2} is an additional cost and the flash a timing
+// permission (CR 601.3c), so it could. Declared as the caveat on the
+// front face, the one that is cast.
 func init() {
 	const oracle = "1b639537-a8fe-4615-b937-afa478fdec0f"
 	Register(Spec{
-		OracleID:        oracle,
-		Name:            "Oakshade Stalker",
-		Completeness:    CompletenessFull,
-		OptionalCosts:   []game.AdditionalCost{FlashForMore("{2}")},
-		PrintedKeywords: []string{"daybound"},
+		OracleID:     oracle,
+		Name:         "Oakshade Stalker",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Paying {2} more to cast this at instant speed can't be combined with another alternative cost.",
+		},
+		AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{G}", "{2}")},
+		PrintedKeywords:  []string{"daybound"},
 	})
 	Register(Spec{
 		OracleID:        oracle + "#1",

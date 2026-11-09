@@ -13,7 +13,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -32,7 +31,6 @@ type podStack struct {
 	userStack
 	social *social.Store
 	pods   *pods.Store
-	db     *db.DB
 	ann    podPerson
 	bea    podPerson
 	cal    podPerson
@@ -47,7 +45,7 @@ func newPodStack(t *testing.T) podStack {
 		c.AdminToken = "shared-admin-token"
 		c.Pods = pods.NewStore(d, c.Social)
 		c.Accounts = accountdelete.NewSQLStore(d)
-		st.social, st.pods, st.db = c.Social, c.Pods, d
+		st.social, st.pods = c.Social, c.Pods
 	})
 	for i, p := range []*podPerson{&st.ann, &st.bea, &st.cal, &st.dee} {
 		name := []string{"Ann", "Bea", "Cal", "Dee"}[i]
@@ -495,7 +493,7 @@ func TestPodNamesAndLimitsOverHTTP(t *testing.T) {
 		}
 	}
 	if code, raw := s.call(t, "POST", "/pods", s.ann.tok, map[string]string{"name": "P", "suggestion": "abc"}); code != http.StatusNotFound {
-		t.Errorf("an unknown suggestion: %d %s", code, raw)
+		t.Errorf("a suggestion before slice 4: %d %s", code, raw)
 	}
 	// A burst of three, then one an hour.
 	for i := 0; i < pods.CreateBurst; i++ {
@@ -555,86 +553,5 @@ func TestDeletingAnAccountHandsItsPodOn(t *testing.T) {
 	r := s.pod(t, s.bea, pod)
 	if r.Owner == nil || r.Owner.DisplayName != "Dee" || memberNames(r) != "Dee,Bea" {
 		t.Errorf("after the owner's account went: owner %+v, members %s; want Dee, who joined first", r.Owner, memberNames(r))
-	}
-}
-
-// TestPodSuggestionRoutes is ADR 0220 §4 over HTTP: the suggestion on
-// GET /me/pods, naming the others and no ids, Make this pod through
-// POST /pods with its key (inviting people who are not friends), and Not
-// now.
-func TestPodSuggestionRoutes(t *testing.T) {
-	s := newPodStack(t)
-	now := time.Now()
-	for i := 0; i < 3; i++ {
-		gid := uuid.NewString()
-		if _, err := s.db.Exec(`INSERT INTO games (id, name, state, created_at, ended_at) VALUES (?, 'T', 'ended', 1, ?)`,
-			gid, now.Add(-time.Duration(i+1)*time.Hour).UnixMilli()); err != nil {
-			t.Fatal(err)
-		}
-		for seat, u := range []podPerson{s.ann, s.bea, s.cal} {
-			if _, err := s.db.Exec(`INSERT INTO seats (game_id, seat, player_id, user_id) VALUES (?, ?, ?, ?)`,
-				gid, seat, "p", u.id.String()); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	mine := func(who podPerson) myPodsResponse {
-		t.Helper()
-		code, raw := s.call(t, "GET", "/me/pods", who.tok, nil)
-		if code != http.StatusOK {
-			t.Fatalf("GET /me/pods: %d %s", code, raw)
-		}
-		var out myPodsResponse
-		if err := json.Unmarshal([]byte(raw), &out); err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(raw, s.bea.id.String()) || strings.Contains(raw, s.cal.id.String()) {
-			t.Errorf("a suggestion names no account id: %s", raw)
-		}
-		return out
-	}
-	got := mine(s.ann)
-	if len(got.Suggestions) != 1 || got.Suggestions[0].Games != 3 || got.Suggestions[0].Days != 30 ||
-		len(got.Suggestions[0].People) != 2 || got.Suggestions[0].People[0].DisplayName != "Bea" {
-		t.Fatalf("ann's suggestions: %+v", got.Suggestions)
-	}
-	if n := len(mine(s.dee).Suggestions); n != 0 {
-		t.Errorf("dee sees %d", n)
-	}
-	key := got.Suggestions[0].Key
-
-	// Not now hides it from Bea only.
-	if code, raw := s.call(t, "POST", "/me/pod-suggestions/"+key+"/dismiss", s.bea.tok, nil); code != http.StatusNoContent {
-		t.Fatalf("dismiss: %d %s", code, raw)
-	}
-	if n := len(mine(s.bea).Suggestions); n != 0 {
-		t.Errorf("bea still sees %d", n)
-	}
-	if n := len(mine(s.ann).Suggestions); n != 1 {
-		t.Errorf("ann sees %d", n)
-	}
-	if code, _ := s.call(t, "POST", "/me/pod-suggestions/"+key+"/dismiss", s.dee.tok, nil); code != http.StatusNotFound {
-		t.Errorf("dee dismissing: %d", code)
-	}
-	if code, _ := s.call(t, "POST", "/me/pod-suggestions/"+key+"/dismiss", "", nil); code != http.StatusUnauthorized && code != http.StatusForbidden {
-		t.Errorf("signed out dismissing: %d", code)
-	}
-
-	// Make this pod: ann owns it, Bea and Cal get invites without being friends.
-	if code, raw := s.call(t, "POST", "/pods", s.dee.tok, map[string]string{"name": "X", "suggestion": key}); code != http.StatusNotFound {
-		t.Errorf("dee making ann's suggestion: %d %s", code, raw)
-	}
-	code, raw := s.call(t, "POST", "/pods", s.ann.tok, map[string]string{"name": "Thursday", "suggestion": key})
-	if code != http.StatusCreated {
-		t.Fatalf("make from suggestion: %d %s", code, raw)
-	}
-	for _, who := range []podPerson{s.bea, s.cal} {
-		g := mine(who)
-		if len(g.Invites) != 1 || g.Invites[0].PodName != "Thursday" || g.Invites[0].InvitedBy.DisplayName != "Ann" {
-			t.Errorf("invites: %+v", g.Invites)
-		}
-	}
-	if n := len(mine(s.dee).Invites); n != 0 {
-		t.Errorf("dee has %d invites", n)
 	}
 }

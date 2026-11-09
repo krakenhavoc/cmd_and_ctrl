@@ -457,16 +457,6 @@ type Spec struct {
 	// needed this permission; see game/flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
 
-	// FlashIf is "You may cast this spell as though it had flash if
-	// <condition>" (#5207): a timing permission, not an alternative cost,
-	// so the flash cast still takes any cost the caster picks (CR 118.9a
-	// limits alternative costs, not timing). Build it with FlashIfYou /
-	// FlashIfXAtMost / FlashIfTargets; a condition on paying a cost ("if
-	// you pay {2} more", "if you behold a Dragon") is an optional cost
-	// instead (FlashForMore, OptionalBeholdOpeningFlash). See
-	// game/flash_if.go.
-	FlashIf *game.FlashIf
-
 	// CastTimeValues are the numbers this spell fixes AS IT IS CAST
 	// (CR 601.2i, #3781): Lifestream's Blessing's "X is the greatest
 	// power among creatures you controlled as you cast this spell". The
@@ -1459,19 +1449,6 @@ type Spec struct {
 	//
 	// Issue #749, ADR 0057 Decision 4.
 	GameEndGates []game.GameEndGate
-
-	// CoinFlipRules declares a printed static over the coins its controller
-	// flips: Edgar, King of Figaro's "Two-Headed Coin — The first time you
-	// flip one or more coins each turn, those coins come up heads and you
-	// win those flips."
-	//
-	//	CoinFlipRules: []game.CoinFlipRule{{Label: "Two-Headed Coin", FirstTimeEachTurn: true, HeadsAndWin: true}},
-	//
-	// DERIVED, not stored: the engine asks the battlefield, through
-	// game.CatalogCoinFlipRules keyed by CatalogAbilityKey, each time its
-	// controller flips (called or uncalled), so the rule ends with the
-	// permanent or its abilities. See game/coin_flip_rules.go.
-	CoinFlipRules []game.CoinFlipRule
 
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 207.2c — Painful

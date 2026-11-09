@@ -1125,22 +1125,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
-	// #5207, CR 601.3b: a cast that is open only because of the card's
-	// own "as though it had flash if X is N or less" / "if it targets
-	// <what>" (flash_if.go) must announce choices that make it apply.
-	// Asked with the claim, the permission and the optional costs known,
-	// as the timing gate below asks; nil for every other cast.
-	flashIf := g.FlashIfReliedOnLocked(playerID, card, src.Kind, grant, alt,
-		OptionalCostsOpenCastWindow(optionalCosts, params.OptionalCosts))
-	if ceiling, ok := flashIf.XCeilingUnder(0, false); ok && params.XValue > ceiling {
-		slog.Warn("cast_spell rejected: X above the flash permission's ceiling",
-			"card_name", card.Name,
-			"oracle_id", card.OracleID,
-			"x_value", params.XValue,
-			"x_ceiling", ceiling,
-		)
-		return ErrInvalidParam
-	}
 	// #3232, CR 107.3a / 601.2b: a kicker whose cost is {X} ("Kicker
 	// {X}. X can't be 0.", Thieving Skydiver) makes X part of the same
 	// announcement. The floor binds only while that cost is chosen, and
@@ -1310,10 +1294,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// 702.174m). After the alternative cost, which no gift card
 	// offers.
 	spec = TargetSpecUnderOptionalCosts(spec, optionalCosts, params.OptionalCosts)
-	// #5207, CR 601.3b: and a cast that needs the card's own "as though
-	// it had flash if it targets <what>" is announced under that clause.
-	// Announce only: resolution reads the printed clause (CR 608.2b).
-	spec = flashIf.TargetSpecUnder(spec)
 	// #764: the announcement's target STEPS — one per clause of the
 	// card-level list, or one per clause of each chosen mode
 	// occurrence (CR 608.2c). A card with neither keeps the S13.1
@@ -2540,10 +2520,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
 				tally.Artifact++
-			}
-			// Serah Farron's "first legendary creature spell you cast each turn".
-			if characteristicHasType(ch, "Creature") && characteristicHasSupertype(ch, "Legendary") {
-				tally.LegendaryCreature++
 			}
 			// Momo, Friendly Flier's "first non-Lemur creature spell with
 			// flying" (#5075).

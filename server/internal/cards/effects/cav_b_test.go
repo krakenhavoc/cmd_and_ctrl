@@ -234,11 +234,11 @@ func TestFlashForTwoMoreOpensInstantSpeedOnlyThroughTheSurcharge(t *testing.T) {
 			}
 			// One short of the surcharge price is refused.
 			fund(tc.pool[1:])
-			if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true, OptionalCosts: []int{0}}); err == nil {
+			if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true, AlternativeCost: "flash-for-more"}); err == nil {
 				t.Fatal("the surcharge offer cast one mana short was accepted")
 			}
 			fund(tc.pool)
-			if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true, OptionalCosts: []int{0}}); err != nil {
+			if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true, AlternativeCost: "flash-for-more"}); err != nil {
 				t.Fatalf("flash cast for {2} more: %v", err)
 			}
 			if len(me.ManaPool) != 0 {

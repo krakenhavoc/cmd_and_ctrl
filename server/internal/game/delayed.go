@@ -303,15 +303,6 @@ type DelayedTrigger struct {
 	// it. See objectsNotYetFiredInBatchLocked.
 	OncePerBatch bool
 
-	// ThroughCleanup keeps an event-conditioned trigger past the cleanup
-	// step's own duration sweep: it is dropped as the NEXT turn begins
-	// instead. "When you lose control of that Equipment this turn" (Stolen
-	// Uniform) must still be listening when the "until end of turn" theft
-	// it answers ends in that same cleanup step, whose control change is
-	// only seen once the layers settle after the sweep (CR 514.2: both
-	// end at once, so the loss happens while "this turn" still holds).
-	ThroughCleanup bool
-
 	// ManaTapSubtype and ManaAdds are the CR 605.1b twin: a triggered
 	// MANA ability a spell sets up for the turn. "Until end of turn,
 	// whenever a player taps a Swamp for mana, that player adds an
@@ -906,7 +897,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 //
 // Caller must hold g.mu.
 func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
-	g.clearDelayedTriggersWhereLocked(endOfTurn, func(d Duration) bool { return g.durationExpiredLocked(d, endOfTurn) })
+	g.clearDelayedTriggersWhereLocked(func(d Duration) bool { return g.durationExpiredLocked(d, endOfTurn) })
 }
 
 // clearEndOfCombatDelayedTriggersLocked drops every delayed trigger whose
@@ -916,7 +907,7 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) clearEndOfCombatDelayedTriggersLocked() {
-	g.clearDelayedTriggersWhereLocked(false, func(d Duration) bool {
+	g.clearDelayedTriggersWhereLocked(func(d Duration) bool {
 		return d.Kind == UntilEndOfCombat && g.durationExpiredLocked(d, false)
 	})
 }
@@ -925,13 +916,13 @@ func (g *Game) clearEndOfCombatDelayedTriggersLocked() {
 // every delayed trigger with a Duration that expired says is over.
 //
 // Caller must hold g.mu.
-func (g *Game) clearDelayedTriggersWhereLocked(atCleanup bool, expired func(Duration) bool) {
+func (g *Game) clearDelayedTriggersWhereLocked(expired func(Duration) bool) {
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
-		if dt != nil && dt.Duration != nil && expired(*dt.Duration) && !(atCleanup && dt.ThroughCleanup) {
+		if dt != nil && dt.Duration != nil && expired(*dt.Duration) {
 			continue
 		}
 		kept = append(kept, dt)

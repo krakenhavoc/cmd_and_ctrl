@@ -406,6 +406,17 @@ const (
 	// source is a land that is not the one granting it; swept at cleanup
 	// (CR 514.2). Reads Player.
 	ModLegendRuleDoesntApply ModKind = "legendRuleDoesntApply"
+	// ModCardsCantEnterFromExile is "cards can't enter from exile this
+	// turn" (Bad Wolf Bay's chaos ability, ADR 0216 slice 4, #4870; CR
+	// 101.2): no card may enter the battlefield from exile, whoever puts
+	// it there. Scope ScopeGame, Player zero. Read by entryRefusalLocked,
+	// the one entry gate (entry_gate.go), so it reaches a flicker's
+	// return, a reanimation from exile, a land played from exile and
+	// every other way onto the battlefield whose card is leaving exile. A
+	// stored record because it outlives its source, which planeswalks
+	// away in the same resolution; swept at cleanup (CR 514.2). Reads
+	// nothing.
+	ModCardsCantEnterFromExile ModKind = "cardsCantEnterFromExile"
 	// ModVoteChooser is "you choose how each player votes this turn"
 	// (ADR 0146 amendment 2026-10-13, #2928; CR 701.38): Illusion of
 	// Choice. Scope ScopeGame with Player set to the player who chooses.
@@ -1174,6 +1185,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
 	ModLegendRuleDoesntApply: {reader: readerRule},
+	// ADR 0216 slice 4 (#4870): the entry gate.
+	ModCardsCantEnterFromExile: {reader: readerRule},
 	// ADR 0146 amendment (#2928): who casts each player's ballot.
 	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.

@@ -926,7 +926,6 @@ func Handler(c Config) http.Handler {
 	mux.Handle("DELETE /pods/{id}/members/{user_id}", podWriteRoute(deletePodMember))
 	mux.Handle("POST /me/pod-invites/{pod_id}/accept", podWriteRoute(acceptPodInvite))
 	mux.Handle("POST /me/pod-invites/{pod_id}/decline", podWriteRoute(declinePodInvite))
-	mux.Handle("POST /me/pod-suggestions/{group_key}/dismiss", podWriteRoute(dismissPodSuggestion))
 	mux.Handle("PUT /admin/pods/{id}/name", requireAdmin(c, handlerFunc(c, adminRenamePod)))
 	mux.Handle("DELETE /admin/pods/{id}", requireAdmin(c, handlerFunc(c, adminDeletePod)))
 	// Scheduled tables (ADR 0215 slice 2, scheduled_http.go). A new plan

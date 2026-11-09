@@ -391,6 +391,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0032 amendment (#3515): the turn-limited legend-rule
 		// exemption. Its cases are in legend_rule_this_turn_test.go.
 		ModLegendRuleDoesntApply: true,
+		// ADR 0216 slice 4 (#4870): the entry gate. Its cases are in
+		// cards_cant_enter_from_exile_test.go and the effects package's
+		// Bad Wolf Bay tests.
+		ModCardsCantEnterFromExile: true,
 		// ADR 0146 amendment (#2928): who casts each player's ballot.
 		// Its cases are in council_vote_zone_chooser_test.go and
 		// illusion_of_choice_test.go.
@@ -688,7 +692,7 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
 		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
 		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource, WhileSourceAttachedToPinned,
-		WhileSourceOnceItLands, WhilePlayerIsMonarch} {
+		WhileSourceOnceItLands} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}

@@ -10,20 +10,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 When this creature enters, you may return target tapped creature an
 //	 opponent controls to its owner's hand."
 //
-// The surcharge is Asinine Antics's FlashForMore: an optional additional
-// {2} that opens the instant-speed window for the cast that announces it
-// (CR 601.3c, flash_for_more.go, #5207). The entry
+// The surcharge is Asinine Antics's FlashForMore offer ({U}{U} plus {2}),
+// so it carries that card's caveat (flash_for_more.go, #5207). The entry
 // trigger is Spellweaver Duo's optional bounce (CR 603.5) with the target
 // narrowed to a creature an opponent controls; whether it is tapped is
 // read as the target is chosen and again on resolution (CR 608.2b).
-//
-// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:      "9f5277e8-1cbe-478c-a8bc-ac028f13305e",
-		Name:          "Harbinger of the Tides",
-		Completeness:  CompletenessFull,
-		OptionalCosts: []game.AdditionalCost{FlashForMore("{2}")},
+		OracleID:     "9f5277e8-1cbe-478c-a8bc-ac028f13305e",
+		Name:         "Harbinger of the Tides",
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"Paying {2} more to cast this at instant speed can't be combined with another alternative cost.",
+		},
+		AlternativeCosts: []game.AlternativeCost{FlashForMore("{2}{U}{U}", "{2}")},
 		Triggered: []game.TriggeredAbility{
 			Optional(Targeting(
 				WhenThisEnters("Harbinger of the Tides — return target tapped creature an opponent controls to its owner's hand", bounceTheTargetToHand),

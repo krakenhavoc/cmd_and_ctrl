@@ -2,7 +2,7 @@ package lobby
 
 // pods_http.go is ADR 0220 slice 2 (#4880): pods, over internal/pods.
 //
-//	GET    /me/pods                             my pods, the invites waiting on me, my suggestions
+//	GET    /me/pods                             my pods, the invites waiting on me (suggestions: slice 4)
 //	POST   /pods                                make a pod: {name}
 //	GET    /pods/{id}                           members only: the pod
 //	PATCH  /pods/{id}                           owner: rename, {name}
@@ -12,7 +12,6 @@ package lobby
 //	DELETE /pods/{id}/invites/{user_id}         the inviter or the owner: cancel
 //	POST   /me/pod-invites/{pod_id}/accept      the invitee
 //	POST   /me/pod-invites/{pod_id}/decline     the invitee, silently
-//	POST   /me/pod-suggestions/{group_key}/dismiss  a person in the set: Not now
 //	POST   /pods/{id}/link                      owner: mint or rotate, answers the token once
 //	DELETE /pods/{id}/link                      owner: turn off
 //	GET    /pods/join/{token}                   anyone signed in: the preview
@@ -101,24 +100,14 @@ type podInviteIn struct {
 	Since     int64     `json:"since"`
 }
 
-// podSuggestion is one suggested pod (§4). Key is a hash of the set, not
-// a list of ids; People are the others, by name and avatar only. LastAt is
-// when the latest of the games ended, Unix milliseconds.
-type podSuggestion struct {
-	Key    string      `json:"key"`
-	People []PodPerson `json:"people"`
-	Games  int         `json:"games"`
-	LastAt int64       `json:"last_at"`
-	Days   int         `json:"days"`
-}
-
-// myPodsResponse is GET /me/pods.
+// myPodsResponse is GET /me/pods. Suggestions is slice 4's and empty
+// until then.
 type myPodsResponse struct {
-	Pods        []podSummary    `json:"pods"`
-	Invites     []podInviteIn   `json:"invites"`
-	Suggestions []podSuggestion `json:"suggestions"`
-	MaxPods     int             `json:"max_pods"`
-	MaxMembers  int             `json:"max_members"`
+	Pods        []podSummary  `json:"pods"`
+	Invites     []podInviteIn `json:"invites"`
+	Suggestions []struct{}    `json:"suggestions"`
+	MaxPods     int           `json:"max_pods"`
+	MaxMembers  int           `json:"max_members"`
 }
 
 // podMember is one row of GET /pods/{id}'s members. A row with Blocked
@@ -265,8 +254,6 @@ func podError(c Config, err error, what string) error {
 		return httpError(http.StatusForbidden, errNotInviter)
 	case errors.Is(err, pods.ErrNoMember):
 		return httpError(http.StatusNotFound, errNoPodMember)
-	case errors.Is(err, pods.ErrNoSuggestion):
-		return httpError(http.StatusNotFound, errNoSuchSuggestion)
 	case errors.Is(err, pods.ErrSelf):
 		return httpError(http.StatusBadRequest, errCannotTargetSelf)
 	}
@@ -294,7 +281,7 @@ func myPods(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	out := myPodsResponse{
 		Pods: make([]podSummary, 0, len(o.Pods)), Invites: make([]podInviteIn, 0, len(o.Invites)),
-		Suggestions: []podSuggestion{}, MaxPods: pods.MaxPodsPerPerson, MaxMembers: pods.MaxMembers,
+		Suggestions: []struct{}{}, MaxPods: pods.MaxPodsPerPerson, MaxMembers: pods.MaxMembers,
 	}
 	for _, p := range o.Pods {
 		out.Pods = append(out.Pods, summaryOf(p))
@@ -305,25 +292,12 @@ func myPods(c Config, w http.ResponseWriter, r *http.Request) error {
 			InvitedBy: PodPerson{DisplayName: in.From.DisplayName, AvatarURL: in.From.AvatarURL},
 		})
 	}
-	sugg, err := c.Pods.Suggestions(r.Context(), me)
-	if err != nil {
-		return podError(c, err, "suggesting pods")
-	}
-	for _, g := range sugg {
-		ps := podSuggestion{Key: g.Key, People: make([]PodPerson, 0, len(g.Others)),
-			Games: g.Games, LastAt: g.LastAt.UnixMilli(), Days: int(pods.SuggestWindow / (24 * time.Hour))}
-		for _, p := range g.Others {
-			ps.People = append(ps.People, PodPerson{DisplayName: p.DisplayName, AvatarURL: p.AvatarURL})
-		}
-		out.Suggestions = append(out.Suggestions, ps)
-	}
 	w.Header().Set("Cache-Control", "no-store")
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// postPod is POST /pods. With a suggestion (its group key) the others in
-// that suggestion are invited too (§4); a key that is not one of the
-// caller's suggestions is 404.
+// postPod is POST /pods. A suggestion is slice 4's; until it lands, no
+// group key names one.
 func postPod(c Config, w http.ResponseWriter, r *http.Request) error {
 	me, err := podCaller(c, r)
 	if err != nil {
@@ -333,12 +307,10 @@ func postPod(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	var s pods.Summary
-	if key := strings.TrimSpace(body.Suggestion); key != "" {
-		s, err = c.Pods.CreateFromSuggestion(r.Context(), me, body.Name, key)
-	} else {
-		s, err = c.Pods.Create(r.Context(), me, body.Name)
+	if strings.TrimSpace(body.Suggestion) != "" {
+		return httpError(http.StatusNotFound, errNoSuchSuggestion)
 	}
+	s, err := c.Pods.Create(r.Context(), me, body.Name)
 	if err != nil {
 		return podError(c, err, "making a pod")
 	}
@@ -654,21 +626,6 @@ func adminDeletePod(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := c.Pods.AdminDelete(r.Context(), r.PathValue("id")); err != nil {
 		return podError(c, err, "an admin deleting a pod")
-	}
-	w.WriteHeader(http.StatusNoContent)
-	return nil
-}
-
-// dismissPodSuggestion is POST /me/pod-suggestions/{group_key}/dismiss:
-// Not now, which hides that suggestion from the caller for 180 days and
-// from nobody else. 204; 404 for a key that is not one of theirs.
-func dismissPodSuggestion(c Config, w http.ResponseWriter, r *http.Request) error {
-	me, err := podCaller(c, r)
-	if err != nil {
-		return err
-	}
-	if err := c.Pods.Dismiss(r.Context(), me, r.PathValue("group_key")); err != nil {
-		return podError(c, err, "dismissing a pod suggestion")
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil

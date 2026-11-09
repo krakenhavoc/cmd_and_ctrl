@@ -133,14 +133,7 @@ type AbilityGrant struct {
 	// the recipient's controller, a recipient that loses its abilities
 	// loses them, and they end the pass the grant does.
 	AdditionalLandPlays int
-
-	// CostModifiers is a granted cost change — "This Equipment's equip
-	// abilities cost {2} less to activate" (Firion, Wild Rose Warrior's
-	// token copy). The recipient is the modifier's source, so "this" is
-	// the recipient; it is read live off the composite key and ends the
-	// pass the grant does.
-	CostModifiers   []game.CostModifier
-	CastPermissions []game.CastPermission
+	CastPermissions     []game.CastPermission
 
 	// Zone is where the bundle's RECIPIENTS are: empty is the battlefield,
 	// as for every bundle before #3233. A hand, graveyard or exile bundle
@@ -212,7 +205,6 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 
 		AdditionalLandPlays: gr.AdditionalLandPlays,
 		CastPermissions:     standingCastPermissions(gr.CastPermissions),
-		CostModifiers:       gr.CostModifiers,
 	}
 }
 
@@ -293,7 +285,7 @@ func checkGrants(name string, grants []AbilityGrant) {
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
 			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 &&
-			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 {
+			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

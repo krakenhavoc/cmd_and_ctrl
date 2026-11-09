@@ -3330,11 +3330,6 @@ export interface OptionalCostView {
   // cost has no floor; meaningful only beside a `mana_cost` containing
   // {X}. Read by optionalCostXFloor (targeting.ts).
   x_min?: number;
-  // #5207, CR 601.3c: announcing this cost lets the spell be cast as
-  // though it had flash (Quantum Reduction's teamwork, Asinine Antics's
-  // "pay {2} more", Molten Exhale's behold). When the spell is castable
-  // now only because of it, a cast that leaves it unticked is refused.
-  opens_flash?: boolean;
   // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
   // replicate, 3). `max_times` is then capped at what the viewer's energy
   // pays for, and `energy_short` says it pays for none.

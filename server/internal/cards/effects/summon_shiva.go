@@ -19,7 +19,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	const name = "Summon: Shiva"
-	strike := finB1TapAndStun
+	strike := func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		id, ok := b16FirstLegalTargetCard(ctx)
+		if !ok {
+			return nil
+		}
+		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+		return AddCounter{Target: id, Kind: game.CounterStun, N: 1}.Apply(ctx)
+	}
 	theirs := func() *game.TargetSpec {
 		return TargetCreature("target creature an opponent controls", OpponentControls())
 	}

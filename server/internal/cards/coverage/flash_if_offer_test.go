@@ -2,6 +2,7 @@ package coverage
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
@@ -9,36 +10,26 @@ import (
 
 // flashIfLine is the printed "You may cast this spell as though it had
 // flash if <condition>" (Asinine Antics, Silver Scrutiny, Timely Ward,
-// Fated Clash, Bard's Company) and its inverted word order, "If <condition>,
-// you may cast this spell as though it had flash" (Serpent of the Pass).
-// The unconditional "as though it had flash." (Necromancy) has a full stop
-// where the first has "if", and no "if" clause before it. Primal Prayers'
-// "If you cast a spell this way, you may cast it as though it had flash" is
-// about the spell an alternative cost casts, which is "it", not "this
-// spell".
-var flashIfLine = regexp.MustCompile(`(?i)\bcast this spell as though it had flash if\b|\bif\b[^.]*,\s*you may cast this spell as though it had flash\b`)
+// Fated Clash, Bard's Company). The unconditional "as though it had
+// flash." (Necromancy) has a full stop where this has "if".
+var flashIfLine = regexp.MustCompile(`(?i)\bcast this spell as though it had flash if\b`)
 
-// TestNoFlashIfClauseIsAnAlternativeCost is #5207's guard over the whole
-// catalog. "You may cast this spell as though it had flash if …" is a
-// timing permission (CR 601.3, 601.3b–c), so a flash cast can still take
-// an alternative cost from somewhere else, and only one alternative cost
-// applies to a spell (CR 118.9a). Building the clause as an
-// alternative-cost offer that opens the instant-speed window for its own
-// claim (AlternativeCost.AsThoughFlash) makes the card weaker than
-// printed, which is what #5211 marked as a caveat and #5207 retired.
+// TestEveryFlashIfOfferCardDeclaresItsCaveat is #5207's probe over the
+// whole catalog. "You may cast this spell as though it had flash if …"
+// is a timing permission (CR 601.3b–c), so on the printed card a flash
+// cast can still take an alternative cost from somewhere else. The
+// catalog builds it as an alternative-cost offer that opens the
+// instant-speed window for its own claim (AlternativeCost.AsThoughFlash:
+// FlashForMore, FlashIfXAtMost, FlashIfTargets, a Condition-gated
+// offer), and only one alternative cost applies to a spell (CR 118.9a).
+// So every face whose printed text has the clause and whose Spec builds
+// it that way declares CompletenessCaveats with a caveat that says so.
 //
-// So every face whose printed text has the clause builds it as one of
-// the two shapes that compose with any cost:
-//
-//   - Spec.FlashIf, the card's own conditional timing permission
-//     (FlashIfYou, FlashIfXAtMost, FlashIfTargets), or
-//   - an optional additional cost that opens the window when announced
-//     (AdditionalCost.AsThoughFlash: FlashForMore, Quantum Reduction's
-//     teamwork, OptionalBeholdOpeningFlash), for a condition on paying a
-//     cost (CR 601.3c);
-//
-// and declares no alternative cost carrying AsThoughFlash.
-func TestNoFlashIfClauseIsAnAlternativeCost(t *testing.T) {
+// A card that builds the clause another way — an optional additional
+// cost that opens the window (AdditionalCost.AsThoughFlash, Quantum
+// Reduction's teamwork) — has no alternative-cost offer that opens it,
+// and this probe leaves it alone.
+func TestEveryFlashIfOfferCardDeclaresItsCaveat(t *testing.T) {
 	fx := loadOracleFixture(t)
 	checked := 0
 	for _, s := range effects.All() {
@@ -51,26 +42,32 @@ func TestNoFlashIfClauseIsAnAlternativeCost(t *testing.T) {
 		if face >= len(faces) || !flashIfLine.MatchString(faces[face].Text) {
 			continue
 		}
-		checked++
+		offers := false
 		for _, ac := range s.AlternativeCosts {
-			if ac.AsThoughFlash {
-				t.Errorf("%s builds \"as though it had flash if\" as the alternative cost %q: "+
-					"it is a timing permission (Spec.FlashIf) or an optional cost that opens the window "+
-					"(AdditionalCost.AsThoughFlash), so the flash cast can also take another alternative cost (CR 118.9a)",
-					s.Name, ac.Key)
-			}
+			offers = offers || ac.AsThoughFlash
 		}
-		opens := s.FlashIf != nil
-		for _, c := range s.OptionalCosts {
-			opens = opens || c.AsThoughFlash
+		if !offers {
+			continue
 		}
-		if !opens {
-			t.Errorf("%s prints \"as though it had flash if\" and builds neither a Spec.FlashIf nor an optional cost that opens the window", s.Name)
+		checked++
+		if s.Completeness != effects.CompletenessCaveats {
+			t.Errorf("%s builds \"as though it had flash if\" as an alternative-cost offer and is %v: "+
+				"declare CompletenessCaveats (the flash cast can't take another alternative cost, CR 118.9a)",
+				s.Name, s.Completeness)
+			continue
+		}
+		said := false
+		for _, cv := range s.Caveats {
+			said = said || strings.Contains(cv, "another alternative cost")
+		}
+		if !said {
+			t.Errorf("%s: no caveat says the flash cast can't be combined with another alternative cost: %q",
+				s.Name, s.Caveats)
 		}
 	}
-	if checked < 10 {
-		t.Fatalf("%d catalogued faces print \"as though it had flash if\", want at least 10: "+
+	if checked < 6 {
+		t.Fatalf("%d catalogued faces build \"as though it had flash if\" as an offer, want at least 6: "+
 			"the probe proved too little (did the fixture or the clause's shape move?)", checked)
 	}
-	t.Logf("%d \"as though it had flash if\" faces checked", checked)
+	t.Logf("%d \"as though it had flash if\" offer faces checked", checked)
 }

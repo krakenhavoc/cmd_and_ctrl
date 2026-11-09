@@ -327,15 +327,6 @@ func characteristicHasSubtype(ch *Characteristic, sub string) bool {
 	return false
 }
 
-func characteristicHasSupertype(ch *Characteristic, t string) bool {
-	for _, have := range ch.Supertypes {
-		if strings.EqualFold(have, t) {
-			return true
-		}
-	}
-	return false
-}
-
 func characteristicHasType(ch *Characteristic, t string) bool {
 	for _, have := range ch.Types {
 		if strings.EqualFold(have, t) {

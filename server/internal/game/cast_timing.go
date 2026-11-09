@@ -182,15 +182,6 @@ type CastTimingRule struct {
 	// shuts the moment it untaps or leaves the battlefield. Declaration-only,
 	// like FirstCreatureSpellThisTurn: a stored grant never carries it.
 	SourceTapped bool `json:"sourceTapped,omitempty"`
-
-	// OwnedByCaster narrows a DECLARATION to cards the caster owns:
-	// Teferi, Mage of Zhalfir's "creature cards YOU OWN that aren't on the
-	// battlefield have flash". The card's owner is read as the cast is
-	// asked (CR 108.3), so a creature card you cast out of an opponent's
-	// graveyard is not covered, and one an opponent controls Teferi for is
-	// covered only for the opponent's own cards. Declaration-only, like
-	// FirstCreatureSpellThisTurn: a stored grant never carries it.
-	OwnedByCaster bool `json:"ownedByCaster,omitempty"`
 }
 
 // Grants reports whether this statement OPENS the instant-speed
@@ -368,9 +359,6 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 				continue
 			}
 			if t.SourceTapped && !src.Tapped {
-				continue
-			}
-			if t.OwnedByCaster && card.Owner != playerID {
 				continue
 			}
 			// A creature type the filter names is a word of the
@@ -565,13 +553,6 @@ func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	// flash" (Necromancy, #3156). Not the keyword: nothing that asks
 	// whether a card has flash sees it.
 	if ownFlash && printsFlashWithCleanupSacrifice(card) {
-		instantSpeed = true
-	}
-	// 1c. The card's own "you may cast this spell as though it had flash
-	// if <condition>" (#5207, flash_if.go): a timing permission, read as
-	// the cast begins (CR 601.3), and not an alternative cost, so it
-	// composes with whichever cost the cast claims.
-	if ownFlash && g.flashIfOpensLocked(playerID, card) {
 		instantSpeed = true
 	}
 	// 2. The permission's override, if it carries one.
