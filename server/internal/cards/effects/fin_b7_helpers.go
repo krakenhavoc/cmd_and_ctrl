@@ -109,7 +109,7 @@ func tripleTriadExileFrom(g *game.Game, step game.KeyedTail, remaining, landed [
 		return step.Next.Run(g, landed)
 	}
 	step.Carry = packIDLists(remaining[1:], landed)
-	return g.ExileTopKeyedForEffect(remaining[0], step.Player, 1, step)
+	return g.ExileTopKeyedForEffect(remaining[0], remaining[0], 1, step)
 }
 
 // tripleTriadGrant is the second sentence once every exile has landed:

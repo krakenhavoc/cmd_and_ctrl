@@ -12,6 +12,7 @@ import (
 // plays the real catalog entry and asserts what its text says.
 
 const (
+	finB7RagnarokOracle   = "5c9f1d2e-0b7a-4e44-9d3a-1f0c2b6a7e11"
 	finB7RelentlessOracle = "50994df7-300d-4e30-897a-0974dc0820ee"
 	finB7InsomniaOracle   = "b7140f72-91b6-4be4-8d71-c019e64c2351"
 	finB7ZodiarkOracle    = "f1190fb9-72a2-48f8-bc2d-61240f1e9119"
@@ -336,7 +337,7 @@ func TestFinB7VanilleMillsTwoThenReturnsAPermanentCard(t *testing.T) {
 
 func finB7FangMeldPrint() *game.MeldPrint {
 	return &game.MeldPrint{
-		ResultOracleID:   uuid.NewString(),
+		ResultOracleID:   finB7RagnarokOracle,
 		ResultScryfallID: uuid.NewString(),
 		Result:           game.Face{Name: "Ragnarok, Divine Deliverance", TypeLine: "Legendary Creature — Beast Avatar"},
 	}
@@ -369,7 +370,7 @@ func TestFinB7VanilleMeldsWithFangForFiveMana(t *testing.T) {
 	}
 	melded := 0
 	for _, c := range g.Battlefield.Cards {
-		if c.Name == "Ragnarok, Divine Deliverance" {
+		if c.OracleID == finB7RagnarokOracle {
 			melded++
 		}
 	}

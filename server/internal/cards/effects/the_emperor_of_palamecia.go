@@ -27,9 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	const label = "The Emperor of Palamecia — put a +1/+1 counter on it; then if it has three or more +1/+1 counters, transform it"
-	trig := On(game.EventCast, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-		return YouCast(Noncreature())(ev, source, lki, g) && g.StackItemPaidForEffect(ev.CardID).Spent().Total() >= 4
-	}, label, func(g *game.Game, item *game.StackItem) error {
+	trig := On(game.EventCast, YouCast(Noncreature()), label, func(g *game.Game, item *game.StackItem) error {
 		if item.Params.Amount < 4 || !sourceIsStillThisPermanent(g, item) {
 			return nil
 		}
@@ -48,6 +46,9 @@ func init() {
 		item.Params.Amount = g.StackItemPaidForEffect(ev.CardID).Spent().Total()
 		return item
 	}
+	trig = InterveningIf(CondBoard{Name: "at least four mana was spent to cast it", Test: func(ctx *Context) bool {
+		return ctx.Item != nil && ctx.Item.Params.Amount >= 4
+	}}, trig)
 	mana := dualManaAbility("U", "R")
 	mana.Restrictions = []string{ManaRestrictCast, ManaRestrictNotType("Creature")}
 	mana.Label = "{T}: Add {U} or {R}. Spend this mana only to cast a noncreature spell."

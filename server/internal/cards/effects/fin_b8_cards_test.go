@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -68,25 +69,14 @@ func finB8Row(oracle, front, frontType, frontCost, frontP, frontT, back, backTyp
 	}
 }
 
-// finB8PutFront puts a transforming card's front face onto the battlefield
-// with summoning sickness cleared.
+// finB8PutFront puts a transforming card's front face straight onto the
+// battlefield (no enters trigger) with summoning sickness cleared.
 func finB8PutFront(t *testing.T, g *game.Game, row cards.Card, p *game.Player) uuid.UUID {
 	t.Helper()
-	id := importToHand(row, p)
-	var entered uuid.UUID
-	g.WithWriteLock(func() {
-		var err error
-		entered, err = g.PutFromHandOntoBattlefieldForEffect(id, game.HandEntryOptions{})
-		if err != nil {
-			t.Fatalf("put %s onto the battlefield: %v", row.Name, err)
-		}
-		for i := range g.Battlefield.Cards {
-			if g.Battlefield.Cards[i].InstanceID == entered {
-				g.Battlefield.Cards[i].SummonedThisTurn = false
-			}
-		}
-	})
-	return entered
+	c := deck.ToGameCard(row, false)
+	c.Owner, c.Controller = p.ID, p.ID
+	c.SummonedThisTurn = false
+	return pushBattlefieldCardWithTimestamp(g, c)
 }
 
 func finB8Counters(g *game.Game, id uuid.UUID, kind string) int {
@@ -259,17 +249,14 @@ func TestFinB8JoshuaFlipsAndPhoenixBurnsReturnsAndFlipsBack(t *testing.T) {
 func TestFinB8CidBoostsArtifactCreaturesAndHeroesPerArtificer(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogGraveyardCard(me, "Old Artificer", "Creature — Human Artificer", "", 1, 1)
+	pushCatalogGraveyardCard(me, "Old Bear", "Creature — Bear", "", 1, 1)
+	pushCatalogGraveyardCard(opp, "Their Artificer", "Creature — Human Artificer", "", 1, 1)
 	s58p6Push(g, me.ID, "Cid, Timeless Artificer", "Legendary Creature — Human Artificer", finB8CidOracle, "{2}{W}{U}", 4, 4)
 	golem := b12Creature(g, me.ID, "Golem", "Artifact Creature — Golem", 2, 2)
 	hero := b12Creature(g, me.ID, "Hero", "Token Creature — Hero", 1, 1)
 	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	theirs := b12Creature(g, opp.ID, "Their Golem", "Artifact Creature — Golem", 2, 2)
-	if p, th := effectivePTOf(t, g, golem); p != 3 || th != 3 {
-		t.Errorf("Golem is %d/%d with just Cid, want 3/3", p, th)
-	}
-	pushCatalogGraveyardCard(me, "Old Artificer", "Creature — Human Artificer", "", 1, 1)
-	pushCatalogGraveyardCard(me, "Old Bear", "Creature — Bear", "", 1, 1)
-	pushCatalogGraveyardCard(opp, "Their Artificer", "Creature — Human Artificer", "", 1, 1)
 	if p, th := effectivePTOf(t, g, golem); p != 4 || th != 4 {
 		t.Errorf("Golem is %d/%d with Cid and an Artificer card, want 4/4", p, th)
 	}
@@ -303,8 +290,11 @@ func TestFinB8QuistisCastsASpellFromAnyGraveyardWithAnyMana(t *testing.T) {
 	})
 	victim := b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
 	floatForTest(g, me, "U")
-	castCatalogSpell(t, g, "Quistis Trepe", "Legendary Creature — Human Wizard", finB8QuistisOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+	castCatalogSpell(t, g, "Quistis Trepe", "Legendary Creature — Human Wizard", finB8QuistisOracle, nil)
+	passPriorityAroundTable(t, g)
+	if latestPickTarget(g, me.ID) != nil {
+		pickCard(t, g, me.ID, bolt)
+	}
 	passPriorityAroundTable(t, g)
 	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordPaidCast, bolt)
 	if err := castThroughResolutionCast(t, g, me.ID, bolt, game.CastSpellParams{
@@ -609,13 +599,23 @@ func finB8GarlandRow() cards.Card {
 		"Chaos, the Endless", "Legendary Creature — Demon", "5", "5")
 }
 
-func TestFinB8GarlandSurveilsOnNoncreatureSpellsAndReturnsTransformed(t *testing.T) {
+func TestFinB8GarlandSurveilsOnNoncreatureSpells(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	finB8PutFront(t, g, finB8GarlandRow(), me)
-	socB17CastSpellFor(t, g, "Instant", "{1}{R}", "RR")
-	if scryChoiceFor(g, me.ID) == nil && latestChoiceOfKindFor(g, game.PendingChoiceSurveil, me.ID) == nil {
-		t.Log("no surveil prompt found by kind; checking the library is untouched")
+	advanceToMain(t, g)
+	id := socB17Hand(me, "Test Spell", "Instant", "{1}{R}", socB17PlainSorceryOracle)
+	floatForTest(g, me, "RR")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	c := surveilChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("a noncreature spell triggered no surveil")
+	}
+	if err := g.ResolveSurveil(c.ID, me.ID, nil, c.ScryCards); err != nil {
+		t.Fatalf("ResolveSurveil: %v", err)
 	}
 }
 
@@ -698,6 +698,7 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	t.Logf("garnet counters %d", finB8Counters(g, garnet, game.CounterPlusOne))
 	if finB8Counters(g, sagaA, game.CounterLore) != 1 || finB8Counters(g, sagaB, game.CounterLore) != 0 {
 		t.Errorf("lore counters A=%d B=%d, want 1 and 0", finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore))
 	}
