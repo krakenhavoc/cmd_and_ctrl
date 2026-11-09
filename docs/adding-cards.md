@@ -13788,6 +13788,15 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
 - **"The player to your left"** is `ControlledByThePlayerToYourLeft()`
   (`game.NearestOpponentForEffect(you, game.AttackDirectionLeft)`).
 - **Time travel** (CR 701.56a) is `Do(TimeTravel{})`.
+- **Statics a plane can carry beyond the layer pass** (batches 9 and 10): a standing
+  `CastPermissions` entry (Otaria's flashback) is held by every seat over its own
+  zone; a spell static (`AffectsSpells`, Trail of the Mage-Rings' rebound) and
+  `LibraryTopVisible: LibraryTopRevealedEachPlayer` (Skybreen) are read from the
+  face-up plane too; replacements (`The Eon Fog`) and `CastRestrictions` already
+  were. The planar deck is looked at with `g.RevealTopOfPlanarDeckForEffect` and
+  `g.PutTopOfPlanarDeckOnBottomForEffect` (`game/planar_deck_effects.go`).
+  `game.FreePlayFromTop{LeaveOnTop: true}` is "you may play it" with no hand
+  fallback (Quicksilver Sea). Shared helpers: `planes_b9_helpers.go`.
 - **Tests** play the real entry on a Planechase table: `newPlaneGame(t,
   planeFixture{oracle, name, typeLine})` in `planes_harness_test.go` puts the
   plane face up at the turn-1 draw step with nothing of it triggered;

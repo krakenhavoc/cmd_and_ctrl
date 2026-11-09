@@ -32,13 +32,7 @@ func init() {
 					}
 					return g.ChangePlayerLifeForEffect(item.SourceCardID, c.Owner, -1)
 				}),
-			WheneverChaosEnsues("The Dark Barony — each opponent discards a card",
-				func(g *game.Game, item *game.StackItem) error {
-					for _, opp := range NewContext(g, item).Opponents() {
-						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: opp, Source: item.SourceCardID, N: 1})
-					}
-					return nil
-				}),
+			WheneverChaosEnsues("The Dark Barony — each opponent discards a card", eachOpponentDiscardsACard),
 		},
 	})
 }

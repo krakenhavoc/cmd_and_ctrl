@@ -36,19 +36,7 @@ func init() {
 					}
 					return ReturnFromGraveyardTogether{Targets: ids}.Apply(ctx)
 				}),
-			Targeting(WheneverChaosEnsues("Orzhova — for each opponent, exile up to one target creature card from that player's graveyard",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+			Targeting(WheneverChaosEnsues("Orzhova — for each opponent, exile up to one target creature card from that player's graveyard", exileEveryLegalCardTarget),
 				b9PerOpponentGraveyardClauses("creature", func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return isCreatureCard(c) })),
 		},
 	})

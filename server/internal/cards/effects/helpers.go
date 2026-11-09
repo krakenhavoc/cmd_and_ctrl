@@ -859,6 +859,28 @@ func exileEveryLegalCardTarget(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
+// bounceFirstLegalTargetCard is "return target <permanent> to its owner's
+// hand" as an ability's whole effect: the first card target still legal as
+// it resolves (CR 608.2b) goes to its owner's hand.
+func bounceFirstLegalTargetCard(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return BounceToHand{Target: id}.Apply(ctx)
+}
+
+// eachOpponentDiscardsACard is "each opponent discards a card" as a whole
+// effect: every opponent of the controller is asked to choose and discard
+// one (Rank Rat, The Dark Barony).
+func eachOpponentDiscardsACard(g *game.Game, item *game.StackItem) error {
+	for _, opp := range NewContext(g, item).Opponents() {
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: opp, Source: item.SourceCardID, N: 1})
+	}
+	return nil
+}
+
 // counterTheTargetSpell is the whole OnResolve of "Counter target
 // spell." — Cancel's body, named so a new card calls it rather than
 // adding another copy to that clone family.

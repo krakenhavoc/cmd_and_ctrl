@@ -27,14 +27,7 @@ func init() {
 				Label:   "{U}, Sacrifice this artifact: Return target creature to its owner's hand.",
 				Cost:    Plus(ManaCost("{U}"), SacrificeThis()),
 				Targets: TargetCreature("target creature"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return BounceToHand{Target: id}.Apply(ctx)
-				},
+				Effect:  bounceFirstLegalTargetCard,
 			},
 			{
 				Label:   "{1}, Sacrifice this artifact: Draw a card.",

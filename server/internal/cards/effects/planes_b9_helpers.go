@@ -4,8 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -54,15 +52,6 @@ func b9DestroyEachNonlandPermanent(ctx *Context, spared CardPredicate) error {
 	return DestroyAllMatching{Match: match}.Apply(ctx)
 }
 
-// b9OwnedByNthOpponent passes for a card owned by the n-th seat (1-based)
-// after the chooser's in turn order: a graveyard is always its owner's.
-func b9OwnedByNthOpponent(n int) CardPredicate {
-	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
-		p := g.OpponentSeatAfter(chooser, n)
-		return p != nil && c.Owner == p.ID
-	}
-}
-
 // b9PerOpponentGraveyardClauses is "for each opponent, <verb> up to one
 // target <noun> card from that player's graveyard": one "up to one" clause
 // per possible opponent, the n-th bound to the n-th seat after the planar
@@ -73,7 +62,7 @@ func b9PerOpponentGraveyardClauses(noun string, what ...CardPredicate) *game.Tar
 	for n := 1; n <= game.MaxPlayers-1; n++ {
 		out = append(out, TargetCardInGraveyard(
 			"up to one target "+noun+" card from the "+nthOpponentWords[n]+" opponent after you's graveyard",
-			append([]CardPredicate{b9OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
+			append([]CardPredicate{trekB36OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
 	}
 	return Clauses(out[0], out[1:]...)
 }

@@ -33,14 +33,7 @@ func init() {
 					return DrawCards{Player: who, N: 1}.Apply(NewContext(g, item))
 				}),
 			Targeting(WheneverChaosEnsues("Takenuma — return target creature you control to its owner's hand",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return BounceToHand{Target: id}.Apply(ctx)
-				}),
+				bounceFirstLegalTargetCard),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})

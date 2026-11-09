@@ -17,12 +17,7 @@ func init() {
 		Name:         "Rank Rat",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Rank Rat — each opponent discards a card", func(g *game.Game, item *game.StackItem) error {
-				for _, opp := range NewContext(g, item).Opponents() {
-					g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: opp, Source: item.SourceCardID, N: 1})
-				}
-				return nil
-			}),
+			WhenThisEnters("Rank Rat — each opponent discards a card", eachOpponentDiscardsACard),
 		},
 	})
 }

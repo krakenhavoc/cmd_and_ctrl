@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Riptide Laboratory — Land (EDHREC rank 1771):
 //
 //	"{T}: Add {C}.
@@ -25,14 +23,7 @@ func init() {
 			Label:   "{1}{U}, {T}: Return target Wizard you control to its owner's hand.",
 			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
 			Targets: TargetPermanent("target Wizard you control", YouControl(), HasSubtype("Wizard")),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return BounceToHand{Target: id}.Apply(ctx)
-			},
+			Effect:  bounceFirstLegalTargetCard,
 		}},
 	})
 }
