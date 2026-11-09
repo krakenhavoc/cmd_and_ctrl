@@ -527,3 +527,61 @@ func TestUnyaroChaosMakesTwoKnights(t *testing.T) {
 		t.Errorf("%d Knights, want 2", n)
 	}
 }
+
+var planeValorsReach = planeFixture{"61b5984a-de6a-4d5a-8b20-e2fb3b553a34", "Valor's Reach", "Plane — Kylem"}
+
+func TestValorsReachDoubleStrikesExactlyTwoAttackersOnce(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeValorsReach)
+	for _, n := range []int{1, 2, 3} {
+		g, plane := newPlaneGame(t, planeValorsReach)
+		advanceToMain(t, g)
+		me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+		var ids []uuid.UUID
+		for i := 0; i < n; i++ {
+			ids = append(ids, pushVanillaCreature(g, me.ID, "Bear", 2, 2))
+		}
+		pr7bAttack(t, g, opp.ID, ids...)
+		passPriorityAroundTable(t, g)
+		for _, id := range ids {
+			if got, want := hasEffectiveKeyword(t, g, id, "double strike"), n == 2; got != want {
+				t.Errorf("%d attackers: double strike %v, want %v", n, got, want)
+			}
+		}
+		_ = plane
+	}
+}
+
+func TestValorsReachChaosUntapsAndAddsCombatInAMainPhase(t *testing.T) {
+	g, _ := newPlaneGame(t, planeValorsReach)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	a := pushVanillaCreature(g, me.ID, "A", 2, 2)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == a {
+				g.Battlefield.Cards[i].Tapped = true
+			}
+		}
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, a)
+	passPriorityAroundTable(t, g)
+	if tapped := tmtB1Card(t, g, a).Tapped; tapped {
+		t.Error("the creature was not untapped")
+	}
+	// Combat, then the added combat and the added main phase.
+	combats := 0
+	for i := 0; i < 40 && g.Turn.Step != game.StepEnd; i++ {
+		if g.Turn.Step == game.StepBeginCombat {
+			combats++
+		}
+		finishBlockDeclarations(t, g)
+		if _, err := g.AdvanceStep(); err != nil {
+			break
+		}
+	}
+	if combats != 2 {
+		t.Errorf("%d combat phases this turn, want 2", combats)
+	}
+}
