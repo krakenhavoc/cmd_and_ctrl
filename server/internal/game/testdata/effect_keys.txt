@@ -368,6 +368,7 @@ body weeping-angel/owner-shuffles-it-in
 body wicks-patrol/shrink
 body wildborn-preserver/counters
 body winter-tormented-loner/edict
+body wishing-well/free-cast
 body wolf-in-blank-clothing/shrink
 body yathan-roadwatcher/return
 body yunas-whistle/counters
@@ -396,6 +397,7 @@ choose choose-cards/alpharael-discard-two-unless-artifact
 choose choose-cards/amass-army
 choose choose-cards/aminatous-augury-land
 choose choose-cards/amys-home-exile
+choose choose-cards/another-round-picked
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/armored-skyhunter-attach
@@ -537,6 +539,7 @@ choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/kastral-put-bird
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
@@ -614,6 +617,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-enchantment-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
+choose choose-cards/lively-dirge-return
 choose choose-cards/living-wish-take
 choose choose-cards/london-mulligan-bottom
 choose choose-cards/mad-wizards-lair-cast
@@ -687,6 +691,7 @@ choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
+choose choose-cards/one-last-job-host
 choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
 choose choose-cards/orphans-of-the-wheat-tap
@@ -1091,6 +1096,7 @@ confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
+confirm may/alania-divergent-storm-draw-and-copy
 confirm may/carpet-of-flowers-add-mana
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
@@ -1227,6 +1233,7 @@ option option-pick/gluntch-the-bestower-first
 option option-pick/gluntch-the-bestower-second
 option option-pick/gluntch-the-bestower-third
 option option-pick/hidden-strings-tap-or-untap
+option option-pick/highway-robbery-cost
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
 option option-pick/kharn-the-betrayer-opponent
@@ -1588,6 +1595,7 @@ run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/grab-the-reins-damage
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
+run prompt-run/hollow-marauder-draws
 run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
@@ -1775,6 +1783,7 @@ tail aminatous-augury/after-mill
 tail anchor-to-reality/scry-if-cheaper
 tail ancient-adamantoise/after-exile
 tail animists-awakening/rest-then-untap
+tail another-round/after-return
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail archdruids-charm/bite
@@ -2029,6 +2038,7 @@ tail extraction-family/after-exile
 tail eye-of-jace/graveyard-check
 tail fabled-passage/untap-that-land
 tail fang-rokus-companion/spirit
+tail fecund-greenshell/land-declined-into-hand
 tail fell-gravship/after-mill
 tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
@@ -2056,6 +2066,7 @@ tail forum-filibuster/inkling-created
 tail fractal-harness/attach
 tail fractal-harness/fractal-created
 tail fractured-identity/after-exile
+tail freestrider-lookout/rest-on-bottom
 tail from-the-catacombs/exile-instead
 tail furygale-flocking/attack-that-opponent-and-haste
 tail furygale-flocking/bind-tagged-tokens
@@ -2419,6 +2430,7 @@ tail then/abdel-adrian-exiled-one
 tail then/addle-color-chosen
 tail then/ajanis-last-stand-avatar
 tail then/ancient-vendetta-named
+tail then/another-round-return
 tail then/arcum-dagsson-search
 tail then/aven-interrupter-plot
 tail then/balduvian-shaman-gains
@@ -2489,6 +2501,7 @@ tail then/harmonized-crescendo-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
+tail then/highway-robbery-draw-two
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
 tail then/iron-man-titan-of-innovation-sacrificed

@@ -124,6 +124,11 @@ const (
 	// FootprintCondNoSpellsCast: the item's controller cast no spells
 	// this turn (Edgar). No step in the vocabulary casts a spell.
 	FootprintCondNoSpellsCast FootprintCond = "no_spells_cast"
+	// FootprintCondSpellsCast: the item's controller has cast N or more
+	// spells this turn (Loan Shark's "if you've cast two or more spells
+	// this turn"). The turn's cast tally only rises, and no step in the
+	// vocabulary casts a spell.
+	FootprintCondSpellsCast FootprintCond = "spells_cast"
 	// FootprintCondNoSpellsCastFromHand: the item's controller cast no
 	// spell from their hand this turn (#5235, Outlaws of Thunder
 	// Junction). No step in the vocabulary casts a spell.
@@ -800,6 +805,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).Total == 0
 	case FootprintCondNoSpellsCastFromHand:
 		return g.CastTallyFor(you).FromHand() == 0
+	case FootprintCondSpellsCast:
+		return g.CastTallyFor(you).Total >= atLeast
 	case FootprintCondCastSpellMV:
 		return g.CastTallyFor(you).MaxManaValue >= s.N
 	case FootprintCondAttacked:
@@ -1413,6 +1420,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
 	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true,
+	ModCantBeBlockedByMoreThan: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects

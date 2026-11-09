@@ -107,6 +107,9 @@ func TestAMonotoneConditionReadsNothingOnceItHolds(t *testing.T) {
 			f.g.TurnTally.SacrificedCardTypes = map[string]int{subtypeTallyKey(f.me.ID, "artifact"): 1}
 		}},
 		{"the city's blessing", cond(FootprintCondCitysBlessing, 0), func(f condFixture) { f.me.CitysBlessing = true }},
+		{"spells cast", cond(FootprintCondSpellsCast, 2), func(f condFixture) {
+			f.g.SpellsCastThisTurn = map[uuid.UUID]CastTally{f.me.ID: {Total: 2}}
+		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			f := newCondFixture(t)

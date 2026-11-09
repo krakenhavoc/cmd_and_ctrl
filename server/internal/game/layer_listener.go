@@ -438,7 +438,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if attackingStatusStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
-	case EventScry, EventSurveil, EventDealDamage, EventBlock:
+	case EventScry, EventSurveil, EventDealDamage, EventBlock, EventDrawCard:
 		// StaticAbility.DependsOnEvents: "has this happened this turn"
 		// and "is it blocking" have a new answer the moment the event
 		// is in the log. Gated, so a table with no such permanent pays
