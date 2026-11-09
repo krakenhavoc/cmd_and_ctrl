@@ -23,6 +23,8 @@ const (
 	sb11PriestOracle      = "3a38bf69-511f-4851-870f-8a65641d832e"
 	sb11RoadwatcherOracle = "0c3d86b6-5dcd-4016-9b4a-d4f66b1e963f"
 	sb11HellkiteOracle    = "2a3b29c3-f69d-4671-8907-600d21528153"
+	sb11CallOracle        = "3ceb23f5-abb1-4569-a1e4-1eed9a9babcf"
+	sb11SarkhanOracle     = "71cb48e2-2328-471c-a04a-7b6461f378f4"
 	sb11DeathBegetsOracle = "53e86135-3b24-4618-bcc0-af4d81e672dd"
 )
 
@@ -627,6 +629,189 @@ func TestSb11MagmaticHellkiteSearchHappensEvenIfTheLandIsIndestructible(t *testi
 	answerSearchByID(t, g, opp.ID, swamp)
 	if !g.Battlefield.Contains(swamp) {
 		t.Error("the basic land did not enter")
+	}
+}
+
+// --- Call the Spirit Dragons -------------------------------------------------
+
+func sb11CallTable(t *testing.T) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Call the Spirit Dragons", "Enchantment", sb11CallOracle, false)
+	return g, me
+}
+
+func sb11Dragon(g *game.Game, owner uuid.UUID, name string, colors ...string) uuid.UUID {
+	return b21Push(g, owner, name, "Creature — Dragon", "", 3, 3, colors...)
+}
+
+func TestSb11CallTheSpiritDragonsGivesDragonsIndestructible(t *testing.T) {
+	g, me := sb11CallTable(t)
+	opp := g.Seats[0]
+	mine := sb11Dragon(g, me.ID, "Mine", "R")
+	theirs := sb11Dragon(g, opp.ID, "Theirs", "R")
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	if !hasEffectiveKeyword(t, g, mine, "indestructible") {
+		t.Error("a Dragon you control is indestructible")
+	}
+	if hasEffectiveKeyword(t, g, theirs, "indestructible") || hasEffectiveKeyword(t, g, bear, "indestructible") {
+		t.Error("an opponent's Dragon and a non-Dragon get nothing")
+	}
+}
+
+func TestSb11CallTheSpiritDragonsWinsWithCountersOnFiveDifferentDragons(t *testing.T) {
+	g, me := sb11CallTable(t)
+	var dragons []uuid.UUID
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		dragons = append(dragons, sb11Dragon(g, me.ID, "Dragon "+c, c))
+	}
+	advanceToUpkeepOf(t, g, 1)
+	passPriorityAroundTable(t, g)
+	for _, d := range dragons {
+		if countersOn(g, d, game.CounterPlusOne) != 1 {
+			t.Error("a Dragon did not get its counter")
+		}
+	}
+	if g.State != game.StateEnded {
+		t.Error("counters on five Dragons did not win the game")
+	}
+}
+
+func TestSb11CallTheSpiritDragonsOneFiveColorDragonGetsFiveCountersAndNoWin(t *testing.T) {
+	g, me := sb11CallTable(t)
+	d := sb11Dragon(g, me.ID, "Spirit", "W", "U", "B", "R", "G")
+	advanceToUpkeepOf(t, g, 1)
+	passPriorityAroundTable(t, g)
+	if got := countersOn(g, d, game.CounterPlusOne); got != 5 {
+		t.Errorf("%d counters, want 5: one for each colour", got)
+	}
+	if g.State == game.StateEnded {
+		t.Error("five counters on one Dragon won the game")
+	}
+}
+
+func TestSb11CallTheSpiritDragonsAsksWhichOfTwoSameColorDragonsGetsTheCounter(t *testing.T) {
+	g, me := sb11CallTable(t)
+	a := sb11Dragon(g, me.ID, "Red A", "R")
+	b := sb11Dragon(g, me.ID, "Red B", "R")
+	green := sb11Dragon(g, me.ID, "Green", "G")
+	advanceToUpkeepOf(t, g, 1)
+	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("no prompt for the two red Dragons")
+	}
+	if countersOn(g, green, game.CounterPlusOne) != 0 {
+		t.Error("green comes after red in the walk, its counter waits for the red answer")
+	}
+	answerChooseCards(t, g, me.ID, b)
+	passPriorityAroundTable(t, g)
+	if countersOn(g, b, game.CounterPlusOne) != 1 || countersOn(g, a, game.CounterPlusOne) != 0 {
+		t.Error("the chosen red Dragon, and only it, got the counter")
+	}
+	if countersOn(g, green, game.CounterPlusOne) != 1 {
+		t.Error("the green Dragon got no counter")
+	}
+}
+
+// --- Sarkhan, Dragon Ascendant ------------------------------------------------
+
+func sb11CastSarkhan(t *testing.T, g *game.Game) uuid.UUID {
+	t.Helper()
+	id := castCatalogSpell(t, g, "Sarkhan, Dragon Ascendant", "Legendary Creature — Human Druid", sb11SarkhanOracle, nil)
+	passPriorityAroundTable(t, g)
+	return id
+}
+
+func TestSb11SarkhanBeholdsADragonYouControlForATreasure(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	dragon := sb11Dragon(g, me.ID, "Dragon", "R")
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	sb11CastSarkhan(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("no behold prompt")
+	}
+	answerChooseCards(t, g, me.ID, dragon)
+	if got := len(battlefieldIDsNamed(g, "Treasure")); got != 1 {
+		t.Errorf("%d Treasures, want 1", got)
+	}
+}
+
+func TestSb11SarkhanBeholdsADragonCardInHandAndRevealsIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	hand := handSpell(me, "Hand Dragon", "Creature — Dragon", "{4}{R}")
+	handSpell(me, "Hand Bear", "Creature — Bear", "{1}{G}")
+	sb11CastSarkhan(t, g)
+	if chooseCardsChoiceFor(g, me.ID) == nil {
+		t.Fatal("no behold prompt")
+	}
+	answerChooseCards(t, g, me.ID, hand)
+	if got := len(battlefieldIDsNamed(g, "Treasure")); got != 1 {
+		t.Errorf("%d Treasures, want 1", got)
+	}
+	revealed := false
+	for _, ev := range g.Events {
+		if ev.Kind == game.EventRevealCards && ev.CardID == hand {
+			revealed = true
+		}
+	}
+	if !revealed {
+		t.Error("the Dragon card from hand was not revealed")
+	}
+	if !me.Hand.Contains(hand) {
+		t.Error("beholding moved the card out of the hand")
+	}
+}
+
+func TestSb11SarkhanDecliningOrHavingNoDragonMakesNoTreasure(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	dragon := sb11Dragon(g, me.ID, "Dragon", "R")
+	_ = dragon
+	sb11CastSarkhan(t, g)
+	if chooseCardsChoiceFor(g, me.ID) == nil {
+		t.Fatal("no behold prompt")
+	}
+	answerChooseCards(t, g, me.ID)
+	if got := len(battlefieldIDsNamed(g, "Treasure")); got != 0 {
+		t.Errorf("%d Treasures after declining", got)
+	}
+	g2 := newCatalogGame(t)
+	sb11CastSarkhan(t, g2)
+	if chooseCardsChoiceFor(g2, g2.Seats[0].ID) != nil {
+		t.Error("nothing to behold: no prompt expected")
+	}
+}
+
+func TestSb11SarkhanGrowsAndBecomesAFlyingDragonWhenADragonEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	sarkhan := b12Push(g, me.ID, "Sarkhan, Dragon Ascendant", "Legendary Creature — Human Druid", sb11SarkhanOracle, 2, 2)
+	if hasEffectiveKeyword(t, g, sarkhan, "flying") {
+		t.Fatal("setup: Sarkhan flies before a Dragon entered")
+	}
+	castCatalogSpell(t, g, "Spark Dragon", "Creature — Dragon", "", nil)
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	if got := countersOn(g, sarkhan, game.CounterPlusOne); got != 1 {
+		t.Errorf("%d +1/+1 counters, want 1", got)
+	}
+	if !hasEffectiveKeyword(t, g, sarkhan, "flying") {
+		t.Error("Sarkhan has no flying")
+	}
+	if !layeredCard(t, g, sarkhan).HasSubtype("Dragon") {
+		t.Error("Sarkhan is not a Dragon")
+	}
+	endTurn(t, g)
+	if hasEffectiveKeyword(t, g, sarkhan, "flying") || layeredCard(t, g, sarkhan).HasSubtype("Dragon") {
+		t.Error("the type and flying should end with the turn")
+	}
+	if got := countersOn(g, sarkhan, game.CounterPlusOne); got != 1 {
+		t.Errorf("the counter is permanent: %d", got)
 	}
 }
 
