@@ -361,6 +361,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// artifact creature that stops being a creature when an opponent
 	// casts a creature spell.
 	printedAlienAngelToken,
+
+
+	// Pinnacle Emissary's Drone: flying, and it can block only creatures
+	// with flying (Edge of Eternities, #4461).
+	printedDroneBlockerToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
