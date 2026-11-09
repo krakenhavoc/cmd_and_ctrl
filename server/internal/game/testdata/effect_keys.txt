@@ -2110,6 +2110,7 @@ tail mass/starfall-invocation-return
 tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
+tail mass/whiptongue-hydra-counters
 tail mass/worlds-within-worlds-exiled
 tail mechanical-mobster/connive
 tail mechanized-production/check-win
