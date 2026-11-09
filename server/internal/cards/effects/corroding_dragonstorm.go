@@ -32,12 +32,7 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 			}, "Corroding Dragonstorm — return this enchantment to its owner's hand",
-				Do(Instruction(func(ctx *Context) error {
-					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return BounceToHand{Target: ctx.Item.SourceCardID}.Apply(ctx)
-				}))),
+				Do(Instruction(stdB9ReturnThisToHand))),
 		},
 	})
 }
