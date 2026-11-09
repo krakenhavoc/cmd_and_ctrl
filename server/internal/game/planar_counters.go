@@ -39,6 +39,11 @@ func (g *Game) PutCountersOnFaceUpPlanarCardForEffect(id uuid.UUID, kind string,
 				c.Counters = map[string]int{}
 			}
 			c.Counters[kind] += n
+			// The counters are announced like any others (Aretopolis's "when it
+			// has ten or more scroll counters" watches this): Amount is the new
+			// total, as for a permanent's.
+			total := c.Counters[kind]
+			defer g.EmitEvent(Event{Kind: EventCounterPlaced, Target: id, Label: kind, Amount: total})
 		}
 		return c.Counters[kind], true
 	}

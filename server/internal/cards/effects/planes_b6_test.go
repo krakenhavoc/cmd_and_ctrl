@@ -734,3 +734,32 @@ func TestAkoumChaosDestroysAnUnenchantedCreature(t *testing.T) {
 		}
 	})
 }
+
+var planeAretopolis = planeFixture{"d6ab4159-e04e-4991-8a9b-9da302c98e9d", "Aretopolis", "Plane — Kephalai"}
+
+func TestAretopolisScrollsGainLifeDrawCardsAndPlaneswalkAtTen(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeAretopolis)
+	g, _ := newPlaneGame(t, planeAretopolis)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	life := me.Life
+	planeswalkToPlane(t, g, planeAretopolis.Oracle)
+	passPriorityAroundTable(t, g)
+	if got := me.Life - life; got != 1 {
+		t.Fatalf("gained %d life on the first scroll counter, want 1", got)
+	}
+	hand := me.Hand.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("drew %d with two scroll counters, want 2", got)
+	}
+	// Eight more counters bring it to ten: it planeswalks away.
+	for i := 0; i < 8; i++ {
+		rollChaos(t, g, me.ID)
+		passPriorityAroundTable(t, g)
+	}
+	if _, ok := faceUpPlane(g, planeAretopolis.Oracle); ok {
+		t.Error("Aretopolis stayed face up with ten scroll counters")
+	}
+}
