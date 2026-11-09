@@ -722,6 +722,7 @@ choose choose-cards/return-chosen-from-graveyard
 choose choose-cards/return-picked-to-hand
 choose choose-cards/ring-bearer
 choose choose-cards/rinoa-angel-wing-return
+choose choose-cards/rip-spawn-hunter-different-powers
 choose choose-cards/ripples-of-potential-phase-out
 choose choose-cards/rishkars-expertise-cast
 choose choose-cards/roads-go-ever-ever-on-put-in-hand
