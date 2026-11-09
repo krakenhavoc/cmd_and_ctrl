@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -40,5 +42,19 @@ func finB3LoreCounterOnTheModesTarget(delta int) func(*game.StackItem, *Context,
 			return nil
 		}
 		return AddCounter{Target: t.ID, Kind: game.CounterLore, N: delta}.Apply(ctx)
+	}
+}
+
+// finB3CreaturesYouControl is a ChoosePermanents candidate walk over the
+// chooser's own creatures, bounded min..max.
+func finB3CreaturesYouControl(min, max int) func(*game.Game, uuid.UUID) ([]uuid.UUID, int, int) {
+	return func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+		var out []uuid.UUID
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.Controller == of && c.IsCreature() {
+				out = append(out, c.InstanceID)
+			}
+		}
+		return out, min, max
 	}
 }

@@ -97,18 +97,10 @@ func sidequestBlitzballAttach(ctx *Context) error {
 		return nil
 	}
 	return ChoosePermanents{
-		Question: "Sidequest: Play Blitzball — attach the Equipment to a creature you control",
-		Keyed:    sidequestBlitzballAttached,
-		Carry:    []uuid.UUID{ctx.Source()},
-		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-			var out []uuid.UUID
-			for _, c := range g.BattlefieldCardsForEffect() {
-				if c.Controller == of && c.IsCreature() {
-					out = append(out, c.InstanceID)
-				}
-			}
-			return out, 1, 1
-		},
+		Question:   "Sidequest: Play Blitzball — attach the Equipment to a creature you control",
+		Keyed:      sidequestBlitzballAttached,
+		Carry:      []uuid.UUID{ctx.Source()},
+		Candidates: finB3CreaturesYouControl(1, 1),
 	}.Apply(ctx)
 }
 

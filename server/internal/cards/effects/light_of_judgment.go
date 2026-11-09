@@ -26,13 +26,8 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		Purpose:      ForTargets(DamageToTarget(0, 6)),
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: id, Amount: 6}.Apply(ctx)
-			}),
+			// Heated Argument's first sentence: 6 damage to the still-legal target.
+			Instruction(socB26HeatedArgumentDamage),
 			Instruction(func(ctx *Context) error {
 				id, ok := b16FirstLegalTargetCard(ctx)
 				if !ok {
