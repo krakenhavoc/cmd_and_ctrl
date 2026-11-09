@@ -37,6 +37,7 @@ var (
 	planePrahv       = planeFixture{"34a31865-b701-4ce1-8912-29fc41ecdda3", "Prahv", "Plane — Ravnica"}
 	planeMaelstrm    = planeFixture{"e28deac5-d3c4-48e9-974c-093e3122f317", "The Maelstrom", "Plane — Alara"}
 	planeQuicksilver = planeFixture{"53517dbf-7b32-423a-af76-afd39b876a1a", "Quicksilver Sea", "Plane — Mirrodin"}
+	planeSkybreen    = planeFixture{"61006acf-de38-420b-ab7a-685fbd64141c", "Skybreen", "Plane — Kaldheim"}
 	planeOrzhova     = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -946,5 +947,52 @@ func TestQuicksilverSeaChaosPlaysTheTopCardAndOtherwiseLeavesItOnTop(t *testing.
 	}
 	if top, _ := me.Library.Top(); top.InstanceID != bauble || me.Hand.Contains(bauble) {
 		t.Error("a declined spell is not still on top of the library")
+	}
+}
+
+// --- Skybreen ----------------------------------------------------------------
+
+func skybreenHand(g *game.Game, p *game.Player, name, typeLine string) uuid.UUID {
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		p.Hand.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: typeLine, ManaCost: "{0}", Owner: p.ID, Controller: p.ID})
+	})
+	return id
+}
+
+func TestSkybreenStopsSpellsSharingATypeWithAnyLibrarysTopCard(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeSkybreen)
+	g, _ := newPlaneGame(t, planeSkybreen)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	maelstromTop(g, me, "Top Rock", "Artifact")
+	maelstromTop(g, opp, "Top Bolt", "Instant")
+	rock := skybreenHand(g, me, "Hand Rock", "Artifact")
+	bear := skybreenHand(g, me, "Hand Bear", "Creature — Bear")
+	if err := g.CastSpell(me.ID, rock, game.CastSpellParams{}); err == nil {
+		t.Error("an artifact spell was cast with an artifact on top of a library")
+	}
+	g.WithWriteLock(func() { _ = g.MillNForEffect(opp.ID, 1) })
+	maelstromTop(g, opp, "Top Bolt Two", "Instant")
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{}); err != nil {
+		t.Errorf("a creature spell was stopped: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if err := g.CastSpell(me.ID, skybreenHand(g, me, "Hand Bolt", "Instant"), game.CastSpellParams{}); err == nil {
+		t.Error("an instant spell was cast with an instant on top of another player's library")
+	}
+}
+
+func TestSkybreenChaosCostsLifeForTheHandSize(t *testing.T) {
+	g, _ := newPlaneGame(t, planeSkybreen)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	life, hand := opp.Life, opp.Hand.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-hand {
+		t.Errorf("life %d, want %d", opp.Life, life-hand)
 	}
 }

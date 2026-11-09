@@ -120,6 +120,16 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 			out = v
 		}
 	}
+	// ADR 0216 §6, CR 901.7: a face-up plane's "players play with the top
+	// card of their libraries revealed" (Skybreen, Windriddle Palaces)
+	// functions from the command zone and reaches every library.
+	if g.Planechase != nil && g.PlanarFaceUp != nil {
+		for i := range g.PlanarFaceUp.Cards {
+			if key := catalogAbilityKeyOf(&g.PlanarFaceUp.Cards[i]); key != "" && CatalogLibraryTopVisible(key) == LibraryTopRevealedEachPlayer {
+				return LibraryTopRevealed
+			}
+		}
+	}
 	return out
 }
 
