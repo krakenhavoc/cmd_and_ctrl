@@ -202,6 +202,7 @@ body leyline-tyrant/damage
 body lichs-relic/destroy
 body lithobraking/damage-each-creature
 body lockjaw/unblockable
+body long-river-lurker/flicker-that-creature
 body ltb/sacrifice-the-source
 body madness/graveyard-if-not-cast
 body madness/offer
@@ -894,6 +895,7 @@ condition caveat-h2/vizkopa-guildmage-you-gain-life
 condition clone-saga/named-creature-combat-damage-to-player
 condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
+condition combat/that-creature-dealt-combat-damage
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
 condition combat/your-creature-hit-the-player

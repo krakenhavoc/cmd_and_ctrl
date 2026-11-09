@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // std_b27_helpers.go — shared pieces of the Standard leftovers redo set
 // (feat/std-redo-27).
@@ -55,4 +59,22 @@ func printedVrenRatToken() tokenTemplate {
 		}},
 		Text: "This token gets +1/+1 for each other Rat you control.",
 	}
+}
+
+// --- "exile it, then return it" for a creature that dealt combat damage ----
+
+// stdB27FlickerObject is "exile it. If you do, return it to the battlefield
+// under its owner's control" (Long River Lurker, Gossip's Talent) for the
+// creature `ref` names: the Flicker primitive, done only when that very
+// object is still on the battlefield. A creature that left and came back is
+// a new object (CR 400.7) the trigger knows nothing of, so it is left alone.
+func stdB27FlickerObject(ctx *Context, ref game.ObjectRef) error {
+	if ref.ID == uuid.Nil || !onBattlefield(ctx.Game, ref.ID) {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(ref.ID)
+	if !ok || c.ObjectEpoch != ref.Epoch {
+		return nil
+	}
+	return Flicker{Target: ref.ID, Controller: c.Owner}.Apply(ctx)
 }
