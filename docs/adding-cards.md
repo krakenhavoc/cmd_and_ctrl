@@ -65,6 +65,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Cumulative upkeep (#567, CR 702.24)](#cumulative-upkeep-567-cr-70224)
   - [Echo (ADR 0108 §5, #1888, CR 702.30)](#echo-adr-0108-5-1888-cr-70230)
   - [The CR 732 loop breaker (#628)](#the-cr-732-loop-breaker-628)
+  - ["The first time counters are put on it this turn", "the exiled card" and "during your end step" (#4463)](#the-first-time-counters-are-put-on-it-this-turn-the-exiled-card-and-during-your-end-step-4463)
   - [Untapping in another player's untap step (#74)](#untapping-in-another-players-untap-step-74)
   - [Phasing (#1199, CR 702.26)](#phasing-1199-cr-70226)
   - [Adding a preparation card (S46+, ADR 0090)](#adding-a-preparation-card-s46-adr-0090)
@@ -9848,6 +9849,36 @@ tapped). Two seams sit on top:
   for "the first time it has become tapped this turn" (Captain America, Living
   Legend). It counts the `EventTapCard` and the attack that tapped; a permanent
   that enters tapped, or a regenerating one (no event), is not counted.
+
+### "The first time counters are put on it this turn", "the exiled card" and "during your end step" (#4463)
+
+Three small seams from the Tarkir: Dragonstorm leftovers (Standard batches 9
+and 10), each a few lines.
+
+- **Counters put on an object this turn.** `Game.TimesCountersPutThisTurn(id)`
+  is how many times counters have been put on that OBJECT this turn, in the
+  `TurnTally` (`CountersPut`, keyed by `ObjectTallyKey(id, epoch, "counters")`,
+  additive within the snapshot version). One count per placement that raised a
+  kind's count: a removal counts nothing, counters a creature enters with count
+  (CR 122.6), and a permanent that left and came back is a new object (CR 400.7).
+  The tally listener runs ahead of the trigger harvester, so a condition reading
+  `== 1` is "if it's the first time counters have been put on it this turn"
+  (Stalwart Successor, the sibling of `TimesBecameTappedThisTurn`). Watch
+  `game.EventCounterPlaced` and keep the counter kind out of the condition.
+- **"The exiled card" for another ability of the same permanent.**
+  `ExileUntil{Linked: true}` stamps the card exiled with this ability of this
+  object (CR 607.2a); the attack trigger reads it with
+  `Game.ExiledWithRowForEffect(game.PermissionCardRef(ref), game.AbilitySlotTriggered, <the exile trigger's Key>)`
+  (Mardu Siegebreaker). `tokenCopyTemplateFromCard` builds a token template from
+  a card as it is, the printed values of a card in exile, where
+  `TokenCopyTemplate` would read a just-departed permanent's last-known copiable
+  values.
+- **A static that reads the current step.** List `game.EventStepBegan` in
+  `StaticAbility.DependsOnEvents` and the layer cache is invalidated as each step
+  begins while the permanent is in play (Zurgo, Thunder's Decree: "during your end
+  step, Warrior tokens you control have 'This token can't be sacrificed'").
+  Without it a sacrifice made as the end step begins reads the previous step's
+  answer for the first object.
 
 ### Untapping in another player's untap step (#74)
 
