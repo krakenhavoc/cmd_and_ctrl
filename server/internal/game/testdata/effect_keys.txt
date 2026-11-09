@@ -1184,6 +1184,7 @@ option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
 option option-pick/change-text-word-replace
 option option-pick/change-text-word-with
 option option-pick/choose-a-door
+option option-pick/choose-creature-type-from-list-as-enters
 option option-pick/choose-first-player-as-enters
 option option-pick/choose-land-type
 option option-pick/choose-option-as-enters
@@ -1468,6 +1469,7 @@ payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/vivis-persistence-return
 payunless pay-unless/voltaic-brawler-pump
+payunless pay-unless/voracious-tome-skimmer-draw
 payunless pay-unless/wandering-archaic-may-copy
 payunless pay-unless/waterbending-lesson-discard
 payunless pay-unless/weapons-vendor-attach
