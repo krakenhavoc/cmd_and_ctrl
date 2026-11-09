@@ -301,6 +301,7 @@ body saruman-of-many-colors/exile-and-copy
 body sauron-the-necromancer/exile-token-unless-ring-bearer
 body searing-blood/3-to-its-controller
 body seasoned-cryomancer/tap-and-stun
+body selfcraft-mechan/counter-and-draw
 body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
@@ -537,6 +538,7 @@ choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
 choose choose-cards/lichs-mastery-exile
+choose choose-cards/lightstall-inquisitor-exile
 choose choose-cards/liliana-dreadhorde-general-keep-artifact
 choose choose-cards/liliana-dreadhorde-general-keep-artifact-battle
 choose choose-cards/liliana-dreadhorde-general-keep-artifact-battle-creature
@@ -684,6 +686,7 @@ choose choose-cards/polygraph-orb-punisher-discarded
 choose choose-cards/populate
 choose choose-cards/port-of-karfell-return
 choose choose-cards/proliferate
+choose choose-cards/pulsar-squadron-ace-take
 choose choose-cards/put-from-hand-on-top-in-any-order
 choose choose-cards/put-from-hand-onto-battlefield
 choose choose-cards/put-from-library-ao-the-dawn-sky-total-mana-value-4
@@ -1016,6 +1019,7 @@ confirm confirm/rysorian-badger-exile
 confirm confirm/sail-into-the-west-embark
 confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
+confirm confirm/selfcraft-mechan-sacrifice
 confirm confirm/sephiroth-cell-counter
 confirm confirm/shirei-return
 confirm confirm/slicer-hired-muscle-hand-over-or-convert
@@ -1326,6 +1330,7 @@ payunless pay-unless/curious-forager-return
 payunless pay-unless/cyclops-superconductor-damage
 payunless pay-unless/digsite-conservator-discover
 payunless pay-unless/divert-change-target
+payunless pay-unless/divert-disaster-lander
 payunless pay-unless/draw-a-card
 payunless pay-unless/echo-sacrifice-or-announce
 payunless pay-unless/eddytrail-hawk-flying
@@ -1503,6 +1508,7 @@ run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
 run prompt-run/cornered-crook-sacrifice
@@ -1585,6 +1591,7 @@ run prompt-run/ruthless-technomancer-treasures
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
 run prompt-run/seize-the-spotlight-gain-control
+run prompt-run/selfcraft-mechan-sacrificed
 run prompt-run/sephiroth-sacrifice-draw
 run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
@@ -2225,6 +2232,7 @@ tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
+tail sacrificed-one/prompt-run/comet-crawler-pump
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
@@ -2360,6 +2368,7 @@ tail then/calamitous-tide-loot
 tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
+tail then/cerebral-download-draw
 tail then/chain-lightning-offer-red-payment
 tail then/chain-of-vapor-offer-chain
 tail then/chain-sacrificed-offer-copy
@@ -2378,6 +2387,7 @@ tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-consultation-named
+tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
 tail then/discard-at-random
 tail then/distant-melody-type-chosen

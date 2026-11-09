@@ -125,7 +125,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, 1, DrawThen{})
+	return g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, 1), DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
@@ -1890,6 +1890,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// A permission's "it gains ..." rider (Serra Paragon) for a
 			// land played through it; zero for anything else.
 			landGains: castGains,
+			// "Each land played this way enters tapped" (Lightstall
+			// Inquisitor): the permission's EntersTapped, seeded on the entry
+			// event as a spell's is, so it enters tapped and is never
+			// tapped afterwards (CR 614.1c).
+			EntersTapped: castGains.entersTapped,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
