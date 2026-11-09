@@ -416,3 +416,14 @@ func offerAnyGraveyardCastWithAnyMana(ctx *Context, target uuid.UUID, sourceName
 	offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), sourceName, game.MayCastKeywordPaidCast, declineLeaveInGraveyard, c.InstanceID)
 	return nil
 }
+
+// anotherCreatureWasSacrificed is Zodiark's "a player sacrifices another
+// creature": any player's EventSacrifice, fired before the creature leaves,
+// of a creature that is not the source.
+func anotherCreatureWasSacrificed(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsCreature()
+}

@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Zodiark, Umbral God — Legendary Creature — God {B}{B}{B}{B}{B}, 5/5
 // (Final Fantasy, #4462):
@@ -33,23 +29,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			TriggerEdict(WhenThisEnters("Zodiark — each player sacrifices half the non-God creatures they control",
 				Do(Instruction(eachPlayerSacrificesHalfTheirNonGodCreatures)))),
-			{
-				Watches: []game.EventKind{game.EventSacrifice},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.CardID == uuid.Nil || ev.CardID == source.InstanceID {
-						return false
-					}
-					c, ok := g.LookupCardForEffect(ev.CardID)
-					return ok && c.IsCreature()
-				},
-				Key: counterLabel,
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if !sourceIsStillThisPermanent(g, item) {
-						return nil
-					}
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-				},
-			},
+			On(game.EventSacrifice, anotherCreatureWasSacrificed, counterLabel,
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }
