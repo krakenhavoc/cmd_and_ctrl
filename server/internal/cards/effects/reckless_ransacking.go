@@ -19,7 +19,7 @@ func init() {
 		Name:         "Reckless Ransacking",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(BenefitUntilEOT(3, 2, 0)),
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 2)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
 			if !ok {
