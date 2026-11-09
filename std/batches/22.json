@@ -1,0 +1,265 @@
+{
+ "batch": 22,
+ "set": [
+  "dsk"
+ ],
+ "cards": [
+  {
+   "name": "Don't Make a Sound",
+   "oracle_id": "f28a373b-4a8d-40a5-ace1-3bbd8489ad36",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter target spell unless its controller pays {2}. If they do, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "49",
+   "set": "dsk"
+  },
+  {
+   "name": "Duskmourn's Domination",
+   "oracle_id": "ebdace8f-8e8e-411b-b1d5-5b27cca7d9fb",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nYou control enchanted creature.\nEnchanted creature gets -3/-0 and loses all abilities.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "50",
+   "set": "dsk",
+   "rulings": [
+    "If the enchanted creature gains an ability after Duskmourn's Domination becomes attached to it, it will keep that ability."
+   ]
+  },
+  {
+   "name": "Fear of Falling",
+   "oracle_id": "00ba96e0-42a7-432a-a500-5e607d75a358",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Enchantment Creature — Nightmare",
+   "oracle_text": "Flying\nWhenever this creature attacks, target creature defending player controls gets -2/-0 and loses flying until your next turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "56",
+   "set": "dsk",
+   "rulings": [
+    "A creature that loses flying due to the effect of Fear of Falling's last ability can still gain flying from the effect of another spell or ability, such as Jump Scare."
+   ]
+  },
+  {
+   "name": "Fear of Impostors",
+   "oracle_id": "628ae0e4-5d54-48a1-a24c-b9c1d862df9d",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment Creature — Nightmare",
+   "oracle_text": "Flash\nWhen this creature enters, counter target spell. Its controller manifests dread. (That player looks at the top two cards of their library, then puts one onto the battlefield face down as a 2/2 creature and the other into their graveyard. If it's a creature card, it can be turned face up any time for its mana cost.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "57",
+   "set": "dsk",
+   "related": [
+    {
+     "name": "Manifest",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A spell that can't be countered is a legal target for Fear of Impostors's last ability. The spell won't be countered when the ability resolves, but its controller will still manifest dread.",
+    "To manifest dread, look at the top two cards of your library. Manifest one (by putting it onto the battlefield face down) and put the other into your graveyard. The card you put onto the battlefield becomes a 2/2 face-down creature with no name, mana cost, creature types, or abilities. It's colorless and has a mana value of 0. Other effects that apply to the permanent can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you can turn a manifested permanent you control face up by revealing that it's a creature card (ignoring any copy effects or type-changing effects that might be applying to it) and paying its mana cost. This is a special action. It doesn't use the stack and can't be responded to.",
+    "If a manifested creature would have disguise or morph if it were face up, you may also turn it face up by paying its disguise or morph cost, as appropriate.",
+    "Unlike a face-down creature that was cast using a disguise or morph ability, a manifested creature may still be turned face up after it loses its abilities if it's a creature card.",
+    "If a double-faced card is manifested, it will be put onto the battlefield face down. While face down, it can't transform. If the front face of the card is a creature card, you can turn it face up by paying its mana cost. If you do, its front face will be up.",
+    "If your library contains only one card when you manifest dread, you'll look at that card and put it onto the battlefield face down. You won't have the option to put it into your graveyard instead. If your library contains no cards when you manifest dread, you won't do anything.",
+    "Some cards in the Duskmourn release have abilities that trigger \"whenever you manifest dread.\" In circumstances where you are instructed to manifest dread but can't perform some or all of the steps of manifesting dread (probably because your library has one or fewer cards in it), these abilities will still trigger.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise or morph ability because it will no longer have that ability (or the associated cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered should remain clear, as well as what ability caused them to be face down. (This includes manifest, disguise, cloak, morph, and a few older effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "If something tries to turn a face-down instant or sorcery card on the battlefield face up, reveal that card to show all players it's an instant or sorcery card. The permanent remains on the battlefield face down. Abilities that trigger when a permanent turns face up won't trigger, because even though you revealed the card, it never turned face up."
+   ]
+  },
+  {
+   "name": "Floodpits Drowner",
+   "oracle_id": "43c69d19-c06c-470a-bdba-a0335ff2d655",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk",
+   "oracle_text": "Flash\nVigilance\nWhen this creature enters, tap target creature an opponent controls and put a stun counter on it.\n{1}{U}, {T}: Shuffle this creature and target creature with a stun counter on it into their owners' libraries.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Flash"
+   ],
+   "collector_number": "59",
+   "set": "dsk",
+   "rulings": [
+    "If the target creature is an illegal target as Floodpits Drowner's last ability tries to resolve, it won't resolve and none of its effects will happen. Floodpits Drowner won't be shuffled into its owner's library."
+   ]
+  },
+  {
+   "name": "Get Out",
+   "oracle_id": "b2f3c27e-b646-4449-901a-8b809cdfa84e",
+   "layout": "normal",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Counter target creature or enchantment spell.\n• Return one or two target creatures and/or enchantments you own to your hand.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "60",
+   "set": "dsk",
+   "rulings": [
+    "Get Out's last mode can target any creatures and/or enchantments you own, including ones controlled by other players."
+   ]
+  },
+  {
+   "name": "Leyline of Transformation",
+   "oracle_id": "cfaa13d6-9992-4223-8bd7-c44046505555",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "If this card is in your opening hand, you may begin the game with it on the battlefield.\nAs this enchantment enters, choose a creature type.\nCreatures you control are the chosen type in addition to their other types. The same is true for creature spells you control and creature cards you own that aren't on the battlefield.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "63",
+   "set": "dsk",
+   "rulings": [
+    "A player's \"opening hand\" is the hand of cards the player has after all players have taken mulligans. If players have any cards in hand that allow actions to be taken with them from a player's opening hand, the starting player takes all such actions first in any order, followed by each other player in turn order. Then the first turn begins.",
+    "To choose a creature type, you must choose an existing creature type, such as Human or Survivor. You can't choose multiple creature types, such as \"Human Survivor.\" Card types such as artifact can't be chosen, nor can subtypes that aren't creature types, such as Kaito, Vehicle, or Treasure.",
+    "Replacement effects that modify creatures of a certain type as they enter will apply after you apply this effect. For example, if Warrior is the chosen creature type and you control Bramblewood Paragon (a creature with \"Each other Warrior creature you control enters with an additional +1/+1 counter on it.\"), a Runeclaw Bear would enter with an additional +1/+1 counter."
+   ]
+  },
+  {
+   "name": "Marina Vendrell's Grimoire",
+   "oracle_id": "096eac52-00c2-4439-b2f3-ff555d15ec88",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact — Book",
+   "oracle_text": "When Marina Vendrell's Grimoire enters, if you cast it, draw five cards.\nYou have no maximum hand size and don't lose the game for having 0 or less life.\nWhenever you gain life, draw that many cards.\nWhenever you lose life, discard that many cards. Then if you have no cards in hand, you lose the game.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "64",
+   "set": "dsk",
+   "rulings": [
+    "You have no maximum hand size regardless of what your life total is."
+   ]
+  },
+  {
+   "name": "The Tale of Tamiyo",
+   "oracle_id": "98a13f7b-ebe7-4a90-a0b9-95dccfff7fa6",
+   "layout": "saga",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after IV.)\nI, II, III — Mill two cards. If two cards that share a card type were milled this way, draw a card and repeat this process.\nIV — Exile any number of target instant, sorcery, and/or Tamiyo planeswalker cards from your graveyard. Copy them. You may cast any number of the copies.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "75",
+   "set": "dsk",
+   "rulings": [
+    "When the first, second, or third chapter ability of The Tale of Tamiyo resolves, the ability will continue until you mill a set of two cards that share no card types or you mill one or fewer cards. You can't just pause the story whenever you want to. (And why would you? It's quite the story.)",
+    "The card types in Magic include artifact, battle, creature, enchantment, instant, kindred, land, planeswalker, and sorcery. Legendary, basic, and snow are supertypes, not card types; Horror and Room are subtypes, not card types.",
+    "You cast the copies while the last chapter ability of The Tale of Tamiyo is resolving and still on the stack. You can't wait to cast them later in the turn.",
+    "Because you're paying the spells' costs, if one of the copied spells has {X} in its mana cost, you may choose its value as normal.",
+    "If you don't want to cast some (or all) of the copies, you may choose not to. Any copies that you didn't cast cease to exist the next time state-based actions are checked."
+   ]
+  },
+  {
+   "name": "Cracked Skull",
+   "oracle_id": "4415b65d-5473-4b19-94f7-e5cf4ce64d5e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, look at target player's hand. You may choose a nonland card from it. That player discards that card.\nWhen enchanted creature is dealt damage, destroy it.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "88",
+   "set": "dsk",
+   "rulings": [
+    "A creature blocked by a creature enchanted with Cracked Skull still needs to assign damage equal to the enchanted creature's toughness (minus any damage already marked on the enchanted creature) before trampling over to a player, planeswalker, or battle."
+   ]
+  }
+ ]
+}

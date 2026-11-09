@@ -1,0 +1,300 @@
+{
+ "batch": 47,
+ "set": [
+  "lci"
+ ],
+ "cards": [
+  {
+   "name": "Deconstruction Hammer",
+   "oracle_id": "ccc2eb6d-21cf-45cf-b4e4-4b2a2517136a",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +1/+1 and has \"{3}, {T}, Sacrifice Deconstruction Hammer: Destroy target artifact or enchantment.\"\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "9",
+   "set": "lci",
+   "rulings": [
+    "If Deconstruction Hammer somehow ends up attached to a creature controlled by a different player, that player won't be able to activate the granted ability, as they can't pay the cost of sacrificing Deconstruction Hammer, a permanent they don't control."
+   ]
+  },
+  {
+   "name": "Fabrication Foundry",
+   "oracle_id": "0bb20c36-689f-4a7c-80b5-a12bda821847",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}: Add {W}. Spend this mana only to cast an artifact spell or activate an ability of an artifact source.\n{2}{W}, {T}, Exile one or more other artifacts you control with total mana value X: Return target artifact card with mana value X or less from your graveyard to the battlefield. Activate only as a sorcery.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "12",
+   "set": "lci"
+  },
+  {
+   "name": "Market Gnome",
+   "oracle_id": "12fa17b2-158e-4d53-897f-81111f912b00",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Gnome",
+   "oracle_text": "When this creature dies, you gain 1 life and draw a card.\nWhen this creature is exiled from the battlefield while you're activating a craft ability, you gain 1 life and draw a card.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "22",
+   "set": "lci",
+   "rulings": [
+    "Market Gnome's last ability will go onto the stack above the craft ability that caused it to trigger. This means you'll gain 1 life and draw a card before the transformed card returns to the battlefield.",
+    "Most of the time, Market Gnome's last ability will trigger because it was exiled as one of the components used in the craft ability. However, in some uncommon cases, the ability will also trigger if Market Gnome is exiled while you're activating mana abilities as part of paying for that craft ability."
+   ]
+  },
+  {
+   "name": "Resplendent Angel",
+   "oracle_id": "2ac93092-1a57-4cf7-8f03-1dca86d5c476",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying\nAt the beginning of each end step, if you gained 5 or more life this turn, create a 4/4 white Angel creature token with flying and vigilance.\n{3}{W}{W}{W}: Until end of turn, this creature gets +2/+2 and gains lifelink.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "32",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Angel",
+     "type_line": "Token Creature — Angel",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Resplendent Angel's triggered ability checks if you gained 5 or more life total during the turn. It doesn't matter if you also lost life or whether your life total is greater than it was at the beginning of the turn. It also doesn't matter whether Resplendent Angel was on the battlefield when any of the life gain happened.",
+    "You don't need to have gained 5 life all at once to satisfy Resplendent Angel's triggered ability.",
+    "If you didn't gain life during the turn before the end step begins, Resplendent Angel's triggered ability won't trigger at all. Gaining life during the end step won't cause the ability to trigger.",
+    "You create only one Angel token, no matter how many times you gained 5 or more life.",
+    "In a Two-Headed Giant game, life gained by your teammate won't satisfy Resplendent Angel's triggered ability, even though it caused your team's life total to increase."
+   ]
+  },
+  {
+   "name": "Thousand Moons Smithy // Barracks of the Thousand",
+   "oracle_id": "32af5f7b-a970-484a-9aff-226749551d32",
+   "layout": "transform",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact // Legendary Artifact Land",
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "39",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Thousand Moons Smithy",
+     "mana_cost": "{2}{W}{W}",
+     "type_line": "Legendary Artifact",
+     "oracle_text": "When Thousand Moons Smithy enters, create a white Gnome Soldier artifact creature token with \"This token's power and toughness are each equal to the number of artifacts and/or creatures you control.\"\nAt the beginning of your first main phase, you may tap five untapped artifacts and/or creatures you control. If you do, transform Thousand Moons Smithy."
+    },
+    {
+     "name": "Barracks of the Thousand",
+     "mana_cost": "",
+     "type_line": "Legendary Artifact Land",
+     "oracle_text": "(Transforms from Thousand Moons Smithy.)\n{T}: Add {W}.\nWhenever you cast an artifact or creature spell using mana produced by Barracks of the Thousand, create a white Gnome Soldier artifact creature token with \"This token's power and toughness are each equal to the number of artifacts and/or creatures you control.\""
+    }
+   ],
+   "related": [
+    {
+     "name": "Gnome Soldier",
+     "type_line": "Token Artifact Creature — Gnome Soldier",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Barracks of the Thousand's triggered ability will resolve before the spell that caused it to trigger.",
+    "The power and toughness of the Gnome Soldier token will change as the number of artifacts and/or creatures you control changes.",
+    "An artifact creature you control counts only once towards the Gnome Soldier's power and toughness.",
+    "The Gnome Soldier's ability will count the Gnome Soldier itself, so it will be at least 1/1."
+   ]
+  },
+  {
+   "name": "Warden of the Inner Sky",
+   "oracle_id": "5268f772-5b42-4b5b-9e57-c32c662a42f3",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "As long as this creature has three or more counters on it, it has flying and vigilance.\nTap three untapped artifacts and/or creatures you control: Put a +1/+1 counter on this creature. Scry 1. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "43",
+   "set": "lci",
+   "rulings": [
+    "You can tap any three untapped artifacts and/or creatures you control, including Warden of the Inner Sky itself and other creatures you haven't controlled continuously since the beginning of your most recent turn, to pay the cost of Warden of the Inner Sky's activated ability."
+   ]
+  },
+  {
+   "name": "Brackish Blunder",
+   "oracle_id": "4ad34f85-a185-458a-a7a1-eb60f7efce5b",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Return target creature to its owner's hand. If it was tapped, create a Map token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\")",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "46",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Map",
+     "type_line": "Token Artifact — Map",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)",
+    "Map tokens are a kind of predefined token. Each one is a colorless artifact with the artifact subtype Map and the ability \"{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as a sorcery.\""
+   ]
+  },
+  {
+   "name": "Sage of Days",
+   "oracle_id": "656fc672-efa5-484a-b5e8-eac262331439",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Wizard",
+   "oracle_text": "When this creature enters, look at the top three cards of your library. You may put one of those cards back on top of your library. Put the rest into your graveyard.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "73",
+   "set": "lci"
+  },
+  {
+   "name": "Aclazotz, Deepest Betrayal // Temple of the Dead",
+   "oracle_id": "fcdfe9d5-2743-4d3e-ab57-bf0f96beaa15",
+   "layout": "transform",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bat God // Land",
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink",
+    "Transform"
+   ],
+   "collector_number": "88",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Aclazotz, Deepest Betrayal",
+     "mana_cost": "{3}{B}{B}",
+     "type_line": "Legendary Creature — Bat God",
+     "oracle_text": "Flying, lifelink\nWhenever Aclazotz attacks, each opponent discards a card. For each opponent who can't, you draw a card.\nWhenever an opponent discards a land card, create a 1/1 black Bat creature token with flying.\nWhen Aclazotz dies, return it to the battlefield tapped and transformed under its owner's control.",
+     "power": "4",
+     "toughness": "4"
+    },
+    {
+     "name": "Temple of the Dead",
+     "mana_cost": "",
+     "type_line": "Land",
+     "oracle_text": "(Transforms from Aclazotz, Deepest Betrayal.)\n{T}: Add {B}.\n{2}{B}, {T}: Transform this land. Activate only if a player has one or fewer cards in hand and only as a sorcery."
+    }
+   ],
+   "related": [
+    {
+     "name": "Bat",
+     "type_line": "Token Creature — Bat",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If a card that isn't a transforming double-faced card is a copy of Aclazotz, Deepest Betrayal, it won't return to the battlefield when it dies.",
+    "The last ability of Temple of the Dead will resolve even if you have two or more cards in hand at that time."
+   ]
+  },
+  {
+   "name": "Another Chance",
+   "oracle_id": "df9cdc11-cb92-46ce-a83d-eb26e3cd004a",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "You may mill two cards. Then return up to two creature cards from your graveyard to your hand. (To mill two cards, put the top two cards of your library into your graveyard.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "90",
+   "set": "lci",
+   "rulings": [
+    "If you don't have at least two cards in your library, you can't choose to mill two cards.",
+    "The creature cards you return to your hand don't have to be any of the cards you milled. They can be cards that were already in your graveyard before you milled."
+   ]
+  }
+ ]
+}

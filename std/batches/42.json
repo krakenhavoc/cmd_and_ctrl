@@ -1,0 +1,314 @@
+{
+ "batch": 42,
+ "set": [
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Slime Against Humanity",
+   "oracle_id": "b53597f4-1a0f-4fa8-9c17-29178cdc4d2b",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 0/0 green Ooze creature token with trample. Put X +1/+1 counters on it, where X is two plus the total number of cards you own in exile and in your graveyard that are Oozes or are named Slime Against Humanity.\nA deck can have any number of cards named Slime Against Humanity.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "177",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Ooze",
+     "type_line": "Token Creature — Ooze",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Slime Against Humanity isn't put into your graveyard until after it finishes resolving, so it doesn't count itself for its own effect.",
+    "If you own face-down cards in exile, they won't count toward the value of X, even if you're allowed to look at them and you know they are Ooze cards or cards named Slime Against Humanity.",
+    "The last ability of Slime Against Humanity lets you ignore the \"four-of\" rule. It doesn't let you ignore format legality. For example, during a Murders at Karlov Manor Limited event, you can't add Slime Against Humanity from your personal collection.",
+    "The last ability of Slime Against Humanity also lets you ignore the \"singleton\" rule in formats like Commander."
+   ]
+  },
+  {
+   "name": "Tunnel Tipster",
+   "oracle_id": "8d0bf685-e521-4d72-acc6-86794f685ce2",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Mole Scout",
+   "oracle_text": "At the beginning of your end step, if a face-down creature entered the battlefield under your control this turn, put a +1/+1 counter on this creature.\n{T}: Add {G}.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "180",
+   "set": "mkm",
+   "rulings": [
+    "Tunnel Tipster's first ability will trigger as long as a face-down creature entered the battlefield under your control this turn, even if that creature has turned face up or left the battlefield since. A creature that enters the battlefield face up and turns face down later in the turn won't cause Tunnel Tipster's first ability to trigger."
+   ]
+  },
+  {
+   "name": "Undergrowth Recon",
+   "oracle_id": "3fbe46fa-88da-439a-994e-c8f1791332a8",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your upkeep, return target land card from your graveyard to the battlefield tapped.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "181",
+   "set": "mkm"
+  },
+  {
+   "name": "Vengeful Creeper",
+   "oracle_id": "d5b7c283-357b-409f-9afc-985a3b89cc40",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Plant Elemental",
+   "oracle_text": "Disguise {5}{G} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this creature is turned face up, destroy target artifact or enchantment an opponent controls.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Disguise"
+   ],
+   "collector_number": "182",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Ill-Timed Explosion",
+   "oracle_id": "6e3b3a3f-e32f-4c72-a9fb-dd1e877876b6",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Draw two cards. Then you may discard two cards. When you do, Ill-Timed Explosion deals X damage to each creature, where X is the greatest mana value among cards discarded this way.",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "207",
+   "set": "mkm",
+   "rulings": [
+    "If a card discarded this way has {X} in its mana cost, X is 0."
+   ]
+  },
+  {
+   "name": "Judith, Carnage Connoisseur",
+   "oracle_id": "e86c965b-ac10-4fff-b682-dddd6d9747c6",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Shaman",
+   "oracle_text": "Whenever you cast an instant or sorcery spell, choose one —\n• That spell gains deathtouch and lifelink.\n• Create a 2/2 red Imp creature token with \"When this token dies, it deals 2 damage to each opponent.\"",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "210",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Imp",
+     "type_line": "Token Creature — Imp",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Judith, Carnage Connoisseur's triggered ability resolves before the spell that caused it to trigger. The ability will resolve even if that spell is countered.",
+    "An instant or sorcery spell with deathtouch must actually deal damage to a creature for it to be destroyed. If the spell instructs another object to deal damage (for example, Hard-Hitting Question), the spell doesn't deal any damage itself and its instance of deathtouch doesn't apply. Dealing 0 damage isn't dealing damage.",
+    "Similarly, an instant or sorcery spell with lifelink must actually deal damage in order to cause its controller to gain life. If the spell instructs another object to deal damage, its controller won't gain life when that damage is dealt."
+   ]
+  },
+  {
+   "name": "Kylox, Visionary Inventor",
+   "oracle_id": "37f6bbb8-2136-4f03-966c-85d72180e71f",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{R}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Lizard Artificer",
+   "oracle_text": "Menace, ward {2}, haste\nWhenever Kylox attacks, sacrifice any number of other creatures, then exile the top X cards of your library, where X is their total power. You may cast any number of instant and/or sorcery spells from among the exiled cards without paying their mana costs.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Haste",
+    "Menace",
+    "Ward"
+   ],
+   "collector_number": "214",
+   "set": "mkm",
+   "rulings": [
+    "Use the power of the sacrificed creatures as they last existed on the battlefield to determine the value of X.",
+    "You choose which spells to cast (if any) as Kylox, Visionary Inventor's last ability resolves. If you choose to cast any spells, you do so as part of the resolution of that ability. You can't wait to cast them later in the turn. Timing restrictions based on the cards' types are ignored.",
+    "If you cast a spell \"without paying its mana cost\", you can't choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, those must be paid to cast the spell.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Leyline of the Guildpact",
+   "oracle_id": "6b2e6a51-b9e6-4848-b7d7-98f02f2b897f",
+   "layout": "normal",
+   "mana_cost": "{G/W}{G/U}{B/G}{R/G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "If this card is in your opening hand, you may begin the game with it on the battlefield.\nEach nonland permanent you control is all colors.\nLands you control are every basic land type in addition to their other types.",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "217",
+   "set": "mkm",
+   "rulings": [
+    "A player's \"opening hand\" is the hand of cards the player has after all players have taken mulligans. If players have any cards in hand that allow actions to be taken with them from a player's opening hand, the starting player takes all such actions first in any order, followed by each other player in turn order. Then the first turn begins.",
+    "Each land you control will have the land types Plains, Island, Swamp, Mountain, and Forest. They'll also have the mana ability of each basic land type (for example, Forests have \"{T}: Add {G}.\"). They'll still have their other subtypes and abilities.",
+    "Giving a land additional basic land types doesn't change its name or whether it's legendary or basic."
+   ]
+  },
+  {
+   "name": "Rakish Scoundrel",
+   "oracle_id": "d69cb63f-98cc-4699-a03d-4f1beeeb7065",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elf Rogue",
+   "oracle_text": "Deathtouch\nWhen this creature enters or is turned face up, target creature gains indestructible until end of turn.\nDisguise {4}{B/G}{B/G} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Disguise",
+    "Deathtouch"
+   ],
+   "collector_number": "225",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Relive the Past",
+   "oracle_id": "dcc51bcb-a61e-471f-8a01-7fcbc069fcba",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{W}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return up to one target artifact card, up to one target land card, and up to one target non-Aura enchantment card from your graveyard to the battlefield. They are 5/5 Elemental creatures in addition to their other types.",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "226",
+   "set": "mkm",
+   "rulings": [
+    "An artifact creature, land creature, or enchantment creature returned this way will be a 5/5 creature and will be an Elemental in addition to its other creature types.",
+    "An Equipment without reconfigure that's also a creature can't be attached to anything. You can activate its equip ability, but it won't become attached.",
+    "If another effect causes one of the returned permanents to become a creature and sets its power and toughness as it does so, that creature will have that power and toughness; it won't be 5/5. Notably, crewing a Vehicle does not set its power and toughness, so a Vehicle will remain a 5/5 creature if you crew it."
+   ]
+  }
+ ]
+}

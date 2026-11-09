@@ -1,0 +1,305 @@
+{
+ "batch": 44,
+ "set": [
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Reenact the Crime",
+   "oracle_id": "ebb88893-427f-496c-82a8-94d2bafb5e4c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile target nonland card in a graveyard that was put there from anywhere this turn. Copy it. You may cast the copy without paying its mana cost.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "297",
+   "set": "mkm",
+   "rulings": [
+    "You cast the copy while Reenact the Crime is resolving and still on the stack. You can't wait to cast it later in the turn.",
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "If you cast a spell \"without paying its mana cost\", you can't choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs, such as that of Demand Answers, those must be paid to cast the card.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "If you don't want to cast the copy, you can choose not to; the copy ceases to exist the next time state-based actions are checked."
+   ]
+  },
+  {
+   "name": "Unauthorized Exit",
+   "oracle_id": "3d145811-adb2-46a4-b173-bf8152e5de48",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Return target nonland permanent to its owner's hand. Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "298",
+   "set": "mkm",
+   "rulings": [
+    "If the target nonland permanent is an illegal target as Unauthorized Exit tries to resolve, it won't resolve and none of its effects will happen. You won't surveil 1."
+   ]
+  },
+  {
+   "name": "Anzrag's Rampage",
+   "oracle_id": "ce690a21-8117-420e-be00-cd6d9923a812",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy all artifacts you don't control, then exile the top X cards of your library, where X is the number of artifacts that were put into graveyards from the battlefield this turn. You may put a creature card exiled this way onto the battlefield. It gains haste. Return it to your hand at the beginning of the next end step.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "303",
+   "set": "mkm",
+   "rulings": [
+    "Anzrag's Rampage counts the number of artifacts that were put into graveyards from the battlefield this turn for any reason, not just ones that were destroyed by Anzrag's Rampage. This includes any artifact tokens that were put into graveyards from the battlefield this turn, such as Clue, Food, and Treasure tokens."
+   ]
+  },
+  {
+   "name": "Worldsoul's Rage",
+   "oracle_id": "3b6ef144-bb98-4686-9718-204f1c3cf020",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Worldsoul's Rage deals X damage to any target. Put up to X land cards from your hand and/or graveyard onto the battlefield tapped.",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "316",
+   "set": "mkm"
+  },
+  {
+   "name": "Kaya, Spirits' Justice",
+   "oracle_id": "0a094c5f-cefb-4ba1-90c8-dd78ae8efe95",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Kaya",
+   "oracle_text": "Whenever one or more creatures you control and/or creature cards in your graveyard are put into exile, you may choose a creature card from among them. Until end of turn, target token you control becomes a copy of it, except it has flying.\n+2: Surveil 2, then exile a card from a graveyard.\n+1: Create a 1/1 white and black Spirit creature token with flying.\n−2: Exile target creature you control. For each other player, exile up to one target creature that player controls.",
+   "loyalty": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "335",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The target token copies the printed values of the card in exile, with the noted exception. It doesn't matter if that card was a copy of something else when it was on the battlefield.",
+    "If a creature card that was exiled is no longer in exile when Kaya, Spirits' Justice's first ability resolves (perhaps because of Pull from Eternity or a similar effect), you can't choose that creature card with that ability.",
+    "You choose all targets for Kaya, Spirits' Justice's last ability."
+   ]
+  },
+  {
+   "name": "Conspiracy Unraveler",
+   "oracle_id": "e4541d02-2860-46ef-b630-1d6307b60766",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Creature — Sphinx Detective",
+   "oracle_text": "Flying\nYou may collect evidence 10 rather than pay the mana cost for spells you cast. (To collect evidence 10, exile cards with total mana value 10 or greater from your graveyard.)",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Collect evidence"
+   ],
+   "collector_number": "341",
+   "set": "mkm",
+   "rulings": [
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "If you cast a spell for another cost \"rather than pay its mana cost\", you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the spell has any mandatory additional costs, such as that of Demand Answers, those must be paid to cast the card.",
+    "If you are casting a spell from your graveyard (for example, a spell with flashback) you can't also exile that card to pay the alternative collect evidence cost offered by Conspiracy Unraveler.",
+    "If you cast a spell with the alternative collect evidence cost offered by Conspiracy Unraveler and you also collect evidence as an additional cost to cast that spell, abilities of permanents that trigger \"whenever you collect evidence\" will trigger twice. This is also true for abilities that trigger \"whenever one or more cards leave your graveyard.\" For example, let's say you control Conspiracy Unraveler and Evidence Examiner. You cast Crimestopper Sprite and choose to collect evidence 10 rather than pay its mana cost. You also choose to collect evidence 6 as an additional cost. Each of these will cause Evidence Examiner's last ability to trigger, and you'll end up investigating twice.",
+    "If a spell has an additional cost that includes collecting evidence, such as that of Analyze the Pollen, any additional effects that occur \"if evidence was collected\" will occur only if that additional cost was paid. Using the alternative cost from Conspiracy Unraveler will not cause those additional effects to occur.",
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Fugitive Codebreaker",
+   "oracle_id": "af2b36ee-2945-41d3-a186-8fd28f3cde16",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Goblin Rogue",
+   "oracle_text": "Prowess, haste\nDisguise {5}{R}. This cost is reduced by {1} for each instant and sorcery card in your graveyard. (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this creature is turned face up, discard your hand, then draw three cards.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Prowess",
+    "Haste",
+    "Disguise"
+   ],
+   "collector_number": "348",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If you have no cards in hand when Fugitive Codebreaker's last ability resolves, you won't discard any cards, but you'll still draw three cards.",
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "The Pride of Hull Clade",
+   "oracle_id": "bbd7b756-bbee-451e-9446-06019791cb36",
+   "layout": "normal",
+   "mana_cost": "{10}{G}",
+   "cmc": 11.0,
+   "type_line": "Legendary Creature — Crocodile Elk Turtle",
+   "oracle_text": "This spell costs {X} less to cast, where X is the total toughness of creatures you control.\nDefender\n{2}{U}{U}: Until end of turn, target creature you control gets +1/+0, gains \"Whenever this creature deals combat damage to a player, draw cards equal to its toughness,\" and can attack as though it didn't have defender.",
+   "power": "2",
+   "toughness": "15",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "352",
+   "set": "mkm",
+   "rulings": [
+    "The first step of casting a spell is to move it to the stack. If this causes the total toughness of creatures you control to change (perhaps because you control a creature whose toughness is determined by the number of cards in your hand), that new toughness will be used to determine the cost reduction.",
+    "Once you determine the cost to cast The Pride of Hull Clade, you may activate mana abilities to pay that cost. If the total toughness of creatures you control changes while activating mana abilities, the cost to cast The Pride of Hull Clade remains what you previously determined.",
+    "The Pride of Hull Clade's mana value doesn't change no matter what the total toughness of creatures you control is.",
+    "The Pride of Hull Clade's cost reduction ability can't reduce the total cost to cast the spell below {G}.",
+    "Once you announce you're casting a spell, no player may take actions until the spell has been paid for. Notably, opponents can't try to reduce the total toughness of creatures you control.",
+    "If the target of The Pride of Hull Clade's last ability deals combat damage to a player but leaves the battlefield before the granted triggered ability resolves, use its toughness as it last existed on the battlefield to determine how many cards to draw."
+   ]
+  },
+  {
+   "name": "Niv-Mizzet, Guildpact",
+   "oracle_id": "46570366-5e58-40b7-b725-833321a3b7b1",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Dragon Avatar",
+   "oracle_text": "Flying, hexproof from multicolored\nWhenever Niv-Mizzet deals combat damage to a player, it deals X damage to any target, target player draws X cards, and you gain X life, where X is the number of different color pairs among permanents you control that are exactly two colors.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Hexproof from",
+    "Hexproof"
+   ],
+   "collector_number": "368",
+   "set": "mkm",
+   "rulings": [
+    "A \"color pair\" is exactly two colors. There are ten color pairs in Magic: white-blue, white-black, blue-black, blue-red, black-red, black-green, red-green, red-white, green-white, and green-blue.",
+    "The value of X is checked only once, as Niv-Mizzet, Guildpact's triggered ability resolves."
+   ]
+  },
+  {
+   "name": "Wispdrinker Vampire",
+   "oracle_id": "6317d45a-fe02-4879-b515-bc5327ecb5ae",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Vampire Rogue",
+   "oracle_text": "Flying\nWhenever another creature you control with power 2 or less enters, each opponent loses 1 life and you gain 1 life.\n{5}{W}{B}: Creatures you control with power 2 or less gain deathtouch and lifelink until end of turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "374",
+   "set": "mkm",
+   "rulings": [
+    "Wispdrinker Vampire's triggered ability checks the power of a creature only at the moment it enters the battlefield. If it enters with counters, those counters are included. If that creature's power is 2 or less when it enters the battlefield but becomes greater than 2 after the ability triggers, each opponent will still lose 1 life and you'll still gain 1 life.",
+    "Wispdrinker Vampire's activated ability affects only creatures you control at the time it resolves. Creatures you begin to control later in the turn won't get deathtouch or lifelink."
+   ]
+  }
+ ]
+}

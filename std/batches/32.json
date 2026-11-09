@@ -1,0 +1,304 @@
+{
+ "batch": 32,
+ "set": [
+  "blb",
+  "otj"
+ ],
+ "cards": [
+  {
+   "name": "Bria, Riptide Rogue",
+   "oracle_id": "d627996b-cbcd-4162-bd13-9ab286de64d1",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Otter Rogue",
+   "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nOther creatures you control have prowess. (If a creature has multiple instances of prowess, each triggers separately.)\nWhenever you cast a noncreature spell, target creature you control can't be blocked this turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Prowess"
+   ],
+   "collector_number": "379",
+   "set": "blb",
+   "rulings": [
+    "Once a prowess ability triggers, causing the creature to lose prowess by removing Bria from the battlefield won’t affect that ability. The creature will still get +1/+1 until end of turn.",
+    "Bria’s last ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered."
+   ]
+  },
+  {
+   "name": "Another Round",
+   "oracle_id": "8095ca78-db19-4724-a6ff-eacc85fa2274",
+   "layout": "normal",
+   "mana_cost": "{X}{X}{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile any number of creatures you control, then return them to the battlefield under their owner's control. Then repeat this process X more times.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "1",
+   "set": "otj",
+   "rulings": [
+    "If X is 0, you’ll perform the process just once when Another Round resolves.",
+    "You don’t have to choose the same set of creatures each time you repeat this process.",
+    "Once an exiled creature returns, it’s considered a new object with no relation to the object that it was. Auras attached to the exiled creature will be put into their owners’ graveyards. Equipment attached to the exiled creature will become unattached and remain on the battlefield. Any counters on the exiled creature will cease to exist.",
+    "If a token is exiled this way, it will cease to exist and won’t return to the battlefield.",
+    "Abilities that trigger “When [this creature] enters the battlefield” or “When [this creature] leaves the battlefield” will trigger each time that creature enters or leaves the battlefield as a result of Another Round’s effect. If those abilities require targets, you won’t choose those targets until after Another Round finishes resolving, when those abilities are put onto the stack.",
+    "All abilities that trigger while Another Round is resolving are put on the stack after Another Round is finished resolving. All such abilities controlled by the player whose turn it is are put on the stack first, then those controlled by the next player in turn order, and so on. For each player, they can put their abilities on the stack in the order of their choice. Abilities don’t have to be put on the stack in the order in which they triggered."
+   ]
+  },
+  {
+   "name": "Archangel of Tithes",
+   "oracle_id": "ff5caed4-0276-476d-8fae-edae2536df7f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying\nAs long as this creature is untapped, creatures can't attack you or planeswalkers you control unless their controller pays {1} for each of those creatures.\nAs long as this creature is attacking, creatures can't block unless their controller pays {1} for each of those creatures.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "2",
+   "set": "otj",
+   "rulings": [
+    "If you control an untapped Archangel of Tithes, your opponents can choose to not attack with a creature that must attack if able. The same is true with respect to an attacking Archangel of Tithes and a creature that must block if able."
+   ]
+  },
+  {
+   "name": "Dust Animus",
+   "oracle_id": "494f8c29-7626-43ed-b0b8-fb9afd4cd5d3",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "Flying\nIf you control five or more untapped lands, this creature enters with two +1/+1 counters and a lifelink counter on it.\nPlot {1}{W} (You may pay {1}{W} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Plot"
+   ],
+   "collector_number": "9",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Plot abilities are written “Plot [cost],” which means “Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.”",
+    "Exiling a card using its plot ability is a special action. Once you announce you’re taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can’t cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you’re casting a plotted card from exile without paying its mana cost, you can’t choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Getaway Glamer",
+   "oracle_id": "98eac0f7-3f4d-46ef-9575-680c52e967cf",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Spree (Choose one or more additional costs.)\n+ {1} — Exile target nontoken creature. Return it to the battlefield under its owner's control at the beginning of the next end step.\n+ {2} — Destroy target creature if no other creature has greater power.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Spree"
+   ],
+   "collector_number": "14",
+   "set": "otj",
+   "rulings": [
+    "No matter which modes you choose, you always follow the instructions in the order they are written.",
+    "You can’t choose the same mode more than once.",
+    "Getaway Glamer’s last mode can target any creature, even a creature that doesn’t have the undisputed greatest power among creatures on the battlefield at that time. The creature’s power is checked only during the resolution of Getaway Glamer and only after you’ve applied the effect of the first mode (if applicable).",
+    "Spells with spree have a + (plus sign) indicator in the upper right corner of the card frame. This has no rules meaning and serves only to remind players that at least one additional cost is required to cast the spell.",
+    "Each additional cost and associated mode in the text box is also preceded with a + indicator. These symbols also have no rules meaning and serve only to remind players that the listed costs are additional costs.",
+    "You must choose at least one of the listed modes and pay its associated additional cost in order to cast a spell with spree.",
+    "You choose the modes as you cast the spell with spree. Once modes are chosen, they can’t be changed.",
+    "If a mode requires a target, you can select that mode only if there’s a legal target available. Ignore the targeting requirements for modes you don’t choose.",
+    "The mana value of a spell with spree is determined only by its mana cost (in the upper right corner of the card). It doesn’t matter which modes you choose or which additional costs you pay, including any additional costs imposed by other effects.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell. Any abilities that trigger won’t be put onto the stack until the spell is done resolving.",
+    "If a spell with spree is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose new modes.",
+    "If all targets for the chosen modes become illegal before a spell with spree resolves, the spell won’t resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets.",
+    "If an effect allows you to cast a spell with spree “without paying its mana cost,” you must still choose at least one mode and pay the associated additional costs."
+   ]
+  },
+  {
+   "name": "Lassoed by the Law",
+   "oracle_id": "9457f3c1-a087-46cd-a8be-cf665466b77c",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield.\nWhen this enchantment enters, create a 1/1 red Mercenary creature token with \"{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.\"",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Mercenary",
+     "type_line": "Token Creature — Mercenary",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If Lassoed by the Law leaves the battlefield before its first triggered ability resolves, the target permanent won’t be exiled at all."
+   ]
+  },
+  {
+   "name": "One Last Job",
+   "oracle_id": "55cba59c-932c-4295-87dc-9179fbdfbd53",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Spree (Choose one or more additional costs.)\n+ {2} — Return target creature card from your graveyard to the battlefield.\n+ {1} — Return target Mount or Vehicle card from your graveyard to the battlefield.\n+ {1} — Return target Aura or Equipment card from your graveyard to the battlefield attached to a creature you control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Spree"
+   ],
+   "collector_number": "22",
+   "set": "otj",
+   "rulings": [
+    "The creature that the Aura or Equipment card returned by the third mode will enter attached to isn’t a target of that mode and is chosen as One Last Job resolves. Notably, if you return a Vehicle with the second mode, you won’t have the opportunity to crew it before having to choose a creature for the third mode. In most cases, it won’t be a creature at that time.",
+    "The Aura or Equipment must be able to be legally attached to the creature you choose. You can’t return an Aura card to the battlefield if there’s nothing to enchant. However, if you control no creatures (and didn’t bring any back with the first two modes), you could return an Equipment card to the battlefield unattached to anything.",
+    "Spells with spree have a + (plus sign) indicator in the upper right corner of the card frame. This has no rules meaning and serves only to remind players that at least one additional cost is required to cast the spell.",
+    "Each additional cost and associated mode in the text box is also preceded with a + indicator. These symbols also have no rules meaning and serve only to remind players that the listed costs are additional costs.",
+    "You must choose at least one of the listed modes and pay its associated additional cost in order to cast a spell with spree.",
+    "You choose the modes as you cast the spell with spree. Once modes are chosen, they can’t be changed.",
+    "If a mode requires a target, you can select that mode only if there’s a legal target available. Ignore the targeting requirements for modes you don’t choose.",
+    "No matter which modes you choose, you always follow the instructions in the order they are written.",
+    "You can’t choose the same mode more than once.",
+    "The mana value of a spell with spree is determined only by its mana cost (in the upper right corner of the card). It doesn’t matter which modes you choose or which additional costs you pay, including any additional costs imposed by other effects.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell. Any abilities that trigger won’t be put onto the stack until the spell is done resolving.",
+    "If a spell with spree is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose new modes.",
+    "If all targets for the chosen modes become illegal before a spell with spree resolves, the spell won’t resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets.",
+    "If an effect allows you to cast a spell with spree “without paying its mana cost,” you must still choose at least one mode and pay the associated additional costs."
+   ]
+  },
+  {
+   "name": "Steer Clear",
+   "oracle_id": "2c22af49-c6ef-4de6-bb84-6b3e99879148",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Steer Clear deals 2 damage to target attacking or blocking creature. Steer Clear deals 4 damage to that creature instead if you controlled a Mount as you cast this spell.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "31",
+   "set": "otj",
+   "rulings": [
+    "If you controlled a Mount as you finished casting Steer Clear, it doesn’t matter whether you still control one as the spell resolves. Steer Clear will still deal 4 damage."
+   ]
+  },
+  {
+   "name": "Double Down",
+   "oracle_id": "60dd4233-ee50-42b8-88f5-ac5d105d83cd",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever you cast an outlaw spell, copy that spell. (Assassins, Mercenaries, Pirates, Rogues, and Warlocks are outlaws. Copies of permanent spells become tokens.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "44",
+   "set": "otj",
+   "rulings": [
+    "Double Down's ability and the copy it creates will resolve before the spell that caused it to trigger. They resolve even if that spell is countered.",
+    "As a copy of a permanent spell resolves, it's put onto the battlefield as a token rather than putting a copy of the spell onto the battlefield. The rules that apply to a permanent spell becoming a permanent apply to a copy of a spell becoming a token.",
+    "The token that a resolving copy of a permanent spell becomes isn't \"created.\" Abilities that refer to a token being created won't interact with the copy resolving.",
+    "If a spell has the kindred card type and one of the outlaw creature types, Double Down will copy it.",
+    "Double Down's ability doesn't trigger if an outlaw permanent is put onto the battlefield without being cast.",
+    "A card, spell, or permanent is an outlaw if it has the Assassin, Mercenary, Pirate, Rogue, or Warlock creature type. It doesn't matter if it has more than one of those creature types; as long as it has at least one, it's an outlaw.",
+    "Outlaw is not a creature type. If an effect asks you to choose a creature type, you can't choose outlaw.",
+    "If an ability refers to an outlaw or whether a player controls an outlaw, it's referring only to permanents with one or more of the creature types specified above. Notably, it's not referring to any spell or card not on the battlefield. However, other abilities may refer to an \"outlaw spell\" or \"outlaw card\" in a zone other than the battlefield. Those abilities refer to spells and cards with one or more of the specified creature types."
+   ]
+  },
+  {
+   "name": "Duelist of the Mind",
+   "oracle_id": "ff78f166-cca2-44bc-abe3-3a338bf543be",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Advisor",
+   "oracle_text": "Flying, vigilance\nDuelist of the Mind's power is equal to the number of cards you've drawn this turn.\nWhenever you commit a crime, you may draw a card. If you do, discard a card. This ability triggers only once each turn.",
+   "power": "*",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "45",
+   "set": "otj",
+   "rulings": [
+    "The ability that defines Duelist of the Mind’s power works in all zones, not just the battlefield.",
+    "A player commits a crime as they cast a spell, activate an ability, or put a triggered ability on the stack that targets at least one opponent, at least one permanent, spell, or ability an opponent controls, and/or at least one card in an opponent’s graveyard.",
+    "The spell or ability that constituted a crime doesn’t have to have resolved yet or at all. As soon as you’re finished casting the spell, activating the ability, or putting the triggered ability on the stack, you’ve committed a crime.",
+    "For example, an ability that triggers when you cast a spell that targets an opponent will trigger at the same time as an ability that triggers whenever you commit a crime. Those abilities can be put on the stack in either order (if you control them both), and they’ll both resolve before the spell that caused them to trigger.",
+    "A player can commit only one crime per spell or ability they control. Targeting multiple opponents, permanents, spells, abilities, and/or cards with the same spell or ability doesn’t constitute committing multiple crimes.",
+    "Changing the target or targets of a spell or ability won’t affect whether or not the controller of that spell or ability has committed a crime. Only the initial targets chosen for that spell or ability are used to determine whether or not its controller committed a crime."
+   ]
+  }
+ ]
+}

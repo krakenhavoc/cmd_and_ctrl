@@ -1,0 +1,373 @@
+{
+ "batch": 53,
+ "set": [
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Icewrought Sentry",
+   "oracle_id": "0828d891-f7c3-4e51-b42e-6ce88d48ac8b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elemental Soldier",
+   "oracle_text": "Vigilance\nWhenever this creature attacks, you may pay {1}{U}. When you do, tap target creature an opponent controls.\nWhenever you tap an untapped creature an opponent controls, this creature gets +2/+1 until end of turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "55",
+   "set": "woe",
+   "rulings": [
+    "Icewrought Sentry's last ability will trigger only when an effect instructs you to tap an opponent's creature. It won't trigger if a spell or ability you control instructs an opponent to tap a creature they control. For example, if you control Tangle Wire and an opponent taps an untapped creature they control as part of the resolution of Tangle Wire's triggered ability, Icewrought Sentry's ability won't trigger."
+   ]
+  },
+  {
+   "name": "Picklock Prankster // Free the Fae",
+   "oracle_id": "22d82f4c-2896-477e-8d20-8fe43acd4ba2",
+   "layout": "adventure",
+   "mana_cost": "{1}{U} // {1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie Rogue // Instant — Adventure",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance",
+    "Mill"
+   ],
+   "collector_number": "64",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Picklock Prankster",
+     "mana_cost": "{1}{U}",
+     "type_line": "Creature — Faerie Rogue",
+     "oracle_text": "Flying, vigilance",
+     "power": "1",
+     "toughness": "3"
+    },
+    {
+     "name": "Free the Fae",
+     "mana_cost": "{1}{U}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Mill four cards. Then put an instant, sorcery, or Faerie card from among the milled cards into your hand."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Adventurer cards aren't instant or sorcery cards while they're in your graveyard. You can't use Free the Fae to put an adventurer card milled with it into your hand unless that card is a Faerie.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Talion's Messenger",
+   "oracle_id": "3a721a4c-696b-44d1-858d-20040bd01909",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Faerie Noble",
+   "oracle_text": "Flying\nWhenever you attack with one or more Faeries, draw a card, then discard a card. When you discard a card this way, put a +1/+1 counter on target Faerie you control.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "73",
+   "set": "woe",
+   "rulings": [
+    "You don't choose a target for Talion's Messenger's ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you discard a card this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Ashiok, Wicked Manipulator",
+   "oracle_id": "67d66678-a8e6-4f80-bade-1f1daf4b0610",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Planeswalker — Ashiok",
+   "oracle_text": "If you would pay life while your library has at least that many cards in it, exile that many cards from the top of your library instead.\n+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.\n−2: Create two 1/1 black Nightmare creature tokens with \"At the beginning of combat on your turn, if a card was put into exile this turn, put a +1/+1 counter on this token.\"\n−7: Target player exiles the top X cards of their library, where X is the total mana value of cards you own in exile.",
+   "loyalty": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "78",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Nightmare",
+     "type_line": "Token Creature — Nightmare",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Ashiok, Wicked Nightmare's first ability isn't optional. You can't choose to pay life instead of exiling cards from the top of your library while you control Ashiok, and you can't split the payment between life and cards.",
+    "If you would pay life while you control Ashiok and your library does not have at least that many cards in it, you'll just pay life as normal.",
+    "Ashiok's first ability doesn't allow you to attempt to pay an amount of life greater than your current life total."
+   ]
+  },
+  {
+   "name": "Back for Seconds",
+   "oracle_id": "ee3d21b9-58b4-480c-bae3-26de50f1a5c6",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nReturn up to two target creature cards from your graveyard to your hand. If this spell was bargained, you may put one of those cards with mana value 4 or less onto the battlefield instead of putting it into your hand.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Bargain"
+   ],
+   "collector_number": "80",
+   "set": "woe",
+   "rulings": [
+    "If you bargain this spell, you can still choose not to put one of the cards onto the battlefield, even if at least one is eligible.",
+    "Bargain means “As an additional cost to cast this spell, you may sacrifice an artifact, enchantment, or token.”",
+    "Bargain represents an optional additional cost. A spell cast with that additional cost paid is “bargained.”",
+    "You may sacrifice only one artifact, enchantment, or token to pay a spell’s bargain cost.",
+    "If you copy a bargained spell, the copy is also bargained. If a card or token enters the battlefield as a copy of a permanent that’s already on the battlefield, the new permanent isn’t bargained, even if the original was.",
+    "Some instant and sorcery spells require additional targets if they’re bargained. You ignore those targeting requirements if those spells aren’t bargained, and you can’t bargain those spells unless you can choose the appropriate targets. On the other hand, you can bargain a permanent spell even if you won’t be able to choose targets for an enters-the-battlefield ability of that permanent once the spell resolves."
+   ]
+  },
+  {
+   "name": "Dream Spoilers",
+   "oracle_id": "07c3e91c-3593-4797-b7be-ef4fb2913cef",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Faerie Warlock",
+   "oracle_text": "Flying\nWhenever you cast a spell during an opponent's turn, up to one target creature an opponent controls gets -1/-1 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "85",
+   "set": "woe"
+  },
+  {
+   "name": "Faerie Fencing",
+   "oracle_id": "450a9b73-9024-4103-b9f9-216a2f395cff",
+   "layout": "normal",
+   "mana_cost": "{X}{B}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets -X/-X until end of turn. That creature gets an additional -3/-3 until end of turn if you controlled a Faerie as you cast this spell.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "90",
+   "set": "woe",
+   "rulings": [
+    "If you controlled a Faerie as you finished casting Faerie Fencing, it doesn't matter whether you still control one as the spell resolves. The target creature will still get an additional -3/-3."
+   ]
+  },
+  {
+   "name": "Fell Horseman // Deathly Ride",
+   "oracle_id": "fab8d954-807b-426f-8057-99a5d2fec618",
+   "layout": "adventure",
+   "mana_cost": "{3}{B} // {1}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Zombie Knight // Sorcery — Adventure",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "92",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Fell Horseman",
+     "mana_cost": "{3}{B}",
+     "type_line": "Creature — Zombie Knight",
+     "oracle_text": "When this creature dies, put it on the bottom of its owner's library.",
+     "power": "3",
+     "toughness": "3"
+    },
+    {
+     "name": "Deathly Ride",
+     "mana_cost": "{1}{B}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Return target creature card from your graveyard to your hand. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Fell Horseman will be put on the bottom of its owner's library only if it's still in the graveyard when its ability resolves. If it leaves the graveyard before that point, it will stay in whatever zone it's in, even if it's returned to the graveyard before the ability resolves.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Gumdrop Poisoner // Tempt with Treats",
+   "oracle_id": "4f5ebbb8-f49b-488f-bb85-888aaa918bdd",
+   "layout": "adventure",
+   "mana_cost": "{2}{B} // {B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Warlock // Instant — Adventure",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Food"
+   ],
+   "collector_number": "93",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Gumdrop Poisoner",
+     "mana_cost": "{2}{B}",
+     "type_line": "Creature — Human Warlock",
+     "oracle_text": "Lifelink\nWhen this creature enters, up to one target creature gets -X/-X until end of turn, where X is the amount of life you gained this turn.",
+     "power": "3",
+     "toughness": "2"
+    },
+    {
+     "name": "Tempt with Treats",
+     "mana_cost": "{B}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Create a Food token. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it's legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (\"Once each turn, you may cast an instant or sorcery spell from the top of your library.\") and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner's graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won't be exiled and the spell's controller won't be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won't give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you'll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it's not possible to cast the copy as a permanent.",
+    "Gumdrop Poisoner's enters-the-battlefield ability counts the total amount of life you gained without taking into account any life you lost during that turn. For example, if you lost 3 life and gained 3 life earlier in the turn, the target creature will get -3/-3.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won't find an instant or sorcery spell on the stack that's been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it's a token) or cease to be a copy (if it's a nontoken permanent), and so you won't be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn't casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure.",
+    "An effect may refer to a card, spell, or permanent that \"has an Adventure.\" This refers to a card, spell, or permanent that has an adventurer card's set of alternative characteristics, even if they're not being used and even if that card was never cast as an Adventure.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it's in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can't be the target of Tenacious Tomeseeker's triggered ability (\"return target instant or sorcery card from your graveyard to your hand\").",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card's normal characteristics. The spell's color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics."
+   ]
+  },
+  {
+   "name": "Rowan's Grim Search",
+   "oracle_id": "f60234e4-9b53-47a5-a21a-82c80b5af072",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nIf this spell was bargained, look at the top four cards of your library, then put up to two of them back on top of your library in any order and the rest into your graveyard.\nYou draw two cards and you lose 2 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Bargain"
+   ],
+   "collector_number": "104",
+   "set": "woe",
+   "rulings": [
+    "Bargain means \"As an additional cost to cast this spell, you may sacrifice an artifact, enchantment, or token.\"",
+    "Bargain represents an optional additional cost. A spell cast with that additional cost paid is \"bargained.\"",
+    "You may sacrifice only one artifact, enchantment, or token to pay a spell's bargain cost.",
+    "If you copy a bargained spell, the copy is also bargained. If a card or token enters the battlefield as a copy of a permanent that's already on the battlefield, the new permanent isn't bargained, even if the original was.",
+    "Some instant and sorcery spells require additional targets if they're bargained. You ignore those targeting requirements if those spells aren't bargained, and you can't bargain those spells unless you can choose the appropriate targets. On the other hand, you can bargain a permanent spell even if you won't be able to choose targets for an enters-the-battlefield ability of that permanent once the spell resolves."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,375 @@
+{
+ "batch": 45,
+ "set": [
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Yarus, Roar of the Old Gods",
+   "oracle_id": "30fd6171-3e57-4c05-a86b-e1c0479ba236",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Centaur Druid",
+   "oracle_text": "Other creatures you control have haste.\nWhenever one or more face-down creatures you control deal combat damage to a player, draw a card.\nWhenever a face-down creature you control dies, return it to the battlefield face down under its owner's control if it's a permanent card, then turn it face up.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "375",
+   "set": "mkm",
+   "rulings": [
+    "Normally, combat damage is dealt all at the same time. In that case, Yarus, Roar of the Old Gods's last ability triggers once for each player that face-down creatures you control dealt combat damage to, regardless of how many creatures were dealing that damage. If any of those face-down creatures have double strike or first strike, the ability will trigger once for each player dealt damage in each combat damage step.",
+    "If Yarus, Roar of the Old Gods dies at the same time as one or more face-down creatures you control, its last ability triggers for each of those creatures.",
+    "If a face-down creature dies but the permanent card it becomes in the graveyard leaves the graveyard before Yarus, Roar of the Old Gods's last ability resolves, it will not return to the battlefield.",
+    "If a permanent card that would be returned to the battlefield face down by Yarus, Roar of the Old Gods's last ability can't be turned face up for some reason, it'll still be returned to the battlefield, but it will stay face down. In that case, it will be a 2/2 creature with no name, mana cost, or creature types. Since it isn't disguised or cloaked, it won't have ward {2}."
+   ]
+  },
+  {
+   "name": "Etrata, Deadly Fugitive",
+   "oracle_id": "87957d09-7e22-40fe-8770-ff66d1934a38",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vampire Assassin",
+   "oracle_text": "Deathtouch\nFace-down creatures you control have \"{2}{U}{B}: Turn this creature face up. If you can't, exile it, then you may cast the exiled card without paying its mana cost.\"\nWhenever an Assassin you control deals combat damage to an opponent, cloak the top card of that player's library.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Cloak",
+    "Deathtouch"
+   ],
+   "collector_number": "386",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "You might be unable to turn a face-down creature face up because it's an instant or sorcery. Alternatively, abilities such as that of Karlov Watchdog might prevent you from turning face-down creatures face up altogether. In those cases, you'll exile that creature, and then you'll choose whether or not to cast that card without paying its mana cost.",
+    "If you cast a spell \"without paying its mana cost\", you can't choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, such as that of Demand Answers, those must be paid to cast the spell.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Your opponents can't look at cards they own that you cloaked.",
+    "In a multiplayer game, if an opponent leaves the game, all of the cards they own that you cloaked leave as well. If you leave the game, the creatures you cloaked with Etrata, Deadly Fugitive's triggered ability are exiled.",
+    "To cloak a card, put it onto the battlefield face down. It becomes a 2/2 face-down creature card with ward {2} and no name, mana cost, or creature types. It's colorless and has a mana value of 0. Other effects that apply to the permanent can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you can turn a cloaked permanent you control face-up by revealing that it's a creature card (ignoring any copy effects or type-changing effects that might be applying to it) and paying its mana cost. This is a special action. It doesn't use the stack and can't be responded to.",
+    "If a cloaked creature would have disguise (or morph) if it were face up, you may also turn it face up by paying its disguise (or morph) cost.",
+    "Unlike a face-down creature that was cast using a disguise or morph ability, a cloaked creature may still be turned face up after it loses its abilities if it's a creature card.",
+    "If a double-faced card is cloaked, it will be put onto the battlefield face down. While face down, it can't transform. If the front face of the card is a creature card, you can turn it face up by paying its mana cost. If you do, its front face will be up.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "If something tries to turn a face-down instant or sorcery card on the battlefield face up, reveal that card to show all players it's an instant or sorcery card. The permanent remains on the battlefield face down. Abilities that trigger when a permanent turns face up won't trigger, because even though you revealed the card, it never turned face up."
+   ]
+  },
+  {
+   "name": "Vannifar, Evolved Enigma",
+   "oracle_id": "e8aa0d7d-e5f6-4d66-bdc1-315483e1b256",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Elf Ooze Wizard",
+   "oracle_text": "At the beginning of combat on your turn, choose one —\n• Cloak a card from your hand. (Put it onto the battlefield face down as a 2/2 creature with ward {2}. Turn it face up any time for its mana cost if it's a creature card.)\n• Put a +1/+1 counter on each colorless creature you control.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Cloak"
+   ],
+   "collector_number": "389",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "To cloak a card, put it onto the battlefield face down. It becomes a 2/2 face-down creature card with ward {2} and no name, mana cost, or creature types. It's colorless and has a mana value of 0. Other effects that apply to the permanent can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you can turn a cloaked permanent you control face-up by revealing that it's a creature card (ignoring any copy effects or type-changing effects that might be applying to it) and paying its mana cost. This is a special action. It doesn't use the stack and can't be responded to.",
+    "If a cloaked creature would have disguise (or morph) if it were face up, you may also turn it face up by paying its disguise (or morph) cost.",
+    "Unlike a face-down creature that was cast using a disguise or morph ability, a cloaked creature may still be turned face up after it loses its abilities if it's a creature card.",
+    "If a double-faced card is cloaked, it will be put onto the battlefield face down. While face down, it can't transform. If the front face of the card is a creature card, you can turn it face up by paying its mana cost. If you do, its front face will be up.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "If something tries to turn a face-down instant or sorcery card on the battlefield face up, reveal that card to show all players it's an instant or sorcery card. The permanent remains on the battlefield face down. Abilities that trigger when a permanent turns face up won't trigger, because even though you revealed the card, it never turned face up."
+   ]
+  },
+  {
+   "name": "Unyielding Gatekeeper",
+   "oracle_id": "3c8fa799-7f30-4532-8317-f37a7ab787de",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elephant Cleric",
+   "oracle_text": "Disguise {1}{W} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this creature is turned face up, exile another target nonland permanent. If you controlled it, return it to the battlefield tapped. Otherwise, its controller creates a 2/2 white and blue Detective creature token.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Disguise"
+   ],
+   "collector_number": "392",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Detective",
+     "type_line": "Token Creature — Detective",
+     "component": "token"
+    },
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If you controlled the target permanent earlier in the turn but not at the time Unyielding Gatekeeper's last ability resolves, you won't return it to the battlefield tapped. The player who controlled that permanent at the time it was exiled will create a Detective.",
+    "If the controller of Unyielding Gatekeeper's last ability controlled the target permanent at the time the ability began to resolve, the permanent will return to the battlefield tapped under that player's control, regardless of who its owner is.",
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Coveted Falcon",
+   "oracle_id": "4c495e94-3194-47c7-8129-dd0a0f915daa",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Bird",
+   "oracle_text": "Flying\nWhenever this creature attacks, gain control of target permanent you own but don't control.\nDisguise {1}{U}\nWhen this creature is turned face up, target opponent gains control of any number of target permanents you control. Draw a card for each one they gained control of this way.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Disguise"
+   ],
+   "collector_number": "393",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A token's owner is the player who created it.",
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Proft's Eidetic Memory",
+   "oracle_id": "b749e9e4-0f2a-4157-8cca-facd6b48157f",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Enchantment",
+   "oracle_text": "When Proft's Eidetic Memory enters, draw a card.\nYou have no maximum hand size.\nAt the beginning of combat on your turn, if you've drawn more than one card this turn, put X +1/+1 counters on target creature you control, where X is the number of cards you've drawn this turn minus one.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "396",
+   "set": "mkm",
+   "rulings": [
+    "If you haven't drawn more than one card by the time a beginning of combat step begins on your turn, Proft's Eidetic Memory's last ability won't trigger at all.",
+    "Proft's Eidetic Memory's last ability looks at how many cards you've drawn this turn, even if it wasn't on the battlefield when you drew those cards.",
+    "The value of X is determined only once, as Proft's Eidetic Memory's last ability resolves."
+   ]
+  },
+  {
+   "name": "Deadly Cover-Up",
+   "oracle_id": "04e2afbe-0c08-42bc-93e6-662066a958bf",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, you may collect evidence 6.\nDestroy all creatures. If evidence was collected, exile a card from an opponent's graveyard. Then search its owner's graveyard, hand, and library for any number of cards with that name and exile them. That player shuffles, then draws a card for each card exiled from their hand this way.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Collect evidence"
+   ],
+   "collector_number": "399",
+   "set": "mkm",
+   "rulings": [
+    "Unlike many other effects of this kind, Deadly Cover-Up allows its controller to exile a basic land.",
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Hide in Plain Sight",
+   "oracle_id": "94b15f1d-827b-45e9-a684-5d0c52ea0a09",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Look at the top five cards of your library, cloak two of them, and put the rest on the bottom of your library in a random order. (To cloak a card, put it onto the battlefield face down as a 2/2 creature with ward {2}. Turn it face up any time for its mana cost if it's a creature card.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Cloak"
+   ],
+   "collector_number": "410",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "To cloak a card, put it onto the battlefield face down. It becomes a 2/2 face-down creature card with ward {2} and no name, mana cost, or creature types. It's colorless and has a mana value of 0. Other effects that apply to the permanent can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you can turn a cloaked permanent you control face-up by revealing that it's a creature card (ignoring any copy effects or type-changing effects that might be applying to it) and paying its mana cost. This is a special action. It doesn't use the stack and can't be responded to.",
+    "If a cloaked creature would have disguise (or morph) if it were face up, you may also turn it face up by paying its disguise (or morph) cost.",
+    "Unlike a face-down creature that was cast using a disguise or morph ability, a cloaked creature may still be turned face up after it loses its abilities if it's a creature card.",
+    "If a double-faced card is cloaked, it will be put onto the battlefield face down. While face down, it can't transform. If the front face of the card is a creature card, you can turn it face up by paying its mana cost. If you do, its front face will be up.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "If something tries to turn a face-down instant or sorcery card on the battlefield face up, reveal that card to show all players it's an instant or sorcery card. The permanent remains on the battlefield face down. Abilities that trigger when a permanent turns face up won't trigger, because even though you revealed the card, it never turned face up."
+   ]
+  },
+  {
+   "name": "Kylox's Voltstrider",
+   "oracle_id": "e7b746c8-1b32-42ed-8328-4e16274209d8",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Collect evidence 6: This Vehicle becomes an artifact creature until end of turn.\nWhenever this Vehicle attacks, you may cast an instant or sorcery spell from among cards exiled with it. If that spell would be put into a graveyard, put it on the bottom of its owner's library instead.\nCrew 2",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Collect evidence",
+    "Crew"
+   ],
+   "collector_number": "417",
+   "set": "mkm",
+   "rulings": [
+    "You choose whether or not to cast a spell from among the exiled cards as Kylox's Voltstrider's triggered ability resolves. If you do, you do so as part of the resolution of that ability. You can't wait to cast it later in the turn. Timing restrictions based on the card's type are ignored.",
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Treacherous Greed",
+   "oracle_id": "5483f787-7aca-4efe-a39a-ea29f8c07f0d",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "As an additional cost to cast this spell, sacrifice a creature that dealt damage this turn.\nDraw three cards. Each opponent loses 3 life and you gain 3 life.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "420",
+   "set": "mkm",
+   "rulings": [
+    "You can sacrifice any creature you control that dealt damage this turn to pay Treacherous Greed's additional cost, even if the permanent it dealt damage to is no longer on the battlefield or the player it dealt damage to is no longer in the game."
+   ]
+  }
+ ]
+}

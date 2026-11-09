@@ -1,0 +1,368 @@
+{
+ "batch": 52,
+ "set": [
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Discerning Financier",
+   "oracle_id": "734a5186-caa6-4811-b6d7-91b7b32fc403",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Noble",
+   "oracle_text": "At the beginning of your upkeep, if an opponent controls more lands than you, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\n{2}{W}: Choose another player. That player gains control of target Treasure you control. You draw a card.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "10",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the target Treasure is an illegal target as Discerning Financier's last ability tries to resolve, it won't resolve. You won't draw a card."
+   ]
+  },
+  {
+   "name": "Dutiful Griffin",
+   "oracle_id": "f91ff377-a997-4f24-926c-76edcbf91a6c",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Griffin",
+   "oracle_text": "Flying\n{2}{W}, Sacrifice two enchantments: Return this card from your graveyard to your hand.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "11",
+   "set": "woe"
+  },
+  {
+   "name": "The Princess Takes Flight",
+   "oracle_id": "70d52457-1867-482c-ba7a-1f7dacc4514f",
+   "layout": "saga",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Exile up to one target creature.\nII — Target creature you control gets +2/+2 and gains flying until end of turn.\nIII — Return the exiled card to the battlefield under its owner's control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "23",
+   "set": "woe",
+   "rulings": [
+    "If The Princess Takes Flight's first chapter ability exiled more than one creature (usually because the ability was copied), its third chapter ability will return all of the exiled cards to the battlefield under their owners' control."
+   ]
+  },
+  {
+   "name": "Solitary Sanctuary",
+   "oracle_id": "4c0a8eed-f2e2-4821-8011-6e6ad2081936",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nWhenever you tap an untapped creature an opponent controls, put a +1/+1 counter on target creature you control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "30",
+   "set": "woe",
+   "rulings": [
+    "You may target a creature that is already tapped with Solitary Sanctuary's first ability. If the target creature is already tapped as it resolves, you will still put a stun counter on it.",
+    "Solitary Sanctuary's last ability will trigger only when an effect instructs you to tap an opponent's creature. It won't trigger if a spell or ability you control instructs an opponent to tap a creature they control. For example, if you control Tangle Wire and an opponent taps an untapped creature they control as part of the resolution of Tangle Wire's triggered ability, Solitary Sanctuary's ability won't trigger."
+   ]
+  },
+  {
+   "name": "Three Blind Mice",
+   "oracle_id": "e5926e14-d30a-4f81-803c-f36542df2db3",
+   "layout": "saga",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after IV.)\nI — Create a 1/1 white Mouse creature token.\nII, III — Create a token that's a copy of target token you control.\nIV — Creatures you control get +1/+1 and gain vigilance until end of turn.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "35",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    },
+    {
+     "name": "Mouse",
+     "type_line": "Token Creature — Mouse",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token copies the original characteristics of the target token as stated by the effect that created the token.",
+    "If the copied token is copying something else, then the token enters the battlefield as whatever that token copied.",
+    "Only creatures you control at the time the fourth chapter ability resolves will get +1/+1 and gain vigilance. Creatures you begin to control later in the turn won't be affected."
+   ]
+  },
+  {
+   "name": "Aquatic Alchemist // Bubble Up",
+   "oracle_id": "a78b063a-7f74-465a-9670-34f927f4bfe9",
+   "layout": "adventure",
+   "mana_cost": "{1}{U} // {2}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elemental // Sorcery — Adventure",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "40",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Aquatic Alchemist",
+     "mana_cost": "{1}{U}",
+     "type_line": "Creature — Elemental",
+     "oracle_text": "Whenever you cast your first instant or sorcery spell each turn, this creature gets +2/+0 until end of turn.",
+     "power": "1",
+     "toughness": "3"
+    },
+    {
+     "name": "Bubble Up",
+     "mana_cost": "{2}{U}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Put target instant or sorcery card from your graveyard on top of your library. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Adventurer cards aren't instant or sorcery cards while they're in your graveyard. You can't use Bubble Up to put an adventurer card from your graveyard on top of your library.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Bitter Chill",
+   "oracle_id": "be0dcad2-8e84-4e9f-b69c-837b40b8fb83",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, tap enchanted creature.\nEnchanted creature doesn't untap during its controller's untap step.\nWhen this Aura is put into a graveyard from the battlefield, you may pay {1}. If you do, scry 1, then draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant",
+    "Scry"
+   ],
+   "collector_number": "44",
+   "set": "woe",
+   "rulings": [
+    "If the creature Bitter Chill would enchant is an illegal target by the time the Aura spell resolves, the entire spell doesn't resolve. It's put into the graveyard from the stack, not the battlefield, so its last ability won't trigger."
+   ]
+  },
+  {
+   "name": "Chancellor of Tales",
+   "oracle_id": "529f259a-df66-4283-bc28-de3933c42e67",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Faerie Advisor",
+   "oracle_text": "Flying\nWhenever you cast an Adventure spell, you may copy it. You may choose new targets for the copy.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "45",
+   "set": "woe",
+   "rulings": [
+    "An Adventure spell means an instant or sorcery spell with the Adventure spell type. Permanent spells that you cast which have an Adventure won't cause this ability to trigger.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it's not possible to cast the copy as a permanent.",
+    "Chancellor of Tales can copy any Adventure spell, not just one with targets.",
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell won't trigger.",
+    "The copy will have the same targets as the spell it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. If, for one of the targets, you can't choose a new legal target, then it remains unchanged (even if the current target is illegal).",
+    "Chancellor of Tales's ability and the copy it creates both resolve before the Adventure spell. They resolve even if the Adventure spell is countered before the copy is created."
+   ]
+  },
+  {
+   "name": "Galvanic Giant // Storm Reading",
+   "oracle_id": "48ab8ba0-0e85-4656-a798-ceb961fb02ce",
+   "layout": "adventure",
+   "mana_cost": "{3}{U} // {5}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Giant Wizard // Instant — Adventure",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "52",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Galvanic Giant",
+     "mana_cost": "{3}{U}",
+     "type_line": "Creature — Giant Wizard",
+     "oracle_text": "Whenever you cast a spell with mana value 5 or greater, tap target creature an opponent controls and put a stun counter on it.",
+     "power": "3",
+     "toughness": "3"
+    },
+    {
+     "name": "Storm Reading",
+     "mana_cost": "{5}{U}{U}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Draw four cards, then discard two cards. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "You may choose a creature that's already tapped as the target of Galvanic Giant's ability. If the target creature is already tapped as it resolves, you will still put a stun counter on it.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Horned Loch-Whale // Lagoon Breach",
+   "oracle_id": "adca3929-4ecc-45bc-932e-604bcc32550a",
+   "layout": "adventure",
+   "mana_cost": "{4}{U}{U} // {1}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Whale // Instant — Adventure",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Ward",
+    "Flash"
+   ],
+   "collector_number": "53",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Horned Loch-Whale",
+     "mana_cost": "{4}{U}{U}",
+     "type_line": "Creature — Whale",
+     "oracle_text": "Flash\nWard {2}\nThis creature enters tapped unless it's your turn.",
+     "power": "6",
+     "toughness": "6"
+    },
+    {
+     "name": "Lagoon Breach",
+     "mana_cost": "{1}{U}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "The owner of target attacking creature you don't control puts it on their choice of the top or bottom of their library."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The creature's owner chooses whether to put it on the top or bottom of their library. If multiple cards are put into the library this way (such as when the spell targets a melded permanent), that creature's owner puts all the cards on top or all the cards on the bottom. They put them in whatever order they wish, and do not need to reveal the order.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it's in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can't be the target of Tenacious Tomeseeker's triggered ability (\"return target instant or sorcery card from your graveyard to your hand\").",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card's normal characteristics. The spell's color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it's legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (\"Once each turn, you may cast an instant or sorcery spell from the top of your library.\") and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner's graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won't be exiled and the spell's controller won't be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won't give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you'll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it's not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that \"has an Adventure.\" This refers to a card, spell, or permanent that has an adventurer card's set of alternative characteristics, even if they're not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won't find an instant or sorcery spell on the stack that's been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it's a token) or cease to be a copy (if it's a nontoken permanent), and so you won't be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn't casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  }
+ ]
+}

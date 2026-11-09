@@ -1,0 +1,266 @@
+{
+ "batch": 4,
+ "set": [
+  "eoe"
+ ],
+ "cards": [
+  {
+   "name": "Bioengineered Future",
+   "oracle_id": "6fa78914-85b3-46fd-977a-0e5b4d29eca4",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")\nEach creature you control enters with an additional +1/+1 counter on it for each land that entered the battlefield under your control this turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "172",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Lander",
+     "type_line": "Token Artifact — Lander",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Bioengineered Future’s last ability will consider lands that entered the battlefield under your control before it was on the battlefield. For example, if two lands entered the battlefield under your control this turn before Bioengineered Future entered, creatures you control will enter with two +1/+1 counters on them this turn.",
+    "In the unlikely event that Bioengineered Future and one or more creatures you control enter at the same time, Bioengineered Future’s last ability won’t cause those creatures to enter with additional +1/+1 counters on them."
+   ]
+  },
+  {
+   "name": "Close Encounter",
+   "oracle_id": "032fdd08-2ea7-442e-8162-0a8e5a585253",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "As an additional cost to cast this spell, choose a creature you control or a warped creature card you own in exile.\nClose Encounter deals damage equal to the power of the chosen creature or card to target creature.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "176",
+   "set": "eoe",
+   "rulings": [
+    "If you chose a creature on the battlefield, use that creature’s power when Close Encounter resolves to determine how much damage is dealt. If that creature is no longer on the battlefield when Close Encounter resolves, use that creature’s power as it last existed on the battlefield to determine how much damage is dealt."
+   ]
+  },
+  {
+   "name": "Drix Fatemaker",
+   "oracle_id": "583102f8-7232-4fbb-a715-087448536bb2",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Drix Wizard",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature.\nEach creature you control with a +1/+1 counter on it has trample.\nWarp {1}{G} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Warp"
+   ],
+   "collector_number": "178",
+   "set": "eoe"
+  },
+  {
+   "name": "Meltstrider's Resolve",
+   "oracle_id": "6f9bc0c6-1792-4771-a839-95a22d9c699a",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature you control\nWhen this Aura enters, enchanted creature fights up to one target creature an opponent controls. (Each deals damage equal to its power to the other.)\nEnchanted creature gets +0/+2 and can't be blocked by more than one creature.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight",
+    "Enchant"
+   ],
+   "collector_number": "199",
+   "set": "eoe"
+  },
+  {
+   "name": "Tapestry Warden",
+   "oracle_id": "981138d0-bf61-406a-85be-68cc5e58796c",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Robot Soldier",
+   "oracle_text": "Vigilance\nEach creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.\nEach creature you control with toughness greater than its power stations permanents using its toughness rather than its power.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "209",
+   "set": "eoe",
+   "rulings": [
+    "Tapestry Warden’s second and third abilities don’t actually change any creature’s power. They change only the amount of combat damage the creature assigns and how many counters are put on a permanent with station when the creature is tapped to pay the cost of a station ability. All other rules and effects that check power or toughness use the real values, even if they cause damage “equal to a creature’s power” to be dealt.",
+    "If a station ability you control resolves while you control Tapestry Warden, but the creature tapped to pay the cost of that station ability is no longer on the battlefield, check the characteristics of that creature as it last existed on the battlefield. If its toughness was greater than its power, use its toughness to determine how many counters are put on the permanent with station.",
+    "If you activate a station ability while you control Tapestry Warden, but you no longer control Tapestry Warden at the time that ability resolves, use the power of the creature tapped to pay the cost of the station ability to determine how many counters are put on the permanent with station."
+   ]
+  },
+  {
+   "name": "Mutinous Massacre",
+   "oracle_id": "9fdd445a-c8e1-4309-9d74-374676fcac1d",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose odd or even. Destroy each creature with mana value of the chosen quality. Then gain control of all creatures until end of turn. Untap them. They gain haste until end of turn. (Zero is even.)",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "222",
+   "set": "eoe",
+   "rulings": [
+    "If a creature has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "You’ll untap all creatures, including those you already control. They’ll also gain haste even if they were already untapped."
+   ]
+  },
+  {
+   "name": "Ragost, Deft Gastronaut",
+   "oracle_id": "76f5445a-5193-4794-8593-b44f961334b6",
+   "layout": "normal",
+   "mana_cost": "{R}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Lobster Citizen",
+   "oracle_text": "Artifacts you control are Foods in addition to their other types and have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\"\n{1}, {T}, Sacrifice a Food: Ragost deals 3 damage to each opponent.\nAt the beginning of each end step, if you gained life this turn, untap Ragost.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "224",
+   "set": "eoe",
+   "rulings": [
+    "The artifacts retain any types, subtypes, supertypes, and abilities they have.",
+    "If Ragost somehow becomes an artifact, Ragost will also be a Food.",
+    "Ragost’s last ability will check as the end step starts to see if you gained life this turn. If you haven’t, the ability won’t trigger at all. You won’t be able to gain life during your end step in time to have the ability trigger.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food token. For example, when you activate Ragost’s second ability, you can sacrifice any Food you control to pay its cost.",
+    "You can’t sacrifice a Food to pay multiple costs. For example, you can’t sacrifice a single Food to pay the cost of its own ability and also to pay the cost of Ragost’s second ability."
+   ]
+  },
+  {
+   "name": "Station Monitor",
+   "oracle_id": "94e8791b-e72f-4aed-b761-826779337168",
+   "layout": "normal",
+   "mana_cost": "{W}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Lizard Artificer",
+   "oracle_text": "Whenever you cast your second spell each turn, create a 1/1 colorless Drone artifact creature token with flying and \"This token can block only creatures with flying.\"",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "230",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Drone",
+     "type_line": "Token Artifact Creature — Drone",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Station Monitor’s ability will count any spells you’ve cast this turn, which may include Station Monitor itself. It doesn’t matter if the other spells resolved, didn’t resolve, were countered, or are still on the stack. If Station Monitor was the first spell you cast this turn, the next spell you cast this turn is your second spell.",
+    "Station Monitor’s ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack without resolving."
+   ]
+  },
+  {
+   "name": "Syr Vondam, Sunstar Exemplar",
+   "oracle_id": "9e597063-c077-4236-a9e4-b0721b24677f",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Knight",
+   "oracle_text": "Vigilance, menace\nWhenever another creature you control dies or is put into exile, put a +1/+1 counter on Syr Vondam and you gain 1 life.\nWhen Syr Vondam dies or is put into exile while its power is 4 or greater, destroy up to one target nonland permanent.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Menace"
+   ],
+   "collector_number": "231",
+   "set": "eoe",
+   "rulings": [
+    "Syr Vondam, Sunstar Exemplar’s first triggered ability refers to creatures you control being put into exile from the battlefield. It won’t trigger if a creature card is put into exile from another zone.",
+    "If Syr Vondam, Sunstar Exemplar leaves the battlefield at the same time as one or more other creatures you control die or are put into exile, its first triggered ability will trigger for each of those other creatures."
+   ]
+  },
+  {
+   "name": "Dauntless Scrapbot",
+   "oracle_id": "b75ca527-4494-4957-b2e3-8c590df42e95",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "When this creature enters, exile each opponent's graveyard. Create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "power": "3",
+   "toughness": "1",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "237",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Lander",
+     "type_line": "Token Artifact — Lander",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

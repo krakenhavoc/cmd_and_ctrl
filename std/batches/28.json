@@ -1,0 +1,293 @@
+{
+ "batch": 28,
+ "set": [
+  "blb"
+ ],
+ "cards": [
+  {
+   "name": "Parting Gust",
+   "oracle_id": "367bb252-41e1-4f98-9d22-442dd332cccf",
+   "layout": "normal",
+   "mana_cost": "{W}{W}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Gift a tapped Fish (You may promise an opponent a gift as you cast this spell. If you do, they create a tapped 1/1 blue Fish creature token before its other effects.)\nExile target nontoken creature. If the gift wasn't promised, return that card to the battlefield under its owner's control with a +1/+1 counter on it at the beginning of the next end step.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Gift"
+   ],
+   "collector_number": "24",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Fish",
+     "type_line": "Token Creature — Fish",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Once the exiled permanent returns, it’s considered a new object with no relation to the object that it was. Auras attached to the exiled permanent will be put into their owners’ graveyards. Equipment attached to the exiled permanent will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist.",
+    "As an additional cost to cast a spell with gift, you can promise the listed gift to an opponent. That opponent is chosen as part of that additional cost. The gift isn’t given at this time; rather, it’s given at a later time based on whether or not the spell is a permanent spell.",
+    "For permanent spells with gift, an ability triggers when that permanent enters if the gift was promised. When that ability resolves, the gift is given to the appropriate opponent.",
+    "For instants and sorceries with gift, the gift is given to the appropriate opponent as part of the resolution of the spell. This happens before any of the spell’s other effects would take place.",
+    "If a spell for which the gift was promised is countered, doesn’t resolve (perhaps because all of its targets are illegal), or is otherwise removed from the stack, the gift won’t be given. None of its other effects will happen either.",
+    "You can’t pay a gift cost more than once.",
+    "If you copy a spell for which the gift was promised, the gift was also promised to the same opponent for the copy. If a card or token enters as a copy of a permanent that’s already on the battlefield, the gift isn’t promised for that new permanent, even if it was promised for the original.",
+    "Some instant or sorcery spells require alternative or additional targets if the gift was promised. You ignore these targeting requirements if the gifts aren’t promised for those spells. On the other hand, you can promise a gift for a permanent spell even if you won’t be able to choose targets for an enters ability of that permanent once the spell resolves.",
+    "In the main set, there are four different kinds of gifts. “Gift a Food” causes the chosen opponent to create a Food token, while “Gift a Treasure” causes the chosen opponent to create a Treasure token. “Gift a card” causes them to draw a card, and “Gift a tapped Fish” causes them to create a tapped 1/1 blue Fish creature token. The Commander decks contain two more kinds of gifts: “Gift an Octopus,” which causes the chosen opponent to create an 8/8 blue Octopus creature token, and “Gift an extra turn,” which causes them to take an extra turn after the current turn ends."
+   ]
+  },
+  {
+   "name": "Salvation Swan",
+   "oracle_id": "0f68ae67-1671-4281-8b6b-3e52fdd4915f",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Bird Cleric",
+   "oracle_text": "Flash\nFlying\nWhenever this creature or another Bird you control enters, exile up to one target creature you control without flying. Return it to the battlefield under its owner's control with a flying counter on it at the beginning of the next end step.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "28",
+   "set": "blb",
+   "rulings": [
+    "Once the exiled permanent returns, it's considered a new object with no relation to the object that it was. Auras attached to the exiled permanent will be put into their owners' graveyards. Equipment attached to the exiled permanent will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield."
+   ]
+  },
+  {
+   "name": "Azure Beastbinder",
+   "oracle_id": "7bb51602-60e8-4730-b11c-2870d6b42e20",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Rat Rogue",
+   "oracle_text": "Vigilance\nThis creature can't be blocked by creatures with power 2 or greater.\nWhenever this creature attacks, up to one target artifact, creature, or planeswalker an opponent controls loses all abilities until your next turn. If it's a creature, it also has base power and toughness 2/2 until your next turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "41",
+   "set": "blb",
+   "rulings": [
+    "Once Azure Beastbinder has been blocked, increasing the blocking creature's power to 2 or greater won't cause Azure Beastbinder to become unblocked.",
+    "A permanent that loses all abilities because of Azure Beastbinder's last ability may later gain abilities.",
+    "Azure Beastbinder's last ability overwrites all previous effects that set the creature's base power and toughness to specific values. Any power- or toughness-setting effects that start to apply afterward will overwrite this effect.",
+    "Effects that modify the creature's power and/or toughness, such as the effect of Overprotect, will apply to the creature no matter when they started to take effect. The same is true for counters that change its power and/or toughness and effects that switch its power and toughness."
+   ]
+  },
+  {
+   "name": "Eluge, the Shoreless Sea",
+   "oracle_id": "027989e7-20c4-4773-b6b4-20337cc5fe8c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Elemental Fish",
+   "oracle_text": "Eluge's power and toughness are each equal to the number of Islands you control.\nWhenever Eluge enters or attacks, put a flood counter on target land. It's an Island in addition to its other types for as long as it has a flood counter on it.\nThe first instant or sorcery spell you cast each turn costs {U} (or {1}) less to cast for each land you control with a flood counter on it.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "49",
+   "set": "blb",
+   "rulings": [
+    "The ability that defines Eluge’s power and toughness functions in all zones, not just the battlefield.",
+    "A land affected by Eluge’s second ability stays an Island until the flood counter is removed, even if Eluge leaves the battlefield.",
+    "The land retains any land types and abilities it already had. An Island has the ability “{T}: Add {U}.”",
+    "If the first instant or sorcery spell you cast in a turn doesn’t cost any {U}, its cost will be reduced by {1} for each land you control with a flood counter on it.",
+    "In the case where the first instant or sorcery spell you cast in a turn does cost some {U} but you control more lands with flood counters on them than the number of {U} in that spell’s mana cost, all of the {U} in the cost are reduced first before moving on to the generic mana. For example, if you control four lands with flood counters on them and you cast Season of Weaving (a sorcery with mana cost {4}{U}{U}) as the first instant or sorcery spell of your turn, its cost will be reduced by {2}{U}{U}, meaning its total cost will be {2}.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you’re paying (such as a flashback cost), add any cost increases (such as kicker costs), then apply any cost reductions (such as that of this ability). The mana value of the spell is determined by only its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "Gossip's Talent",
+   "oracle_id": "96e6d220-87db-4dab-abaa-e80c9577d89a",
+   "layout": "class",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Class",
+   "oracle_text": "(Gain the next level as a sorcery to add its ability.)\nWhenever a creature you control enters, surveil 1.\n{1}{U}: Level 2\nWhenever you attack, target attacking creature with power 3 or less can't be blocked this turn.\n{3}{U}: Level 3\nWhenever a creature you control deals combat damage to a player, you may exile it, then return it to the battlefield under its owner's control.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "51",
+   "set": "blb",
+   "rulings": [
+    "If the target creature's power is increased to 4 or greater after Gossip's Talent's level 2 class ability triggers but before it resolves, the ability doesn't resolve. However, if instead the creature's power is increased to 4 or greater after the ability resolves, it still can't be blocked that turn.",
+    "Gossip's Talent's level 3 class ability triggers once for each creature you control that deals combat damage to a player during that combat damage step. You choose the order those triggers are put onto the stack. They resolve one at a time; when one resolves, you choose whether or not to exile the appropriate creature.",
+    "If you choose to exile a creature with double strike when Gossip's Talent's level 3 class ability resolves, it won't be an attacking creature anymore when it returns to the battlefield, and it won't deal combat damage during the regular combat damage step.",
+    "Once the exiled permanent returns, it's considered a new object with no relation to the object that it was. Auras attached to the exiled permanent will be put into their owners' graveyards. Equipment attached to the exiled permanent will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield.",
+    "Each Class has five abilities. The three in the major sections of its text box are class abilities. Class abilities can be static, activated, or triggered abilities. The other two are level abilities, one activated ability to advance the Class to level 2 and another to advance the Class to level 3.",
+    "Each Class starts with only the first of its three class abilities. As the first level ability resolves, the Class becomes level 2 and gains the second class ability. As the second level ability resolves, the Class becomes level 3 and gains the third class ability.",
+    "Gaining a level won't remove abilities that a Class had at a previous level.",
+    "Gaining a level is a normal activated ability. It uses the stack and can be responded to.",
+    "You can't activate the first level ability of a Class unless that Class is level 1. Similarly, you can't activate the second level ability of a Class unless that Class is level 2.",
+    "There's no restriction on how many Class permanents you can control, whether they're the same or different classes. Each Class permanent tracks its own level separately."
+   ]
+  },
+  {
+   "name": "Long River Lurker",
+   "oracle_id": "c65c4d01-29da-47e6-993c-a265cf1f198c",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Frog Scout",
+   "oracle_text": "Ward {1}\nOther Frogs you control have ward {1}.\nWhen this creature enters, target creature you control can't be blocked this turn. Whenever that creature deals combat damage this turn, you may exile it. If you do, return it to the battlefield under its owner's control.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "57",
+   "set": "blb",
+   "rulings": [
+    "Once a ward ability of another Frog has triggered, causing it to lose ward by removing Long River Lurker or changing its creature types won't affect that ability. The appropriate player will still have to pay {1} or have their spell or ability countered.",
+    "Once the exiled permanent returns, it's considered a new object with no relation to the object that it was. Auras attached to the exiled permanent will be put into their owners' graveyards. Equipment attached to the exiled permanent will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist.",
+    "If a token is exiled this way, it will cease to exist and won't return to the battlefield."
+   ]
+  },
+  {
+   "name": "Otterball Antics",
+   "oracle_id": "43a6de3e-152e-4af1-acec-53405742425c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 1/1 blue and red Otter creature token with prowess. If this spell was cast from anywhere other than your hand, put a +1/+1 counter on that creature. (Whenever you cast a noncreature spell, a creature with prowess gets +1/+1 until end of turn.)\nFlashback {3}{U} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "63",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Otter",
+     "type_line": "Token Creature — Otter",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Splash Portal",
+   "oracle_id": "29b537f5-4d9f-40ed-b38b-e8faa2b5af7d",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile target creature you control, then return it to the battlefield under its owner's control. If that creature is a Bird, Frog, Otter, or Rat, draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "74",
+   "set": "blb",
+   "rulings": [
+    "Once the exiled permanent returns, it’s considered a new object with no relation to the object that it was. Auras attached to the exiled permanent will be put into their owners’ graveyards. Equipment attached to the exiled permanent will become unattached and remain on the battlefield. Any counters on the exiled permanent will cease to exist.",
+    "In the case where the exiled permanent returns with different creature types than it had when it left the battlefield (for example, if the target creature was copying something else when Splash Portal began to resolve), Splash Portal will check its creature types as it exists after returning to the battlefield. If it’s a Bird, Frog, Otter, or Rat at that point, you’ll draw a card.",
+    "If a token is exiled this way, it will cease to exist and won’t return to the battlefield. You won’t draw a card even if it was a Bird, Frog, Otter, or Rat."
+   ]
+  },
+  {
+   "name": "Sugar Coat",
+   "oracle_id": "1caa8c8a-ff45-4eee-a834-6e5e1fb54721",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Flash\nEnchant creature or Food\nEnchanted permanent is a colorless Food artifact with \"{2}, {T}, Sacrifice this artifact: You gain 3 life\" and loses all other card types and abilities.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant",
+    "Flash"
+   ],
+   "collector_number": "76",
+   "set": "blb",
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "A creature enchanted with Sugar Coat stops being a creature. Equipment attached to that creature become unattached. Auras attached to that creature will be put into their owner's graveyard (unless they could also enchant a Food artifact).",
+    "The enchanted permanent still retains its name, mana cost, and mana value. It isn't a token unless it already was one."
+   ]
+  },
+  {
+   "name": "Persistent Marshstalker",
+   "oracle_id": "77eb76cf-a361-44e0-aeee-e8ef4b695799",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Rat Berserker",
+   "oracle_text": "This creature gets +1/+0 for each other Rat you control.\nThreshold — Whenever you attack with one or more Rats, if there are seven or more cards in your graveyard, you may pay {2}{B}. If you do, return this card from your graveyard to the battlefield tapped and attacking.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Threshold"
+   ],
+   "collector_number": "104",
+   "set": "blb",
+   "rulings": [
+    "As Persistent Marshstalker returns to the battlefield because of its triggered ability, you choose which player, planeswalker, or battle it's attacking. It doesn't have to attack the same player, planeswalker, or battle as your other Rats.",
+    "Although Persistent Marshstalker's last ability causes it to enter attacking, it was never declared as an attacking creature. Abilities that trigger whenever a creature attacks won't trigger when it enters attacking."
+   ]
+  }
+ ]
+}

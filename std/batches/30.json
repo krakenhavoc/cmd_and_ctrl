@@ -1,0 +1,308 @@
+{
+ "batch": 30,
+ "set": [
+  "blb"
+ ],
+ "cards": [
+  {
+   "name": "Vren, the Relentless",
+   "oracle_id": "1216900e-93e3-41a4-b354-9c81938639c2",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Rat Rogue",
+   "oracle_text": "Ward {2}\nIf a creature an opponent controls would die, exile it instead.\nAt the beginning of each end step, create X 1/1 black Rat creature tokens with \"This token gets +1/+1 for each other Rat you control,\" where X is the number of creatures that were exiled under your opponents' control this turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "239",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "While Vren is on the battlefield, creatures your opponents control are exiled instead of dying, and abilities that trigger when a creature dies won't trigger.",
+    "If Vren would leave the battlefield at the same time as one or more creatures an opponent controls would die, those creatures will still be exiled.",
+    "Cards that would go to your opponent's graveyard for reasons other than dying, such as being discarded or milled, will still go to the graveyard and will not be exiled instead.",
+    "Vren's last ability counts any creatures your opponents controlled that were exiled this turn, including creature tokens."
+   ]
+  },
+  {
+   "name": "Heirloom Epic",
+   "oracle_id": "43037ef5-09e8-4881-beff-ed38cf7574c6",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Book",
+   "oracle_text": "{4}, {T}: Draw a card. For each mana in this ability's activation cost, you may tap an untapped creature you control rather than pay that mana. Activate only as a sorcery.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "246",
+   "set": "blb",
+   "rulings": [
+    "You can tap any untapped creature you control rather than pay a mana in the activation cost of Heirloom Epic’s ability, even one you haven’t controlled continuously since the beginning of your most recent turn.",
+    "You can’t tap more creatures than the amount of mana in the cost of Heirloom Epic’s ability. Effects that increase or reduce the activation cost of Heirloom Epic’s ability apply before costs are paid and will increase or decrease the total number of creatures you can tap.",
+    "If a creature you control has a mana ability with {T} in the cost, activating that ability to pay the activation cost of Heirloom Epic’s ability will result in the creature being tapped before you pay the ability’s costs. You won’t be able to tap it again rather than pay one of the mana in Heirloom Epic’s activation cost. Similarly, if you sacrifice a creature to activate a mana ability while activating Heirloom Epic’s ability, that creature won’t be on the battlefield when you pay the ability’s activation cost, so you won’t be able to tap that creature rather than pay one of the mana in the activation cost."
+   ]
+  },
+  {
+   "name": "Tangle Tumbler",
+   "oracle_id": "0d81ea20-5e7d-4eea-b0ba-fe688f27df94",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Vigilance\n{3}, {T}: Put a +1/+1 counter on target creature.\nTap two untapped tokens you control: This Vehicle becomes an artifact creature until end of turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "250",
+   "set": "blb",
+   "rulings": [
+    "You may tap any untapped tokens you control, including creature tokens you control that you haven't controlled continuously since the beginning of your most recent turn, to pay the cost of Tangle Tumbler's last ability."
+   ]
+  },
+  {
+   "name": "Season of Weaving",
+   "oracle_id": "4b473a42-a0c5-43d5-93f9-c599e963a06b",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose up to five {P} worth of modes. You may choose the same mode more than once.\n{P} — Draw a card.\n{P}{P} — Choose an artifact or creature you control. Create a token that's a copy of it.\n{P}{P}{P} — Return each nonland, nontoken permanent to its owner's hand.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "283",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The choice made for the second mode of Season of Weaving isn't made until the spell is resolving.",
+    "The token from the second mode copies exactly what was printed on the original creature or artifact and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.  If it is a Vehicle, it is not crewed. If it is an Equipment, it is not attached to any creature.",
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created the token.",
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied.",
+    "Any \"enters\" abilities of the copied permanent will trigger when the token enters. Any \"as [this permanent enters\" or \"[this permanent] enters with\" abilities of the chosen permanent will also work.",
+    "The pawprint symbol does not represent a cost, mana, counters, or any kind of persistent resource. You can't \"save up\" pawprint symbols from one Season spell to use on a future one, mostly because there isn't anything concrete to save up. They're just pawprints.",
+    "You don't have to choose modes that add up to exactly five pawprints. For example, you could choose the two pawprint mode twice and leave it at that. You could even choose no modes at all. You probably shouldn't, but you could.",
+    "You choose the modes as you cast the spell. Once modes are chosen, they can't be changed.",
+    "If a mode requires a target, you can select that mode only if there's a legal target available. Ignore the targeting requirements for modes you don't choose. Each time you select that mode, you can choose a different target, or you can choose the same target.",
+    "No matter which combination of modes you choose, you always follow the instructions of a Season in the order they are written. If the same mode is chosen more than once, you choose their relative order as you cast the spell.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell.",
+    "If a Season is copied, the effect that creates the copy will usually allow you to choose new targets, but you can't choose new modes.",
+    "If all targets for the chosen modes become illegal before the Season resolves, the spell won't resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets."
+   ]
+  },
+  {
+   "name": "Season of Gathering",
+   "oracle_id": "3ea060d8-449c-4a5e-8883-b45bd7707b5b",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose up to five {P} worth of modes. You may choose the same mode more than once.\n{P} — Put a +1/+1 counter on a creature you control. It gains vigilance and trample until end of turn.\n{P}{P} — Choose artifact or enchantment. Destroy all permanents of the chosen type.\n{P}{P}{P} — Draw cards equal to the greatest power among creatures you control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "286",
+   "set": "blb",
+   "rulings": [
+    "Choices made for the first and second modes of Season of Gathering aren't made until the spell is resolving.",
+    "The pawprint symbol does not represent a cost, mana, counters, or any kind of persistent resource. You can't \"save up\" pawprint symbols from one Season spell to use on a future one, mostly because there isn't anything concrete to save up. They're just pawprints.",
+    "You don't have to choose modes that add up to exactly five pawprints. For example, you could choose the two pawprint mode twice and leave it at that. You could even choose no modes at all. You probably shouldn't, but you could.",
+    "You choose the modes as you cast the spell. Once modes are chosen, they can't be changed.",
+    "If a mode requires a target, you can select that mode only if there's a legal target available. Ignore the targeting requirements for modes you don't choose. Each time you select that mode, you can choose a different target, or you can choose the same target.",
+    "No matter which combination of modes you choose, you always follow the instructions of a Season in the order they are written. If the same mode is chosen more than once, you choose their relative order as you cast the spell.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell.",
+    "If a Season is copied, the effect that creates the copy will usually allow you to choose new targets, but you can't choose new modes.",
+    "If all targets for the chosen modes become illegal before the Season resolves, the spell won't resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets."
+   ]
+  },
+  {
+   "name": "Maha, Its Feathers Night",
+   "oracle_id": "129476ae-9dab-4e04-8e8e-f249afd56ff9",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elemental Bird",
+   "oracle_text": "Flying, trample\nWard—Discard a card.\nCreatures your opponents control have base toughness 1.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample",
+    "Ward"
+   ],
+   "collector_number": "289",
+   "set": "blb",
+   "rulings": [
+    "Maha’s last ability overwrites all previous effects that set those creatures’ base toughness to specific values. Any toughness-setting effects that start to apply afterward will overwrite this effect.",
+    "Effects that modify a creature’s power and/or toughness, such as the effect of Overprotect, will apply to the creature no matter when they started to take effect. The same is true for counters that change its power and/or toughness and effects that switch its power and toughness."
+   ]
+  },
+  {
+   "name": "Ygra, Eater of All",
+   "oracle_id": "62511d43-8eaf-405a-9c81-7bd593d3a01e",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elemental Cat",
+   "oracle_text": "Ward—Sacrifice a Food.\nOther creatures are Food artifacts in addition to their other types and have \"{2}, {T}, Sacrifice this permanent: You gain 3 life.\"\nWhenever a Food is put into a graveyard from the battlefield, put two +1/+1 counters on Ygra.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "294",
+   "set": "blb",
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost).",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Replacement effects that modify artifacts as they enter will apply after you apply Ygra's effect. For example, if you control Ygra and there is an effect that says artifacts enter tapped, creatures will enter tapped.",
+    "Creatures that die while you control Ygra are still Food artifacts as they leave the battlefield, so Ygra's last ability will trigger whenever a creature affected by its second ability dies.",
+    "The affected creatures retain their other types and abilities."
+   ]
+  },
+  {
+   "name": "Portent of Calamity",
+   "oracle_id": "0d49187a-1c37-4c3a-afc2-fac2bbc6b29a",
+   "layout": "normal",
+   "mana_cost": "{X}{U}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Reveal the top X cards of your library. For each card type, you may exile a card of that type from among them. Put the rest into your graveyard. You may cast a spell from among the exiled cards without paying its mana cost if you exiled four or more cards this way. Then put the rest of the exiled cards into your hand.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "306",
+   "set": "blb",
+   "rulings": [
+    "The card types that can appear on cards you reveal with Portent of Calamity are artifact, battle, creature, enchantment, instant, kindred, land, planeswalker, and sorcery. Legendary, basic, and snow are supertypes, not card types. Raccoon and Scout are subtypes, not card types.",
+    "You choose which spell to cast (if any) as Portent of Calamity resolves. If you choose to cast a spell this way, you do so as part of the resolution of Portent of Calamity. You can’t wait to cast it later in the turn. Timing restrictions based on the card’s types are ignored.",
+    "If you cast a spell “without paying its mana cost,” you can’t choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, those must be paid to cast the spell.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Coiling Rebirth",
+   "oracle_id": "27a91ebd-39f4-432d-b6cc-cd86b4a3979a",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Gift a card (You may promise an opponent a gift as you cast this spell. If you do, they draw a card before its other effects.)\nReturn target creature card from your graveyard to the battlefield. Then if the gift was promised and that creature isn't legendary, create a token that's a copy of that creature, except it's 1/1.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Gift"
+   ],
+   "collector_number": "309",
+   "set": "blb",
+   "rulings": [
+    "Any “enters” abilities of the copied creature will trigger when the token enters. Any “as [this creature] enters” or “[this creature] enters with” abilities of the copied creature will also work.",
+    "Any abilities that trigger during the resolution of Coiling Rebirth will wait to be put onto the stack until Coiling Rebirth finishes resolving. An ability that triggers when the creature is returned to the battlefield from the graveyard may target the token copy, and vice versa.",
+    "The token created by the additional effect of Coiling Rebirth isn’t “cast,” so abilities that trigger when a creature spell is cast won’t trigger for the copy.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "As an additional cost to cast a spell with gift, you can promise the listed gift to an opponent. That opponent is chosen as part of that additional cost. The gift isn’t given at this time; rather, it’s given at a later time based on whether or not the spell is a permanent spell.",
+    "For permanent spells with gift, an ability triggers when that permanent enters if the gift was promised. When that ability resolves, the gift is given to the appropriate opponent.",
+    "For instants and sorceries with gift, the gift is given to the appropriate opponent as part of the resolution of the spell. This happens before any of the spell’s other effects would take place.",
+    "If a spell for which the gift was promised is countered, doesn’t resolve (perhaps because all of its targets are illegal), or is otherwise removed from the stack, the gift won’t be given. None of its other effects will happen either.",
+    "You can’t pay a gift cost more than once.",
+    "If you copy a spell for which the gift was promised, the gift was also promised to the same opponent for the copy. If a card or token enters as a copy of a permanent that’s already on the battlefield, the gift isn’t promised for that new permanent, even if it was promised for the original.",
+    "Some instant or sorcery spells require alternative or additional targets if the gift was promised. You ignore these targeting requirements if the gifts aren’t promised for those spells. On the other hand, you can promise a gift for a permanent spell even if you won’t be able to choose targets for an enters ability of that permanent once the spell resolves.",
+    "In the main set, there are four different kinds of gifts. “Gift a Food” causes the chosen opponent to create a Food token, while “Gift a Treasure” causes the chosen opponent to create a Treasure token. “Gift a card” causes them to draw a card, and “Gift a tapped Fish” causes them to create a tapped 1/1 blue Fish creature token. The Commander decks contain two more kinds of gifts: “Gift an Octopus,” which causes the chosen opponent to create an 8/8 blue Octopus creature token, and “Gift an extra turn,” which causes them to take an extra turn after the current turn ends."
+   ]
+  },
+  {
+   "name": "Osteomancer Adept",
+   "oracle_id": "791cbb7c-7935-4902-b050-9ea9d030e9fa",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Squirrel Warlock",
+   "oracle_text": "Deathtouch\n{T}: Until end of turn, you may cast creature spells from your graveyard by foraging in addition to paying their other costs. If you cast a spell this way, that creature enters with a finality counter on it. (To forage, exile three cards from your graveyard or sacrifice a Food. If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "312",
+   "set": "blb",
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "You must still follow timing restrictions and permissions for creature spells you cast with the permission granted by Osteomancer Adept's last ability. Normally, you'll be able to cast them only during your main phase while the stack is empty.",
+    "If you don't have enough cards in your graveyard or a Food on the battlefield, you can't choose to forage.",
+    "Once you announce that you're casting a spell or activating an ability, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard or Foods you control to stop you from foraging.",
+    "Multiple finality counters on a single permanent are redundant.",
+    "If Dryad Arbor (the only card that's both a creature and a land) is in your graveyard, you can't play it this way. Dryad Arbor can't be cast as a spell.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead."
+   ]
+  }
+ ]
+}

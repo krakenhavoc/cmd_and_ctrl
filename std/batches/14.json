@@ -1,0 +1,247 @@
+{
+ "batch": 14,
+ "set": [
+  "dft"
+ ],
+ "cards": [
+  {
+   "name": "Riptide Gearhulk",
+   "oracle_id": "f3838ff1-5403-4f3f-8531-36029c13fcfc",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{W}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Double strike\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhen this creature enters, for each opponent, put up to one target nonland permanent that player controls into its owner's library third from the top.",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Prowess",
+    "Double strike"
+   ],
+   "collector_number": "219",
+   "set": "dft"
+  },
+  {
+   "name": "Winter, Cursed Rider",
+   "oracle_id": "343833c1-19fd-4e8f-b82e-0f20903caaff",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Warlock",
+   "oracle_text": "Ward—Pay 2 life.\nArtifacts you control have \"Ward—Pay 2 life.\"\nExhaust — {2}{U}{B}, {T}, Exile X artifact cards from your graveyard: Each other nonartifact creature gets -X/-X until end of turn. (Activate each exhaust ability only once.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Exhaust",
+    "Ward"
+   ],
+   "collector_number": "228",
+   "set": "dft",
+   "rulings": [
+    "Multiple instances of ward each trigger separately.",
+    "If an effect causes Winter to become an artifact, its second ability will cause it to gain a second instance of ward.",
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  },
+  {
+   "name": "Guidelight Pathmaker",
+   "oracle_id": "f8103865-5086-4f16-a35a-a56acdab1547",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{U}",
+   "cmc": 6.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Vigilance\nWhen this Vehicle enters, you may search your library for an artifact card and reveal it. Put it onto the battlefield if its mana value is 2 or less. Otherwise, put it into your hand. If you search your library this way, shuffle.\nCrew 2",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Crew"
+   ],
+   "collector_number": "324",
+   "set": "dft",
+   "rulings": [
+    "Guidelight Pathmaker has received an update to its Oracle text. Specifically, you'll only shuffle if you choose to search your library."
+   ]
+  },
+  {
+   "name": "Lifecraft Engine",
+   "oracle_id": "caa69b51-1efd-4d0e-803b-914a83ccb836",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "As this Vehicle enters, choose a creature type.\nVehicle creatures you control are the chosen creature type in addition to their other types.\nEach creature you control of the chosen type other than this Vehicle gets +1/+1.\nCrew 3",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Crew"
+   ],
+   "collector_number": "329",
+   "set": "dft"
+  },
+  {
+   "name": "Rover Blades",
+   "oracle_id": "0394846e-bc27-4d67-988e-b08a389690de",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment Vehicle",
+   "oracle_text": "Double strike\nEquipped creature has double strike.\nEquip {4}\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn. Creatures can't be attached to other permanents.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Crew",
+    "Equip",
+    "Double strike"
+   ],
+   "collector_number": "331",
+   "set": "dft"
+  },
+  {
+   "name": "Sita Varma, Masked Racer",
+   "oracle_id": "3b9bc41a-a43f-4be7-9452-f61f5ad5b482",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Rogue",
+   "oracle_text": "Exhaust — {X}{G}{G}{U}: Put X +1/+1 counters on Sita Varma. Then you may have the base power and toughness of each other creature you control become equal to Sita Varma's power until end of turn. (Activate each exhaust ability only once.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Exhaust"
+   ],
+   "collector_number": "368",
+   "set": "dft",
+   "rulings": [
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  },
+  {
+   "name": "Quag Feast",
+   "oracle_id": "78957246-4092-4f4a-80e3-142e24226962",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose target creature, planeswalker, or Vehicle. Mill two cards, then destroy the chosen permanent if its mana value is less than or equal to the number of cards in your graveyard.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "384",
+   "set": "dft"
+  },
+  {
+   "name": "Mimeoplasm, Revered One",
+   "oracle_id": "2b8c2882-dbca-466a-a0af-dd1d65edfe7c",
+   "layout": "normal",
+   "mana_cost": "{X}{B}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Ooze",
+   "oracle_text": "As Mimeoplasm enters, exile up to X creature cards from your graveyard. It enters with three +1/+1 counters on it for each creature card exiled this way.\n{2}: Mimeoplasm becomes a copy of target creature card exiled with it, except it's 0/0 and has this ability.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "392",
+   "set": "dft"
+  },
+  {
+   "name": "Explosive Getaway",
+   "oracle_id": "c844cc98-b8b9-447d-92ee-64f4a4906e7c",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile up to one target artifact or creature. Return it to the battlefield under its owner's control at the beginning of the next end step.\nExplosive Getaway deals 4 damage to each creature.",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "403",
+   "set": "dft"
+  },
+  {
+   "name": "Skyseer's Chariot",
+   "oracle_id": "92d28545-4403-4c24-8547-efab4dde6a53",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Flying\nAs this Vehicle enters, choose a nonland card name.\nActivated abilities of sources with the chosen name cost {2} more to activate.\nCrew 2",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Crew"
+   ],
+   "collector_number": "432",
+   "set": "dft"
+  }
+ ]
+}

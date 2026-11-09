@@ -1,0 +1,287 @@
+{
+ "batch": 41,
+ "set": [
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Krenko's Buzzcrusher",
+   "oracle_id": "79a63064-f25b-4c34-867e-a9d32da97b14",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Insect Thopter",
+   "oracle_text": "Flying, trample\nWhen this creature enters, for each player, destroy up to one nonbasic land that player controls. For each land destroyed this way, its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample"
+   ],
+   "collector_number": "136",
+   "set": "mkm",
+   "rulings": [
+    "None of the nonbasic lands are targets of Krenko's Buzzcrusher's triggered ability."
+   ]
+  },
+  {
+   "name": "Lamplight Phoenix",
+   "oracle_id": "c6f7efad-381c-45ba-9976-159b7e78f7ed",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Phoenix",
+   "oracle_text": "Flying\nWhen this creature dies, you may exile it and collect evidence 4. If you do, return this card to the battlefield tapped. (To collect evidence 4, exile cards with total mana value 4 or greater from your graveyard.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Collect evidence"
+   ],
+   "collector_number": "137",
+   "set": "mkm",
+   "rulings": [
+    "You can't exile Lamplight Phoenix from your graveyard to pay the collect evidence cost of its triggered ability.",
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Reckless Detective",
+   "oracle_id": "4debd0e4-3bb6-4dd1-addc-08e4bda69d11",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Devil Detective",
+   "oracle_text": "Whenever this creature attacks, you may sacrifice an artifact or discard a card. If you do, draw a card and this creature gets +2/+0 until end of turn.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "141",
+   "set": "mkm"
+  },
+  {
+   "name": "Red Herring",
+   "oracle_id": "f0ee45b5-697b-48f8-b1a6-cb3ae75e4a29",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Clue Fish",
+   "oracle_text": "Haste\nThis creature attacks each combat if able.\n{2}, Sacrifice this creature: Draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "142",
+   "set": "mkm",
+   "rulings": [
+    "If Red Herring can't attack for any reason (such as being tapped), then it doesn't attack. If there's a cost associated with having it attack, its controller isn't forced to pay that cost, so it doesn't have to attack in that case either."
+   ]
+  },
+  {
+   "name": "Vengeful Tracker",
+   "oracle_id": "fe540a23-0357-44fa-8e1c-0a5c2a04cb01",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "Whenever an opponent sacrifices an artifact, this creature deals 2 damage to them.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "147",
+   "set": "mkm"
+  },
+  {
+   "name": "Case of the Locked Hothouse",
+   "oracle_id": "2380fd04-6d19-4f5a-8a9e-c17d9ae09fb6",
+   "layout": "case",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Case",
+   "oracle_text": "You may play an additional land on each of your turns.\nTo solve — You control seven or more lands. (If unsolved, solve at the beginning of your end step.)\nSolved — You may look at the top card of your library any time, and you may play lands and cast creature and enchantment spells from the top of your library.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Solved"
+   ],
+   "collector_number": "155",
+   "set": "mkm",
+   "rulings": [
+    "The effect of Case of the Locked Hothouse that allows you to play an additional land is cumulative with similar effects. For example, if you control two Case of the Locked Hothouses, you'll be able to play three lands during each of your turns.",
+    "Each Case has two special keyword abilities: to solve and solved.",
+    "\"To Solve — [condition]\" means \"At the beginning of your end step, if [condition] and this Case is not solved, it becomes solved.\"",
+    "The meaning of \"solved\" differs based on what type of ability follows it. \"Solved — [activated ability]\" means \"[Activated ability]. Activate only if this Case is solved.\" Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" ",
+    "\"Solved — [Triggered ability]\" means \"[Triggered ability]. This ability triggers only if this Case is solved.\" Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\"",
+    "\"Solved — [static ability]\" means \"As long as this Case is solved, [static ability].\" Static abilities are written as statements, such as \"Creatures you control get +1/+1\" or \"Instant and sorcery spells you cast cost {1} less to cast.\"",
+    "\"To solve\" abilities will check for their condition twice: once when the ability would trigger, and once when it resolves. If the condition isn't true at the beginning of your end step, the ability won't trigger at all. If the condition isn't true when the ability resolves, the Case won't become solved.",
+    "Once a Case becomes solved, it stays solved until it leaves the battlefield.",
+    "Cases don't lose their other abilities when they become solved.",
+    "Being solved is not part of a permanent's copiable values. A permanent that becomes a copy of a solved Case is not solved. A solved Case that somehow becomes a copy of a different Case stays solved."
+   ]
+  },
+  {
+   "name": "A Killer Among Us",
+   "oracle_id": "79d577a8-53c0-4220-bc0e-70764d72d5fd",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a 1/1 white Human creature token, a 1/1 blue Merfolk creature token, and a 1/1 red Goblin creature token. Then secretly choose Human, Merfolk, or Goblin.\nSacrifice this enchantment, Reveal the creature type you chose: If target attacking creature token is the chosen type, put three +1/+1 counters on it and it gains deathtouch until end of turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "167",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Human",
+     "type_line": "Token Creature — Human",
+     "component": "token"
+    },
+    {
+     "name": "Goblin",
+     "type_line": "Token Creature — Goblin",
+     "component": "token"
+    },
+    {
+     "name": "Merfolk",
+     "type_line": "Token Creature — Merfolk",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "There are several ways to secretly choose one of the creature types, including writing that type on a piece of paper that's kept with A Killer Among Us.",
+    "If you control multiple copies of A Killer Among Us, you may choose the same or different creature types for each one. Be careful to keep track of which type is chosen for each A Killer Among Us.",
+    "A Killer Among Us's last ability can target any attacking creature token, not just one of the tokens created by its first ability, and not just one of the chosen type. Only a token of the chosen type will get the bonuses, though.",
+    "Only the player who secretly chose the creature type can reveal the creature type they chose. If another player gains control of A Killer Among Us, they will be unable to activate its last ability."
+   ]
+  },
+  {
+   "name": "Rope",
+   "oracle_id": "a3f09898-6c77-4d68-8d10-8440c75f884c",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Clue Equipment",
+   "oracle_text": "Equipped creature gets +1/+2, has reach, and can't be blocked by more than one creature.\n{2}, Sacrifice this Equipment: Draw a card.\nEquip {3}",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "173",
+   "set": "mkm",
+   "rulings": [
+    "If the equipped creature also has menace, it can't be blocked at all."
+   ]
+  },
+  {
+   "name": "Rubblebelt Maverick",
+   "oracle_id": "1ba59349-a162-4444-b3e0-cddfc01ef03b",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\n{G}, Exile this card from your graveyard: Put a +1/+1 counter on target creature. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "174",
+   "set": "mkm"
+  },
+  {
+   "name": "Sharp-Eyed Rookie",
+   "oracle_id": "0642fb0d-73cb-4989-852c-3233fe36c3b4",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "Vigilance\nWhenever a creature you control enters, if its power is greater than this creature's power or its toughness is greater than this creature's toughness, put a +1/+1 counter on this creature and investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Investigate",
+    "Vigilance"
+   ],
+   "collector_number": "176",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "When a creature enters the battlefield under your control, check its power and toughness against Sharp-Eyed Rookie's power and toughness. If neither stat of the new creature is greater, Sharp-Eyed Rookie's triggered ability won't trigger at all.",
+    "If Sharp-Eyed Rookie's triggered ability triggers, the stat comparison will happen again when the ability tries to resolve. If neither stat of the new creature is greater, the ability will do nothing. If the creature that entered the battlefield leaves the battlefield before the ability tries to resolve, use its power and toughness as it last existed on the battlefield for the purposes of the comparison.",
+    "If a creature enters the battlefield with +1/+1 counters on it, consider those counters when determining if Sharp-Eyed Rookie's triggered ability will trigger. For example, a 1/1 creature that enters the battlefield with two +1/+1 counters on it will cause a 2/2 Sharp-Eyed Rookie's ability to trigger.",
+    "If multiple creatures enter the battlefield at the same time, Sharp-Eyed Rookie's triggered ability may trigger multiple times, although the stat comparison will take place each time one of those abilities tries to resolve. For example, if you control a 2/2 Sharp-Eyed Rookie and two 3/3 creatures enter the battlefield, Sharp-Eyed Rookie's triggered ability will trigger twice. The first ability will resolve, and you'll put a +1/+1 counter on Sharp-Eyed Rookie and investigate. When the second ability tries to resolve, neither the power nor the toughness of the new creature is greater than that of Sharp-Eyed Rookie, so that ability does nothing.",
+    "When comparing the stats as Sharp-Eyed Rookie's ability resolves, it's possible that the stat that's greater changes from power to toughness or vice versa. If this happens, the ability will still resolve and you'll put a +1/+1 counter on Sharp-Eyed Rookie and investigate. For example, if you control a 2/2 Sharp-Eyed Rookie and a 1/3 creature enters the battlefield under your control, its toughness is greater, so Sharp-Eyed Rookie's triggered ability will trigger. In response, the 1/3 creature gets +2/-2. When Sharp-Eyed Rookie's ability tries to resolve, the other creature's power is greater, so you'll put a +1/+1 counter on Sharp-Eyed Rookie and investigate.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  }
+ ]
+}

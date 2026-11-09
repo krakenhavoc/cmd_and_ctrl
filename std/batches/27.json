@@ -1,0 +1,305 @@
+{
+ "batch": 27,
+ "set": [
+  "blb",
+  "dsk"
+ ],
+ "cards": [
+  {
+   "name": "Fear of Missing Out",
+   "oracle_id": "236ce592-1321-4a7c-b695-fd84496f8924",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment Creature — Nightmare",
+   "oracle_text": "When this creature enters, discard a card, then draw a card.\nDelirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "316",
+   "set": "dsk",
+   "rulings": [
+    "If the target creature is an illegal target as Fear of Missing Out's last ability tries to resolve, it won't resolve and none of its effects will happen. There won't be an additional combat phase.",
+    "Fear of Missing Out's last ability doesn't give you any additional main phases. This means that you will move directly from the end of combat step of one combat phase to the beginning of combat step of the next one."
+   ]
+  },
+  {
+   "name": "Toby, Beastie Befriender",
+   "oracle_id": "b4c27c89-fa50-4cf0-bf37-039732d16fef",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "When Toby enters, create a 4/4 white Beast creature token with \"This token can't attack or block alone.\"\nAs long as you control four or more creature tokens, creature tokens you control have flying.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "356",
+   "set": "dsk",
+   "related": [
+    {
+     "name": "Beast",
+     "type_line": "Token Creature — Beast",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you control more than one creature with \"This creature can't attack or block alone\" they can attack or block together, even if no other creatures attack or block.",
+    "Although the Beast token can't attack alone, other attacking creatures don't have to attack the same player, planeswalker, or battle. For example, the Beast token could attack an opponent and another creature could attack a planeswalker. Similarly, other blocking creatures don't have to block the same creature that the Beast token blocks.",
+    "Once the Beast token has attacked or blocked, removing all of your other attacking or blocking creatures won't cause it to stop attacking or blocking.",
+    "If an effect says the Beast token attacks or blocks \"if able\" and you control one or more other creatures that are able to attack or block, you must attack or block with the Beast token and at least one other creature.",
+    "In a Two-Headed Giant game, the Beast token can attack or block with a creature controlled by your teammate, even if no other creatures you control are attacking or blocking."
+   ]
+  },
+  {
+   "name": "Rip, Spawn Hunter",
+   "oracle_id": "c027f369-e445-46a8-94ad-93396321295a",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Survivor",
+   "oracle_text": "Survival — At the beginning of your second main phase, if Rip is tapped, reveal the top X cards of your library, where X is its power. Put any number of creature and/or Vehicle cards with different powers from among them into your hand. Put the rest on the bottom of your library in a random order.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Survival"
+   ],
+   "collector_number": "362",
+   "set": "dsk",
+   "rulings": [
+    "The value of X is determined only once, as Rip's ability resolves.",
+    "If Rip leaves the battlefield before its ability resolves—and it was still tapped as it left—use its power as it last existed on the battlefield to determine the value of X.",
+    "Survival abilities (and other abilities that trigger at the beginning of your second main phase) will trigger at the beginning of the second main phase you take in a turn. They won't trigger during your third, fourth, or other additional main phases in a single turn, if effects somehow cause you to have more than two main phases.",
+    "If a creature with a survival ability isn't tapped when your second main phase begins, the ability won't trigger at all. You won't be able to tap it during your second main phase in time to have that ability trigger.",
+    "If a creature's survival ability triggers but that creature is untapped when the ability begins to resolve, that ability won't do anything.",
+    "If a creature's survival ability triggers but the creature leaves the battlefield before the ability resolves, use its tapped or untapped status as it last existed on the battlefield to determine whether or not the ability will do anything."
+   ]
+  },
+  {
+   "name": "Enduring Courage",
+   "oracle_id": "b3de29cb-7d7d-4566-b5bf-37e571bd5d78",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Enchantment Creature — Dog Glimmer",
+   "oracle_text": "Whenever another creature you control enters, it gets +2/+0 and gains haste until end of turn.\nWhen Enduring Courage dies, if it was a creature, return it to the battlefield under its owner's control. It's an enchantment. (It's not a creature.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "392",
+   "set": "dsk",
+   "rulings": [
+    "Dog and Glimmer are both creature types. Enduring Courage won't have those creature types when its last ability returns it to the battlefield because it won't be a creature.",
+    "A token that's a copy of Enduring Courage won't return to the battlefield when its last ability resolves.",
+    "If a nontoken permanent that's a copy of Enduring Courage dies while it's a creature, it will return to the battlefield as an enchantment when its last ability resolves. It won't have any card types other than enchantment."
+   ]
+  },
+  {
+   "name": "Kaito, Bane of Nightmares",
+   "oracle_id": "fa43077b-5d8b-4fb1-8dda-2a9185e6715e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Kaito",
+   "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+   "loyalty": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Ninjutsu"
+   ],
+   "collector_number": "409",
+   "set": "dsk",
+   "related": [
+    {
+     "name": "Kaito, Bane of Nightmares Emblem",
+     "type_line": "Emblem",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The ninjutsu ability can be activated only after blockers have been declared. Before then, attacking creatures are neither blocked nor unblocked.",
+    "As you activate Kaito's ninjutsu ability, you reveal Kaito from your hand and return the attacking creature. Kaito isn't put onto the battlefield until the ability resolves. If Kaito leaves your hand before then, he won't enter at all.",
+    "Kaito enters attacking the same player, planeswalker, or battle the returned creature was attacking. This is a rule specific to ninjutsu; in other cases, when a creature is put onto the battlefield attacking, that creature's controller chooses which player, planeswalker, or battle it's attacking.",
+    "Although Kaito enters attacking when his ninjutsu ability resolves, he was never declared as an attacking creature (for purposes of abilities that trigger whenever a creature attacks, for example).",
+    "The ninjutsu ability can be activated during the declare blockers step, combat damage step, or end of combat step. If you wait until after the declare blockers step, because all combat damage is dealt at once, Kaito won't normally deal combat damage.",
+    "If at least one creature in combat has first strike or double strike, you can activate Kaito's ninjutsu ability during the first-strike combat damage step. In that case, Kaito will deal combat damage during the regular combat damage step, even if he has first strike.",
+    "Kaito's second ability causes him to stop being a planeswalker during your turn as long as he has at least one loyalty counter on him. While he's a creature, damage dealt to him won't cause loyalty counters to be removed. You can still activate Kaito's loyalty abilities.",
+    "Kaito's fourth ability cares whether opponents lost life this turn, not how their life totals changed. For example, an opponent who gained 2 life and lost 1 life in the same turn still lost life that turn.",
+    "If an opponent lost life this turn and subsequently lost the game, Kaito's fourth ability still counts that player when determining how many cards to draw.",
+    "One or more stun counters on a permanent create a single replacement effect that stops the permanent from untapping. That effect is \"If a permanent with a stun counter on it would become untapped, instead remove a stun counter from it.\""
+   ]
+  },
+  {
+   "name": "Inquisitive Glimmer",
+   "oracle_id": "4abb227a-534e-4300-9009-065a10f10e8a",
+   "layout": "normal",
+   "mana_cost": "{W}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment Creature — Fox Glimmer",
+   "oracle_text": "Enchantment spells you cast cost {1} less to cast.\nUnlock costs you pay cost {1} less.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "415",
+   "set": "dsk",
+   "rulings": [
+    "The cost reduction from Inquisitive Glimmer's first ability applies only to generic mana in the total cost of enchantment spells you cast. Similarly, the cost reduction from its second ability applies only to generic mana in the unlock costs of Rooms you control. (In other words, it's impossible for these abilities to combine to make anything cost {2} less.)",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying (such as a flashback cost), add any cost increases (such as kicker costs), then apply any cost reductions (such as that of this ability). The mana value of the spell is determined by only its mana cost, no matter what the total cost to cast that spell was."
+   ]
+  },
+  {
+   "name": "Driftgloom Coyote",
+   "oracle_id": "f76a86f3-568a-40b3-8e2c-f84db4141293",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Coyote",
+   "oracle_text": "When this creature enters, exile target creature an opponent controls until this creature leaves the battlefield. If that creature had power 2 or less, put a +1/+1 counter on this creature.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "11",
+   "set": "blb",
+   "rulings": [
+    "If Driftgloom Coyote leaves the battlefield before its triggered ability resolves, the target creature won’t be exiled.",
+    "Auras attached to the exiled creature will be put into their owners’ graveyards. Any Equipment will become unattached and remain on the battlefield. Any counters on the exiled creature will cease to exist. When the card returns to the battlefield, it will be a new object with no connection to the card that was exiled.",
+    "If a token is exiled this way, it will cease to exist and won’t return to the battlefield.",
+    "Use the power of the exiled creature as it last existed on the battlefield to determine whether or not to put a +1/+1 counter on Driftgloom Coyote."
+   ]
+  },
+  {
+   "name": "Essence Channeler",
+   "oracle_id": "1473580d-7cb2-48f5-a77d-08f49244c5e8",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Bat Cleric",
+   "oracle_text": "As long as you've lost life this turn, this creature has flying and vigilance.\nWhenever you gain life, put a +1/+1 counter on this creature.\nWhen this creature dies, put its counters on target creature you control.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "12",
+   "set": "blb",
+   "rulings": [
+    "Essence Channeler’s first ability cares whether you’ve lost life this turn, not how your life total has changed. For example, if you’ve gained 2 life and lost 1 life so far this turn, you’ve still lost life.",
+    "Once Essence Channeler has been blocked by a creature without flying or reach, losing life to give it flying and vigilance won’t cause it to become unblocked.",
+    "Essence Channeler’s second ability triggers just once for each life-gaining event, no matter how much life was gained.",
+    "If Essence Channeler is dealt lethal damage at the same time that you gain life, it won’t receive a counter from its second ability in time to save it.",
+    "Each creature with lifelink dealing combat damage causes a separate life-gaining event. For example, if two creatures you control with lifelink deal combat damage at the same time, Essence Channeler’s second ability will trigger twice. However, if a single creature you control with lifelink deals combat damage to multiple creatures, players, planeswalkers, and/or battles at the same time (perhaps because it has trample or was blocked by more than one creature), the ability will trigger only once.",
+    "If you gain an amount of life “for each” of something, that life is gained as one event and Essence Channeler’s second ability triggers only once.",
+    "In a Two-Headed Giant game, life gained by your teammate won’t cause Essence Channeler’s second ability to trigger even though it caused your team’s life total to increase.",
+    "Essence Channeler’s last ability puts all counters that were on Essence Channeler onto the target creature, not just its +1/+1 counters.",
+    "Essence Channeler’s last ability doesn’t cause you to move counters from Essence Channeler onto the target creature. Rather, you put the same number of each kind of counter Essence Channeler had when it died onto the target creature.",
+    "In some unusual cases, you may end up putting the appropriate counters on more than one permanent. For example, if you control The Ozolith when Essence Channeler dies, you’ll put the appropriate number of each kind of counter onto both The Ozolith and the target creature.",
+    "If Essence Channeler has -1/-1 counters on it when it dies, that ability will include those as well. This may result in the recipient of the counters also dying.",
+    "If enough -1/-1 counters are put on Essence Channeler at the same time to make its toughness 0 or less, its last ability will see all of the +1/+1 counters it had when it died as well as the -1/-1 counters it had, and an equal number of each of those types of counters (plus any other applicable counters) will be put onto the target creature."
+   ]
+  },
+  {
+   "name": "Jackdaw Savior",
+   "oracle_id": "9e31ef54-b2f2-4f3f-9779-151b74470ce4",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bird Cleric",
+   "oracle_text": "Flying\nWhenever this creature or another creature you control with flying dies, return another target creature card with lesser mana value from your graveyard to the battlefield.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "18",
+   "set": "blb",
+   "rulings": [
+    "If Jackdaw Savior and another creature you control with flying die at the same time, Jackdaw Savior’s last ability triggers for each of them.",
+    "The target creature card must have a lesser mana value than the creature that caused Jackdaw Savior’s last ability to trigger. Use the mana value of that creature as it last existed on the battlefield to determine which creature cards in your graveyard are legal targets for that ability.",
+    "If a creature on the battlefield or a creature card in a graveyard has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Jolly Gerbils",
+   "oracle_id": "8e22bf51-1b1b-459b-af78-91188b6e3f09",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Hamster Citizen",
+   "oracle_text": "Whenever you give a gift, draw a card.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "19",
+   "set": "blb",
+   "rulings": [
+    "The ability of Jolly Gerbils triggers when the gift is actually given. For permanent spells, that happens when the gift triggered ability resolves. For instants and sorceries, that happens when the spell resolves. It doesn’t matter if a replacement effect causes the gift you gave to become something else or if a static effect stops the player from receiving that gift."
+   ]
+  }
+ ]
+}

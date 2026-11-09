@@ -1,0 +1,82 @@
+{
+ "batch": 59,
+ "set": [
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Faerie Slumber Party",
+   "oracle_id": "48ee9007-2d1c-446f-aee3-795d23028e06",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return all creatures to their owners' hands. For each opponent who controlled a creature returned this way, you create two 1/1 blue Faerie creature tokens with flying and \"This token can block only creatures with flying.\"",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "371",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Malevolent Witchkite",
+   "oracle_id": "aee2cd1b-9bf9-4b91-83a4-2f1dbc82dcf4",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon Warlock",
+   "oracle_text": "Flying\nWhen this creature enters, sacrifice any number of artifacts, enchantments, and/or tokens, then draw that many cards.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "372",
+   "set": "woe",
+   "rulings": [
+    "As Malevolent Witchkite's triggered ability resolves, you may choose to sacrifice zero permanents.",
+    "If any abilities trigger when you sacrifice permanents, those abilities won't be put onto the stack until after you've drawn cards. Those abilities won't trigger if you choose to sacrifice zero permanents."
+   ]
+  },
+  {
+   "name": "Faerie Dreamthief",
+   "oracle_id": "d6e68414-80cb-4e08-ae84-b084a3f4b6de",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Creature — Faerie Warlock",
+   "oracle_text": "Flying\nWhen this creature enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{2}{B}, Exile this card from your graveyard: You draw a card and you lose 1 life.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil"
+   ],
+   "collector_number": "377",
+   "set": "woe"
+  }
+ ]
+}

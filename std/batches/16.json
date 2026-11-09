@@ -1,0 +1,267 @@
+{
+ "batch": 16,
+ "set": [
+  "fdn"
+ ],
+ "cards": [
+  {
+   "name": "Midnight Snack",
+   "oracle_id": "3ddcaee9-a11e-477a-bd19-f5ee10512549",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Raid — At the beginning of your end step, if you attacked this turn, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{2}{B}, Sacrifice this enchantment: Target opponent loses X life, where X is the amount of life you gained this turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Food",
+    "Raid"
+   ],
+   "collector_number": "65",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The value of X is determined only once, as Midnight Snack's last ability resolves.",
+    "Raid abilities care only that you attacked with a creature. It doesn't matter how many creatures you attacked with or which player, planeswalker, or battle those creatures attacked.",
+    "Raid abilities evaluate the entire turn to see if you attacked with a creature. That creature doesn't have to still be on the battlefield. Similarly, the player, planeswalker, or battle it attacked doesn't have to still be in the game or on the battlefield."
+   ]
+  },
+  {
+   "name": "Revenge of the Rats",
+   "oracle_id": "29e3a3d9-4839-44d0-ad48-159c01645a6a",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a tapped 1/1 black Rat creature token for each creature card in your graveyard.\nFlashback {2}{B}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "67",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Strongbox Raider",
+   "oracle_id": "ba5a2689-3578-4b1a-99d6-6b6d2356330e",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Orc Pirate",
+   "oracle_text": "Raid — When this creature enters, if you attacked this turn, exile the top two cards of your library. Choose one of them. Until the end of your next turn, you may play that card.",
+   "power": "5",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Raid"
+   ],
+   "collector_number": "96",
+   "set": "fdn",
+   "rulings": [
+    "You pay all costs and follow all normal timing rules for cards played with the permission granted by Strongbox Raider's ability. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "Raid abilities care only that you attacked with a creature. It doesn't matter how many creatures you attacked with or which player, planeswalker, or battle those creatures attacked.",
+    "Raid abilities evaluate the entire turn to see if you attacked with a creature. That creature doesn't have to still be on the battlefield. Similarly, the player, planeswalker, or battle it attacked doesn't have to still be in the game or on the battlefield."
+   ]
+  },
+  {
+   "name": "Quakestrider Ceratops",
+   "oracle_id": "e56629ba-82d4-470f-9a6b-40c29d835af2",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "",
+   "power": "12",
+   "toughness": "8",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "110",
+   "set": "fdn"
+  },
+  {
+   "name": "Quilled Greatwurm",
+   "oracle_id": "01635d21-aeda-4754-9d94-68fcd0cd6556",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Wurm",
+   "oracle_text": "Trample\nWhenever a creature you control deals combat damage during your turn, put that many +1/+1 counters on it. (It must survive to get the counters.)\nYou may cast this card from your graveyard by removing six counters from among creatures you control in addition to paying its other costs.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "111",
+   "set": "fdn",
+   "rulings": [
+    "You must follow all normal timing rules when casting Quilled Greatwurm from your graveyard with the permission granted by its last ability."
+   ]
+  },
+  {
+   "name": "Fiendish Panda",
+   "oracle_id": "b5d64271-4478-4c55-8c71-ba8f02b47fac",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Bear Demon",
+   "oracle_text": "Whenever you gain life, put a +1/+1 counter on this creature.\nWhen this creature dies, return another target non-Bear creature card with mana value less than or equal to this creature's power from your graveyard to the battlefield.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "120",
+   "set": "fdn",
+   "rulings": [
+    "Fiendish Panda's first ability triggers just once for each life-gaining event, whether it's 1 life from Dazzling Angel or 4 life from Apothecary Stomper.",
+    "If Fiendish Panda is dealt lethal damage at the same time that you gain life, it won't receive a counter from its first ability in time to save it.",
+    "Each creature with lifelink dealing combat damage causes a separate life-gaining event. For example, if two creatures you control with lifelink deal combat damage at the same time, Fiendish Panda's first ability will trigger twice. However, if a single creature you control with lifelink deals combat damage to multiple creatures, players, planeswalkers, and/or battles at the same time (perhaps because it has trample or was blocked by more than one creature), the ability will trigger only once.",
+    "If you gain an amount of life \"for each\" of something or \"equal to the number\" of something, that life is gained as one event and Fiendish Panda's first ability triggers only once.",
+    "In a Two-Headed Giant game, life gained by your teammate won't cause Fiendish Panda's first ability to trigger, even though it caused your team's life total to increase.",
+    "Use Fiendish Panda's power as it last existed on the battlefield to determine which creature cards may be targeted with its last ability. (Feel free to think of this as a metric of just how fiendish the panda was.)"
+   ]
+  },
+  {
+   "name": "Perforating Artist",
+   "oracle_id": "a3643f66-dfa2-4275-a093-23e162496354",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Devil",
+   "oracle_text": "Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)\nRaid — At the beginning of your end step, if you attacked this turn, each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Raid",
+    "Deathtouch"
+   ],
+   "collector_number": "124",
+   "set": "fdn",
+   "rulings": [
+    "While resolving Perforating Artist's last ability, your opponent chooses a card to be discarded without revealing it, chooses a nonland permanent to be sacrificed, or chooses to do neither. Then that player discards that card, sacrifices that permanent, or loses 3 life. Your opponent can always choose to lose 3 life, even if they have cards to discard or nonland permanents to sacrifice.",
+    "In a multiplayer game, each opponent in turn order makes their choice once, then all of the actions occur simultaneously. Opponents will know choices made by earlier opponents when making their choices, although a card chosen to be discarded this way isn't revealed until it's discarded.",
+    "In a Two-Headed Giant game, Perforating Artist's last ability causes both opponents to sacrifice a nonland permanent, discard a card, or lose 3 life.",
+    "Raid abilities care only that you attacked with a creature. It doesn't matter how many creatures you attacked with or which player, planeswalker, or battle those creatures attacked.",
+    "Raid abilities evaluate the entire turn to see if you attacked with a creature. That creature doesn't have to still be on the battlefield. Similarly, the player, planeswalker, or battle it attacked doesn't have to still be in the game or on the battlefield.",
+    "Some raid abilities trigger at the beginning of your end step. These abilities trigger if you attacked with a creature that turn, even if the permanent with that raid ability wasn't on the battlefield when you attacked."
+   ]
+  },
+  {
+   "name": "Fishing Pole",
+   "oracle_id": "2c1d3e9e-213e-492a-ad5a-91139d70bc0f",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature has \"{1}, {T}, Tap Fishing Pole: Put a bait counter on Fishing Pole.\"\nWhenever equipped creature becomes untapped, remove a bait counter from this Equipment. If you do, create a 1/1 blue Fish creature token.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "128",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Fish",
+     "type_line": "Token Creature — Fish",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The ability granted by Fishing Pole's first ability refers only to the Fishing Pole granting that ability, not any other permanent on the battlefield named Fishing Pole."
+   ]
+  },
+  {
+   "name": "Quick-Draw Katana",
+   "oracle_id": "604ef241-df8f-48f8-8680-f9ed77ff30ae",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "During your turn, equipped creature gets +2/+0 and has first strike. (It deals combat damage before creatures without first strike.)\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "130",
+   "set": "fdn"
+  },
+  {
+   "name": "Ravenous Amulet",
+   "oracle_id": "87424e20-00ab-4f6d-a905-1955897b358e",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{1}, {T}, Sacrifice a creature: Draw a card and put a soul counter on this artifact. Activate only as a sorcery.\n{4}, {T}, Sacrifice this artifact: Each opponent loses life equal to the number of soul counters on this artifact.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "131",
+   "set": "fdn"
+  }
+ ]
+}

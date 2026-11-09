@@ -1,0 +1,258 @@
+{
+ "batch": 25,
+ "set": [
+  "dsk"
+ ],
+ "cards": [
+  {
+   "name": "Coordinated Clobbering",
+   "oracle_id": "b2b65b17-1fb4-42d6-9c6a-376d3f18851b",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Tap one or two target untapped creatures you control. They each deal damage equal to their power to target creature an opponent controls.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "173",
+   "set": "dsk",
+   "rulings": [
+    "If one of the target creatures you control is an illegal target when Coordinated Clobbering begins to resolve (perhaps because it's no longer on the battlefield or because it's tapped), that creature won't deal any damage. If the target creature an opponent controls is an illegal target, no damage will be dealt."
+   ]
+  },
+  {
+   "name": "Cryptid Inspector",
+   "oracle_id": "c36f787e-d8d4-4bd5-9790-64766878fe46",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Warrior",
+   "oracle_text": "Vigilance\nWhenever a face-down permanent you control enters and whenever this creature or another permanent you control is turned face up, put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "174",
+   "set": "dsk"
+  },
+  {
+   "name": "Monstrous Emergence",
+   "oracle_id": "5542ea4d-34ab-4f89-8894-793a7038f501",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, choose a creature you control or reveal a creature card from your hand.\nMonstrous Emergence deals damage equal to the power of the creature you chose or the card you revealed to target creature.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "191",
+   "set": "dsk",
+   "rulings": [
+    "If you chose a creature on the battlefield, use that creature's power when Monstrous Emergence resolves to determine how much damage is dealt. If that creature is no longer on the battlefield when Monstrous Emergence resolves, use that creature's power as it last existed on the battlefield to determine how much damage is dealt."
+   ]
+  },
+  {
+   "name": "Omnivorous Flytrap",
+   "oracle_id": "0aa2ab46-c5ad-462b-b441-dbbc4b2c3532",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Plant",
+   "oracle_text": "Delirium — Whenever this creature enters or attacks, if there are four or more card types among cards in your graveyard, distribute two +1/+1 counters among one or two target creatures. Then if there are six or more card types among cards in your graveyard, double the number of +1/+1 counters on those creatures.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Delirium",
+    "Double"
+   ],
+   "collector_number": "192",
+   "set": "dsk",
+   "rulings": [
+    "To double the number of +1/+1 counters on a permanent, put a number of +1/+1 counters on it equal to the number it already has. Other effects that interact with putting counters on it will interact with this effect accordingly."
+   ]
+  },
+  {
+   "name": "Overgrown Zealot",
+   "oracle_id": "5146b291-1170-481f-a4b9-709dd5c4b09c",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "{T}: Add one mana of any color.\n{T}: Add two mana of any one color. Spend this mana only to turn permanents face up.",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "193",
+   "set": "dsk",
+   "rulings": [
+    "Mana produced by Overgrown Zealot's last ability can be used to pay morph or disguise costs when turning a face-down permanent face up or to pay costs associated with turning a manifested or cloaked permanent face up."
+   ]
+  },
+  {
+   "name": "Rootwise Survivor",
+   "oracle_id": "e42a6880-7ca6-498d-abc9-fb7ccd08b111",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Survivor",
+   "oracle_text": "Haste\nSurvival — At the beginning of your second main phase, if this creature is tapped, put three +1/+1 counters on up to one target land you control. That land becomes a 0/0 Elemental creature in addition to its other types. It gains haste until your next turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Haste",
+    "Survival"
+   ],
+   "collector_number": "196",
+   "set": "dsk",
+   "rulings": [
+    "If a creature's survival ability triggers but that creature is untapped when the ability begins to resolve, that ability won't do anything.",
+    "Rootwise Survivor's last ability doesn't have a duration, which means the land remains a creature indefinitely.",
+    "Survival abilities (and other abilities that trigger at the beginning of your second main phase) will trigger at the beginning of the second main phase you take in a turn. They won't trigger during your third, fourth, or other additional main phases in a single turn, if effects somehow cause you to have more than two main phases.",
+    "If a creature with a survival ability isn't tapped when your second main phase begins, the ability won't trigger at all. You won't be able to tap it during your second main phase in time to have that ability trigger.",
+    "If a creature's survival ability triggers but the creature leaves the battlefield before the ability resolves, use its tapped or untapped status as it last existed on the battlefield to determine whether or not the ability will do anything."
+   ]
+  },
+  {
+   "name": "Say Its Name",
+   "oracle_id": "474f0675-4088-4f77-8081-f9ed7d492837",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Mill three cards. Then you may return a creature or land card from your graveyard to your hand.\nExile this card and two other cards named Say Its Name from your graveyard: Search your graveyard, hand, and/or library for a card named Altanak, the Thrice-Called and put it onto the battlefield. If you search your library this way, shuffle. Activate only as a sorcery.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "197",
+   "set": "dsk",
+   "related": [
+    {
+     "name": "Altanak, the Thrice-Called",
+     "type_line": "Legendary Creature — Insect Beast",
+     "component": "combo_piece"
+    }
+   ]
+  },
+  {
+   "name": "Baseball Bat",
+   "oracle_id": "9b5a3765-943b-4925-b008-fc734b2934f7",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, attach it to target creature you control.\nEquipped creature gets +1/+1.\nWhenever equipped creature attacks, tap up to one target creature.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "209",
+   "set": "dsk"
+  },
+  {
+   "name": "Beastie Beatdown",
+   "oracle_id": "3da5fbe2-e47b-4a1d-9e73-393f37314fa3",
+   "layout": "normal",
+   "mana_cost": "{R}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose target creature you control and target creature an opponent controls.\nDelirium — If there are four or more card types among cards in your graveyard, put two +1/+1 counters on the creature you control.\nThe creature you control deals damage equal to its power to the creature an opponent controls.",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "210",
+   "set": "dsk",
+   "rulings": [
+    "You can't cast Beastie Beatdown unless you choose a creature you control and a creature an opponent controls as targets.",
+    "If either creature is an illegal target as Beastie Beatdown tries to resolve, the creature you control won't deal damage. If the creature you control is an illegal target, you won't put two +1/+1 counters on it even if you have delirium."
+   ]
+  },
+  {
+   "name": "Broodspinner",
+   "oracle_id": "ad50214c-4d0e-4f95-9098-fd7d64dbf7f4",
+   "layout": "normal",
+   "mana_cost": "{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spider",
+   "oracle_text": "Reach\nWhen this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\n{4}{B}{G}, {T}, Sacrifice this creature: Create a number of 1/1 black and green Insect creature tokens with flying equal to the number of card types among cards in your graveyard.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Surveil",
+    "Reach"
+   ],
+   "collector_number": "211",
+   "set": "dsk",
+   "related": [
+    {
+     "name": "Insect",
+     "type_line": "Token Creature — Insect",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,249 @@
+{
+ "batch": 19,
+ "set": [
+  "fdn"
+ ],
+ "cards": [
+  {
+   "name": "Highborn Vampire",
+   "oracle_id": "1adcf587-9035-4299-a2bd-62f805fdd897",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Vampire Warrior",
+   "oracle_text": "",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "522",
+   "set": "fdn"
+  },
+  {
+   "name": "Undying Malice",
+   "oracle_id": "8b061702-1bc3-45aa-a758-446b25034801",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Until end of turn, target creature gains \"When this creature dies, return it to the battlefield tapped under its owner's control with a +1/+1 counter on it.\"",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "528",
+   "set": "fdn"
+  },
+  {
+   "name": "Dropkick Bomber",
+   "oracle_id": "c394d4b6-cfb8-4639-90cb-a322a25c0a2f",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Goblin Warrior",
+   "oracle_text": "Other Goblins you control get +1/+1.\n{R}: Until end of turn, another target Goblin you control gains flying and \"When this creature deals combat damage, sacrifice it.\"",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "537",
+   "set": "fdn",
+   "rulings": [
+    "Because damage remains marked on a creature until it's removed as the turn ends, nonlethal damage dealt to a Goblin you control may become lethal if Dropkick Bomber leaves the battlefield during that turn."
+   ]
+  },
+  {
+   "name": "Raging Redcap",
+   "oracle_id": "679841ad-f3ac-48e2-ba11-2cf6d78642b4",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Goblin Knight",
+   "oracle_text": "Double strike (This creature deals both first-strike and regular combat damage.)",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Double strike"
+   ],
+   "collector_number": "543",
+   "set": "fdn"
+  },
+  {
+   "name": "Bear Cub",
+   "oracle_id": "ed206651-3d9b-4546-8d45-0682817192fd",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Bear",
+   "oracle_text": "",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "552",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Ursine Guide // Ranger's Merit",
+     "type_line": "Creature — Bear Druid // Sorcery",
+     "component": "combo_piece"
+    }
+   ]
+  },
+  {
+   "name": "Knight of Grace",
+   "oracle_id": "7b51a979-47e0-4b98-8ec5-8064c83422e1",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Knight",
+   "oracle_text": "First strike (This creature deals combat damage before creatures without first strike.)\nHexproof from black (This creature can't be the target of black spells or abilities your opponents control.)\nThis creature gets +1/+0 as long as any player controls a black permanent.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Hexproof from",
+    "Hexproof",
+    "First strike"
+   ],
+   "collector_number": "576",
+   "set": "fdn",
+   "rulings": [
+    "\"Hexproof from [quality]\" is a variant of the hexproof ability. \"Hexproof from black\" means \"This permanent can't be the target of black spells your opponents control or abilities of black sources your opponents control.\"",
+    "If an effect says that a creature loses hexproof or can be targeted as though it didn't have hexproof, this applies to hexproof from black as well.",
+    "Knight of Grace only gets +1/+0 if any player controls a black permanent, no matter how many black permanents players control."
+   ]
+  },
+  {
+   "name": "Release the Dogs",
+   "oracle_id": "b97d21b4-d730-479f-872f-3e1645b66751",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create four 1/1 white Dog creature tokens.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "580",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Dog",
+     "type_line": "Token Creature — Dog",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Kalastria Highborn",
+   "oracle_id": "77e319da-d782-4258-bf0e-626755e5adc9",
+   "layout": "normal",
+   "mana_cost": "{B}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Vampire Shaman",
+   "oracle_text": "Whenever this creature or another Vampire you control dies, you may pay {B}. If you do, target player loses 2 life and you gain 2 life.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "607",
+   "set": "fdn",
+   "rulings": [
+    "If multiple Vampires you control (possibly including Kalastria Highborn itself) are put into their owners' graveyards at the same time, Kalastria Highborn's ability triggers that many times.",
+    "You target a player when the ability triggers. You choose whether to pay {B} as the ability resolves. You may pay {B} only once per resolution.",
+    "If the targeted player is an illegal target by the time the ability resolves (for example, if that player has left a multiplayer game), the entire ability doesn't resolve. You can't pay {B} and you don't gain life."
+   ]
+  },
+  {
+   "name": "Knight of Malice",
+   "oracle_id": "b89d912a-65a0-4bc9-9e1d-ff8317458a72",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Knight",
+   "oracle_text": "First strike (This creature deals combat damage before creatures without first strike.)\nHexproof from white (This creature can't be the target of white spells or abilities your opponents control.)\nThis creature gets +1/+0 as long as any player controls a white permanent.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Hexproof from",
+    "Hexproof",
+    "First strike"
+   ],
+   "collector_number": "608",
+   "set": "fdn",
+   "rulings": [
+    "\"Hexproof from [quality]\" is a variant of the hexproof ability. \"Hexproof from white\" means \"This permanent can't be the target of white spells your opponents control or abilities of white sources your opponents control.\"",
+    "If an effect says that a creature loses hexproof or can be targeted as though it didn't have hexproof, this applies to hexproof from white as well.",
+    "Knight of Malice only gets +1/+0 if any player controls a white permanent, no matter how many white permanents players control."
+   ]
+  },
+  {
+   "name": "Myojin of Night's Reach",
+   "oracle_id": "5ac65688-0a74-4dc4-b6cb-12bdf8aed01e",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}{B}",
+   "cmc": 8.0,
+   "type_line": "Legendary Creature — Spirit",
+   "oracle_text": "Myojin of Night's Reach enters with a divinity counter on it if you cast it from your hand.\nMyojin of Night's Reach has indestructible as long as it has a divinity counter on it.\nRemove a divinity counter from Myojin of Night's Reach: Each opponent discards their hand.",
+   "power": "5",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "610",
+   "set": "fdn",
+   "rulings": [
+    "In a Commander game where this card is your commander, casting it from the command zone does not count as casting it from your hand."
+   ]
+  }
+ ]
+}

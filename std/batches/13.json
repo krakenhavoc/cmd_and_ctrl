@@ -1,0 +1,262 @@
+{
+ "batch": 13,
+ "set": [
+  "dft"
+ ],
+ "cards": [
+  {
+   "name": "Wickerfolk Indomitable",
+   "oracle_id": "730d02c7-2f8a-47d3-99f0-e4ada7f6255c",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Scarecrow",
+   "oracle_text": "You may cast this card from your graveyard by paying 2 life and sacrificing an artifact or creature in addition to paying its other costs.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "109",
+   "set": "dft"
+  },
+  {
+   "name": "Chandra, Spark Hunter",
+   "oracle_id": "30bb01c1-9253-4251-80e7-fb8236b3d858",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Chandra",
+   "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+   "loyalty": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "116",
+   "set": "dft",
+   "related": [
+    {
+     "name": "Vehicle",
+     "type_line": "Token Artifact — Vehicle",
+     "component": "token"
+    },
+    {
+     "name": "Chandra, Spark Hunter Emblem",
+     "type_line": "Emblem",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Emblems are colorless. This means that a permanent with protection from red can be the target of the emblem’s triggered ability."
+   ]
+  },
+  {
+   "name": "Dredger's Insight",
+   "oracle_id": "3f21c1c6-7992-4036-ad3e-b599153e54fe",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever one or more artifact and/or creature cards leave your graveyard, you gain 1 life.\nWhen this enchantment enters, mill four cards. You may put an artifact, creature, or land card from among the milled cards into your hand. (To mill four cards, put the top four cards of your library into your graveyard.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "159",
+   "set": "dft"
+  },
+  {
+   "name": "Fang-Druid Summoner",
+   "oracle_id": "1a9bfe76-6c74-4393-b04e-461422a29ddb",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Ape Druid",
+   "oracle_text": "Reach\nWhen this creature enters, you may search your library and/or graveyard for a creature card with no abilities, reveal it, and put it into your hand. If you search your library this way, shuffle.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "163",
+   "set": "dft"
+  },
+  {
+   "name": "Rise from the Wreck",
+   "oracle_id": "8eeb83b4-dca1-497e-a6b7-0485807aeef3",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return up to one target creature card, up to one target Mount card, up to one target Vehicle card, and up to one target creature card with no abilities from your graveyard to your hand.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "178",
+   "set": "dft"
+  },
+  {
+   "name": "Webstrike Elite",
+   "oracle_id": "48a1d55e-0b71-4724-ab2a-6d2c87e86b5b",
+   "layout": "normal",
+   "mana_cost": "{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Insect Archer",
+   "oracle_text": "Reach\nCycling {X}{G}{G} ({X}{G}{G}, Discard this card: Draw a card.)\nWhen you cycle this card, destroy up to one target artifact or enchantment with mana value X.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Cycling"
+   ],
+   "collector_number": "186",
+   "set": "dft",
+   "rulings": [
+    "If there’s an {X} in a permanent’s mana cost, X is 0 when determining its mana value.",
+    "Some cards with cycling have an ability that triggers when you cycle them, and some cards have an ability that triggers whenever you cycle any card or discard any card. These triggered abilities resolve before you draw from the cycling ability.",
+    "Triggered abilities from cycling a card and the cycling ability itself aren’t spells. Effects that interact with spells (such as that of Cancel) won’t affect them.",
+    "You can cycle a card even if it has a triggered ability from cycling that won’t have a legal target. This is because the cycling ability and the triggered ability are separate. This also means that if either ability is countered (with Disallow, for example), the other ability will still resolve."
+   ]
+  },
+  {
+   "name": "Caradora, Heart of Alacria",
+   "oracle_id": "a9d60d80-bcef-45e0-8ded-d70bd3c2780f",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Knight",
+   "oracle_text": "When Caradora enters, you may search your library for a Mount or Vehicle card, reveal it, put it into your hand, then shuffle.\nIf one or more +1/+1 counters would be put on a creature or Vehicle you control, that many plus one +1/+1 counters are put on it instead.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "195",
+   "set": "dft",
+   "rulings": [
+    "If a creature or Vehicle you control would enter the battlefield with a number of +1/+1 counters on it, it enters with that many plus one instead.",
+    "If you somehow control multiple copies of Caradora, they would each increase the number of +1/+1 counters put on a creature or Vehicle you control by one.",
+    "If two or more effects attempt to modify how many counters would be put on a permanent you control, you choose the order to apply those effects, no matter who controls the sources of those effects."
+   ]
+  },
+  {
+   "name": "Dune Drifter",
+   "oracle_id": "b32649cb-bf5c-45fa-86f0-8bf4e8555f06",
+   "layout": "normal",
+   "mana_cost": "{X}{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "When this Vehicle enters, return target artifact or creature card with mana value X or less from your graveyard to the battlefield.\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Crew"
+   ],
+   "collector_number": "200",
+   "set": "dft",
+   "rulings": [
+    "If this Vehicle enters and wasn’t cast, or it was cast without paying its mana cost, X is 0."
+   ]
+  },
+  {
+   "name": "Fearless Swashbuckler",
+   "oracle_id": "6a6cdb3e-c850-4b3c-bf4b-c53dd4eaf56e",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Fish Pirate",
+   "oracle_text": "Haste\nVehicles you control have haste.\nWhenever you attack, if a Pirate and a Vehicle attacked this combat, draw three cards, then discard two cards.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "204",
+   "set": "dft",
+   "rulings": [
+    "If you attack with a single creature that is both a Pirate and a Vehicle, the last ability triggers."
+   ]
+  },
+  {
+   "name": "Redshift, Rocketeer Chief",
+   "oracle_id": "582c7e54-d64c-4ffb-ae5f-d2752b3ed10b",
+   "layout": "normal",
+   "mana_cost": "{R}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Goblin Pilot",
+   "oracle_text": "Vigilance\n{T}: Add X mana of any one color, where X is Redshift's power. Spend this mana only to activate abilities.\nExhaust — {10}{R}{G}: Put any number of permanent cards from your hand onto the battlefield. (Activate each exhaust ability only once.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Exhaust"
+   ],
+   "collector_number": "218",
+   "set": "dft",
+   "rulings": [
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  }
+ ]
+}

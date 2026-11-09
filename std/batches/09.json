@@ -1,0 +1,278 @@
+{
+ "batch": 9,
+ "set": [
+  "tdm"
+ ],
+ "cards": [
+  {
+   "name": "Trade Route Envoy",
+   "oracle_id": "95d51048-be32-4c5f-8b75-fca3a891c9d6",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dog Soldier",
+   "oracle_text": "When this creature enters, draw a card if you control a creature with a counter on it. If you don't draw a card this way, put a +1/+1 counter on this creature.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "163",
+   "set": "tdm"
+  },
+  {
+   "name": "Traveling Botanist",
+   "oracle_id": "14934ab0-41ab-44f8-bb28-2b0457eb6f5f",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Dog Scout",
+   "oracle_text": "Whenever this creature becomes tapped, look at the top card of your library. If it's a land card, you may reveal it and put it into your hand. If you don't put the card into your hand, you may put it into your graveyard.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "164",
+   "set": "tdm"
+  },
+  {
+   "name": "Warden of the Grove",
+   "oracle_id": "13bf8103-3db3-4ee6-a6bb-441aabfd9e41",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Hydra",
+   "oracle_text": "At the beginning of your end step, put a +1/+1 counter on this creature.\nWhenever another nontoken creature you control enters, it endures X, where X is the number of counters on this creature. (Put X +1/+1 counters on the creature that entered or create an X/X white Spirit creature token.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Endure"
+   ],
+   "collector_number": "166",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The value of X is determined as the last ability resolves. If Warden of the Grove is no longer on the battlefield at that time, the number of counters on it as it last existed on the battlefield is used to determine how many +1/+1 counters to put on the creature that endured or the power and toughness of the Spirit token created.",
+    "You choose whether to put +1/+1 counters on the creature or create a Spirit token as the ability that includes the endure instruction is resolving. No player may take actions between the time you choose and the time that counters are added or tokens are created.",
+    "If you can’t put +1/+1 counters on the creature for any reason as an endure ability resolves (for example, if the creature is no longer on the battlefield), you’ll just create a Spirit token.",
+    "If a noncreature permanent is instructed to endure, the effect is the same. You can put +1/+1 counters on that permanent or create a Spirit token."
+   ]
+  },
+  {
+   "name": "Dragonclaw Strike",
+   "oracle_id": "69e0d9f1-f9dd-4614-ad9f-13e7153710ce",
+   "layout": "normal",
+   "mana_cost": "{2/G}{2/U}{2/R}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Double the power and toughness of target creature you control until end of turn. Then it fights up to one target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Fight",
+    "Double"
+   ],
+   "collector_number": "180",
+   "set": "tdm",
+   "rulings": [
+    "If an effect instructs you to “double” a creature’s power, that creature gets +X/+0, where X is its power as that effect begins to apply. Similarly, a creature whose toughness is doubled gets +0/+X, where X is its toughness as the effect begins to apply."
+   ]
+  },
+  {
+   "name": "Effortless Master",
+   "oracle_id": "185e0892-194f-43ac-853f-1e142bf8476e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Orc Monk",
+   "oracle_text": "Vigilance\nMenace (This creature can't be blocked except by two or more creatures.)\nThis creature enters with two +1/+1 counters on it if you've cast two or more spells this turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Menace"
+   ],
+   "collector_number": "181",
+   "set": "tdm",
+   "rulings": [
+    "Effortless Master’s last ability will count any spells you’ve cast this turn, which includes Effortless Master itself if you cast it. It doesn’t matter if the other spells resolved, didn’t resolve, were countered, or are still on the stack."
+   ]
+  },
+  {
+   "name": "Fangkeeper's Familiar",
+   "oracle_id": "06343800-b555-4a13-ad4d-19e37d200138",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Snake",
+   "oracle_text": "Flash\nWhen this creature enters, choose one —\n• You gain 3 life and surveil 3. (Look at the top three cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\n• Destroy target enchantment.\n• Counter target creature spell.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Flash"
+   ],
+   "collector_number": "183",
+   "set": "tdm"
+  },
+  {
+   "name": "Felothar, Dawn of the Abzan",
+   "oracle_id": "fd666669-ad23-4e41-b78c-1cd7b82eb8b4",
+   "layout": "normal",
+   "mana_cost": "{W}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Trample\nWhenever Felothar enters or attacks, you may sacrifice a nonland permanent. When you do, put a +1/+1 counter on each creature you control.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "184",
+   "set": "tdm"
+  },
+  {
+   "name": "Gurmag Nightwatch",
+   "oracle_id": "fde50a0d-9bc6-45f4-873e-3de81a513fac",
+   "layout": "normal",
+   "mana_cost": "{2/B}{2/G}{2/U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Human Ranger",
+   "oracle_text": "When this creature enters, look at the top three cards of your library. You may put one of those cards back on top of your library. Put the rest into your graveyard.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "190",
+   "set": "tdm"
+  },
+  {
+   "name": "Host of the Hereafter",
+   "oracle_id": "3431338b-928a-47f2-bc2f-f3c5d8eda8d0",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Zombie Warlock",
+   "oracle_text": "This creature enters with two +1/+1 counters on it.\nWhenever this creature or another creature you control dies, if it had counters on it, put its counters on up to one target creature you control.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "193",
+   "set": "tdm",
+   "rulings": [
+    "If Host of the Hereafter dies at the same time as one or more other creatures you control, Host of the Hereafter’s last ability triggers for each of those creatures that had counters on them, including itself if applicable.",
+    "Host of the Hereafter’s last ability doesn’t cause you to move counters from the creature that died onto the target creature. Rather, you put the same number of each kind of counter the creature had when it died onto the target creature.",
+    "Host of the Hereafter’s last ability puts all counters that were on the creature that died onto the target creature, not just its +1/+1 counters.",
+    "In some unusual cases, you may end up putting the appropriate counters on more than one permanent. For example, if you control The Ozolith and Host of the Hereafter when a creature you control with counters on it dies, you’ll put the appropriate number of each kind of counter onto both The Ozolith and the target creature.",
+    "If the creature that died had -1/-1 counters on it when it died, Host of the Hereafter’s ability will put those on the target creature as well. This may result in the recipient of the counters also dying.",
+    "If enough -1/-1 counters are put on a creature you control at the same time to make its toughness 0 or less, Host of the Hereafter’s last ability will see all of the +1/+1 counters it had when it died as well as the -1/-1 counters it had, and the same number of each of those types of counters (plus any other applicable counters) will be put onto the target creature."
+   ]
+  },
+  {
+   "name": "Kotis, the Fangkeeper",
+   "oracle_id": "2eb2f6a2-e31a-4d3e-93ce-100394899014",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Zombie Warrior",
+   "oracle_text": "Indestructible\nWhenever Kotis deals combat damage to a player, exile the top X cards of their library, where X is the amount of damage dealt. You may cast any number of spells with mana value X or less from among them without paying their mana costs.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "202",
+   "set": "tdm",
+   "rulings": [
+    "If an exiled card has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "You cast the spells from among the exiled cards while Kotis’s last ability is resolving and still on the stack. You can’t wait to cast them later in the turn. Timing restrictions based on the card’s type are ignored.",
+    "Since you are using an alternative cost to cast the spells, you can’t pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the spells have any mandatory additional costs, you must pay those.",
+    "If any of the spells you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  }
+ ]
+}

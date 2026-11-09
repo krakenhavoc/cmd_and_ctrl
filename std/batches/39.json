@@ -1,0 +1,310 @@
+{
+ "batch": 39,
+ "set": [
+  "big",
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Molten Duplication",
+   "oracle_id": "92b91910-9b65-4421-8eef-a33793161089",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a token that's a copy of target artifact or creature you control, except it's an artifact in addition to its other types. It gains haste until end of turn. Sacrifice it at the beginning of the next end step.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "big",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Except for the listed exceptions, the token copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn’t copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "If the copied permanent is a token, the token that’s created copies the original characteristics of that token as stated by the effect that created that token, with the stated exceptions.",
+    "If the copied permanent is copying something else, then the token enters the battlefield as whatever that permanent copied, with the stated exceptions.",
+    "Any enters-the-battlefield abilities of the copied permanent will trigger when the token enters the battlefield. Any “as [this permanent] enters the battlefield” or “[this permanent] enters the battlefield with” abilities of the copied permanent will also work."
+   ]
+  },
+  {
+   "name": "Bristlebud Farmer",
+   "oracle_id": "3e44226b-51a2-4099-aff8-a5befab720cb",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Plant Druid",
+   "oracle_text": "Trample\nWhen this creature enters, create two Food tokens. (They're artifacts with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever this creature attacks, you may sacrifice a Food. If you do, mill three cards. You may put a permanent card from among them into your hand.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food",
+    "Trample",
+    "Mill"
+   ],
+   "collector_number": "82",
+   "set": "big",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost).",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "A permanent card is an artifact, battle, creature, enchantment, land, or planeswalker card."
+   ]
+  },
+  {
+   "name": "Tarnation Vista",
+   "oracle_id": "b0be3f25-edb1-4299-959c-9aad909730ca",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped. As it enters, choose a color.\n{T}: Add one mana of the chosen color.\n{1}, {T}: For each color among monocolored permanents you control, add one mana of that color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "95",
+   "set": "big",
+   "rulings": [
+    "Tarnation Vista’s last ability is a mana ability. It doesn’t use the stack and can’t be responded to.",
+    "The five colors are white, blue, black, red, and green, and as such, Tarnation Vista’s last ability can produce five mana at most."
+   ]
+  },
+  {
+   "name": "Sanctuary Wall",
+   "oracle_id": "83856c3a-652e-4afc-9dc0-0072324ac36f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Wall",
+   "oracle_text": "Defender\n{2}{W}, {T}: Tap target creature. You may put a stun counter on it. If you do, put a stun counter on this creature. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "32",
+   "set": "mkm"
+  },
+  {
+   "name": "Seasoned Consultant",
+   "oracle_id": "9ee64b00-6619-451e-bb48-10af107dcb2f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "Whenever you attack with three or more creatures, this creature gets +2/+0 until end of turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "33",
+   "set": "mkm",
+   "rulings": [
+    "It doesn't matter what happens to the creatures in response. As long as you attacked with at least three creatures, Seasoned Consultant will still get +2/+0 until end of turn when its triggered ability resolves."
+   ]
+  },
+  {
+   "name": "Tenth District Hero",
+   "oracle_id": "0953772c-9374-4616-9c04-5838aaf626c9",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human",
+   "oracle_text": "{1}{W}, Collect evidence 2: This creature becomes a Human Detective with base power and toughness 4/4 and gains vigilance.\n{2}{W}, Collect evidence 4: If this creature is a Detective, it becomes a legendary creature named Mileva, the Stalwart, it has base power and toughness 5/5, and it gains \"Other creatures you control have indestructible.\"",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Collect evidence"
+   ],
+   "collector_number": "34",
+   "set": "mkm",
+   "rulings": [
+    "Neither of these abilities have durations. If one of them resolves, it will remain in effect until the game ends, Tenth District Hero leaves the battlefield, or some subsequent effect changes its characteristics, whichever comes first.",
+    "Typically, Tenth District Hero's abilities are activated in the order they appear on the card. However, if Tenth District Hero is a 5/5 legendary Human Detective named Mileva, the Stalwart with vigilance and \"Other creatures you control have indestructible\" and you activate its first ability again, it will become a 4/4 legendary Human Detective named Mileva, the Stalwart with the same abilities, plus an additional (and almost certainly redundant) instance of vigilance.",
+    "You can activate Tenth District Hero's second ability regardless of what creature types it is. The ability checks Tenth District Hero's creature types when it resolves. If Tenth District Hero isn't a Detective at that time, the ability does nothing.",
+    "Tenth District Hero's second ability checks whether it's a Detective. It doesn't matter how it became a Detective.",
+    "The effects from Tenth District Hero's abilities overwrite other effects that set power and/or toughness if and only if those effects existed before the ability resolved. They will not overwrite effects that modify power or toughness without setting it (whether from a static ability, counters, or a resolved spell or ability), nor will they overwrite effects that set power and toughness which come into existence after they resolve. Effects that switch the creature's power and toughness are always applied after any other power or toughness changing effects, including these two, regardless of the order in which they are created.",
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Wojek Investigator",
+   "oracle_id": "ab41243d-b178-4ebe-a7ac-bea37427be99",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Angel Detective",
+   "oracle_text": "Flying, vigilance\nAt the beginning of your upkeep, investigate once for each opponent who has more cards in hand than you. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Investigate",
+    "Vigilance"
+   ],
+   "collector_number": "36",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  },
+  {
+   "name": "Wrench",
+   "oracle_id": "fdbac0a7-18c0-48a5-a174-0d4d1473fd9c",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Clue Equipment",
+   "oracle_text": "Equipped creature gets +1/+1 and has vigilance and \"{3}, {T}: Tap target creature.\"\n{2}, Sacrifice this Equipment: Draw a card.\nEquip {2}",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "37",
+   "set": "mkm"
+  },
+  {
+   "name": "Agency Outfitter",
+   "oracle_id": "23b2de61-a29c-4a32-b38c-408c723727ce",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Sphinx Detective",
+   "oracle_text": "Flying\nWhen this creature enters, you may search your graveyard, hand and/or library for a card named Magnifying Glass and/or a card named Thinking Cap and put them onto the battlefield. If you search your library this way, shuffle.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "38",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Thinking Cap",
+     "type_line": "Artifact — Equipment",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Magnifying Glass",
+     "type_line": "Artifact",
+     "component": "combo_piece"
+    }
+   ]
+  },
+  {
+   "name": "Cryptic Coat",
+   "oracle_id": "73b8adea-1786-44fc-b190-bf240b07f5b6",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, cloak the top card of your library, then attach this Equipment to it. (To cloak a card, put it onto the battlefield face down as a 2/2 creature with ward {2}. Turn it face up any time for its mana cost if it's a creature card.)\nEquipped creature gets +1/+0 and can't be blocked.\n{1}{U}: Return this Equipment to its owner's hand.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Cloak"
+   ],
+   "collector_number": "50",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "You'll still cloak the top card of your library even if Cryptic Coat isn't on the battlefield as its first ability resolves.",
+    "Cryptic Coat has no equip ability. Without assistance from other cards, there's no way to attach it to a creature other than with its first triggered ability. How cryptic!",
+    "To cloak a card, put it onto the battlefield face down. It becomes a 2/2 face-down creature card with ward {2} and no name, mana cost, or creature types. It's colorless and has a mana value of 0. Other effects that apply to the permanent can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you can turn a cloaked permanent you control face-up by revealing that it's a creature card (ignoring any copy effects or type-changing effects that might be applying to it) and paying its mana cost. This is a special action. It doesn't use the stack and can't be responded to.",
+    "If a cloaked creature would have disguise (or morph) if it were face up, you may also turn it face up by paying its disguise (or morph) cost.",
+    "Unlike a face-down creature that was cast using a disguise or morph ability, a cloaked creature may still be turned face up after it loses its abilities if it's a creature card.",
+    "If a double-faced card is cloaked, it will be put onto the battlefield face down. While face down, it can't transform. If the front face of the card is a creature card, you can turn it face up by paying its mana cost. If you do, its front face will be up.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "If something tries to turn a face-down instant or sorcery card on the battlefield face up, reveal that card to show all players it's an instant or sorcery card. The permanent remains on the battlefield face down. Abilities that trigger when a permanent turns face up won't trigger, because even though you revealed the card, it never turned face up."
+   ]
+  }
+ ]
+}

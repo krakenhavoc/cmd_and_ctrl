@@ -1,0 +1,276 @@
+{
+ "batch": 48,
+ "set": [
+  "lci"
+ ],
+ "cards": [
+  {
+   "name": "Bloodthorn Flail",
+   "oracle_id": "01ab7724-1967-4da6-aebd-3729983d6a0e",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +2/+1.\nEquip—Pay {3} or discard a card.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "93",
+   "set": "lci"
+  },
+  {
+   "name": "Defossilize",
+   "oracle_id": "d620de15-8141-4877-9330-8328a3fa85e1",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return target creature card from your graveyard to the battlefield. That creature explores, then it explores again. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard. Then repeat this process.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "103",
+   "set": "lci",
+   "rulings": [
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "Grasping Shadows // Shadows' Lair",
+   "oracle_id": "522a4b02-24c7-45d2-9097-2803cc9fffad",
+   "layout": "transform",
+   "cmc": 4.0,
+   "type_line": "Enchantment // Land — Cave",
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "108",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Grasping Shadows",
+     "mana_cost": "{3}{B}",
+     "type_line": "Enchantment",
+     "oracle_text": "Whenever a creature you control attacks alone, it gains deathtouch and lifelink until end of turn. Put a dread counter on this enchantment. Then if there are three or more dread counters on it, transform it."
+    },
+    {
+     "name": "Shadows' Lair",
+     "mana_cost": "",
+     "type_line": "Land — Cave",
+     "oracle_text": "(Transforms from Grasping Shadows.)\n{T}: Add {B}.\n{B}, {T}, Remove a dread counter from this land: You draw a card and you lose 1 life."
+    }
+   ],
+   "rulings": [
+    "A creature attacks alone if it's the only creature declared as an attacker during the declare attackers step. For example, the triggered ability of Grasping Shadows won't trigger if you attack with multiple creatures and all but one of them are removed from combat.",
+    "Once the ability of Grasping Shadows has triggered, creatures entering the battlefield attacking won't affect that ability.",
+    "Grasping Shadows keeps its dread counters as it transforms into Shadows' Lair."
+   ]
+  },
+  {
+   "name": "Skullcap Snail",
+   "oracle_id": "6420e8a0-3ef4-4f95-bb6a-12409eef4d48",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Fungus Snail",
+   "oracle_text": "When this creature enters, target opponent exiles a card from their hand.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "119",
+   "set": "lci"
+  },
+  {
+   "name": "Terror Tide",
+   "oracle_id": "12be58f4-1c12-4bca-8069-1f049cd8a90c",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Fathomless descent — All creatures get -X/-X until end of turn, where X is the number of permanent cards in your graveyard.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Fathomless descent"
+   ],
+   "collector_number": "127",
+   "set": "lci",
+   "rulings": [
+    "The value of X is checked only once, as Terror Tide resolves.",
+    "Cards with the ability word \"fathomless descent\" have abilities that care how many permanent cards are in your graveyard.",
+    "Some descend triggered abilities include intervening \"if\" clauses (i.e. \"if you have [four or eight] permanent cards in your graveyard\" in the middle of the ability). Each of these abilities checks your graveyard at the moment it would trigger to see if it does. If you don't have the required number of permanent cards in your graveyard at that time, the ability doesn't trigger at all. If it does trigger, it will check again as it tries to resolve. If you don't have the required number of permanent cards in your graveyard at that time, the ability won't resolve and none of its effects will happen."
+   ]
+  },
+  {
+   "name": "Belligerent Yearling",
+   "oracle_id": "2d785e3e-8e19-4eea-b09f-9a30c792dba1",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Trample\nWhenever another Dinosaur you control enters, you may have this creature's base power become equal to that creature's power until end of turn.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "133",
+   "set": "lci",
+   "rulings": [
+    "Belligerent Yearling's ability overwrites any previous effects that set its power, including previous instances of that ability. Other effects that set its power to specific values that start to apply after the ability resolves, including future instances of the ability, will overwrite that effect.",
+    "Effects that modify the power of Belligerent Yearling without setting it to a specific value will apply to the new base power no matter when they started to take effect. The same is true for counters that change its power."
+   ]
+  },
+  {
+   "name": "Dowsing Device // Geode Grotto",
+   "oracle_id": "2f4374f6-c695-4a5d-a6d6-0e41eaa587ca",
+   "layout": "transform",
+   "cmc": 2.0,
+   "type_line": "Artifact // Land — Cave",
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "146",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Dowsing Device",
+     "mana_cost": "{1}{R}",
+     "type_line": "Artifact",
+     "oracle_text": "Whenever this artifact or another artifact you control enters, up to one target creature you control gets +1/+0 and gains haste until end of turn. Then transform this artifact if you control four or more artifacts."
+    },
+    {
+     "name": "Geode Grotto",
+     "mana_cost": "",
+     "type_line": "Land — Cave",
+     "oracle_text": "(Transforms from Dowsing Device.)\n{T}: Add {R}.\n{2}{R}, {T}: Until end of turn, target creature gains haste and gets +X/+0, where X is the number of artifacts you control. Activate only as a sorcery."
+    }
+   ],
+   "rulings": [
+    "The value of X for Geode Grotto's last ability is determined only as it resolves. Once that happens, the value of X won't change later in the turn even if the number of artifacts you control changes."
+   ]
+  },
+  {
+   "name": "Armored Kincaller",
+   "oracle_id": "6aad6906-96ec-4994-bfc3-9a76f893bc8c",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "When this creature enters, you may reveal a Dinosaur card from your hand. If you do or if you control another Dinosaur, you gain 3 life.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "174",
+   "set": "lci",
+   "rulings": [
+    "Whether or not you control another Dinosaur is checked only as Armored Kincaller's ability is resolving. It doesn't matter if you still control Armored Kincaller at the time, or if it's still a Dinosaur."
+   ]
+  },
+  {
+   "name": "Glowcap Lantern",
+   "oracle_id": "2034d41b-5e77-49a6-884e-d3a6017f84d0",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature has \"You may look at the top card of your library any time\" and \"Whenever this creature attacks, it explores.\" (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard.)\nEquip {2}",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Explore",
+    "Equip"
+   ],
+   "collector_number": "187",
+   "set": "lci",
+   "rulings": [
+    "The ability granted by Glowcap Lantern lets you look at the top card of your library whenever you want (with one restriction—see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If the top card of your library changes while you're casting a spell, playing a land, or activating an ability, you can't look at the new top card until you finish doing so. This means that if you cast the top card of your library, you can't look at the next one until you're done paying for that spell.",
+    "If Glowcap Lantern isn't attached to a creature you control, you can't look at the top card of your library. The lantern isn't that bright.",
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "Over the Edge",
+   "oracle_id": "26b441b9-fdfb-43e2-bc02-b358653eadf4",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Destroy target artifact or enchantment.\n• Target creature you control explores, then it explores again. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard. Then repeat this process.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "205",
+   "set": "lci",
+   "rulings": [
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  }
+ ]
+}

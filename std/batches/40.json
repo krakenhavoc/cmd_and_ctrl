@@ -1,0 +1,305 @@
+{
+ "batch": 40,
+ "set": [
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Forensic Gadgeteer",
+   "oracle_id": "9d5917d5-4fb3-4f37-9278-e08c1f73aae5",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Vedalken Artificer Detective",
+   "oracle_text": "Whenever you cast an artifact spell, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nActivated abilities of artifacts you control cost {1} less to activate. This effect can't reduce the mana in that cost to less than one mana.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "57",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" Some keywords are activated abilities and will have colons in their reminder text. Triggered abilities (starting with \"when,\" \"whenever,\" or \"at\") are unaffected by the cost reduction ability of Forensic Gadgeteer.",
+    "Forensic Gadgeteer's last ability affects only abilities of artifacts you control on the battlefield. The costs of activated abilities of artifact cards that work in other zones, such as cycling, won't be reduced.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  },
+  {
+   "name": "Lost in the Maze",
+   "oracle_id": "3a024389-91a1-460c-b4e8-3f212d2b8400",
+   "layout": "normal",
+   "mana_cost": "{X}{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Flash\nWhen this enchantment enters, tap X target creatures. Put a stun counter on each of those creatures you don't control. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nTapped creatures you control have hexproof.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "64",
+   "set": "mkm"
+  },
+  {
+   "name": "Steamcore Scholar",
+   "oracle_id": "0fb9a928-9adb-4dc1-9761-857df7e6c643",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Weird Detective",
+   "oracle_text": "Flying, vigilance\nWhen this creature enters, draw two cards. Then discard two cards unless you discard an instant or sorcery card or a creature card with flying.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "71",
+   "set": "mkm",
+   "rulings": [
+    "You can discard an instant card, a sorcery card, a creature card with flying, or any two cards, even if one or both of those cards have the listed characteristics."
+   ]
+  },
+  {
+   "name": "Sudden Setback",
+   "oracle_id": "565ba85c-bad8-4cbd-a2ff-b4384b886308",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "The owner of target spell or nonland permanent puts it on their choice of the top or bottom of their library.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "72",
+   "set": "mkm",
+   "rulings": [
+    "The spell or permanent's owner chooses whether to put it on the top or bottom of their library. If multiple cards are put into the library this way (such as when the spell targets a melded permanent), that spell or permanent's owner puts all the cards on top or all the cards on the bottom. They put them in whatever order they wish, and they do not need to reveal the order."
+   ]
+  },
+  {
+   "name": "Rot Farm Mortipede",
+   "oracle_id": "1f4d3a96-bc30-4362-9c1f-40bf79f78e78",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "Whenever one or more creature cards leave your graveyard, this creature gets +1/+0 and gains menace and lifelink until end of turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "102",
+   "set": "mkm",
+   "rulings": [
+    "If multiple creature cards leave your graveyard at the same time, Rot Farm Mortipede's ability will trigger only once."
+   ]
+  },
+  {
+   "name": "Undercity Eliminator",
+   "oracle_id": "93cb9c7e-d6d3-4b1e-8bcf-2a4a1d95a549",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Gorgon Assassin",
+   "oracle_text": "When this creature enters, you may sacrifice an artifact or creature. When you do, exile target creature an opponent controls.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "108",
+   "set": "mkm",
+   "rulings": [
+    "You don't choose a target at the time Undercity Eliminator's ability triggers. Rather, a second \"reflexive\" ability triggers when you sacrifice an artifact or creature this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Unscrupulous Agent",
+   "oracle_id": "3e7879d5-62ea-4c9a-9fc0-659d70f3a8e1",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Detective",
+   "oracle_text": "When this creature enters, target opponent exiles a card from their hand.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "109",
+   "set": "mkm"
+  },
+  {
+   "name": "Case of the Burning Masks",
+   "oracle_id": "7c1eb874-97f3-463f-bf4e-4d82dcc16e69",
+   "layout": "case",
+   "mana_cost": "{1}{R}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Case",
+   "oracle_text": "When this Case enters, it deals 3 damage to target creature an opponent controls.\nTo solve — Three or more sources you controlled dealt damage this turn. (If unsolved, solve at the beginning of your end step.)\nSolved — Sacrifice this Case: Exile the top three cards of your library. Choose one of them. You may play that card this turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Solved"
+   ],
+   "collector_number": "113",
+   "set": "mkm",
+   "rulings": [
+    "You need to control the sources that dealt damage only at the times when they dealt damage. If they die or change control after that point, the \"to solve\" ability will still trigger at the beginning of your end step as long as you still control Case of the Burning Masks.",
+    "Activated and triggered abilities are not themselves sources of damage. The source of an activated ability is the object whose ability was activated, and the source of a triggered ability (other than a delayed triggered ability) is the object whose ability triggered.",
+    "If multiple creatures you control deal combat damage, each one counts as a source that dealt damage that turn. A single creature that deals combat damage multiple times in a turn (due to double strike or additional combats) still counts as only one source.",
+    "Something that changes zones becomes a new object in that zone and will therefore be a new source. For example, if you cast Flametongue Kavu, deal damage with its enters-the-battlefield ability, exile and return it to the battlefield with Momentary Blink, deal damage again, then cast Momentary Blink with flashback on Flametongue Kavu to repeat the process one more time, you've fulfilled Case of the Burning Masks's \"to solve\" trigger condition. ",
+    "A permanent that deals damage multiple times without changing zones still counts as only one source. For example, if you attack with Incinerator of the Guilty and deal combat damage with it, use its triggered ability to deal damage, and then use Hard-Hitting Question to have it deal damage to another creature, it's still just one source even though it dealt damage three times during the turn.",
+    "You pay all costs and follow all normal timing rules for the card played from exile with Case of the Burning Masks's last ability. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "Each Case has two special keyword abilities: to solve and solved.",
+    "\"To Solve — [condition]\" means \"At the beginning of your end step, if [condition] and this Case is not solved, it becomes solved.\"",
+    "The meaning of \"solved\" differs based on what type of ability follows it. \"Solved — [activated ability]\" means \"[Activated ability]. Activate only if this Case is solved.\" Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" ",
+    "\"Solved — [Triggered ability]\" means \"[Triggered ability]. This ability triggers only if this Case is solved.\" Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\"",
+    "\"Solved — [static ability]\" means \"As long as this Case is solved, [static ability].\" Static abilities are written as statements, such as \"Creatures you control get +1/+1\" or \"Instant and sorcery spells you cast cost {1} less to cast.\"",
+    "\"To solve\" abilities will check for their condition twice: once when the ability would trigger, and once when it resolves. If the condition isn't true at the beginning of your end step, the ability won't trigger at all. If the condition isn't true when the ability resolves, the Case won't become solved.",
+    "Once a Case becomes solved, it stays solved until it leaves the battlefield.",
+    "Cases don't lose their other abilities when they become solved.",
+    "Being solved is not part of a permanent's copiable values. A permanent that becomes a copy of a solved Case is not solved. A solved Case that somehow becomes a copy of a different Case stays solved."
+   ]
+  },
+  {
+   "name": "Concealed Weapon",
+   "oracle_id": "104565b1-2db8-4c01-ae3d-14087768be45",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +3/+0.\nDisguise {2}{R} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this Equipment is turned face up, attach it to target creature you control.\nEquip {1}{R}",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Equip",
+    "Disguise"
+   ],
+   "collector_number": "117",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Attaching Concealed Weapon with its triggered ability isn't the same as using its equip ability. You don't pay mana for the attachment, and the timing restrictions for equip abilities don't apply.",
+    "If the target creature becomes an illegal target, Concealed Weapon remains on the battlefield unattached.",
+    "You may turn Concealed Weapon face up even if you don't control any creatures.",
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Expose the Culprit",
+   "oracle_id": "4f7e4aff-ef68-44fe-a0dc-b9ab0ecd7146",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one or both —\n• Turn target face-down creature face up.\n• Exile any number of face-up creatures you control with disguise in a face-down pile, shuffle that pile, then cloak them. (To cloak a card, put it onto the battlefield face down as a 2/2 creature with ward {2}. Turn it face up any time for its mana cost if it's a creature card.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Cloak"
+   ],
+   "collector_number": "124",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "The pile is shuffled to disguise from your opponents which cloaked creature is which. After you cloak the creatures, you may look at them.",
+    "To cloak a card, put it onto the battlefield face down. It becomes a 2/2 face-down creature card with ward {2} and no name, mana cost, or creature types. It's colorless and has a mana value of 0. Other effects that apply to the permanent can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you can turn a cloaked permanent you control face-up by revealing that it's a creature card (ignoring any copy effects or type-changing effects that might be applying to it) and paying its mana cost. This is a special action. It doesn't use the stack and can't be responded to.",
+    "If a cloaked creature would have disguise (or morph) if it were face up, you may also turn it face up by paying its disguise (or morph) cost.",
+    "Unlike a face-down creature that was cast using a disguise or morph ability, a cloaked creature may still be turned face up after it loses its abilities if it's a creature card.",
+    "If a double-faced card is cloaked, it will be put onto the battlefield face down. While face down, it can't transform. If the front face of the card is a creature card, you can turn it face up by paying its mana cost. If you do, its front face will be up.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "If something tries to turn a face-down instant or sorcery card on the battlefield face up, reveal that card to show all players it's an instant or sorcery card. The permanent remains on the battlefield face down. Abilities that trigger when a permanent turns face up won't trigger, because even though you revealed the card, it never turned face up."
+   ]
+  }
+ ]
+}

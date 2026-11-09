@@ -1,0 +1,264 @@
+{
+ "batch": 24,
+ "set": [
+  "dsk"
+ ],
+ "cards": [
+  {
+   "name": "Fear of Burning Alive",
+   "oracle_id": "0ae74149-60fc-407a-8782-8865458606b5",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Enchantment Creature — Nightmare",
+   "oracle_text": "When this creature enters, it deals 4 damage to each opponent.\nDelirium — Whenever a source you control deals noncombat damage to an opponent, if there are four or more card types among cards in your graveyard, this creature deals that amount of damage to target creature that player controls.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "135",
+   "set": "dsk",
+   "rulings": [
+    "Fear of Burning Alive's last ability deals damage equal to the amount of noncombat damage dealt by the source that dealt damage to an opponent.",
+    "Combat damage is the damage that's dealt automatically by attacking and blocking creatures. Any other damage is noncombat damage, even if it's dealt during a combat phase by an attacking or blocking creature.",
+    "If a source you control deals noncombat damage to multiple opponents simultaneously while there are four or more card types among cards in your graveyard, Fear of Burning Alive's last ability will trigger once for each opponent dealt noncombat damage this way."
+   ]
+  },
+  {
+   "name": "Irreverent Gremlin",
+   "oracle_id": "44594004-52e7-4ce6-8eb0-61f72fd9c73b",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Gremlin",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever another creature you control with power 2 or less enters, you may discard a card. If you do, draw a card. Do this only once each turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "142",
+   "set": "dsk",
+   "rulings": [
+    "Irreverent Gremlin's second ability checks the power of the other creature only at the moment that creature enters. If a creature enters with counters, those counters are included. If a creature's power is 2 or less when it enters but becomes greater than 2 while Irreverent Gremlin's second ability is still on the stack, you'll still have the choice to discard a card when the ability resolves."
+   ]
+  },
+  {
+   "name": "Leyline of Resonance",
+   "oracle_id": "f69574dd-097f-4908-9cab-344b0eb39c62",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "If this card is in your opening hand, you may begin the game with it on the battlefield.\nWhenever you cast an instant or sorcery spell that targets only a single creature you control, copy that spell. You may choose new targets for the copy.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "143",
+   "set": "dsk",
+   "rulings": [
+    "A player's \"opening hand\" is the hand of cards the player has after all players have taken mulligans. If players have any cards in hand that allow actions to be taken with them from a player's opening hand, the starting player takes all such actions first in any order, followed by each other player in turn order. Then the first turn begins.",
+    "The copy created by Leyline of Resonance's last ability will have the same targets (all the same creature you control) as the spell it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode or modes. You can't choose different ones.",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy made by Leyline of Resonance's last ability is created on the stack, so it's not \"cast.\""
+   ]
+  },
+  {
+   "name": "Norin, Swift Survivalist",
+   "oracle_id": "425d755b-7a15-423d-9640-494debc79dd9",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Human Coward",
+   "oracle_text": "Norin can't block.\nWhenever a creature you control becomes blocked, you may exile it. You may play that card from exile this turn.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "145",
+   "set": "dsk",
+   "rulings": [
+    "Norin's last ability triggers before combat damage is dealt. If you choose to exile the creature, it won't deal or receive combat damage.",
+    "You pay all costs and follow all timing rules for cards played this way. For example, if a card exiled with Norin's last ability is a creature card without flash, you may cast that creature spell only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Trial of Agony",
+   "oracle_id": "4ef07e5a-3dc3-41dd-a3a9-e8812b4d40d3",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose two target creatures controlled by the same opponent. That player chooses one of those creatures. Trial of Agony deals 5 damage to that creature, and the other can't block this turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "159",
+   "set": "dsk",
+   "rulings": [
+    "If one of the two target creatures is an illegal target when Trial of Agony resolves, the remaining creature's controller must choose the remaining creature. Trial of Agony will deal 5 damage to that creature."
+   ]
+  },
+  {
+   "name": "Waltz of Rage",
+   "oracle_id": "78df47c3-b771-4377-8963-ae3065fdcf8a",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target creature you control deals damage equal to its power to each other creature. Until end of turn, whenever a creature you control dies, exile the top card of your library. You may play it until the end of your next turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "165",
+   "set": "dsk",
+   "rulings": [
+    "If the target creature is an illegal target when Waltz of Rage tries to resolve, it won't resolve and none of its effects will happen. No damage will be dealt, and the delayed triggered ability won't trigger whenever a creature you control dies this turn.",
+    "The creature is the source of the damage, not Waltz of Rage.",
+    "Use the power of the target creature as Waltz of Rage resolves to determine how much damage that creature deals to each other creature.",
+    "You pay all costs and follow all timing rules for cards played with the permission granted by Waltz of Rage's delayed triggered ability. For example, if one of the exiled cards is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Altanak, the Thrice-Called",
+   "oracle_id": "6591f243-f94c-4a83-bb16-1fb838d9eb14",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Insect Beast",
+   "oracle_text": "Trample\nWhenever Altanak becomes the target of a spell or ability an opponent controls, draw a card.\n{1}{G}, Discard this card: Return target land card from your graveyard to the battlefield tapped.",
+   "power": "9",
+   "toughness": "9",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "166",
+   "set": "dsk",
+   "related": [
+    {
+     "name": "Say Its Name",
+     "type_line": "Sorcery",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Altanak's second ability resolves before the spell or ability that caused it to trigger. It resolves even if that spell or ability is countered or otherwise leaves the stack without resolving.",
+    "If a spell or ability targets Altanak more than once, its second ability still triggers only once."
+   ]
+  },
+  {
+   "name": "Anthropede",
+   "oracle_id": "452d98ae-0fa2-4cff-9e18-eecd76ddb20b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "Reach\nWhen this creature enters, you may discard a card or pay {2}. When you do, destroy target Room.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "167",
+   "set": "dsk",
+   "rulings": [
+    "You don't choose a target for Anthropede's last ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you discard a card or pay {2} this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Balustrade Wurm",
+   "oracle_id": "2dd32fec-5bc3-4cc0-a9b4-814229a64914",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Wurm",
+   "oracle_text": "This spell can't be countered.\nTrample, haste\nDelirium — {2}{G}{G}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if there are four or more card types among cards in your graveyard and only as a sorcery.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Delirium",
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "168",
+   "set": "dsk",
+   "rulings": [
+    "If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Cathartic Parting",
+   "oracle_id": "0ea80bd9-ab7e-4a8f-85b0-167fe7fae43a",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "The owner of target artifact or enchantment an opponent controls shuffles it into their library. You may shuffle up to four target cards from your graveyard into your library.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "171",
+   "set": "dsk",
+   "rulings": [
+    "You may target zero cards in your graveyard and still choose to shuffle your library."
+   ]
+  }
+ ]
+}

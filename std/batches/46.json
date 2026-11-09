@@ -1,0 +1,331 @@
+{
+ "batch": 46,
+ "set": [
+  "lci",
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Cryptex",
+   "oracle_id": "8186a992-9065-4a7f-bb00-1c20e01e8fb6",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}, Collect evidence 3: Add one mana of any color. Put an unlock counter on this artifact. (To collect evidence 3, exile cards with total mana value 3 or greater from your graveyard.)\nSacrifice this artifact: Surveil 3, then draw three cards. Activate only if this artifact has five or more unlock counters on it.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Collect evidence",
+    "Surveil"
+   ],
+   "collector_number": "422",
+   "set": "mkm",
+   "rulings": [
+    "Cryptex's first ability is a mana ability. It doesn't use the stack and can't be responded to.",
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Axebane Ferox",
+   "oracle_id": "35b3ae1c-4116-49b0-89a9-7332fe9bbff0",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Deathtouch, haste\nWard—Collect evidence 4. (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player exiles cards with total mana value 4 or greater from their graveyard.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Collect evidence",
+    "Haste",
+    "Ward",
+    "Deathtouch"
+   ],
+   "collector_number": "428",
+   "set": "mkm",
+   "rulings": [
+    "If you can't exile enough cards to meet or exceed the required mana value, you can't choose to collect evidence at all.",
+    "Once you've announced that you're casting a spell, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard to stop you from collecting evidence."
+   ]
+  },
+  {
+   "name": "Voja, Jaws of the Conclave",
+   "oracle_id": "d94ff0b8-5499-4eeb-80f0-20c7fbf07499",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Wolf",
+   "oracle_text": "Vigilance, trample, ward {3}\nWhenever Voja attacks, put X +1/+1 counters on each creature you control, where X is the number of Elves you control. Draw a card for each Wolf you control.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Trample",
+    "Ward"
+   ],
+   "collector_number": "432",
+   "set": "mkm"
+  },
+  {
+   "name": "Case of the Gorgon's Kiss",
+   "oracle_id": "a89f9072-cf06-429f-a9b8-c11b5731ddd3",
+   "layout": "case",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Case",
+   "oracle_text": "When this Case enters, destroy up to one target creature that was dealt damage this turn.\nTo solve — Three or more creature cards were put into graveyards from anywhere this turn. (If unsolved, solve at the beginning of your end step.)\nSolved — This Case is a 4/4 Gorgon creature with deathtouch and lifelink in addition to its other types.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Solved"
+   ],
+   "collector_number": "79†",
+   "set": "mkm",
+   "rulings": [
+    "The \"to solve\" ability of Case of the Gorgon's Kiss looks at what type the cards are after they move to the graveyard to determine whether the ability should trigger, regardless of any types they may have had before they were in the graveyard. For example, a creature card that has become a noncreature permanent will count toward the ability's condition when it's put into a graveyard. By contrast, a noncreature card that has become a creature on the battlefield will not count toward the ability's condition when it's put into a graveyard.",
+    "Tokens are not cards and, as such, do not count toward Case of the Gorgon's Kiss \"to solve\" ability.",
+    "Each Case has two special keyword abilities: to solve and solved.",
+    "\"To Solve — [condition]\" means \"At the beginning of your end step, if [condition] and this Case is not solved, it becomes solved.\"",
+    "The meaning of \"solved\" differs based on what type of ability follows it. \"Solved — [activated ability]\" means \"[Activated ability]. Activate only if this Case is solved.\" Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" ",
+    "\"Solved — [Triggered ability]\" means \"[Triggered ability]. This ability triggers only if this Case is solved.\" Triggered abilities use the word \"when,\" \"whenever,\" or \"at.\" They're often written as \"[Trigger condition], [effect].\"",
+    "\"Solved — [static ability]\" means \"As long as this Case is solved, [static ability].\" Static abilities are written as statements, such as \"Creatures you control get +1/+1\" or \"Instant and sorcery spells you cast cost {1} less to cast.\"",
+    "\"To solve\" abilities will check for their condition twice: once when the ability would trigger, and once when it resolves. If the condition isn't true at the beginning of your end step, the ability won't trigger at all. If the condition isn't true when the ability resolves, the Case won't become solved.",
+    "Once a Case becomes solved, it stays solved until it leaves the battlefield.",
+    "Cases don't lose their other abilities when they become solved.",
+    "Being solved is not part of a permanent's copiable values. A permanent that becomes a copy of a solved Case is not solved. A solved Case that somehow becomes a copy of a different Case stays solved."
+   ]
+  },
+  {
+   "name": "Break Out",
+   "oracle_id": "99eaac39-28d4-4af7-984b-f75fd37902ed",
+   "layout": "normal",
+   "mana_cost": "{R}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Look at the top six cards of your library. You may reveal a creature card from among them. If that card has mana value 2 or less, you may put it onto the battlefield and it gains haste until end of turn. If you didn't put the revealed card onto the battlefield this way, put it into your hand. Put the rest on the bottom of your library in a random order.",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "190†",
+   "set": "mkm"
+  },
+  {
+   "name": "Undercover Crocodelf",
+   "oracle_id": "3ba223b7-743f-4f99-836e-869778fb2e99",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elf Crocodile Detective",
+   "oracle_text": "Whenever this creature deals combat damage to a player, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nDisguise {3}{G/U}{G/U} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Investigate",
+    "Disguise"
+   ],
+   "collector_number": "239†",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    },
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  },
+  {
+   "name": "Lazav, Wearer of Faces",
+   "oracle_id": "4ec0b64d-c793-47a6-9c26-9ad4d9e9c182",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Shapeshifter Detective",
+   "oracle_text": "Whenever Lazav attacks, exile target card from a graveyard, then investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you sacrifice a Clue, you may have Lazav become a copy of a creature card exiled with it until end of turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "318z",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the target of Lazav, Wearer of Faces's first ability is illegal as the ability tries to resolve, it won't resolve and none of its effects will happen. You won't investigate.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  },
+  {
+   "name": "Rakdos, Patron of Chaos",
+   "oracle_id": "d08ce18a-0fd9-47ac-ad2f-6934b60070f1",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Demon",
+   "oracle_text": "Flying, trample\nAt the beginning of your end step, target opponent may sacrifice two nonland, nontoken permanents of their choice. If they don't, you draw two cards.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample"
+   ],
+   "collector_number": "320z",
+   "set": "mkm"
+  },
+  {
+   "name": "Teysa, Opulent Oligarch",
+   "oracle_id": "d4f5748f-bb0e-4c48-8802-45a7ad5a80a4",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "Deathtouch\nAt the beginning of your end step, investigate for each opponent who lost life this turn.\nWhenever a Clue you control is put into a graveyard from the battlefield, create a 1/1 white and black Spirit creature token with flying. This ability triggers only once each turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Investigate",
+    "Deathtouch"
+   ],
+   "collector_number": "321z",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    },
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an opponent lost life and subsequently lost the game, Teysa's second ability still counts that player when determining how many times to investigate.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability."
+   ]
+  },
+  {
+   "name": "Bat Colony",
+   "oracle_id": "c2022f95-2c26-4a2a-b83b-60efa937cdde",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a 1/1 black Bat creature token with flying for each mana from a Cave spent to cast it.\nWhenever a Cave you control enters, put a +1/+1 counter on target creature you control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "5",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Bat",
+     "type_line": "Token Creature — Bat",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,298 @@
+{
+ "batch": 31,
+ "set": [
+  "blb"
+ ],
+ "cards": [
+  {
+   "name": "Festival of Embers",
+   "oracle_id": "2de138b0-3159-4a0c-a474-a4e5600b2e51",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "During your turn, you may cast instant and sorcery spells from your graveyard by paying 1 life in addition to their other costs.\nIf a card or token would be put into your graveyard from anywhere, exile it instead.\n{1}{R}: Sacrifice this enchantment.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "316",
+   "set": "blb",
+   "rulings": [
+    "While you control Festival of Embers, abilities that trigger whenever a creature you own dies won’t trigger because those cards and tokens are never put into your graveyard.",
+    "If Festival of Embers is destroyed by a spell, Festivals of Embers will be exiled and then the spell will be put into its owner’s graveyard.",
+    "When Festival of Embers’s last ability resolves, it will be exiled.",
+    "If you discard a card while you control Festival of Embers, abilities that function when that card is discarded (such as madness) still work even though that card never reaches a graveyard. In addition, spells or abilities that check the characteristics of a discarded card can find that card in exile."
+   ]
+  },
+  {
+   "name": "Keen-Eyed Curator",
+   "oracle_id": "46ce3698-e4e6-44e9-8b99-2b12a703e91e",
+   "layout": "normal",
+   "mana_cost": "{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Raccoon Scout",
+   "oracle_text": "As long as there are four or more card types among cards exiled with this creature, it gets +4/+4 and has trample.\n{1}: Exile target card from a graveyard.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "322",
+   "set": "blb",
+   "rulings": [
+    "The card types that can appear on cards exiled with Keen-Eyed Curator are artifact, battle, creature, enchantment, instant, kindred, land, planeswalker, and sorcery. Legendary, basic, and snow are supertypes, not card types. Raccoon and Scout are subtypes, not card types."
+   ]
+  },
+  {
+   "name": "Glarb, Calamity's Augur",
+   "oracle_id": "df9409e6-bd6d-4b5b-b807-fcf347ee940a",
+   "layout": "normal",
+   "mana_cost": "{B}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Frog Wizard Noble",
+   "oracle_text": "Deathtouch\nYou may look at the top card of your library any time.\nYou may play lands and cast spells with mana value 4 or greater from the top of your library.\n{T}: Surveil 2.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Deathtouch"
+   ],
+   "collector_number": "331",
+   "set": "blb",
+   "rulings": [
+    "You can look at the top card of your library whenever you want (with one restriction; see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If the top card of your library changes while you're casting a spell, playing a land, or activating an ability, you can't look at the new top card until you finish doing so. This means that if you cast a spell from the top of your library, you can't look at the next one until you're done paying for that spell.",
+    "You must pay all costs and follow all timing rules for lands played and spells cast from the top of your library this way.",
+    "If the top card of your library has {X} in its mana cost, you must choose a value of X that makes that spell's mana value 4 or greater in order to cast it."
+   ]
+  },
+  {
+   "name": "Hugs, Grisly Guardian",
+   "oracle_id": "3c5c227a-335b-4995-9821-d4269a0a233a",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{R}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Badger Warrior",
+   "oracle_text": "Trample\nWhen Hugs enters, exile the top X cards of your library. Until the end of your next turn, you may play those cards.\nYou may play an additional land on each of your turns.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "333",
+   "set": "blb",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if one of the exiled cards is a land card, you may play it only during your main phase while the stack is empty.",
+    "You may play the exiled cards even if Hugs is no longer on the battlefield or under your control.",
+    "The effect of Hugs's last ability that allows you to play an additional land is cumulative with similar effects. For example, if you control Hugs as well as Exploration (an enchantment with \"You may play an additional land on each of your turns.\"), you'll be able to play three lands during each of your turns."
+   ]
+  },
+  {
+   "name": "Ral, Crackling Wit",
+   "oracle_id": "3c970f43-17da-4187-a084-efd53b579067",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Ral",
+   "oracle_text": "Whenever you cast a noncreature spell, put a loyalty counter on Ral.\n+1: Create a 1/1 blue and red Otter creature token with prowess.\n−3: Draw three cards, then discard two cards.\n−10: Draw three cards. You get an emblem with \"Instant and sorcery spells you cast have storm.\" (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn.)",
+   "loyalty": "4",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "341",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Ral, Crackling Wit Emblem",
+     "type_line": "Emblem",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Otter",
+     "type_line": "Token Creature — Otter",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Ral's first ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered.",
+    "The copies of instant and sorcery spells you cast created by the storm ability are put directly onto the stack. They aren't cast and won't be counted by other spells with storm cast later in the turn.",
+    "Spells cast from zones other than a player's hand and spells that were countered or otherwise failed to resolve are counted by the storm ability.",
+    "A copy of a spell can be countered like any other spell, but it must be countered individually. Countering a spell with storm won't affect the copies.",
+    "If a spell has multiple instances of storm, each will trigger separately."
+   ]
+  },
+  {
+   "name": "Alania, Divergent Storm",
+   "oracle_id": "63d50d5e-56de-44c4-b906-b2a21a56e3f3",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Otter Wizard",
+   "oracle_text": "Whenever you cast a spell, if it's the first instant spell, the first sorcery spell, or the first Otter spell other than Alania you've cast this turn, you may have target opponent draw a card. If you do, copy that spell. You may choose new targets for the copy.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "344",
+   "set": "blb",
+   "rulings": [
+    "Alania’s ability can trigger up to three times in a single turn: once when you cast your first instant, once when you cast your first sorcery, and once when you cast your first Otter spell other than Alania.",
+    "Alania’s ability and the copy it creates both resolve before the spell that caused the ability to trigger. They resolve even if the spell is countered before the copy is created.",
+    "The copy is created on the stack, so it’s not “cast.” Abilities that trigger when a player casts a spell won’t trigger.",
+    "If the spell that’s copied has an X whose value was determined as it was cast, the copy has the same value of X.",
+    "You can’t choose to pay any additional costs for a copied spell. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "Any choices made when the spell resolves won’t have been made yet when it’s copied. Any such choices will be made separately when the copy resolves.",
+    "The copy will have the same targets as the spell it’s copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. If, for one of the targets, you can’t choose a new legal target, then it remains unchanged (even if the current target is illegal).",
+    "A resolving copy of a permanent spell becomes a token. That token isn’t “created” and won’t interact with abilities that care about tokens being created."
+   ]
+  },
+  {
+   "name": "Kastral, the Windcrested",
+   "oracle_id": "ced5fe9a-4237-4c89-9dd6-b133b966ebcc",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bird Scout",
+   "oracle_text": "Flying\nWhenever one or more Birds you control deal combat damage to a player, choose one —\n• You may put a Bird creature card from your hand or graveyard onto the battlefield with a finality counter on it.\n• Put a +1/+1 counter on each Bird you control.\n• Draw a card.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "350",
+   "set": "blb",
+   "rulings": [
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don’t stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner’s hand from the battlefield, it does so normally.",
+    "Finality counters aren’t keyword counters, and a finality counter doesn’t give any abilities to the permanent it’s on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Wishing Well",
+   "oracle_id": "78dbbc15-9304-4178-b9b2-1db6c64ca11a",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}: Put a coin counter on this artifact. When you do, you may cast target instant or sorcery card with mana value equal to the number of coin counters on this artifact from your graveyard without paying its mana cost. If that spell would be put into your graveyard, exile it instead. Activate only as a sorcery.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "358",
+   "set": "blb",
+   "rulings": [
+    "You cast the instant or sorcery while the ability is resolving and still on the stack. You can’t wait to cast it later in the turn. Timing restrictions based on the card’s type are ignored.",
+    "Since you are using an alternative cost to cast the spell, you can’t pay any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, you must pay those.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Fecund Greenshell",
+   "oracle_id": "a090be5a-b0f2-4c17-8f7d-e742f9de8f6b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Turtle",
+   "oracle_text": "Reach\nAs long as you control ten or more lands, creatures you control get +2/+2.\nWhenever this creature or another creature you control with toughness greater than its power enters, look at the top card of your library. If it's a land card, you may put it onto the battlefield tapped. Otherwise, put it into your hand.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "362",
+   "set": "blb",
+   "rulings": [
+    "Damage remains marked on creatures until the turn ends. If Fecund Greenshell’s second ability stops applying (because Fecund Greenshell leaves the battlefield or loses its abilities or because you no longer control ten or more lands), then any creatures that needed the toughness bonus to stay alive will die.",
+    "Fecund Greenshell’s last ability checks the power and toughness of a creature only at the moment it enters. If it enters with counters, those counters are included. Static abilities that modify the power and toughness of creatures you control (such as Fecund Greenshell’s own second ability) are also included. If that creature’s toughness is greater than its power when it enters, the ability will still trigger and resolve normally regardless of what happens to that creature after that.",
+    "If the top card of your library is a land card, you may choose to put it into your hand rather than onto the battlefield tapped."
+   ]
+  },
+  {
+   "name": "Thornvault Forager",
+   "oracle_id": "7b18cfad-a1cf-46c2-bcdd-7762c13d50e5",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Squirrel Ranger",
+   "oracle_text": "{T}: Add {G}.\n{T}, Forage: Add two mana in any combination of colors. (To forage, exile three cards from your graveyard or sacrifice a Food.)\n{3}{G}, {T}: Search your library for a Squirrel card, reveal it, put it into your hand, then shuffle.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Forage"
+   ],
+   "collector_number": "364",
+   "set": "blb",
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "If you don't have enough cards in your graveyard or a Food on the battlefield, you can't choose to forage.",
+    "Once you announce that you're casting a spell or activating an ability, players can't take actions until you've finished doing so. Notably, opponents can't try to remove cards from your graveyard or Foods you control to stop you from foraging."
+   ]
+  }
+ ]
+}

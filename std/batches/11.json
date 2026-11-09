@@ -1,0 +1,326 @@
+{
+ "batch": 11,
+ "set": [
+  "tdm"
+ ],
+ "cards": [
+  {
+   "name": "Sarkhan, Dragon Ascendant",
+   "oracle_id": "71cb48e2-2328-471c-a04a-7b6461f378f4",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Druid",
+   "oracle_text": "When Sarkhan enters, you may behold a Dragon. If you do, create a Treasure token. (To behold a Dragon, choose a Dragon you control or reveal a Dragon card from your hand.)\nWhenever a Dragon you control enters, put a +1/+1 counter on Sarkhan. Until end of turn, Sarkhan becomes a Dragon in addition to his other types and gains flying.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Behold",
+    "Treasure"
+   ],
+   "collector_number": "302",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a “[subtype] card,” it refers only to a card that has that subtype. For example, Teeming Dragonstorm is a card that cares about Dragons and features Dragons in its art, but it isn’t a Dragon card.",
+    "Effects that say “If a [quality] was beheld” only care if a card of that quality was revealed or a permanent you control of that quality was chosen. No matter what happens to that card or permanent after that, it was still beheld, and any additional effects that depend on that card or permanent being beheld will still happen.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that’s still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand."
+   ]
+  },
+  {
+   "name": "Call the Spirit Dragons",
+   "oracle_id": "3ceb23f5-abb1-4569-a1e4-1eed9a9babcf",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Dragons you control have indestructible.\nAt the beginning of your upkeep, for each color, put a +1/+1 counter on a Dragon you control of that color. If you put +1/+1 counters on five Dragons this way, you win the game.",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "309",
+   "set": "tdm",
+   "rulings": [
+    "Because damage remains marked on a creature until the damage is removed as the turn ends, nonlethal damage dealt to a Dragon you control may become lethal if Call the Spirit Dragons leaves the battlefield during that turn.",
+    "If you control a Dragon that is more than one color, you may put more than one +1/+1 counter on it with the last ability of Call the Spirit Dragons.",
+    "The last ability will only cause you to win the game if you put a +1/+1 counter on each of five different Dragons with it."
+   ]
+  },
+  {
+   "name": "Karakyk Guardian",
+   "oracle_id": "41129dc1-be88-4198-94f9-032817a79bc7",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying, vigilance, trample\nThis creature has hexproof as long as it hasn't dealt damage yet. (It can't be the target of spells or abilities your opponents control.)",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance",
+    "Trample"
+   ],
+   "collector_number": "312",
+   "set": "tdm",
+   "rulings": [
+    "If Karakyk Guardian leaves the battlefield and returns, it’s considered a new object even if it’s represented by the same card. It has hexproof again until it deals damage.",
+    "If a triggered ability triggers at the same time that Karakyk Guardian deals damage for the first time, targets for that ability are chosen after Karakyk Guardian no longer has hexproof."
+   ]
+  },
+  {
+   "name": "Maelstrom of the Spirit Dragon",
+   "oracle_id": "49e9fba7-8465-4bbb-95db-73a7e149f494",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen spell.\n{4}, {T}, Sacrifice this land: Search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "326",
+   "set": "tdm"
+  },
+  {
+   "name": "United Battlefront",
+   "oracle_id": "892a83a0-a3cb-4cfb-9106-4008e4e75c0f",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Look at the top seven cards of your library. Put up to two noncreature, nonland permanent cards with mana value 3 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "330",
+   "set": "tdm",
+   "rulings": [
+    "If a card in a library has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Taigam, Master Opportunist",
+   "oracle_id": "49f2cbc3-bd03-48e6-b1c4-d7f315b8579d",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Monk",
+   "oracle_text": "Flurry — Whenever you cast your second spell each turn, copy it, then exile the spell you cast with four time counters on it. If it doesn't have suspend, it gains suspend. (At the beginning of its owner's upkeep, they remove a time counter. When the last is removed, they may play it without paying its mana cost. If it's a creature, it has haste.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flurry"
+   ],
+   "collector_number": "335",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Spells that were cast before a permanent with flurry count. If that permanent was the first spell you cast that turn, the next spell you cast that turn is your second spell.",
+    "Taigam’s ability and the copy it creates resolve before the spell it’s copying. They resolve even if the original spell is countered before the copy is created. Note that Taigam’s ability exiles the original spell as the ability resolves, which will remove that spell from the stack before it can resolve.",
+    "The copy will have the same targets and modes as the original spell. If the spell divides damage or distributes counters among a number of targets, those choices apply to the copy.",
+    "If the spell that’s copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can’t choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy is created on the stack, so it’s not “cast.” Abilities that trigger when a player casts a spell won’t trigger.",
+    "A resolving copy of a permanent spell becomes a token. That token isn’t “created” and won’t interact with abilities that care about tokens being created.",
+    "Suspend is a keyword that represents three abilities. The first is a static ability that allows you to exile the card from your hand with the specified number of time counters (the number before the dash) on it by paying its suspend cost (listed after the dash). The second is a triggered ability that removes a time counter from the suspended card at the beginning of each of your upkeeps. The third is a triggered ability that gives you the option to cast the card when the last time counter is removed. Note that if a card is exiled and then “gains suspend,” only the two triggered abilities are relevant.",
+    "If an effect refers to a “suspended card,” that means a card that (1) has suspend, (2) is in exile, and (3) has one or more time counters on it.",
+    "If the first triggered ability of suspend (the one that removes time counters) is countered, no time counter is removed. The ability will trigger again at the beginning of the card’s owner’s next upkeep.",
+    "When the last time counter is removed, the second triggered ability of suspend (the one that lets you cast the card) triggers. It doesn’t matter why the last time counter was removed or what effect removed it.",
+    "If the second triggered ability is countered, the card can’t be cast. It remains exiled with no time counters on it, and it’s no longer suspended.",
+    "As the second triggered ability of suspend resolves, you may cast the card. Timing permissions based on the card’s type are ignored. If you choose not to (or can’t) cast the card, it remains exiled with no time counters on it, and it’s no longer suspended.",
+    "If you cast a card “without paying its mana cost,” such as with suspend, you can’t choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those if you want to cast the card."
+   ]
+  },
+  {
+   "name": "Flamehold Grappler",
+   "oracle_id": "e2d21635-182f-4ebf-a6f5-d4c1fd7f9705",
+   "layout": "normal",
+   "mana_cost": "{U}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Monk",
+   "oracle_text": "First strike\nWhen this creature enters, copy the next spell you cast this turn when you cast it. You may choose new targets for the copy. (A copy of a permanent spell becomes a token.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "359",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "After Flamehold Grappler’s last ability resolves, the next spell you cast that turn will be copied whether or not it has targets.",
+    "The copy created by Flamehold Grappler’s last ability resolves before the spell it’s copying. It resolves even if the original spell is countered before the copy is created.",
+    "If the spell has any targets, the copy will have the same targets unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that’s copied is modal (that is, it says “Choose one —” or the like), the copy will have the same mode or modes. You can’t choose different ones.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can’t be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that’s copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can’t choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy is created on the stack, so it’s not “cast.” Abilities that trigger when a player casts a spell won’t trigger.",
+    "A resolving copy of a permanent spell becomes a token. That token isn’t “created” and won’t interact with abilities that care about tokens being created."
+   ]
+  },
+  {
+   "name": "Lotuslight Dancers",
+   "oracle_id": "83c8f1ca-194e-4cb6-9d5f-029133c1edbc",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Zombie Bard",
+   "oracle_text": "Lifelink\nWhen this creature enters, search your library for a black card, a green card, and a blue card. Put those cards into your graveyard, then shuffle.",
+   "power": "3",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "363",
+   "set": "tdm",
+   "rulings": [
+    "You don’t have to find all three cards. You can find two, one, or (if you really want) none.",
+    "You can find multicolored cards with Lotuslight Dancers’s last ability. For example, the black card you find could be any number of colors as long as black is one of them. Whatever colors it is won’t impact what other cards you can find. For example, you may find a card that’s black, green, and blue as the black card and still find a green card and a blue card."
+   ]
+  },
+  {
+   "name": "Severance Priest",
+   "oracle_id": "3a38bf69-511f-4851-870f-8a65641d832e",
+   "layout": "normal",
+   "mana_cost": "{W}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Djinn Cleric",
+   "oracle_text": "Deathtouch\nWhen this creature enters, target opponent reveals their hand. You may choose a nonland card from it. If you do, exile that card.\nWhen this creature leaves the battlefield, the exiled card's owner creates an X/X white Spirit creature token, where X is the mana value of the exiled card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "369",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you chose not to exile a card, the effect of the last ability won’t do anything. No one creates a token."
+   ]
+  },
+  {
+   "name": "Yathan Roadwatcher",
+   "oracle_id": "0c3d86b6-5dcd-4016-9b4a-d4f66b1e963f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Scout",
+   "oracle_text": "When this creature enters, if you cast it, mill four cards. When you do, return target creature card with mana value 3 or less from your graveyard to the battlefield.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "375",
+   "set": "tdm",
+   "rulings": [
+    "You don’t choose a target for Yathan Roadwatcher’s ability at the time it triggers. Rather, a second “reflexive” ability triggers when you mill four cards this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  }
+ ]
+}

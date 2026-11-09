@@ -1,0 +1,294 @@
+{
+ "batch": 49,
+ "set": [
+  "lci"
+ ],
+ "cards": [
+  {
+   "name": "Tendril of the Mycotyrant",
+   "oracle_id": "d2824464-963b-48db-a482-cc08a0a97332",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Fungus Wizard",
+   "oracle_text": "{5}{G}{G}: Put seven +1/+1 counters on target noncreature land you control. It becomes a 0/0 Fungus creature with haste. It's still a land.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "215",
+   "set": "lci",
+   "rulings": [
+    "Tendril of the Mycotyrant's ability doesn't have a duration. The land remains a creature until it leaves the battlefield."
+   ]
+  },
+  {
+   "name": "Twists and Turns // Mycoid Maze",
+   "oracle_id": "740aa9d9-91a9-431e-8bf9-1344e5273e27",
+   "layout": "transform",
+   "cmc": 1.0,
+   "type_line": "Enchantment // Land — Cave",
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Transform",
+    "Explore",
+    "Scry"
+   ],
+   "collector_number": "217",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Twists and Turns",
+     "mana_cost": "{G}",
+     "type_line": "Enchantment",
+     "oracle_text": "If a creature you control would explore, instead you scry 1, then that creature explores.\nWhen this enchantment enters, target creature you control explores.\nWhen a land you control enters, if you control seven or more lands, transform this enchantment."
+    },
+    {
+     "name": "Mycoid Maze",
+     "mana_cost": "",
+     "type_line": "Land — Cave",
+     "oracle_text": "(Transforms from Twists and Turns.)\n{T}: Add {G}.\n{3}{G}, {T}: Look at the top four cards of your library. You may reveal a creature card from among them and put that card into your hand. Put the rest on the bottom of your library in a random order."
+    }
+   ],
+   "rulings": [
+    "If you control two copies of Twists and Turns and a creature you control would explore, instead you scry 1, then scry 1 again, then that creature explores. If you control three copies of Twists and Turns, you'd scry 1 an additional time before that creature explores, and so on.",
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "Amalia Benavides Aguirre",
+   "oracle_id": "85eefda9-4aab-467d-a08c-be026cb8ff42",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Vampire Scout",
+   "oracle_text": "Ward—Pay 3 life.\nWhenever you gain life, Amalia Benavides Aguirre explores. Then destroy all other creatures if its power is exactly 20. (To have this creature explore, reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on this creature, then put the card back or put it into your graveyard.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Explore",
+    "Ward"
+   ],
+   "collector_number": "221",
+   "set": "lci",
+   "rulings": [
+    "If multiple creatures with lifelink you control deal combat damage at the same time, the damage dealt by each of those creatures is a separate life-gaining event and Amalia Benavides Aguirre's ability will trigger that many times.",
+    "Amalia Benavides Aguirre's power must be exactly 20 during the resolution of its last ability after it finishes exploring in order to destroy all other creatures. If it's more or less than 20, nothing is destroyed.",
+    "Amalia Benavides Aguirre's power is checked only once, as the triggered ability resolves. If it is no longer on the battlefield at that point, use its power as it last existed on the battlefield.",
+    "The instruction for Amalia Benavides Aguirre to explore and the effect that occurs if Amalia Benavides Aguirre's power is exactly 20 are all part of the same ability. Players do not get to chance to respond to the ability after knowing the result of the explore.",
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "The Ancient One",
+   "oracle_id": "6615f881-960c-4216-a32a-63856bc3afd0",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Spirit God",
+   "oracle_text": "Descend 8 — The Ancient One can't attack or block unless there are eight or more permanent cards in your graveyard.\n{2}{U}{B}: Draw a card, then discard a card. When you discard a card this way, target player mills cards equal to its mana value.",
+   "power": "8",
+   "toughness": "8",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Descend",
+    "Mill"
+   ],
+   "collector_number": "222",
+   "set": "lci",
+   "rulings": [
+    "Once The Ancient One has legally attacked or blocked, removing permanent cards from your graveyard so the descend 8 ability no longer applies won't remove The Ancient One from combat.",
+    "You don't choose a target for The Ancient One's activated ability at the time you activate it. Rather, a second \"reflexive\" ability triggers when you discard a card this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal.",
+    "Cards with the ability word \"descend N\" have abilities that care if you have at least N permanent cards in your graveyard.",
+    "Some descend triggered abilities include intervening \"if\" clauses (i.e. \"if you have [four or eight] permanent cards in your graveyard\" in the middle of the ability). Each of these abilities checks your graveyard at the moment it would trigger to see if it does. If you don't have the required number of permanent cards in your graveyard at that time, the ability doesn't trigger at all. If it does trigger, it will check again as it tries to resolve. If you don't have the required number of permanent cards in your graveyard at that time, the ability won't resolve and none of its effects will happen."
+   ]
+  },
+  {
+   "name": "Nicanzil, Current Conductor",
+   "oracle_id": "4cb86fb6-3e06-4c67-aee0-d5952178f664",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Merfolk Scout",
+   "oracle_text": "Whenever a creature you control explores a land card, you may put a land card from your hand onto the battlefield tapped.\nWhenever a creature you control explores a nonland card, put a +1/+1 counter on Nicanzil.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "236",
+   "set": "lci",
+   "rulings": [
+    "Nicanzil, Current Conductor's triggered abilities care about the characteristics of the card as it was revealed while a creature explored. It doesn't matter what happened to the card after that.",
+    "Nicanzil's first ability won't resolve until after you're done exploring. You may put any land card from your hand onto the battlefield, including the land card you explored (if it's still in your hand) or one that was already in your hand.",
+    "If a creature leaves the battlefield before an effect instructs it to explore, it still explores. Abilities like Nicanzil's that trigger whenever a creature you control explores will still trigger.",
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "Palani's Hatcher",
+   "oracle_id": "ce6b6869-e4d7-4156-b66d-57fc224e4b20",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Other Dinosaurs you control have haste.\nWhen this creature enters, create two 0/1 green Dinosaur Egg creature tokens.\nAt the beginning of combat on your turn, if you control one or more Eggs, sacrifice an Egg, then create a 3/3 green Dinosaur creature token.",
+   "power": "5",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "237",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Dinosaur",
+     "type_line": "Token Creature — Dinosaur",
+     "component": "token"
+    },
+    {
+     "name": "Dinosaur Egg",
+     "type_line": "Token Creature — Dinosaur Egg",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Palani's Hatcher's last ability counts any creature you control with the creature type Egg, not just the tokens Palani's Hatcher creates."
+   ]
+  },
+  {
+   "name": "Contested Game Ball",
+   "oracle_id": "876c9620-216c-45dd-b8a6-b9e0cba63e3d",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever you're dealt combat damage, the attacking player gains control of this artifact and untaps it.\n{2}, {T}: Draw a card and put a point counter on this artifact. Then if it has five or more point counters on it, sacrifice it and create a Treasure token.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "251",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Contested Game Ball's triggered ability triggers only once whenever you're dealt combat damage, no matter how many creatures deal combat damage to you at the same time.",
+    "If point counters are put on Contested Game Ball some way other than its last ability, you won't sacrifice it or create a Treasure token. The check for five or more point counters happens only as the activated ability resolves.",
+    "In a Two-Headed Giant game, each player on the attacking team is an attacking player. When Contested Game Ball's first ability resolves, you'll choose which member of the attacking team gains control of it."
+   ]
+  },
+  {
+   "name": "Echoing Deeps",
+   "oracle_id": "2ef88214-f46d-473e-a55b-795a647e2f03",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Cave",
+   "oracle_text": "You may have this land enter tapped as a copy of any land card in a graveyard, except it's a Cave in addition to its other types.\n{T}: Add {C}.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "271",
+   "set": "lci",
+   "rulings": [
+    "If you choose to have Echoing Deeps not copy anything, it enters the battlefield untapped.",
+    "Echoing Deeps copies exactly what was printed on the original land card, with the noted exception.",
+    "Any enters-the-battlefield abilities of the copied land card will trigger when Echoing Deeps enters the battlefield. Any \"as [this land] enters the battlefield\" or \"[this land] enters the battlefield with\" abilities of the chosen land card will also work."
+   ]
+  },
+  {
+   "name": "Pit of Offerings",
+   "oracle_id": "044d2788-6daa-4849-a813-1f577eef9295",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Cave",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, exile up to three target cards from graveyards.\n{T}: Add {C}.\n{T}: Add one mana of any of the exiled cards' colors.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "278",
+   "set": "lci",
+   "rulings": [
+    "The five colors are white, blue, black, red, and green. The last ability of Pit of Offerings can't produce {C}.",
+    "If no cards are exiled with Pit of Offerings, its last ability can't add mana."
+   ]
+  },
+  {
+   "name": "Sunken Citadel",
+   "oracle_id": "508189e1-9cef-4f9c-8ff1-078c99a0f603",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Cave",
+   "oracle_text": "This land enters tapped. As it enters, choose a color.\n{T}: Add one mana of the chosen color.\n{T}: Add two mana of the chosen color. Spend this mana only to activate abilities of land sources.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "285",
+   "set": "lci",
+   "rulings": [
+    "\"Land sources\" include any objects with the card type land. This means you could spend the mana to activate an ability of a land you control or a land card in your hand or graveyard, for example.",
+    "You may spend the two mana added by the last ability on the same ability or on two different abilities."
+   ]
+  }
+ ]
+}

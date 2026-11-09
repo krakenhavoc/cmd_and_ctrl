@@ -1,0 +1,306 @@
+{
+ "batch": 57,
+ "set": [
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Bramble Familiar // Fetch Quest",
+   "oracle_id": "68f36dfa-bbd2-4860-b09b-37e35136be72",
+   "layout": "adventure",
+   "mana_cost": "{1}{G} // {5}{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elemental Raccoon // Sorcery — Adventure",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "283",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Bramble Familiar",
+     "mana_cost": "{1}{G}",
+     "type_line": "Creature — Elemental Raccoon",
+     "oracle_text": "{T}: Add {G}.\n{1}{G}, {T}, Discard a card: Return this creature to its owner's hand.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "Fetch Quest",
+     "mana_cost": "{5}{G}{G}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Mill seven cards. Then put a creature, enchantment, or land card from among the milled cards onto the battlefield."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Will, Scion of Peace",
+   "oracle_id": "4ecb8653-db8c-468a-853d-420ff62a7a8a",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Vigilance\n{T}: Spells you cast this turn that are white and/or blue cost {X} less to cast, where X is the amount of life you gained this turn. Activate only as a sorcery.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "302",
+   "set": "woe",
+   "rulings": [
+    "The value of X is determined only once, at the time Will, Scion of Peace's activated ability resolves.",
+    "Will's activated ability doesn't change the mana cost or mana value of any spell. It changes only the total cost you pay.",
+    "Will's activated ability can't reduce the amount of colored mana you pay for a spell. It reduces only the generic mana component of that cost.",
+    "Will's activated ability counts the total amount of life you gained without taking into account any life you lost during that turn. For example, if you gained 3 life and lost 3 life earlier in the turn, the cost of white and/or blue spells you cast this turn will be reduced by {3}."
+   ]
+  },
+  {
+   "name": "Storyteller Pixie",
+   "oracle_id": "51bb6d3b-be6a-435d-8a80-0c0f0161892d",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Faerie Wizard",
+   "oracle_text": "Flying\nWhenever you cast an Adventure spell, draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "313",
+   "set": "woe",
+   "rulings": [
+    "An Adventure spell means an instant or sorcery spell with the Adventure spell type. Permanent spells that you cast which have an Adventure won't cause this ability to trigger."
+   ]
+  },
+  {
+   "name": "Experimental Confectioner",
+   "oracle_id": "87f82d15-5b6b-400f-8a15-d45a2a735f7d",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Peasant",
+   "oracle_text": "When this creature enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever you sacrifice a Food, create a 1/1 black Rat creature token with \"This token can't block.\"",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "314",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    },
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost).",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards."
+   ]
+  },
+  {
+   "name": "Charging Hooligan",
+   "oracle_id": "c808892a-83d5-4b09-b0da-118b0d6fe58e",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Peasant",
+   "oracle_text": "Whenever this creature attacks, it gets +1/+0 until end of turn for each attacking creature. If a Rat is attacking, this creature gains trample until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "318",
+   "set": "woe",
+   "rulings": [
+    "Count the number of attacking creatures when Charging Hooligan's ability resolves, including Charging Hooligan itself, to determine the increase to its power."
+   ]
+  },
+  {
+   "name": "Farsight Ritual",
+   "oracle_id": "7de66ba3-6e97-4e0a-928e-7ce45dee278b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nLook at the top four cards of your library. If this spell was bargained, look at the top eight cards of your library instead. Put two of them into your hand and the rest on the bottom of your library in a random order.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Bargain"
+   ],
+   "collector_number": "332",
+   "set": "woe",
+   "rulings": [
+    "You still put only two of the cards into your hand if you bargain this spell.",
+    "Bargain means \"As an additional cost to cast this spell, you may sacrifice an artifact, enchantment, or token.\"",
+    "Bargain represents an optional additional cost. A spell cast with that additional cost paid is \"bargained.\"",
+    "You may sacrifice only one artifact, enchantment, or token to pay a spell's bargain cost.",
+    "If you copy a bargained spell, the copy is also bargained. If a card or token enters the battlefield as a copy of a permanent that's already on the battlefield, the new permanent isn't bargained, even if the original was.",
+    "Some instant and sorcery spells require additional targets if they're bargained. You ignore those targeting requirements if those spells aren't bargained, and you can't bargain those spells unless you can choose the appropriate targets. On the other hand, you can bargain a permanent spell even if you won't be able to choose targets for an enters-the-battlefield ability of that permanent once the spell resolves."
+   ]
+  },
+  {
+   "name": "The End",
+   "oracle_id": "835c195a-8c35-4076-896d-8d2972cac270",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell costs {2} less to cast if your life total is 5 or less.\nExile target creature or planeswalker. Search its controller's graveyard, hand, and library for any number of cards with the same name as that permanent and exile them. That player shuffles, then draws a card for each card exiled from their hand this way.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "337",
+   "set": "woe",
+   "rulings": [
+    "The cost-reduction ability of The End doesn't change its mana cost or mana value, only the total cost you pay. Specifically, the mana value of The End is always 4.",
+    "If the permanent that's exiled was the back face of a double-faced card, you will not be able to exile any additional cards, because those cards have only their front-face characteristics (including name) in the graveyard, hand, and library."
+   ]
+  },
+  {
+   "name": "Rankle's Prank",
+   "oracle_id": "052e8e1c-d006-4c9f-90da-deafbbf7fed3",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one or more —\n• Each player discards two cards.\n• Each player loses 4 life.\n• Each player sacrifices two creatures of their choice.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "341",
+   "set": "woe",
+   "rulings": [
+    "You can choose a mode even if some or all players will be entirely or partially unaffected.",
+    "As the first mode is performed, first the player whose turn it is chooses two cards in hand without revealing them, then each other player in turn order does the same. Then the chosen cards are discarded at the same time.",
+    "As the third mode is performed, first the player whose turn it is chooses two creatures they control, then each other player in turn order does the same, knowing the choices made before them. Then all the chosen creatures are sacrificed at the same time."
+   ]
+  },
+  {
+   "name": "Specter of Mortality",
+   "oracle_id": "caff40b1-28d1-4ef6-90d1-51a1dc06cbcd",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Specter",
+   "oracle_text": "Flying\nWhen this creature enters, you may exile one or more creature cards from your graveyard. When you do, each other creature gets -X/-X until end of turn, where X is the number of cards exiled this way.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "342",
+   "set": "woe"
+  },
+  {
+   "name": "Tangled Colony",
+   "oracle_id": "3f01c327-ba50-4fc3-a930-fa1fb02e34b9",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Rat",
+   "oracle_text": "This creature can't block.\nWhen this creature dies, create X 1/1 black Rat creature tokens with \"This token can't block,\" where X is the amount of damage dealt to it this turn.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "344",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

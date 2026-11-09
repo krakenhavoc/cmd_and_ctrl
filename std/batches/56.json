@@ -1,0 +1,456 @@
+{
+ "batch": 56,
+ "set": [
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Talion, the Kindly Lord",
+   "oracle_id": "a019e34d-00c4-4687-9d41-fe550bf1dbdc",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Faerie Noble",
+   "oracle_text": "Flying\nAs Talion enters, choose a number between 1 and 10.\nWhenever an opponent casts a spell with mana value, power, or toughness equal to the chosen number, that player loses 2 life and you draw a card.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "215",
+   "set": "woe",
+   "rulings": [
+    "The numbers you may choose include 1 and 10.",
+    "Effects that increase or reduce the cost to cast a spell don't affect that spell's mana value.",
+    "For spells with {X} in their mana costs, use the value chosen for X to determine if the spell's mana value is the chosen number. For example, if the chosen number is 4, a spell with mana cost {X}{R}{R} cast with X equal to 2 would cause Talion's last ability to trigger."
+   ]
+  },
+  {
+   "name": "Beluna Grandsquall // Seek Thrills",
+   "oracle_id": "06374e6d-62fa-4833-81cd-b4d0a35e7365",
+   "layout": "adventure",
+   "mana_cost": "{G}{U}{R} // {2}{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Giant Noble // Instant — Adventure",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Trample",
+    "Mill"
+   ],
+   "collector_number": "220",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Beluna Grandsquall",
+     "mana_cost": "{G}{U}{R}",
+     "type_line": "Legendary Creature — Giant Noble",
+     "oracle_text": "Trample\nPermanent spells you cast that have an Adventure cost {1} less to cast.",
+     "power": "4",
+     "toughness": "4"
+    },
+    {
+     "name": "Seek Thrills",
+     "mana_cost": "{2}{G}{U}{R}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Mill seven cards. Then put all cards that have an Adventure from among the milled cards into your hand."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Callous Sell-Sword // Burn Together",
+   "oracle_id": "0e7405e3-e9e6-4213-a73f-e0c01a7d6721",
+   "layout": "adventure",
+   "mana_cost": "{1}{B} // {R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Soldier // Sorcery — Adventure",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "221",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Callous Sell-Sword",
+     "mana_cost": "{1}{B}",
+     "type_line": "Creature — Human Soldier",
+     "oracle_text": "This creature enters with a +1/+1 counter on it for each creature that died under your control this turn.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "Burn Together",
+     "mana_cost": "{R}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Target creature you control deals damage equal to its power to any other target. Then sacrifice it."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If the first target of Burn Together is an illegal target as the spell resolves but the last target is still legal, Burn Together will resolve, but no damage will be dealt and nothing will be sacrificed.",
+    "If the last target of Burn Together is an illegal target as the spell resolves but the first target is still legal, Burn Together will still resolve and you'll still sacrifice the first target.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Devouring Sugarmaw // Have for Dinner",
+   "oracle_id": "c8bc28ea-5630-49d5-963a-5789fa83f3c7",
+   "layout": "adventure",
+   "mana_cost": "{2}{B}{B} // {1}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Horror // Instant — Adventure",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Food",
+    "Trample",
+    "Menace"
+   ],
+   "collector_number": "224",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Devouring Sugarmaw",
+     "mana_cost": "{2}{B}{B}",
+     "type_line": "Creature — Horror",
+     "oracle_text": "Menace, trample\nAt the beginning of your upkeep, you may sacrifice an artifact, enchantment, or token. If you don't, tap this creature.",
+     "power": "6",
+     "toughness": "6"
+    },
+    {
+     "name": "Have for Dinner",
+     "mana_cost": "{1}{W}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Create a 1/1 white Human creature token and a Food token. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "Human",
+     "type_line": "Token Creature — Human",
+     "component": "token"
+    },
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn't casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it's in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can't be the target of Tenacious Tomeseeker's triggered ability (\"return target instant or sorcery card from your graveyard to your hand\").",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card's normal characteristics. The spell's color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it's legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (\"Once each turn, you may cast an instant or sorcery spell from the top of your library.\") and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner's graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won't be exiled and the spell's controller won't be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won't give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you'll be able to cast it only during your main phase while the stack is empty.",
+    "An effect may refer to a card, spell, or permanent that \"has an Adventure.\" This refers to a card, spell, or permanent that has an adventurer card's set of alternative characteristics, even if they're not being used and even if that card was never cast as an Adventure.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it's not possible to cast the copy as a permanent.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won't find an instant or sorcery spell on the stack that's been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it's a token) or cease to be a copy (if it's a nontoken permanent), and so you won't be able to cast it as an Adventure."
+   ]
+  },
+  {
+   "name": "Heartflame Duelist // Heartflame Slash",
+   "oracle_id": "3ca07da2-29a1-40ce-a7f3-4838e95ca1d9",
+   "layout": "adventure",
+   "mana_cost": "{1}{W} // {2}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Knight // Instant — Adventure",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "228",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Heartflame Duelist",
+     "mana_cost": "{1}{W}",
+     "type_line": "Creature — Human Knight",
+     "oracle_text": "Instant and sorcery spells you control have lifelink.",
+     "power": "3",
+     "toughness": "1"
+    },
+    {
+     "name": "Heartflame Slash",
+     "mana_cost": "{2}{R}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Heartflame Slash deals 3 damage to any target. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If an instant or sorcery spell you control with lifelink deals damage to you, you gain and lose that much life simultaneously. In this case, your life total doesn't change. (Your life total may increase if the spell also deals damage to other permanents and/or players, however.)",
+    "Some instant and sorcery spells instruct other things to deal damage rather than deal damage themselves. In these cases, you won't gain life for that damage (unless the other things also have lifelink). Notably, a spell that instructs a creature you control to fight won't cause you to gain life.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it's in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can't be the target of Tenacious Tomeseeker's triggered ability (\"return target instant or sorcery card from your graveyard to your hand\").",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card's normal characteristics. The spell's color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it's legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (\"Once each turn, you may cast an instant or sorcery spell from the top of your library.\") and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner's graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won't be exiled and the spell's controller won't be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won't give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you'll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it's not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that \"has an Adventure.\" This refers to a card, spell, or permanent that has an adventurer card's set of alternative characteristics, even if they're not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won't find an instant or sorcery spell on the stack that's been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it's a token) or cease to be a copy (if it's a nontoken permanent), and so you won't be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn't casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Picnic Ruiner // Stolen Goodies",
+   "oracle_id": "334fba11-e500-40fd-a142-41ff553642b5",
+   "layout": "adventure",
+   "mana_cost": "{1}{R} // {3}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Goblin Rogue // Sorcery — Adventure",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "232",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Picnic Ruiner",
+     "mana_cost": "{1}{R}",
+     "type_line": "Creature — Goblin Rogue",
+     "oracle_text": "Whenever this creature attacks while you control a creature with power 4 or greater, this creature gains double strike until end of turn.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "Stolen Goodies",
+     "mana_cost": "{3}{G}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Distribute three +1/+1 counters among any number of target creatures you control."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If you controlled a creature with power 4 or greater when you declared Picnic Ruiner as an attacker, it doesn't matter whether you still control one as its ability resolves. Picnic Ruiner will still gain double strike until end of turn.",
+    "You choose how the counters will be distributed as you cast Stolen Goodies. Each target must receive at least one +1/+1 counter.",
+    "If some of the creatures are illegal targets as Stolen Goodies tries to resolve, the original distribution of counters still applies and the counters that would have been put on illegal targets are lost.",
+    "You can cast Stolen Goodies with no targets. If you do, you won't distribute any counters, but you'll still exile it as it resolves, and you'll still be able to cast Picnic Ruiner later.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Questing Druid // Seek the Beast",
+   "oracle_id": "555df32f-f8e9-49af-bc4a-1194ea325a97",
+   "layout": "adventure",
+   "mana_cost": "{1}{G} // {1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid // Instant — Adventure",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "234",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Questing Druid",
+     "mana_cost": "{1}{G}",
+     "type_line": "Creature — Human Druid",
+     "oracle_text": "Whenever you cast a spell that's white, blue, black, or red, put a +1/+1 counter on this creature.",
+     "power": "1",
+     "toughness": "1"
+    },
+    {
+     "name": "Seek the Beast",
+     "mana_cost": "{1}{R}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Exile the top two cards of your library. Until your next end step, you may play those cards."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If you cast a spell that's more than one of the listed colors, Questing Druid's ability still triggers only once.",
+    "You pay all costs and follow all normal timing rules for cards played from exile with Seek the Beast. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Candy Trail",
+   "oracle_id": "7c8e4f29-53e0-4242-8ef8-7a9476dce178",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Food Clue",
+   "oracle_text": "When this artifact enters, scry 2.\n{2}, {T}, Sacrifice this artifact: You gain 3 life and draw a card.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Scry"
+   ],
+   "collector_number": "243",
+   "set": "woe"
+  },
+  {
+   "name": "Eriette's Tempting Apple",
+   "oracle_id": "b26a2875-c704-491a-b82d-07c316e53611",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact — Food",
+   "oracle_text": "When Eriette's Tempting Apple enters, gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn.\n{2}, {T}, Sacrifice Eriette's Tempting Apple: You gain 3 life.\n{2}, {T}, Sacrifice Eriette's Tempting Apple: Target opponent loses 3 life.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "245",
+   "set": "woe"
+  },
+  {
+   "name": "Edgewall Inn",
+   "oracle_id": "4dfd33e8-7e30-493b-8564-f7df5f0257aa",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\nAs this land enters, choose a color.\n{T}: Add one mana of the chosen color.\n{3}, {T}, Sacrifice this land: Return target card that has an Adventure from your graveyard to your hand.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "255",
+   "set": "woe"
+  }
+ ]
+}

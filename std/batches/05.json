@@ -1,0 +1,255 @@
+{
+ "batch": 5,
+ "set": [
+  "eoe"
+ ],
+ "cards": [
+  {
+   "name": "Nutrient Block",
+   "oracle_id": "04a0382f-7e4e-4450-ae70-18999379d875",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Food",
+   "oracle_text": "Indestructible (Effects that say \"destroy\" don't destroy this artifact.)\n{2}, {T}, Sacrifice this artifact: You gain 3 life.\nWhen this artifact is put into a graveyard from the battlefield, draw a card.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "243",
+   "set": "eoe",
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food token. For example, when you activate the second ability of Ragost, Deft Gastronaut (which says “{1}, {T}, Sacrifice a Food: Ragost deals 3 damage to each opponent”), you can sacrifice Nutrient Block to pay its cost.",
+    "You can’t sacrifice a Food to pay multiple costs. For example, you can’t sacrifice a Nutrient Block to activate its own last ability and also to pay the cost of Ragost, Deft Gastronaut’s second ability."
+   ]
+  },
+  {
+   "name": "Survey Mechan",
+   "oracle_id": "53745903-de8f-42cf-a949-842e5831de30",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Flying\nHexproof (This creature can't be the target of spells or abilities your opponents control.)\n{10}, Sacrifice this creature: It deals 3 damage to any target. Target player draws three cards and gains 3 life. This ability costs {X} less to activate, where X is the number of differently named lands you control.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Flying",
+    "Hexproof"
+   ],
+   "collector_number": "245",
+   "set": "eoe",
+   "rulings": [
+    "Once you determine the cost to activate Survey Mechan’s last ability, you may activate mana abilities to pay that cost. If the number of differently named lands you control changes while activating mana abilities (probably because you sacrificed one or more lands), the cost to activate the ability remains what you previously determined.",
+    "To determine the number of differently named lands you control, count each land you control once, but only if its English name isn’t exactly the same as another land you’ve already counted this way.",
+    "Once you announce you’re activating an ability, no player may take actions until after the ability has been paid for. Notably, opponents can’t try to remove lands you control from the battlefield at that time.",
+    "Use the sacrificed creature’s power as it last existed on the battlefield to determine how many cards to draw with Susur Secundi’s last ability."
+   ]
+  },
+  {
+   "name": "Thrumming Hivepool",
+   "oracle_id": "04ea21b3-084b-4746-9b49-99b6ef4f0885",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Artifact",
+   "oracle_text": "Affinity for Slivers (This spell costs {1} less to cast for each Sliver you control.)\nSlivers you control have double strike and haste.\nAt the beginning of your upkeep, create two 1/1 colorless Sliver creature tokens.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Affinity"
+   ],
+   "collector_number": "247",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Sliver",
+     "type_line": "Token Creature — Sliver",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you’re paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was."
+   ]
+  },
+  {
+   "name": "Command Bridge",
+   "oracle_id": "87c8e1ed-258a-4a89-bcc6-211405e49692",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, sacrifice it unless you tap an untapped permanent you control.\n{T}: Add one mana of any color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "252",
+   "set": "eoe"
+  },
+  {
+   "name": "Mm'menon, the Right Hand",
+   "oracle_id": "de58fa4b-eeeb-4dc8-aab9-6521b15678cc",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Jellyfish Advisor",
+   "oracle_text": "Flying\nYou may look at the top card of your library any time.\nYou may cast artifact spells from the top of your library.\nArtifacts you control have \"{T}: Add {U}. Spend this mana only to cast a spell from anywhere other than your hand.\"",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "290",
+   "set": "eoe"
+  },
+  {
+   "name": "Xu-Ifit, Osteoharmonist",
+   "oracle_id": "39e32fdf-93bf-4390-8275-0d7d10ad7360",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "{T}: Return target creature card from your graveyard to the battlefield. It's a Skeleton in addition to its other types and has no abilities. Activate only as a sorcery.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "294",
+   "set": "eoe",
+   "rulings": [
+    "If a permanent returned to the battlefield by Xu-Ifit’s ability has an ability that triggers “when” it enters, it will lose that ability before it can trigger. If it has an ability that causes it to enter tapped, it will lose that ability before it can apply. The same is also true of any other abilities that modify how it enters the battlefield, such as abilities that would cause it to enter with some number of counters, or apply “as” it enters, such as Famished Worldsire’s devour land ability.",
+    "If a permanent returned to the battlefield with Xu-Ifit’s ability gains an ability after being returned to the battlefield this way, it will keep that ability."
+   ]
+  },
+  {
+   "name": "Mightform Harmonizer",
+   "oracle_id": "8e025cda-71c5-4d06-8436-decd408667af",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect Druid",
+   "oracle_text": "Landfall — Whenever a land you control enters, double the power of target creature you control until end of turn.\nWarp {2}{G} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Warp",
+    "Double",
+    "Landfall"
+   ],
+   "collector_number": "297",
+   "set": "eoe",
+   "rulings": [
+    "If a creature’s power is less than 0 when it’s doubled, instead that creature gets -X/-0, where X is how much less than 0 its power is. For example, if an effect has given Bear Cub, a 2/2 creature, -4/-0 so that it’s a -2/2 creature, doubling its power and toughness gives it -2/+2, and it becomes a -4/4 creature.",
+    "If an effect instructs you to “double” a creature’s power, that creature gets +X/+0, where X is its power as that effect begins to apply. Similarly, a creature whose toughness is doubled gets +0/+X, where X is its toughness as the effect begins to apply."
+   ]
+  },
+  {
+   "name": "Dyadrine, Synthesis Amalgam",
+   "oracle_id": "618a2272-62e0-4d0e-834d-7b81719eba12",
+   "layout": "normal",
+   "mana_cost": "{X}{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Artifact Creature — Construct",
+   "oracle_text": "Trample\nDyadrine enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\nWhenever you attack, you may remove a +1/+1 counter from each of two creatures you control. If you do, draw a card and create a 2/2 colorless Robot artifact creature token.",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "298",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Robot",
+     "type_line": "Token Artifact Creature — Robot",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Dyadrine’s second ability cares about the amount of mana that was actually paid to cast Dyadrine. Any effects that increase or decrease the cost to cast it (including the “commander tax” in a Commander game) will also be taken into account.",
+    "If a copy of Dyadrine is created on the stack, no mana was spent to cast the copy. The amount of mana spent to cast the original spell is not copied.",
+    "If an effect allows you to cast Dyadrine without paying its mana cost, X will be 0.",
+    "If an effect requires you to pay some amount of mana to prevent Dyadrine from being countered, as Divert Disaster does, that mana wasn’t spent to cast Dyadrine and will not be taken into account for Dyadrine’s second ability."
+   ]
+  },
+  {
+   "name": "Rust Harvester",
+   "oracle_id": "9ad956c8-71d3-436f-961e-e2dfc1d2ca70",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Menace\n{2}, {T}, Exile an artifact card from your graveyard: Put a +1/+1 counter on this creature, then it deals damage equal to its power to any target.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "310",
+   "set": "eoe",
+   "rulings": [
+    "If the target is illegal as Rust Harvester’s last ability tries to resolve, it won’t resolve and none of its effects will happen. You won’t put a +1/+1 counter on Rust Harvester.",
+    "If Rust Harvester leaves the battlefield before its last ability resolves, it won’t have a +1/+1 counter put on it when the ability resolves. Use its power as it last existed on the battlefield to determine how much damage is dealt."
+   ]
+  },
+  {
+   "name": "Cosmogoyf",
+   "oracle_id": "99d8c5f9-ad8f-450e-9a7c-51a4c0ca5043",
+   "layout": "normal",
+   "mana_cost": "{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elemental Lhurgoyf",
+   "oracle_text": "Cosmogoyf's power is equal to the number of cards you own in exile and its toughness is equal to that number plus 1.",
+   "power": "*",
+   "toughness": "1+*",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "313",
+   "set": "eoe",
+   "rulings": [
+    "The ability that defines Cosmogoyf’s power and toughness works in all zones, not just the battlefield. If Cosmogoyf is in exile, its ability will count itself."
+   ]
+  }
+ ]
+}

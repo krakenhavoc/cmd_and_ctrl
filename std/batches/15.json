@@ -1,0 +1,282 @@
+{
+ "batch": 15,
+ "set": [
+  "dft",
+  "fdn"
+ ],
+ "cards": [
+  {
+   "name": "Riverchurn Monument",
+   "oracle_id": "71c714a2-baa9-4082-bc8e-ceadbea231e0",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{1}, {T}: Any number of target players each mill two cards. (Each of them puts the top two cards of their library into their graveyard.)\nExhaust — {2}{U}{U}, {T}: Any number of target players each mill cards equal to the number of cards in their graveyard. (Activate each exhaust ability only once.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Exhaust",
+    "Mill"
+   ],
+   "collector_number": "440",
+   "set": "dft",
+   "rulings": [
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  },
+  {
+   "name": "Cursecloth Wrappings",
+   "oracle_id": "d9c4996a-35eb-4d38-9680-57d9d039ed82",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Artifact",
+   "oracle_text": "Zombies you control get +1/+1.\n{T}: Target creature card in your graveyard gains embalm until end of turn. The embalm cost is equal to its mana cost. (Exile that card and pay its embalm cost: Create a token that's a copy of it, except it's a white Zombie in addition to its other types and has no mana cost. Embalm only as a sorcery.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "447",
+   "set": "dft",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Except for the listed exceptions, the token copies exactly what was printed on the original card and nothing else. It doesn’t copy any information about the object the card was before it was put into your graveyard.",
+    "The token is a Zombie in addition to its other types and is white instead of its other colors. It has no mana cost, and thus its mana value is 0. These are copiable values of the token that other effects may copy.",
+    "If the card copied by the token had any “when [this permanent] enters” abilities, then the token also has those abilities and they’ll trigger when it enters. Similarly, any “as [this permanent] enters” or “[this permanent] enters with” abilities that the token has copied will also work.",
+    "Once you’ve activated an embalm ability, the card is immediately exiled. Opponents can’t try to stop the ability by exiling the card."
+   ]
+  },
+  {
+   "name": "Coalstoke Gearhulk",
+   "oracle_id": "2cdbaa4e-8907-49dc-9fa9-0df70db3bf23",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Menace, deathtouch\nWhen this creature enters, put target creature card with mana value 4 or less from a graveyard onto the battlefield under your control with a finality counter on it. That creature gains menace, deathtouch, and haste. At the beginning of your next end step, exile that creature.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Menace",
+    "Deathtouch"
+   ],
+   "collector_number": "477",
+   "set": "dft",
+   "rulings": [
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don’t stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner’s hand from the battlefield, it does so normally.",
+    "Finality counters aren’t keyword counters, and a finality counter doesn’t give any abilities to the permanent it’s on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Ketramose, the New Dawn",
+   "oracle_id": "de41ad94-b9d7-4c2b-bfa6-394d18737228",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — God",
+   "oracle_text": "Menace, lifelink, indestructible\nKetramose can't attack or block unless there are seven or more cards in exile.\nWhenever one or more cards are put into exile from graveyards and/or the battlefield during your turn, you draw a card and lose 1 life.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Indestructible",
+    "Menace"
+   ],
+   "collector_number": "549",
+   "set": "dft",
+   "rulings": [
+    "The ability that prevents Ketramose from attacking or blocking counts the total number of cards in exile, regardless of who owns them or how they were exiled.",
+    "Once Ketramose has been declared as an attacker or blocker, it will continue to attack or block that combat even if the number of cards in exile falls below seven."
+   ]
+  },
+  {
+   "name": "Valkyrie's Call",
+   "oracle_id": "27400927-9aba-4fb3-90c4-490d01969e60",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a nontoken, non-Angel creature you control dies, return that card to the battlefield under its owner's control with a +1/+1 counter on it. It has flying and is an Angel in addition to its other types.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "27",
+   "set": "fdn",
+   "rulings": [
+    "If Valkyrie's Call goes to the graveyard at the same time as one or more nontoken, non-Angel creatures you control die, its ability triggers once for each of those creatures."
+   ]
+  },
+  {
+   "name": "Faebloom Trick",
+   "oracle_id": "903d114b-1899-4e67-bee3-af0673850388",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Create two 1/1 blue Faerie creature tokens with flying. When you do, tap target creature an opponent controls.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "38",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You don't choose a target creature at the time you cast this spell. Rather, a second \"reflexive\" ability triggers when you create two 1/1 blue Faerie creature tokens this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Kaito, Cunning Infiltrator",
+   "oracle_id": "f6d3f145-00e0-47cd-91d8-0381c19a000d",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Planeswalker — Kaito",
+   "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+   "loyalty": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "44",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Ninja",
+     "type_line": "Token Creature — Ninja",
+     "component": "token"
+    },
+    {
+     "name": "Kaito, Cunning Infiltrator Emblem",
+     "type_line": "Emblem",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "You don't have to choose a target for Kaito's first loyalty ability. However, if you do and that target is illegal when the ability tries to resolve, it won't resolve and none of its effects will happen. You won't draw or discard. The loyalty counter that was added to Kaito to pay the cost of the ability will remain on Kaito, however.",
+    "The ability of the emblem created by Kaito's last ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack without resolving."
+   ]
+  },
+  {
+   "name": "Uncharted Voyage",
+   "oracle_id": "1d6796ce-9316-430a-8126-8b0414cf181c",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature's owner puts it on their choice of the top or bottom of their library.\nSurveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "53",
+   "set": "fdn",
+   "rulings": [
+    "If multiple cards are put into the library this way (such as when the spell targets a melded permanent), that permanent's owner puts all the cards on top or all the cards on the bottom. They put them in whatever order they wish, and do not need to reveal the order."
+   ]
+  },
+  {
+   "name": "Gutless Plunderer",
+   "oracle_id": "31265357-5ecb-4d83-80ff-1795b1dfdecb",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Skeleton Pirate",
+   "oracle_text": "Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)\nRaid — When this creature enters, if you attacked this turn, look at the top three cards of your library. You may put one of those cards back on top of your library. Put the rest into your graveyard.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Raid",
+    "Deathtouch"
+   ],
+   "collector_number": "60",
+   "set": "fdn",
+   "rulings": [
+    "If there are fewer than three cards remaining in your library when Gutless Plunderer's last ability resolves, look at all of the cards in your library and follow the instructions in order. For example, if you had only two cards in your library, you would look at both, put up to one on top of your library, and put the rest into your graveyard. Sounds like a gutsy move.",
+    "Raid abilities care only that you attacked with a creature. It doesn't matter how many creatures you attacked with or which player, planeswalker, or battle those creatures attacked.",
+    "Raid abilities evaluate the entire turn to see if you attacked with a creature. That creature doesn't have to still be on the battlefield. Similarly, the player, planeswalker, or battle it attacked doesn't have to still be in the game or on the battlefield."
+   ]
+  },
+  {
+   "name": "Infernal Vessel",
+   "oracle_id": "0e13c283-f462-441f-a8a5-0c75a59ff1d9",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "When this creature dies, if it wasn't a Demon, return it to the battlefield under its owner's control with two +1/+1 counters on it. It's a Demon in addition to its other types.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "63",
+   "set": "fdn"
+  }
+ ]
+}

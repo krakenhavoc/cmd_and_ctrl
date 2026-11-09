@@ -1,0 +1,291 @@
+{
+ "batch": 29,
+ "set": [
+  "blb"
+ ],
+ "cards": [
+  {
+   "name": "Scavenger's Talent",
+   "oracle_id": "aefea339-8a0d-4531-8a62-afaecc88d078",
+   "layout": "class",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Class",
+   "oracle_text": "(Gain the next level as a sorcery to add its ability.)\nWhenever one or more creatures you control die, create a Food token. This ability triggers only once each turn.\n{1}{B}: Level 2\nWhenever you sacrifice a permanent, target player mills two cards.\n{2}{B}: Level 3\nAt the beginning of your end step, you may sacrifice three other nonland permanents. If you do, return a creature card from your graveyard to the battlefield with a finality counter on it.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Food",
+    "Mill"
+   ],
+   "collector_number": "111",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "The creature card you return from your graveyard with Scavenger's Talent's level 3 class ability may be one of the nonland permanents you sacrificed.",
+    "Each Class has five abilities. The three in the major sections of its text box are class abilities. Class abilities can be static, activated, or triggered abilities. The other two are level abilities, one activated ability to advance the Class to level 2 and another to advance the Class to level 3.",
+    "Each Class starts with only the first of its three class abilities. As the first level ability resolves, the Class becomes level 2 and gains the second class ability. As the second level ability resolves, the Class becomes level 3 and gains the third class ability.",
+    "Gaining a level won't remove abilities that a Class had at a previous level.",
+    "Gaining a level is a normal activated ability. It uses the stack and can be responded to.",
+    "You can't activate the first level ability of a Class unless that Class is level 1. Similarly, you can't activate the second level ability of a Class unless that Class is level 2.",
+    "There's no restriction on how many Class permanents you can control, whether they're the same or different classes. Each Class permanent tracks its own level separately.",
+    "If you sacrifice a permanent as part of casting a spell or activating an ability, Scavenger's Talent's level 2 class ability will resolve before that spell or ability.",
+    "Scavenger's Talent's level 2 class ability will trigger when you sacrifice it. If you sacrifice other permanents at the same time, it triggers for them as well."
+   ]
+  },
+  {
+   "name": "Wick, the Whorled Mind",
+   "oracle_id": "5af729e8-8a40-4991-8270-612e377451de",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Rat Warlock",
+   "oracle_text": "Whenever Wick or another Rat you control enters, create a 1/1 black Snail creature token if you don't control a Snail. Otherwise, put a +1/+1 counter on a Snail you control.\n{U}{B}{R}, Sacrifice a Snail: Wick deals damage equal to the sacrificed creature's power to each opponent. Then draw cards equal to the sacrificed creature's power.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "120",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Snail",
+     "type_line": "Token Creature — Snail",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Use the power of the sacrificed Snail as it last existed on the battlefield to determine how much damage to deal and how many cards to draw. While Wick may have given the Snail up, Wick won’t let you down."
+   ]
+  },
+  {
+   "name": "Alania's Pathmaker",
+   "oracle_id": "ce36a450-68a6-4519-a9f0-0e3b772054eb",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Otter Wizard",
+   "oracle_text": "When this creature enters, exile the top card of your library. Until the end of your next turn, you may play that card.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "123",
+   "set": "blb",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Dragonhawk, Fate's Tempest",
+   "oracle_id": "f7f435bc-1716-4412-9505-a1f2f2d83d08",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bird Dragon",
+   "oracle_text": "Flying\nWhenever Dragonhawk enters or attacks, exile the top X cards of your library, where X is the number of creatures you control with power 4 or greater. You may play those cards until your next end step. At the beginning of your next end step, Dragonhawk deals 2 damage to each opponent for each of those cards that are still exiled.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "132",
+   "set": "blb",
+   "rulings": [
+    "The value of X is calculated only once, as Dragonhawk's last ability resolves.",
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "The delayed triggered ability created by Dragonhawk's last ability counts only cards that were exiled by the ability that created it. It doesn't count cards exiled by previous instances of Dragonhawk's last ability or by the abilities of other Dragonhawks you may have controlled previously."
+   ]
+  },
+  {
+   "name": "Hoarder's Overflow",
+   "oracle_id": "75f7d9c7-5d52-4bfe-a730-62fef187b8b8",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters and whenever you expend 4, put a stash counter on it. (You expend 4 as you spend your fourth total mana to cast spells during a turn.)\n{1}{R}, Sacrifice this enchantment: Discard your hand, then draw cards equal to the number of stash counters on this enchantment.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "141",
+   "set": "blb",
+   "rulings": [
+    "Abilities that trigger whenever you “expend N” only trigger when you reach that specific amount of mana spent on casting spells that turn. This can only happen once per turn. For example, if you’ve spent three mana on spells so far this turn and you control a permanent with an ability that triggers “whenever you expend 4,” that ability will trigger the next time you spend at least one mana to cast a spell this turn. It won’t trigger again if you spend another four mana to cast spells later in the turn.",
+    "If the cost to cast a spell is increased, decreased, or changed because of additional or alternative costs, expend counts only the mana you actually spent.",
+    "A permanent with an ability that triggers whenever you “expend N” will see mana you spent to cast spells the turn it enters, including mana you spent before it entered. For example, if you cast Junkblade Bruiser (a creature with a mana value of 5 and an ability that triggers whenever you expend 4) by paying its full cost of five mana, you’ll already have spent four mana on spells before Junkblade Bruiser enters, and therefore its ability that triggers whenever you expend 4 won’t be able to trigger at all that turn."
+   ]
+  },
+  {
+   "name": "Quaketusk Boar",
+   "oracle_id": "6fbaa853-48d4-4a3b-b22d-27415cc266d7",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Boar",
+   "oracle_text": "Reach, trample, haste",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Reach",
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "146",
+   "set": "blb"
+  },
+  {
+   "name": "Season of the Bold",
+   "oracle_id": "5fe29c25-a7ad-4c79-a5a5-da1bbc832141",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose up to five {P} worth of modes. You may choose the same mode more than once.\n{P} — Create a tapped Treasure token.\n{P}{P} — Exile the top two cards of your library. Until the end of your next turn, you may play them.\n{P}{P}{P} — Until the end of your next turn, whenever you cast a spell, Season of the Bold deals 2 damage to up to one target creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "152",
+   "set": "blb",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played with the permission granted by the second mode. For example, if one of the exiled cards is a land card, you may play it only during your main phase while the stack is empty.",
+    "You don't choose a target for the last mode when Season of the Bold resolves. Instead, until the end of your next turn, a delayed triggered ability goes on the stack whenever you cast a spell. You choose a target for that ability when it goes on the stack. Each player may respond to that ability as normal.",
+    "The delayed triggered ability created by the third mode of Season of the Bold resolves before the spell that caused it to trigger. It resolves even if that spell is countered.",
+    "The pawprint symbol does not represent a cost, mana, counters, or any kind of persistent resource. You can't \"save up\" pawprint symbols from one Season spell to use on a future one, mostly because there isn't anything concrete to save up. They're just pawprints.",
+    "You don't have to choose modes that add up to exactly five pawprints. For example, you could choose the two pawprint mode twice and leave it at that. You could even choose no modes at all. You probably shouldn't, but you could.",
+    "You choose the modes as you cast the spell. Once modes are chosen, they can't be changed.",
+    "If a mode requires a target, you can select that mode only if there's a legal target available. Ignore the targeting requirements for modes you don't choose. Each time you select that mode, you can choose a different target, or you can choose the same target.",
+    "No matter which combination of modes you choose, you always follow the instructions of a Season in the order they are written. If the same mode is chosen more than once, you choose their relative order as you cast the spell.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell.",
+    "If a Season is copied, the effect that creates the copy will usually allow you to choose new targets, but you can't choose new modes.",
+    "If all targets for the chosen modes become illegal before the Season resolves, the spell won't resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets."
+   ]
+  },
+  {
+   "name": "For the Common Good",
+   "oracle_id": "de6e4aa2-23f1-46e5-a061-05522944e0c6",
+   "layout": "normal",
+   "mana_cost": "{X}{X}{G}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create X tokens that are copies of target token you control. Then tokens you control gain indestructible until your next turn. You gain 1 life for each token you control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "172",
+   "set": "blb",
+   "rulings": [
+    "The new tokens copy the characteristics of the original token as stated by the effect that created the original token.",
+    "The new tokens don’t copy whether the original token is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, color, and so on.",
+    "Any “as [this permanent] enters” or “[this permanent] enters with” abilities of the new tokens will work."
+   ]
+  },
+  {
+   "name": "Mistbreath Elder",
+   "oracle_id": "bf9221f5-a4b2-4074-901c-0fa3c2bda80c",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Frog Warrior",
+   "oracle_text": "At the beginning of your upkeep, return another creature you control to its owner's hand. If you do, put a +1/+1 counter on this creature. Otherwise, you may return this creature to its owner's hand.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "184",
+   "set": "blb",
+   "rulings": [
+    "If you control creatures other than Mistbreath Elder as its triggered ability resolves, you must return one of them to its owner’s hand. If you don’t, you have the option to return Mistbreath Elder to its owner’s hand or leave it on the battlefield and have the ability do nothing."
+   ]
+  },
+  {
+   "name": "Fireglass Mentor",
+   "oracle_id": "b173245e-2009-48ff-ac42-5f28d12aec79",
+   "layout": "normal",
+   "mana_cost": "{B}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Lizard Warlock",
+   "oracle_text": "At the beginning of your second main phase, if an opponent lost life this turn, exile the top two cards of your library. Choose one of them. Until end of turn, you may play that card.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "213",
+   "set": "blb",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "Fireglass Mentor’s ability cares whether an opponent lost life this turn, not how their life total changed. For example, an opponent who gained 2 life and lost 1 life in the same turn still lost life."
+   ]
+  }
+ ]
+}

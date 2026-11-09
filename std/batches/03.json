@@ -1,0 +1,232 @@
+{
+ "batch": 3,
+ "set": [
+  "eoe"
+ ],
+ "cards": [
+  {
+   "name": "Perigee Beckoner",
+   "oracle_id": "e0a35a44-e56d-434e-8043-43d5031b2e84",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Horror",
+   "oracle_text": "When this creature enters, until end of turn, another target creature you control gets +2/+0 and gains \"When this creature dies, return it to the battlefield tapped under its owner's control.\"\nWarp {1}{B} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Warp"
+   ],
+   "collector_number": "112",
+   "set": "eoe"
+  },
+  {
+   "name": "Zero Point Ballad",
+   "oracle_id": "835abd35-27ea-45fe-b55d-25081c57bd4a",
+   "layout": "normal",
+   "mana_cost": "{X}{B}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy all creatures with toughness X or less. You lose X life. If X is 6 or more, return a creature card put into a graveyard this way to the battlefield under your control.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "128",
+   "set": "eoe"
+  },
+  {
+   "name": "Debris Field Crusher",
+   "oracle_id": "db0894e1-2644-48d4-8de4-8cc43e940bc1",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "When this Spacecraft enters, it deals 3 damage to any target.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n8+ | Flying\n{1}{R}: This Spacecraft gets +2/+0 until end of turn.",
+   "power": "1",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "131",
+   "set": "eoe"
+  },
+  {
+   "name": "Kav Landseeker",
+   "oracle_id": "528fe479-dab9-4cf8-bda0-1d226a644366",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Kavu Soldier",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature enters, create a Lander token. At the beginning of the end step on your next turn, sacrifice that token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "138",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Lander",
+     "type_line": "Token Artifact — Lander",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If a replacement effect (such as that of Exalted Sunborn’s second ability) causes additional tokens to be created during the resolution of Kav Landseeker’s last ability, you’ll sacrifice those tokens at the beginning of the end step on your next turn as well.",
+    "Kav Landseeker’s last ability creates a delayed triggered ability that triggers at the beginning of the end step on your next turn. When that ability resolves, if you still control the Lander token created by Kav Landseeker’s last ability, you’ll sacrifice that token. Sacrificing the Lander token this way won’t allow you to search your library for a basic land."
+   ]
+  },
+  {
+   "name": "Orbital Plunge",
+   "oracle_id": "4f10b164-6d36-4935-92e7-53be73ac4c8a",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Orbital Plunge deals 6 damage to target creature. If excess damage was dealt this way, create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "149",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Lander",
+     "type_line": "Token Artifact — Lander",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Excess damage has been dealt to a creature if the damage dealt to it is greater than lethal damage. Usually, this means damage greater than its toughness, although damage already marked on the creature is taken into account."
+   ]
+  },
+  {
+   "name": "Oreplate Pangolin",
+   "oracle_id": "72e8c978-f66d-42e1-ac5f-d1c307d7b93c",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Robot Pangolin",
+   "oracle_text": "Whenever another artifact you control enters, you may pay {1}. If you do, put a +1/+1 counter on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "150",
+   "set": "eoe"
+  },
+  {
+   "name": "Ruinous Rampage",
+   "oracle_id": "5020628c-5e47-4a83-89c3-7bf5726e69ad",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Ruinous Rampage deals 3 damage to each opponent.\n• Exile all artifacts with mana value 3 or less.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "158",
+   "set": "eoe",
+   "rulings": [
+    "If an artifact has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Systems Override",
+   "oracle_id": "4c9d9d47-1eb6-4981-ba83-d5ec04906e71",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Gain control of target artifact or creature until end of turn. Untap that permanent. It gains haste until end of turn. If it's a Spacecraft, put ten charge counters on it. If you do, remove ten charge counters from it at the beginning of the next end step.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "161",
+   "set": "eoe"
+  },
+  {
+   "name": "Tannuk, Steadfast Second",
+   "oracle_id": "b5ae8016-92ed-4ae8-83a8-65068defc616",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Kavu Pilot",
+   "oracle_text": "Other creatures you control have haste.\nArtifact cards and red creature cards in your hand have warp {2}{R}. (You may cast a card from your hand for its warp cost. Exile that permanent at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "162",
+   "set": "eoe"
+  },
+  {
+   "name": "Terminal Velocity",
+   "oracle_id": "cdda2f04-d59e-4ef8-a26d-964d80750940",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "You may put an artifact or creature card from your hand onto the battlefield. That permanent gains haste, \"When this permanent leaves the battlefield, it deals damage equal to its mana value to each creature,\" and \"At the beginning of your end step, sacrifice this permanent.\"",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "163",
+   "set": "eoe",
+   "rulings": [
+    "Use the permanent’s mana value as it last existed on the battlefield to determine how much damage the triggered ability deals.",
+    "If a permanent has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,257 @@
+{
+ "batch": 20,
+ "set": [
+  "fdn"
+ ],
+ "cards": [
+  {
+   "name": "Tribute to Hunger",
+   "oracle_id": "dc5a501c-e16c-4d4b-a510-70a14272473e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Target opponent sacrifices a creature of their choice. You gain life equal to that creature's toughness.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "614",
+   "set": "fdn",
+   "rulings": [
+    "Use the sacrificed creature's toughness as it last existed on the battlefield to determine how much life to gain."
+   ]
+  },
+  {
+   "name": "Harmless Offering",
+   "oracle_id": "f5d32e5f-066b-42cf-8dd1-072a96275313",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target opponent gains control of target permanent you control.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "625",
+   "set": "fdn",
+   "rulings": [
+    "Your opponent can't refuse your generous donation."
+   ]
+  },
+  {
+   "name": "Hoarding Dragon",
+   "oracle_id": "d36d3c93-ed24-4447-9d15-3071f5c0989b",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nWhen this creature enters, you may search your library for an artifact card, exile it, then shuffle.\nWhen this creature dies, you may put the exiled card into its owner's hand.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "626",
+   "set": "fdn",
+   "rulings": [
+    "The artifact card you find is exiled face up. All players can see what it is.",
+    "Hoarding Dragon's last two abilities are linked. The third ability refers only to the card exiled by Hoarding Dragon's second ability. In other words, each Dragon has its own hoard.",
+    "If Hoarding Dragon dies before its second ability resolves, its third ability will trigger and do nothing. Then its second ability will resolve. If you choose to exile an artifact card from your library, it will be exiled indefinitely."
+   ]
+  },
+  {
+   "name": "Ravenous Giant",
+   "oracle_id": "46c7a552-4a98-4e1a-8651-8fb0e7153aec",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Giant",
+   "oracle_text": "At the beginning of your upkeep, this creature deals 1 damage to you.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "630",
+   "set": "fdn"
+  },
+  {
+   "name": "Ordeal of Nylea",
+   "oracle_id": "5fff2bf4-9e26-4815-9bf6-672ed7e55b96",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhenever enchanted creature attacks, put a +1/+1 counter on it. Then if it has three or more +1/+1 counters on it, sacrifice this Aura.\nWhen you sacrifice this Aura, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "641",
+   "set": "fdn",
+   "rulings": [
+    "The check of whether the enchanted creature has three or more +1/+1 counters on it happens as part of the resolution of the attack triggered ability. If the third +1/+1 counter is put on the enchanted creature any other way, you won't sacrifice Ordeal of Nylea until the next time the creature attacks.",
+    "Ordeal of Nylea's last ability will trigger when you sacrifice it for any reason, not just when you sacrifice it because of the effect of its second ability."
+   ]
+  },
+  {
+   "name": "Venom Connoisseur",
+   "oracle_id": "03ebc100-68ac-4d53-adc2-d537212f7d31",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "Alliance — Whenever another creature you control enters, this creature gains deathtouch until end of turn. If this is the second time this ability has resolved this turn, all creatures you control gain deathtouch until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Alliance"
+   ],
+   "collector_number": "648",
+   "set": "fdn"
+  },
+  {
+   "name": "Wildborn Preserver",
+   "oracle_id": "55cec4bc-3de6-4c0d-a4cc-c5a30849fbda",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Archer",
+   "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)\nReach (This creature can block creatures with flying.)\nWhenever another non-Human creature you control enters, you may pay {X}. When you do, put X +1/+1 counters on this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Flash"
+   ],
+   "collector_number": "650",
+   "set": "fdn",
+   "rulings": [
+    "If you pay {X} while Wildborn Preserver's triggered ability is resolving, the reflexive triggered ability triggers and will resolve separately. This is different from effects that say “If you do . . .” in that players may take actions after you've paid mana but before the creature gets +1/+1 counters."
+   ]
+  },
+  {
+   "name": "Dryad Militant",
+   "oracle_id": "b8ca5877-ac9e-4b15-8c23-c70f61b01895",
+   "layout": "normal",
+   "mana_cost": "{G/W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Dryad Soldier",
+   "oracle_text": "({G/W} can be paid with either {G} or {W}.)\nIf an instant or sorcery card would be put into a graveyard from anywhere, exile it instead.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "656",
+   "set": "fdn",
+   "rulings": [
+    "If an instant or sorcery spell destroys Dryad Militant directly (like Murder does), that instant or sorcery card will be put into its owner's graveyard. However, if an instant or sorcery card deals lethal damage to Dryad Militant, Dryad Militant will remain on the battlefield until the next time state-based actions are checked, which is after the instant or sorcery finishes resolving. The instant or sorcery will be exiled.",
+    "If an instant or sorcery card is discarded while Dryad Militant is on the battlefield, abilities that function when a card is discarded (such as madness) still work, even though that card never reaches a graveyard. In addition, spells or abilities that check the characteristics of a discarded card (such as Chandra Ablaze's first ability) can find that card in exile."
+   ]
+  },
+  {
+   "name": "Ovika, Enigma Goliath",
+   "oracle_id": "b05a2b5f-1b5c-4f1b-8a6b-525c5c8b8ba1",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{R}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Phyrexian Nightmare",
+   "oracle_text": "Flying\nWard—{3}, Pay 3 life.\nWhenever you cast a noncreature spell, create X 1/1 red Phyrexian Goblin creature tokens, where X is the mana value of that spell. They gain haste until end of turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Ward"
+   ],
+   "collector_number": "663",
+   "set": "fdn",
+   "related": [
+    {
+     "name": "Phyrexian Goblin",
+     "type_line": "Token Creature — Phyrexian Goblin",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If a spell on the stack has {X} in its cost, use the value chosen for X to determine its mana value."
+   ]
+  },
+  {
+   "name": "Prime Speaker Zegana",
+   "oracle_id": "311e9368-696a-47e7-aa2f-3ef1b1a92e2b",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Merfolk Wizard",
+   "oracle_text": "Prime Speaker Zegana enters with X +1/+1 counters on it, where X is the greatest power among other creatures you control.\nWhen Prime Speaker Zegana enters, draw cards equal to its power.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "664",
+   "set": "fdn",
+   "rulings": [
+    "The value of X is calculated only once, as Prime Speaker Zegana's first ability resolves. If you control no other creatures at that time, X is 0.",
+    "If Prime Speaker Zegana enters at the same time as another creature you control, you won't consider that creature when determining the greatest power among creatures you control.",
+    "If Prime Speaker Zegana is no longer on the battlefield when its last ability resolves, use its power as it last existed on the battlefield to determine how many cards to draw."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,263 @@
+{
+ "batch": 12,
+ "set": [
+  "dft",
+  "tdm"
+ ],
+ "cards": [
+  {
+   "name": "Magmatic Hellkite // Magmatic Hellkite",
+   "layout": "reversible_card",
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "380",
+   "set": "tdm",
+   "card_faces": [
+    {
+     "name": "Magmatic Hellkite",
+     "mana_cost": "{2}{R}{R}",
+     "type_line": "Creature — Dragon",
+     "oracle_text": "Flying\nWhen this creature enters, destroy target nonbasic land an opponent controls. Its controller searches their library for a basic land card, puts it onto the battlefield tapped with a stun counter on it, then shuffles. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+     "power": "4",
+     "toughness": "5"
+    },
+    {
+     "name": "Magmatic Hellkite",
+     "mana_cost": "{2}{R}{R}",
+     "type_line": "Creature — Dragon",
+     "oracle_text": "Flying\nWhen this creature enters, destroy target nonbasic land an opponent controls. Its controller searches their library for a basic land card, puts it onto the battlefield tapped with a stun counter on it, then shuffles. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+     "power": "4",
+     "toughness": "5"
+    }
+   ],
+   "oracle_id": "2a3b29c3-f69d-4671-8907-600d21528153",
+   "rulings": [
+    "If the target land is an illegal target as Magmatic Hellkite’s last ability tries to resolve, it won’t resolve and none of its effects will happen. No player will search their library for a basic land card.",
+    "As long as Magmatic Hellkite’s last ability resolves, the target land’s controller gets to search for a basic land card even if the target land wasn’t destroyed by the ability. This may happen because the land has indestructible."
+   ]
+  },
+  {
+   "name": "Clarion Conqueror",
+   "oracle_id": "f1266a1b-bae6-4ded-b4d5-7586a5b6c5d0",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nActivated abilities of artifacts, creatures, and planeswalkers can't be activated.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "400",
+   "set": "tdm",
+   "rulings": [
+    "Activated abilities contain a colon. They’re generally written “[Cost]: [Effect].” Some keywords are activated abilities and will have colons in their reminder text."
+   ]
+  },
+  {
+   "name": "Death Begets Life",
+   "oracle_id": "53e86135-3b24-4618-bcc0-af4d81e672dd",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{G}{U}",
+   "cmc": 8.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy all creatures and enchantments. Draw a card for each permanent destroyed this way.",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "406",
+   "set": "tdm",
+   "rulings": [
+    "Permanents with indestructible aren’t destroyed this way.",
+    "If a permanent destroyed this way goes to a zone other than a graveyard (for example, if it has a finality counter on it), it still counts as being destroyed and you’ll still draw a card."
+   ]
+  },
+  {
+   "name": "Qarsi Revenant",
+   "oracle_id": "bbea79bc-71d4-4100-92f4-783c2c4b46da",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Vampire",
+   "oracle_text": "Flying, deathtouch, lifelink\nRenew — {2}{B}, Exile this card from your graveyard: Put a flying counter, a deathtouch counter, and a lifelink counter on target creature. Activate only as a sorcery.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Deathtouch",
+    "Flying",
+    "Lifelink",
+    "Renew"
+   ],
+   "collector_number": "426",
+   "set": "tdm",
+   "rulings": [
+    "If a card with a renew ability is put into your graveyard during your turn, you can activate that ability if it’s legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Voyager Glidecar",
+   "oracle_id": "8f40d73b-9106-448e-8649-5d62939f0d38",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "When this Vehicle enters, scry 1.\nTap three other untapped creatures you control: Until end of turn, this Vehicle becomes an artifact creature and gains flying. Put a +1/+1 counter on it.\nCrew 1",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Crew",
+    "Scry"
+   ],
+   "collector_number": "36",
+   "set": "dft"
+  },
+  {
+   "name": "Sabotage Strategist",
+   "oracle_id": "1b788680-28e3-4378-9607-bd42acb4fbad",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Vedalken Ranger",
+   "oracle_text": "Flying, vigilance\nWhenever one or more creatures attack you, those creatures get -1/-0 until end of turn.\nExhaust — {5}{U}{U}: Put three +1/+1 counters on this creature. (Activate each exhaust ability only once.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance",
+    "Exhaust"
+   ],
+   "collector_number": "59",
+   "set": "dft",
+   "rulings": [
+    "Exhaust abilities can be activated any time you could normally activate an ability.",
+    "If an exhaust ability of a permanent is activated, and then that permanent leaves the battlefield and returns to the battlefield, it becomes a new object so its exhaust ability can be activated again.",
+    "If an ability triggers whenever you activate an exhaust ability, that ability resolves before the exhaust ability resolves."
+   ]
+  },
+  {
+   "name": "Spikeshell Harrier",
+   "oracle_id": "23102d8a-3a93-4e83-af5b-401c85ba9dbc",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Robot Turtle",
+   "oracle_text": "When this creature enters, return target creature or Vehicle an opponent controls to its owner's hand. If that opponent's speed is greater than each other player's speed, reduce that opponent's speed by 1. This effect can't reduce their speed below 1.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "65",
+   "set": "dft"
+  },
+  {
+   "name": "Waxen Shapethief",
+   "oracle_id": "6c540822-4ceb-4ebf-b777-da172ada3f1b",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Shapeshifter",
+   "oracle_text": "Flash\nYou may have this creature enter as a copy of an artifact or creature you control.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash",
+    "Cycling"
+   ],
+   "collector_number": "74",
+   "set": "dft"
+  },
+  {
+   "name": "Demonic Junker",
+   "oracle_id": "88075828-a76e-412d-b738-182f50e3a133",
+   "layout": "normal",
+   "mana_cost": "{6}{B}",
+   "cmc": 7.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nWhen this Vehicle enters, for each player, destroy up to one target creature that player controls. If a creature you controlled was destroyed this way, put two +1/+1 counters on this Vehicle.\nCrew 2",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Affinity",
+    "Crew"
+   ],
+   "collector_number": "83",
+   "set": "dft"
+  },
+  {
+   "name": "Grim Javelineer",
+   "oracle_id": "bd31487e-e95a-4d90-8c85-742aa83c3e90",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Warrior",
+   "oracle_text": "Whenever you attack, target attacking creature gets +1/+0 until end of turn. When that creature dies this turn, surveil 1. (Look at the top card of your library. You may put that card into your graveyard.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "89",
+   "set": "dft"
+  }
+ ]
+}

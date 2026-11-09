@@ -1,0 +1,325 @@
+{
+ "batch": 36,
+ "set": [
+  "otj"
+ ],
+ "cards": [
+  {
+   "name": "Taii Wakeen, Perfect Shot",
+   "oracle_id": "17327d50-be12-423d-9d37-d6bae519f50c",
+   "layout": "normal",
+   "mana_cost": "{R}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Mercenary",
+   "oracle_text": "Whenever a source you control deals noncombat damage to a creature equal to that creature's toughness, draw a card.\n{X}, {T}: If a source you control would deal noncombat damage to a permanent or player this turn, it deals that much damage plus X instead.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "234",
+   "set": "otj",
+   "rulings": [
+    "Taii Wakeen’s first ability doesn’t care about any damage already marked on a creature. It just cares about whether the noncombat damage dealt to a creature by a source you control was equal to that creature’s toughness.",
+    "The additional X damage is dealt by the same source as the original source of damage. The damage isn’t dealt by Taii Wakeen unless Taii Wakeen is the original source of damage.",
+    "If another effect modifies how much damage a source would deal, including preventing some of it, the player being dealt damage or the controller of the permanent being dealt damage chooses an order in which to apply those effects. If all of the damage is prevented, Taii Wakeen’s effect no longer applies."
+   ]
+  },
+  {
+   "name": "Bucolic Ranch",
+   "oracle_id": "8f5902bf-4bc4-4d0c-84ea-a425307a4eb2",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Mount spell.\n{3}, {T}: Look at the top card of your library. If it's a Mount card, you may reveal it and put it into your hand. If you don't put it into your hand, you may put it on the bottom of your library.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "265",
+   "set": "otj"
+  },
+  {
+   "name": "Tinybones, the Pickpocket",
+   "oracle_id": "7bc4c7e2-6758-4a85-84e7-03ab93981106",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Skeleton Rogue",
+   "oracle_text": "Deathtouch\nWhenever Tinybones deals combat damage to a player, you may cast target nonland permanent card from that player's graveyard, and mana of any type can be spent to cast that spell.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "290",
+   "set": "otj",
+   "rulings": [
+    "You choose whether to cast the target nonland permanent card as Tinybones's triggered ability resolves. If you do, you do so as part of the resolution of that ability. You can't wait to cast it later in the turn. Timing restrictions based on the card's types are ignored."
+   ]
+  },
+  {
+   "name": "Rakdos, the Muscle",
+   "oracle_id": "e2c141af-925e-42bd-8d83-e1a71f4c9794",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Demon Mercenary",
+   "oracle_text": "Flying, trample\nWhenever you sacrifice another creature, exile cards equal to its mana value from the top of target player's library. Until your next end step, you may play those cards, and mana of any type can be spent to cast those spells.\nSacrifice another creature: Rakdos gains indestructible until end of turn. Tap it. Activate only once each turn.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample"
+   ],
+   "collector_number": "297",
+   "set": "otj",
+   "rulings": [
+    "Use the mana value of the sacrificed creature as it last existed on the battlefield to determine how many cards to exile.",
+    "If the sacrificed creature had {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "You pay all costs and follow all normal timing rules for cards played from exile with Rakdos's triggered ability. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Vraska, the Silencer",
+   "oracle_id": "e7c5a568-3855-4a20-9edf-01a8a6a4ba97",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Gorgon Assassin",
+   "oracle_text": "Deathtouch\nWhenever a nontoken creature an opponent controls dies, you may pay {1}. If you do, return that card to the battlefield tapped under your control. It's a Treasure artifact with \"{T}, Sacrifice this artifact: Add one mana of any color,\" and it loses all other card types.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "299",
+   "set": "otj",
+   "rulings": [
+    "The returned card will lose any other subtypes and card types and will be only a Treasure artifact. It will retain its supertypes as well as its abilities."
+   ]
+  },
+  {
+   "name": "Oko, the Ringleader",
+   "oracle_id": "4372b729-dc3d-4469-8fc5-811cc787d653",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Oko",
+   "oracle_text": "At the beginning of combat on your turn, Oko becomes a copy of up to one target creature you control until end of turn, except he has hexproof.\n+1: Draw two cards. If you've committed a crime this turn, discard a card. Otherwise, discard two cards.\n−1: Create a 3/3 green Elk creature token.\n−5: For each other nonland permanent you control, create a token that's a copy of that permanent.",
+   "loyalty": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "305",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Elk",
+     "type_line": "Token Creature — Elk",
+     "component": "token"
+    },
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Except for the listed exception, Oko copies exactly what was printed on the target creature and nothing else (unless that creature is copying something else or is a token; see below). He doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied creature is a token, Oko copies the original characteristics of that token as stated by the effect that created that token, with the stated exception.",
+    "If the copied creature is copying something else, then Oko becomes a copy of whatever that creature copied, with the stated exception.",
+    "When Oko becomes a copy of the target creature, he's neither entering nor leaving the battlefield. Any enters-the-battlefield or leaves-the-battlefield abilities won't trigger.",
+    "If the target creature is an illegal target as Oko's first ability tries to resolve, it won't resolve and none of its effects will happen. Oko won't gain hexproof.",
+    "While Oko is a copy of a creature, he isn't a planeswalker. He won't have his loyalty abilities, and damage dealt to him won't cause him to lose loyalty counters.",
+    "Each of the tokens created by Oko's last ability copies exactly what was printed on the original permanent and nothing else (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "If the copied permanent is a token, the token that's created copies the original characteristics of that token as stated by the effect that created that token.",
+    "If the copied permanent is copying something else, then the token enters the battlefield as whatever that permanent copied.",
+    "Any enters-the-battlefield abilities of the copied permanent will trigger when the token enters the battlefield. Any \"as [this permanent] enters the battlefield\" or \"[this permanent] enters the battlefield with\" abilities of the copied permanent will also work.",
+    "A player commits a crime as they cast a spell, activate an ability, or put a triggered ability on the stack that targets at least one opponent, at least one permanent, spell, or ability an opponent controls, and/or at least one card in an opponent's graveyard.",
+    "The spell or ability that constituted a crime doesn't have to have resolved yet or at all. As soon as you're finished casting the spell, activating the ability, or putting the triggered ability on the stack, you've committed a crime.",
+    "For example, an ability that triggers when you cast a spell that targets an opponent will trigger at the same time as an ability that triggers whenever you commit a crime. Those abilities can be put on the stack in either order (if you control them both), and they'll both resolve before the spell that caused them to trigger.",
+    "A player can commit only one crime per spell or ability they control. Targeting multiple opponents, permanents, spells, abilities, and/or cards with the same spell or ability doesn't constitute committing multiple crimes.",
+    "Changing the target or targets of a spell or ability won't affect whether or not the controller of that spell or ability has committed a crime. Only the initial targets chosen for that spell or ability are used to determine whether or not its controller committed a crime."
+   ]
+  },
+  {
+   "name": "Jace Reawakened",
+   "oracle_id": "cbd483b5-5554-43ed-a729-535d01b0d5d3",
+   "layout": "normal",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Planeswalker — Jace",
+   "oracle_text": "You can't cast Jace Reawakened during your first, second, or third turns of the game.\n+1: Draw a card, then discard a card.\n+1: You may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted.\n−6: Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+   "loyalty": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "306",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If an instant or a card with flash is plotted this way, you can still cast it only when you have priority during your main phase while the stack is empty.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode or modes. You can't choose different ones.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can't be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy made by Jace Reawakened's last ability is created on the stack, so it's not \"cast.\"",
+    "Plot abilities are written \"Plot [cost],\" which means \"Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.\"",
+    "Exiling a card using its plot ability is a special action. Once you announce you're taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can't cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you're casting a plotted card from exile without paying its mana cost, you can't choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "You can cast Jace Reawakened during another player's first, second, or third turns of the game if some other effect (such as Vedalken Orrery) enables that.",
+    "Jace Reawakened cares about how many turns you have taken, not necessarily how many turns the game has had, in case you take an extra turn.",
+    "The copy created by Jace Reawakened's last ability will have the same targets as the spell it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the game is restarted (by Karn Liberated), you can't cast Jace Reawakened in your first, second, or third turn in the new game."
+   ]
+  },
+  {
+   "name": "High Noon",
+   "oracle_id": "3c8cbf0f-0288-4b5e-bd4f-0f208670b6b5",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Each player can't cast more than one spell each turn.\n{4}{R}, Sacrifice this enchantment: It deals 5 damage to any target.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "314",
+   "set": "otj",
+   "rulings": [
+    "If you cast High Noon, you’ve already cast at least one spell that turn (High Noon itself) so you won’t be able to cast any more spells until the next turn. If High Noon enters the battlefield on a turn where you haven’t cast any spells, you’ll be able to cast one spell that turn.",
+    "If you cast a spell that was countered, you can’t cast another spell during the same turn while High Noon is on the battlefield."
+   ]
+  },
+  {
+   "name": "Step Between Worlds",
+   "oracle_id": "48b43d53-9a8a-47a2-8610-a54d276d7be7",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each player may shuffle their hand and graveyard into their library. Each player who does draws seven cards. Exile Step Between Worlds.\nPlot {4}{U}{U} (You may pay {4}{U}{U} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "321",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Players decide and announce in turn order, starting with the active player, whether they want to shuffle their hand and graveyard into their library. Then, all players who chose to do so shuffle their hands and graveyards into their libraries and draw seven cards. Players later in the turn order will know the choices made by players before them.",
+    "A player whose hand and/or graveyard contain no cards can still choose to shuffle their hand and graveyard into their library. If they do, they’ll still draw seven cards.",
+    "Plot abilities are written “Plot [cost],” which means “Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.”",
+    "Exiling a card using its plot ability is a special action. Once you announce you’re taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can’t cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you’re casting a plotted card from exile without paying its mana cost, you can’t choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Ghired, Mirror of the Wilds",
+   "oracle_id": "34b36022-0d93-48cc-a2cc-90ca4d65dc31",
+   "layout": "normal",
+   "mana_cost": "{R}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Shaman",
+   "oracle_text": "Haste\nNontoken creatures you control have \"{T}: Create a token that's a copy of target token you control that entered this turn.\"",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "351",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The new token copies the original characteristics of the target token as stated by the effect that created the target token and nothing else (unless that creature is copying something else; see below). It doesn’t copy whether the target token is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied token has {X} in its mana cost, X is 0. (Most tokens don’t have a mana cost unless they’re copying something else.)",
+    "If the copied token is copying something else, then the new token enters the battlefield as whatever that token copied.",
+    "Any enters-the-battlefield abilities of the copied token will trigger when the token enters the battlefield. Any “as [this permanent] enters the battlefield” or “[this permanent] enters the battlefield with” abilities of the copied token will also work."
+   ]
+  }
+ ]
+}

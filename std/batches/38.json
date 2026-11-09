@@ -1,0 +1,306 @@
+{
+ "batch": 38,
+ "set": [
+  "big"
+ ],
+ "cards": [
+  {
+   "name": "Greed's Gambit",
+   "oracle_id": "0868ebbb-2fe9-4f53-9697-acad8cda5ec1",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, you draw three cards, gain 6 life, and create three 2/1 black Bat creature tokens with flying.\nAt the beginning of your end step, you discard a card, lose 2 life, and sacrifice a creature.\nWhen this enchantment leaves the battlefield, you discard three cards, lose 6 life, and sacrifice three creatures.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "38",
+   "set": "big",
+   "related": [
+    {
+     "name": "Bat",
+     "type_line": "Token Creature — Bat",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Ancient Cornucopia",
+   "oracle_id": "f0950c95-a297-489d-b166-74bba6af5376",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever you cast a spell that's one or more colors, you may gain 1 life for each of that spell's colors. Do this only once each turn.\n{T}: Add one mana of any color.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "46",
+   "set": "big",
+   "rulings": [
+    "Once you choose to gain life using Ancient Cornucopia’s triggered ability, that ability won’t trigger again that turn.",
+    "Ancient Cornucopia’s triggered ability counts the number of colors the spell has (from one to five), not how many colored mana symbols there are in its mana cost or how many colors of mana you spent.",
+    "Ancient Cornucopia’s triggered ability resolves before the spell that caused it to trigger. The ability will resolve even if that spell is countered. If that spell is countered, use its last known information to determine what colors it was."
+   ]
+  },
+  {
+   "name": "Omenpath Journey",
+   "oracle_id": "8b067e44-2001-4b49-aa4a-2c86f8929751",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, search your library for up to five land cards that have different names, exile them, then shuffle.\nAt the beginning of your end step, choose a card at random exiled with this enchantment and put it onto the battlefield tapped.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "48",
+   "set": "big",
+   "rulings": [
+    "You may search your library for only one land card and exile it, if you like.",
+    "While in your library, a double-faced card has only the name of its front face. It’s not possible to reveal two of the same double-faced card this way."
+   ]
+  },
+  {
+   "name": "Loot, the Key to Everything",
+   "oracle_id": "542be13f-b9c0-4b79-b486-be576c531a82",
+   "layout": "normal",
+   "mana_cost": "{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Beast Noble",
+   "oracle_text": "Ward {1}\nAt the beginning of your upkeep, exile the top X cards of your library, where X is the number of card types among other nonland permanents you control. You may play those cards this turn.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "62",
+   "set": "big",
+   "rulings": [
+    "The value of X is determined as Loot's last ability resolves.",
+    "The card types that could appear among your nonland permanents are artifact, battle, creature, enchantment, kindred, and planeswalker.",
+    "Lands are disregarded when calculating the value of X. For example, if you control an artifact land but no other artifacts, artifact won't count toward the value of X.",
+    "You pay all costs and follow all normal timing rules for cards played from exile with Loot's last ability. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Sword of Wealth and Power",
+   "oracle_id": "b3a80545-9a8a-46b2-9d8c-b0d66fb68a5d",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +2/+2 and has protection from instants and from sorceries.\nWhenever equipped creature deals combat damage to a player, create a Treasure token. When you next cast an instant or sorcery spell this turn, copy that spell. You may choose new targets for the copy.\nEquip {2}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Treasure",
+    "Equip"
+   ],
+   "collector_number": "64",
+   "set": "big",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Protection from instants and from sorceries means that the equipped creature can’t be the target of instant spells, sorcery spells, or abilities from instant or sorcery cards (such as an ability of an instant card that triggers when that card is cycled), and all damage that an instant or sorcery spell or card would deal to it is prevented. Nothing other than these events is prevented or illegal.",
+    "The copy created by Sword of Wealth and Power’s delayed triggered ability will have the same targets as the spell it’s copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that’s copied is modal (that is, it says “Choose one —” or the like), the copy will have the same mode or modes. You can’t choose different ones.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can’t be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that’s copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can’t choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy made by Sword of Wealth and Power’s delayed triggered ability is created on the stack, so it’s not “cast.”"
+   ]
+  },
+  {
+   "name": "Collector's Cage",
+   "oracle_id": "8f5b71fd-469f-4370-a806-9bfefbae03a2",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "Hideaway 5 (When this artifact enters, look at the top five cards of your library, exile one face down, then put the rest on the bottom in a random order.)\n{1}, {T}: Put a +1/+1 counter on target creature you control. Then if you control three or more creatures with different powers, you may play the exiled card without paying its mana cost.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Hideaway"
+   ],
+   "collector_number": "66",
+   "set": "big",
+   "rulings": [
+    "Any player who has controlled a permanent with a hideaway ability since a card was exiled with it may look at that card.",
+    "Previously, permanents with hideaway entered the battlefield tapped. This ability has been removed from the definition of hideaway. Older cards have received errata to have an additional paragraph that reads \"[This permanent] enters the battlefield tapped,\" and they now have hideaway 4.",
+    "Hideaway now causes you to put the rest of the cards on the bottom of your library in a random order instead of any order.",
+    "Collector's Cage's last ability looks at the creatures you control as it resolves to determine if you can play the exiled card. For example, if you control a 4/5 creature, a 1/1 creature, and a 2/1 creature, there are three different powers among creatures you control.",
+    "You choose whether to play the exiled card as Collector's Cage's last ability resolves. If you do, you do so as part of the resolution of that ability. You can't wait to play it later in the turn. Timing restrictions based on the card's types are ignored. However, you can never play lands on other players' turns.",
+    "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs, those must be paid to cast the spell.",
+    "If the spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Oltec Matterweaver",
+   "oracle_id": "3cb91696-242f-4e91-806b-61b1bb45a20c",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "Whenever you cast a creature spell, choose one —\n• Create a 1/1 colorless Gnome artifact creature token.\n• Create a token that's a copy of target artifact token you control.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "68",
+   "set": "big",
+   "related": [
+    {
+     "name": "Gnome",
+     "type_line": "Token Artifact Creature — Gnome",
+     "component": "token"
+    },
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Oltec Matterweaver’s ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered.",
+    "The new token copies the original characteristics of the target token as stated by the effect that created the target token and nothing else (unless that creature is copying something else; see below). It doesn’t copy whether the target token is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied token has {X} in its mana cost, X is 0. (Most tokens don’t have a mana cost unless they’re copying something else.)",
+    "If the copied token is copying something else, then the new token enters the battlefield as whatever that token copied.",
+    "Any enters-the-battlefield abilities of the copied token will trigger when the token enters the battlefield. Any “as [this permanent] enters the battlefield” or “[this permanent] enters the battlefield with” abilities of the copied token will also work."
+   ]
+  },
+  {
+   "name": "Worldwalker Helm",
+   "oracle_id": "9573c85a-e574-4b4e-aae0-2165c45fd27e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "If you would create one or more artifact tokens, instead create those tokens plus an additional Map token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\")\n{1}{U}, {T}: Create a token that's a copy of target artifact token you control.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "72",
+   "set": "big",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    },
+    {
+     "name": "Map",
+     "type_line": "Token Artifact — Map",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Worldwaker Helm's first ability applies to all kinds of artifact tokens that its controller creates, not just Map tokens.",
+    "The additional Map token won't have any abilities the other tokens were created with. Anything else specified in the effect creating the token (such as tapped or \"Exile that token at end of combat\") applies to both the original tokens and the Map.",
+    "You don't need to control the spell or ability that creates the tokens, but you do have to be the one creating the tokens for Worldwaker Helm's first ability to apply.",
+    "The new token created by Worldwaker Helm's last ability copies the original characteristics of the target token as stated by the effect that created the target token and nothing else (unless that token is copying something else; see below). It doesn't copy whether the target token is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied token has {X} in its mana cost, X is 0. (Most tokens don't have a mana cost unless they're copying something else.)",
+    "If the copied token is copying something else, then the new token enters the battlefield as whatever that token copied.",
+    "Any enters-the-battlefield abilities of the copied token will trigger when the token enters the battlefield. Any \"as [this permanent] enters the battlefield\" or \"[this permanent] enters the battlefield with\" abilities of the copied token will also work."
+   ]
+  },
+  {
+   "name": "Hostile Investigator",
+   "oracle_id": "de83b1a4-0ce0-4cc1-aff3-6d0239d92302",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Ogre Rogue Detective",
+   "oracle_text": "When this creature enters, target opponent discards a card.\nWhenever one or more players discard one or more cards, investigate. This ability triggers only once each turn. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "75",
+   "set": "big",
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Legion Extruder",
+   "oracle_id": "c77dc11e-d95d-4e7e-bb24-d971c179e9b0",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "When this artifact enters, it deals 2 damage to any target.\n{2}, {T}, Sacrifice another artifact: Create a 3/3 colorless Golem artifact creature token.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "77",
+   "set": "big",
+   "related": [
+    {
+     "name": "Golem",
+     "type_line": "Token Artifact Creature — Golem",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

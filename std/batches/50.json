@@ -1,0 +1,334 @@
+{
+ "batch": 50,
+ "set": [
+  "lci"
+ ],
+ "cards": [
+  {
+   "name": "Anim Pakal, Thousandth Moon",
+   "oracle_id": "05551d91-50c6-46d1-86a4-cd3d177d0923",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Soldier",
+   "oracle_text": "Whenever you attack with one or more non-Gnome creatures, put a +1/+1 counter on Anim Pakal, then create X 1/1 colorless Gnome artifact creature tokens that are tapped and attacking, where X is the number of +1/+1 counters on Anim Pakal.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "300",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Gnome",
+     "type_line": "Token Artifact Creature — Gnome",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Anim Pakal, Thousandth Moon doesn't have to be one of the non-Gnome creatures you attack with in order for its ability to trigger, but it can be.",
+    "You choose which player, planeswalker, or battle the Gnome tokens are attacking. Each Gnome token can enter attacking a different player, planeswalker, or battle, and they don't need to be the same ones that the non-Gnome creatures are attacking.",
+    "Although the Gnome tokens enter the battlefield as attacking creatures, they were never declared as attacking creatures. Abilities that trigger whenever a creature attacks won't trigger when they enter the battlefield attacking.",
+    "If Anim Pakal is no longer on the battlefield when the triggered ability resolves, you'll still create Gnomes. Use the number of +1/+1 counters that were on it when it was last on the battlefield."
+   ]
+  },
+  {
+   "name": "The Mycotyrant",
+   "oracle_id": "b69bbb8d-7f8c-45d6-983a-759b5fce6ebd",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elder Fungus",
+   "oracle_text": "Trample\nThe Mycotyrant's power and toughness are each equal to the number of creatures you control that are Fungi and/or Saprolings.\nAt the beginning of your end step, create X 1/1 black Fungus creature tokens with \"This token can't block,\" where X is the number of times you descended this turn. (You descend each time a permanent card is put into your graveyard from anywhere.)",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "305",
+   "set": "lci",
+   "related": [
+    {
+     "name": "Fungus",
+     "type_line": "Token Creature — Fungus",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The ability that defines The Mycotyrant's power and toughness works in all zones. As long as The Mycotyrant is on the battlefield (and still a Fungus, or somehow a Saproling), that ability will count The Mycotyrant itself.",
+    "If you control a creature that is both a Fungus and a Saproling, it counts only once for The Mycotyrant's middle ability.",
+    "Some cards refer to a player who has \"descended this turn.\" This means that a permanent card has been put into that player's graveyard from anywhere this turn.",
+    "Some cards refer to the number of times a player descended this turn. Those cards care about the number of permanent cards put into that player's graveyard from anywhere this turn.",
+    "In either case, it doesn't matter if those cards are still in that player's graveyard.",
+    "A permanent card is an artifact, battle, creature, enchantment, land, or planeswalker card. Tokens are not cards, and while tokens are put into the graveyard before ceasing to exist, that action doesn't count as a player having descended.",
+    "Multiple cards have abilities that begin with \"At the beginning of your end step, if you descended this turn.\" These cards don't need to have been under your control at the time you descended. For example, if a permanent card is put into your graveyard during your first main phase and you cast Stalactite Stalker your second main phase, its ability will trigger at the beginning of your end step.",
+    "Abilities that begin with \"At the beginning of your end step, if you descended this turn\" will trigger only once during your end step, no matter how many times you descended this turn. However, if you haven't descended this turn as your end step begins, the ability won't trigger at all. It's not possible to put a permanent card into your graveyard during the end step in time to have the ability trigger."
+   ]
+  },
+  {
+   "name": "Zoyowa Lava-Tongue",
+   "oracle_id": "e90f298f-c54b-4fe8-82db-5b9153a57712",
+   "layout": "normal",
+   "mana_cost": "{B}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Goblin Warlock",
+   "oracle_text": "Deathtouch\nAt the beginning of your end step, if you descended this turn, each opponent may discard a card or sacrifice a permanent of their choice. Zoyowa deals 3 damage to each opponent who didn't. (You descended if a permanent card was put into your graveyard from anywhere.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "312",
+   "set": "lci",
+   "rulings": [
+    "An opponent with zero cards in hand can't choose to discard a card. Similarly, an opponent with no permanents can't choose to sacrifice a permanent.",
+    "Some cards refer to a player who has \"descended this turn.\" This means that a permanent card has been put into that player's graveyard from anywhere this turn.",
+    "Some cards refer to the number of times a player descended this turn. Those cards care about the number of permanent cards put into that player's graveyard from anywhere this turn.",
+    "In either case, it doesn't matter if those cards are still in that player's graveyard.",
+    "A permanent card is an artifact, battle, creature, enchantment, land, or planeswalker card. Tokens are not cards, and while tokens are put into the graveyard before ceasing to exist, that action doesn't count as a player having descended.",
+    "Multiple cards have abilities that begin with \"At the beginning of your end step, if you descended this turn.\" These cards don't need to have been under your control at the time you descended. For example, if a permanent card is put into your graveyard during your first main phase and you cast Stalactite Stalker your second main phase, its ability will trigger at the beginning of your end step.",
+    "Abilities that begin with \"At the beginning of your end step, if you descended this turn\" will trigger only once during your end step, no matter how many times you descended this turn. However, if you haven't descended this turn as your end step begins, the ability won't trigger at all. It's not possible to put a permanent card into your graveyard during the end step in time to have the ability trigger."
+   ]
+  },
+  {
+   "name": "Bringer of the Last Gift",
+   "oracle_id": "0fb9a8a2-4331-4259-9460-a37397554962",
+   "layout": "normal",
+   "mana_cost": "{6}{B}{B}",
+   "cmc": 8.0,
+   "type_line": "Creature — Vampire Demon",
+   "oracle_text": "Flying\nWhen this creature enters, if you cast it, each player sacrifices all other creatures they control. Then each player returns all creature cards from their graveyard that weren't put there this way to the battlefield.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "337",
+   "set": "lci",
+   "rulings": [
+    "Bringer of the Last Gift's last ability triggers if you cast it from any zone. It doesn't trigger if you put Bringer of the Last Gift onto the battlefield without casting it."
+   ]
+  },
+  {
+   "name": "Huatli, Poet of Unity // Roar of the Fifth People",
+   "oracle_id": "2e6ed3e6-d2b8-4b75-b7e1-0773da4987a1",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior Bard // Enchantment — Saga",
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "339",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Huatli, Poet of Unity",
+     "mana_cost": "{2}{G}",
+     "type_line": "Legendary Creature — Human Warrior Bard",
+     "oracle_text": "When Huatli enters, search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n{3}{R/W}{R/W}: Exile Huatli, then return her to the battlefield transformed under her owner's control. Activate only as a sorcery.",
+     "power": "2",
+     "toughness": "3"
+    },
+    {
+     "name": "Roar of the Fifth People",
+     "mana_cost": "",
+     "type_line": "Enchantment — Saga",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after IV.)\nI — Create two 3/3 green Dinosaur creature tokens.\nII — This Saga gains \"Creatures you control have '{T}: Add {R}, {G}, or {W}.'\"\nIII — Search your library for a Dinosaur card, reveal it, put it into your hand, then shuffle.\nIV — Dinosaurs you control gain double strike and trample until end of turn."
+    }
+   ],
+   "related": [
+    {
+     "name": "Dinosaur",
+     "type_line": "Token Creature — Dinosaur",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Roar of the Fifth People's second chapter ability doesn't have a duration. It will continue to apply as long as Roar of the Fifth People remains on the battlefield."
+   ]
+  },
+  {
+   "name": "Abuelo's Awakening",
+   "oracle_id": "2b22cf44-7b03-4919-9812-6796bf193484",
+   "layout": "normal",
+   "mana_cost": "{X}{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return target artifact or non-Aura enchantment card from your graveyard to the battlefield with X additional +1/+1 counters on it. It's a 1/1 Spirit creature with flying in addition to its other types.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "353",
+   "set": "lci"
+  },
+  {
+   "name": "The Everflowing Well // The Myriad Pools",
+   "oracle_id": "1f57a9f1-6b95-4395-bdf0-c5289b786ab1",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact // Legendary Artifact Land",
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Transform",
+    "Descend",
+    "Mill"
+   ],
+   "collector_number": "363",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "The Everflowing Well",
+     "mana_cost": "{2}{U}",
+     "type_line": "Legendary Artifact",
+     "oracle_text": "When The Everflowing Well enters, mill two cards, then draw two cards.\nDescend 8 — At the beginning of your upkeep, if there are eight or more permanent cards in your graveyard, transform The Everflowing Well."
+    },
+    {
+     "name": "The Myriad Pools",
+     "mana_cost": "",
+     "type_line": "Legendary Artifact Land",
+     "oracle_text": "(Transforms from The Everflowing Well.)\n{T}: Add {U}.\nWhenever you cast a permanent spell using mana produced by The Myriad Pools, up to one other target permanent you control becomes a copy of that spell until end of turn."
+    }
+   ],
+   "rulings": [
+    "The triggered ability of The Myriad Pools will resolve before the spell that caused it to trigger.",
+    "The target permanent copies what is printed on the original card, plus any choices that were made when casting the spell.",
+    "If the copied spell has {X} in its mana cost, X is still 0 for the purposes of determining the mana value of the permanent on the battlefield.",
+    "Non-copy effects that have already applied to the target permanent will continue to apply to it. For example, if it's a creature, +1/+1 counters on it will still affect it.",
+    "Because the target permanent isn't entering the battlefield when it becomes a copy of a permanent spell, any \"When [this permanent] enters the battlefield\" or \"[This permanent] enters the battlefield with\" abilities of the copied spell won't apply for the target permanent.",
+    "Cards with the ability word \"descend N\" have abilities that care if you have at least N permanent cards in your graveyard.",
+    "Some descend triggered abilities include intervening \"if\" clauses (i.e. \"if you have [four or eight] permanent cards in your graveyard\" in the middle of the ability). Each of these abilities checks your graveyard at the moment it would trigger to see if it does. If you don't have the required number of permanent cards in your graveyard at that time, the ability doesn't trigger at all. If it does trigger, it will check again as it tries to resolve. If you don't have the required number of permanent cards in your graveyard at that time, the ability won't resolve and none of its effects will happen."
+   ]
+  },
+  {
+   "name": "Tarrian's Journal // The Tomb of Aclazotz",
+   "oracle_id": "a75b02ba-b0c8-47e3-a05c-e9ba221a7578",
+   "layout": "transform",
+   "cmc": 2.0,
+   "type_line": "Legendary Artifact — Book // Legendary Land — Cave",
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "371",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Tarrian's Journal",
+     "mana_cost": "{1}{B}",
+     "type_line": "Legendary Artifact — Book",
+     "oracle_text": "{T}, Sacrifice another artifact or creature: Draw a card. Activate only as a sorcery.\n{2}, {T}, Discard your hand: Transform Tarrian's Journal."
+    },
+    {
+     "name": "The Tomb of Aclazotz",
+     "mana_cost": "",
+     "type_line": "Legendary Land — Cave",
+     "oracle_text": "(Transforms from Tarrian's Journal.)\n{T}: Add {B}.\n{T}: You may cast a creature spell from your graveyard this turn. If you do, it enters with a finality counter on it and is a Vampire in addition to its other types. (If a creature with a finality counter on it would die, exile it instead.)"
+    }
+   ],
+   "rulings": [
+    "Multiple finality counters on a single permanent are redundant.",
+    "You can discard your hand even if you hand has zero cards in it.",
+    "You don't choose which creature spell you're casting while activating or resolving The Tomb of Aclazotz's last ability. The ability creates a permission for you to cast a creature spell from your graveyard later in the turn.",
+    "You must still follow any timing restrictions and permissions for creature spells you cast with the permission granted by The Tomb of Aclazotz's last ability. Normally, you'll be able to cast them only during your main phase while the stack is empty.",
+    "The creature spell you cast will be a Vampire in addition to its other types while on the stack. The resulting creature will be a Vampire in addition to its other types.",
+    "If you somehow activate The Tome of Aclazotz's ability more than once during a turn, you can cast a creature spell for each ability's permission. Similarly, if another effect allows you to cast a creature spell from your graveyard, you may use that permission and later use The Tomb of Aclazotz's ability to cast another creature spell.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead."
+   ]
+  },
+  {
+   "name": "Bedrock Tortoise",
+   "oracle_id": "d9c2e674-11a9-47f0-8790-a53b62c43fe6",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Turtle",
+   "oracle_text": "During your turn, creatures you control have hexproof.\nEach creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.",
+   "power": "0",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "378",
+   "set": "lci",
+   "rulings": [
+    "Bedrock Tortoise's ability doesn't actually change any creature's power. It changes only the amount of combat damage the creature assigns. All other rules and effects that check power or toughness use the real values, even if they cause damage \"equal to a creature's power\" to be dealt."
+   ]
+  },
+  {
+   "name": "Cosmium Confluence",
+   "oracle_id": "798aaf78-16d9-474b-a963-f5e9c39aae6e",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose three. You may choose the same mode more than once.\n• Search your library for a Cave card, put it onto the battlefield tapped, then shuffle.\n• Put three +1/+1 counters on a Cave you control. It becomes a 0/0 Elemental creature with haste. It's still a land.\n• Destroy target enchantment.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "379",
+   "set": "lci",
+   "rulings": [
+    "You choose the modes as you cast the spell. Once modes are chosen, they can't be changed.",
+    "If a mode requires a target, you can select that mode only if there's a legal target available. Ignore the targeting requirements for modes you don't choose. Each time you select that mode, you can choose a different target, or you can choose the same target.",
+    "Notably, the second mode doesn't require any targets. You choose the Cave you control that will be affected as Cosmium Confluence is resolving. You may choose a Cave you just put onto the battlefield with the first mode, if applicable.",
+    "No matter which combination of modes you choose, you always follow the instructions in the order they are written.",
+    "If the same mode is chosen more than once, you choose their relative order as you cast the spell. For example, if you choose the last mode of Cosmium Confluence more than once, you choose the relative order to destroy the target enchantments.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell. Any abilities that trigger won't be put onto the stack until a spell is done resolving.",
+    "If a Confluence is copied, the effect that creates the copy will usually allow you to choose new targets, but you can't choose new modes.",
+    "If all targets for the chosen modes become illegal before a Confluence resolves, the spell will be countered and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets."
+   ]
+  }
+ ]
+}

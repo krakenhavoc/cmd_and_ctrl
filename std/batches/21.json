@@ -1,0 +1,239 @@
+{
+ "batch": 21,
+ "set": [
+  "dsk",
+  "fdn"
+ ],
+ "cards": [
+  {
+   "name": "Teach by Example",
+   "oracle_id": "d85ba214-fa05-44ca-a7f9-ab2c5dc07962",
+   "layout": "normal",
+   "mana_cost": "{U/R}{U/R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "({U/R} can be paid with either {U} or {R}.)\nWhen you next cast an instant or sorcery spell this turn, copy that spell. You may choose new targets for the copy.",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "666",
+   "set": "fdn",
+   "rulings": [
+    "After Teach by Example resolves, the next instant or sorcery spell you cast that turn will be copied whether or not it has targets.",
+    "If the spell has any targets, the copy will have the same targets unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode or modes. You can't choose different ones.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can't be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy will have the same value of X.",
+    "You can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell won't trigger."
+   ]
+  },
+  {
+   "name": "Gate Colossus",
+   "oracle_id": "386c5895-9713-4c28-9ba8-8ca0caa06c13",
+   "layout": "normal",
+   "mana_cost": "{8}",
+   "cmc": 8.0,
+   "type_line": "Artifact Creature — Construct",
+   "oracle_text": "Affinity for Gates (This spell costs {1} less to cast for each Gate you control.)\nThis creature can't be blocked by creatures with power 2 or less.\nWhenever a Gate you control enters, you may put this card from your graveyard on top of your library.",
+   "power": "8",
+   "toughness": "8",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Affinity"
+   ],
+   "collector_number": "675",
+   "set": "fdn",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was.",
+    "Once a creature with power 3 or greater has blocked Gate Colossus, changing the power of the blocking creature won't cause Gate Colossus to become unblocked."
+   ]
+  },
+  {
+   "name": "Sorcerous Spyglass",
+   "oracle_id": "b2187f45-80ae-4ac4-9f83-5eb7a00978e2",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "As this artifact enters, look at an opponent's hand, then choose any card name.\nActivated abilities of sources with the chosen name can't be activated unless they're mana abilities.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "679",
+   "set": "fdn",
+   "rulings": [
+    "You can choose any card name, even if that card doesn't normally have an activated ability. You're not limited to the names of cards you saw in the opponent's hand.",
+    "You can't choose the name of a token unless that token has the same name as a card.",
+    "Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" Some keyword abilities (such as equip) are activated abilities and will have colons in their reminder text. Triggered abilities (starting with \"when,\" \"whenever,\" or \"at\") are unaffected by the last ability of Sorcerous Spyglass.",
+    "An activated mana ability is one that produces mana as it resolves, not one that costs mana to activate.",
+    "Sorcerous Spyglass affects cards regardless of what zone they're in. This includes cards in hand, cards in the graveyard, and exiled cards."
+   ]
+  },
+  {
+   "name": "Steel Hellkite",
+   "oracle_id": "6e64f1e0-ddd6-4ee7-8797-086e234b02e8",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Artifact Creature — Dragon",
+   "oracle_text": "Flying\n{2}: This creature gets +1/+0 until end of turn.\n{X}: Destroy each nonland permanent with mana value X whose controller was dealt combat damage by this creature this turn. Activate only once each turn.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "681",
+   "set": "fdn",
+   "rulings": [
+    "Steel Hellkite's last ability destroys only nonland permanents whose mana value is exactly equal to X, and only those controlled by players who have been dealt combat damage by Steel Hellkite this turn.",
+    "It doesn't matter who controlled those permanents at the time Steel Hellkite dealt combat damage, or if those permanents were even on the battlefield at that time.",
+    "You may activate the last ability even if Steel Hellkite hasn't dealt combat damage to any players that turn. If you do, the ability won't do anything.",
+    "If Steel Hellkite's third ability is activated with X equal to 0, it will destroy each nonland permanent with mana value 0 the appropriate players control.",
+    "The mana value of a permanent is determined solely by the mana symbols printed in its upper right corner, unless it's copying something else (see below). The mana value is the total amount of mana in that cost, regardless of color. For example, a card with mana cost {3}{U}{U} has mana value 5.",
+    "If a permanent is copying something else, its mana value is the mana value of whatever it's copying.",
+    "In all cases, ignore any alternative costs or additional costs (such as kicker) paid when the permanent was cast.",
+    "If the mana cost of a permanent includes {X}, X is 0 for the purpose of determining its mana value.",
+    "If a nonland permanent has no mana symbols in its upper right corner (because it's a token that's not copying something else, for example), its mana value is 0."
+   ]
+  },
+  {
+   "name": "Crawling Barrens",
+   "oracle_id": "dfe1a112-97aa-4e81-8431-81552ba2cdcf",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{4}: Put two +1/+1 counters on this land. Then you may have it become a 0/0 Elemental creature until end of turn. It's still a land.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "685",
+   "set": "fdn",
+   "rulings": [
+    "You can activate Crawling Barrens's second ability even if it's already a creature.",
+    "Counters on Crawling Barrens remain on it when it stops being a creature. If it becomes a creature later, they'll apply to it.",
+    "Unless Crawling Barrens is already a creature, its second ability causes the +1/+1 counters to be put onto a noncreature land. Abilities that apply or trigger when counters are put on a creature you control won't do so.",
+    "If this becomes a creature but you haven't controlled it continuously since your most recent turn began, you won't be able to activate its mana ability or attack with it that turn."
+   ]
+  },
+  {
+   "name": "Maze's End",
+   "oracle_id": "49479778-c4c0-43ba-a7b7-45f00d067462",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {C}.\n{3}, {T}, Return this land to its owner's hand: Search your library for a Gate card, put it onto the battlefield, then shuffle. If you control ten or more Gates with different names, you win the game.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "727",
+   "set": "fdn",
+   "rulings": [
+    "Returning Maze's End to its owner's hand is part of the cost to activate its last ability. Once that ability is announced, players can't respond to it until after you've paid its activation cost and returned Maze's End to hand.",
+    "When the last ability of Maze's End resolves, you'll search for a Gate and put it onto the battlefield before checking to see if you win the game. This check will happen even if you don't put a Gate onto the battlefield this way. This check will happen only as the ability resolves, not at other times.",
+    "Putting a Gate onto the battlefield with Maze's End doesn't count as the one land you can play during your turn. If it's your turn, you can play Maze's End or a different land card from your hand after its ability has resolved.",
+    "Controlling multiple Gates with the same name has no effect on your ability to win the game with Maze's End. The excess Gates are simply ignored."
+   ]
+  },
+  {
+   "name": "Rune-Sealed Wall",
+   "oracle_id": "74d31e99-ab48-483a-a62e-5b424b27d017",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Wall",
+   "oracle_text": "Defender\n{T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "0",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Defender"
+   ],
+   "collector_number": "745",
+   "set": "fdn"
+  },
+  {
+   "name": "Diamond Mare",
+   "oracle_id": "9a440122-a015-4af2-b270-37f019884458",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Horse",
+   "oracle_text": "As this creature enters, choose a color.\nWhenever you cast a spell of the chosen color, you gain 1 life.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "770",
+   "set": "fdn"
+  },
+  {
+   "name": "Fear of Abduction",
+   "oracle_id": "8f5495d7-ac44-47cd-aa39-48a35034b390",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Enchantment Creature — Nightmare",
+   "oracle_text": "As an additional cost to cast this spell, exile a creature you control.\nFlying\nWhen this creature enters, exile target creature an opponent controls.\nWhen this creature leaves the battlefield, put each card exiled with it into its owner's hand.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "9",
+   "set": "dsk",
+   "rulings": [
+    "If Fear of Abduction leaves the battlefield before its third ability resolves, the ability still exiles the target creature.",
+    "If there are no exiled cards when Fear of Abduction's last ability resolves (most likely because its third ability hasn't resolved yet), the ability won't do anything."
+   ]
+  },
+  {
+   "name": "Orphans of the Wheat",
+   "oracle_id": "f758bad0-8f36-4985-ad1d-66b695f3bbb6",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human",
+   "oracle_text": "Whenever this creature attacks, tap any number of untapped creatures you control. This creature gets +1/+1 until end of turn for each creature tapped this way.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "22",
+   "set": "dsk",
+   "rulings": [
+    "You can tap any untapped creatures you control, including creatures you haven't controlled continuously since the beginning of your most recent turn, for Orphans of the Wheat's ability.",
+    "If Orphans of the Wheat is untapped as its ability is resolving (for example, if it has vigilance), it can be tapped for its own ability."
+   ]
+  }
+ ]
+}

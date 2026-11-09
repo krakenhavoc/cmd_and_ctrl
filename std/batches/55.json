@@ -1,0 +1,319 @@
+{
+ "batch": 55,
+ "set": [
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Graceful Takedown",
+   "oracle_id": "b580c6d8-f501-4623-843a-5bb2b638a339",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Any number of target enchanted creatures you control and up to one other target creature you control each deal damage equal to their power to target creature you don't control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "171",
+   "set": "woe",
+   "rulings": [
+    "If one of the target creatures you control is an illegal target as Graceful Takedown resolves (perhaps because it's no longer enchanted or is no longer on the battlefield), the remaining legal target creatures you control will still deal damage equal to their power.",
+    "If the last target creature is an illegal target as Graceful Takedown resolves, or if all of the target creatures you control are illegal targets, no creature deals or is dealt damage."
+   ]
+  },
+  {
+   "name": "Hollow Scavenger // Bakery Raid",
+   "oracle_id": "4fad3816-41af-4fa4-85b4-ba37614ec848",
+   "layout": "adventure",
+   "mana_cost": "{2}{G} // {G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Wolf // Sorcery — Adventure",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "174",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Hollow Scavenger",
+     "mana_cost": "{2}{G}",
+     "type_line": "Creature — Wolf",
+     "oracle_text": "{1}, Sacrifice a Food: This creature gets +2/+2 until end of turn. Activate only once each turn.",
+     "power": "3",
+     "toughness": "2"
+    },
+    {
+     "name": "Bakery Raid",
+     "mana_cost": "{G}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Create a Food token. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    },
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Tough Cookie (an Artifact Creature — Food Golem) to activate Maraleaf Rider's ability (an ability with \"Sacrifice a Food\" in its cost).",
+    "Food is an artifact type. Even though it appears on some creatures, it's never a creature type.",
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to activate Maraleaf Rider's ability.",
+    "Whatever you do, don't eat the delicious cards.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won't give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you'll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it's not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that \"has an Adventure.\" This refers to a card, spell, or permanent that has an adventurer card's set of alternative characteristics, even if they're not being used and even if that card was never cast as an Adventure.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it's in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can't be the target of Tenacious Tomeseeker's triggered ability (\"return target instant or sorcery card from your graveyard to your hand\").",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it's a token) or cease to be a copy (if it's a nontoken permanent), and so you won't be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn't casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won't find an instant or sorcery spell on the stack that's been cast as an Adventure.",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card's normal characteristics. The spell's color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it's legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (\"Once each turn, you may cast an instant or sorcery spell from the top of your library.\") and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner's graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won't be exiled and the spell's controller won't be able to cast it as a permanent later."
+   ]
+  },
+  {
+   "name": "Howling Galefang",
+   "oracle_id": "f12c2b65-4a04-4fab-ae77-973fe5cc823d",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Vigilance\nThis creature has haste as long as you own a card in exile that has an Adventure.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "175",
+   "set": "woe",
+   "rulings": [
+    "Howling Galefang will have haste as long as any card you own in exile has an Adventure. It doesn't matter if that card was cast as an Adventure or not."
+   ]
+  },
+  {
+   "name": "The Huntsman's Redemption",
+   "oracle_id": "ae63fd5c-46ff-41fb-a1f6-6259336525c1",
+   "layout": "saga",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Create a 3/3 green Beast creature token.\nII — You may sacrifice a creature. If you do, search your library for a creature or basic land card, reveal it, put it into your hand, then shuffle.\nIII — Up to two target creatures each get +2/+2 and gain trample until end of turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "176",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Beast",
+     "type_line": "Token Creature — Beast",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Redtooth Vanguard",
+   "oracle_id": "9e459e48-d2bb-4c4e-9a87-58efb56cddd1",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Warrior",
+   "oracle_text": "Trample\nWhenever an enchantment you control enters, you may pay {2}. If you do, return this card from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "180",
+   "set": "woe"
+  },
+  {
+   "name": "The Apprentice's Folly",
+   "oracle_id": "f45542a0-0d49-4b56-9c3e-663ff8d0529a",
+   "layout": "saga",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II — Choose target nontoken creature you control that doesn't have the same name as a token you control. Create a token that's a copy of it, except it isn't legendary, is a Reflection in addition to its other types, and has haste.\nIII — Sacrifice all Reflections you control.",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "200",
+   "set": "woe",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Except for the listed exceptions, the token copies exactly what was printed on the original creature and nothing else (unless that permanent is itself copying something else; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or Auras attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied creature is copying something else, then the token enters the battlefield as whatever that creature copied, with the stated exceptions.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "Any enters-the-battlefield abilities of the copied creature will trigger when the token enters the battlefield. Any \"as [this creature] enters the battlefield\" or \"[this creature] enters the battlefield with\" abilities of the creature will also work.",
+    "If something becomes a copy of the token, the copy is also a Reflection in addition to its other types, has haste, and isn't legendary."
+   ]
+  },
+  {
+   "name": "Johann, Apprentice Sorcerer",
+   "oracle_id": "8068f80f-88ee-4c0b-a0fb-3a6337f83f22",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Wizard Sorcerer",
+   "oracle_text": "You may look at the top card of your library any time.\nOnce each turn, you may cast an instant or sorcery spell from the top of your library. (You still pay its costs. Timing rules still apply.)",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "207",
+   "set": "woe",
+   "rulings": [
+    "You can look at the top card of your library whenever you want (with one restriction; see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If the top card of your library changes while you're casting a spell, playing a land, or activating an ability, you can't look at the new top card until you finish doing so. This means that if you cast a spell from the top of your library, you can't look at the next one until you're done paying for that spell.",
+    "If the top card of your library has an Adventure, you can cast the Adventure spell this way.",
+    "You must pay all costs and follow all timing rules for spells cast from the top of your library this way.",
+    "If Johann leaves the battlefield and returns to the battlefield in the same turn, or if Johann leaves and another Johann appears, the casting permission granted by the old one is different than the casting permission granted by the new one. On the turn in which the new Johann enters the battlefield, you may use its casting permission once, even if you used the old Johann's casting permission to cast an instant or sorcery spell from the top of your library in that same turn. Note that if you control multiple Johanns you won't have the opportunity to cast an instant or sorcery spell from the top of your library before the \"legend rule\" gets you down to one Johann."
+   ]
+  },
+  {
+   "name": "Likeness Looter",
+   "oracle_id": "e04560ea-f2bd-4cb7-8f65-3aa0dd58fbdf",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie Shapeshifter",
+   "oracle_text": "Flying\n{T}: Draw a card, then discard a card.\n{X}: This creature becomes a copy of target creature card in your graveyard with mana value X, except it has flying and this ability. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "208",
+   "set": "woe",
+   "rulings": [
+    "Likeness Looter copies exactly what was printed on the original card and nothing else, except the characteristics it specifically modifies. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "Any effects that applied to Likeness Looter before it becomes a copy of another card will continue to apply after it becomes a copy. The same is true of any counters that are on Likeness Looter.",
+    "If a card in your graveyard has {X} in its mana cost, X is considered to be 0.",
+    "Because Likeness Looter isn't entering the battlefield when it becomes a copy of a card, any \"When [this creature] enters the battlefield\" or \"[This creature] enters the battlefield with\" abilities of the copied card won't apply.",
+    "If the copied card has an ability that can be activated only once each turn, copying that card a second time will allow you to activate the new instance of that ability."
+   ]
+  },
+  {
+   "name": "Rowan, Scion of War",
+   "oracle_id": "333c15c6-c8fd-4cdd-89d2-06b921edeb8b",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Menace\n{T}: Spells you cast this turn that are black and/or red cost {X} less to cast, where X is the amount of life you lost this turn. Activate only as a sorcery.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "211",
+   "set": "woe",
+   "rulings": [
+    "The value of X is determined only once, at the time Rowan, Scion of War's activated ability resolves.",
+    "Rowan's activated ability doesn't change the mana cost or mana value of any spell. It changes only the total cost you pay.",
+    "Rowan's activated ability can't reduce the amount of colored mana you pay for a spell. It reduces only the generic mana component of that cost.",
+    "Rowan's activated ability counts the total amount of life you lost without taking into account any life you gained during that turn. For example, if you gained 3 life and lost 3 life earlier in the turn, the cost of black and/or red spells you cast this turn will be reduced by {3}."
+   ]
+  },
+  {
+   "name": "Sharae of Numbing Depths",
+   "oracle_id": "c736935a-e006-4a67-b942-e8ccf1cd9abb",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Merfolk Wizard",
+   "oracle_text": "When Sharae enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nWhenever you tap one or more untapped creatures your opponents control, draw a card. This ability triggers only once each turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "213",
+   "set": "woe",
+   "rulings": [
+    "You may target a creature that is already tapped with Sharae's first ability. If the target creature is already tapped as it resolves, you will still put a stun counter on it.",
+    "Sharae of Numbing Depths's last ability will trigger only when an effect instructs you to tap one or more creatures your opponents control. It won't trigger if a spell or ability you control instructs an opponent to tap a creature they control. For example, if you control Tangle Wire and an opponent taps an untapped creature they control as part of the resolution of Tangle Wire's triggered ability, Sharae's ability won't trigger."
+   ]
+  }
+ ]
+}

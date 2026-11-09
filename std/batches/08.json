@@ -1,0 +1,236 @@
+{
+ "batch": 8,
+ "set": [
+  "tdm"
+ ],
+ "cards": [
+  {
+   "name": "The Sibsig Ceremony",
+   "oracle_id": "bbdb731d-c533-48ef-b82a-cf1a8ba36208",
+   "layout": "normal",
+   "mana_cost": "{B}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Enchantment",
+   "oracle_text": "Creature spells you cast cost {2} less to cast.\nWhenever a creature you control enters, if you cast it, destroy that creature, then create a 2/2 black Zombie Druid creature token.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "91",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Zombie Druid",
+     "type_line": "Token Creature — Zombie Druid",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Sidisi, Regent of the Mire",
+   "oracle_id": "72074972-418d-4dce-83cf-ce8cf310fc42",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Zombie Snake Warlock",
+   "oracle_text": "{T}, Sacrifice a creature you control with mana value X other than Sidisi: Return target creature card with mana value X plus 1 from your graveyard to the battlefield. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "92",
+   "set": "tdm",
+   "rulings": [
+    "If a creature on the battlefield or a creature card in a graveyard has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Wail of War",
+   "oracle_id": "fc0abdf3-3a88-4cb2-ba79-35fcaebbf7d2",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Creatures target opponent controls get -1/-1 until end of turn.\n• Return up to two target creature cards from your graveyard to your hand.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "98",
+   "set": "tdm"
+  },
+  {
+   "name": "Yathan Tombguard",
+   "oracle_id": "2321b4fc-6b73-4d1a-84cc-13524adb0899",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Warrior",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever a creature you control with a counter on it deals combat damage to a player, you draw a card and you lose 1 life.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "100",
+   "set": "tdm"
+  },
+  {
+   "name": "Dracogenesis",
+   "oracle_id": "9b06f2bf-146d-4b30-b467-e16f1a942253",
+   "layout": "normal",
+   "mana_cost": "{6}{R}{R}",
+   "cmc": 8.0,
+   "type_line": "Enchantment",
+   "oracle_text": "You may cast Dragon spells without paying their mana costs.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "105",
+   "set": "tdm",
+   "rulings": [
+    "You must follow the normal timing permissions and restrictions of each Dragon spell you cast this way.",
+    "If you cast a spell “without paying its mana cost,” you can’t choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs those must be paid to cast the spell.",
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Once you cast Dracogenesis, if it’s your turn, you’ll have priority immediately after it resolves. You can cast another spell before any player can attempt to remove Dracogenesis with spells or abilities."
+   ]
+  },
+  {
+   "name": "Equilibrium Adept",
+   "oracle_id": "42bf9435-02e6-428f-a93c-fe4652deb4fc",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dog Monk",
+   "oracle_text": "When this creature enters, exile the top card of your library. Until the end of your next turn, you may play that card.\nFlurry — Whenever you cast your second spell each turn, this creature gains double strike until end of turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flurry"
+   ],
+   "collector_number": "106",
+   "set": "tdm",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty.",
+    "Spells that were cast before a permanent with flurry count. If that permanent was the first spell you cast that turn, the next spell you cast that turn is your second spell."
+   ]
+  },
+  {
+   "name": "Reverberating Summons",
+   "oracle_id": "1fd78bf7-43ba-4e09-834b-14bfc1fd9d0d",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of each combat, if you've cast two or more spells this turn, this enchantment becomes a 3/3 Monk creature with haste in addition to its other types until end of turn.\n{1}{R}, Discard your hand, Sacrifice this enchantment: Draw two cards.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "117",
+   "set": "tdm"
+  },
+  {
+   "name": "War Effort",
+   "oracle_id": "d9bc6841-9f71-46af-ac1f-a01caee290c1",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control get +1/+0.\nWhenever you attack, create a 1/1 red Warrior creature token that's tapped and attacking. Sacrifice it at the beginning of the next end step.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "131",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Warrior",
+     "type_line": "Token Creature — Warrior",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Dragonbroods' Relic",
+   "oracle_id": "61822bbe-0407-4425-b8d7-0263a8c521ec",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}, Tap an untapped creature you control: Add one mana of any color.\n{3}{W}{U}{B}{R}{G}, Sacrifice this artifact: Create a 4/4 Dragon creature token named Reliquary Dragon that's all colors. It has flying, lifelink, and \"When this token enters, it deals 3 damage to any target.\" Activate only as a sorcery.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "140",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Reliquary Dragon",
+     "type_line": "Token Creature — Dragon",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Rite of Renewal",
+   "oracle_id": "6512ddb8-0868-4d32-ab32-8a5250fc571b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return up to two target permanent cards from your graveyard to your hand. Target player shuffles up to four target cards from their graveyard into their library. Exile Rite of Renewal.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "153",
+   "set": "tdm"
+  }
+ ]
+}

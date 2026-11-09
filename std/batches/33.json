@@ -1,0 +1,322 @@
+{
+ "batch": 33,
+ "set": [
+  "otj"
+ ],
+ "cards": [
+  {
+   "name": "Fleeting Reflection",
+   "oracle_id": "c915f815-77d7-4e08-b178-82b29a58bb03",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature you control gains hexproof until end of turn. Untap that creature. Until end of turn, it becomes a copy of up to one other target creature.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "49",
+   "set": "otj",
+   "rulings": [
+    "Fleeting Reflection’s first target can be a creature that’s already untapped. It will still get hexproof and, if applicable, become a copy of the other target creature.",
+    "The first target creature copies exactly what was printed on the other target creature and nothing else (unless that creature is copying something else or is a token; see below). It doesn’t copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied creature is a token, the first target creature copies the original characteristics of that token as stated by the effect that created that token.",
+    "If the copied creature is copying something else, then the first target creature becomes a copy of whatever that creature copied.",
+    "Any non-copy effects that applied to the first target creature before it becomes a copy of another creature will continue to apply once it becomes a copy. The same is true of any counters that are on the first creature.",
+    "When the first target creature becomes a copy of the other target creature, it’s neither entering nor leaving the battlefield. Any enters-the-battlefield or leaves-the-battlefield abilities won’t trigger.",
+    "If the second target creature is an illegal target as Fleeting Reflection tries to resolve, the first target creature will still gain hexproof until end of turn, and you’ll still untap it if it was tapped."
+   ]
+  },
+  {
+   "name": "Jailbreak Scheme",
+   "oracle_id": "bc7f39e1-97bf-4725-a84a-2a04121530c6",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Spree (Choose one or more additional costs.)\n+ {3} — Put a +1/+1 counter on target creature. It can't be blocked this turn.\n+ {2} — Target artifact or creature's owner puts it on their choice of the top or bottom of their library.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Spree"
+   ],
+   "collector_number": "53",
+   "set": "otj",
+   "rulings": [
+    "The permanent’s owner chooses whether to put it on the top or bottom of their library.",
+    "If multiple cards are put into the library this way (such as when the spell targets a melded permanent), that permanent’s owner puts all the cards on top or all the cards on the bottom. They put them in whatever order they wish, and do not need to reveal the order.",
+    "Spells with spree have a + (plus sign) indicator in the upper right corner of the card frame. This has no rules meaning and serves only to remind players that at least one additional cost is required to cast the spell.",
+    "Each additional cost and associated mode in the text box is also preceded with a + indicator. These symbols also have no rules meaning and serve only to remind players that the listed costs are additional costs.",
+    "You must choose at least one of the listed modes and pay its associated additional cost in order to cast a spell with spree.",
+    "You choose the modes as you cast the spell with spree. Once modes are chosen, they can’t be changed.",
+    "If a mode requires a target, you can select that mode only if there’s a legal target available. Ignore the targeting requirements for modes you don’t choose.",
+    "No matter which modes you choose, you always follow the instructions in the order they are written.",
+    "You can’t choose the same mode more than once.",
+    "The mana value of a spell with spree is determined only by its mana cost (in the upper right corner of the card). It doesn’t matter which modes you choose or which additional costs you pay, including any additional costs imposed by other effects.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell. Any abilities that trigger won’t be put onto the stack until the spell is done resolving.",
+    "If a spell with spree is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose new modes.",
+    "If all targets for the chosen modes become illegal before a spell with spree resolves, the spell won’t resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets.",
+    "If an effect allows you to cast a spell with spree “without paying its mana cost,” you must still choose at least one mode and pay the associated additional costs."
+   ]
+  },
+  {
+   "name": "Loan Shark",
+   "oracle_id": "15030c1d-7c0a-4273-a022-eb98d6c7a1ce",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Shark Rogue",
+   "oracle_text": "When this creature enters, if you've cast two or more spells this turn, draw a card.\nPlot {3}{U} (You may pay {3}{U} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "55",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Loan Shark’s triggered ability will count any spells you’ve cast this turn, which may include Loan Shark itself. It doesn’t matter if the other spells resolved, didn’t resolve, were countered, or are still on the stack.",
+    "Plot abilities are written “Plot [cost],” which means “Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.”",
+    "Exiling a card using its plot ability is a special action. Once you announce you’re taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can’t cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you’re casting a plotted card from exile without paying its mana cost, you can’t choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Hollow Marauder",
+   "oracle_id": "1a4075f3-6c18-4cbe-99e0-f403dd78a7b0",
+   "layout": "normal",
+   "mana_cost": "{6}{B}",
+   "cmc": 7.0,
+   "type_line": "Creature — Specter Rogue",
+   "oracle_text": "This spell costs {1} less to cast for each creature card in your graveyard.\nFlying\nWhen this creature enters, any number of target opponents each discard a card. For each of those opponents who didn't discard a card with mana value 4 or greater, draw a card.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "90",
+   "set": "otj",
+   "rulings": [
+    "Hollow Marauder’s first ability doesn’t change its mana value, which is always 7.",
+    "When Hollow Marauder’s triggered ability resolves, the next target opponent in turn order (or, if it’s a target opponent’s turn, that opponent) chooses a card in hand without revealing it, then each other target opponent in turn order (if any) does the same. All chosen cards are then discarded at the same time."
+   ]
+  },
+  {
+   "name": "Lively Dirge",
+   "oracle_id": "0b23d9aa-d4ed-4ccf-8810-4a4d11d6fb9c",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Spree (Choose one or more additional costs.)\n+ {1} — Search your library for a card, put it into your graveyard, then shuffle.\n+ {2} — Return up to two creature cards with total mana value 4 or less from your graveyard to the battlefield.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Spree"
+   ],
+   "collector_number": "93",
+   "set": "otj",
+   "rulings": [
+    "If the mana cost of a card in your graveyard includes {X}, X is 0 for the purpose of determining its mana value.",
+    "The second mode doesn’t target any cards. You choose which ones you’re returning as Lively Dirge is resolving. You may choose the one you put into the graveyard with the first mode, if applicable, or ones that were already there. By the time Lively Dirge has started resolving, it’s too late for anyone to respond to it.",
+    "Spells with spree have a + (plus sign) indicator in the upper right corner of the card frame. This has no rules meaning and serves only to remind players that at least one additional cost is required to cast the spell.",
+    "Each additional cost and associated mode in the text box is also preceded with a + indicator. These symbols also have no rules meaning and serve only to remind players that the listed costs are additional costs.",
+    "You must choose at least one of the listed modes and pay its associated additional cost in order to cast a spell with spree.",
+    "You choose the modes as you cast the spell with spree. Once modes are chosen, they can’t be changed.",
+    "If a mode requires a target, you can select that mode only if there’s a legal target available. Ignore the targeting requirements for modes you don’t choose.",
+    "No matter which modes you choose, you always follow the instructions in the order they are written.",
+    "You can’t choose the same mode more than once.",
+    "The mana value of a spell with spree is determined only by its mana cost (in the upper right corner of the card). It doesn’t matter which modes you choose or which additional costs you pay, including any additional costs imposed by other effects.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell. Any abilities that trigger won’t be put onto the stack until the spell is done resolving.",
+    "If a spell with spree is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose new modes.",
+    "If all targets for the chosen modes become illegal before a spell with spree resolves, the spell won’t resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets.",
+    "If an effect allows you to cast a spell with spree “without paying its mana cost,” you must still choose at least one mode and pay the associated additional costs."
+   ]
+  },
+  {
+   "name": "Rush of Dread",
+   "oracle_id": "0dfe6ec6-a0df-41c8-90dd-1ddf0417700a",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Spree (Choose one or more additional costs.)\n+ {1} — Target opponent sacrifices half the creatures they control of their choice, rounded up.\n+ {2} — Target opponent discards half the cards in their hand, rounded up.\n+ {2} — Target opponent loses half their life, rounded up.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Spree"
+   ],
+   "collector_number": "104",
+   "set": "otj",
+   "rulings": [
+    "Like the effects of all modal spells, Rush of Dread’s effects happen in order. If the first two modes target different opponents, the opponent targeted by the second mode will see what the first opponent sacrificed before choosing what to discard.",
+    "Spells with spree have a + (plus sign) indicator in the upper right corner of the card frame. This has no rules meaning and serves only to remind players that at least one additional cost is required to cast the spell.",
+    "Each additional cost and associated mode in the text box is also preceded with a + indicator. These symbols also have no rules meaning and serve only to remind players that the listed costs are additional costs.",
+    "You must choose at least one of the listed modes and pay its associated additional cost in order to cast a spell with spree.",
+    "You choose the modes as you cast the spell with spree. Once modes are chosen, they can’t be changed.",
+    "If a mode requires a target, you can select that mode only if there’s a legal target available. Ignore the targeting requirements for modes you don’t choose.",
+    "No matter which modes you choose, you always follow the instructions in the order they are written.",
+    "You can’t choose the same mode more than once.",
+    "The mana value of a spell with spree is determined only by its mana cost (in the upper right corner of the card). It doesn’t matter which modes you choose or which additional costs you pay, including any additional costs imposed by other effects.",
+    "No player can cast spells or activate abilities in between the modes of a resolving spell. Any abilities that trigger won’t be put onto the stack until the spell is done resolving.",
+    "If a spell with spree is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose new modes.",
+    "If all targets for the chosen modes become illegal before a spell with spree resolves, the spell won’t resolve and none of its effects will happen. If at least one target is still legal, the spell will resolve but will have no effect on any illegal targets.",
+    "If an effect allows you to cast a spell with spree “without paying its mana cost,” you must still choose at least one mode and pay the associated additional costs."
+   ]
+  },
+  {
+   "name": "Demonic Ruckus",
+   "oracle_id": "a861ee41-a2c6-4530-9974-82f55ce712b1",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets +1/+1 and has menace and trample.\nWhen this Aura is put into a graveyard from the battlefield, draw a card.\nPlot {R} (You may pay {R} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Plot",
+    "Enchant"
+   ],
+   "collector_number": "120",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If the creature Demonic Ruckus would enchant is an illegal target by the time the Aura spell resolves, the entire spell doesn't resolve. It's put into your graveyard from the stack, not the battlefield, so its triggered ability won't trigger.",
+    "Plot abilities are written \"Plot [cost],\" which means \"Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.\"",
+    "Exiling a card using its plot ability is a special action. Once you announce you're taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can't cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you're casting a plotted card from exile without paying its mana cost, you can't choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Ferocification",
+   "oracle_id": "814e06c0-9b61-4a64-8c67-73a8eb00a768",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of combat on your turn, choose one —\n• Target creature you control gets +2/+0 until end of turn.\n• Target creature you control gains menace and haste until end of turn.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "123",
+   "set": "otj"
+  },
+  {
+   "name": "Hellspur Brute",
+   "oracle_id": "81e5c62c-5aed-41e2-8bd1-610022e880bd",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Minotaur Mercenary",
+   "oracle_text": "Affinity for outlaws (This spell costs {1} less to cast for each Assassin, Mercenary, Pirate, Rogue, and/or Warlock you control.)\nTrample",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Affinity",
+    "Trample"
+   ],
+   "collector_number": "127",
+   "set": "otj",
+   "rulings": [
+    "A card, spell, or permanent is an outlaw if it has the Assassin, Mercenary, Pirate, Rogue, or Warlock creature type. It doesn’t matter if it has more than one of those creature types; as long as it has at least one, it’s an outlaw.",
+    "Outlaw is not a creature type. If an effect asks you to choose a creature type, you can’t choose outlaw.",
+    "If an ability refers to an outlaw or whether a player controls an outlaw, it’s referring only to permanents with one or more of the creature types specified above. Notably, it’s not referring to any spell or card not on the battlefield. However, other abilities may refer to an “outlaw spell” or “outlaw card” in a zone other than the battlefield. Those abilities refer to spells and cards with one or more of the specified creature types."
+   ]
+  },
+  {
+   "name": "Highway Robbery",
+   "oracle_id": "df020a47-1784-479b-9882-be77b7f30950",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "You may discard a card or sacrifice a land. If you do, draw two cards.\nPlot {1}{R} (You may pay {1}{R} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "129",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "You can’t choose to discard a card if you have no cards in hand. Similarly, you can’t choose to sacrifice a land if you control no lands.",
+    "Plot abilities are written “Plot [cost],” which means “Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.”",
+    "Exiling a card using its plot ability is a special action. Once you announce you’re taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can’t cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you’re casting a plotted card from exile without paying its mana cost, you can’t choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  }
+ ]
+}

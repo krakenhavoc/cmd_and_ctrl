@@ -1,0 +1,346 @@
+{
+ "batch": 43,
+ "set": [
+  "mkm"
+ ],
+ "cards": [
+  {
+   "name": "Repulsive Mutation",
+   "oracle_id": "611bfaa6-b098-48d9-9e49-1e7dc8687f15",
+   "layout": "normal",
+   "mana_cost": "{X}{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Put X +1/+1 counters on target creature you control. Then counter up to one target spell unless its controller pays mana equal to the greatest power among creatures you control.",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "227",
+   "set": "mkm",
+   "rulings": [
+    "If you control no creatures as Repulsive Mutation is resolving, the amount of mana the target spell's controller must pay to stop their spell from being countered is 0. That player can choose not to pay 0 mana; if they do, the spell will be countered."
+   ]
+  },
+  {
+   "name": "Riftburst Hellion",
+   "oracle_id": "e121f9cb-ed25-4be1-9822-b68cce2f2623",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Hellion",
+   "oracle_text": "Reach\nDisguise {4}{R/G}{R/G} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)",
+   "power": "6",
+   "toughness": "7",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Reach",
+    "Disguise"
+   ],
+   "collector_number": "228",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Soul Search",
+   "oracle_id": "58f12f0d-e2c1-48f9-9e27-d1de8db743cb",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target opponent reveals their hand. You choose a nonland card from it. Exile that card. If the card's mana value is 1 or less, create a 1/1 white and black Spirit creature token with flying.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "232",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the exiled card has {X} in its mana cost, X is 0.",
+    "If the exiled card doesn't have a mana cost, its mana value is 0."
+   ]
+  },
+  {
+   "name": "Sumala Sentry",
+   "oracle_id": "6b869c33-a77c-4eb7-9df9-9815d70f7444",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Archer",
+   "oracle_text": "Reach\nWhenever a face-down permanent you control is turned face up, put a +1/+1 counter on it and a +1/+1 counter on this creature.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "233",
+   "set": "mkm",
+   "rulings": [
+    "If the permanent that was turned face up is no longer on the battlefield when Sumala Sentry's triggered ability resolves, you'll still put a +1/+1 counter on Sumala Sentry. Similarly, if Sumala Sentry is no longer on the battlefield, you'll still put a +1/+1 counter on the permanent that turned face up."
+   ]
+  },
+  {
+   "name": "Tin Street Gossip",
+   "oracle_id": "19dc29a7-8ccc-4e54-829b-86cc102b082d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Lizard Advisor",
+   "oracle_text": "Vigilance\n{T}: Add {R}{G}. Spend this mana only to cast face-down spells or to turn creatures face up.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "235",
+   "set": "mkm",
+   "rulings": [
+    "The mana produced by Tin Street Gossip can't be used to cast a spell that instructs you to cloak or manifest cards."
+   ]
+  },
+  {
+   "name": "Tolsimir, Midnight's Light",
+   "oracle_id": "0e9c7380-7584-43e6-8c31-5d1bb1685fe0",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elf Scout",
+   "oracle_text": "Lifelink\nWhen Tolsimir enters, create Voja Fenstalker, a legendary 5/5 green and white Wolf creature token with trample.\nWhenever a Wolf you control attacks, if Tolsimir attacked this combat, target creature an opponent controls blocks that Wolf this combat if able.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "236",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Voja Fenstalker",
+     "type_line": "Token Legendary Creature — Wolf",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Flotsam // Jetsam",
+   "oracle_id": "b0c28b2b-a2dd-4b76-bb1c-cec55a0a6784",
+   "layout": "split",
+   "mana_cost": "{1}{G/U} // {4}{U/B}{U/B}",
+   "cmc": 8.0,
+   "type_line": "Instant // Sorcery",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Investigate",
+    "Mill"
+   ],
+   "collector_number": "247",
+   "set": "mkm",
+   "card_faces": [
+    {
+     "name": "Flotsam",
+     "mana_cost": "{1}{G/U}",
+     "type_line": "Instant",
+     "oracle_text": "Mill three cards. Investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")"
+    },
+    {
+     "name": "Jetsam",
+     "mana_cost": "{4}{U/B}{U/B}",
+     "type_line": "Sorcery",
+     "oracle_text": "Each opponent mills three cards, then you may cast a spell from each opponent's graveyard without paying its mana cost. If a spell cast this way would be put into a graveyard, exile it instead."
+    }
+   ],
+   "related": [
+    {
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You choose whether to cast spells from opponents' graveyards as Jetsam resolves. If you do, you do so as part of the resolution of Jetsam. You can't wait to cast them later in the turn. Timing restrictions based on the cards' types are ignored.",
+    "If you cast a spell \"without paying its mana cost\", you can't choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the card has any mandatory additional costs, those must be paid to cast the spell.",
+    "If a spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Clue is an artifact type. Even though it appears on some cards with other permanent types, it's never a creature type, a land type, or anything but an artifact type.",
+    "If an effect refers to a Clue, it means any Clue artifact, not just a Clue artifact token. For example, you can sacrifice Wrench to pay for Alquist Proft, Master Sleuth's activated ability.",
+    "You can't sacrifice a Clue to pay multiple costs. For example, you can't sacrifice a Clue token to activate its own ability and also to activate Alquist Proft, Master Sleuth's ability.",
+    "Some spells and abilities that investigate may require targets. If each target chosen is an illegal target as that spell or ability tries to resolve, it won't resolve. You won't create any Clue tokens.",
+    "Some abilities trigger \"whenever you sacrifice a Clue\". Those abilities trigger whenever you sacrifice a Clue for any reason, not just to activate a Clue's activated ability.",
+    "To cast a split card, choose one of its halves to cast. There's no way to cast both halves of any of the split cards featured in this set.",
+    "Split cards have two card faces on a single card. The characteristics of the half you didn't cast are ignored while the spell is on the stack.",
+    "Each split card is a single card. For example, if you discard a split card, you've discarded one card, not two. If an effect counts the number of instant and sorcery cards in your graveyard, Cease // Desist counts once, not twice.",
+    "Each split card has two names. If an effect instructs you to choose a card name, you may choose one of those names, but not both.",
+    "A split card's characteristics are a combination of its two halves while it is not on the stack. For example, Cease // Desist has a mana value of 8 while it is in your library. If an effect allows you to search your library for a card with mana value 4 or less, you can't find Cease // Desist.",
+    "If an effect allows you to cast a spell with certain characteristics, consider only the characteristics of the half you're casting. For example, if an effect allows you to cast an instant or sorcery spell with mana value 2 or less from among cards in your graveyard, you could cast Cease this way, but not Desist."
+   ]
+  },
+  {
+   "name": "Branch of Vitu-Ghazi",
+   "oracle_id": "7a30316b-dcd5-4a4b-b959-eecde7ca92e7",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\nDisguise {3} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this land is turned face up, add two mana of any one color. Until end of turn, you don't lose this mana as steps and phases end.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Disguise"
+   ],
+   "collector_number": "258",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "A disguise ability lets you cast a card face down by paying {3} and announcing that you are using a disguise ability. Any time you have priority, you can turn a face-down permanent with disguise face up by paying its disguise cost.",
+    "The face-down spell has no mana cost and a mana value of 0. When you cast a face-down spell, put it on the stack face down so no other player knows what it is, and pay {3} to cast it. This is an alternative cost.",
+    "The creature spell is a 2/2 creature spell with ward {2} that has no name, mana cost, or creature types. The resulting creature is a 2/2 creature with ward {2} that has no name, mana cost, or creature types. Both the spell and the resulting creature are colorless and have a mana value of 0. Other effects that apply to the spell or creature can still grant it any characteristics it doesn't have or change the characteristics it does have.",
+    "Any time you have priority, you may turn the face-down creature face up by revealing what its disguise cost is and paying that cost. This is a special action. It doesn't use the stack and can't be responded to. Only a face-down permanent can be turned face up this way; a face-down spell cannot.",
+    "At any time, you can look at a face-down spell or permanent you control. You can't look at face-down permanents or spells you don't control unless an effect instructs or allows you to do so.",
+    "If a face-down creature loses its abilities, it can't be turned face up with a disguise ability because it will no longer have a disguise ability (or a disguise cost) once face up.",
+    "Because the permanent is on the battlefield both before and after it's turned face up, turning a permanent face up doesn't cause any enters-the-battlefield abilities to trigger.",
+    "Because face-down creatures don't have a name, they can't have the same name as any other creature, even another face-down creature.",
+    "A permanent that turns face up or face down changes characteristics but is otherwise the same permanent. Spells and abilities that were targeting that permanent and Auras and Equipment that were attached to that permanent aren't affected unless the new characteristics of the object change the legality of those targets or attachments.",
+    "Turning a permanent face up or face down doesn't change whether that permanent is tapped or untapped.",
+    "If a face-down spell leaves the stack and goes to any zone other than the battlefield (if it was countered, for example), you must reveal it. Similarly, if a face-down permanent leaves the battlefield, you must reveal it. You must also reveal all face-down spells and permanents you control if you leave the game or the game ends.",
+    "You must ensure that your face-down spells and permanents can be easily differentiated from each other. You're not allowed to mix up the cards that represent them on the battlefield to confuse other players. The order in which they entered the battlefield should remain clear, as well as what ability caused them to be face down. (This includes disguise, cloak, and in games involving older cards, morph and manifest, as well as a few other effects that turn cards face down.) Common methods for doing this include using markers or dice, or simply placing them in order on the battlefield."
+   ]
+  },
+  {
+   "name": "Assemble the Players",
+   "oracle_id": "180ba940-2b11-4953-b7ce-74847e1aebfd",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "You may look at the top card of your library any time.\nOnce each turn, you may cast a creature spell with power 2 or less from the top of your library.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "287",
+   "set": "mkm",
+   "rulings": [
+    "You can look at the top card of your library whenever you want (with one restriction; see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If the top card of your library changes while you're casting a spell, playing a land, or activating an ability, you can't look at the new top card until you finish doing so. This means that if you cast a spell from the top of your library, you can't look at the next one until you're done paying for that spell.",
+    "You must pay all costs and follow all timing rules for spells cast from the top of your library this way.",
+    "If Assemble the Players leaves the battlefield and returns to the battlefield in the same turn, the casting permission granted by the old one is different than the casting permission granted by the new one. Similarly, if you control multiple Assemble the Players, each one has a different casting permission that may be used once each turn.",
+    "Because you never \"cast\" a land card, Assemble the Players doesn't allow you to play a land creature (such as Dryad Arbor) from the top of your library.",
+    "If the top card of your library has a disguise or morph ability, you can cast it face down from the top of your library, even if it doesn't normally have power 2 or less."
+   ]
+  },
+  {
+   "name": "Intrude on the Mind",
+   "oracle_id": "eedb1527-548a-435a-a3e1-8ad7d9d6d8a9",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Reveal the top five cards of your library and separate them into two piles. An opponent chooses one of those piles. Put that pile into your hand and the other into your graveyard. Create a 0/0 colorless Thopter artifact creature token with flying, then put a +1/+1 counter on it for each card put into your graveyard this way.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "296",
+   "set": "mkm",
+   "related": [
+    {
+     "name": "Thopter",
+     "type_line": "Token Artifact Creature — Thopter",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You decide which opponent chooses the pile while resolving Intrude on the Mind.",
+    "You may choose to put all of the cards into one pile and leave the other pile empty. If you do, the opponent will choose whether to put the revealed cards into your hand or your graveyard."
+   ]
+  }
+ ]
+}

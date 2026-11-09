@@ -1,0 +1,255 @@
+{
+ "batch": 1,
+ "set": [
+  "eoe"
+ ],
+ "cards": [
+  {
+   "name": "Dockworker Drone",
+   "oracle_id": "aa704b26-729a-4d0f-b92d-56aadb1e20b9",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "This creature enters with a +1/+1 counter on it.\nWhen this creature dies, put its counters on target creature you control.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "11",
+   "set": "eoe",
+   "rulings": [
+    "If Dockworker Drone has -1/-1 counters on it when it dies, that ability will include those as well. This may result in the recipient of the counters dying.",
+    "Dockworker Drone’s second ability puts all counters that were on Dockworker Drone onto the target creature, not just its +1/+1 counters.",
+    "Dockworker Drone’s second ability doesn’t cause you to move counters from Dockworker Drone onto the target creature. Rather, you put the same number of each kind of counter Dockworker Drone had when it died onto the target creature.",
+    "In some unusual cases, you may end up putting the appropriate counters on more than one permanent. For example, if you control The Ozolith (a card from the Ikoria: Lair of Behemoths set) when Dockworker Drone dies, you’ll put the appropriate number of each kind of counter onto both The Ozolith and the target creature.",
+    "If enough -1/-1 counters are put on Dockworker Drone at the same time to make its toughness 0 or less, its second ability will see all of the +1/+1 counters it had when it died as well as the -1/-1 counters it had, and an equal number of each of those types of counters (plus any other applicable counters) will be put onto the target creature."
+   ]
+  },
+  {
+   "name": "Lightstall Inquisitor",
+   "oracle_id": "57012049-06d7-4354-8125-9ea9e742f14d",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Angel Wizard",
+   "oracle_text": "Vigilance\nWhen this creature enters, each opponent exiles a card from their hand and may play that card for as long as it remains exiled. Each spell cast this way costs {1} more to cast. Each land played this way enters tapped.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "24",
+   "set": "eoe",
+   "rulings": [
+    "Playing the exiled card follows all normal timing restrictions."
+   ]
+  },
+  {
+   "name": "Pulsar Squadron Ace",
+   "oracle_id": "8019e879-cfea-40a2-ac0d-86b47ec02b48",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Pilot",
+   "oracle_text": "When this creature enters, look at the top five cards of your library. You may reveal a Spacecraft card from among them and put it into your hand. Put the rest on the bottom of your library in a random order. If you didn't put a card into your hand this way, put a +1/+1 counter on this creature.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "28",
+   "set": "eoe"
+  },
+  {
+   "name": "Rayblade Trooper",
+   "oracle_id": "792da586-a687-428c-a10e-75431249df5b",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Soldier",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature you control.\nWhenever a nontoken creature you control with a +1/+1 counter on it dies, create a 1/1 white Human Soldier creature token.\nWarp {1}{W} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Warp"
+   ],
+   "collector_number": "30",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Human Soldier",
+     "type_line": "Token Creature — Human Soldier",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If Rayblade Trooper dies at the same time as one or more creatures you control with +1/+1 counters on them, its second ability will trigger for each of those creatures. This includes Rayblade Trooper itself if it had a +1/+1 counter on it when it died."
+   ]
+  },
+  {
+   "name": "Reroute Systems",
+   "oracle_id": "26d2762b-4346-40d0-b93d-b0dbfeb6e2bc",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose one —\n• Target artifact or creature gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)\n• Reroute Systems deals 2 damage to target tapped creature.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "31",
+   "set": "eoe"
+  },
+  {
+   "name": "Rescue Skiff",
+   "oracle_id": "112aaaf0-3301-4f79-9640-d36c75a0fb30",
+   "layout": "normal",
+   "mana_cost": "{5}{W}",
+   "cmc": 6.0,
+   "type_line": "Artifact — Spacecraft",
+   "oracle_text": "When this Spacecraft enters, return target creature or enchantment card from your graveyard to the battlefield.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 10+.)\n10+ | Flying",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Station"
+   ],
+   "collector_number": "32",
+   "set": "eoe",
+   "rulings": [
+    "If an Aura is put onto the battlefield without being cast, the Aura’s controller-to-be chooses what it will enchant as it comes back onto the battlefield. An Aura put onto the battlefield this way doesn’t target anything (so it could be attached to an opponent’s permanent with hexproof, for example), but the Aura’s enchant ability restricts what it can be attached to. If the Aura can’t legally be attached to anything, it remains in its current zone."
+   ]
+  },
+  {
+   "name": "Cerebral Download",
+   "oracle_id": "f27889b9-40d9-4cc7-b8af-8716c53c44f5",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Surveil X, where X is the number of artifacts you control. Then draw three cards. (To surveil X, look at the top X cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "48",
+   "set": "eoe",
+   "rulings": [
+    "The value of X is calculated only once, as Cerebral Download resolves."
+   ]
+  },
+  {
+   "name": "Codecracker Hound",
+   "oracle_id": "ae791b61-5825-4987-a8c2-80813758d3f7",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dog",
+   "oracle_text": "When this creature enters, look at the top two cards of your library. Put one into your hand and the other into your graveyard.\nWarp {2}{U} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Warp"
+   ],
+   "collector_number": "50",
+   "set": "eoe",
+   "rulings": [
+    "If there’s only one card in your library as Codecracker Hound’s first ability resolves, you’ll put that card into your hand."
+   ]
+  },
+  {
+   "name": "Cryoshatter",
+   "oracle_id": "865715e9-6759-4e01-803d-702c959e386e",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets -5/-0.\nWhen enchanted creature becomes tapped or is dealt damage, destroy it.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "53",
+   "set": "eoe",
+   "rulings": [
+    "When the enchanted creature becomes tapped or is dealt damage, Cryoshatter’s last ability triggers. That creature will be destroyed when the ability resolves, even if Cryoshatter has left the battlefield or is somehow enchanting a different creature by then.",
+    "If the enchanted creature is tapped as a cost to cast a spell or to activate an ability that’s not a mana ability, Cryoshatter’s last ability will go on the stack on top of that spell or activated ability. Cryoshatter’s last ability resolves first (destroying that creature), then the spell or activated ability resolves.",
+    "Cryoshatter may target and may enchant a creature that’s already tapped. An ability that triggers when a creature “becomes tapped” won’t trigger until the creature changes from being untapped to being tapped.",
+    "If the enchanted creature is tapped as a cost to activate a mana ability, the mana ability resolves immediately, then Cryoshatter’s last ability goes on the stack.",
+    "A creature with trample blocked by a creature enchanted with Cryoshatter still needs to assign damage equal to the enchanted creature’s toughness (minus any damage already marked on the enchanted creature) before trampling over to a player, planeswalker, or battle."
+   ]
+  },
+  {
+   "name": "Desculpting Blast",
+   "oracle_id": "2d80ee9c-55d4-4115-8a58-63e8460f9795",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Return target nonland permanent to its owner's hand. If it was attacking, create a 1/1 colorless Drone artifact creature token with flying and \"This token can block only creatures with flying.\"",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "54",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Drone",
+     "type_line": "Token Artifact Creature — Drone",
+     "component": "token"
+    }
+   ]
+  }
+ ]
+}

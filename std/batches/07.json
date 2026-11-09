@@ -1,0 +1,269 @@
+{
+ "batch": 7,
+ "set": [
+  "tdm"
+ ],
+ "cards": [
+  {
+   "name": "Furious Forebear",
+   "oracle_id": "4fb1d33f-a87d-46cf-a73e-882c3dbcb26f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spirit Warrior",
+   "oracle_text": "Whenever a creature you control dies while this card is in your graveyard, you may pay {1}{W}. If you do, return this card from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "13",
+   "set": "tdm",
+   "rulings": [
+    "If Furious Forebear dies at the same time as one or more creatures you control, its ability won’t trigger.",
+    "If Furious Forebear leaves your graveyard before its ability resolves, it won’t be returned to your hand even if you pay {1}{W}."
+   ]
+  },
+  {
+   "name": "Constrictor Sage",
+   "oracle_id": "abfb7234-c5cc-4e0b-9a67-d66473f918fc",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Snake Wizard",
+   "oracle_text": "When this creature enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nRenew — {2}{U}, Exile this card from your graveyard: Tap target creature an opponent controls and put a stun counter on it. Activate only as a sorcery.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Renew"
+   ],
+   "collector_number": "39",
+   "set": "tdm",
+   "rulings": [
+    "If a card with a renew ability is put into your graveyard during your turn, you can activate that ability if it’s legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Dispelling Exhale",
+   "oracle_id": "dd3a4b64-0987-4e9b-a18d-c54365438857",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "As an additional cost to cast this spell, you may behold a Dragon. (You may choose a Dragon you control or reveal a Dragon card from your hand.)\nCounter target spell unless its controller pays {2}. If a Dragon was beheld, counter that spell unless its controller pays {4} instead.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Behold"
+   ],
+   "collector_number": "41",
+   "set": "tdm",
+   "rulings": [
+    "If an effect refers to a “[subtype] card,” it refers only to a card that has that subtype. For example, Teeming Dragonstorm is a card that cares about Dragons and features Dragons in its art, but it isn’t a Dragon card.",
+    "Effects that say “If a [quality] was beheld” only care if a card of that quality was revealed or a permanent you control of that quality was chosen. No matter what happens to that card or permanent after that, it was still beheld, and any additional effects that depend on that card or permanent being beheld will still happen.",
+    "If a cost to cast a spell includes revealing a card, that card remains revealed from the time the spell is announced until the time it leaves the stack.",
+    "If a card in your hand is already revealed (perhaps because it was revealed to pay a cost of a spell that’s still on the stack or due to the effect of a card like Telepathy), you may reveal it again to pay the cost of another spell or ability that requires you to reveal a card from your hand."
+   ]
+  },
+  {
+   "name": "Essence Anchor",
+   "oracle_id": "e28a3f0e-40bd-4293-b5eb-ec9d185c1e1c",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "At the beginning of your upkeep, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{T}: Create a 2/2 black Zombie Druid creature token. Activate only during your turn and only if a card left your graveyard this turn.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "44",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Zombie Druid",
+     "type_line": "Token Creature — Zombie Druid",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Kishla Trawlers",
+   "oracle_id": "09277185-fccd-4747-aa79-f569c581022a",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "When this creature enters, you may exile a creature card from your graveyard. When you do, return target instant or sorcery card from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "50",
+   "set": "tdm",
+   "rulings": [
+    "You don’t choose a target for Kishla Trawlers’s ability at the time it triggers. Rather, a second “reflexive” ability triggers when you exile a creature card from your graveyard this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Naga Fleshcrafter",
+   "oracle_id": "a4f8012e-9880-45b0-9eba-d74c207d3242",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Snake Shapeshifter",
+   "oracle_text": "You may have this creature enter as a copy of any creature on the battlefield.\nRenew — {2}{U}, Exile this card from your graveyard: Put a +1/+1 counter on target nonlegendary creature you control. Each other creature you control becomes a copy of that creature until end of turn. Activate only as a sorcery.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Renew"
+   ],
+   "collector_number": "52",
+   "set": "tdm",
+   "rulings": [
+    "Both of Naga Fleshcrafter’s abilities copy exactly what was printed on the original creature and nothing else (unless that creature is copying something else or is a token; see below). They don’t copy whether that creature is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If the copied creature is a token, Naga Fleshcrafter (or in the case of its renew ability, each other creature you control) copies the original characteristics of that token as stated by the effect that created that token.",
+    "If the copied creature is copying something else, then Naga Fleshcrafter enters as whatever that creature copied. Similarly, its renew ability will cause each other creature you control to become a copy of whatever that creature copied.",
+    "Any “enters” abilities of the copied creature will trigger when Naga Fleshcrafter enters. Any “as this creature enters” or “this creature enters with” abilities of the copied creature will also work. Activating its renew ability doesn’t cause any creatures to enter the battlefield, and as such, these kinds of abilities won’t work with Naga Fleshcrafter’s renew ability.",
+    "You can choose not to have Naga Fleshcrafter enter as a copy of another creature. If you do, it will just be a 0/0 Snake Shapeshifter, and unless another effect is increasing its toughness, it will be put into your graveyard.",
+    "If a card with a renew ability is put into your graveyard during your turn, you can activate that ability if it’s legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Cruel Truths",
+   "oracle_id": "2e68e3f7-b168-4541-b8a0-791a8a6ebde8",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Surveil 2, then draw two cards. You lose 2 life. (To surveil 2, look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "76",
+   "set": "tdm"
+  },
+  {
+   "name": "Desperate Measures",
+   "oracle_id": "f1f3df1c-5c51-445a-b66d-eee4aab23691",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Target creature gets +1/-1 until end of turn. When it dies under your control this turn, draw two cards.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "78",
+   "set": "tdm",
+   "rulings": [
+    "As long as you control it, you will get to draw two cards when the target creature goes to the graveyard, regardless of whether it died due to having 0 toughness or something else.",
+    "If the creature is no longer a creature at the time it goes to the graveyard, you will still draw two cards if you controlled it at that time."
+   ]
+  },
+  {
+   "name": "Hundred-Battle Veteran",
+   "oracle_id": "9ed6aa5b-4369-42f7-9853-aae1ac9b17e2",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Zombie Warrior",
+   "oracle_text": "As long as there are three or more different kinds of counters among creatures you control, this creature gets +2/+4.\nYou may cast this card from your graveyard. If you do, it enters with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "82",
+   "set": "tdm",
+   "rulings": [
+    "You still pay all costs and obey timing restrictions when casting Hundred-Battle Veteran from your graveyard with the permission from its last ability.",
+    "If Hundred-Battle Veteran is countered after being cast from your graveyard, it will return to your graveyard. It may be cast this way again. (That doesn’t count as one of the hundred battles.)",
+    "Once you begin casting a spell from your graveyard, it immediately moves to the stack. Players can’t take any actions until you’ve finished casting the spell.",
+    "If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don’t stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner’s hand from the battlefield, it does so normally.",
+    "Finality counters aren’t keyword counters, and a finality counter doesn’t give any abilities to the permanent it’s on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Krumar Initiate",
+   "oracle_id": "65a7fb13-77b9-44ea-9e0e-34daef82eb69",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "{X}{B}, {T}, Pay X life: This creature endures X. Activate only as a sorcery. (Put X +1/+1 counters on it or create an X/X white Spirit creature token.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Endure"
+   ],
+   "collector_number": "84",
+   "set": "tdm",
+   "related": [
+    {
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You choose whether to put +1/+1 counters on the creature or create a Spirit token as the ability that includes the endure instruction is resolving. No player may take actions between the time you choose and the time that counters are added or tokens are created.",
+    "If you can’t put +1/+1 counters on the creature for any reason as an endure ability resolves (for example, if the creature is no longer on the battlefield), you’ll just create a Spirit token.",
+    "If a noncreature permanent is instructed to endure, the effect is the same. You can put +1/+1 counters on that permanent or create a Spirit token."
+   ]
+  }
+ ]
+}

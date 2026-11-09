@@ -1,0 +1,321 @@
+{
+ "batch": 37,
+ "set": [
+  "big",
+  "otj"
+ ],
+ "cards": [
+  {
+   "name": "Kambal, Profiteering Mayor",
+   "oracle_id": "619e0686-e88c-4238-8364-75395e733533",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "Whenever one or more tokens your opponents control enter, for each of them, create a tapped token that's a copy of it. This ability triggers only once each turn.\nWhenever one or more tokens you control enter, each opponent loses 1 life and you gain 1 life.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "353",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Each of the new tokens copies the original characteristics of the appropriate token as stated by the effect that created that token and nothing else (unless that creature is copying something else; see below). It doesn’t copy whether the opponent’s token is tapped or untapped, whether it has any counters on it or Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, and so on.",
+    "If the copied token has {X} in its mana cost, X is 0. (Most tokens don’t have a mana cost unless they’re copying something else.)",
+    "If the copied token is copying something else, then the new token enters the battlefield as whatever that token copied.",
+    "Any enters-the-battlefield abilities of the copied token will trigger when the token enters the battlefield. Any “as [this permanent] enters the battlefield” or “[this permanent] enters the battlefield with” abilities of the copied token will also work."
+   ]
+  },
+  {
+   "name": "Kellan Joins Up",
+   "oracle_id": "9b3ddd31-c058-4846-8784-25c7a9bbcb31",
+   "layout": "normal",
+   "mana_cost": "{G}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Enchantment",
+   "oracle_text": "When Kellan Joins Up enters, you may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted. (You may cast it as a sorcery on a later turn without paying its mana cost.)\nWhenever a legendary creature you control enters, put a +1/+1 counter on each creature you control.",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "354",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If an instant or a card with flash is plotted this way, you can still cast it only when you have priority during your main phase while the stack is empty.",
+    "If the mana cost of a card in your hand includes {X}, X is 0 for the purpose of determining its mana value.",
+    "The mana value of a split card in your hand is based on the combined mana cost of its two halves.",
+    "If multiple legendary creatures enter the battlefield under your control at the same time, Kellan Joins Up's last ability will trigger once for each of those creatures.",
+    "Plot abilities are written \"Plot [cost],\" which means \"Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.\"",
+    "If a card doesn't have a mana cost, its mana value is 0.",
+    "You can't cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you're casting a plotted card from exile without paying its mana cost, you can't choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Exiling a card using its plot ability is a special action. Once you announce you're taking that action, no other player can respond by trying to remove that card from your hand."
+   ]
+  },
+  {
+   "name": "Laughing Jasper Flint",
+   "oracle_id": "bd7c5a8b-cf62-41e1-a664-b16e3e5d142b",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Lizard Rogue",
+   "oracle_text": "Creatures you control but don't own are Mercenaries in addition to their other types.\nAt the beginning of your upkeep, exile the top X cards of target opponent's library, where X is the number of outlaws you control. Until end of turn, you may cast spells from among those cards, and mana of any type can be spent to cast those spells.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "355",
+   "set": "otj",
+   "rulings": [
+    "Laughing Jasper Flint’s first ability applies to creatures you control but don’t own as they enter the battlefield. For example, if you control Laughing Jasper Flint and Vial Smasher, Gleeful Grenadier, having a creature an opponent owns that normally isn’t an outlaw enter the battlefield under your control will cause Vial Smasher’s ability to trigger.",
+    "The value of X is determined as Laughing Jasper Flint’s last ability resolves.",
+    "You pay all costs and follow all normal timing rules for cards played from exile with Laughing Jasper Flint’s last ability. For example, if you exile a creature card this way, you must wait until your main phase to cast it.",
+    "A card, spell, or permanent is an outlaw if it has the Assassin, Mercenary, Pirate, Rogue, or Warlock creature type. It doesn’t matter if it has more than one of those creature types; as long as it has at least one, it’s an outlaw.",
+    "Outlaw is not a creature type. If an effect asks you to choose a creature type, you can’t choose outlaw.",
+    "If an ability refers to an outlaw or whether a player controls an outlaw, it’s referring only to permanents with one or more of the creature types specified above. Notably, it’s not referring to any spell or card not on the battlefield. However, other abilities may refer to an “outlaw spell” or “outlaw card” in a zone other than the battlefield. Those abilities refer to spells and cards with one or more of the specified creature types."
+   ]
+  },
+  {
+   "name": "Lilah, Undefeated Slickshot",
+   "oracle_id": "0757c5a7-e51b-4c39-bb4d-b32657c10cb4",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rogue",
+   "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhenever you cast a multicolored instant or sorcery spell from your hand, exile that spell instead of putting it into your graveyard as it resolves. If you do, it becomes plotted. (You may cast it as a sorcery on a later turn without paying its mana cost.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Plot",
+    "Prowess"
+   ],
+   "collector_number": "356",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "If an instant or a card with flash is plotted this way, you can still cast it only when you have priority during your main phase while the stack is empty.",
+    "Exiling a card using its plot ability is a special action. Once you announce you're taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can't cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you're casting a plotted card from exile without paying its mana cost, you can't choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "The spell will have all its normal effects before being exiled. If the spell's normal effects include exiling itself, Lilah's effect won't apply to it and it won't become plotted.",
+    "Plot abilities are written \"Plot [cost],\" which means \"Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.\"",
+    "If a spell is countered or it never resolves, Lilah, Undefeated Slickshot will not exile it."
+   ]
+  },
+  {
+   "name": "Riku of Many Paths",
+   "oracle_id": "1cfe6e3a-f8c9-4105-ad03-0faf1fcc4626",
+   "layout": "normal",
+   "mana_cost": "{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Whenever you cast a modal spell, choose up to X, where X is the number of times you chose a mode for that spell —\n• Exile the top card of your library. Until the end of your next turn, you may play it.\n• Put a +1/+1 counter on Riku. It gains trample until end of turn.\n• Create a 1/1 blue Bird creature token with flying.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "361",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Bird",
+     "type_line": "Token Creature — Bird",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A spell is modal if it has two or more options in a bulleted list and instructions for a player to choose a number of those options, such as \"Choose one\" or \"Choose one or more.\" Each of those options is a mode. Spells with spree are modal spells.",
+    "Modal spells printed prior to the Khans of Tarkir™ release didn't use bulleted lists for the modes; these cards have received errata in the Oracle card reference.",
+    "The X in Riku's ability is the number of times you chose a mode for the modal spell you cast, not the number of distinct modes you chose. For example, if you cast a modal spell that allows you to choose the same mode more than once and you choose the same mode three times, X is three and you may choose up to all modes of Riku's ability.",
+    "You can't choose the same mode of Riku's triggered ability more than once each time it triggers.",
+    "You pay all costs and follow all normal timing rules for cards played from exile with Riku's triggered ability. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Frontier Seeker",
+   "oracle_id": "466cf331-2d9c-4ebc-84f6-30c890e1b637",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Scout",
+   "oracle_text": "When this creature enters, look at the top five cards of your library. You may reveal a Mount creature card or a Plains card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "368",
+   "set": "otj"
+  },
+  {
+   "name": "Esoteric Duplicator",
+   "oracle_id": "0752fe67-9b8a-42c0-90e3-087d426b2f3b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Clue",
+   "oracle_text": "Whenever you sacrifice this artifact or another artifact, you may pay {2}. If you do, at the beginning of the next end step, create a token that's a copy of that artifact.\n{2}, Sacrifice this artifact: Draw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "5",
+   "set": "big",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token copies exactly what was printed on the original artifact and nothing else (unless that artifact was copying something else or was a token; see below). It doesn’t copy whether that artifact was tapped or untapped, whether it had any counters on it or Auras and Equipment attached to it, or any non-copy effects that changed its power, toughness, types, color, and so on.",
+    "If the copied artifact had {X} in its mana cost, X is 0.",
+    "If the copied artifact was a token, the token that’s created copies the original characteristics of that token as stated by the effect that created that token.",
+    "If the copied artifact was copying something else when it was last on the battlefield, then the token enters the battlefield as whatever that artifact copied.",
+    "Any enters-the-battlefield abilities of the copied artifact will trigger when the token enters the battlefield. Any “as [this artifact] enters the battlefield” or “[this artifact] enters the battlefield with” abilities of the copied artifact will also work."
+   ]
+  },
+  {
+   "name": "Harvester of Misery",
+   "oracle_id": "a0d3bb63-2977-41b2-bcc3-2488e6696cb8",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "Menace\nWhen this creature enters, other creatures get -2/-2 until end of turn.\n{1}{B}, Discard this card: Target creature gets -2/-2 until end of turn.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "9",
+   "set": "big",
+   "rulings": [
+    "Harvester of Misery's second ability affects only other creatures that are on the battlefield at the time it resolves. Creatures that enter the battlefield later in the turn and noncreature permanents that become creatures later in the turn won't get -2/-2."
+   ]
+  },
+  {
+   "name": "Sandstorm Salvager",
+   "oracle_id": "ec19a9bc-6fc1-4150-976b-37a47b165016",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "When this creature enters, create a 3/3 colorless Golem artifact creature token.\n{2}, {T}: Put a +1/+1 counter on each creature token you control. They gain trample until end of turn.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "19",
+   "set": "big",
+   "related": [
+    {
+     "name": "Golem",
+     "type_line": "Token Artifact Creature — Golem",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "In the rare case where +1/+1 counters can’t be put on one or more creature tokens you control, those creature tokens still gain trample until end of turn."
+   ]
+  },
+  {
+   "name": "Lotus Ring",
+   "oracle_id": "ca4d3d27-ea3a-44ac-96e9-b52b563129f8",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Indestructible\nEquipped creature gets +3/+3 and has vigilance and \"{T}, Sacrifice this creature: Add three mana of any one color.\"\nEquip {3}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Indestructible",
+    "Equip"
+   ],
+   "collector_number": "24",
+   "set": "big"
+  }
+ ]
+}

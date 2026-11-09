@@ -1,0 +1,321 @@
+{
+ "batch": 51,
+ "set": [
+  "lci",
+  "woe"
+ ],
+ "cards": [
+  {
+   "name": "Intrepid Paleontologist",
+   "oracle_id": "d6026309-aae9-43e7-938b-69db7af7139c",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "{T}: Add one mana of any color.\n{2}: Exile target card from a graveyard.\nYou may cast Dinosaur creature spells from among cards you own exiled with this creature. If you cast a spell this way, that creature enters with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "381",
+   "set": "lci",
+   "rulings": [
+    "You must still pay all costs and follow any timing restrictions and permissions for Dinosaur creature spells you cast from exile this way. Normally, you'll be able to cast them only during your main phase while the stack is empty.",
+    "Intrepid Paleontologist must be under your control in order to start casting a Dinosaur creature spell using its last ability, but it doesn't need to stay under your control throughout that process or be under your control as the spell resolves. If, for example, you sacrifice Intrepid Paleontologist to pay an additional cost of the spell or it's destroyed in response, the spell will still resolve normally.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Jadelight Spelunker",
+   "oracle_id": "0a72d6cd-b4a7-4c42-90ba-a14f1733d00e",
+   "layout": "normal",
+   "mana_cost": "{X}{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Merfolk Scout",
+   "oracle_text": "When this creature enters, it explores X times. (To have it explore, reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "382",
+   "set": "lci",
+   "rulings": [
+    "If Jadelight Spelunker enters the battlefield without being cast, or if it was cast with X equal to 0, the enters-the-battlefield ability will still trigger, but Jadelight Spelunker won't explore at all.",
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "Deepfathom Echo",
+   "oracle_id": "0c0d6c7e-a7cc-49e0-bf84-3fc33dd10b90",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Spirit",
+   "oracle_text": "At the beginning of combat on your turn, this creature explores. Then you may have it become a copy of another creature you control until end of turn. (To have this creature explore, reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on this creature, then put the card back or put it into your graveyard.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "385",
+   "set": "lci",
+   "rulings": [
+    "Once Deepfathom Echo becomes a copy of another creature, it no longer has its triggered ability until end of turn.",
+    "Deepfathom Echo copies exactly what is printed on the chosen creature (unless that creature is copying something else or is a token; see below). It doesn't copy whether that creature is tapped or untapped, whether it has any counters on it or any Auras and Equipment attached to it, or any non-copy effects that have changed its power, toughness, types, color, or so on.",
+    "Non-copy effects that have already applied to Deepfathom Echo will continue to apply to it. For example, +1/+1 counters on it will still affect it.",
+    "If the copied creature has {X} in its mana cost, X is 0.",
+    "If Deepfathom Echo becomes a copy of a creature that is copying something else, it becomes a copy of whatever that creature is a copy of.",
+    "If the copied creature is a token, Deepfathom Echo copies the original characteristics of that token as stated by the effect that created that token. Deepfathom Echo doesn't become a token (although it might already be one).",
+    "If an ability instructs a creature to explore, its controller reveals the top card of their library. If it's a land card, they'll put it into their hand. Otherwise, they'll put a +1/+1 counter on that creature, then choose to either leave that card on top of their library or put it into their graveyard.",
+    "Once an ability that causes a creature to explore begins to resolve, no player may take any other actions until it's done. Notably, opponents can't try to remove the exploring creature after you reveal a nonland card but before it receives a counter.",
+    "If no card is revealed, most likely because that player's library is empty, the exploring creature receives a +1/+1 counter.",
+    "If a resolving spell or ability instructs a specific creature to explore but that creature has left the battlefield, the creature still explores. If you reveal a nonland card this way, you won't put a +1/+1 counter on anything, but you may put the revealed card into your graveyard. Effects that trigger \"whenever a creature explores\" trigger as appropriate.",
+    "Some spells or abilities might cause a creature to explore multiple times in a row. If you reveal a nonland card when a creature explores and leave it on top of your library, then the creature explores again immediately afterwards, you'll reveal the same card again.",
+    "In some unusual cases, noncreature permanents may explore. For example, if the creature card returned by Defossilize is somehow not a creature once it's on the battlefield, it can still explore. You'll take all the same actions, and you may end up putting a +1/+1 counter on the permanent. (Note that some effects target a creature, and those effects would still require a legal target to have it explore.)"
+   ]
+  },
+  {
+   "name": "Matzalantli, the Great Door // The Core",
+   "oracle_id": "16182e01-22ff-4786-985d-919b47c4aa4d",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact // Legendary Land",
+   "color_identity": [],
+   "keywords": [
+    "Transform",
+    "Fathomless descent"
+   ],
+   "collector_number": "387",
+   "set": "lci",
+   "card_faces": [
+    {
+     "name": "Matzalantli, the Great Door",
+     "mana_cost": "{3}",
+     "type_line": "Legendary Artifact",
+     "oracle_text": "{T}: Draw a card, then discard a card.\n{4}, {T}: Transform Matzalantli. Activate only if there are four or more permanent types among cards in your graveyard. (Artifact, battle, creature, enchantment, land, and planeswalker are permanent types.)"
+    },
+    {
+     "name": "The Core",
+     "mana_cost": "",
+     "type_line": "Legendary Land",
+     "oracle_text": "(Transforms from Matzalantli.)\nFathomless descent — {T}: Add X mana of any one color, where X is the number of permanent cards in your graveyard."
+    }
+   ],
+   "rulings": [
+    "Transforming Matzalantli doesn't cause it to leave the battlefield. It also doesn't cause it to become untapped.",
+    "The Core's activated ability is a mana ability. It doesn't use the stack and can't be responded to.",
+    "Cards with the ability word \"fathomless descent\" have abilities that care how many permanent cards are in your graveyard.",
+    "Some descend triggered abilities include intervening \"if\" clauses (i.e. \"if you have [four or eight] permanent cards in your graveyard\" in the middle of the ability). Each of these abilities checks your graveyard at the moment it would trigger to see if it does. If you don't have the required number of permanent cards in your graveyard at that time, the ability doesn't trigger at all. If it does trigger, it will check again as it tries to resolve. If you don't have the required number of permanent cards in your graveyard at that time, the ability won't resolve and none of its effects will happen."
+   ]
+  },
+  {
+   "name": "Deep-Cavern Bat",
+   "oracle_id": "e46f6644-6bf1-47b1-817c-906bd3eca99f",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Bat",
+   "oracle_text": "Flying, lifelink\nWhen this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink"
+   ],
+   "collector_number": "406",
+   "set": "lci",
+   "rulings": [
+    "If Deep-Cavern Bat leaves the battlefield before its last ability resolves, you'll still look at the target opponent's hand, but you won't exile any cards from it."
+   ]
+  },
+  {
+   "name": "Archon of the Wild Rose",
+   "oracle_id": "180efbd4-0f77-41cc-8ae2-2e6ccf853d10",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Archon",
+   "oracle_text": "Flying\nOther creatures you control that are enchanted by Auras you control have base power and toughness 4/4 and have flying.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "1",
+   "set": "woe",
+   "rulings": [
+    "Archon of the Wild Rose's ability overwrites all previous effects that set the affected creatures' power and/or toughness to specific values. Other effects that set these characteristics to specific values that start to apply after Archon of the Wild Rose enters the battlefield will overwrite this effect.",
+    "Effects that modify a creature's power and/or toughness without setting it will apply to the affected creatures no matter when they started to take effect. The same is true for counters that change a creature's power and/or toughness."
+   ]
+  },
+  {
+   "name": "Archon's Glory",
+   "oracle_id": "bc5631ae-494e-4987-8d17-57674bfbdb9f",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Bargain (You may sacrifice an artifact, enchantment, or token as you cast this spell.)\nTarget creature gets +2/+2 until end of turn. If this spell was bargained, that creature also gains flying and lifelink until end of turn.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Bargain"
+   ],
+   "collector_number": "2",
+   "set": "woe",
+   "rulings": [
+    "Bargain means \"As an additional cost to cast this spell, you may sacrifice an artifact, enchantment, or token.\"",
+    "Bargain represents an optional additional cost. A spell cast with that additional cost paid is \"bargained.\"",
+    "You may sacrifice only one artifact, enchantment, or token to pay a spell's bargain cost.",
+    "If you copy a bargained spell, the copy is also bargained. If a card or token enters the battlefield as a copy of a permanent that's already on the battlefield, the new permanent isn't bargained, even if the original was.",
+    "Some instant and sorcery spells require additional targets if they're bargained. You ignore those targeting requirements if those spells aren't bargained, and you can't bargain those spells unless you can choose the appropriate targets. On the other hand, you can bargain a permanent spell even if you won't be able to choose targets for an enters-the-battlefield ability of that permanent once the spell resolves."
+   ]
+  },
+  {
+   "name": "Break the Spell",
+   "oracle_id": "b9d51e07-851f-4b7b-bffe-7c1efff0714c",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Destroy target enchantment. If a permanent you controlled or a token was destroyed this way, draw a card.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "5",
+   "set": "woe",
+   "rulings": [
+    "If the enchantment has indestructible, it won't be destroyed. You won't draw a card.",
+    "If a permanent you controlled or a token is destroyed with Break the Spell but is put into a zone other than a graveyard as a result, you will draw a card."
+   ]
+  },
+  {
+   "name": "Cheeky House-Mouse // Squeak By",
+   "oracle_id": "db70ddae-0ac1-47f2-9158-8448e337a08f",
+   "layout": "adventure",
+   "mana_cost": "{W} // {W}",
+   "cmc": 1.0,
+   "type_line": "Creature — Mouse // Sorcery — Adventure",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "7",
+   "set": "woe",
+   "card_faces": [
+    {
+     "name": "Cheeky House-Mouse",
+     "mana_cost": "{W}",
+     "type_line": "Creature — Mouse",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "1"
+    },
+    {
+     "name": "Squeak By",
+     "mana_cost": "{W}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Target creature you control gets +1/+1 until end of turn. It can't be blocked by creatures with power 3 or greater this turn."
+    }
+   ],
+   "related": [
+    {
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Increasing a creature's power after it has blocked a creature affected by Squeak By will not remove that blocking creature from combat or make the affected creature unblocked.",
+    "An adventurer card is a permanent card in every zone except the stack, as well as while on the stack if not cast as an Adventure. Ignore its alternative characteristics in those cases. For example, while it’s in your graveyard, Questing Druid is a green creature card whose mana value is 2. It can’t be the target of Tenacious Tomeseeker’s triggered ability (“return target instant or sorcery card from your graveyard to your hand”).",
+    "When casting a spell as an Adventure, use the alternative characteristics and ignore all of the card’s normal characteristics. The spell’s color, mana cost, mana value, and so on are determined by only those alternative characteristics. If the spell leaves the stack, it immediately resumes using its normal characteristics.",
+    "If you cast an adventurer card as an Adventure, use only its alternative characteristics to determine whether it’s legal to cast that spell. For example, if you control Johann, Apprentice Sorcerer (“Once each turn, you may cast an instant or sorcery spell from the top of your library.”) and Questing Druid is on top of your library, you can cast Seek the Beast, but not Questing Druid.",
+    "If a spell is cast as an Adventure, its controller exiles it instead of putting it into its owner’s graveyard as it resolves. For as long as it remains exiled, that player may cast it as a permanent spell. If an Adventure spell leaves the stack in any way other than resolving (most likely by being countered or by failing to resolve because its targets have all become illegal), that card won’t be exiled and the spell’s controller won’t be able to cast it as a permanent later.",
+    "If an adventurer card ends up in exile for any other reason than by exiling itself while resolving, it won’t give you permission to cast it as a permanent spell.",
+    "You must still follow any timing restrictions and permissions for the permanent spell you cast from exile. Normally, you’ll be able to cast it only during your main phase while the stack is empty.",
+    "If an effect copies an Adventure spell, that copy is exiled as it resolves. It ceases to exist as a state-based action; it’s not possible to cast the copy as a permanent.",
+    "An effect may refer to a card, spell, or permanent that “has an Adventure.” This refers to a card, spell, or permanent that has an adventurer card’s set of alternative characteristics, even if they’re not being used and even if that card was never cast as an Adventure.",
+    "If an effect refers to a card, spell, or permanent that has an Adventure, it won’t find an instant or sorcery spell on the stack that’s been cast as an Adventure.",
+    "If an object becomes a copy of an object that has an Adventure, the copy also has an Adventure. If it changes zones, it will either cease to exist (if it’s a token) or cease to be a copy (if it’s a nontoken permanent), and so you won’t be able to cast it as an Adventure.",
+    "If an effect instructs you to choose a card name, you may choose the alternative Adventure name. Consider only the alternative characteristics to determine whether that is an appropriate name to choose.",
+    "Casting a card as an Adventure isn’t casting it for an alternative cost. Effects that allow you to cast a spell for an alternative cost or without paying its mana cost may allow you to apply those to the Adventure."
+   ]
+  },
+  {
+   "name": "Cooped Up",
+   "oracle_id": "3e8bcb44-b875-4fe4-b96f-97a20cbfec93",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature can't attack or block.\n{2}{W}: Exile enchanted creature.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "8",
+   "set": "woe",
+   "rulings": [
+    "Only the controller of Cooped Up may activate its ability."
+   ]
+  }
+ ]
+}

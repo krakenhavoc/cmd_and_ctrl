@@ -1,0 +1,252 @@
+{
+ "batch": 23,
+ "set": [
+  "dsk"
+ ],
+ "cards": [
+  {
+   "name": "Fanatic of the Harrowing",
+   "oracle_id": "878e5e0d-beb9-4f8d-a640-62140c907e52",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "When this creature enters, each player discards a card. If you discarded a card this way, draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "96",
+   "set": "dsk"
+  },
+  {
+   "name": "Meathook Massacre II",
+   "oracle_id": "68957dca-df5c-4051-af22-407cb7e47200",
+   "layout": "normal",
+   "mana_cost": "{X}{X}{B}{B}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Enchantment",
+   "oracle_text": "When Meathook Massacre II enters, each player sacrifices X creatures of their choice.\nWhenever a creature you control dies, you may pay 3 life. If you do, return that card under your control with a finality counter on it.\nWhenever a creature an opponent controls dies, they may pay 3 life. If they don't, return that card under your control with a finality counter on it.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "108",
+   "set": "dsk",
+   "rulings": [
+    "If a creature that dies leaves the graveyard before Meathook Massacre II's second or third ability (as appropriate) resolves, that creature won't return to the battlefield regardless of whether or not life was paid.",
+    "When a token creature dies, Meathook Massacre II's second or third ability (as appropriate) will trigger. The appropriate player has the option to pay 3 life, but regardless of their choice, the token won't return to the battlefield.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Miasma Demon",
+   "oracle_id": "b1df6475-e1e8-4ef3-a7b2-919d5f121c57",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Demon",
+   "oracle_text": "Flying\nWhen this creature enters, you may discard any number of cards. When you do, up to that many target creatures each get -2/-2 until end of turn.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "109",
+   "set": "dsk",
+   "rulings": [
+    "You don't choose targets for Miasma Demon's last ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you discard cards this way. You choose targets for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Osseous Sticktwister",
+   "oracle_id": "33c3a81a-6cea-48c9-b966-67084d96e74f",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Scarecrow",
+   "oracle_text": "Lifelink\nDelirium — At the beginning of your end step, if there are four or more card types among cards in your graveyard, each opponent may sacrifice a nonland permanent of their choice or discard a card. Then this creature deals damage equal to its power to each opponent who didn't sacrifice a permanent or discard a card this way.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Delirium",
+    "Lifelink"
+   ],
+   "collector_number": "112",
+   "set": "dsk",
+   "rulings": [
+    "While resolving Osseous Sticktwister's last ability, the next opponent in turn order chooses a card to be discarded without revealing it, chooses a nonland permanent to be sacrificed, or chooses to do neither. Then each other opponent in turn order does the same. Then all of the actions occur simultaneously. Opponents will know what choices opponents earlier in the turn order made, although cards chosen to be discarded this way won't be revealed until they're discarded at the end of the process.",
+    "Use Osseous Sticktwister's power as its last ability resolves to determine how much damage it deals to each opponent who didn't sacrifice a permanent or discard a card this way. If Osseous Sticktwister is no longer on the battlefield at that time, use its power as it last existed on the battlefield."
+   ]
+  },
+  {
+   "name": "Popular Egotist",
+   "oracle_id": "e6377683-1c36-4786-bd8d-c62ff2d25767",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Rogue",
+   "oracle_text": "{1}{B}, Sacrifice another creature or enchantment: This creature gains indestructible until end of turn. Tap it. (Damage and effects that say \"destroy\" don't destroy it.)\nWhenever you sacrifice a permanent, target opponent loses 1 life and you gain 1 life.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "114",
+   "set": "dsk",
+   "rulings": [
+    "If you sacrifice a permanent as part of casting a spell or activating an ability, Popular Egotist's last ability will resolve before that spell or ability. It will resolve even if that spell or ability is countered.",
+    "If you sacrifice Popular Egotist, its last ability will trigger. If you sacrifice other permanents at the same time, its last ability will trigger for each of those permanents as well."
+   ]
+  },
+  {
+   "name": "Sporogenic Infection",
+   "oracle_id": "659a259d-f75e-4af3-b568-c63225e647de",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nWhen this Aura enters, target player sacrifices a creature of their choice other than enchanted creature.\nWhen enchanted creature is dealt damage, destroy it.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "117",
+   "set": "dsk",
+   "rulings": [
+    "Sporogenic Infection's second ability can target any player, not just the controller of the enchanted creature."
+   ]
+  },
+  {
+   "name": "Bedhead Beastie",
+   "oracle_id": "7143d82a-931a-4918-bb14-37bc5b9a4d99",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Mountaincycling",
+    "Landcycling",
+    "Menace",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "125",
+   "set": "dsk"
+  },
+  {
+   "name": "Boilerbilges Ripper",
+   "oracle_id": "0cbe2a00-4303-4ade-98b5-4172d97f15fb",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Human Assassin",
+   "oracle_text": "When this creature enters, you may sacrifice another creature or enchantment. When you do, this creature deals 2 damage to any target.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "127",
+   "set": "dsk",
+   "rulings": [
+    "You don't choose a target for Boilerbilges Ripper's ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you sacrifice another creature or enchantment this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Clockwork Percussionist",
+   "oracle_id": "3b74c8ac-9c19-45b0-935f-8630b8da4543",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Artifact Creature — Monkey Toy",
+   "oracle_text": "Haste\nWhen this creature dies, exile the top card of your library. You may play it until the end of your next turn.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "130",
+   "set": "dsk",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  },
+  {
+   "name": "Diversion Specialist",
+   "oracle_id": "7130d063-fc1b-408b-97f2-14cb6b55d9cd",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warrior",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\n{1}, Sacrifice another creature or enchantment: Exile the top card of your library. You may play it this turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "132",
+   "set": "dsk",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty."
+   ]
+  }
+ ]
+}

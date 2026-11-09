@@ -1,0 +1,339 @@
+{
+ "batch": 35,
+ "set": [
+  "otj"
+ ],
+ "cards": [
+  {
+   "name": "Bonny Pall, Clearcutter",
+   "oracle_id": "fcb811a8-c6e6-4bc4-b64b-8963a7183669",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Giant Scout",
+   "oracle_text": "Reach\nWhen Bonny Pall enters, create Beau, a legendary blue Ox creature token with \"Beau's power and toughness are each equal to the number of lands you control.\"\nWhenever you attack, draw a card, then you may put a land card from your hand or graveyard onto the battlefield.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "196",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Beau",
+     "type_line": "Token Legendary Creature — Ox",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Beau's power and toughness change as the number of lands you control changes.",
+    "Putting a land card onto the battlefield with Bonny Pall's last ability doesn't count as playing a land. You can put a land card onto the battlefield even if you've already played your land for the turn."
+   ]
+  },
+  {
+   "name": "Doc Aurlock, Grizzled Genius",
+   "oracle_id": "3ca32660-bf5f-4398-bef6-a0ec8bc767cf",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Bear Druid",
+   "oracle_text": "Spells you cast from your graveyard or from exile cost {2} less to cast.\nPlotting cards from your hand costs {2} less.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "201",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Plot",
+     "type_line": "Card",
+     "component": "combo_piece"
+    }
+   ],
+   "rulings": [
+    "Doc Aurlock’s abilities don’t change the mana cost or mana value of any spell. They change only the total cost you pay to cast spells or plot cards from the appropriate zones.",
+    "Doc Aurlock’s abilities can’t reduce the amount of colored mana you pay for a spell or ability. It reduces only the generic mana component of that spell or ability’s cost.",
+    "Plot abilities are written “Plot [cost],” which means “Any time you have priority during your main phase while the stack is empty, you may pay [cost] and exile this card from your hand. It becomes plotted.”",
+    "Exiling a card using its plot ability is a special action. Once you announce you’re taking that action, no other player can respond by trying to remove that card from your hand.",
+    "You can’t cast a plotted card on the same turn it became plotted. On any future turn, you may cast that card from exile without paying its mana cost during your main phase while the stack is empty.",
+    "If you’re casting a plotted card from exile without paying its mana cost, you can’t choose to cast it for any other alternative costs. You can, however, pay additional costs, such as kicker costs. If the plotted card has any mandatory additional costs, those must still be paid to cast the spell.",
+    "If a plotted card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost."
+   ]
+  },
+  {
+   "name": "Eriette, the Beguiler",
+   "oracle_id": "710a3499-64f8-4d2c-8c9c-d58950e47ea7",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warlock",
+   "oracle_text": "Lifelink\nWhenever an Aura you control becomes attached to a nonland permanent an opponent controls with mana value less than or equal to that Aura's mana value, gain control of that permanent for as long as that Aura is attached to it.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "202",
+   "set": "otj",
+   "rulings": [
+    "If the Aura you control becomes unattached from a nonland permanent (most likely because the Aura left the battlefield) before Eriette’s triggered ability resolves, you won’t gain control of that nonland permanent at all.",
+    "If the mana cost of a permanent includes {X}, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Ertha Jo, Frontier Mentor",
+   "oracle_id": "0a66ce8b-af99-411f-8ecb-52a5d2f6af3d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Kor Advisor",
+   "oracle_text": "When Ertha Jo enters, create a 1/1 red Mercenary creature token with \"{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.\"\nWhenever you activate an ability that targets a creature or player, copy that ability. You may choose new targets for the copy.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "203",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Mercenary",
+     "type_line": "Token Creature — Mercenary",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Activated abilities contain a colon. They're generally written \"[Cost]: [Effect].\" Some keyword abilities (such as equip) are activated abilities and will have colons in their reminder text.",
+    "The source of the copy is the same as the source of the original ability.",
+    "The copy will have the same targets as the ability it's copying unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "If the ability is modal (that is, if it says, \"Choose one —\" or similar), the mode is copied and can't be changed.",
+    "If the ability divides damage or distributes counters among a number of targets, the division and number of targets can't be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the activated ability's cost contains a choice, such as a creature to sacrifice or a number of counters to remove, the copy uses that same information. You can't pay the cost again, even if you want to.",
+    "Any choices made when the ability resolves won't have been made yet when it's copied. Any such choices will be made separately when the copy resolves.",
+    "The copy made by Ertha Jo's triggered ability is created on the stack, so it's not \"activated.\"",
+    "If an ability is linked to a second ability, copies of that ability are also linked to that second ability. If the second ability refers to \"the exiled card,\" it refers to all cards exiled by the ability and the copy. For example, if one of Helvault's activated abilities is copied and two cards are exiled, they both return when Helvault is put into a graveyard from the battlefield."
+   ]
+  },
+  {
+   "name": "Form a Posse",
+   "oracle_id": "8923462f-0540-41e8-931e-97b5f1dadd51",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{W}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create X 1/1 red Mercenary creature tokens with \"{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.\"",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "204",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Mercenary",
+     "type_line": "Token Creature — Mercenary",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Intimidation Campaign",
+   "oracle_id": "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, each opponent loses 1 life, you gain 1 life, and you draw a card.\nWhenever you commit a crime, you may return this enchantment to its owner's hand. (It returns only from the battlefield. Targeting opponents, anything they control, and/or cards in their graveyards is a crime.)",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "208",
+   "set": "otj",
+   "rulings": [
+    "A player commits a crime as they cast a spell, activate an ability, or put a triggered ability on the stack that targets at least one opponent, at least one permanent, spell, or ability an opponent controls, and/or at least one card in an opponent’s graveyard.",
+    "The spell or ability that constituted a crime doesn’t have to have resolved yet or at all. As soon as you’re finished casting the spell, activating the ability, or putting the triggered ability on the stack, you’ve committed a crime.",
+    "For example, an ability that triggers when you cast a spell that targets an opponent will trigger at the same time as an ability that triggers whenever you commit a crime. Those abilities can be put on the stack in either order (if you control them both), and they’ll both resolve before the spell that caused them to trigger.",
+    "A player can commit only one crime per spell or ability they control. Targeting multiple opponents, permanents, spells, abilities, and/or cards with the same spell or ability doesn’t constitute committing multiple crimes.",
+    "Changing the target or targets of a spell or ability won’t affect whether or not the controller of that spell or ability has committed a crime. Only the initial targets chosen for that spell or ability are used to determine whether or not its controller committed a crime."
+   ]
+  },
+  {
+   "name": "Jolene, Plundering Pugilist",
+   "oracle_id": "fb8efd6e-b8f8-4da8-ac65-5b745c02d2bb",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Mercenary",
+   "oracle_text": "Whenever you attack with one or more creatures with power 4 or greater, create a Treasure token.\n{1}{R}, Sacrifice a Treasure: Jolene deals 1 damage to any target.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "210",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Kellan, the Kid",
+   "oracle_id": "afacc200-16ff-40f3-9d43-268438131d24",
+   "layout": "normal",
+   "mana_cost": "{G}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Faerie Rogue",
+   "oracle_text": "Flying, lifelink\nWhenever you cast a spell from anywhere other than your hand, you may cast a permanent spell with equal or lesser mana value from your hand without paying its mana cost. If you don't, you may put a land card from your hand onto the battlefield.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink"
+   ],
+   "collector_number": "213",
+   "set": "otj",
+   "rulings": [
+    "If the spell you cast that caused Kellan, the Kid’s last ability to trigger has {X} in its mana cost, X is the value chosen as that spell was cast for the purpose of determining its mana value.",
+    "If the spell you cast that caused Kellan, the Kid’s last ability to trigger is represented by a split card, the characteristics of the half you didn’t cast are ignored while that spell is on the stack. For example, if you cast the Cease half of Cease // Desist from the Murders at Karlov Manor release, that spell’s mana value is 2 because Cease’s mana cost is {1}{B}{G}.",
+    "A permanent spell is an artifact, battle, creature, enchantment, or planeswalker spell.",
+    "If you cast a spell “without paying its mana cost,” you can’t choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs, those must be paid to cast the spell.",
+    "If the permanent spell you cast has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "Putting a land card onto the battlefield with Kellan’s last ability doesn’t count as playing a land. It can put a land card onto the battlefield even if you’ve already played your land for the turn."
+   ]
+  },
+  {
+   "name": "Obeka, Splitter of Seconds",
+   "oracle_id": "1d15a06f-5471-48f2-8c4a-9b0886bef5af",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Ogre Warlock",
+   "oracle_text": "Menace\nWhenever Obeka deals combat damage to a player, you get that many additional upkeep steps after this phase.",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "222",
+   "set": "otj",
+   "rulings": [
+    "Since the upkeep step can only occur during the beginning phase, getting one or more additional upkeep steps outside of the beginning phase actually means you get an additional beginning phase for each of those upkeeps after this phase. In those beginning phases, the untap and draw steps will be skipped.",
+    "The beginning phases containing the additional upkeep steps occur after the current combat phase ends. The last step of the combat phase is the end of combat step.",
+    "Abilities that trigger \"at the beginning of [your] upkeep\" will trigger at the beginning of each additional upkeep step as well.",
+    "After the beginning phases containing the additional upkeep steps, the game proceeds to the next phase as normal, which is likely to be your postcombat main phase (unless something has added even more phases; see below).",
+    "If multiple phases are added to the same point in your turn, the most recently created phase happens first. For example, say Obeka deals combat damage and its ability resolves during your combat damage step, giving you two additional beginning phases each containing an upkeep step after this combat phase. During end of combat, another effect gives you an additional combat phase after this combat phase. The additional combat will happen first, followed by the additional beginning phases containing the two upkeep steps."
+   ]
+  },
+  {
+   "name": "Roxanne, Starfall Savant",
+   "oracle_id": "11765eaf-87a1-48bd-90c1-7a5f21be5918",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Cat Druid",
+   "oracle_text": "Whenever Roxanne enters or attacks, create a tapped colorless artifact token named Meteorite with \"When this token enters, it deals 2 damage to any target\" and \"{T}: Add one mana of any color.\"\nWhenever you tap an artifact token for mana, add one mana of any type that artifact token produced.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "228",
+   "set": "otj",
+   "related": [
+    {
+     "name": "Meteorite",
+     "type_line": "Token Artifact",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You're tapping an artifact token for mana only if you're activating a mana ability of that token that includes the tap symbol ({T}) in its cost. A mana ability produces mana as part of its effect.",
+    "The types of mana are white, blue, black, red, green, and colorless.",
+    "The additional mana is produced by Roxanne, not by the artifact token that you tapped for mana.",
+    "Roxanne doesn't care about any restrictions or riders the artifact token put on the mana it produced. The additional mana Roxanne produces won't have any restrictions or riders."
+   ]
+  }
+ ]
+}

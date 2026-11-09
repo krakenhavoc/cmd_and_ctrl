@@ -1,0 +1,250 @@
+{
+ "batch": 2,
+ "set": [
+  "eoe"
+ ],
+ "cards": [
+  {
+   "name": "Divert Disaster",
+   "oracle_id": "76fdbc2c-d2b1-466f-9230-06e187bcc9e6",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter target spell unless its controller pays {2}. If they do, you create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "55",
+   "set": "eoe",
+   "related": [
+    {
+     "name": "Lander",
+     "type_line": "Token Artifact — Lander",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Mechan Shieldmate",
+   "oracle_id": "d0025d29-d652-4af8-b367-13142d5532df",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Robot Soldier",
+   "oracle_text": "Defender\nAs long as an artifact entered the battlefield under your control this turn, this creature can attack as though it didn't have defender.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Defender"
+   ],
+   "collector_number": "65",
+   "set": "eoe",
+   "rulings": [
+    "Once an artifact enters the battlefield under your control, Mechan Shieldmate can attack that turn as though it didn’t have defender. It doesn’t matter if that artifact stays an artifact or stays under your control."
+   ]
+  },
+  {
+   "name": "Mouth of the Storm",
+   "oracle_id": "832fbb1f-0ff5-4d6c-b1ee-2231923a6f64",
+   "layout": "normal",
+   "mana_cost": "{6}{U}",
+   "cmc": 7.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Flying\nWard {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nWhen this creature enters, creatures your opponents control get -3/-0 until your next turn.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Ward"
+   ],
+   "collector_number": "70",
+   "set": "eoe",
+   "rulings": [
+    "Mouth of the Storm’s last ability affects only creatures your opponents control at the time it resolves. Creatures they begin to control after the ability resolves but before your next turn begins won’t get -3/-0."
+   ]
+  },
+  {
+   "name": "Nanoform Sentinel",
+   "oracle_id": "07155470-c5ab-41ae-ade3-bdc06d357379",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Robot",
+   "oracle_text": "Whenever this creature becomes tapped, untap another target permanent. This ability triggers only once each turn.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "71",
+   "set": "eoe"
+  },
+  {
+   "name": "Quantum Riddler",
+   "oracle_id": "58582fac-4c42-4a1c-9ab1-4a892b500da4",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Sphinx",
+   "oracle_text": "Flying\nWhen this creature enters, draw a card.\nAs long as you have one or fewer cards in hand, if you would draw one or more cards, you draw that many cards plus one instead.\nWarp {1}{U}",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Warp"
+   ],
+   "collector_number": "72",
+   "set": "eoe",
+   "rulings": [
+    "Quantum Riddler’s replacement effect applies to an instruction to draw more than one card before any replacement effects apply to individual cards drawn. For example, if you control Thought Reflection (an enchantment with “If you would draw a card, draw two cards instead.”) and you cast Decode Transmissions while you have one or fewer other cards in your hand, you’ll apply Quantum Riddler’s replacement effect first, changing the “draw two cards” instruction to “draw three cards.” Then Thought Reflection’s replacement effect will apply to each of those three individual card draws, causing you to draw a total of six cards.",
+    "Once a replacement effect has been applied to an event, it can’t be applied again to the newly modified event. For example, once Quantum Riddler’s replacement effect has modified the “draw two cards” instruction of Decode Transmissions, Thought Reflection’s replacement effect can double the resulting card draws without Quantum Riddler’s replacement effect applying again.",
+    "If an effect instructs you to draw more than one card, Quantum Riddler’s replacement effect applies to that entire instruction, not the individual card draws represented by the instruction. For example, if you control Quantum Riddler and you cast Decode Transmissions while you have no other cards in your hand, Quantum Riddler’s replacement effect will apply, and you’ll draw three cards instead of two."
+   ]
+  },
+  {
+   "name": "Selfcraft Mechan",
+   "oracle_id": "4ba4cb4b-f421-4abd-8fcf-a01174447790",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Robot Artificer",
+   "oracle_text": "When this creature enters, you may sacrifice an artifact. When you do, put a +1/+1 counter on target creature and draw a card.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "74",
+   "set": "eoe",
+   "rulings": [
+    "You don’t choose a target for Selfcraft Mechan’s ability at the time it triggers. Rather, a second “reflexive” ability triggers when you sacrifice an artifact this way. You choose a target for that ability as it goes on the stack. Each player may respond to this triggered ability as normal. Then if the target creature is an illegal target as the reflexive trigger tries to resolve, it won’t resolve and you won’t draw a card."
+   ]
+  },
+  {
+   "name": "Steelswarm Operator",
+   "oracle_id": "770b2097-5178-42d2-be6c-393b4bfe3727",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Robot Soldier",
+   "oracle_text": "Flying\n{T}: Add {U}. Spend this mana only to cast an artifact spell.\n{T}: Add {U}{U}. Spend this mana only to activate abilities of artifact sources.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "80",
+   "set": "eoe",
+   "rulings": [
+    "An “artifact source” is any object with the card type artifact. This means you could spend the mana from Steelswarm Operator’s last ability to activate an ability of an artifact you control or an artifact card in your hand or graveyard, for example."
+   ]
+  },
+  {
+   "name": "Weftwalking",
+   "oracle_id": "08af6751-5848-47fb-95f5-57215e899460",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, if you cast it, shuffle your hand and graveyard into your library, then draw seven cards.\nThe first spell each player casts during each of their turns may be cast without paying its mana cost.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "86",
+   "set": "eoe",
+   "rulings": [
+    "If you cast a spell “without paying its mana cost,” you can’t choose to cast it for any alternative costs. You can, however, pay additional costs, such as kicker costs. If the spell has any mandatory additional costs, such as that of Embrace Oblivion, those must be paid to cast the spell."
+   ]
+  },
+  {
+   "name": "Comet Crawler",
+   "oracle_id": "0c1b6305-8863-43e0-b50d-ae1c5e31be55",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Insect Horror",
+   "oracle_text": "Lifelink\nWhenever this creature attacks, you may sacrifice another creature or artifact. If you do, this creature gets +2/+0 until end of turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "92",
+   "set": "eoe"
+  },
+  {
+   "name": "Monoist Circuit-Feeder",
+   "oracle_id": "de70a6bb-32ed-4a89-a522-c2a71f08fb02",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Artifact Creature — Nautilus",
+   "oracle_text": "Flying\nWhen this creature enters, until end of turn, target creature you control gets +X/+0 and target creature an opponent controls gets -0/-X, where X is the number of artifacts you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "110",
+   "set": "eoe",
+   "rulings": [
+    "If you can’t choose both a creature you control and a creature an opponent controls as targets at the time Monoist Circuit-Feeder’s last ability is put onto the stack, the ability will be removed from the stack and none of its effects will occur.",
+    "The value of X is calculated only once, as Monoist Circuit-Feeder’s last ability resolves.",
+    "If one target becomes illegal before Monoist Circuit-Feeder’s last ability resolves, the remaining legal target will still get +X/+0 or -0/-X, as appropriate."
+   ]
+  }
+ ]
+}
