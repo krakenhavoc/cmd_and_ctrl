@@ -77,6 +77,7 @@ func TestStdB3EveryCardIsRegisteredFull(t *testing.T) {
 // stdB3Resolve passes priority until the stack is empty.
 func stdB3Resolve(t *testing.T, g *game.Game) {
 	t.Helper()
+	passPriorityAroundTable(t, g)
 	for i := 0; i < 12 && g.Stack.Size() > 0; i++ {
 		passPriorityAroundTable(t, g)
 	}
@@ -178,8 +179,7 @@ func TestStdB3KavLandseekerSacrificesTheLanderAtTheEndStepOnYourNextTurn(t *test
 		t.Fatalf("%d Landers, want 1", got)
 	}
 	// This turn's end step is not "your next turn".
-	advanceTo(t, g, game.StepEnd)
-	stdB3Resolve(t, g)
+	advanceThroughEndStep(t, g)
 	if got := eoeCDCount(g, me.ID, "Lander"); got != 1 {
 		t.Errorf("the Lander was sacrificed in the turn it was made: %d", got)
 	}
@@ -280,7 +280,7 @@ func TestStdB3RuinousRampageBothModes(t *testing.T) {
 func TestStdB3SystemsOverrideStealsAndChargesASpacecraft(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	ship := b12Permanent(g, opp.ID, "Their Ship", "Artifact — Spacecraft")
+	ship := b12Push(g, opp.ID, "Debris Field Crusher", "Artifact — Spacecraft", stdB3CrusherOracle, 1, 5)
 	eoeCDSet(g, ship, func(c *game.Card) { c.Tapped = true })
 	avB1Cast(t, g, me, game.Card{Name: "Systems Override", TypeLine: "Sorcery", ManaCost: "{2}{R}", OracleID: stdB3OverrideOracle},
 		game.CastSpellParams{Targets: cardRefs(ship)})
@@ -298,8 +298,7 @@ func TestStdB3SystemsOverrideStealsAndChargesASpacecraft(t *testing.T) {
 	if !got.IsCreature() || !game.HasKeyword(&got, "haste") {
 		t.Error("with ten charge counters it is a creature with haste")
 	}
-	advanceTo(t, g, game.StepEnd)
-	stdB3Resolve(t, g)
+	advanceThroughEndStep(t, g)
 	after := layeredCard(t, g, ship)
 	if after.Counters[game.CounterCharge] != 0 {
 		t.Errorf("%d charge counters after the end step, want 0", after.Counters[game.CounterCharge])
@@ -400,8 +399,7 @@ func TestStdB3TerminalVelocityPutsAPermanentInWithHasteAndAFuse(t *testing.T) {
 	}
 	// At the beginning of your end step, sacrifice it; it leaves, dealing
 	// damage equal to its mana value (4) to each creature.
-	advanceTo(t, g, game.StepEnd)
-	stdB3Resolve(t, g)
+	advanceThroughEndStep(t, g)
 	if g.Battlefield.Contains(ogre) {
 		t.Fatal("sacrificed at your end step")
 	}
@@ -462,8 +460,7 @@ func TestStdB3PerigeeBeckonerGraceEndsWithTheTurn(t *testing.T) {
 	stdB3Resolve(t, g)
 	pickIfAsked(t, g, me.ID, bear)
 	stdB3Resolve(t, g)
-	advanceTo(t, g, game.StepEnd)
-	stdB3Resolve(t, g)
+	advanceThroughEndStep(t, g)
 	advanceTo(t, g, game.StepCleanup)
 	if err := stdB3Pass(g); err != nil {
 		t.Fatal(err)

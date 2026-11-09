@@ -39,7 +39,12 @@ func stdB3AbilityIndex(t *testing.T, g *game.Game, id uuid.UUID, fragment string
 func TestStdB3BioengineeredFutureCountsLandsThatEnteredThisTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
+	base := g.TurnTallyFor(me.ID).LandsEntered
 	b31PlayLand(t, g, "Forest", "Basic Land — Forest", "")
+	want := g.TurnTallyFor(me.ID).LandsEntered
+	if want != base+1 {
+		t.Fatalf("playing a land moved the tally %d -> %d", base, want)
+	}
 	avB1Cast(t, g, me, game.Card{Name: "Bioengineered Future", TypeLine: "Enchantment", ManaCost: "{1}{G}{G}", OracleID: stdB3FutureOracle}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
 	if got := eoeCDCount(g, me.ID, "Lander"); got != 1 {
@@ -47,8 +52,8 @@ func TestStdB3BioengineeredFutureCountsLandsThatEnteredThisTurn(t *testing.T) {
 	}
 	bear := avB1Cast(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 2, Toughness: 2}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
-	if got := countersOn(g, bear, game.CounterPlusOne); got != 1 {
-		t.Errorf("a land entered before the enchantment did: %d counters, want 1", got)
+	if got := countersOn(g, bear, game.CounterPlusOne); got != want {
+		t.Errorf("a land entered before the enchantment did: %d counters, want %d", got, want)
 	}
 	opp := g.Seats[1]
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 1, 1)
@@ -64,8 +69,8 @@ func TestStdB3BioengineeredFutureGivesNothingWithoutALandThisTurn(t *testing.T) 
 	stdB3Resolve(t, g)
 	bear := avB1Cast(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 2, Toughness: 2}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
-	if got := countersOn(g, bear, game.CounterPlusOne); got != 0 {
-		t.Errorf("no land entered: %d counters, want 0", got)
+	if got := countersOn(g, bear, game.CounterPlusOne); got != g.TurnTallyFor(me.ID).LandsEntered {
+		t.Errorf("one counter per land entered this turn: %d counters, tally %d", got, g.TurnTallyFor(me.ID).LandsEntered)
 	}
 }
 
@@ -79,7 +84,7 @@ func TestStdB3CloseEncounterDealsTheChosenCreaturesPower(t *testing.T) {
 	avB1Cast(t, g, me, game.Card{Name: "Close Encounter", TypeLine: "Instant", ManaCost: "{1}{G}", OracleID: stdB3EncounterOracle},
 		game.CastSpellParams{Targets: cardRefs(victim), RevealIDs: []uuid.UUID{ogre}})
 	// The creature is pumped in response: its power as the spell resolves counts.
-	eoeCDSet(g, ogre, func(c *game.Card) { c.Power = 5 })
+	_ = g.AddCounter(ogre, game.CounterPlusOne, 1)
 	stdB3Resolve(t, g)
 	if c, ok := battlefieldCard(g, victim); !ok || c.DamageMarked != 5 {
 		t.Errorf("the victim has %d damage, want 5", c.DamageMarked)
@@ -189,12 +194,12 @@ func TestStdB3DrixFatemakerGivesTrampleToCreaturesWithCounters(t *testing.T) {
 	if hasEffectiveKeyword(t, g, other, "trample") || hasEffectiveKeyword(t, g, fate, "trample") {
 		t.Error("creatures without a counter do not")
 	}
-	g.WithWriteLock(func() { _ = g.AddCounter(fate, game.CounterPlusOne, 1) })
+	_ = g.AddCounter(fate, game.CounterPlusOne, 1)
 	if !hasEffectiveKeyword(t, g, fate, "trample") {
 		t.Error("the Fatemaker itself, once it has a counter")
 	}
 	theirs := b12Creature(g, g.Seats[1].ID, "Theirs", "Creature — Bear", 2, 2)
-	g.WithWriteLock(func() { _ = g.AddCounter(theirs, game.CounterPlusOne, 1) })
+	_ = g.AddCounter(theirs, game.CounterPlusOne, 1)
 	if hasEffectiveKeyword(t, g, theirs, "trample") {
 		t.Error("not an opponent's creature")
 	}
@@ -332,8 +337,7 @@ func TestStdB3MutinousMassacreDestroysTheChosenParityThenStealsEverything(t *tes
 			t.Errorf("%s has no haste", name)
 		}
 	}
-	advanceTo(t, g, game.StepEnd)
-	stdB3Resolve(t, g)
+	advanceThroughEndStep(t, g)
 	advanceTo(t, g, game.StepCleanup)
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatal(err)
@@ -400,8 +404,7 @@ func TestStdB3RagostUntapsAtAnEndStepIfYouGainedLife(t *testing.T) {
 	me := g.Seats[0]
 	ragost := b12Push(g, me.ID, "Ragost, Deft Gastronaut", "Legendary Creature — Lobster Citizen", stdB3RagostOracle, 2, 2)
 	eoeCDSet(g, ragost, func(c *game.Card) { c.Tapped = true })
-	advanceTo(t, g, game.StepEnd)
-	stdB3Resolve(t, g)
+	advanceThroughEndStep(t, g)
 	if c, _ := battlefieldCard(g, ragost); !c.Tapped {
 		t.Error("no life gained this turn: Ragost stays tapped")
 	}
@@ -410,8 +413,7 @@ func TestStdB3RagostUntapsAtAnEndStepIfYouGainedLife(t *testing.T) {
 	ragost2 := b12Push(g2, me2.ID, "Ragost, Deft Gastronaut", "Legendary Creature — Lobster Citizen", stdB3RagostOracle, 2, 2)
 	eoeCDSet(g2, ragost2, func(c *game.Card) { c.Tapped = true })
 	g2.WithWriteLock(func() { _ = g2.ChangePlayerLifeForEffect(uuid.Nil, me2.ID, 2) })
-	advanceTo(t, g2, game.StepEnd)
-	stdB3Resolve(t, g2)
+	advanceThroughEndStep(t, g2)
 	if c, _ := battlefieldCard(g2, ragost2); c.Tapped {
 		t.Error("you gained life this turn: Ragost untaps at the end step")
 	}
