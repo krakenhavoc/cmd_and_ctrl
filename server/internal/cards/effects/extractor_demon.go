@@ -27,15 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Optional(Targeting(On(game.EventLTB, anotherCreatureLeftTheBattlefield,
 				"Extractor Demon — target player mills two cards",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return MillCards{Player: t.ID, N: 2}.Apply(ctx)
-						}
-					}
-					return nil
-				}), TargetPlayer("target player")),
+				targetPlayerMillsTwo), TargetPlayer("target player")),
 				"Extractor Demon — have target player mill two cards?"),
 		},
 		Activated: []ActivatedAbility{Unearth("{2}{B}")},

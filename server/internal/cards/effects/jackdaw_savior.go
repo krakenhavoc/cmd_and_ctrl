@@ -35,14 +35,7 @@ func init() {
 			AppliesTo:   jackdawSaviorFlyerDied,
 			TargetsFrom: jackdawSaviorLesserCreatureClause,
 			Key:         "Jackdaw Savior — return another creature card with lesser mana value from your graveyard to the battlefield",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
-			},
+			Effect:      moseoInfusion,
 		}},
 	})
 }

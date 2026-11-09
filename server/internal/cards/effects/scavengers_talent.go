@@ -52,15 +52,7 @@ func init() {
 				Do(CreateToken{Template: FoodToken(), N: 1})))),
 			AtLevel(2, Targeting(On(game.EventSacrifice, scavengersTalentYouSacrificed,
 				"Scavenger's Talent — target player mills two cards",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return MillCards{Player: t.ID, N: 2}.Apply(ctx)
-						}
-					}
-					return nil
-				}), TargetPlayer("target player"))),
+				targetPlayerMillsTwo), TargetPlayer("target player"))),
 			AtLevel(3, AtYourEndStep("Scavenger's Talent — you may sacrifice three other nonland permanents; if you do, return a creature card from your graveyard with a finality counter",
 				func(g *game.Game, item *game.StackItem) error {
 					pay := SacrificePayment(3, "other nonland permanent", "other nonland permanents", game.PermanentQuery{})

@@ -89,19 +89,7 @@ func init() {
 				Label:   "−2: Tap target creature. Put two stun counters on it.",
 				Cost:    LoyaltyCost(-2),
 				Targets: TargetCreature("target creature"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						if err := (TapTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-						return AddCounter{Target: t.ID, Kind: game.CounterStun, N: 2}.Apply(ctx)
-					}
-					return nil
-				},
+				Effect:  msc5TapAndStunTwice,
 			},
 		},
 	})

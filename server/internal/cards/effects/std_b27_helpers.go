@@ -78,3 +78,15 @@ func stdB27FlickerObject(ctx *Context, ref game.ObjectRef) error {
 	}
 	return Flicker{Target: ref.ID, Controller: c.Owner}.Apply(ctx)
 }
+
+// targetPlayerMillsTwo is "target player mills two cards": the still-legal
+// player target mills two (Scavenger's Talent, Extractor Demon).
+func targetPlayerMillsTwo(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return MillCards{Player: t.ID, N: 2}.Apply(ctx)
+		}
+	}
+	return nil
+}
