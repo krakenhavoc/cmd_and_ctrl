@@ -3368,6 +3368,13 @@ export interface OptionalCostView {
   // cover, and fewer options than `min` means it cannot be taken now.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #5358: a kicker that returns a permanent (Chocobo Kick's "Kicker—Return
+  // a land you control to its owner's hand"): AdditionalCostView's
+  // `return_label` / `return_options`, off the same walk. Fewer cards than
+  // `min` means the offer cannot be taken now. Taken, the picks ride
+  // cast_spell as `return_ids`.
+  return_label?: string;
+  return_options?: LegalTargetsView;
   // #1703: blight N (CR 701.68a) — put `blight` -1/-1 counters on one
   // creature you control. `blight_options` is your creatures;
   // present-and-empty means you control none. The pick rides

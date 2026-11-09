@@ -31,6 +31,12 @@ import "github.com/google/uuid"
 //     its OWNER's hand (CR 400.3): a permanent you control but don't own
 //     goes to its owner. Nothing dies and nothing is sacrificed.
 //
+// #5358: the same component on an OPTIONAL slot is a kicker (Chocobo
+// Kick's "Kicker—Return a land you control to its owner's hand"): it
+// joins the plan only when announced (CR 601.2b), and from there it is
+// validated, asked about and paid exactly as above. Unkicked, a
+// return_ids is refused as on any spell without the cost.
+//
 // A tapped permanent pays (returning is not tapping), and so may one
 // tapped for mana while the spell is being cast: CR 601.2g has mana
 // abilities activated before CR 601.2h pays the costs, so the auto-tapper
@@ -39,8 +45,11 @@ import "github.com/google/uuid"
 // a hexproof permanent pays too.
 
 // planReturnToHand is the return-to-hand component the announced plan
-// demands, or nil. effects.Register allows it only on the mandatory slot,
-// so there is at most one.
+// demands, or nil: the mandatory slot's, or (#5358) an announced optional
+// cost's — Chocobo Kick's "Kicker—Return a land you control to its
+// owner's hand". effects.Register allows at most one across the two
+// slots (checkOneCastReturn), and a card-shaped optional cost is paid at
+// most once, so there is at most one.
 func planReturnToHand(plan []costPayment) *ReturnToHandCost {
 	for _, pay := range plan {
 		if !pay.cost.ReturnToHand.Empty() {

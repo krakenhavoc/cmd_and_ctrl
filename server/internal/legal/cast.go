@@ -1198,7 +1198,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	// #5247: and a return-a-permanent cost names its permanent the same
 	// way. A seat with nothing to return is not offered the cast (CR 118.3).
-	returnIDs, ok := e.returnCastPayment(card.InstanceID, addCost)
+	// #5358: the clause may be an announced kicker's.
+	returnIDs, ok := e.returnCastPayment(card.InstanceID, addCost, optional, chosen)
 	if !ok {
 		return
 	}

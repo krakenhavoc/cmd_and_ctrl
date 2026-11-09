@@ -1872,6 +1872,16 @@ type OptionalCostView struct {
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 
+	// ReturnLabel / ReturnOptions are a kicker that returns a permanent
+	// (#5358, Chocobo Kick's "Kicker—Return a land you control to its
+	// owner's hand"): AdditionalCostView's two fields of the same names,
+	// off the same engine walk (game.ReturnToHandOptionsForEffect). min /
+	// max are the clause's count; fewer cards than `min` means the offer
+	// cannot be taken right now (CR 118.3). Taking it, the caster names
+	// the permanent on cast_spell's `return_ids`.
+	ReturnLabel   string            `json:"return_label,omitempty"`
+	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
+
 	// Blight is the N of "you may blight N" (CR 701.68a): put N -1/-1
 	// counters on a creature you control. BlightOptions is the
 	// viewer's creatures, present-and-empty when they control none (CR
@@ -8663,6 +8673,14 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 					v.MaxTimes = max(affordable, 1)
 				}
 			}
+		}
+		// #5358: a kicker that returns a permanent — the mandatory slot's
+		// walk and view, with the spell as the source (it is on no
+		// battlefield, so it is never a pick), so the picker offers exactly
+		// the permanents the validator accepts (#544).
+		if rc := oc.ReturnToHand; !rc.Empty() {
+			v.ReturnLabel = rc.Label
+			v.ReturnOptions = returnCostOptions(g, caster, castID, rc)
 		}
 		if oc.Blight > 0 {
 			v.Blight = oc.Blight
