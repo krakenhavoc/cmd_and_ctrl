@@ -1457,6 +1457,17 @@ type Card struct {
 	// mana ability".
 	ManaAbilityText PrintedFact
 
+	// NoAbilitiesText records whether the card's printed oracle text is
+	// empty, so the card has no abilities at all (a vanilla creature), per
+	// NoAbilitiesInText. Stamped by the deck importer beside
+	// ManaAbilityText, for the same reason: game.Card carries no oracle
+	// text. PrintedUnknown (the zero value) on a card that was never
+	// imported. Re-derived from the face that is up by SetFace, and a
+	// copiable value (PrintedValues). Read through PrintsNoAbilities, for
+	// Fang-Druid Summoner's and Rise from the Wreck's "creature card with
+	// no abilities" (#4464).
+	NoAbilitiesText PrintedFact
+
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
 	// object's colour-defining ability (devoid) at all. A copiable

@@ -248,6 +248,10 @@ func (c *Card) SetFace(i int) {
 	if c.ManaAbilityText != PrintedUnknown {
 		c.ManaAbilityText = PrintedFactOf(ManaAbilityInText(f.TypeLine, f.OracleText))
 	}
+	// #4464: and for "a creature card with no abilities".
+	if c.NoAbilitiesText != PrintedUnknown {
+		c.NoAbilitiesText = PrintedFactOf(NoAbilitiesInText(f.OracleText))
+	}
 	// ADR 0107 §4: a double-faced card's printed keywords are the face
 	// that is up's too (CR 712.8d, 712.8e), and so are a flip card's
 	// (CR 710.2, ADR 0151 decision 3). Only when the importer recorded

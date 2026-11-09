@@ -113,6 +113,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
+  - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
   - [When in doubt](#when-in-doubt)
 
 ### Recipe
@@ -13697,6 +13698,41 @@ StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
   hold (CR 123.7a).
 - **No card moves a sticker** (CR 123.3d): no Commander-legal card does, so
   nothing implements it; the dump search is in the amendment.
+
+### Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)
+
+Four small seams came with the leftovers of batches 13 and 14.
+
+```go
+// "a creature card with no abilities" (Fang-Druid Summoner, Rise from the Wreck)
+Predicate: b13CreatureCardWithNoAbilities            // SearchLibrary, a func(game.Card) bool
+TargetCardInGraveyard("…", YouOwn(), b13NoAbilities()) // a target clause
+
+// "Exile X artifact cards from your graveyard" as an ability's cost (Winter, Cursed Rider)
+Cost: Plus(ManaCost("{2}{U}{B}"), TapCost(), ExileXFromGraveyardAsCost("X artifact cards", isArtifactCard))
+// the effect: x := len(ctx.Exiled())
+
+// "destroy up to one target artifact or enchantment with mana value X" off a cycling trigger (Webstrike Elite)
+ManaValueEqualsTheEventAmount(TargetPermanent("…", Or(Artifact(), Enchantment())).WithCount(0, 1))
+
+// "except it's 0/0" (Mimeoplasm, Revered One)
+Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
+```
+
+- **"No abilities" is the printed text.** `game.Card.NoAbilitiesText` is stamped by the deck importer from the
+  oracle text (`game.NoAbilitiesInText`, empty text and nothing else), re-derived by `SetFace`, copied with the other
+  printed values, and read through `game.PrintsNoAbilities`. A card the importer never read (a token, a fixture, a
+  restore point from before the stamp) is `PrintedUnknown` and is not "with no abilities". A test fixture says so with
+  `NoAbilitiesText: game.PrintedYes`.
+- **"Exile X cards" on an ability** is `game.ExileCost.CountIsX`, an any-number clause with no floor: the activator
+  announces X by naming that many matching cards, and `ctx.Exiled()` is X. It is graveyard-only, and the wire is the
+  existing `exile_cost_any_number` picker. A cast's "exile X" stays `ExileXFromGraveyardCost`.
+- **An event amount** bounds a triggered clause two ways now: `ManaValueAtMostTheEventAmount` and
+  `ManaValueEqualsTheEventAmount` (`game.TargetSpec.ManaValueEqualsEventAmount`), both read off the trigger's event
+  (`EventCycle.Amount` is the cycling cost's X).
+- **An "as it enters" exile from a graveyard** has no replacement-prompt kind; it is `Spec.AsEnters` queueing a
+  choose-cards prompt over the graveyard whose keyed answer exiles with `ExileLinkedForEffect` (so the cards are
+  "exiled with it", CR 607.2a) and then puts the counters on.
 
 ### When in doubt
 

@@ -152,7 +152,7 @@ func (g *Game) settleBatchEndTriggersLocked() {
 			if t.Key != s.Key || t.AtBatchEnd == nil {
 				continue
 			}
-			if !t.AtBatchEnd.holds(&src, g) {
+			if !t.AtBatchEnd.holds(&src, g, s.Event) {
 				continue
 			}
 			ev := s.Event
@@ -189,9 +189,23 @@ type BatchEndCondition struct {
 	// Total reaches it: "deals 4 or more damage", "attack with two or
 	// more Spiders". Read with Total only.
 	AtLeast int
+
+	// AttackersInclude is "if a <A> and a <B> attacked this combat"
+	// (Fearless Swashbuckler: "Whenever you attack, if a Pirate and a Vehicle
+	// attacked this combat", #4464): the ability is dispatched only if, among
+	// the creatures declared as attackers in the staged event's batch, each
+	// named subtype is carried by at least one, which may be one creature
+	// carrying them all. The engine emits one EventAttack per attacker, so only
+	// the settled batch is the whole declaration (CR 508.1, 603.4). Plain data:
+	// subtypes read through the layers (Card.HasSubtypeWord). Read alone, with
+	// no Total.
+	AttackersInclude []string
 }
 
-func (c *BatchEndCondition) holds(source *Card, g *Game) bool {
+func (c *BatchEndCondition) holds(source *Card, g *Game, first Event) bool {
+	if len(c.AttackersInclude) > 0 {
+		return g.attackersIncludeLocked(source, first, c.AttackersInclude)
+	}
 	if c.Total != BatchTotalNone {
 		return true // batchTotalLocked decides, with the totals in hand
 	}
@@ -207,4 +221,39 @@ func (c *BatchEndCondition) holds(source *Card, g *Game) bool {
 		return false
 	}
 	return false
+}
+
+// attackersIncludeLocked reports whether the creatures `source`'s controller
+// declared as attackers in `first`'s batch carry every subtype in `want`
+// (BatchEndCondition.AttackersInclude). Events are appended in batch order, so
+// the walk runs back from the end and stops once the batch is behind it. A
+// creature that has already left the battlefield is read where it is now.
+//
+// Caller must hold g.mu.
+func (g *Game) attackersIncludeLocked(source *Card, first Event, want []string) bool {
+	have := make(map[string]bool, len(want))
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		ev := g.Events[i]
+		if ev.Batch < first.Batch {
+			break
+		}
+		if ev.Kind != EventAttack || ev.Batch != first.Batch || ev.Actor != source.Controller {
+			continue
+		}
+		c := g.findCardByIDLocked(ev.CardID)
+		if c == nil || !c.IsCreature() {
+			continue
+		}
+		for _, sub := range want {
+			if c.HasSubtypeWord(sub) {
+				have[sub] = true
+			}
+		}
+	}
+	for _, sub := range want {
+		if !have[sub] {
+			return false
+		}
+	}
+	return true
 }

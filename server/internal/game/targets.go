@@ -601,6 +601,17 @@ type TargetSpec struct {
 	// effects.ManaValueAtMostTheEventAmount.
 	ManaValueAtMostEventAmount bool
 
+	// ManaValueEqualsEventAmount is "with mana value X", where X is the
+	// triggering event's Amount (Webstrike Elite: "When you cycle this
+	// card, destroy up to one target artifact or enchantment with mana
+	// value X", X being the cycling cost's X, #4464). ManaValueAtMostEventAmount's
+	// twin for an exact value: fixed when the trigger fires, so it is known
+	// when the target is chosen (CR 603.3d) and re-checked on resolution
+	// (CR 608.2b). DATA, judged in the same gate; a walk with no fired
+	// trigger admits NOTHING. Build it with
+	// effects.ManaValueEqualsTheEventAmount.
+	ManaValueEqualsEventAmount bool
+
 	// OpponentSlot is "for each opponent, … target … that player
 	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
 	// #4128): the clause belongs to the n-th seat (1-based) after the
@@ -1880,18 +1891,25 @@ func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
 	return who != uuid.Nil && c.Controller == who
 }
 
-// eventAmountAdmits is ManaValueAtMostEventAmount's gate: true without the
-// flag, and with it only a candidate whose mana value is at most the
+// eventAmountAdmits is ManaValueAtMostEventAmount's and
+// ManaValueEqualsEventAmount's gate: true without either flag, and with one
+// only a candidate whose mana value is at most (or exactly) the
 // triggering event's Amount. No fired trigger admits nothing.
 func (s *TargetSpec) eventAmountAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.ManaValueAtMostEventAmount {
+	if !s.ManaValueAtMostEventAmount && !s.ManaValueEqualsEventAmount {
 		return true
 	}
 	if src.Trigger == nil || !src.Trigger.Fired() {
 		return false
 	}
 	mv, ok := g.ManaValueForEffect(c)
-	return ok && mv <= src.Trigger.Event.Amount
+	if !ok {
+		return false
+	}
+	if s.ManaValueEqualsEventAmount {
+		return mv == src.Trigger.Event.Amount
+	}
+	return mv <= src.Trigger.Event.Amount
 }
 
 // chooserAdmits is ControlledByChooser's gate (#2055): true without the

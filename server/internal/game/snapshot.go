@@ -1051,7 +1051,10 @@ type cardSnapshot struct {
 	// ManaAbilityText is Card.ManaAbilityText (#3943). Additive; absent
 	// means PrintedUnknown, which is what every older file says, and
 	// HasPrintedManaAbility then asks the catalog as it always did.
-	ManaAbilityText PrintedFact         `json:"manaAbilityText,omitempty"`
+	ManaAbilityText PrintedFact `json:"manaAbilityText,omitempty"`
+	// NoAbilitiesText is Card.NoAbilitiesText (#4464). Additive; absent
+	// means PrintedUnknown, which is what every older file says.
+	NoAbilitiesText PrintedFact         `json:"noAbilitiesText,omitempty"`
 	Owner           uuid.UUID           `json:"owner"`
 	Controller      uuid.UUID           `json:"controller"`
 	Tapped          bool                `json:"tapped"`
@@ -3030,6 +3033,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintsManaAbility:        c.PrintsManaAbility,
 		PrintsTapAbility:         c.PrintsTapAbility,
 		ManaAbilityText:          c.ManaAbilityText,
+		NoAbilitiesText:          c.NoAbilitiesText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -4161,6 +4165,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintsManaAbility:        c.PrintsManaAbility,
 		PrintsTapAbility:         c.PrintsTapAbility,
 		ManaAbilityText:          c.ManaAbilityText,
+		NoAbilitiesText:          c.NoAbilitiesText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
