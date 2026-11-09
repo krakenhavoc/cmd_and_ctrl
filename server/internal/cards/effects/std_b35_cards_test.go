@@ -41,6 +41,7 @@ const (
 	b35DocAurlockOracle          = "3ca32660-bf5f-4398-bef6-a0ec8bc767cf"
 	b35BonnyPallOracle           = "fcb811a8-c6e6-4bc4-b64b-8963a7183669"
 	b35KambalOracle              = "619e0686-e88c-4238-8364-75395e733533"
+	b35DuplicatorOracle          = "0752fe67-9b8a-42c0-90e3-087d426b2f3b"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -75,6 +76,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35DocAurlockOracle:          "Doc Aurlock, Grizzled Genius",
 		b35BonnyPallOracle:           "Bonny Pall, Clearcutter",
 		b35KambalOracle:              "Kambal, Profiteering Mayor",
+		b35DuplicatorOracle:          "Esoteric Duplicator",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1354,5 +1356,59 @@ func TestB35KambalCopiesEachOpponentTokenOnceEachTurnAndDrainsForYours(t *testin
 	passPriorityAroundTable(t, g)
 	if lifeOf(g, me.ID) != life+1 || lifeOf(g, opp.ID) != oppLife-1 {
 		t.Errorf("drain: you %d (from %d), them %d (from %d)", lifeOf(g, me.ID), life, lifeOf(g, opp.ID), oppLife)
+	}
+}
+
+func TestB35EsotericDuplicatorCopiesASacrificedTokenAtTheNextEndStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Esoteric Duplicator", "Artifact — Clue", b35DuplicatorOracle, 0, 0)
+	clue := pushToken(g, me.ID, ClueToken())
+	b06AddMana(me, "C", "C")
+	b16Activate(t, g, me.ID, clue, 0, game.ActivateAbilityParams{})
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 0 {
+		t.Fatalf("%d Clues after the sacrifice, want 0", n)
+	}
+	passPriorityAroundTable(t, g)
+	pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if pay == nil {
+		t.Fatal("no offer to pay {2}")
+	}
+	b06AddMana(me, "C", "C")
+	if err := g.ResolvePayUnless(pay.ID, me.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 0 {
+		t.Fatalf("the copy appeared before the end step: %d Clues", n)
+	}
+	advanceToEndStepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 1 {
+		t.Fatalf("%d Clues after the end step, want the one copy", n)
+	}
+}
+
+func TestB35EsotericDuplicatorDoesNothingIfYouDontPay(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Esoteric Duplicator", "Artifact — Clue", b35DuplicatorOracle, 0, 0)
+	clue := pushToken(g, me.ID, ClueToken())
+	b06AddMana(me, "C", "C")
+	b16Activate(t, g, me.ID, clue, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if pay == nil {
+		t.Fatal("no offer to pay {2}")
+	}
+	if err := g.ResolvePayUnless(pay.ID, me.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	advanceToEndStepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 0 {
+		t.Errorf("%d Clues, want none", n)
 	}
 }
