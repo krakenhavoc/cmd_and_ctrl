@@ -919,3 +919,65 @@ func TestCelestineReefChaosGatesLastUntilAPlaneswalk(t *testing.T) {
 		t.Error("the can't-lose gate outlived the planeswalk")
 	}
 }
+
+var planeEdgeOfMalacol = planeFixture{"cb467901-a68d-4922-8ceb-867b582c8fe7", "Edge of Malacol", "Plane — Belenon"}
+
+func TestEdgeOfMalacolPutsCountersInsteadOfUntapping(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeEdgeOfMalacol)
+	g, _ := newPlaneGame(t, planeEdgeOfMalacol)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	setTapped := func(id uuid.UUID, v bool) {
+		g.WithWriteLock(func() {
+			for i := range g.Battlefield.Cards {
+				if g.Battlefield.Cards[i].InstanceID == id {
+					g.Battlefield.Cards[i].Tapped = v
+				}
+			}
+		})
+	}
+	tapped := pushVanillaCreature(g, me.ID, "Tapped", 2, 2)
+	fresh := pushVanillaCreature(g, me.ID, "Untapped", 2, 2)
+	theirs := pushVanillaCreature(g, opp.ID, "Theirs", 2, 2)
+	setTapped(tapped, true)
+	setTapped(theirs, true)
+	// Pass the turn around the table until it is my untap step again.
+	for i := 0; i < len(g.Seats); i++ {
+		endTurn(t, g)
+		advanceToMainOf(t, g, g.Turn.ActiveSeat)
+	}
+	if g.Seats[g.Turn.ActiveSeat] != me {
+		t.Fatalf("not back at my turn")
+	}
+	if got := countersOn(g, tapped, game.CounterPlusOne); got != 2 {
+		t.Errorf("the tapped creature has %d counters, want 2", got)
+	}
+	if !tmtB1Card(t, g, tapped).Tapped {
+		t.Error("the replaced creature untapped as well")
+	}
+	if got := countersOn(g, fresh, game.CounterPlusOne); got != 0 {
+		t.Errorf("an already untapped creature got %d counters", got)
+	}
+}
+
+func TestEdgeOfMalacolChaosUntapsYourCreatures(t *testing.T) {
+	g, _ := newPlaneGame(t, planeEdgeOfMalacol)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	a := pushVanillaCreature(g, me.ID, "A", 2, 2)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == a {
+				g.Battlefield.Cards[i].Tapped = true
+			}
+		}
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if tmtB1Card(t, g, a).Tapped {
+		t.Error("the creature stayed tapped")
+	}
+	if got := countersOn(g, a, game.CounterPlusOne); got != 0 {
+		t.Errorf("the chaos untap was replaced: %d counters", got)
+	}
+}

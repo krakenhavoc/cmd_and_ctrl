@@ -1828,6 +1828,11 @@ type Spec struct {
 	// Such a permanent joins the same prompt the caps raise, exempt
 	// from the rule that untapping is otherwise mandatory.
 	UntapOptOuts []game.UntapOptOut
+	// UntapReplacements declares "if a creature you control would untap
+	// during your untap step, <this> instead" - Edge of Malacol (ADR 0216
+	// slice 4, #4870). Read where the untap step untaps each permanent of
+	// its set; a face-up plane's are read too.
+	UntapReplacements []game.UntapReplacement
 
 	// DrawStep declares the printed clause "you draw a card during
 	// each opponent's draw step" — Teferi, Who Slows the Sunset's

@@ -1712,7 +1712,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
-	"UntapOptOuts": defFieldInert, "DrawStep": defFieldInert,
+	"UntapOptOuts": defFieldInert, "UntapReplacements": defFieldInert, "DrawStep": defFieldInert,
 	"CastCondition": defFieldInert, "CastConditionLabel": defFieldInert,
 	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert, "IgnorableEffect": defFieldInert,
 	"TurnFaceUpRestrictions": defFieldInert,

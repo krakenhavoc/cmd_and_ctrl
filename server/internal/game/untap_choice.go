@@ -608,7 +608,7 @@ func untapChoiceRule(c *PendingChoice) func([]Card) bool {
 // Caller must hold g.mu in write mode.
 func (g *Game) finishUntapStepLocked(ids []uuid.UUID) {
 	for _, id := range ids {
-		g.untapPermanentByIDLocked(id)
+		g.untapStepPermanentLocked(id)
 	}
 	if g.State != StateActive || g.Turn.Step != StepUntap || g.MulligansOpen {
 		return

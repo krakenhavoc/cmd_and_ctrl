@@ -902,7 +902,7 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 		return true
 	}
 	for _, id := range ids {
-		g.untapPermanentByIDLocked(id)
+		g.untapStepPermanentLocked(id)
 	}
 	return false
 }

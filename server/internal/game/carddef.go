@@ -259,6 +259,7 @@ type CardDef struct {
 	CounterRemovalLocks   []CounterRemovalLock
 	UntapCaps             []UntapCap
 	UntapOptOuts          []UntapOptOut
+	UntapReplacements     []UntapReplacement
 
 	// DrawStep are the "you draw a card during each opponent's draw
 	// step" permissions this source contributes (#1315) —
@@ -1048,6 +1049,12 @@ func init() {
 	CatalogUntapCaps = func(key string) []UntapCap {
 		if d := catalogDef(key); d != nil {
 			return d.UntapCaps
+		}
+		return nil
+	}
+	CatalogUntapReplacements = func(key string) []UntapReplacement {
+		if d := catalogDef(key); d != nil {
+			return d.UntapReplacements
 		}
 		return nil
 	}
