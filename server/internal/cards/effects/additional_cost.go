@@ -321,6 +321,47 @@ func ReturnPermanentToHandCost(label string, preds ...CardPredicate) *game.Addit
 	}
 }
 
+// KickerReturnToHand is a NON-MANA kicker that returns a permanent —
+// "Kicker—Return a land you control to its owner's hand" (Chocobo Kick,
+// #5358). ReturnPermanentToHandCost on the optional slot, as
+// KickerSacrifice is the sacrifice clause there: the same candidate walk,
+// payability, validator and payer, and the pick rides cast_spell's
+// return_ids. It is chosen as the spell is announced (CR 601.2b) and paid
+// with the spell on the stack (CR 601.2h), so a land tapped for this
+// spell's mana may still pay it (CR 601.2g comes first). Paid at most
+// once: only a spell with two kicker costs or multikicker may be kicked
+// more than once (CR 702.33d).
+//
+//	OptionalCosts: []game.AdditionalCost{KickerReturnToHand("a land you control", Land())},
+func KickerReturnToHand(label string, preds ...CardPredicate) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional:     true,
+		Key:          game.KickerKey,
+		ReturnToHand: ReturnAPermanentToHand(label, preds...).ReturnToHand,
+		Label:        "Kicker—Return " + label + " to its owner's hand",
+	}
+}
+
+// checkOneCastReturn refuses a card whose casts could name two
+// return-to-hand components (#5358): the mandatory slot and an optional
+// cost, or two optional costs. A cast names every returned permanent on
+// one return_ids list and game.planReturnToHand reads one component, so
+// a second would be paid from the first's list.
+func checkOneCastReturn(spec Spec) {
+	n := 0
+	if ac := spec.AdditionalCost; ac != nil && ac.ReturnToHand != nil {
+		n++
+	}
+	for _, oc := range spec.OptionalCosts {
+		if oc.ReturnToHand != nil {
+			n++
+		}
+	}
+	if n > 1 {
+		panic(fmt.Sprintf("effects.Register: %q declares %d return-to-hand cost components — a cast names its returns on one return_ids list, so at most one (#5358)", spec.Name, n))
+	}
+}
+
 // ExileCreatureYouControlCost is ExilePermanentCost for "a creature you
 // control".
 func ExileCreatureYouControlCost() *game.AdditionalCost {
@@ -584,9 +625,12 @@ func checkEitherCost(spec Spec) {
 		if !oc.ExilePermanents.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles a permanent — only the mandatory slot may (#3402)", spec.Name, oc.Key))
 		}
-		if oc.ReturnToHand != nil {
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q returns a permanent to hand — only the mandatory slot may (#5247)", spec.Name, oc.Key))
-		}
+		// #5358: an optional return (Chocobo Kick's "Kicker—Return a land
+		// you control to its owner's hand") is the mandatory slot's
+		// component, held to the same clause. The cast names it on the one
+		// return_ids list, so at most one component of a cast's plan
+		// returns (checkOneCastReturn).
+		checkReturnClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.ReturnToHand)
 		// #5193: the one optional graveyard exile is "you may collect
 		// evidence N" (checkOptionalCollectEvidence holds its shape).
 		if oc.ExileCards != nil && oc.Key != game.CollectEvidenceKey {
@@ -601,6 +645,7 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q reveals a card — only an optional behold (OptionalBehold) may; a mandatory reveal is a branch of EitherCost (ADR 0100)", spec.Name, oc.Key))
 		}
 	}
+	checkOneCastReturn(spec)
 	ac := spec.AdditionalCost
 	if ac == nil {
 		return

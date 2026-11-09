@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyCastChoices, castReturnCost } from "./targeting";
+import { applyCastChoices, castReturnCost, optionalCostPayOptions } from "./targeting";
 import { castPreviewParams, castPreviewParamsFromPayload } from "./castPreview";
 import type { CardView } from "./protocol";
 
@@ -59,5 +59,46 @@ describe("the return_ids wire list", () => {
   it("is kept by the auto-tap preview, so it plans around the returned permanent", () => {
     expect(castPreviewParams({ returnIDs: ["island"] }).returnIDs).toEqual(["island"]);
     expect(castPreviewParamsFromPayload({ return_ids: ["island"] }).returnIDs).toEqual(["island"]);
+  });
+});
+
+// #5358: the same cost as a kicker (Chocobo Kick) — asked only once the
+// kicker is claimed, and an offer with nothing to return can't be taken.
+const chocoboKick: CardView = {
+  instance_id: "kick",
+  name: "Chocobo Kick",
+  owner: "me",
+  controller: "me",
+  optional_costs: [
+    {
+      index: 0,
+      key: "kicker",
+      label: "Kicker—Return a land you control to its owner's hand",
+      max_times: 1,
+      return_label: "a land you control",
+      return_options: { cards: ["forest"], min: 1, max: 1 },
+    },
+  ],
+};
+
+describe("castReturnCost on a return-to-hand kicker", () => {
+  it("is undefined until the kicker is claimed", () => {
+    expect(castReturnCost(chocoboKick, {})).toBeUndefined();
+  });
+
+  it("reads the claimed kicker's clause and options", () => {
+    expect(castReturnCost(chocoboKick, { optionalCosts: [0] })).toEqual({
+      label: "a land you control",
+      count: 1,
+      options: ["forest"],
+    });
+  });
+
+  it("marks the kicker untakeable when nothing can pay it", () => {
+    const offer = chocoboKick.optional_costs![0]!;
+    expect(optionalCostPayOptions(offer)).toEqual(["forest"]);
+    expect(
+      optionalCostPayOptions({ ...offer, return_options: { cards: [], min: 1, max: 1 } }),
+    ).toEqual([]);
   });
 });

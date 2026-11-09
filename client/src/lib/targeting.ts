@@ -1452,6 +1452,12 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
     const cards = offer.tap_others_options.cards ?? [];
     return cards.length < (offer.tap_others_options.min ?? 1) ? [] : cards;
   }
+  // #5358: a kicker that returns a permanent — nothing to return is an
+  // offer that cannot be taken now.
+  if (offer.return_options) {
+    const cards = offer.return_options.cards ?? [];
+    return cards.length < (offer.return_options.min ?? 1) ? [] : cards;
+  }
   if (!offer.sacrifice_options) return undefined;
   return offer.sacrifice_options.cards ?? [];
 }
@@ -1592,15 +1598,21 @@ export function castExilePermanentCost(
 }
 
 // castReturnCost is the return-a-permanent cost a cast pays, if any (#5247,
-// Fear of Isolation): the card's mandatory additional cost. The same shape
-// as the exile-a-permanent cost, one destination over; the prompt after the
-// exile step asks which to return.
+// Fear of Isolation): the card's mandatory additional cost, or (#5358) a
+// claimed kicker that returns one (Chocobo Kick). The server allows one such
+// cost per card, so the first found is the one. The same shape as the
+// exile-a-permanent cost, one destination over; the prompt after the exile
+// step asks which to return.
 export function castReturnCost(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedExilePermanentCost | undefined {
   const cost = castAdditionalCost(card, choices);
-  return claimedPermanentCost(cost?.return_options, cost?.return_label);
+  if (cost?.return_options) return claimedPermanentCost(cost.return_options, cost.return_label);
+  for (const offer of chosenOptionalCosts(card, choices?.optionalCosts)) {
+    if (offer.return_options) return claimedPermanentCost(offer.return_options, offer.return_label);
+  }
+  return undefined;
 }
 
 // claimedPermanentCost reads one "<verb> a permanent you control" picker
