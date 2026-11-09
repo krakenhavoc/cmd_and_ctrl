@@ -66,6 +66,25 @@ import (
 // decision D8 keeps the ChoiceResumeFrames runtime counter for exactly
 // this kind of blocker.
 //
+// # A reflexive trigger (#4407, owner decision 2026-11-09)
+//
+// A CR 603.12 reflexive trigger ("When you do, …") has no catalog row:
+// QueueReflexiveTriggerForEffect builds its TriggeredAbility on the spot
+// (reflexiveTriggeredAbility). It is named the way its stack item is
+// already named, by its ReflexiveBody key and the plain data it was
+// created with (reflexiveFrameSnapshot): the frame's Reflexive field
+// instead of its Ability. Restore calls the same constructor, so the
+// target clause and the mode clause are re-derived from the body's
+// registration (reflexiveTargetSpecFor, reflexiveModeSpecFor) exactly as
+// at dispatch. Its PickThen says ReflexiveFrameKey, and a pick_target's
+// says ReflexiveTargetWalkKey, so a binary from before #4407 refuses the
+// file. The body key is checked by checkEffectKeys: a body this binary
+// does not register is refused, not restored without the frame, as for a
+// stack item that names one.
+//
+// D5 is narrowed to engine-derived triggers (prowess, cipher, a face-down
+// ward) and test stubs, which still have neither form.
+//
 // # A row the running catalog no longer has (Q3)
 //
 // As for a stamped stack item (ability_ref.go): the game is restored
@@ -124,6 +143,54 @@ import (
 // on-disk identity: never renamed, never reused.
 const TriggerFrameKey = "trigger/frame"
 
+// ReflexiveFrameKey is what a written trigger frame's PickThen says when
+// its ability is a reflexive trigger named by body key (#4407). An
+// on-disk identity: never renamed, never reused.
+const ReflexiveFrameKey = "trigger/reflexive-frame"
+
+// reflexiveFrameSnapshot is a CR 603.12 reflexive trigger as the data it
+// was created from (#4407): the second way a trigger frame names its
+// ability. reflexiveTriggeredAbility builds the ability from it, at
+// dispatch and at restore alike. A plain value: TriggeredAbility.reflexive
+// holds one, and so does a written frame.
+type reflexiveFrameSnapshot struct {
+	// Label is the stack-overlay copy, the ability's Key.
+	Label string `json:"label"`
+	// Body is the ReflexiveBody key: what the item does, and the target
+	// and mode clauses registered beside it.
+	Body string `json:"body"`
+	// Params is the body's plain data, fixed when the trigger was created.
+	Params EffectParams `json:"params,omitempty"`
+	// Payload is what the parent resolution told the trigger.
+	Payload []TargetRef `json:"payload,omitempty"`
+	// Optional is the trigger's own CR 603.5 "you may", nil for none.
+	Optional *reflexiveOptionalSnapshot `json:"optional,omitempty"`
+	// SourceObject is the creator's source object (#1418, #1432).
+	SourceObject ObjectRef `json:"sourceObject,omitempty"`
+	// SourceTurnOvers is the CR 701.27f reference point (ADR 0152 §3).
+	SourceTurnOvers int `json:"sourceTurnOvers,omitempty"`
+}
+
+// reflexiveOptionalSnapshot is a TriggerOptionalPrompt's data fields. A
+// prompt with a Chooser is never written (dispatchReflexiveTriggerLocked).
+type reflexiveOptionalSnapshot struct {
+	Question    string `json:"question,omitempty"`
+	Trade       bool   `json:"trade,omitempty"`
+	ShowSubject bool   `json:"showSubject,omitempty"`
+	BeforeStack bool   `json:"beforeStack,omitempty"`
+}
+
+// clone is a copy that shares no slice or pointer with r.
+func (r reflexiveFrameSnapshot) clone() reflexiveFrameSnapshot {
+	r.Params = cloneEffectParams(r.Params)
+	r.Payload = append([]TargetRef(nil), r.Payload...)
+	if r.Optional != nil {
+		o := *r.Optional
+		r.Optional = &o
+	}
+	return r
+}
+
 // triggerFrameParts is what every frame of a trigger's announcement
 // holds. A plain value, never stored on the Game: the frames keep their
 // own fields, and this is how they are written and rebuilt.
@@ -172,8 +239,13 @@ type triggerFrameSnapshot struct {
 	Source cardSnapshot `json:"source"`
 	// LKI is the source's last-known characteristics.
 	LKI Characteristic `json:"lki"`
-	// Ability names the catalog row (ADR 0041 P9).
+	// Ability names the catalog row (ADR 0041 P9). Zero when Reflexive
+	// names the ability instead.
 	Ability AbilityRef `json:"ability"`
+	// Reflexive names a CR 603.12 reflexive trigger by its body key and
+	// creation data (#4407), for an ability with no catalog row. At most
+	// one of Ability and Reflexive is set.
+	Reflexive *reflexiveFrameSnapshot `json:"reflexive,omitempty"`
 	// DoubledBy and DoubledByName are the CR 603.2d doubler that made
 	// this instance, if any.
 	DoubledBy     uuid.UUID `json:"doubledBy,omitempty"`
@@ -184,26 +256,71 @@ type triggerFrameSnapshot struct {
 // be named (D5): the caller then counts the frame as a closure. Caller
 // holds g.mu.
 func snapshotTriggerFrame(p triggerFrameParts, cen *ContinuationCensus) *triggerFrameSnapshot {
-	ref := catalogTriggerRowRef(p.ability)
-	if ref == nil {
+	out := &triggerFrameSnapshot{}
+	if ref := catalogTriggerRowRef(p.ability); ref != nil {
+		out.Ability = *ref
+	} else if r := p.ability.reflexive; r != nil {
+		// #4407: a reflexive trigger, by its body key.
+		c := r.clone()
+		out.Reflexive = &c
+	} else {
 		return nil
 	}
-	return &triggerFrameSnapshot{
-		Trigger:       *cloneTriggerContext(&p.tc),
-		Source:        snapshotCard(p.source, cen),
-		LKI:           *copyCharacteristic(&p.lki),
-		Ability:       *ref,
-		DoubledBy:     p.doubledBy.id,
-		DoubledByName: p.doubledBy.name,
+	out.Trigger = *cloneTriggerContext(&p.tc)
+	out.Source = snapshotCard(p.source, cen)
+	out.LKI = *copyCharacteristic(&p.lki)
+	out.DoubledBy, out.DoubledByName = p.doubledBy.id, p.doubledBy.name
+	return out
+}
+
+// marker is the PickThen a "you may" or mode pick carrying s says.
+func (s *triggerFrameSnapshot) marker() string {
+	if s.Reflexive != nil {
+		return ReflexiveFrameKey
 	}
+	return TriggerFrameKey
+}
+
+// isTriggerFrameKey reports whether k is a written trigger frame's marker.
+func isTriggerFrameKey(k string) bool { return k == TriggerFrameKey || k == ReflexiveFrameKey }
+
+// unknownFrameNameKeys is checkEffectKeys' half for how a frame names its
+// ability: a triggered-slot ref this binary can read, or (#4407) a
+// reflexive body it registers, never both. what names the frame in the
+// message.
+func unknownFrameNameKeys(f *triggerFrameSnapshot, what string) []string {
+	if r := f.Reflexive; r != nil {
+		if f.Ability != (AbilityRef{}) {
+			return []string{fmt.Sprintf("%s names both a row %+v and a reflexive body %q", what, f.Ability, r.Body)}
+		}
+		if r.Body == "" || r.Label == "" || !KnownEffectBody(r.Body) {
+			return []string{fmt.Sprintf("%s reflexive body %q", what, r.Body)}
+		}
+		return nil
+	}
+	if ref := f.Ability; ref.Slot != AbilitySlotTriggered || !wellFormedAbilityRef(ref) {
+		return []string{fmt.Sprintf("%s ability ref %+v", what, ref)}
+	}
+	return nil
 }
 
 // rebuild is the restore half: the ability from the running catalog,
 // the rest from the file. ok is false when no row answers the ref (Q3).
 func (s *triggerFrameSnapshot) rebuild() (triggerFrameParts, bool) {
-	ability, ok := triggeredAbilityFromRef(s.Ability)
-	if !ok {
-		return triggerFrameParts{}, false
+	var ability TriggeredAbility
+	if r := s.Reflexive; r != nil {
+		// #4407: rebuilt by the constructor the dispatch used, its clauses
+		// from the body's registration. checkEffectKeys has refused a body
+		// this binary does not have, so this is never Q3.
+		if !KnownEffectBody(r.Body) {
+			return triggerFrameParts{}, false
+		}
+		ability = reflexiveTriggeredAbility(*r, s.Source.InstanceID)
+	} else {
+		var ok bool
+		if ability, ok = triggeredAbilityFromRef(s.Ability); !ok {
+			return triggerFrameParts{}, false
+		}
 	}
 	source := restoreCard(&s.Source)
 	// Derived and never written, as restoreZone builds it.
@@ -285,13 +402,10 @@ func (g *Game) restoreTriggerFrameLocked(c *PendingChoice, s *triggerFrameSnapsh
 // the marker, and a ref this binary can read at all. A well-formed ref
 // whose row is gone is Q3, restored without the frame, not refused.
 func unknownTriggerFrameKeys(c *pendingChoiceSnapshot) []string {
-	if c.TriggerFrame == nil || c.PickThen != TriggerFrameKey {
+	if c.TriggerFrame == nil || c.PickThen != c.TriggerFrame.marker() {
 		return []string{fmt.Sprintf("%s continuation %q", c.Kind, c.PickThen)}
 	}
-	if ref := c.TriggerFrame.Ability; ref.Slot != AbilitySlotTriggered || !wellFormedAbilityRef(ref) {
-		return []string{fmt.Sprintf("trigger frame ability ref %+v", ref)}
-	}
-	return nil
+	return unknownFrameNameKeys(c.TriggerFrame, "trigger frame")
 }
 
 // lostTriggerFrames is LostStackAbilities' half for a trigger paused on
@@ -307,7 +421,8 @@ func (s *GameSnapshot) lostTriggerFrames() []LostStackAbility {
 			// #4361 S14b: a target walk, or its "which opponent" question.
 			f = &c.TargetWalk.Frame
 		}
-		if f == nil || !abilityRefLostInCatalog(f.Ability) {
+		if f == nil || f.Reflexive != nil || !abilityRefLostInCatalog(f.Ability) {
+			// #4407: a reflexive body is a key, refused when unknown.
 			continue
 		}
 		out = append(out, LostStackAbility{
@@ -326,6 +441,14 @@ func (s *GameSnapshot) lostTriggerFrames() []LostStackAbility {
 // keeps its own key there (triggerOpponentChooserThen). An on-disk
 // identity: never renamed, never reused.
 const TargetWalkKey = "trigger/target-walk"
+
+// ReflexiveTargetWalkKey is what a written target walk's pick_target
+// PickThen says when its ability is a reflexive trigger named by body key
+// (#4407). The walk's "which opponent chooses" option pick keeps its own
+// key there; a binary from before #4407 refuses that one through the
+// frame's empty catalog ref. An on-disk identity: never renamed, never
+// reused.
+const ReflexiveTargetWalkKey = "trigger/reflexive-target-walk"
 
 // targetWalkSnapshot is a trigger's CR 603.3d target walk on disk: its
 // five things, and what the walk added to the row's statement.
@@ -367,10 +490,13 @@ func carriesTargetWalk(kind PendingChoiceKind) bool {
 }
 
 // targetWalkMarker is the PickThen a written walk on a prompt of this
-// kind says.
-func targetWalkMarker(kind PendingChoiceKind) string {
+// kind says, reflexive when the walk's ability is named by body key.
+func targetWalkMarker(kind PendingChoiceKind, reflexive bool) string {
 	switch kind {
 	case PendingChoicePickTarget:
+		if reflexive {
+			return ReflexiveTargetWalkKey
+		}
 		return TargetWalkKey
 	case PendingChoiceOptionPick:
 		return triggerOpponentChooserThen.key
@@ -493,15 +619,13 @@ func unknownTargetWalkKeys(c *pendingChoiceSnapshot) []string {
 		// marker, checked by unknownParkedAnnouncementKeys; (S15) a copy
 		// walk's is unknownCopyWalkKeys'.
 		if c.Kind == PendingChoicePickTarget && c.PickThen != "" && c.Parked == nil && (c.PickThen != CopyWalkKey || c.CopyWalk == nil) {
+			// A walk marker (either form) with no walk lands here too.
 			return []string{fmt.Sprintf("%s continuation %q", c.Kind, c.PickThen)}
 		}
 		return nil
 	}
-	if !carriesTargetWalk(c.Kind) || c.PickThen != targetWalkMarker(c.Kind) {
+	if !carriesTargetWalk(c.Kind) || c.PickThen != targetWalkMarker(c.Kind, w.Frame.Reflexive != nil) {
 		return []string{fmt.Sprintf("target walk on a %s prompt with tail %q", c.Kind, c.PickThen)}
 	}
-	if ref := w.Frame.Ability; ref.Slot != AbilitySlotTriggered || !wellFormedAbilityRef(ref) {
-		return []string{fmt.Sprintf("target walk ability ref %+v", ref)}
-	}
-	return nil
+	return unknownFrameNameKeys(&w.Frame, "target walk")
 }

@@ -248,6 +248,16 @@ type TriggeredAbility struct {
 	// stamped. See ability_ref.go.
 	row catalogRowID
 
+	// reflexive is the plain data a CR 603.12 reflexive trigger was
+	// created from (#4407, reflexiveTriggeredAbility): its label, body
+	// key, params, payload, "you may", source object and turn-over
+	// count. It is the second way a paused frame names its ability,
+	// beside row: a reflexive trigger has no catalog row, so its frame is
+	// written by body key and rebuilt by the constructor that made it.
+	// Nil for every other row, and for a reflexive trigger whose "you
+	// may" names a Chooser func (no caller does), which stays counted.
+	reflexive *reflexiveFrameSnapshot
+
 	// OptionalPrompt is the CR 603.5 "you may" of an optional
 	// trigger. The ability goes on the stack like any other (its modes
 	// and targets chosen then, CR 603.3c/d) and the item carries the

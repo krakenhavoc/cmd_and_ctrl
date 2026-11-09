@@ -58,9 +58,12 @@ import "github.com/google/uuid"
 // by cloneStackItem with its Effect shared on the contract
 // StackItem.Effect documents — the closure takes the live *Game and
 // its own item at resolve time and captures neither. A reflexive
-// trigger still waiting on its target prompt rides the ordinary
-// pickTargetFrame. Which is why the payload is data on the item
-// (Payload) rather than a variable the Effect closes over.
+// trigger still waiting on its target prompt, its "you may" or its
+// mode pick rides the ordinary trigger frames, and a restore point
+// writes that frame by body key (#4407, trigger_frame_keyed.go):
+// reflexiveTriggeredAbility rebuilds the ability from the same data.
+// Which is why the payload is data on the item (Payload) rather than a
+// variable the Effect closes over.
 
 // ReflexiveTrigger is the declaration a resolving effect hands the
 // engine to create a CR 603.12 reflexive triggered ability. Every
@@ -184,33 +187,73 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 // Caller must hold g.mu in write mode.
 func (g *Game) dispatchReflexiveTriggerLocked(sourceCardID, controller uuid.UUID, sourceObject ObjectRef, rt ReflexiveTrigger, ev Event) {
 	source, lki := g.triggerSourceLocked(sourceCardID, controller)
-	label, body, params := rt.Label, rt.Body.key, cloneEffectParams(rt.Params)
-	payload := append([]TargetRef(nil), rt.Payload...)
-	// ADR 0152 §3: a reflexive trigger is created now (CR 603.12), so
-	// its CR 701.27f reference point is the count now.
-	sourceTurnOvers := g.TurnOversForEffect(sourceCardID)
+	origin := reflexiveFrameSnapshot{
+		Label:        rt.Label,
+		Body:         rt.Body.key,
+		Params:       cloneEffectParams(rt.Params),
+		Payload:      append([]TargetRef(nil), rt.Payload...),
+		SourceObject: sourceObject,
+		// ADR 0152 §3: a reflexive trigger is created now (CR 603.12),
+		// so its CR 701.27f reference point is the count now.
+		SourceTurnOvers: g.TurnOversForEffect(sourceCardID),
+	}
+	nameable := true
+	if o := rt.Optional; o != nil {
+		// A Chooser is a func, which a restore point cannot carry: such a
+		// trigger keeps a frame no restore point writes (no caller sets
+		// one today). Its OptionalPrompt is still the caller's own.
+		nameable = o.Chooser == nil
+		origin.Optional = &reflexiveOptionalSnapshot{
+			Question: o.Question, Trade: o.Trade, ShowSubject: o.ShowSubject, BeforeStack: o.BeforeStack,
+		}
+	}
+	ability := reflexiveTriggeredAbility(origin, source.InstanceID)
+	if !nameable {
+		ability.reflexive = nil
+		ability.OptionalPrompt = rt.Optional
+	}
+	g.dispatchTriggerLocked(ev, source, lki, ability)
+}
+
+// reflexiveTriggeredAbility is the one constructor of a reflexive
+// trigger's TriggeredAbility (#4407): the live dispatch builds it from
+// the creator's declaration, and a restored announcement frame
+// (trigger_frame_keyed.go) rebuilds it from the same data written to
+// disk, so the two cannot drift. sourceID is the creator's source card,
+// which the body's registered clauses are derived from.
+//
+// The ability carries origin as its reflexive field, which is how a
+// paused frame names it; origin's slices are its own from here on.
+func reflexiveTriggeredAbility(origin reflexiveFrameSnapshot, sourceID uuid.UUID) TriggeredAbility {
+	o := origin.clone()
+	label, body, params := o.Label, BodyRef{key: o.Body}, o.Params
+	payload, sourceObject, sourceTurnOvers := o.Payload, o.SourceObject, o.SourceTurnOvers
 	// ADR 0041 P9 (#1497): the target clause, when this body has one,
 	// is re-derived from the registration rather than carried as a
 	// captured *TargetSpec — the same reason the item itself is data.
-	targets := stampReflexivePayload(reflexiveTargetSpecFor(body, source.InstanceID, params), payload)
-	ability := TriggeredAbility{
+	targets := stampReflexivePayload(reflexiveTargetSpecFor(o.Body, sourceID, params), payload)
+	var optional *TriggerOptionalPrompt
+	if q := o.Optional; q != nil {
+		optional = &TriggerOptionalPrompt{Question: q.Question, Trade: q.Trade, ShowSubject: q.ShowSubject, BeforeStack: q.BeforeStack}
+	}
+	return TriggeredAbility{
 		// Watches / AppliesTo stay empty: this ability is never
 		// harvested off an event, so nothing ever looks at them. The
 		// dispatch reads Targets, OptionalPrompt and Build, and it
 		// is handed the match rather than asked to find one.
 		Key:            label,
 		Targets:        targets,
-		Modes:          reflexiveModeSpecFor(body, source.InstanceID, params),
-		OptionalPrompt: rt.Optional,
+		Modes:          reflexiveModeSpecFor(o.Body, sourceID, params),
+		OptionalPrompt: optional,
+		reflexive:      &o,
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			item := NewKeyedTriggeredItem(source, label, rt.Body, params)
+			item := NewKeyedTriggeredItem(source, label, body, cloneEffectParams(params))
 			item.SourceObject = sourceObject
 			item.SourceTurnOvers = sourceTurnOvers
 			item.Payload = append([]TargetRef(nil), payload...)
 			return item
 		},
 	}
-	g.dispatchTriggerLocked(ev, source, lki, ability)
 }
 
 // triggerSourceLocked builds the source-card value the dispatch works

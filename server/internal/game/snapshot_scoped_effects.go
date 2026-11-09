@@ -125,7 +125,7 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// binary's shape.
 			unknown = append(unknown, fmt.Sprintf("search prompt frame on a %s prompt", c.Kind))
 		}
-		if c.TriggerFrame != nil && (!carriesTriggerFrame(c.Kind) || c.PickThen != TriggerFrameKey) {
+		if c.TriggerFrame != nil && (!carriesTriggerFrame(c.Kind) || !isTriggerFrameKey(c.PickThen)) {
 			// #4361 S14a: a trigger frame on another kind, or without its
 			// marker, is a newer binary's shape.
 			unknown = append(unknown, fmt.Sprintf("trigger frame on a %s prompt with tail %q", c.Kind, c.PickThen))

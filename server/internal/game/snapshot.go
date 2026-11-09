@@ -3580,14 +3580,14 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 	// decision D5): its frame is counted below, as a closure.
 	tf := snapshotTriggerFrameOf(c, cen)
 	if tf != nil {
-		out.TriggerFrame, out.PickThen = tf, TriggerFrameKey
+		out.TriggerFrame, out.PickThen = tf, tf.marker()
 	}
 	// #4361 S14b: a trigger's target walk, likewise. nil for an ability
 	// that cannot be named (D5) or whose statement reads the board.
 	tw := snapshotTargetWalkOf(c, cen)
 	if tw != nil {
 		out.TargetWalk = tw
-		out.PickThen = targetWalkMarker(c.Kind)
+		out.PickThen = targetWalkMarker(c.Kind, tw.Frame.Reflexive != nil)
 	}
 	// #4361 S13: a parked cast or activation, written as data. A prompt
 	// carries at most one of it and (S15) a copy's new-targets walk; the
