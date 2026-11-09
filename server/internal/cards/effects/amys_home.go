@@ -69,16 +69,17 @@ func init() {
 // amysHomeExile exiles the chosen card; the exile's tail counts it down.
 // An on-disk key: never renamed, never reused.
 var amysHomeExile = askedPick("choose-cards/amys-home-exile", func(ctx *Context, r game.CardsChosen) error {
-	for _, id := range r.Picked {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok {
-			return nil
-		}
-		return ctx.Game.ExileCardKeyedForEffect(id, game.KeyedTail{
-			Ref:    game.GainSuspendExileTail,
-			Player: ctx.Controller(),
-			N:      c.ManaValue(),
-		})
+	if len(r.Picked) == 0 {
+		return nil
 	}
-	return nil
+	id := r.Picked[0] // the pick is "a card": at most one
+	c, ok := ctx.Game.LookupCardForEffect(id)
+	if !ok {
+		return nil
+	}
+	return ctx.Game.ExileCardKeyedForEffect(id, game.KeyedTail{
+		Ref:    game.GainSuspendExileTail,
+		Player: ctx.Controller(),
+		N:      c.ManaValue(),
+	})
 })
