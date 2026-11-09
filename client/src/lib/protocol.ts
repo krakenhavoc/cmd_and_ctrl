@@ -181,6 +181,10 @@ export const BLOCK_REFUSAL_REASONS = [
   // declaring blockers this combat — a late block, such as one on a
   // ninja that entered attacking after the declaration.
   "blocks_declared",
+  // #5396 (CR 506.5, 509.1b): the declaration would leave a creature
+  // that can't block alone as its controller's only blocker. Declare
+  // another blocker first, or both together.
+  "cant_block_alone",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -5178,6 +5182,10 @@ export interface CardView extends CastSurfaceView {
   // block any number. Both omitted for the ordinary one-attacker case.
   block_capacity?: number;
   blocks_any_number?: boolean;
+  // #5396: the creature "can't block alone" (CR 506.5, 509.1b): it may
+  // block only beside another blocker of its controller's. Omitted
+  // otherwise.
+  cant_block_alone?: boolean;
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat
