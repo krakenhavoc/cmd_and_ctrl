@@ -45,8 +45,8 @@ func init() {
 }
 
 // jalirasShowDestroy destroys the target and, if it really left the
-// battlefield, raises the reflexive trigger naming its controller (read
-// before the destruction).
+// battlefield (the keyed tail is told what was destroyed), raises the
+// reflexive trigger naming its controller (read before the destruction).
 func jalirasShowDestroy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	t, ok := b16FirstLegalTargetCard(ctx)
@@ -57,16 +57,20 @@ func jalirasShowDestroy(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	if err := (DestroyTarget{Target: t}).Apply(ctx); err != nil {
-		return err
-	}
-	if onBattlefield(g, t) {
+	return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{t}, withCarry(ctx.ItemTail(jalirasShowDestroyed), victim))
+}
+
+// jalirasShowDestroyed raises the "when you do" reflexive trigger once the
+// creature has really been destroyed, naming its controller. An on-disk key:
+// never renamed, never reused.
+var jalirasShowDestroyed = CardTail("jaliras-show/when-you-do-reveal", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
 		return nil
 	}
 	trigger := WhenYouDo("Jalira's Show — its controller reveals cards until a creature card and puts it onto the battlefield", jalirasShowRevealBody)
-	trigger.Players = []uuid.UUID{victim}
+	trigger.Players = []uuid.UUID{tailCarry0(o)}
 	return trigger.Apply(ctx)
-}
+})
 
 // jalirasShowRevealBody is the reflexive trigger: the destroyed creature's
 // controller reveals until a creature card, puts it onto the battlefield and

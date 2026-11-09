@@ -2110,6 +2110,7 @@ tail insidious-roots/counter-on-each-plant
 tail intuition/choose
 tail invent/sorcery-search
 tail jace-the-mind-sculptor/tuck-hand-then-shuffle
+tail jaliras-show/when-you-do-reveal
 tail janice-rand-essential-aide/reveal-until-land
 tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
