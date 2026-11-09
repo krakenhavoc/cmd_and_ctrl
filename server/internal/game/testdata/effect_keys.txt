@@ -149,6 +149,8 @@ body flicker/return-exiled-to-owners
 body flicker/return-exiled-to-owners-tapped
 body flicker/return-exiled-with-a-plus-one-counter
 body flicker/return-exiled-with-additional-counters
+body flicker/return-exiled-with-flying-counter
+body flicker/return-exiled-with-plus-one-counter
 body flip/the-source
 body foray-of-orcs/damage
 body fortune-loyal-steed/end-of-combat
@@ -487,6 +489,7 @@ choose choose-cards/expressive-iteration-take
 choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
+choose choose-cards/fear-of-missing-out-draw
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
@@ -797,6 +800,7 @@ choose choose-cards/vivien-champion-of-the-wilds-exile
 choose choose-cards/vow-to-erebor-attach
 choose choose-cards/ward-discard-enchantment-instant-sorcery
 choose choose-cards/ward-sacrifice-a-creature
+choose choose-cards/ward-sacrifice-a-food
 choose choose-cards/ward-sacrifice-a-legendary-artifact-or-legendary-creature
 choose choose-cards/ward-sacrifice-three-nonland-permanents
 choose choose-cards/ward-sacrifice-three-permanents
@@ -1055,6 +1059,7 @@ confirm confirm/ward-discard
 confirm confirm/ward-get-poison
 confirm confirm/ward-pay-life
 confirm confirm/ward-sacrifice-a-creature
+confirm confirm/ward-sacrifice-a-food
 confirm confirm/ward-sacrifice-a-legendary-artifact-or-legendary-creature
 confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
@@ -1588,6 +1593,7 @@ run prompt-run/ruthless-lawbringer-sacrifice
 run prompt-run/ruthless-technomancer-treasures
 run prompt-run/saw-sacrifice-draw
 run prompt-run/scapeshift-sacrifice
+run prompt-run/season-of-weaving-copy
 run prompt-run/seize-the-spotlight-gain-control
 run prompt-run/sephiroth-sacrifice-draw
 run prompt-run/serendib-djinn-sacrificed
@@ -1775,6 +1781,10 @@ tail beckett-mariner/promotion-check
 tail belanna-torres-scrapper/after-surveil
 tail beseech-the-mirror/cast-or-to-hand
 tail bind-to-life/after-mill
+tail blb/coiling-rebirth-copy
+tail blb/driftgloom-coyote-counter
+tail blb/splash-portal-draw-if-tribe
+tail blb/splash-portal-return
 tail blessed-reincarnation/after-exile
 tail blight/place-next
 tail blighted/blight/blighted-blackthorn-draw
