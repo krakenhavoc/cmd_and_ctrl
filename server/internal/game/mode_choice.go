@@ -93,7 +93,9 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	if !ms.UpToCount.IsZero() {
 		// "Choose up to X, where X is <a count>" (Bumi, King of Three
 		// Trials): the count as the trigger goes on the stack (CR 603.3c).
-		q.X = ms.UpToCount.count(g, source.Controller)
+		// #4468: or a count of the triggering event (Riku of Many
+		// Paths: the modes chosen for the spell that was cast).
+		q.X = ms.UpToCount.count(g, source.Controller, tc.Event)
 	}
 	modeMin, modeMax := g.modeBoundsLocked(ms, q)
 	if !ms.Repeatable && modeMin > len(options) {

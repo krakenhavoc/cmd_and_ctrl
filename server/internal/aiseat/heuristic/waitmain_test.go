@@ -55,6 +55,12 @@ func TestAnInstantWaitsForTheMainPhase(t *testing.T) {
 		{"own main phase", at("precombat_main"), castIt, castIt},
 		{"own draw step, something on the stack", at("draw", withStack(spell(cardID(9), 1, "Divination", "{2}{U}"))), castIt, castIt},
 		{"an opponent's draw step", at("draw", func(v *protocol.GameView) { v.Turn.ActiveSeat, v.Turn.PriorityHolder = 1, 0 }), castIt, castIt},
+		// #5405: an upkeep an effect added after combat (Obeka) is
+		// followed by the postcombat main phase, so the bot still waits.
+		{"an added upkeep with a main phase to come", at("upkeep", withUpcoming("upkeep", "postcombat_main", "end", "cleanup")), pass, castIt},
+		// An upkeep added after the last main phase has no main phase
+		// after it: waiting would carry the mana out of the turn.
+		{"an added upkeep with no main phase left", at("upkeep", withUpcoming("end", "cleanup")), castIt, castIt},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := tc.run(heuristic.New()); !strings.HasPrefix(got, tc.want) {
@@ -70,5 +76,15 @@ func TestAnInstantWaitsForTheMainPhase(t *testing.T) {
 func TestBaselineDoesNotWaitForMain(t *testing.T) {
 	if heuristic.BaselineConfig().WaitForMain {
 		t.Error("BaselineConfig holds instants for the main phase; it is the pre-S66 heuristic")
+	}
+}
+
+// withUpcoming sets the turn plan's steps still to come (TurnView.upcoming).
+func withUpcoming(steps ...string) func(*protocol.GameView) {
+	return func(v *protocol.GameView) {
+		v.Turn.Upcoming = nil
+		for i, st := range steps {
+			v.Turn.Upcoming = append(v.Turn.Upcoming, protocol.PlannedStepView{Step: st, PhaseID: 6 + i})
+		}
 	}
 }
