@@ -378,6 +378,7 @@ castfollowup conduit-of-worlds-no-more-spells
 castfollowup emet-selch-of-the-third-seat-once-each-turn
 castfollowup kaervek-the-punisher-lose-2
 castfollowup kefka-dancing-mad-life-loss
+castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
 castfollowup msc6/helmut-zemo-mastermind-counter
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
@@ -418,6 +419,7 @@ choose choose-cards/bound-return
 choose choose-cards/braids-arisen-nightmare-sacrifice
 choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
+choose choose-cards/break-out-reveal
 choose choose-cards/breeches-the-blastmaker-sacrifice
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
@@ -437,6 +439,7 @@ choose choose-cards/charming-scoundrel-draw
 choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
+choose choose-cards/cloak-a-card-from-your-hand
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -459,6 +462,7 @@ choose choose-cards/cyclonus-connive-discarded
 choose choose-cards/cytoshape-copy
 choose choose-cards/darkstar-augur-take
 choose choose-cards/dauthi-voidwalker-play
+choose choose-cards/deadly-cover-up-exile
 choose choose-cards/death-wish-take
 choose choose-cards/demonlord-of-ashmouth-sacrifice
 choose choose-cards/dinosaur-headdress-copy
@@ -519,6 +523,7 @@ choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
 choose choose-cards/heroes-hangout-play
+choose choose-cards/hide-in-plain-sight-cloak
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
 choose choose-cards/immortal-coil-exile
@@ -708,6 +713,7 @@ choose choose-cards/put-from-library-michelangelos-technique-total-mana-value-6
 choose choose-cards/put-from-library-ojer-kaslem-creature-and-or-land
 choose choose-cards/put-from-library-onto-battlefield
 choose choose-cards/quintorius-history-chaser-draw-two-mill-one
+choose choose-cards/rakdos-patron-of-chaos-sacrifice
 choose choose-cards/rambling-possum-return-saddlers
 choose choose-cards/read-the-runes-discarded
 choose choose-cards/reality-fracture-hand-card-on-bottom
@@ -826,6 +832,7 @@ choose choose-cards/winota-joiner-of-forces-human
 choose choose-cards/winter-soldier-icy-assassin-attach
 choose choose-cards/witherbloom-command-land-to-hand
 choose choose-cards/worlds-within-worlds-pick
+choose choose-cards/worldsouls-rage-lands
 choose choose-cards/yorion-sky-nomad-exile
 choose choose-cards/yue-the-moon-spirit-cast
 choose choose-cards/yuffie-materia-hunter-attach
@@ -935,6 +942,7 @@ confirm confirm/belanna-torres-scrapper-reveal
 confirm confirm/black-widow-counter-or-cast
 confirm confirm/bone-dancer-reanimate
 confirm confirm/braids-sacrifice
+confirm confirm/break-out-put
 confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
@@ -1028,6 +1036,7 @@ confirm confirm/ponder-shuffle
 confirm confirm/portent-shuffle
 confirm confirm/primal-amulet-transform
 confirm confirm/pygmy-hippo-lose-mana
+confirm confirm/rakdos-patron-of-chaos-sacrifice
 confirm confirm/raphaels-technique-may-wheel
 confirm confirm/ratchet-field-medic-convert
 confirm confirm/reactor-raid-sacrifice
@@ -1225,6 +1234,7 @@ option option-pick/gluntch-the-bestower-third
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
+option option-pick/intrude-on-the-mind-chooser
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/land-mana-each
 option option-pick/leatherhead-remove-a-counter
@@ -1483,6 +1493,7 @@ pick revealed-pick/reckoner-shakedown-two-counters
 pick revealed-pick/revealing-eye-draw
 pick revealed-pick/salt-vampire-draw
 pick revealed-pick/solve-for-disappointment-empower-jace
+pick revealed-pick/soul-search-spirit
 pick revealed-pick/talaras-bane-gain-toughness
 pick revealed-pick/tourachs-canticle-discard-at-random
 pick revealed-pick/traumatic-revelation-incubate
@@ -2383,9 +2394,18 @@ tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
 tail systems-override/schedule-charge-removal
 tail tablet-of-discovery/after-mill
+tail tail/break-out-entered
+tail tail/deadly-cover-up-after-sweep
+tail tail/deadly-cover-up-draw
+tail tail/deadly-cover-up-exiled
 tail tail/eagles-are-coming-birds
+tail tail/fugitive-codebreaker-draw
+tail tail/hide-in-plain-sight-rest
 tail tail/pumpkin-bombs-after-fuse
 tail tail/sensational-spider-man-after-stun
+tail tail/unauthorized-exit-surveil
+tail tail/unyielding-gatekeeper-after-exile
+tail tail/yarus-turn-face-up
 tail tainted-pact/after-mill
 tail take/each-moved
 tail take/moved
@@ -2484,6 +2504,7 @@ tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
 tail then/horses-of-the-bruinen-scry
 tail then/if-it-went-run-steps
+tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
 tail then/jinx-delayed-draw

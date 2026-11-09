@@ -2011,3 +2011,114 @@ func TestStdB46CaseOfTheGorgonsKissSolvesAndBecomesAFourFourGorgon(t *testing.T)
 		}
 	}
 }
+
+const stdBatColonyOracle = "c2022f95-2c26-4a2a-b83b-60efa937cdde"
+
+func TestStdB46BatColonyMakesABatForEachManaFromACave(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMainForCost(t, g)
+	t1 := pushCatalogPermanent(g, me.ID, "Secret Tunnel", "Land — Cave", avB20SecretTunnelOracle, false)
+	t2 := pushCatalogPermanent(g, me.ID, "Secret Tunnel", "Land — Cave", avB20SecretTunnelOracle, false)
+	b28TapForMana(t, g, me.ID, t1, "")
+	b28TapForMana(t, g, me.ID, t2, "")
+	b06AddMana(me, "W")
+	id := handCardFull(me, "Bat Colony", "Enchantment", "{2}{W}", stdBatColonyOracle, []string{"W"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Bat"); n != 2 {
+		t.Fatalf("%d Bats, want 2 (two mana from a Cave)", n)
+	}
+}
+
+func TestStdB46BatColonyMakesNoBatWithoutCaveMana(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMainForCost(t, g)
+	b06AddMana(me, "C", "C", "W")
+	id := handCardFull(me, "Bat Colony", "Enchantment", "{2}{W}", stdBatColonyOracle, []string{"W"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Bat"); n != 0 {
+		t.Fatalf("%d Bats, want 0", n)
+	}
+}
+
+func stdPlayLand(t *testing.T, g *game.Game, me *game.Player, name, typeLine, oracle string) {
+	t.Helper()
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: typeLine, OracleID: oracle, Owner: me.ID, Controller: me.ID})
+	me.LandDropsPerTurn++
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("play %s: %v", name, err)
+	}
+}
+
+func TestStdB46BatColonyPutsACounterWhenACaveEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Bat Colony", "Enchantment", stdBatColonyOracle, 0, 0)
+	bear := reqCreature(g, me.ID, "Bear", "", 2, 2)
+	stdPlayLand(t, g, me, "Forest", "Basic Land — Forest", "")
+	passPriorityAroundTable(t, g)
+	if c := tmtB1Card(t, g, bear); c.Counters["+1/+1"] != 0 {
+		t.Fatalf("a non-Cave land entering gave %d counters", c.Counters["+1/+1"])
+	}
+	stdPlayLand(t, g, me, "Secret Tunnel", "Land — Cave", avB20SecretTunnelOracle)
+	pickCard(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	if c := tmtB1Card(t, g, bear); c.Counters["+1/+1"] != 1 {
+		t.Errorf("counters %d, want 1", c.Counters["+1/+1"])
+	}
+}
+
+const stdReenactOracle = "ebb88893-427f-496c-82a8-94d2bafb5e4c"
+
+func TestStdB44ReenactTheCrimeCopiesAndCastsACardPutIntoAGraveyardThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	bolt := handCardFull(opp, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle, []string{"R"})
+	old := gyCard(opp, "Old Bolt", "Instant", "{R}", lightningBoltOracle) // in the graveyard since before, never "put" this turn
+	g.WithWriteLock(func() {
+		for i := range opp.Graveyard.Cards {
+			opp.Graveyard.Cards[i].PutInGraveyardThisTurn = false
+		}
+		if err := g.PutIntoGraveyardForEffect(bolt); err != nil {
+			t.Fatalf("put into graveyard: %v", err)
+		}
+	})
+	b06AddMana(me, "U", "U", "U", "C")
+	id := handCardFull(me, "Reenact the Crime", "Instant", "{1}{U}{U}{U}", stdReenactOracle, []string{"U"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: old}}}); err == nil {
+		t.Fatal("a card that was not put into a graveyard this turn was a legal target")
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bolt}}}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(bolt) {
+		t.Fatal("the target was not exiled")
+	}
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
+	if offer == nil {
+		t.Fatalf("no free cast offer for the copy: %+v", g.PendingChoices)
+	}
+	copyID := offer.DiscardOptions[0]
+	life := opp.Life
+	if err := g.CastForResolutionChoice(me.ID, offer.ID, copyID, game.CastSpellParams{FromZone: "exile",
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("casting the copy for free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Errorf("opponent life %d -> %d, want 3 damage from the copied Bolt", life, opp.Life)
+	}
+}
