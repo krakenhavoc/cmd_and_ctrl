@@ -2153,6 +2153,13 @@ type AlternativeCostView struct {
 	// printed row when PrintedCostTimingClosed is set.
 	TimingClosed bool `json:"timing_closed,omitempty"`
 
+	// OpensFlashRequired is CastSurfaceView.OpensFlashRequired for THIS
+	// claim (#5363, CR 601.3c): the engine accepts it right now only
+	// with an optional cost marked `opens_flash` announced (Asinine
+	// Antics through Omniscience at instant speed). TimingClosed is then
+	// false, since the claim can be taken.
+	OpensFlashRequired bool `json:"opens_flash_required,omitempty"`
+
 	// XMax is the largest X the viewer may announce while claiming THIS
 	// offer, set only for an offer that carries a ceiling of its own
 	// (#3225: Silver Scrutiny's "as though it had flash if X is 3 or
@@ -4335,6 +4342,14 @@ type CastSurfaceView struct {
 	// on the stack and the battlefield's own grants — all public facts,
 	// the same reasoning ActivatedAbilityView.TimingClosed's doc gives.
 	PrintedCostTimingClosed bool `json:"printed_cost_timing_closed,omitempty"`
+	// OpensFlashRequired says the printed mana cost is one of the prices
+	// this cast may claim and the engine accepts it RIGHT NOW only with an
+	// optional cost marked `opens_flash` announced (CR 601.3c, #5363):
+	// Asinine Antics's "pay {2} more" outside a main phase. The picker
+	// pre-selects that cost and says why; a cast that leaves it out is
+	// refused for timing. Omitted for every other card and moment.
+	// Public, for PrintedCostTimingClosed's reason.
+	OpensFlashRequired bool `json:"opens_flash_required,omitempty"`
 	// TapCost is the S22 convoke / waterbend clause for a card in the
 	// viewer's own hand / command zone: which of your untapped
 	// permanents may be tapped to help pay, and how many. Absent for
@@ -7598,7 +7613,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		faced = &live
 	}
-	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, kind, offers)
+	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, kind, offerGrants)
 	// #1012: and the wire says so when the printed cost is not one of
 	// them. `castable_here` is one bit and means "you may cast this
 	// from here", never "you may cast this from here for the cost in
@@ -7620,20 +7635,43 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	// narrowing (CastPermission.ForClaim) CastSpell applies before its
 	// own timing check, so the picker and the announce path cannot
 	// disagree.
+	//
+	// #5363, CR 601.3c: a card with an optional cost that opens the
+	// window when announced (`opens_flash`) is asked each claim's timing
+	// twice: closed even with that cost announced is `timing_closed`, and
+	// open only with it is `opens_flash_required`, so the picker keeps the
+	// claim, pre-selects the cost and can say why. Every other card is
+	// asked once, as before.
+	optionalFlash := haveLive && game.AnyOptionalCostOpensCastWindow(g.OptionalCostsForCastLocked(caster, live))
+	claimTiming := func(face game.Card, perm *game.CastPermission, offer *game.AlternativeCost) (closed, needsFlash bool) {
+		if g.CastTimingForOfferOpenLocked(caster, face, kind, perm, offer) {
+			return false, false
+		}
+		if optionalFlash && g.CastTimingForCastOpenLocked(caster, face, kind, perm, offer, true) {
+			return false, true
+		}
+		return true, false
+	}
 	if haveLive && len(out.AlternativeCosts) > 0 {
 		if !out.AlternativeCostRequired {
-			out.PrintedCostTimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(nil))
+			out.PrintedCostTimingClosed, out.OpensFlashRequired = claimTiming(live, grant.ForClaim(nil), nil)
 		}
 		for i := range out.AlternativeCosts {
 			for _, og := range offerGrants {
 				if o := og.Offer; o != nil && o.Key == out.AlternativeCosts[i].Key {
 					// ADR 0107 §4: a disturb offer is timed as the back
 					// face it casts, as CastSpell times it.
-					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, og.Permission.ForClaim(o), o)
+					out.AlternativeCosts[i].TimingClosed, out.AlternativeCosts[i].OpensFlashRequired = claimTiming(o.CastFaceOf(live), og.Permission.ForClaim(o), o)
 					break
 				}
 			}
 		}
+	} else if optionalFlash && !out.AlternativeCostRequired {
+		// #5363: a card with no alternative cost still opens the picker
+		// for its optional costs, so the printed claim's half is stamped
+		// for it too (printed_cost_timing_closed stays the alternative-
+		// cost picker's alone, as #1686 scoped it).
+		_, out.OpensFlashRequired = claimTiming(live, grant.ForClaim(nil), nil)
 	}
 	// #1015: and THE cast-surface bit, derived here because this is
 	// the one place that knows both halves of it — the prices this
@@ -8326,19 +8364,34 @@ func viewOfWaterbend(g *game.Game, player, exclude uuid.UUID, wb *game.TapPerman
 // `zone` is where the card sits, the zone a cast of it comes out of: an
 // emerge offer's per-candidate price (ADR 0135 §4) is priced for a cast
 // from there, commander tax included.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, zone game.ZoneKind, offers []*game.AlternativeCost) []AlternativeCostView {
+//
+// Each entry carries the permission a cast claiming it is made under
+// (#5081). #5363: that permission is what decides whether the cast
+// claiming the offer is open now only because of the card's own "as
+// though it had flash if …" (game.FlashIfReliedOnLocked, CR 601.3b),
+// and when it is, the offer's `x_max` and `legal_targets` narrow to the
+// permission's condition, as castSpellLocked holds that claim.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, zone game.ZoneKind, offers []game.OfferGrant) []AlternativeCostView {
 	// A nil result rather than a present-and-empty one: `absent`
 	// is what the field means for a card with no offers, and every
 	// card in every cast surface reaches this function since #1012.
 	var out []AlternativeCostView
 	for i := range offers {
-		if offers[i] == nil {
+		if offers[i].Offer == nil {
 			// The printed mana cost. Not an alternative cost, and
 			// `alternative_cost_required` is where the wire says
 			// whether it is claimable from this zone.
 			continue
 		}
-		ac := *offers[i]
+		ac := *offers[i].Offer
+		// #5363, CR 601.3b: the card's own flash permission, when the
+		// cast claiming this offer under its own permission is open
+		// only because of it. No optional cost is announced yet, so
+		// none opens the window here (the card-level stamp's reading).
+		var flashIf *game.FlashIf
+		if live != nil {
+			flashIf = g.FlashIfReliedOnLocked(caster, *live, zone, offers[i].Permission.ForClaim(&ac), &ac, false)
+		}
 		// ADR 0107 §4, CR 712.8c: a disturb offer casts the BACK
 		// face, so the clause and the printed cost the offer is
 		// judged against are the back face's — Spectral Binding's
@@ -8375,13 +8428,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// by.
 			Purpose: viewOfPurpose(ac.Purpose),
 		}
-		if ac.XCeiling > 0 && live != nil {
-			if ceiling, ok := g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac); ok {
+		if _, flashX := flashIf.XCeilingUnder(0, false); (ac.XCeiling > 0 || flashX) && live != nil {
+			if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac)); ok {
 				v.XMax = &ceiling
 			}
 		}
 		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
-		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
+		if spec := flashIf.TargetSpecUnder(game.TargetSpecUnderAlternativeCost(offerBase, &ac)); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
 			v.Clauses = viewOfClauses(g, src, spec)
@@ -12309,6 +12362,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// or not this particular one is timing-shaped rather than
 	// cost-shaped.
 	out.PrintedCostTimingClosed = false
+	out.OpensFlashRequired = false
 	// ADR 0073: "Kicker {4}" names the card as loudly as an overload
 	// cost does, and CR 708.2 leaves a face-down object with no text
 	// to offer it from.

@@ -91,6 +91,7 @@ registered, or when this file is stale.
 | `declareBlockers` | `declare blockers` | dialog, group | aria | `lib/combatDock.ts` | the block request's dialog and its row group |
 | `removeBlock` | `Remove block` | button | text | `lib/combatDock.ts` | #3898: the dock's button that takes the selected blocker's block back while blockers are declared on the board |
 | `chooseBlockers` | `choose blockers` | dialog | aria | `lib/components/board/BlockListSheet.svelte` | #3898: the block declaration as a list, opened from the block request's Show as list; the keyboard path |
+| `opensFlashNeededNow` | `needed to cast it now` | generic | text | `lib/components/board/AlternativeCostModal.svelte` | #5363: under an optional cost in the cost picker that the chosen cost can be cast with right now only if it is paid (CR 601.3c); the picker ticks it |
 | `mulligan` | `keep or mulligan your hand` | dialog | aria | `routes/Game.svelte` | the opening hand sheet; the tutorial's play-land and cast-creature steps detour here while it waits |
 | `keepHand` | `Keep hand` | button | text | `routes/Game.svelte` | the opening hand sheet's primary |
 | `openingHandDecisions` | `opening hand decisions` | generic | aria | `routes/Game.svelte` | the strip's roll call while hands are kept or mulliganed |
