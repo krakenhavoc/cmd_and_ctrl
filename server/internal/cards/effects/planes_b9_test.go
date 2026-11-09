@@ -32,6 +32,7 @@ var (
 	planeFourth   = planeFixture{"13e801cd-e537-4ea6-8c3d-21b142bdc026", "The Fourth Sphere", "Plane — Phyrexia"}
 	planeOtaria   = planeFixture{"29e3371d-aa41-46a9-921a-96565be47eff", "Otaria", "Plane — Dominaria"}
 	planeTrail    = planeFixture{"b2c95c7a-a04c-46ef-a879-6eb08e444093", "Trail of the Mage-Rings", "Plane — Vryn"}
+	planeStairs   = planeFixture{"7a425df4-7010-462e-9cb5-20389bac721c", "Stairs to Infinity", "Plane — Xerex"}
 	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -724,5 +725,59 @@ func TestTrailOfTheMageRingsChaosMayTutorAnInstantOrSorcery(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(bolt) {
 		t.Error("the instant did not reach the hand")
+	}
+}
+
+// --- Stairs to Infinity ------------------------------------------------------
+
+func TestStairsToInfinityDrawsOnEveryPlanarRollAndHasNoHandLimit(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeStairs)
+	g, _ := newPlaneGame(t, planeStairs)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	before := me.Hand.Size()
+	rollBlank(t, g, me.ID)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand %d after a blank roll, want %d", got, before+1)
+	}
+	rollBlank(t, g, opp.ID)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("another player's roll drew a card for the planar controller")
+	}
+	for range 10 {
+		pushHandCard(g, me)
+	}
+	advanceTo(t, g, game.StepEnd)
+	advanceTo(t, g, game.StepCleanup)
+	if me.Hand.Size() < 8 || discardOwed(g, me.ID) != 0 {
+		t.Errorf("hand %d, discard owed %d: a hand limit applied", me.Hand.Size(), discardOwed(g, me.ID))
+	}
+}
+
+func TestStairsToInfinityChaosRevealsTheTopPlaneAndMayBottomIt(t *testing.T) {
+	g, _ := newPlaneGame(t, planeStairs)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	top, _ := g.PlanarDeck.Top()
+	rollChaos(t, g, me.ID)
+	answerAnyTriggerOrderPrompt(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
+	if now, _ := g.PlanarDeck.Top(); now.InstanceID != top.InstanceID {
+		t.Error("declining moved the planar deck's top card")
+	}
+	rollChaos(t, g, me.ID)
+	answerAnyTriggerOrderPrompt(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	if now, _ := g.PlanarDeck.Top(); now.InstanceID == top.InstanceID {
+		t.Error("the revealed plane is still on top of the planar deck")
+	}
+	if bottom, _ := g.PlanarDeck.Bottom(); bottom.InstanceID != top.InstanceID {
+		t.Error("the revealed plane is not on the bottom of the planar deck")
 	}
 }
