@@ -952,7 +952,7 @@ func TestStdB44PrideOfHullCladeLetsADefenderAttack(t *testing.T) {
 
 const stdGreedOracle = "5483f787-7aca-4efe-a39a-ea29f8c07f0d"
 
-func stdGreedCast(t *testing.T, dealt bool) (*game.Game, *game.Player, error, uuid.UUID) {
+func stdGreedCast(t *testing.T, dealt bool) (*game.Game, *game.Player, uuid.UUID, error) {
 	t.Helper()
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -972,11 +972,11 @@ func stdGreedCast(t *testing.T, dealt bool) (*game.Game, *game.Player, error, uu
 	if dealt {
 		victim = fighter
 	}
-	return g, me, g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, SacrificeIDs: []uuid.UUID{victim}}), victim
+	return g, me, victim, g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, SacrificeIDs: []uuid.UUID{victim}})
 }
 
 func TestStdB45TreacherousGreedSacrificesADamageDealerAndDrains(t *testing.T) {
-	g, me, err, victim := stdGreedCast(t, true)
+	g, me, victim, err := stdGreedCast(t, true)
 	if err != nil {
 		t.Fatalf("cast: %v", err)
 	}
@@ -995,7 +995,7 @@ func TestStdB45TreacherousGreedSacrificesADamageDealerAndDrains(t *testing.T) {
 }
 
 func TestStdB45TreacherousGreedRefusesACreatureThatDealtNoDamage(t *testing.T) {
-	_, _, err, _ := stdGreedCast(t, false)
+	_, _, _, err := stdGreedCast(t, false)
 	if err == nil {
 		t.Fatal("sacrificed a creature that dealt no damage this turn")
 	}
