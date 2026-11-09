@@ -850,6 +850,11 @@ type CastPermission struct {
 	//
 	NotBeforeSeq int `json:"notBeforeSeq,omitempty"`
 
+	// Warped marks the permission warp leaves over the card its delayed
+	// trigger exiled (CR 702.185b): the card is a "warped card in exile" for
+	// as long as this permission covers it (Close Encounter).
+	Warped bool `json:"warped,omitempty"`
+
 	// LegacyNotBeforeTurn is populated only while decoding a snapshot
 	// written before ADR 0059. restoreGame converts the old round unit
 	// to NotBeforeSeq and clears it before the game can be captured again.

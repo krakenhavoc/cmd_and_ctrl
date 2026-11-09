@@ -529,6 +529,7 @@ delayedTriggers[].label	string
 delayedTriggers[].manaAdds	string
 delayedTriggers[].manaTapControllerOnly	bool
 delayedTriggers[].manaTapSubtype	string
+delayedTriggers[].notBeforeSeq	number:int
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
 delayedTriggers[].onPhaseId	number:int
@@ -2061,6 +2062,7 @@ followUpParks[].then.permission.source	custom(uuid.UUID)
 followUpParks[].then.permission.sourceName	string
 followUpParks[].then.permission.timing	string
 followUpParks[].then.permission.topOfLibraryOnly	bool
+followUpParks[].then.permission.warped	bool
 followUpParks[].then.permission.waterbendManaValue	bool
 followUpParks[].then.permission.zone	string
 followUpParks[].then.permission.zoneOwner	custom(uuid.UUID)
@@ -2677,6 +2679,7 @@ frozenEntries[].event.counterTail.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission.sourceName	string
 frozenEntries[].event.counterTail.then.permission.timing	string
 frozenEntries[].event.counterTail.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.counterTail.then.permission.warped	bool
 frozenEntries[].event.counterTail.then.permission.waterbendManaValue	bool
 frozenEntries[].event.counterTail.then.permission.zone	string
 frozenEntries[].event.counterTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -3272,6 +3275,7 @@ frozenEntries[].event.damageTail.each.each.permission.source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission.sourceName	string
 frozenEntries[].event.damageTail.each.each.permission.timing	string
 frozenEntries[].event.damageTail.each.each.permission.topOfLibraryOnly	bool
+frozenEntries[].event.damageTail.each.each.permission.warped	bool
 frozenEntries[].event.damageTail.each.each.permission.waterbendManaValue	bool
 frozenEntries[].event.damageTail.each.each.permission.zone	string
 frozenEntries[].event.damageTail.each.each.permission.zoneOwner	custom(uuid.UUID)
@@ -3858,6 +3862,7 @@ frozenEntries[].event.damageTail.each.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission.sourceName	string
 frozenEntries[].event.damageTail.each.then.permission.timing	string
 frozenEntries[].event.damageTail.each.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.damageTail.each.then.permission.warped	bool
 frozenEntries[].event.damageTail.each.then.permission.waterbendManaValue	bool
 frozenEntries[].event.damageTail.each.then.permission.zone	string
 frozenEntries[].event.damageTail.each.then.permission.zoneOwner	custom(uuid.UUID)
@@ -4237,6 +4242,7 @@ frozenEntries[].event.damageTail.sourceLki.CostPower[]	object
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Bonus	number:int
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughness	bool
+frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughnessIfGreater	bool
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.damageTail.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.damageTail.sourceLki.DamageByToughness	bool
@@ -4615,6 +4621,7 @@ frozenEntries[].event.damageTail.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission.sourceName	string
 frozenEntries[].event.damageTail.then.permission.timing	string
 frozenEntries[].event.damageTail.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.damageTail.then.permission.warped	bool
 frozenEntries[].event.damageTail.then.permission.waterbendManaValue	bool
 frozenEntries[].event.damageTail.then.permission.zone	string
 frozenEntries[].event.damageTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -5320,6 +5327,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.source	custom
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.sourceName	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.timing	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.warped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.waterbendManaValue	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.zone	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -5982,6 +5990,7 @@ frozenEntries[].event.entryTail.batch.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission.sourceName	string
 frozenEntries[].event.entryTail.batch.then.permission.timing	string
 frozenEntries[].event.entryTail.batch.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.entryTail.batch.then.permission.warped	bool
 frozenEntries[].event.entryTail.batch.then.permission.waterbendManaValue	bool
 frozenEntries[].event.entryTail.batch.then.permission.zone	string
 frozenEntries[].event.entryTail.batch.then.permission.zoneOwner	custom(uuid.UUID)
@@ -6568,6 +6577,7 @@ frozenEntries[].event.entryTail.keyed.permission.source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission.sourceName	string
 frozenEntries[].event.entryTail.keyed.permission.timing	string
 frozenEntries[].event.entryTail.keyed.permission.topOfLibraryOnly	bool
+frozenEntries[].event.entryTail.keyed.permission.warped	bool
 frozenEntries[].event.entryTail.keyed.permission.waterbendManaValue	bool
 frozenEntries[].event.entryTail.keyed.permission.zone	string
 frozenEntries[].event.entryTail.keyed.permission.zoneOwner	custom(uuid.UUID)
@@ -7186,6 +7196,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.source	custom(uu
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.sourceName	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.timing	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.topOfLibraryOnly	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.warped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.waterbendManaValue	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.zone	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -7792,6 +7803,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission.sourceName	string
 frozenEntries[].event.entryTail.tokens.then.permission.timing	string
 frozenEntries[].event.entryTail.tokens.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.entryTail.tokens.then.permission.warped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.waterbendManaValue	bool
 frozenEntries[].event.entryTail.tokens.then.permission.zone	string
 frozenEntries[].event.entryTail.tokens.then.permission.zoneOwner	custom(uuid.UUID)
@@ -8797,6 +8809,7 @@ frozenEntries[].event.keywordActionTail.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission.sourceName	string
 frozenEntries[].event.keywordActionTail.then.permission.timing	string
 frozenEntries[].event.keywordActionTail.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.keywordActionTail.then.permission.warped	bool
 frozenEntries[].event.keywordActionTail.then.permission.waterbendManaValue	bool
 frozenEntries[].event.keywordActionTail.then.permission.zone	string
 frozenEntries[].event.keywordActionTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -9405,6 +9418,7 @@ frozenEntries[].event.lifeTail.each.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission.sourceName	string
 frozenEntries[].event.lifeTail.each.then.permission.timing	string
 frozenEntries[].event.lifeTail.each.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.lifeTail.each.then.permission.warped	bool
 frozenEntries[].event.lifeTail.each.then.permission.waterbendManaValue	bool
 frozenEntries[].event.lifeTail.each.then.permission.zone	string
 frozenEntries[].event.lifeTail.each.then.permission.zoneOwner	custom(uuid.UUID)
@@ -9994,6 +10008,7 @@ frozenEntries[].event.lifeTail.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission.sourceName	string
 frozenEntries[].event.lifeTail.then.permission.timing	string
 frozenEntries[].event.lifeTail.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.lifeTail.then.permission.warped	bool
 frozenEntries[].event.lifeTail.then.permission.waterbendManaValue	bool
 frozenEntries[].event.lifeTail.then.permission.zone	string
 frozenEntries[].event.lifeTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -11376,6 +11391,7 @@ frozenEntries[].event.millTail.run.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission.sourceName	string
 frozenEntries[].event.millTail.run.then.permission.timing	string
 frozenEntries[].event.millTail.run.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.millTail.run.then.permission.warped	bool
 frozenEntries[].event.millTail.run.then.permission.waterbendManaValue	bool
 frozenEntries[].event.millTail.run.then.permission.zone	string
 frozenEntries[].event.millTail.run.then.permission.zoneOwner	custom(uuid.UUID)
@@ -11960,6 +11976,7 @@ frozenEntries[].event.millTail.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission.sourceName	string
 frozenEntries[].event.millTail.then.permission.timing	string
 frozenEntries[].event.millTail.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.millTail.then.permission.warped	bool
 frozenEntries[].event.millTail.then.permission.waterbendManaValue	bool
 frozenEntries[].event.millTail.then.permission.zone	string
 frozenEntries[].event.millTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -12358,6 +12375,7 @@ frozenEntries[].event.sourceLki.CostPower[]	object
 frozenEntries[].event.sourceLki.CostPower[].Bonus	number:int
 frozenEntries[].event.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.sourceLki.CostPower[].UseToughness	bool
+frozenEntries[].event.sourceLki.CostPower[].UseToughnessIfGreater	bool
 frozenEntries[].event.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.sourceLki.DamageByToughness	bool
@@ -12510,6 +12528,7 @@ frozenEntries[].event.stackItem.paid.tappedOthers[].epoch	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.paid.tappedOthers[].left	bool
 frozenEntries[].event.stackItem.paid.tappedOthers[].power	number:int
+frozenEntries[].event.stackItem.paid.tappedOthers[].stationAnyPower	number:int
 frozenEntries[].event.stackItem.paid.tappedOthers[].stationPower	number:int
 frozenEntries[].event.stackItem.params	object
 frozenEntries[].event.stackItem.params.ability	object
@@ -13476,6 +13495,7 @@ frozenEntries[].event.tokenTail.then.permission.source	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission.sourceName	string
 frozenEntries[].event.tokenTail.then.permission.timing	string
 frozenEntries[].event.tokenTail.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.tokenTail.then.permission.warped	bool
 frozenEntries[].event.tokenTail.then.permission.waterbendManaValue	bool
 frozenEntries[].event.tokenTail.then.permission.zone	string
 frozenEntries[].event.tokenTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -15282,6 +15302,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.source	custom(uui
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.sourceName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.timing	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.warped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.waterbendManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.zone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.zoneOwner	custom(uuid.UUID)
@@ -15900,6 +15921,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.source	cust
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.sourceName	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.timing	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.topOfLibraryOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.warped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.waterbendManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.zone	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -16484,6 +16506,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.source	custom(uuid.UUI
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.sourceName	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.timing	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.warped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.waterbendManaValue	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.zone	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -17088,6 +17111,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.source	custom(uuid.U
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.sourceName	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.timing	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.warped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.waterbendManaValue	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.zone	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -17757,6 +17781,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.source	custom(uuid.
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.sourceName	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.timing	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.topOfLibraryOnly	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.warped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.waterbendManaValue	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.zone	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -18539,6 +18564,7 @@ heldCombatDamage.answers[].frame.SourceLKI.CostPower[]	object
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Bonus	number:int
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Multiplier	number:int
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughness	bool
+heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughnessIfGreater	bool
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Uses	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.DamageAsPositivePower	bool
 heldCombatDamage.answers[].frame.SourceLKI.DamageByToughness	bool
@@ -18716,6 +18742,7 @@ lastKnownBattlefield{}.CostPower[]	object
 lastKnownBattlefield{}.CostPower[].Bonus	number:int
 lastKnownBattlefield{}.CostPower[].Multiplier	number:int
 lastKnownBattlefield{}.CostPower[].UseToughness	bool
+lastKnownBattlefield{}.CostPower[].UseToughnessIfGreater	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
@@ -18897,6 +18924,7 @@ lastKnownPermanents{}[].characteristic.CostPower[]	object
 lastKnownPermanents{}[].characteristic.CostPower[].Bonus	number:int
 lastKnownPermanents{}[].characteristic.CostPower[].Multiplier	number:int
 lastKnownPermanents{}[].characteristic.CostPower[].UseToughness	bool
+lastKnownPermanents{}[].characteristic.CostPower[].UseToughnessIfGreater	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
@@ -19519,6 +19547,7 @@ lastKnownStack[].item.paid.tappedOthers[].epoch	number:int
 lastKnownStack[].item.paid.tappedOthers[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.tappedOthers[].left	bool
 lastKnownStack[].item.paid.tappedOthers[].power	number:int
+lastKnownStack[].item.paid.tappedOthers[].stationAnyPower	number:int
 lastKnownStack[].item.paid.tappedOthers[].stationPower	number:int
 lastKnownStack[].item.params	object
 lastKnownStack[].item.params.ability	object
@@ -20208,6 +20237,7 @@ movesAwaitingTokens[].counterTail.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.permission.sourceName	string
 movesAwaitingTokens[].counterTail.then.permission.timing	string
 movesAwaitingTokens[].counterTail.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].counterTail.then.permission.warped	bool
 movesAwaitingTokens[].counterTail.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].counterTail.then.permission.zone	string
 movesAwaitingTokens[].counterTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -20803,6 +20833,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.permission.sourceName	string
 movesAwaitingTokens[].damageTail.each.each.permission.timing	string
 movesAwaitingTokens[].damageTail.each.each.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].damageTail.each.each.permission.warped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.waterbendManaValue	bool
 movesAwaitingTokens[].damageTail.each.each.permission.zone	string
 movesAwaitingTokens[].damageTail.each.each.permission.zoneOwner	custom(uuid.UUID)
@@ -21389,6 +21420,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.permission.sourceName	string
 movesAwaitingTokens[].damageTail.each.then.permission.timing	string
 movesAwaitingTokens[].damageTail.each.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].damageTail.each.then.permission.warped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].damageTail.each.then.permission.zone	string
 movesAwaitingTokens[].damageTail.each.then.permission.zoneOwner	custom(uuid.UUID)
@@ -21768,6 +21800,7 @@ movesAwaitingTokens[].damageTail.sourceLki.CostPower[]	object
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Bonus	number:int
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Multiplier	number:int
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].UseToughness	bool
+movesAwaitingTokens[].damageTail.sourceLki.CostPower[].UseToughnessIfGreater	bool
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Uses	number:uint8
 movesAwaitingTokens[].damageTail.sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].damageTail.sourceLki.DamageByToughness	bool
@@ -22146,6 +22179,7 @@ movesAwaitingTokens[].damageTail.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.permission.sourceName	string
 movesAwaitingTokens[].damageTail.then.permission.timing	string
 movesAwaitingTokens[].damageTail.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].damageTail.then.permission.warped	bool
 movesAwaitingTokens[].damageTail.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].damageTail.then.permission.zone	string
 movesAwaitingTokens[].damageTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -22851,6 +22885,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.source	custom
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.sourceName	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.timing	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.warped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.zone	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -23513,6 +23548,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.permission.sourceName	string
 movesAwaitingTokens[].entryTail.batch.then.permission.timing	string
 movesAwaitingTokens[].entryTail.batch.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.warped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.zone	string
 movesAwaitingTokens[].entryTail.batch.then.permission.zoneOwner	custom(uuid.UUID)
@@ -24099,6 +24135,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.permission.sourceName	string
 movesAwaitingTokens[].entryTail.keyed.permission.timing	string
 movesAwaitingTokens[].entryTail.keyed.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].entryTail.keyed.permission.warped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.waterbendManaValue	bool
 movesAwaitingTokens[].entryTail.keyed.permission.zone	string
 movesAwaitingTokens[].entryTail.keyed.permission.zoneOwner	custom(uuid.UUID)
@@ -24717,6 +24754,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.source	custom(uu
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.sourceName	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.timing	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.warped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.waterbendManaValue	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.zone	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -25323,6 +25361,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.permission.sourceName	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.timing	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.warped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.zone	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.zoneOwner	custom(uuid.UUID)
@@ -26328,6 +26367,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.permission.sourceName	string
 movesAwaitingTokens[].keywordActionTail.then.permission.timing	string
 movesAwaitingTokens[].keywordActionTail.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.warped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.zone	string
 movesAwaitingTokens[].keywordActionTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -26936,6 +26976,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.permission.sourceName	string
 movesAwaitingTokens[].lifeTail.each.then.permission.timing	string
 movesAwaitingTokens[].lifeTail.each.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.warped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.zone	string
 movesAwaitingTokens[].lifeTail.each.then.permission.zoneOwner	custom(uuid.UUID)
@@ -27525,6 +27566,7 @@ movesAwaitingTokens[].lifeTail.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission.sourceName	string
 movesAwaitingTokens[].lifeTail.then.permission.timing	string
 movesAwaitingTokens[].lifeTail.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].lifeTail.then.permission.warped	bool
 movesAwaitingTokens[].lifeTail.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].lifeTail.then.permission.zone	string
 movesAwaitingTokens[].lifeTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -28907,6 +28949,7 @@ movesAwaitingTokens[].millTail.run.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.permission.sourceName	string
 movesAwaitingTokens[].millTail.run.then.permission.timing	string
 movesAwaitingTokens[].millTail.run.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].millTail.run.then.permission.warped	bool
 movesAwaitingTokens[].millTail.run.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].millTail.run.then.permission.zone	string
 movesAwaitingTokens[].millTail.run.then.permission.zoneOwner	custom(uuid.UUID)
@@ -29491,6 +29534,7 @@ movesAwaitingTokens[].millTail.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission.sourceName	string
 movesAwaitingTokens[].millTail.then.permission.timing	string
 movesAwaitingTokens[].millTail.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].millTail.then.permission.warped	bool
 movesAwaitingTokens[].millTail.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].millTail.then.permission.zone	string
 movesAwaitingTokens[].millTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -29889,6 +29933,7 @@ movesAwaitingTokens[].sourceLki.CostPower[]	object
 movesAwaitingTokens[].sourceLki.CostPower[].Bonus	number:int
 movesAwaitingTokens[].sourceLki.CostPower[].Multiplier	number:int
 movesAwaitingTokens[].sourceLki.CostPower[].UseToughness	bool
+movesAwaitingTokens[].sourceLki.CostPower[].UseToughnessIfGreater	bool
 movesAwaitingTokens[].sourceLki.CostPower[].Uses	number:uint8
 movesAwaitingTokens[].sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].sourceLki.DamageByToughness	bool
@@ -30041,6 +30086,7 @@ movesAwaitingTokens[].stackItem.paid.tappedOthers[].epoch	number:int
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].left	bool
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].power	number:int
+movesAwaitingTokens[].stackItem.paid.tappedOthers[].stationAnyPower	number:int
 movesAwaitingTokens[].stackItem.paid.tappedOthers[].stationPower	number:int
 movesAwaitingTokens[].stackItem.params	object
 movesAwaitingTokens[].stackItem.params.ability	object
@@ -31007,6 +31053,7 @@ movesAwaitingTokens[].tokenTail.then.permission.source	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.permission.sourceName	string
 movesAwaitingTokens[].tokenTail.then.permission.timing	string
 movesAwaitingTokens[].tokenTail.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].tokenTail.then.permission.warped	bool
 movesAwaitingTokens[].tokenTail.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].tokenTail.then.permission.zone	string
 movesAwaitingTokens[].tokenTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -32813,6 +32860,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.source	custom(uui
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.sourceName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.timing	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.warped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.zoneOwner	custom(uuid.UUID)
@@ -33431,6 +33479,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.source	cust
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.sourceName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.timing	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.warped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.waterbendManaValue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -34015,6 +34064,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.source	custom(uuid.UUI
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.sourceName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.timing	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.warped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.zone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -34619,6 +34669,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.source	custom(uuid.U
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.sourceName	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.timing	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.warped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.zone	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -35288,6 +35339,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.source	custom(uuid.
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.sourceName	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.timing	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.topOfLibraryOnly	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.warped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.waterbendManaValue	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.zone	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -36091,6 +36143,7 @@ pausedModeWalk.item.paid.tappedOthers[].epoch	number:int
 pausedModeWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.tappedOthers[].left	bool
 pausedModeWalk.item.paid.tappedOthers[].power	number:int
+pausedModeWalk.item.paid.tappedOthers[].stationAnyPower	number:int
 pausedModeWalk.item.paid.tappedOthers[].stationPower	number:int
 pausedModeWalk.item.params	object
 pausedModeWalk.item.params.ability	object
@@ -36417,6 +36470,7 @@ pausedResolutionTail.item.paid.tappedOthers[].epoch	number:int
 pausedResolutionTail.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedResolutionTail.item.paid.tappedOthers[].left	bool
 pausedResolutionTail.item.paid.tappedOthers[].power	number:int
+pausedResolutionTail.item.paid.tappedOthers[].stationAnyPower	number:int
 pausedResolutionTail.item.paid.tappedOthers[].stationPower	number:int
 pausedResolutionTail.item.params	object
 pausedResolutionTail.item.params.ability	object
@@ -36737,6 +36791,7 @@ pausedStepWalk.item.paid.tappedOthers[].epoch	number:int
 pausedStepWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pausedStepWalk.item.paid.tappedOthers[].left	bool
 pausedStepWalk.item.paid.tappedOthers[].power	number:int
+pausedStepWalk.item.paid.tappedOthers[].stationAnyPower	number:int
 pausedStepWalk.item.paid.tappedOthers[].stationPower	number:int
 pausedStepWalk.item.params	object
 pausedStepWalk.item.params.ability	object
@@ -38462,6 +38517,7 @@ pendingChoices[].attackSplit.tail.permission.source	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission.sourceName	string
 pendingChoices[].attackSplit.tail.permission.timing	string
 pendingChoices[].attackSplit.tail.permission.topOfLibraryOnly	bool
+pendingChoices[].attackSplit.tail.permission.warped	bool
 pendingChoices[].attackSplit.tail.permission.waterbendManaValue	bool
 pendingChoices[].attackSplit.tail.permission.zone	string
 pendingChoices[].attackSplit.tail.permission.zoneOwner	custom(uuid.UUID)
@@ -39249,6 +39305,7 @@ pendingChoices[].copyWalk.item.paid.tappedOthers[].epoch	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.paid.tappedOthers[].left	bool
 pendingChoices[].copyWalk.item.paid.tappedOthers[].power	number:int
+pendingChoices[].copyWalk.item.paid.tappedOthers[].stationAnyPower	number:int
 pendingChoices[].copyWalk.item.paid.tappedOthers[].stationPower	number:int
 pendingChoices[].copyWalk.item.params	object
 pendingChoices[].copyWalk.item.params.ability	object
@@ -40041,6 +40098,7 @@ pendingChoices[].damageAssignment.SourceLKI.CostPower[]	object
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Bonus	number:int
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Multiplier	number:int
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughness	bool
+pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
@@ -40442,6 +40500,7 @@ pendingChoices[].diceRoll.then.permission.source	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.sourceName	string
 pendingChoices[].diceRoll.then.permission.timing	string
 pendingChoices[].diceRoll.then.permission.topOfLibraryOnly	bool
+pendingChoices[].diceRoll.then.permission.warped	bool
 pendingChoices[].diceRoll.then.permission.waterbendManaValue	bool
 pendingChoices[].diceRoll.then.permission.zone	string
 pendingChoices[].diceRoll.then.permission.zoneOwner	custom(uuid.UUID)
@@ -40856,6 +40915,7 @@ pendingChoices[].divideShield.staged[].lki.CostPower[]	object
 pendingChoices[].divideShield.staged[].lki.CostPower[].Bonus	number:int
 pendingChoices[].divideShield.staged[].lki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughness	bool
+pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].divideShield.staged[].lki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].lki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].lki.DamageByToughness	bool
@@ -41022,6 +41082,7 @@ pendingChoices[].divideShield.staged[].sourceLki.CostPower[]	object
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Bonus	number:int
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughness	bool
+pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].sourceLki.DamageByToughness	bool
@@ -41405,6 +41466,7 @@ pendingChoices[].divideShield.walk.each.permission.source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission.sourceName	string
 pendingChoices[].divideShield.walk.each.permission.timing	string
 pendingChoices[].divideShield.walk.each.permission.topOfLibraryOnly	bool
+pendingChoices[].divideShield.walk.each.permission.warped	bool
 pendingChoices[].divideShield.walk.each.permission.waterbendManaValue	bool
 pendingChoices[].divideShield.walk.each.permission.zone	string
 pendingChoices[].divideShield.walk.each.permission.zoneOwner	custom(uuid.UUID)
@@ -41991,6 +42053,7 @@ pendingChoices[].divideShield.walk.then.permission.source	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission.sourceName	string
 pendingChoices[].divideShield.walk.then.permission.timing	string
 pendingChoices[].divideShield.walk.then.permission.topOfLibraryOnly	bool
+pendingChoices[].divideShield.walk.then.permission.warped	bool
 pendingChoices[].divideShield.walk.then.permission.waterbendManaValue	bool
 pendingChoices[].divideShield.walk.then.permission.zone	string
 pendingChoices[].divideShield.walk.then.permission.zoneOwner	custom(uuid.UUID)
@@ -42583,6 +42646,7 @@ pendingChoices[].libraryOrder.then.permission.source	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission.sourceName	string
 pendingChoices[].libraryOrder.then.permission.timing	string
 pendingChoices[].libraryOrder.then.permission.topOfLibraryOnly	bool
+pendingChoices[].libraryOrder.then.permission.warped	bool
 pendingChoices[].libraryOrder.then.permission.waterbendManaValue	bool
 pendingChoices[].libraryOrder.then.permission.zone	string
 pendingChoices[].libraryOrder.then.permission.zoneOwner	custom(uuid.UUID)
@@ -43225,6 +43289,7 @@ pendingChoices[].nameThen.permission.source	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.sourceName	string
 pendingChoices[].nameThen.permission.timing	string
 pendingChoices[].nameThen.permission.topOfLibraryOnly	bool
+pendingChoices[].nameThen.permission.warped	bool
 pendingChoices[].nameThen.permission.waterbendManaValue	bool
 pendingChoices[].nameThen.permission.zone	string
 pendingChoices[].nameThen.permission.zoneOwner	custom(uuid.UUID)
@@ -44275,6 +44340,7 @@ pendingChoices[].pickTail.permission.source	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.sourceName	string
 pendingChoices[].pickTail.permission.timing	string
 pendingChoices[].pickTail.permission.topOfLibraryOnly	bool
+pendingChoices[].pickTail.permission.warped	bool
 pendingChoices[].pickTail.permission.waterbendManaValue	bool
 pendingChoices[].pickTail.permission.zone	string
 pendingChoices[].pickTail.permission.zoneOwner	custom(uuid.UUID)
@@ -44905,6 +44971,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.source	cust
 pendingChoices[].replacementResume.event.counterTail.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.timing	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.warped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.zone	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -45500,6 +45567,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.source	
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.sourceName	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.timing	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.warped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.zone	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.zoneOwner	custom(uuid.UUID)
@@ -46086,6 +46154,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.source	
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.timing	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.warped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.zone	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.zoneOwner	custom(uuid.UUID)
@@ -46465,6 +46534,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Bonus	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseToughness	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageByToughness	bool
@@ -46843,6 +46913,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.source	custo
 pendingChoices[].replacementResume.event.damageTail.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.timing	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.warped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.zone	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -47548,6 +47619,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.timing	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.warped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -48210,6 +48282,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.source	
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.timing	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.warped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.zone	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.zoneOwner	custom(uuid.UUID)
@@ -48796,6 +48869,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.source	custo
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.sourceName	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.timing	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.warped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.zone	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.zoneOwner	custom(uuid.UUID)
@@ -49414,6 +49488,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.sourceName	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.timing	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.warped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.zone	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -50020,6 +50095,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.source
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.timing	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.warped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.zone	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.zoneOwner	custom(uuid.UUID)
@@ -51025,6 +51101,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.sourc
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.timing	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.warped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.zone	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -51633,6 +51710,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.source	cu
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.timing	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.warped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.zone	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.zoneOwner	custom(uuid.UUID)
@@ -52222,6 +52300,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.source	custom(
 pendingChoices[].replacementResume.event.lifeTail.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.timing	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.warped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.zone	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -53604,6 +53683,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.source	cus
 pendingChoices[].replacementResume.event.millTail.run.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.timing	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.warped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.zone	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.zoneOwner	custom(uuid.UUID)
@@ -54188,6 +54268,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.source	custom(
 pendingChoices[].replacementResume.event.millTail.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.millTail.then.permission.timing	string
 pendingChoices[].replacementResume.event.millTail.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.warped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.zone	string
 pendingChoices[].replacementResume.event.millTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -54586,6 +54667,7 @@ pendingChoices[].replacementResume.event.sourceLki.CostPower[]	object
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Bonus	number:int
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Multiplier	number:int
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughness	bool
+pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.sourceLki.DamageByToughness	bool
@@ -54738,6 +54820,7 @@ pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].epoch	num
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].left	bool
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].power	number:int
+pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].stationAnyPower	number:int
 pendingChoices[].replacementResume.event.stackItem.paid.tappedOthers[].stationPower	number:int
 pendingChoices[].replacementResume.event.stackItem.params	object
 pendingChoices[].replacementResume.event.stackItem.params.ability	object
@@ -55704,6 +55787,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.source	custom
 pendingChoices[].replacementResume.event.tokenTail.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.timing	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.warped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.zone	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.zoneOwner	custom(uuid.UUID)
@@ -57510,6 +57594,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.timing	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.warped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.zoneOwner	custom(uuid.UUID)
@@ -58128,6 +58213,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.sourceName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.timing	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.warped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -58712,6 +58798,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.sou
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.timing	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.warped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.zone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -59316,6 +59403,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.s
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.timing	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.warped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.zone	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -59985,6 +60073,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.sourceName	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.timing	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.topOfLibraryOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.warped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.waterbendManaValue	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.zone	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.zoneOwner	custom(uuid.UUID)
@@ -60996,6 +61085,7 @@ pendingChoices[].scryThen.permission.source	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.sourceName	string
 pendingChoices[].scryThen.permission.timing	string
 pendingChoices[].scryThen.permission.topOfLibraryOnly	bool
+pendingChoices[].scryThen.permission.warped	bool
 pendingChoices[].scryThen.permission.waterbendManaValue	bool
 pendingChoices[].scryThen.permission.zone	string
 pendingChoices[].scryThen.permission.zoneOwner	custom(uuid.UUID)
@@ -61627,6 +61717,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.source	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission.sourceName	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.timing	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.topOfLibraryOnly	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.warped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.waterbendManaValue	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.zone	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.zoneOwner	custom(uuid.UUID)
@@ -62246,6 +62337,7 @@ pendingChoices[].targetWalk.frame.lki.CostPower[]	object
 pendingChoices[].targetWalk.frame.lki.CostPower[].Bonus	number:int
 pendingChoices[].targetWalk.frame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughness	bool
+pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].targetWalk.frame.lki.DamageAsPositivePower	bool
 pendingChoices[].targetWalk.frame.lki.DamageByToughness	bool
@@ -62981,6 +63073,7 @@ pendingChoices[].triggerFrame.lki.CostPower[]	object
 pendingChoices[].triggerFrame.lki.CostPower[].Bonus	number:int
 pendingChoices[].triggerFrame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].triggerFrame.lki.CostPower[].UseToughness	bool
+pendingChoices[].triggerFrame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].triggerFrame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].triggerFrame.lki.DamageAsPositivePower	bool
 pendingChoices[].triggerFrame.lki.DamageByToughness	bool
@@ -63703,6 +63796,7 @@ pendingTriggers[].paid.tappedOthers[].epoch	number:int
 pendingTriggers[].paid.tappedOthers[].id	custom(uuid.UUID)
 pendingTriggers[].paid.tappedOthers[].left	bool
 pendingTriggers[].paid.tappedOthers[].power	number:int
+pendingTriggers[].paid.tappedOthers[].stationAnyPower	number:int
 pendingTriggers[].paid.tappedOthers[].stationPower	number:int
 pendingTriggers[].params	object
 pendingTriggers[].params.ability	object
@@ -66076,6 +66170,7 @@ resolving.item.paid.tappedOthers[].epoch	number:int
 resolving.item.paid.tappedOthers[].id	custom(uuid.UUID)
 resolving.item.paid.tappedOthers[].left	bool
 resolving.item.paid.tappedOthers[].power	number:int
+resolving.item.paid.tappedOthers[].stationAnyPower	number:int
 resolving.item.paid.tappedOthers[].stationPower	number:int
 resolving.item.params	object
 resolving.item.params.ability	object
@@ -67057,6 +67152,7 @@ seats[].castPermissions[].source	custom(uuid.UUID)
 seats[].castPermissions[].sourceName	string
 seats[].castPermissions[].timing	string
 seats[].castPermissions[].topOfLibraryOnly	bool
+seats[].castPermissions[].warped	bool
 seats[].castPermissions[].waterbendManaValue	bool
 seats[].castPermissions[].zone	string
 seats[].castPermissions[].zoneOwner	custom(uuid.UUID)
@@ -71241,6 +71337,7 @@ stackMeta[].paid.tappedOthers[].epoch	number:int
 stackMeta[].paid.tappedOthers[].id	custom(uuid.UUID)
 stackMeta[].paid.tappedOthers[].left	bool
 stackMeta[].paid.tappedOthers[].power	number:int
+stackMeta[].paid.tappedOthers[].stationAnyPower	number:int
 stackMeta[].paid.tappedOthers[].stationPower	number:int
 stackMeta[].params	object
 stackMeta[].params.ability	object

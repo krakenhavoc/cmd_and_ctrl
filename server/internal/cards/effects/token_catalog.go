@@ -370,6 +370,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Pinnacle Emissary's Drone: flying, and it can block only creatures
 	// with flying (Edge of Eternities, #4461).
 	printedDroneBlockerToken,
+
+
+	// Station Monitor's Drone: flying, and it can block only creatures
+	// with flying (Edge of Eternities, #4461).
+	printedDroneBlocksOnlyFliersToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

@@ -1809,7 +1809,8 @@ type delayedTriggerSnapshot struct {
 	Label              string     `json:"label,omitempty"`
 	At                 Step       `json:"at"`
 	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
-	TurnOf             *uuid.UUID `json:"turnOf,omitempty"` // #1538
+	NotBeforeSeq       int        `json:"notBeforeSeq,omitempty"` // Kav Landseeker: "on your next turn"
+	TurnOf             *uuid.UUID `json:"turnOf,omitempty"`       // #1538
 	// OnExtraTurn is ADR 0059 Decision 8's binding to one extra turn.
 	// Additive: an older binary drops it, but every card that binds a
 	// trigger also names a body that binary lacks, so it refuses the
@@ -3398,6 +3399,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		NotBeforeSeq:       d.NotBeforeSeq,
 		OnExtraTurn:        d.OnExtraTurn,
 		OnPhaseID:          d.OnPhaseID,
 		OnSeq:              d.OnSeq,
@@ -4519,6 +4521,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		NotBeforeSeq:       d.NotBeforeSeq,
 		OnExtraTurn:        d.OnExtraTurn,
 		OnPhaseID:          d.OnPhaseID,
 		OnSeq:              d.OnSeq,

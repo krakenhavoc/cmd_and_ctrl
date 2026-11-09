@@ -370,6 +370,14 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 	return out
 }
 
+// GrantedAltCostWarp is the key of "cards in your hand have warp {cost}"
+// (Tannuk, Steadfast Second; CR 702.185a): a granted offer that, unlike
+// every other granted key, carries the warp exile clause, which the entry
+// hook (queueAltCostEntryTriggerLocked) reads off the key because the
+// card prints no row of its own. An on-disk identity: never renamed,
+// never reused.
+const GrantedAltCostWarp = "granted-warp"
+
 // GrantedAltCostNextFree is the key of the free offer a live
 // NextSpellPromise.WithoutPayingManaCost makes (#2709). An on-disk
 // identity, like every granted key: never renamed, never reused.

@@ -122,6 +122,7 @@ var reviewedNotAWipe = map[string]string{
 	"Demonic Consultation":                     "exiles cards from your own library, no permanents",
 	"Council's Judgment":                       "exiles the permanents with the most votes, one per voter: removal, not a wipe",
 	"Crypt Incursion":                          "exiles a graveyard",
+	"Dauntless Scrapbot":                       "exiles the opponents' graveyards, no permanents",
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Espers to Magicite":                       "exiles the opponents' graveyards, no permanents",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",

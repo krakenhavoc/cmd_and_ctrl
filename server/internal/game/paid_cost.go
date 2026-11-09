@@ -406,6 +406,11 @@ type PaidTap struct {
 	// reader falls back to Power. Read it through
 	// PaidTapStationPowerForEffect.
 	StationPower int `json:"stationPower,omitempty"`
+	// StationAnyPower is StationPower for CostPowerStationAny: what the
+	// object counts for when it stations any permanent (Tapestry Warden's
+	// toughness), kept and rewritten at the same two moments. Zero falls
+	// back to Power. Read it through PaidTapStationAnyPowerForEffect.
+	StationAnyPower int `json:"stationAnyPower,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was
