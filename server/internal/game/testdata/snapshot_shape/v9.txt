@@ -37146,6 +37146,13 @@ pendingChoices[].assist.announce.params.AutoTap	bool
 pendingChoices[].assist.announce.params.BlightIDs	array
 pendingChoices[].assist.announce.params.BlightIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.CostBranch	number:int
+pendingChoices[].assist.announce.params.CounterCounts	array
+pendingChoices[].assist.announce.params.CounterCounts[]	number:int
+pendingChoices[].assist.announce.params.CounterKind	string
+pendingChoices[].assist.announce.params.CounterKinds	array
+pendingChoices[].assist.announce.params.CounterKinds[]	string
+pendingChoices[].assist.announce.params.CounterSourceIDs	array
+pendingChoices[].assist.announce.params.CounterSourceIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.DelveIDs	array
 pendingChoices[].assist.announce.params.DelveIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.DiscardIDs	array
@@ -43780,6 +43787,13 @@ pendingChoices[].parked.cast.params.AutoTap	bool
 pendingChoices[].parked.cast.params.BlightIDs	array
 pendingChoices[].parked.cast.params.BlightIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.CostBranch	number:int
+pendingChoices[].parked.cast.params.CounterCounts	array
+pendingChoices[].parked.cast.params.CounterCounts[]	number:int
+pendingChoices[].parked.cast.params.CounterKind	string
+pendingChoices[].parked.cast.params.CounterKinds	array
+pendingChoices[].parked.cast.params.CounterKinds[]	string
+pendingChoices[].parked.cast.params.CounterSourceIDs	array
+pendingChoices[].parked.cast.params.CounterSourceIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.DelveIDs	array
 pendingChoices[].parked.cast.params.DelveIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.DiscardIDs	array

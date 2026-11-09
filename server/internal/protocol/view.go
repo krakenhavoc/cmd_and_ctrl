@@ -2096,6 +2096,28 @@ type AlternativeCostView struct {
 	// for every other offer. Per viewer, like `tap_options`.
 	TapPrices map[string]AltCostTapPriceView `json:"tap_prices,omitempty"`
 
+	// CounterCost* are the offer's counter-removal component (#5390):
+	// Quilled Greatwurm's "removing six counters from among creatures you
+	// control". The fields an activated ability's counter cost ships
+	// (CounterCostView), with the same wire names, so the client opens the
+	// one counter picker it already has: the count, the printed kind
+	// (absent for any kinds), the "from" clause, among, and the options.
+	// The payment rides cast_spell as `counter_source_ids` /
+	// `counter_counts` / `counter_kind` / `counter_kinds`, never
+	// `alt_cost_ids`. All absent for an offer that removes no counters.
+	//
+	// The count, kind, clause and shape are printed and public with the
+	// offer on a pile; `counter_cost_options` and `counter_cost_max` are
+	// the viewer's own creatures, per viewer like `pay_options` (#1172).
+	CounterCostN        int                     `json:"counter_cost_n,omitempty"`
+	CounterCostKind     string                  `json:"counter_cost_kind,omitempty"`
+	CounterCostSelf     bool                    `json:"counter_cost_self,omitempty"`
+	CounterCostLabel    string                  `json:"counter_cost_label,omitempty"`
+	CounterCostAmong    bool                    `json:"counter_cost_among,omitempty"`
+	CounterCostVariable bool                    `json:"counter_cost_variable,omitempty"`
+	CounterCostMax      int                     `json:"counter_cost_max,omitempty"`
+	CounterCostOptions  []CounterCostOptionView `json:"counter_cost_options,omitempty"`
+
 	// PayLabel is the picker's prompt copy for PayOptions,
 	// SacrificeOptions or TapOptions ("a blue card", "an Island you
 	// control", "three creatures"). Absent when there is nothing to pick.
@@ -6987,6 +7009,10 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.SacrificeOptions = nil
 		// ADR 0135 §1: "untapped creatures YOU control", likewise.
 		o.TapOptions = nil
+		// #5390: the creatures YOU control holding counters, and the
+		// most YOU could remove.
+		o.CounterCostOptions = nil
+		o.CounterCostMax = 0
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
 		// #3931: and a harmonize price per creature YOU control.
@@ -8593,6 +8619,17 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.ReducesByPower = true
 				v.TapPrices = harmonizePricesView(g, caster, *live, zone, ac.Key, v.TapOptions)
 			}
+		}
+		if rc := ac.RemoveCounters; rc != nil {
+			// #5390: the activation's counter block, with the spell being
+			// cast as the source the option walk is asked about. Not a
+			// card component, so it sits beside the chain above, which
+			// effects.Register keeps empty for such an offer.
+			castID, _ := uuid.Parse(self)
+			cv := counterCostView(g, caster, castID, rc, nil)
+			v.CounterCostN, v.CounterCostKind, v.CounterCostSelf = cv.CounterCostN, cv.CounterCostKind, cv.CounterCostSelf
+			v.CounterCostLabel, v.CounterCostAmong, v.CounterCostVariable = cv.CounterCostLabel, cv.CounterCostAmong, cv.CounterCostVariable
+			v.CounterCostMax, v.CounterCostOptions = cv.CounterCostMax, cv.CounterCostOptions
 		}
 		out = append(out, v)
 	}

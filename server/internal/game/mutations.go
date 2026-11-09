@@ -483,6 +483,21 @@ type CastSpellParams struct {
 	// card" indistinguishable on the wire. Added in S28.
 	AltCostIDs []uuid.UUID
 
+	// CounterSourceIDs, CounterCounts, CounterKind and CounterKinds pay
+	// the claimed alternative cost's counter-removal component (#5390,
+	// AlternativeCost.RemoveCounters: Quilled Greatwurm's "removing six
+	// counters from among creatures you control"). The same four fields,
+	// with the same meaning and the same wire names (`counter_source_ids`,
+	// `counter_counts`, `counter_kind`, `counter_kinds`), as
+	// ActivateAbilityParams carries for an activation's counter cost: the
+	// permanents, the count off each, and the kind (one for the payment,
+	// or one per part when the parts differ). Empty is the ordinary case;
+	// a payment sent with no counter component to pay is refused.
+	CounterSourceIDs []uuid.UUID
+	CounterCounts    []int
+	CounterKind      string
+	CounterKinds     []string
+
 	// Face names which printed face of a multi-face card is being
 	// cast or played (ADR 0034). Zero — the front face — is the
 	// answer for every single-faced card in the game and for every
@@ -1030,6 +1045,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"oracle_id", card.OracleID,
 			"alternative_cost", params.AlternativeCost,
 			"payment_received", len(params.AltCostIDs),
+			"err", err,
+		)
+		return err
+	}
+	// #5390, CR 601.2b / 118.3: the offer's "remove N counters from
+	// among creatures you control", through the activation's own
+	// validator. Paid below, first of the board costs.
+	altCounters, err := g.validateAltCostCountersLocked(playerID, cardID, alt, castCounterPayment(params))
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad counter-removal payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"alternative_cost", params.AlternativeCost,
+			"counter_sources", len(params.CounterSourceIDs),
 			"err", err,
 		)
 		return err
@@ -2282,6 +2311,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
 	// sum the validator checked against CR 119.4.
 	payLife := planLife(costPlan, params.XValue) + targetTax
+	// #5390: the alternative cost's counters, first of the board costs.
+	// CR 601.2h lets the caster pay the costs in any order, so a creature
+	// that is also sacrificed to the cast pays its counters before it
+	// goes. Not a replaceable event (payCounterRemovalLocked), and the
+	// total is recorded as an activation's is.
+	if len(altCounters.parts) > 0 {
+		if err := g.payCounterRemovalLocked(altCounters); err != nil {
+			slog.Error("cast_spell: counter removal failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.CountersRemoved = altCounters.total
+		}
+	}
 	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,

@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     AdditionalCostView,
     AltCostPriceView,
+    AlternativeCostView,
     AltCostTapPriceView,
     CardView,
     GameView,
@@ -1327,6 +1328,25 @@
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
+  // #5390: an offer that removes counters (Quilled Greatwurm's "removing
+  // six counters from among creatures you control") opens the counter
+  // picker an ability's counter cost uses — the offer carries the same
+  // counter block — and the payment rides the cast as counter_source_ids
+  // / counter_counts / counter_kind(s). Always asked: which creatures
+  // shrink is the player's choice even when only one split exists.
+  let castCounterPrompt = $state<{
+    card: CardView;
+    offer: AlternativeCostView;
+    choices: CastChoices;
+  } | null>(null);
+
+  function confirmCastCounterCost(picks: CounterChoice[]): void {
+    const p = castCounterPrompt;
+    castCounterPrompt = null;
+    if (!p) return;
+    afterAltCostPayment(p.card, { ...p.choices, counter: counterPaymentParams(p.offer, picks) });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -1340,6 +1360,10 @@
     // mana. Ask for it before anything else, matching the order the
     // server validates the cast in.
     const offer = alternativeCostByKey(card, choices.altCost);
+    if (offer && hasCounterCost(offer)) {
+      castCounterPrompt = { card, offer, choices };
+      return;
+    }
     const sacClause = altCostSacrificeClause(offer);
     if (sacClause !== undefined) {
       altSacPromptClause = sacClause;
@@ -4674,6 +4698,17 @@
       altSacPromptClause = undefined;
       altSacPromptPrices = undefined;
     }}
+  />
+  <!-- #5390: an alternative cost's "remove N counters from among
+       creatures you control" is the ability's counter picker; the
+       payment rides cast_spell's counter fields. -->
+  <CounterCostModal
+    card={castCounterPrompt?.card ?? null}
+    ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
+    board={view.battlefield.cards}
+    payFor="cast this spell"
+    onConfirm={confirmCastCounterCost}
+    onCancel={() => (castCounterPrompt = null)}
   />
   <!-- ADR 0135 §1: an alternative cost's tap ("tap an untapped creature
        you control rather than pay this spell's mana cost") is the tap

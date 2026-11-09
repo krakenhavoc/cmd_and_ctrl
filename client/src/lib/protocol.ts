@@ -3485,6 +3485,20 @@ export interface AlternativeCostView {
   // picked IDs ride `alt_cost_ids`. #3931: harmonize's "up to one
   // untapped creature" is min 0, max 1 — tapping none is a payment.
   tap_options?: LegalTargetsView;
+  // #5390: an offer that removes counters (Quilled Greatwurm's "removing
+  // six counters from among creatures you control") carries the
+  // activated ability's counter block, under the same names, so the
+  // counter picker reads it as it reads an ability. No card component
+  // beside it. The payment rides cast_spell as `counter_source_ids`,
+  // `counter_counts` and `counter_kind` / `counter_kinds`.
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
+  counter_cost_options?: CounterCostOptionView[];
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
   // for `sacrifice_options` ("three creatures") or for `tap_options`
   // ("an untapped creature you control").
