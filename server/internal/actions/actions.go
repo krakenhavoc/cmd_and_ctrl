@@ -744,6 +744,12 @@ func dispatch(g *game.Game, a Action) error {
 			// card from your hand or pay {3}"). Absent unless the
 			// chosen cost_branch reveals.
 			RevealIDs []string `json:"reveal_ids,omitempty"`
+			// #5406 — the creature type a behold that prints none
+			// chooses (Celestial Reunion's "choose a creature type and
+			// behold two creatures of that type", CR 601.2b). reveal_ids
+			// then names the objects of that type. Absent unless the
+			// announced optional behold chooses its type.
+			BeholdType string `json:"behold_type,omitempty"`
 			// #3402 — the permanents a mandatory exile-a-permanent
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
@@ -957,6 +963,7 @@ func dispatch(g *game.Game, a Action) error {
 		params.CounterCounts = p.CounterCounts
 		params.CounterKind = p.CounterKind
 		params.CounterKinds = p.CounterKinds
+		params.BeholdType = p.BeholdType
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {

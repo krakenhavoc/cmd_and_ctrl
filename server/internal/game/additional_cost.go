@@ -787,6 +787,14 @@ func paidWithOptionalCosts(paid PaidCost, plan []costPayment) PaidCost {
 	return paid
 }
 
+// paidWithBeholdType folds the creature type a behold chose into the
+// record (#5406, CR 601.2b). Already validated: non-empty exactly when a
+// behold that chooses its type was announced.
+func paidWithBeholdType(paid PaidCost, t string) PaidCost {
+	paid.BeholdType = t
+	return paid
+}
+
 // paidWithGift folds the gift recipient into the record (ADR 0089
 // §2). Already validated: non-nil exactly when a gift cost was
 // announced.

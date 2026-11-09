@@ -1900,6 +1900,18 @@ type OptionalCostView struct {
 	Reveal        bool              `json:"reveal,omitempty"`
 	Behold        bool              `json:"behold,omitempty"`
 	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
+	// BeholdTypes marks a behold that chooses its creature type (#5406,
+	// CR 601.2b): Celestial Reunion's "choose a creature type and behold
+	// two creatures of that type". Each entry is a type the viewer could
+	// choose, with the objects that could pay it (hand cards first, then
+	// permanents); only types with at least BeholdCount of them are
+	// listed, alphabetically. RevealOptions is then every object of
+	// every listed type, its min and max BeholdCount; present-and-empty
+	// (and BeholdTypes empty) means the offer cannot be taken. Taking it,
+	// the caster sends the type as cast_spell's `behold_type` and exactly
+	// BeholdCount of that type's cards as `reveal_ids`.
+	BeholdCount int                `json:"behold_count,omitempty"`
+	BeholdTypes []BeholdTypeOption `json:"behold_types,omitempty"`
 
 	// CollectEvidence is the N of "you may collect evidence N" (CR
 	// 701.59a, #5193): exile any number of cards from your graveyard with
@@ -8868,7 +8880,11 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 		if oc.Reveal != nil {
 			v.Reveal = true
 			v.Behold = oc.Reveal.Behold
-			v.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, oc.Reveal))}
+			if oc.Reveal.ChosenType {
+				v.BeholdCount, v.RevealOptions, v.BeholdTypes = viewOfBeholdTypes(g, caster, castID, oc.Reveal)
+			} else {
+				v.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, oc.Reveal))}
+			}
 		}
 		// #5193: "you may collect evidence N" — the engine's own walk and
 		// gate (ExileCostPayableForEffect), with the spell itself excluded,
@@ -8906,6 +8922,35 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 		out = append(out, v)
 	}
 	return out
+}
+
+// BeholdTypeOption is one creature type a behold that chooses its type
+// could be paid with (#5406), and the viewer's objects of that type.
+type BeholdTypeOption struct {
+	Type  string   `json:"type"`
+	Cards []string `json:"cards"`
+}
+
+// viewOfBeholdTypes is the picker for a behold that chooses its creature
+// type (#5406), off the engine's own walk (BeholdTypeOptionsForEffect),
+// so the client offers exactly the types and objects the validator
+// accepts (#544): the count, every object of every choosable type, and
+// the types themselves.
+func viewOfBeholdTypes(g *game.Game, caster, castID uuid.UUID, rc *game.RevealCost) (int, *LegalTargetsView, []BeholdTypeOption) {
+	n := rc.BeholdCount()
+	all := &LegalTargetsView{Min: n, Max: n}
+	seen := make(map[uuid.UUID]bool)
+	var types []BeholdTypeOption
+	for _, o := range g.BeholdTypeOptionsForEffect(caster, castID, rc) {
+		types = append(types, BeholdTypeOption{Type: o.Type, Cards: cardIDStrings(o.Cards)})
+		for _, id := range o.Cards {
+			if !seen[id] {
+				seen[id] = true
+				all.Cards = append(all.Cards, id.String())
+			}
+		}
+	}
+	return n, all, types
 }
 
 // stampEscalate fills ModeSpecView.Escalate for an escalate spell and

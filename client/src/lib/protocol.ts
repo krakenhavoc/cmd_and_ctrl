@@ -3394,6 +3394,14 @@ export interface OptionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #5406: a behold that chooses its creature type ("choose a creature
+  // type and behold two creatures of that type", Celestial Reunion).
+  // `behold_count` is how many objects it beholds and `behold_types` the
+  // types you could choose, each with your objects of it; `reveal_options`
+  // is every object of every listed type. Taken, the type rides cast_spell
+  // as `behold_type` and exactly `behold_count` of its cards as `reveal_ids`.
+  behold_count?: number;
+  behold_types?: BeholdTypeOption[];
   // #5193: "you may collect evidence N" (CR 701.59a) — exile any number of
   // cards from your graveyard with total mana value `collect_evidence` or
   // greater. `evidence_options` is your graveyard cards that could be
@@ -4489,6 +4497,13 @@ export interface ModeOptionView {
 export interface SacrificeGroupView {
   label: string;
   cards?: string[];
+}
+
+// BeholdTypeOption is one creature type a behold that chooses its type
+// could be paid with, and the viewer's objects of that type (#5406).
+export interface BeholdTypeOption {
+  type: string;
+  cards: string[];
 }
 
 export interface LegalTargetsView {

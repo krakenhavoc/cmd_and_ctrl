@@ -49,6 +49,8 @@ type searchTailSpec struct {
 	TakeAll              bool               `json:"takeAll,omitempty"`
 	LibraryUntouched     bool               `json:"libraryUntouched,omitempty"`
 	ExileFoundFor        uuid.UUID          `json:"exileFoundFor"`
+	// OntoBattlefieldIfSubtype is SearchLibrarySpec's (#5406).
+	OntoBattlefieldIfSubtype string `json:"ontoBattlefieldIfSubtype,omitempty"`
 }
 
 // searchEntryRun is the rest of a battlefield search, riding the entry
@@ -72,6 +74,7 @@ func searchTailSpecOf(spec SearchLibrarySpec) searchTailSpec {
 		ThenTail: snapshotKeyedTail(spec.ThenTail), ToTop: spec.ToTop, Depth: spec.Depth,
 		AlsoGraveyard: spec.AlsoGraveyard, AlsoGraveyardAndHand: spec.AlsoGraveyardAndHand, AlsoHand: spec.AlsoHand,
 		TakeAll: spec.TakeAll, LibraryUntouched: spec.libraryUntouched, ExileFoundFor: spec.exileFoundFor,
+		OntoBattlefieldIfSubtype: spec.OntoBattlefieldIfSubtype,
 	}
 	if spec.EntersAttachedTo != (TargetRef{}) {
 		h := spec.EntersAttachedTo
@@ -91,6 +94,7 @@ func (s searchTailSpec) searchSpec() SearchLibrarySpec {
 		ThenTail: restoreKeyedTail(s.ThenTail), ToTop: s.ToTop, Depth: s.Depth,
 		AlsoGraveyard: s.AlsoGraveyard, AlsoGraveyardAndHand: s.AlsoGraveyardAndHand, AlsoHand: s.AlsoHand,
 		TakeAll: s.TakeAll, libraryUntouched: s.LibraryUntouched, exileFoundFor: s.ExileFoundFor,
+		OntoBattlefieldIfSubtype: s.OntoBattlefieldIfSubtype,
 	}
 	if s.EntersAttachedTo != nil {
 		out.EntersAttachedTo = *s.EntersAttachedTo
