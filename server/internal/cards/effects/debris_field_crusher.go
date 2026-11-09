@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
-				WhenThisEnters("Debris Field Crusher — 3 damage to any target", debrisFieldCrusherDamage),
+				WhenThisEnters("Debris Field Crusher — 3 damage to any target", sourceDealsDamageToEachLegalTarget(3)),
 				TargetAny()),
 		},
 		Activated: []ActivatedAbility{
@@ -45,14 +45,4 @@ func init() {
 			ThresholdKeywords(8, "flying"),
 		),
 	})
-}
-
-// debrisFieldCrusherDamage deals 3 damage from the Spacecraft to the
-// announced target if it is still legal.
-func debrisFieldCrusherDamage(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 3}.Apply(ctx)
-	}
-	return nil
 }

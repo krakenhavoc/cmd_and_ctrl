@@ -36,7 +36,10 @@ func init() {
 				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}, GainLife{Amount: 1})),
 			Targeting(
 				On(game.EventLTB, stdB3SyrVondamLeftWithPower4,
-					"Syr Vondam, Sunstar Exemplar — destroy up to one target nonland permanent", stdB3DestroyUpToOneTarget),
+					"Syr Vondam, Sunstar Exemplar — destroy up to one target nonland permanent",
+					func(g *game.Game, item *game.StackItem) error {
+						return destroyEachLegalTarget(item, NewContext(g, item))
+					}),
 				TargetPermanent("up to one target nonland permanent", Nonland()).WithCount(0, 1)),
 		},
 	})
@@ -62,16 +65,4 @@ func stdB3AnotherCreatureYouControlDiedOrExiled(ev game.Event, source *game.Card
 // it last existed.
 func stdB3SyrVondamLeftWithPower4(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 	return b22SelfDiedOrWasExiledFromBattlefield(ev, source) && b13LastKnownPower(g, source.InstanceID, lki) >= 4
-}
-
-// stdB3DestroyUpToOneTarget destroys the chosen permanent if it is still
-// legal as the trigger resolves.
-func stdB3DestroyUpToOneTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return DestroyTarget{Target: t.ID}.Apply(ctx)
-		}
-	}
-	return nil
 }
