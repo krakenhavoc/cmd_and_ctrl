@@ -104,3 +104,18 @@ func b6UntapThenPhaseOutAllCreaturesUntilPlaneswalk(g *game.Game, item *game.Sta
 	}
 	return g.PhaseOutUntilPlaneswalkForEffect(item.SourceCardID, item.SourceCardID, ids...)
 }
+
+// b6YouHaveNoCardsInHand is the intervening "if you have no cards in hand"
+// (Academy at Tolaria West): the planar controller's hand is empty as the
+// ability triggers and again as it resolves (CR 603.4). It declares no
+// footprint.
+type b6YouHaveNoCardsInHand struct{}
+
+func (b6YouHaveNoCardsInHand) Holds(ctx *Context) bool {
+	p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
+	return p != nil && p.Hand != nil && p.Hand.Size() == 0
+}
+
+func (b6YouHaveNoCardsInHand) condition() (game.FootprintStep, bool) {
+	return game.FootprintStep{}, false
+}

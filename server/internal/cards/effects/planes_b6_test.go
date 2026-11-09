@@ -585,3 +585,33 @@ func TestValorsReachChaosUntapsAndAddsCombatInAMainPhase(t *testing.T) {
 		t.Errorf("%d combat phases this turn, want 2", combats)
 	}
 }
+
+var planeAcademyTolariaWest = planeFixture{"15b979de-c8ee-4664-9ca7-6c4eb3346967", "Academy at Tolaria West", "Plane — Dominaria"}
+
+func TestAcademyAtTolariaWestDrawsSevenOnlyWithAnEmptyHand(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeAcademyTolariaWest)
+	g, _ := newPlaneGame(t, planeAcademyTolariaWest)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	hand := me.Hand.Size()
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand {
+		t.Fatalf("hand changed from %d to %d with cards in hand", hand, me.Hand.Size())
+	}
+
+	g2, _ := newPlaneGame(t, planeAcademyTolariaWest)
+	advanceToMain(t, g2)
+	me2 := g2.Seats[g2.Turn.ActiveSeat]
+	rollChaos(t, g2, me2.ID)
+	passPriorityAroundTable(t, g2)
+	if me2.Hand.Size() != 0 {
+		t.Fatalf("the chaos ability left %d cards in hand", me2.Hand.Size())
+	}
+	lib := me2.Library.Size()
+	advanceTo(t, g2, game.StepEnd)
+	passPriorityAroundTable(t, g2)
+	if me2.Hand.Size() != 7 || lib-me2.Library.Size() != 7 {
+		t.Errorf("hand %d after the end step, want 7", me2.Hand.Size())
+	}
+}
