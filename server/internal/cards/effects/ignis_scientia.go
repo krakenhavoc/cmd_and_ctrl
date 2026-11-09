@@ -61,18 +61,17 @@ func ignisNewRecipe(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok {
-			return nil
-		}
-		wasCreature := c.IsCreature()
-		if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		if z := g.FindCardZoneForEffect(t.ID); !wasCreature || z == nil || z.Kind != game.ZoneExile {
-			return nil
-		}
-		return CreateToken{Template: FoodToken(), N: 1}.Apply(ctx)
+		return ExileThenIfItWas{
+			Target: t.ID,
+			Was:    WasCreatureCard,
+			Keyed:  ignisFoodIfCreature,
+		}.Apply(ctx)
 	}
 	return nil
 }
+
+// ignisFoodIfCreature is "if a creature card was exiled this way, create a
+// Food token", told the card reached exile. An on-disk key: never renamed.
+var ignisFoodIfCreature = IfItWasTail("if-it-was/ignis-scientia-food", func(ctx *Context) error {
+	return CreateToken{Template: FoodToken(), N: 1}.Apply(ctx)
+}, nil)

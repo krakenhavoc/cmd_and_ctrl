@@ -307,6 +307,7 @@ body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
@@ -480,6 +481,7 @@ choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
+choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gert-and-old-lace-search
 choose choose-cards/gift-of-perfection-assimilate
 choose choose-cards/gifts-ungiven-settle
@@ -745,6 +747,7 @@ choose choose-cards/teferi-akosa-tap-any-number
 choose choose-cards/teferi-temporal-pilgrim-return
 choose choose-cards/temporal-conqueror-return-land
 choose choose-cards/teo-spirited-glider-discarded
+choose choose-cards/terra-magical-adept-take-pick
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-day-of-the-doctor-spare
@@ -873,6 +876,7 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
+condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
@@ -916,6 +920,7 @@ confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
 confirm confirm/dwarven-vigilantes-damage
 confirm confirm/eden-sacrifice
+confirm confirm/emet-selch-unsundered-transform
 confirm confirm/end-the-turn
 confirm confirm/endling-pump
 confirm confirm/entrust-the-spark-sacrifice
@@ -1091,6 +1096,7 @@ milluntil until/nonland-card
 milluntil until/strago-and-relm-hit
 milluntil until/total-mana-value
 number assist/help-pay-for-a-spell
+number esper-terra/lore-counters
 number number/aether-refinery-create-an-aetherborn
 number number/aether-spike-counter-unless-paid
 number number/arcane-denial-draw-up-to-two
@@ -1394,6 +1400,7 @@ payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
+payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/voltaic-brawler-pump
@@ -1904,6 +1911,7 @@ tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
 tail erica-ortegas/return-a-land-at-end
+tail esper-terra/copied
 tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
@@ -1929,6 +1937,8 @@ tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
 tail fiery-annihilation/exile-if-it-would-die
 tail fight-rigging/offer
+tail fin/triple-triad-exile-step
+tail fin/triple-triad-grant
 tail final-parting/graveyard-search
 tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
@@ -1988,6 +1998,7 @@ tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/consuming-ashes-surveil
 tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/feral-appetite-pest
+tail if-it-was/ignis-scientia-food
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
@@ -2266,6 +2277,7 @@ tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
+tail terra-magical-adept/after-mill
 tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
 tail the-binding-of-the-titans/gain-per-creature-exiled
@@ -2489,6 +2501,7 @@ tail unlucky-cabbage-merchant/after-search
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail valgavoths-onslaught/manifest-again
+tail vanille-cheerful-lcie/after-mill
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile

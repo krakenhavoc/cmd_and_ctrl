@@ -23,10 +23,11 @@ func init() {
 			MinBlockers(OnSelf(), 3),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{8}: Return this card from your graveyard to the battlefield tapped with a finality counter on it.",
-			Cost:   ManaCost("{8}"),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: returnThisFromGraveyardTappedWithAFinalityCounter,
+			Label:   "{8}: Return this card from your graveyard to the battlefield tapped with a finality counter on it.",
+			Cost:    ManaCost("{8}"),
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect:  returnThisFromGraveyardTappedWithAFinalityCounter,
 		}},
 	})
 }

@@ -34,10 +34,10 @@ func init() {
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.Controller == source.Controller && target.IsCreature() &&
-					(target.IsArtifact() || target.HasSubtype("Hero"))
+					(target.IsArtifact() || target.HasSubtype(source.TextSubtype("Hero")))
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := artificersYouControlAndInYourGraveyard(g, source.Controller)
+				n := artificersYouControlAndInYourGraveyard(g, source.Controller, source.TextSubtype("Artificer"))
 				c.Power += n
 				c.Toughness += n
 			},
@@ -48,16 +48,16 @@ func init() {
 
 // artificersYouControlAndInYourGraveyard is "each Artificer you control and
 // each Artificer card in your graveyard".
-func artificersYouControlAndInYourGraveyard(g *game.Game, player uuid.UUID) int {
+func artificersYouControlAndInYourGraveyard(g *game.Game, player uuid.UUID, artificer string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && c.IsCreature() && c.HasSubtype("Artificer") {
+		if c.Controller == player && c.IsCreature() && c.HasSubtype(artificer) {
 			n++
 		}
 	}
 	if p := g.PlayerByIDForEffect(player); p != nil && p.Graveyard != nil {
 		for _, c := range p.Graveyard.Cards {
-			if c.HasSubtype("Artificer") {
+			if c.HasSubtype(artificer) {
 				n++
 			}
 		}
