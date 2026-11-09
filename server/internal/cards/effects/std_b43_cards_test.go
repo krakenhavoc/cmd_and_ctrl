@@ -1392,3 +1392,99 @@ func TestStdB45CovetedFalconTakesBackAPermanentYouOwnWhenItAttacks(t *testing.T)
 		t.Error("the lent Bear was not taken back")
 	}
 }
+
+const stdYarusOracle = "30fd6171-3e57-4c05-a86b-e1c0479ba236"
+
+func stdYarusTable(t *testing.T) (*game.Game, *game.Player, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	yarus := b12Push(g, me.ID, "Yarus, Roar of the Old Gods", "Legendary Creature — Centaur Druid", stdYarusOracle, 3, 3)
+	for i := 0; i < 5; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	return g, me, yarus
+}
+
+func TestStdB45YarusGivesOtherCreaturesHaste(t *testing.T) {
+	g, me, yarus := stdYarusTable(t)
+	other := reqCreature(g, me.ID, "Bear", "", 2, 2)
+	theirs := reqCreature(g, g.Seats[1].ID, "Their Bear", "", 2, 2)
+	if !hasKeywordOnBattlefield(t, g, other, "haste") {
+		t.Error("another creature you control lacks haste")
+	}
+	if hasKeywordOnBattlefield(t, g, yarus, "haste") {
+		t.Error("Yarus gave himself haste")
+	}
+	if hasKeywordOnBattlefield(t, g, theirs, "haste") {
+		t.Error("an opponent's creature has haste")
+	}
+}
+
+func TestStdB45YarusDrawsOncePerPlayerHitByFaceDownCreatures(t *testing.T) {
+	g, me, _ := stdYarusTable(t)
+	opp := g.Seats[1]
+	a := mkmMPCastFaceDown(t, g, "Pyrotechnic Performer", mkmMPPerformerTypeLine, mkmMPPerformerOracle, 3, 2)
+	b := mkmMPCastFaceDown(t, g, "Pyrotechnic Performer", mkmMPPerformerTypeLine, mkmMPPerformerOracle, 3, 2)
+	faceUp := reqCreature(g, me.ID, "Bear", "", 2, 2)
+	hand := me.Hand.Size()
+	dealCombatDamageToPlayer(g, faceUp, opp.ID, 2)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand {
+		t.Fatalf("a face-up creature's damage drew %d", me.Hand.Size()-hand)
+	}
+	dealCombatDamageToPlayer(g, a, opp.ID, 2)
+	dealCombatDamageToPlayer(g, b, opp.ID, 2)
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 1 {
+		t.Errorf("drew %d, want 1 (one player hit by two face-down creatures)", got)
+	}
+}
+
+func TestStdB45YarusReturnsADeadFaceDownCreatureFaceUp(t *testing.T) {
+	g, me, _ := stdYarusTable(t)
+	id := mkmMPCastFaceDown(t, g, "Pyrotechnic Performer", mkmMPPerformerTypeLine, mkmMPPerformerOracle, 3, 2)
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{id}) })
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	var found, faceDown int
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Pyrotechnic Performer" && c.Controller == me.ID {
+				found++
+				if c.FaceDown {
+					faceDown++
+				}
+			}
+		}
+	})
+	if found != 1 || faceDown != 0 {
+		t.Fatalf("%d Performers on the battlefield, %d face down; want one, turned face up", found, faceDown)
+	}
+}
+
+func TestStdB45YarusIgnoresAFaceUpCreatureDying(t *testing.T) {
+	g, me, _ := stdYarusTable(t)
+	bear := reqCreature(g, me.ID, "Bear", "", 2, 2)
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{bear}) })
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, bear); ok {
+		t.Fatal("the bear is on the battlefield")
+	}
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Bear" {
+				n++
+			}
+		}
+	})
+	if n != 0 {
+		t.Errorf("a face-up Bear returned %d times", n)
+	}
+}
