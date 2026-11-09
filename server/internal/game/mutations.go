@@ -846,7 +846,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
 	// permission for this cast, from here down: the path gate refuses a
 	// zone nothing else opens, and a hand cast is an ordinary one.
-	grant = g.permissionForSpellLocked(grant, card)
+	grant = g.permissionForSpellLocked(grant, faceDownSpellStandIn(card, params.AlternativeCost))
 	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered

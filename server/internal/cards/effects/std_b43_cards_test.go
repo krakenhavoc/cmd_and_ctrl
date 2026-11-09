@@ -349,3 +349,118 @@ func TestStdB43JetsamMillsEachOpponentThenCastsFromTheirGraveyardFree(t *testing
 		t.Error("the Bolt cast this way was not exiled instead of going to the graveyard")
 	}
 }
+
+const stdBranchOracle = "7a30316b-dcd5-4a4b-b959-eecde7ca92e7"
+
+func TestStdB43BranchOfVituGhaziAddsTwoManaOfOneColorWhenTurnedFaceUp(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := mkmMPCastFaceDown(t, g, "Branch of Vitu-Ghazi", "Land", stdBranchOracle, 0, 0)
+	if c := findCardAnywhere(t, g, id); !c.FaceDownIsPermanent() {
+		t.Fatal("did not enter face down")
+	}
+	mkmMPTurnFaceUp(t, g, me, id, "C", "C", "C")
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	if n := b10ResolveAllManaPicks(t, g, me.ID, "G"); n == 0 {
+		t.Fatal("no colour was asked for")
+	}
+	g.ReadSnapshot(func() {
+		if len(me.ManaPool) != 2 {
+			t.Fatalf("pool %+v, want two mana", me.ManaPool)
+		}
+		for _, tok := range me.ManaPool {
+			if tok.Color != "G" {
+				t.Errorf("token %+v is not green: one colour for both", tok)
+			}
+			if len(tok.Riders) == 0 {
+				t.Errorf("token %+v carries no keep-until-end-of-turn mark", tok)
+			}
+		}
+	})
+}
+
+func TestStdB43BranchOfVituGhaziTapsForColorless(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	toMainForCost(t, g)
+	land := pushCatalogPermanent(g, me.ID, "Branch of Vitu-Ghazi", "Land", stdBranchOracle, false)
+	b28TapForMana(t, g, me.ID, land, "")
+	if got := me.ManaPool.Total(); got != 1 {
+		t.Fatalf("%d mana, want {C}", got)
+	}
+}
+
+const stdAssembleOracle = "180ba940-2b11-4953-b7ce-74847e1aebfd"
+
+func stdAssembleTable(t *testing.T) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Assemble the Players", "Enchantment", stdAssembleOracle, false)
+	return g, me
+}
+
+func stdLibraryTop(me *game.Player, name string, power int, oracle string, extra func(*game.Card)) uuid.UUID {
+	id := uuid.New()
+	c := game.Card{InstanceID: id, Name: name, TypeLine: "Creature — Bear", ManaCost: "{0}", OracleID: oracle,
+		Power: power, Toughness: 2, Owner: me.ID, Controller: me.ID}
+	if extra != nil {
+		extra(&c)
+	}
+	me.Library.PushTop(c)
+	return id
+}
+
+func TestStdB43AssembleThePlayersCastsATwoPowerCreatureFromTheTopOncePerTurn(t *testing.T) {
+	g, me := stdAssembleTable(t)
+	first := stdLibraryTop(me, "Small Bear", 2, "", nil)
+	if err := g.CastSpell(me.ID, first, game.CastSpellParams{FromZone: "library", Strict: true}); err != nil {
+		t.Fatalf("a power 2 creature from the top of the library: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	second := stdLibraryTop(me, "Other Small Bear", 1, "", nil)
+	if err := g.CastSpell(me.ID, second, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Fatal("a second creature spell from the top of the library was allowed in the same turn")
+	}
+}
+
+func TestStdB43AssembleThePlayersRefusesAThreePowerCreature(t *testing.T) {
+	g, me := stdAssembleTable(t)
+	big := stdLibraryTop(me, "Big Bear", 3, "", nil)
+	if err := g.CastSpell(me.ID, big, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Fatal("a power 3 creature was cast from the top of the library")
+	}
+}
+
+func TestStdB43AssembleThePlayersRefusesANoncreatureSpell(t *testing.T) {
+	g, me := stdAssembleTable(t)
+	id := stdLibraryTop(me, "Ring", 0, "", func(c *game.Card) { c.TypeLine = "Artifact"; c.Toughness = 0 })
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Fatal("an artifact was cast from the top of the library")
+	}
+}
+
+func TestStdB43AssembleThePlayersLetsYouLookAtTheTop(t *testing.T) {
+	spec, ok := Lookup(stdAssembleOracle)
+	if !ok || spec.Completeness != CompletenessFull || spec.LibraryTopVisible != game.LibraryTopOwner {
+		t.Fatalf("Assemble the Players: %+v", spec)
+	}
+}
+
+// A disguise card is judged as the 2/2 it is cast as (ruling): a power 5
+// creature with disguise can be cast face down from the top.
+func TestStdB43AssembleThePlayersCastsABigDisguiseCreatureFaceDown(t *testing.T) {
+	g, me := stdAssembleTable(t)
+	id := stdLibraryTop(me, "Hulking Spy", 5, mkmMPPerformerOracle, nil)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "library", AlternativeCost: "disguise", Strict: true}); err == nil {
+		// {3} is not paid: a pool-less strict cast is expected to refuse on
+		// mana, never on the permission. Add mana and try again below.
+		t.Fatal("cast without mana")
+	}
+	b06AddMana(me, "C", "C", "C")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "library", AlternativeCost: "disguise", Strict: true}); err != nil {
+		t.Fatalf("a power 5 disguise creature cast face down from the top: %v", err)
+	}
+}
