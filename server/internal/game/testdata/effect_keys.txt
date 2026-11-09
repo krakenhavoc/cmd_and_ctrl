@@ -2077,6 +2077,7 @@ tail graveyard-exile/drain-once-if-creature
 tail graveyard-exile/drain-per-creature
 tail green-suns-zenith/shuffle-into-library
 tail greenhouse-rickety-gazebo/after-mill
+tail grubs-command/after-mill
 tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
