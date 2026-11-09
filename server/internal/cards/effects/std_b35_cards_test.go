@@ -28,6 +28,8 @@ const (
 	b35OmenpathJourneyOracle     = "8b067e44-2001-4b49-aa4a-2c86f8929751"
 	b35ErthaJoOracle             = "0a66ce8b-af99-411f-8ecb-52a5d2f6af3d"
 	b35JoleneOracle              = "fb8efd6e-b8f8-4da8-ac65-5b745c02d2bb"
+	b35BucolicRanchOracle        = "8f5902bf-4bc4-4d0c-84ea-a425307a4eb2"
+	b35FrontierSeekerOracle      = "466cf331-2d9c-4ebc-84f6-30c890e1b637"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -49,6 +51,8 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35OmenpathJourneyOracle:     "Omenpath Journey",
 		b35ErthaJoOracle:             "Ertha Jo, Frontier Mentor",
 		b35JoleneOracle:              "Jolene, Plundering Pugilist",
+		b35BucolicRanchOracle:        "Bucolic Ranch",
+		b35FrontierSeekerOracle:      "Frontier Seeker",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -650,5 +654,116 @@ func TestB35IntimidationCampaignDrainsAndMayReturnOnACrime(t *testing.T) {
 	}
 	if !handHasID(me, camp) {
 		t.Error("the enchantment is not in its owner's hand")
+	}
+}
+
+func TestB35FrontierSeekerTakesAMountCreatureOrAPlainsFromTheTopFive(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	top := hornTopFive(me, []struct{ name, typeLine string }{
+		{"Mountain", "Basic Land — Mountain"},
+		{"Rodeo Rider", "Creature — Human Scout"},
+		{"Prairie Mount", "Creature — Mount"},
+		{"Plains", "Basic Land — Plains"},
+		{"Mount Aura", "Enchantment — Mount"},
+	})
+	msc17Play(t, g, me, game.Card{Name: "Frontier Seeker", TypeLine: "Creature — Human Scout",
+		ManaCost: "{1}{W}", OracleID: b35FrontierSeekerOracle, Power: 2, Toughness: 2})
+	prompt := latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no prompt")
+	}
+	offered := map[uuid.UUID]bool{}
+	for _, id := range prompt.ChooseCards {
+		offered[id] = true
+	}
+	if len(offered) != 2 || !offered[top[2]] || !offered[top[3]] {
+		t.Fatalf("offered %v, want only the Mount creature and the Plains", prompt.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{top[3]}); err != nil {
+		t.Fatal(err)
+	}
+	if !me.Hand.Contains(top[3]) {
+		t.Error("the Plains is not in hand")
+	}
+}
+
+// b35AnswerOption answers the open option pick with the option labelled `label`.
+func b35AnswerOption(t *testing.T, g *game.Game, chooser uuid.UUID, label string) {
+	t.Helper()
+	c := latestOptionPickFor(g, chooser)
+	if c == nil {
+		t.Fatal("no option prompt is open")
+	}
+	for i, opt := range c.PickOptions {
+		if opt.Label == label {
+			if err := g.ResolveOptionPick(c.ID, chooser, i); err != nil {
+				t.Fatalf("ResolveOptionPick: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("%q is not offered; options are %+v", label, c.PickOptions)
+}
+
+func b35BucolicRanchActivate(t *testing.T, g *game.Game, me *game.Player, topCards ...struct{ name, typeLine string }) []uuid.UUID {
+	t.Helper()
+	advanceToMain(t, g)
+	ranch := b12Push(g, me.ID, "Bucolic Ranch", "Land — Desert", b35BucolicRanchOracle, 0, 0)
+	top := hornTopFive(me, topCards)
+	b06AddMana(me, "C", "C", "C")
+	b16Activate(t, g, me.ID, ranch, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	return top
+}
+
+func TestB35BucolicRanchMayTakeAMountCardToHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	top := b35BucolicRanchActivate(t, g, me, struct{ name, typeLine string }{"Prairie Mount", "Creature — Mount"})
+	b35AnswerOption(t, g, me.ID, bucolicRanchTake)
+	if !me.Hand.Contains(top[0]) {
+		t.Error("the Mount card is not in hand")
+	}
+}
+
+func TestB35BucolicRanchOffersNoTakeForANonMountAndMayBottomIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	top := b35BucolicRanchActivate(t, g, me, struct{ name, typeLine string }{"Bear", "Creature — Bear"})
+	c := latestOptionPickFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no option prompt")
+	}
+	for _, opt := range c.PickOptions {
+		if opt.Label == bucolicRanchTake {
+			t.Fatal("a non-Mount card was offered for your hand")
+		}
+	}
+	indexOf := func() int {
+		for i, c := range me.Library.Cards {
+			if c.InstanceID == top[0] {
+				return i
+			}
+		}
+		return -1
+	}
+	topIdx := indexOf()
+	b35AnswerOption(t, g, me.ID, bucolicRanchBottom)
+	if me.Hand.Contains(top[0]) {
+		t.Fatal("the card went to hand")
+	}
+	if got, want := indexOf(), len(me.Library.Cards)-1-topIdx; got != want {
+		t.Errorf("the card is at index %d, want the opposite end %d", got, want)
+	}
+}
+
+func TestB35BucolicRanchTapsForAnyColorOnlyForMountSpells(t *testing.T) {
+	spec, ok := Lookup(b35BucolicRanchOracle)
+	if !ok || len(spec.ManaAbilities) != 2 {
+		t.Fatalf("Bucolic Ranch has %d mana abilities, want 2", len(spec.ManaAbilities))
+	}
+	if len(spec.ManaAbilities[1].Restrictions) == 0 {
+		t.Error("the any-color mana has no Mount restriction")
 	}
 }
