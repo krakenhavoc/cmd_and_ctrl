@@ -1000,3 +1000,76 @@ func TestStdB45TreacherousGreedRefusesACreatureThatDealtNoDamage(t *testing.T) {
 		t.Fatal("sacrificed a creature that dealt no damage this turn")
 	}
 }
+
+const stdProftOracle = "b749e9e4-0f2a-4157-8cca-facd6b48157f"
+
+func stdProftTable(t *testing.T, draws int) (*game.Game, *game.Player, uuid.UUID, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	for i := 0; i < 8; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	proft := b12Permanent(g, me.ID, "Proft's Eidetic Memory", "Legendary Enchantment")
+	g.WithWriteLock(func() { g.Battlefield.Cards[len(g.Battlefield.Cards)-1].OracleID = stdProftOracle })
+	bear := reqCreature(g, me.ID, "Bear", "", 2, 2)
+	if draws > 0 {
+		g.WithWriteLock(func() {
+			if err := g.DrawNForEffect(me.ID, draws); err != nil {
+				t.Fatalf("draw: %v", err)
+			}
+		})
+	}
+	return g, me, proft, bear
+}
+
+func TestStdB45ProftsEideticMemoryPutsDrawsMinusOneCounters(t *testing.T) {
+	// The draw step drew one card; two more make three this turn.
+	g, me, _, bear := stdProftTable(t, 2)
+	advanceTo(t, g, game.StepBeginCombat)
+	pickCard(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	if c := tmtB1Card(t, g, bear); c.Counters["+1/+1"] != 2 {
+		t.Errorf("counters %d, want 2 (three draws minus one)", c.Counters["+1/+1"])
+	}
+}
+
+func TestStdB45ProftsEideticMemoryNeedsMoreThanOneDraw(t *testing.T) {
+	// Only the draw step's card has been drawn.
+	g, me, _, bear := stdProftTable(t, 0)
+	advanceTo(t, g, game.StepBeginCombat)
+	if latestPickTarget(g, me.ID) != nil || triggerOnStackAny(g) {
+		t.Fatalf("triggered with only one card drawn this turn (tally %d, pick %v, stack %v)", g.TurnTallyFor(me.ID).CardsDrawn, latestPickTarget(g, me.ID) != nil, triggerOnStackAny(g))
+	}
+	if c := tmtB1Card(t, g, bear); c.Counters["+1/+1"] != 0 {
+		t.Errorf("counters %d, want none", c.Counters["+1/+1"])
+	}
+}
+
+func triggerOnStackAny(g *game.Game) bool {
+	for _, item := range g.StackMeta {
+		if item != nil && item.Kind == game.StackItemTriggered {
+			return true
+		}
+	}
+	return len(g.PendingTriggers) > 0
+}
+
+func TestStdB45ProftsEideticMemoryDrawsWhenItEntersAndRemovesTheHandLimit(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 3; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	hand := me.Hand.Size()
+	castCatalogSpell(t, g, "Proft's Eidetic Memory", "Legendary Enchantment", stdProftOracle, nil)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 1 {
+		t.Errorf("hand grew by %d, want 1", got)
+	}
+	spec, _ := Lookup(stdProftOracle)
+	if len(spec.HandSize) != 1 || spec.HandSize[0].Kind != game.HandSizeNoMaximum || spec.HandSize[0].Players != game.HandSizeYou {
+		t.Errorf("hand size statics %+v, want no maximum for you", spec.HandSize)
+	}
+}
