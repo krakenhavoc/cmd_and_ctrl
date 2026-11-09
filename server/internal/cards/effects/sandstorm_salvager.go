@@ -23,8 +23,9 @@ func init() {
 			WhenThisEnters("Sandstorm Salvager — create a 3/3 Golem", Do(CreateToken{Template: b35GolemToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Put a +1/+1 counter on each creature token you control. They gain trample until end of turn.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Put a +1/+1 counter on each creature token you control. They gain trample until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				ids := b35CreatureTokensYouControl(g, item.Controller)

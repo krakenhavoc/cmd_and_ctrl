@@ -59,7 +59,7 @@ func bucolicRanchLook(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	options := []game.ChoiceOption{{Label: bucolicRanchBottom}, {Label: bucolicRanchLeave}}
-	if c, ok := g.LookupCardForEffect(top[0]); ok && !c.IsToken() && c.HasSubtype("Mount") {
+	if c, ok := g.LookupCardForEffect(top[0]); ok && !c.IsToken() && c.HasSubtype(g.TextReaderForEffect(item).TextSubtype("Mount")) {
 		options = append([]game.ChoiceOption{{Label: bucolicRanchTake}}, options...)
 	}
 	return PickOption{

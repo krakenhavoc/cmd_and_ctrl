@@ -38,6 +38,7 @@ func init() {
 			Label:   "{1}{B}, Discard this card: Target creature gets -2/-2 until end of turn",
 			Cost:    Plus(ManaCost("{1}{B}"), DiscardThis()),
 			Zones:   []game.ZoneKind{game.ZoneHand},
+			Purpose: ForTargets(HarmUntilEOT(0, -2, -2)),
 			Targets: TargetCreature("target creature"),
 			Effect:  boostTargetUntilEOT("Harvester of Misery — -2/-2", -2, -2),
 		}},

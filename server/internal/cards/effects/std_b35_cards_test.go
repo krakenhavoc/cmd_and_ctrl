@@ -33,6 +33,7 @@ const (
 	b35KellanJoinsUpOracle       = "9b3ddd31-c058-4846-8784-25c7a9bbcb31"
 	b35OkoRingleaderOracle       = "4372b729-dc3d-4469-8fc5-811cc787d653"
 	b35JaceReawakenedOracle      = "cbd483b5-5554-43ed-a729-535d01b0d5d3"
+	b35StepBetweenWorldsOracle   = "48b43d53-9a8a-46b2-9d8c-b0d66fb68a5d"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -59,6 +60,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35KellanJoinsUpOracle:       "Kellan Joins Up",
 		b35OkoRingleaderOracle:       "Oko, the Ringleader",
 		b35JaceReawakenedOracle:      "Jace Reawakened",
+		b35StepBetweenWorldsOracle:   "Step Between Worlds",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -957,5 +959,53 @@ func TestB35OkoRingleaderBecomesAHexproofCopyAtBeginningOfCombat(t *testing.T) {
 	}
 	if !hasEffectiveKeyword(t, g, oko, "hexproof") {
 		t.Error("the copy has no hexproof")
+	}
+}
+
+func TestB35StepBetweenWorldsAsksEachPlayerAndOnlyThoseWhoShuffleDrawSeven(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	hands := make([]int, len(g.Seats))
+	castCatalogSpell(t, g, "Step Between Worlds", "Sorcery", b35StepBetweenWorldsOracle, nil)
+	for i, p := range g.Seats {
+		hands[i] = len(p.Hand.Cards)
+	}
+	passPriorityAroundTable(t, g)
+	// The caster answers first, then each opponent in turn order.
+	for i, p := range g.Seats {
+		answer := stepBetweenWorldsNo
+		if i%2 == 0 {
+			answer = stepBetweenWorldsYes
+		}
+		b35AnswerOption(t, g, p.ID, answer)
+	}
+	passPriorityAroundTable(t, g)
+	for i, p := range g.Seats {
+		want := hands[i]
+		if i%2 == 0 {
+			want = 7
+		}
+		if got := len(p.Hand.Cards); got != want {
+			t.Errorf("seat %d has %d cards, want %d", i, got, want)
+		}
+	}
+	exiled := false
+	g.ReadSnapshot(func() {
+		for _, c := range g.Exile.Cards {
+			if c.Name == "Step Between Worlds" {
+				exiled = true
+			}
+		}
+	})
+	if !exiled {
+		t.Error("Step Between Worlds is not exiled")
+	}
+	_ = me
+}
+
+func TestB35StepBetweenWorldsHasPlot(t *testing.T) {
+	spec, _ := Lookup(b35StepBetweenWorldsOracle)
+	if len(spec.SpecialActions) != 1 || spec.SpecialActions[0].Cost != "{4}{U}{U}" {
+		t.Errorf("special actions %+v, want plot {4}{U}{U}", spec.SpecialActions)
 	}
 }

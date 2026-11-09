@@ -21,7 +21,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice another artifact: Create a 3/3 colorless Golem artifact creature token.",
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeAnotherN(1, "another artifact", Artifact())),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Tokens: 1, Answers: game.AnswerValue},
 			Effect:  Do(CreateToken{Template: b35GolemToken(), N: 1}),
 		}},
 	})
