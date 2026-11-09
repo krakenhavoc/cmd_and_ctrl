@@ -34,6 +34,7 @@ const (
 	b35OkoRingleaderOracle       = "4372b729-dc3d-4469-8fc5-811cc787d653"
 	b35JaceReawakenedOracle      = "cbd483b5-5554-43ed-a729-535d01b0d5d3"
 	b35StepBetweenWorldsOracle   = "48b43d53-9a8a-46b2-9d8c-b0d66fb68a5d"
+	b35LilahOracle               = "0757c5a7-e51b-4c39-bb4d-b32657c10cb4"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -61,6 +62,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35OkoRingleaderOracle:       "Oko, the Ringleader",
 		b35JaceReawakenedOracle:      "Jace Reawakened",
 		b35StepBetweenWorldsOracle:   "Step Between Worlds",
+		b35LilahOracle:               "Lilah, Undefeated Slickshot",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1007,5 +1009,71 @@ func TestB35StepBetweenWorldsHasPlot(t *testing.T) {
 	spec, _ := Lookup(b35StepBetweenWorldsOracle)
 	if len(spec.SpecialActions) != 1 || spec.SpecialActions[0].Cost != "{4}{U}{U}" {
 		t.Errorf("special actions %+v, want plot {4}{U}{U}", spec.SpecialActions)
+	}
+}
+
+func TestB35LilahExilesAndPlotsAMulticoloredSpellCastFromHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Lilah, Undefeated Slickshot", "Legendary Creature — Human Rogue", b35LilahOracle, 3, 3)
+	spell, err := msc17Cast(t, g, me, game.Card{Name: "Gold Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}{R}",
+		Colors: []string{"U", "R"}, OracleID: spellControlDivinationOracle}, game.CastSpellParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b35SettleTriggerOrders(t, g, me.ID)
+	if me.Graveyard.Contains(spell) {
+		t.Fatal("the spell went to the graveyard")
+	}
+	if exiledCard(g, spell) == nil {
+		for _, c := range g.PendingChoices {
+			t.Logf("pending %v", c.Kind)
+		}
+		t.Fatalf("the spell is not in exile (stack %d)", len(g.StackMeta))
+	}
+	plotted := false
+	for _, ev := range g.Events {
+		if ev.Kind == game.EventBecomesPlotted && ev.CardID == spell {
+			plotted = true
+		}
+	}
+	if !plotted {
+		t.Error("the exiled spell did not become plotted")
+	}
+}
+
+func TestB35LilahIgnoresMonocoloredSpellsAndCountersTheRest(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Lilah, Undefeated Slickshot", "Legendary Creature — Human Rogue", b35LilahOracle, 3, 3)
+	spell, err := msc17Cast(t, g, me, game.Card{Name: "Mono Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}",
+		Colors: []string{"U"}, OracleID: spellControlDivinationOracle}, game.CastSpellParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b35SettleTriggerOrders(t, g, me.ID)
+	if !me.Graveyard.Contains(spell) || exiledCard(g, spell) != nil {
+		t.Error("a mono-colored spell should go to the graveyard as usual")
+	}
+}
+
+// b35SettleTriggerOrders answers any CR 603.3b ordering prompt as it is
+// asked and passes priority until the stack is empty.
+func b35SettleTriggerOrders(t *testing.T, g *game.Game, who uuid.UUID) {
+	t.Helper()
+	for i := 0; i < 48; i++ {
+		if p := triggerOrderPromptFor(g, who); p != nil {
+			order := append([]uuid.UUID(nil), p.TriggerOrderIDs...)
+			if err := g.ResolveTriggerOrder(p.ID, who, order); err != nil {
+				t.Fatalf("ResolveTriggerOrder: %v", err)
+			}
+			continue
+		}
+		if stackFullyEmpty(g) {
+			return
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
 	}
 }
