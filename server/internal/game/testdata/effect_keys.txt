@@ -139,6 +139,8 @@ body fatal-fissure/earthbend-4
 body felonious-rage/detective
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
+body fin/return-the-objects-to-hand
+body fin/unattach-the-objects
 body fire-lord-sozin/reanimate
 body flash/cleanup-sacrifice
 body flicker/return-exiled-lands-tapped
@@ -654,6 +656,7 @@ choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
 choose choose-cards/nicol-bolas-god-pharaoh-exile-two
+choose choose-cards/ninjas-blades-loot
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
@@ -814,6 +817,7 @@ choose resolution-cast/herald-of-amity-rest-to-bottom
 choose resolution-cast/kefka-life-loss
 choose resolution-cast/lieutenant-nyota-uhura-rest-to-bottom
 choose resolution-cast/looked-at-rest-to-bottom
+choose resolution-cast/vaan-street-thief-after-cast
 choose sticker/choose-object
 coinflip coin-flip/breeches-the-blastmaker
 coinflip coin-flip/fighting-chance-shields
@@ -1516,6 +1520,7 @@ run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
 run prompt-run/larval-scoutlander-search
 run prompt-run/lich-knights-conquest-sacrifice
+run prompt-run/light-of-judgment-destroy
 run prompt-run/liliana-dreadhorde-general-keep
 run prompt-run/lithobraking-sacrifice
 run prompt-run/lord-skitters-butcher-sacrifice
@@ -1535,6 +1540,7 @@ run prompt-run/promise-of-loyalty-keep
 run prompt-run/proteges-awakening-empower
 run prompt-run/provisions-merchant-sacrifice-pump
 run prompt-run/reactor-raid-draw
+run prompt-run/reno-and-rude-sacrifice
 run prompt-run/return-chosen-permanent-to-hand
 run prompt-run/rhovanion-rampager-sacrifice
 run prompt-run/rise-of-the-witch-king-return
@@ -1548,6 +1554,7 @@ run prompt-run/sephiroth-sacrifice-draw
 run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
+run prompt-run/sidequest-play-blitzball-attach
 run prompt-run/slaughter-the-strong-keep
 run prompt-run/smallpox-sacrifice-creatures
 run prompt-run/smallpox-sacrifice-lands
@@ -1578,6 +1585,7 @@ run prompt-run/tomb-of-annihilation-oubliette-land
 run prompt-run/tomb-of-annihilation-sandfall-sacrificed
 run prompt-run/tovolar-dire-overlord-transform
 run prompt-run/tragic-arrogance-sacrifice-the-rest
+run prompt-run/unexpected-request-attach
 run prompt-run/unscrupulous-contractor-sacrifice
 run prompt-run/unstable-glyphbridge-destroy
 run prompt-run/vampire-gourmand-draw-unblockable
@@ -1863,6 +1871,7 @@ tail engine/entry-choice-acted
 tail engine/evolved
 tail engine/exile-card-granted
 tail engine/exile-return-transformed
+tail engine/exile-return-transformed-with-counter
 tail engine/exile-until-another-granted
 tail engine/exiled-creature-or-hand
 tail engine/exiled-with-counter
@@ -1904,6 +1913,7 @@ tail ensign-pavel-chekov/after-exile
 tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
 tail erica-ortegas/return-a-land-at-end
+tail esper-origins/after-surveil
 tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
@@ -2134,6 +2144,8 @@ tail queens-bay-paladin/lose-life
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
+tail random-encounter/entered
+tail random-encounter/milled
 tail rapid-rescue/after-mill
 tail read-the-runes/sacrificed
 tail reality-fracture-helpers/after-exile
@@ -2149,6 +2161,7 @@ tail reckless-handling/discard-at-random
 tail red-suns-zenith/shuffle-into-library
 tail release-to-memory/spirit-per-creature-card
 tail renegade-bull/copy-exiled
+tail reno-and-rude/exiled
 tail replicating-ring/check
 tail rex-cyber-hound/after-exile
 tail rhino-terrible-trampler/counters-and-trample
@@ -2488,6 +2501,7 @@ tail underworld-cerberus/after-exile
 tail unlucky-cabbage-merchant/after-search
 tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
+tail vaan-street-thief/exiled
 tail valgavoths-onslaught/manifest-again
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
