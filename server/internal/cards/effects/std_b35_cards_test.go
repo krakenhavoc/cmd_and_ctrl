@@ -35,6 +35,7 @@ const (
 	b35JaceReawakenedOracle      = "cbd483b5-5554-43ed-a729-535d01b0d5d3"
 	b35StepBetweenWorldsOracle   = "48b43d53-9a8a-46b2-9d8c-b0d66fb68a5d"
 	b35LilahOracle               = "0757c5a7-e51b-4c39-bb4d-b32657c10cb4"
+	b35TinybonesOracle           = "7bc4c7e2-6758-4a85-84e7-03ab93981106"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -63,6 +64,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35JaceReawakenedOracle:      "Jace Reawakened",
 		b35StepBetweenWorldsOracle:   "Step Between Worlds",
 		b35LilahOracle:               "Lilah, Undefeated Slickshot",
+		b35TinybonesOracle:           "Tinybones, the Pickpocket",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1075,5 +1077,56 @@ func b35SettleTriggerOrders(t *testing.T, g *game.Game, who uuid.UUID) {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)
 		}
+	}
+}
+
+func TestB35TinybonesCastsANonlandPermanentFromTheDamagedPlayersGraveyardWithAnyMana(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]
+	tiny := b27Push(g, me.ID, "Tinybones, the Pickpocket", "Legendary Creature — Skeleton Rogue", b35TinybonesOracle, "{B}", 1, 1, "B")
+	var theirs, land, elsewhere uuid.UUID
+	g.WithWriteLock(func() {
+		theirs = uuid.New()
+		opp.Graveyard.PushTop(game.Card{InstanceID: theirs, Name: "Their Dead Bear", TypeLine: "Creature — Bear",
+			ManaCost: "{1}{G}", Colors: []string{"G"}, Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID})
+		land = pushGraveyardCardTyped(opp, "Their Dead Land", "Basic Land — Forest")
+		elsewhere = pushGraveyardCardTyped(other, "Other Dead Bear", "Creature — Bear")
+	})
+	declareAttack(t, g, opp.ID, tiny)
+	advanceTo(t, g, game.StepDeclareBlockers)
+	finishBlockDeclarations(t, g)
+	advanceTo(t, g, game.StepCombatDamage)
+	for i := 0; i < 4 && latestPickTarget(g, me.ID) == nil && triggerOnStack(g, tiny) == nil; i++ {
+		passPriorityAroundTable(t, g)
+	}
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt")
+	}
+	for _, bad := range []uuid.UUID{land, elsewhere} {
+		if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: bad}); err == nil {
+			t.Fatalf("an illegal card (%s) was accepted", bad)
+		}
+	}
+	if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: theirs}); err != nil {
+		t.Fatal(err)
+	}
+	b06AddMana(me, "R", "R")
+	for i := 0; i < 8 && keywordCastPromptFor(g, me.ID) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	prompt := keywordCastPromptFor(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no cast offer")
+	}
+	answerKeywordCast(t, g, prompt, true)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(theirs) {
+		t.Error("the Bear did not enter, though red mana was spent on a green cost")
+	}
+	if c := battlefieldCardPtr(t, g, theirs); c.Controller != me.ID {
+		t.Error("the Bear is not under the caster's control")
 	}
 }
