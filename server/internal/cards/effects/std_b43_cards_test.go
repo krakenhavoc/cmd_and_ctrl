@@ -796,3 +796,73 @@ func TestStdB44FugitiveCodebreakerStillDrawsThreeWithAnEmptyHand(t *testing.T) {
 		t.Errorf("hand %d, want 3", got)
 	}
 }
+
+const stdWorldsoulOracle = "3b6ef144-bb98-4686-9718-204f1c3cf020"
+
+func stdWorldsoulRage(t *testing.T, x int) (g *game.Game, me, opp *game.Player, handLand, graveLand, extra uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[g.Turn.ActiveSeat]
+	opp = g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	land := func(z *game.Zone, name string) uuid.UUID {
+		id := uuid.New()
+		z.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+		return id
+	}
+	handLand, graveLand, extra = land(me.Hand, "Hand Forest"), land(me.Graveyard, "Grave Forest"), land(me.Hand, "Second Hand Forest")
+	id := handCardFull(me, "Worldsoul's Rage", "Sorcery", "{X}{R}{G}", stdWorldsoulOracle, []string{"R", "G"})
+	advanceToMain(t, g)
+	b06AddMana(me, "R", "G")
+	for i := 0; i < x; i++ {
+		b06AddMana(me, "C")
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, XValue: x,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	return
+}
+
+func TestStdB44WorldsoulsRageDamagesThenPutsUpToXLandsFromHandAndGraveyardTapped(t *testing.T) {
+	life := 40
+	g, me, opp, handLand, graveLand, extra := stdWorldsoulRage(t, 2)
+	if opp.Life != life-2 {
+		t.Errorf("opponent life %d, want %d", opp.Life, life-2)
+	}
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if pick == nil {
+		t.Fatalf("no land pick: %+v", g.PendingChoices)
+	}
+	// Three candidate lands, a ceiling of X = 2 in all: one from each zone.
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{handLand, graveLand, extra}); err == nil {
+		t.Fatal("three lands were put for X = 2")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{handLand, graveLand}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{handLand, graveLand} {
+		c, ok := battlefieldCard(g, id)
+		if !ok || !c.Tapped {
+			t.Errorf("land %s: on battlefield %v tapped %v, want tapped on the battlefield", id, ok, c.Tapped)
+		}
+	}
+	if _, ok := battlefieldCard(g, extra); ok {
+		t.Error("the land that was not picked entered")
+	}
+}
+
+func TestStdB44WorldsoulsRageMayPutNone(t *testing.T) {
+	g, me, _, handLand, _, _ := stdWorldsoulRage(t, 1)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if pick == nil {
+		t.Fatal("no land pick")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, nil); err != nil {
+		t.Fatalf("choosing none: %v", err)
+	}
+	if _, ok := battlefieldCard(g, handLand); ok {
+		t.Error("a land entered although none were chosen")
+	}
+}

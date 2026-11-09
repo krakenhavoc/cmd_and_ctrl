@@ -155,8 +155,6 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 		"42b9d383-3fe2-4fc8-ab86-f80a288d502b": "Murmuring Bosk",
 		"5b3b5f6a-375e-4479-9384-a942eda83f9b": "Gandalf the White",
 		"8de8027b-072a-474b-b76b-dc49c417cc55": "Primevals' Glorious Rebirth",
-		"3b6ef144-bb98-4686-9718-204f1c3cf020": "Worldsoul's Rage",
-		"d08ce18a-0fd9-47ac-ad2f-6934b60070f1": "Rakdos, Patron of Chaos",
 	} {
 		if _, ok := Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #387 but is registered — update the issue", name)
