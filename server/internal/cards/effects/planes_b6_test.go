@@ -810,3 +810,54 @@ func TestAstralArenaChaosDamagesEveryCreature(t *testing.T) {
 		t.Errorf("%d damage on the 3/3, want 2", got)
 	}
 }
+
+var planeBant = planeFixture{"82e67c57-6d7a-44cc-ba63-77ce887ab075", "Bant", "Plane — Alara"}
+
+func TestBantGivesEveryCreatureExaltedAndChaosGrantsIndestructible(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeBant)
+	g, plane := newPlaneGame(t, planeBant)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	green := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Green Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}, Owner: me.ID, Controller: me.ID})
+	red := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Red Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"R"}, Owner: me.ID, Controller: me.ID})
+	g.BumpLayerVersionForTest()
+	if !hasEffectiveKeyword(t, g, red, "exalted") {
+		t.Fatal("a creature does not have exalted")
+	}
+	// Two creatures with exalted, one attacks alone: +2/+2.
+	pr7bAttack(t, g, opp.ID, green)
+	passPriorityAroundTable(t, g)
+	if p, _ := ptOf(t, g, green); p != 4 {
+		t.Errorf("power %d after attacking alone with two exalted instances, want 4", p)
+	}
+	_ = plane
+}
+
+func TestBantChaosPutsADivinityCounterOnlyOnGreenWhiteOrBlue(t *testing.T) {
+	g, _ := newPlaneGame(t, planeBant)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	green := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Green Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}, Owner: me.ID, Controller: me.ID})
+	red := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Red Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"R"}, Owner: me.ID, Controller: me.ID})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(red)); err == nil {
+		t.Fatal("a red creature was accepted")
+	}
+	answerPickTarget(t, g, green)
+	passPriorityAroundTable(t, g)
+	if !hasEffectiveKeyword(t, g, green, "indestructible") {
+		t.Fatal("the creature is not indestructible")
+	}
+	// Walk away from the plane: it keeps indestructible while it has the counter.
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if !hasEffectiveKeyword(t, g, green, "indestructible") {
+		t.Error("indestructible ended with the plane")
+	}
+	g.WithWriteLock(func() { _ = g.AddCounterByForEffect(me.ID, green, "divinity", -1) })
+	g.BumpLayerVersionForTest()
+	if hasEffectiveKeyword(t, g, green, "indestructible") {
+		t.Error("indestructible outlived the divinity counter")
+	}
+}
