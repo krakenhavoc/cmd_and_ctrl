@@ -68,6 +68,11 @@ type GrantedAbility struct {
 	// 2026-10-09, #1947). A creature that changes hands keeps the player
 	// who gave it the ability, because that is who "you" was.
 	Activator uuid.UUID
+	// UntilEndOfTurn marks a grant a resolved effect gave a card in a
+	// graveyard "until end of turn" (Cursecloth Wrappings): the cleanup
+	// sweep (CR 514.2) takes it from the card. False for every other
+	// grant, which lasts as long as its source or object does.
+	UntilEndOfTurn bool
 }
 
 // GrantAbility appends one granted bundle to a characteristic. It is
@@ -343,6 +348,12 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 		}
 		n := grantOccurrence(grants, gi)
 		for i, a := range abs {
+			// "Its cost is equal to its mana cost" (embalm from Cursecloth
+			// Wrappings): one bundle serves every card, so the cost is read
+			// off the card that has the row.
+			if a.Cost.ManaFromSource && a.Cost.Mana == "" {
+				a.Cost.Mana = c.ManaCost
+			}
 			out = append(out, a)
 			if wantOrigins {
 				origins = append(origins, AbilityOrigin{

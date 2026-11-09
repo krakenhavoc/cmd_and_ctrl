@@ -5094,6 +5094,11 @@ type ActivatedAbilityView struct {
 	// like `return_self`: the grantor (`granted_by`) is the payment, so
 	// nothing is collected and nothing rides the payload.
 	ExileGrantor bool `json:"exile_grantor,omitempty"`
+	// TapGrantor is a granted row's "Tap <the permanent that grants this>"
+	// cost component: Fishing Pole. Advisory, like `exile_grantor`: the
+	// grantor (`granted_by`) is the payment, so nothing is collected and
+	// nothing rides the payload.
+	TapGrantor bool `json:"tap_grantor,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -13656,6 +13661,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			ReturnSelf:    a.Cost.ReturnSelf,
 			BottomSelf:    a.Cost.BottomSelf,
 			ExileGrantor:  a.Cost.ExileGrantor,
+			TapGrantor:    a.Cost.TapGrantor,
 			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,

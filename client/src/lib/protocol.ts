@@ -4037,6 +4037,9 @@ export interface ActivatedAbilityView {
   // (`granted_by`) is the payment, so nothing is picked and nothing is
   // sent.
   exile_grantor?: boolean;
+  // "Tap <the permanent that grants this>" (Fishing Pole): advisory, the
+  // grantor is `granted_by`, nothing is sent.
+  tap_grantor?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.

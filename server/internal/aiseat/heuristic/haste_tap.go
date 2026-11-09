@@ -115,7 +115,7 @@ func tapRowUnlockable(st *state, row *protocol.ActivatedAbilityView, left int) b
 	if !row.TapCost || row.SacrificeSelf || row.ConditionUnmet || row.Exhausted || row.CantActivate != "" ||
 		row.LoyaltyCost != nil || row.LifeCost > 0 || row.EnergyCost > 0 || row.EnergyCostX || row.MillCost > 0 ||
 		row.SacrificeLabel != "" || row.CrewCost > 0 || row.Saddle || row.CounterCostN > 0 || row.CounterCostVariable ||
-		row.DiscardSelf || row.ExileSelf || row.ReturnSelf || row.BottomSelf || row.ExileGrantor || row.Exert {
+		row.DiscardSelf || row.ExileSelf || row.ReturnSelf || row.BottomSelf || row.ExileGrantor || row.TapGrantor || row.Exert {
 		return false
 	}
 	if row.SorcerySpeed && !st.sorcerySpeed {

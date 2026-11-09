@@ -137,6 +137,7 @@ body extra-combat/untap-attackers-at-that-combat
 body extra-combat/untap-creatures-that-attacked
 body extra-turn/lose-the-game
 body facedown/ward
+body faebloom-trick/tap
 body fatal-fissure/earthbend-4
 body felonious-rage/detective
 body fight-for-the-throne/monarch
@@ -691,6 +692,7 @@ choose choose-cards/ordered-pick-leg
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/patient-naturalist-land
+choose choose-cards/perforating-artist-punisher-discarded
 choose choose-cards/pia-aether-ascetic-search
 choose choose-cards/pile-split
 choose choose-cards/planetarium-of-wan-shi-tong-cast
@@ -754,6 +756,8 @@ choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/starseer-mentor-punisher-discarded
+choose choose-cards/std-b15-keep-one-on-top-rest-graveyard
+choose choose-cards/std-b15-strongbox-raider-play
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -1249,6 +1253,7 @@ option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
 option option-pick/pavel-chekov-first-posting-kind
+option option-pick/perforating-artist-punisher
 option option-pick/pile-split-take
 option option-pick/plague-boiler-put-or-remove
 option option-pick/plargg-and-nassari-opponent
@@ -1857,6 +1862,7 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail coalstoke-gearhulk/entered
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
 tail connive/each
@@ -2103,6 +2109,7 @@ tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
 tail incubate/next-round
 tail incubate/transform-all-incubators
+tail infernal-vessel/demon
 tail insidious-roots/counter-on-each-plant
 tail intuition/choose
 tail invent/sorcery-search
@@ -2514,6 +2521,7 @@ tail then/optimus-prime-bolstered
 tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
 tail then/patriarchs-bidding-type-chosen
+tail then/perforating-artist-punisher-sacrificed
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/polygraph-orb-punisher-sacrificed
@@ -2554,6 +2562,7 @@ tail then/star-athlete-damage-unless-sacrificed
 tail then/starseer-mentor-punisher-sacrificed
 tail then/starving-revenant-kept
 tail then/stay-hidden-shuffle-manifest
+tail then/std-b15-strongbox-raider-choose
 tail then/stronghold-arena-lose-life
 tail then/suspect-each
 tail then/sylvan-library-next-card
@@ -2628,6 +2637,7 @@ tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled
 tail valgavoths-onslaught/manifest-again
+tail valkyries-call/angel
 tail vanille-cheerful-lcie/after-mill
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
