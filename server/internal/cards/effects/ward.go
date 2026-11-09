@@ -121,6 +121,12 @@ type WardCost struct {
 	// the payer gets that many poison counters. Always payable.
 	Poison int
 
+	// CollectEvidence is "Ward—Collect evidence N" (Axebane Ferox, #4452,
+	// CR 701.59a): counter it unless the targeting player exiles cards with
+	// total mana value N or greater from their graveyard. See
+	// std_b43_ward_evidence.go.
+	CollectEvidence int
+
 	// Either is a ward with two ways to pay (#4566): Titania, Rugged
 	// Rumbler's "Ward—Discard a card or pay {2}". Each branch is a ward
 	// cost of its own — mana, life, or a chosen discard — and the payer
@@ -301,6 +307,9 @@ func (c WardCost) validate() {
 		n++
 	}
 	if c.Poison > 0 {
+		n++
+	}
+	if c.CollectEvidence > 0 {
 		n++
 	}
 	compound := n == 2 && c.Mana != "" && c.Life > 0
@@ -497,6 +506,8 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
 	case cost.Poison > 0:
 		return wardPoisonOrCounter(g, item.SourceCardID, payer, cost.Poison, targetingItem)
+	case cost.CollectEvidence > 0:
+		return wardCollectEvidenceOrCounter(g, item.SourceCardID, payer, cost.CollectEvidence, targetingItem)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with

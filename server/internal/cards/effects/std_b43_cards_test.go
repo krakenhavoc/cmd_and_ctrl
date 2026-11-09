@@ -2213,3 +2213,78 @@ func TestStdB44AnzragsRampageDoesNothingFurtherWithNoArtifactsInGraveyards(t *te
 		t.Errorf("library %d -> %d: X was 0 so nothing is exiled", lib, me.Library.Size())
 	}
 }
+
+const stdFeroxOracle = "35b3ae1c-4116-49b0-89a9-7332fe9bbff0"
+
+// stdFeroxWard has seat 1 target the opposing Ferox with a Doom Blade while
+// their graveyard holds cards of the given mana values, and passes until the
+// ward trigger resolves. Returns the table, the targeting player, the Ferox,
+// the Doom Blade and the graveyard cards.
+func stdFeroxWard(t *testing.T, graveyard ...string) (*game.Game, *game.Player, uuid.UUID, uuid.UUID, []uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ferox := b12Push(g, me.ID, "Axebane Ferox", "Creature — Beast", stdFeroxOracle, 4, 4)
+	var ids []uuid.UUID
+	for _, mv := range graveyard {
+		ids = append(ids, gyCard(opp, "Evidence "+mv, "Sorcery", mv, ""))
+	}
+	toMainForCost(t, g)
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority to the opponent: %v", err)
+	}
+	blade := castAtWardedCreature(t, g, opp, ferox)
+	return g, opp, ferox, blade, ids
+}
+
+func TestStdB46AxebaneFeroxWardExilesEvidenceToLetTheSpellResolve(t *testing.T) {
+	g, opp, _, blade, ids := stdFeroxWard(t, "{2}", "{3}", "{1}")
+	passPriorityAroundTable(t, g)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, opp.ID)
+	if pick == nil {
+		t.Fatalf("the ward did not ask the targeting player: %+v", g.PendingChoices)
+	}
+	if err := g.ResolveChooseCards(pick.ID, opp.ID, []uuid.UUID{ids[0]}); err == nil {
+		t.Fatal("total mana value 2 accepted for collect evidence 4")
+	}
+	if err := g.ResolveChooseCards(pick.ID, opp.ID, []uuid.UUID{ids[0], ids[1]}); err != nil {
+		t.Fatalf("total mana value 5: %v", err)
+	}
+	for _, id := range ids[:2] {
+		if !g.Exile.Contains(id) {
+			t.Error("a chosen card was not exiled")
+		}
+	}
+	if !g.Stack.Contains(blade) {
+		t.Error("the spell was countered although the ward was paid")
+	}
+}
+
+func TestStdB46AxebaneFeroxWardCountersWhenNoEvidenceIsChosen(t *testing.T) {
+	g, opp, ferox, blade, _ := stdFeroxWard(t, "{2}", "{3}")
+	passPriorityAroundTable(t, g)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, opp.ID)
+	if pick == nil {
+		t.Fatal("no ward prompt")
+	}
+	if err := g.ResolveChooseCards(pick.ID, opp.ID, nil); err != nil {
+		t.Fatalf("choosing none: %v", err)
+	}
+	if g.Stack.Contains(blade) {
+		t.Error("the spell was not countered")
+	}
+	if _, ok := battlefieldCard(g, ferox); !ok {
+		t.Error("Ferox died")
+	}
+}
+
+func TestStdB46AxebaneFeroxWardCountersWithoutAskingWhenTheGraveyardIsTooSmall(t *testing.T) {
+	g, opp, _, blade, _ := stdFeroxWard(t, "{1}", "{2}")
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, opp.ID) != nil {
+		t.Fatal("asked for evidence the graveyard cannot supply")
+	}
+	if g.Stack.Contains(blade) {
+		t.Error("the spell was not countered")
+	}
+}
