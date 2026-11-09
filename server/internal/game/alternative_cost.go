@@ -278,6 +278,13 @@ type AlternativeCost struct {
 	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
 
+	// Forage marks the non-mana payment of this cost as a forage (CR
+	// 701.61a): exile three cards from your graveyard, or sacrifice a Food
+	// (Osteomancer Adept's "cast creature spells from your graveyard by
+	// foraging in addition to paying their other costs"). Paying it emits
+	// EventForage, which "whenever you forage" watches. Runtime only.
+	Forage bool
+
 	// TapOthers is "tap N untapped [permanents] you control" as the price
 	// (CR 118.9, ADR 0135 §1, #2030): Orim's Cure's creature, Battle
 	// Screech's three white creatures, Zahid's artifact. The same struct
@@ -1416,6 +1423,9 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 				return err
 			}
 		}
+		if alt.Forage {
+			g.noteForageLocked(playerID, castID)
+		}
 	case alt.Sacrifice != nil:
 		// #1727: the additional cost's payer, verbatim. Each permanent
 		// is SACRIFICED — EventSacrifice, then its own route to its
@@ -1425,7 +1435,13 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		// resolve first; and nothing gives them back if it is
 		// countered. The CR 903.9 answers ride along as they do for the
 		// moves above (#1397).
-		return g.payCostSacrificesLocked(ids, answers)
+		if err := g.payCostSacrificesLocked(ids, answers); err != nil {
+			return err
+		}
+		if alt.Forage {
+			g.noteForageLocked(playerID, castID)
+		}
+		return nil
 	case alt.TapOthers != nil:
 		// ADR 0135 §1: the ability's tap-others payer (#758), with the
 		// spell already on the stack, so each permanent's EventTapCard

@@ -2048,6 +2048,7 @@ followUpParks[].then.permission.followUp	string
 followUpParks[].then.permission.followUpObject	object
 followUpParks[].then.permission.followUpObject.epoch	number:int
 followUpParks[].then.permission.followUpObject.id	custom(uuid.UUID)
+followUpParks[].then.permission.forage	bool
 followUpParks[].then.permission.gainsAbilities	array
 followUpParks[].then.permission.gainsAbilities[]	string
 followUpParks[].then.permission.gainsKeywords	array
@@ -2069,6 +2070,7 @@ followUpParks[].then.permission.perTypeUsed[]	string
 followUpParks[].then.permission.perType[]	string
 followUpParks[].then.permission.player	custom(uuid.UUID)
 followUpParks[].then.permission.requiresNoSpellsCast	bool
+followUpParks[].then.permission.sacrificeFood	bool
 followUpParks[].then.permission.scope	string
 followUpParks[].then.permission.seesLibraryTop	bool
 followUpParks[].then.permission.sneakCost	string
@@ -2667,6 +2669,7 @@ frozenEntries[].event.counterTail.then.permission.followUp	string
 frozenEntries[].event.counterTail.then.permission.followUpObject	object
 frozenEntries[].event.counterTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.counterTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.permission.forage	bool
 frozenEntries[].event.counterTail.then.permission.gainsAbilities	array
 frozenEntries[].event.counterTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.counterTail.then.permission.gainsKeywords	array
@@ -2688,6 +2691,7 @@ frozenEntries[].event.counterTail.then.permission.perTypeUsed[]	string
 frozenEntries[].event.counterTail.then.permission.perType[]	string
 frozenEntries[].event.counterTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.counterTail.then.permission.sacrificeFood	bool
 frozenEntries[].event.counterTail.then.permission.scope	string
 frozenEntries[].event.counterTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.counterTail.then.permission.sneakCost	string
@@ -3265,6 +3269,7 @@ frozenEntries[].event.damageTail.each.each.permission.followUp	string
 frozenEntries[].event.damageTail.each.each.permission.followUpObject	object
 frozenEntries[].event.damageTail.each.each.permission.followUpObject.epoch	number:int
 frozenEntries[].event.damageTail.each.each.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.permission.forage	bool
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords	array
@@ -3286,6 +3291,7 @@ frozenEntries[].event.damageTail.each.each.permission.perTypeUsed[]	string
 frozenEntries[].event.damageTail.each.each.permission.perType[]	string
 frozenEntries[].event.damageTail.each.each.permission.player	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.damageTail.each.each.permission.sacrificeFood	bool
 frozenEntries[].event.damageTail.each.each.permission.scope	string
 frozenEntries[].event.damageTail.each.each.permission.seesLibraryTop	bool
 frozenEntries[].event.damageTail.each.each.permission.sneakCost	string
@@ -3854,6 +3860,7 @@ frozenEntries[].event.damageTail.each.then.permission.followUp	string
 frozenEntries[].event.damageTail.each.then.permission.followUpObject	object
 frozenEntries[].event.damageTail.each.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.damageTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.permission.forage	bool
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords	array
@@ -3875,6 +3882,7 @@ frozenEntries[].event.damageTail.each.then.permission.perTypeUsed[]	string
 frozenEntries[].event.damageTail.each.then.permission.perType[]	string
 frozenEntries[].event.damageTail.each.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.damageTail.each.then.permission.sacrificeFood	bool
 frozenEntries[].event.damageTail.each.then.permission.scope	string
 frozenEntries[].event.damageTail.each.then.permission.seesLibraryTop	bool
 frozenEntries[].event.damageTail.each.then.permission.sneakCost	string
@@ -4615,6 +4623,7 @@ frozenEntries[].event.damageTail.then.permission.followUp	string
 frozenEntries[].event.damageTail.then.permission.followUpObject	object
 frozenEntries[].event.damageTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.damageTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.permission.forage	bool
 frozenEntries[].event.damageTail.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.then.permission.gainsKeywords	array
@@ -4636,6 +4645,7 @@ frozenEntries[].event.damageTail.then.permission.perTypeUsed[]	string
 frozenEntries[].event.damageTail.then.permission.perType[]	string
 frozenEntries[].event.damageTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.damageTail.then.permission.sacrificeFood	bool
 frozenEntries[].event.damageTail.then.permission.scope	string
 frozenEntries[].event.damageTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.damageTail.then.permission.sneakCost	string
@@ -5324,6 +5334,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUp	stri
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.forage	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
@@ -5345,6 +5356,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.perTypeUsed[]
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.perType[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.sacrificeFood	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.scope	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.sneakCost	string
@@ -5989,6 +6001,7 @@ frozenEntries[].event.entryTail.batch.then.permission.followUp	string
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject	object
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.permission.forage	bool
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords	array
@@ -6010,6 +6023,7 @@ frozenEntries[].event.entryTail.batch.then.permission.perTypeUsed[]	string
 frozenEntries[].event.entryTail.batch.then.permission.perType[]	string
 frozenEntries[].event.entryTail.batch.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.batch.then.permission.sacrificeFood	bool
 frozenEntries[].event.entryTail.batch.then.permission.scope	string
 frozenEntries[].event.entryTail.batch.then.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.batch.then.permission.sneakCost	string
@@ -6578,6 +6592,7 @@ frozenEntries[].event.entryTail.keyed.permission.followUp	string
 frozenEntries[].event.entryTail.keyed.permission.followUpObject	object
 frozenEntries[].event.entryTail.keyed.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.keyed.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.permission.forage	bool
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords	array
@@ -6599,6 +6614,7 @@ frozenEntries[].event.entryTail.keyed.permission.perTypeUsed[]	string
 frozenEntries[].event.entryTail.keyed.permission.perType[]	string
 frozenEntries[].event.entryTail.keyed.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.keyed.permission.sacrificeFood	bool
 frozenEntries[].event.entryTail.keyed.permission.scope	string
 frozenEntries[].event.entryTail.keyed.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.keyed.permission.sneakCost	string
@@ -7199,6 +7215,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUp	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject	object
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.forage	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
@@ -7220,6 +7237,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.perTypeUsed[]	st
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.perType[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.sacrificeFood	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.scope	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.sneakCost	string
@@ -7808,6 +7826,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.followUp	string
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject	object
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.permission.forage	bool
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords	array
@@ -7829,6 +7848,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.perTypeUsed[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.perType[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.tokens.then.permission.sacrificeFood	bool
 frozenEntries[].event.entryTail.tokens.then.permission.scope	string
 frozenEntries[].event.entryTail.tokens.then.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.tokens.then.permission.sneakCost	string
@@ -8820,6 +8840,7 @@ frozenEntries[].event.keywordActionTail.then.permission.followUp	string
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject	object
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.permission.forage	bool
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords	array
@@ -8841,6 +8862,7 @@ frozenEntries[].event.keywordActionTail.then.permission.perTypeUsed[]	string
 frozenEntries[].event.keywordActionTail.then.permission.perType[]	string
 frozenEntries[].event.keywordActionTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.keywordActionTail.then.permission.sacrificeFood	bool
 frozenEntries[].event.keywordActionTail.then.permission.scope	string
 frozenEntries[].event.keywordActionTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.keywordActionTail.then.permission.sneakCost	string
@@ -9431,6 +9453,7 @@ frozenEntries[].event.lifeTail.each.then.permission.followUp	string
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject	object
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.permission.forage	bool
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities[]	string
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords	array
@@ -9452,6 +9475,7 @@ frozenEntries[].event.lifeTail.each.then.permission.perTypeUsed[]	string
 frozenEntries[].event.lifeTail.each.then.permission.perType[]	string
 frozenEntries[].event.lifeTail.each.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.lifeTail.each.then.permission.sacrificeFood	bool
 frozenEntries[].event.lifeTail.each.then.permission.scope	string
 frozenEntries[].event.lifeTail.each.then.permission.seesLibraryTop	bool
 frozenEntries[].event.lifeTail.each.then.permission.sneakCost	string
@@ -10023,6 +10047,7 @@ frozenEntries[].event.lifeTail.then.permission.followUp	string
 frozenEntries[].event.lifeTail.then.permission.followUpObject	object
 frozenEntries[].event.lifeTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.lifeTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.permission.forage	bool
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords	array
@@ -10044,6 +10069,7 @@ frozenEntries[].event.lifeTail.then.permission.perTypeUsed[]	string
 frozenEntries[].event.lifeTail.then.permission.perType[]	string
 frozenEntries[].event.lifeTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.lifeTail.then.permission.sacrificeFood	bool
 frozenEntries[].event.lifeTail.then.permission.scope	string
 frozenEntries[].event.lifeTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.lifeTail.then.permission.sneakCost	string
@@ -11416,6 +11442,7 @@ frozenEntries[].event.millTail.run.then.permission.followUp	string
 frozenEntries[].event.millTail.run.then.permission.followUpObject	object
 frozenEntries[].event.millTail.run.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.millTail.run.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.permission.forage	bool
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities[]	string
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords	array
@@ -11437,6 +11464,7 @@ frozenEntries[].event.millTail.run.then.permission.perTypeUsed[]	string
 frozenEntries[].event.millTail.run.then.permission.perType[]	string
 frozenEntries[].event.millTail.run.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.millTail.run.then.permission.sacrificeFood	bool
 frozenEntries[].event.millTail.run.then.permission.scope	string
 frozenEntries[].event.millTail.run.then.permission.seesLibraryTop	bool
 frozenEntries[].event.millTail.run.then.permission.sneakCost	string
@@ -12003,6 +12031,7 @@ frozenEntries[].event.millTail.then.permission.followUp	string
 frozenEntries[].event.millTail.then.permission.followUpObject	object
 frozenEntries[].event.millTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.millTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.permission.forage	bool
 frozenEntries[].event.millTail.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.millTail.then.permission.gainsKeywords	array
@@ -12024,6 +12053,7 @@ frozenEntries[].event.millTail.then.permission.perTypeUsed[]	string
 frozenEntries[].event.millTail.then.permission.perType[]	string
 frozenEntries[].event.millTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.millTail.then.permission.sacrificeFood	bool
 frozenEntries[].event.millTail.then.permission.scope	string
 frozenEntries[].event.millTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.millTail.then.permission.sneakCost	string
@@ -13528,6 +13558,7 @@ frozenEntries[].event.tokenTail.then.permission.followUp	string
 frozenEntries[].event.tokenTail.then.permission.followUpObject	object
 frozenEntries[].event.tokenTail.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.tokenTail.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.permission.forage	bool
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities	array
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords	array
@@ -13549,6 +13580,7 @@ frozenEntries[].event.tokenTail.then.permission.perTypeUsed[]	string
 frozenEntries[].event.tokenTail.then.permission.perType[]	string
 frozenEntries[].event.tokenTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.tokenTail.then.permission.sacrificeFood	bool
 frozenEntries[].event.tokenTail.then.permission.scope	string
 frozenEntries[].event.tokenTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.tokenTail.then.permission.sneakCost	string
@@ -15349,6 +15381,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
@@ -15370,6 +15403,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.perTypeUsed[]	str
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.sacrificeFood	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.scope	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.sneakCost	string
@@ -15970,6 +16004,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUp	st
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
@@ -15991,6 +16026,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.perTypeUsed
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.perType[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.sacrificeFood	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.scope	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.sneakCost	string
@@ -16557,6 +16593,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
@@ -16578,6 +16615,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.perTypeUsed[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.sacrificeFood	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.scope	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.sneakCost	string
@@ -17164,6 +17202,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
@@ -17185,6 +17224,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.perTypeUsed[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.sacrificeFood	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.scope	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.sneakCost	string
@@ -17837,6 +17877,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject.epoch	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.forage	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
@@ -17858,6 +17899,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.perTypeUsed[]	strin
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.sacrificeFood	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.scope	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.sneakCost	string
@@ -20304,6 +20346,7 @@ movesAwaitingTokens[].counterTail.then.permission.followUp	string
 movesAwaitingTokens[].counterTail.then.permission.followUpObject	object
 movesAwaitingTokens[].counterTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].counterTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.permission.forage	bool
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords	array
@@ -20325,6 +20368,7 @@ movesAwaitingTokens[].counterTail.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].counterTail.then.permission.perType[]	string
 movesAwaitingTokens[].counterTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].counterTail.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].counterTail.then.permission.scope	string
 movesAwaitingTokens[].counterTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].counterTail.then.permission.sneakCost	string
@@ -20902,6 +20946,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.followUp	string
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject	object
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.permission.forage	bool
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords	array
@@ -20923,6 +20968,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.perTypeUsed[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.perType[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].damageTail.each.each.permission.sacrificeFood	bool
 movesAwaitingTokens[].damageTail.each.each.permission.scope	string
 movesAwaitingTokens[].damageTail.each.each.permission.seesLibraryTop	bool
 movesAwaitingTokens[].damageTail.each.each.permission.sneakCost	string
@@ -21491,6 +21537,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.followUp	string
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject	object
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.permission.forage	bool
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords	array
@@ -21512,6 +21559,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.perType[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].damageTail.each.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].damageTail.each.then.permission.scope	string
 movesAwaitingTokens[].damageTail.each.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].damageTail.each.then.permission.sneakCost	string
@@ -22252,6 +22300,7 @@ movesAwaitingTokens[].damageTail.then.permission.followUp	string
 movesAwaitingTokens[].damageTail.then.permission.followUpObject	object
 movesAwaitingTokens[].damageTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].damageTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.permission.forage	bool
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords	array
@@ -22273,6 +22322,7 @@ movesAwaitingTokens[].damageTail.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].damageTail.then.permission.perType[]	string
 movesAwaitingTokens[].damageTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].damageTail.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].damageTail.then.permission.scope	string
 movesAwaitingTokens[].damageTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].damageTail.then.permission.sneakCost	string
@@ -22961,6 +23011,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUp	stri
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords	array
@@ -22982,6 +23033,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.perTypeUsed[]
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.perType[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.scope	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.sneakCost	string
@@ -23626,6 +23678,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords	array
@@ -23647,6 +23700,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.perType[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.scope	string
 movesAwaitingTokens[].entryTail.batch.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.sneakCost	string
@@ -24215,6 +24269,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.followUp	string
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.permission.forage	bool
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords	array
@@ -24236,6 +24291,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.perTypeUsed[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.perType[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.keyed.permission.sacrificeFood	bool
 movesAwaitingTokens[].entryTail.keyed.permission.scope	string
 movesAwaitingTokens[].entryTail.keyed.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.keyed.permission.sneakCost	string
@@ -24836,6 +24892,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUp	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.forage	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords	array
@@ -24857,6 +24914,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.perTypeUsed[]	st
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.perType[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.sacrificeFood	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.scope	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.sneakCost	string
@@ -25445,6 +25503,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject	object
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.permission.forage	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords	array
@@ -25466,6 +25525,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.perType[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.scope	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.sneakCost	string
@@ -26457,6 +26517,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.followUp	string
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject	object
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.permission.forage	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords	array
@@ -26478,6 +26539,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.perType[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.scope	string
 movesAwaitingTokens[].keywordActionTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.sneakCost	string
@@ -27068,6 +27130,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.followUp	string
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject	object
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.permission.forage	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords	array
@@ -27089,6 +27152,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.perType[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.scope	string
 movesAwaitingTokens[].lifeTail.each.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.sneakCost	string
@@ -27660,6 +27724,7 @@ movesAwaitingTokens[].lifeTail.then.permission.followUp	string
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject	object
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.permission.forage	bool
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords	array
@@ -27681,6 +27746,7 @@ movesAwaitingTokens[].lifeTail.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].lifeTail.then.permission.perType[]	string
 movesAwaitingTokens[].lifeTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].lifeTail.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].lifeTail.then.permission.scope	string
 movesAwaitingTokens[].lifeTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].lifeTail.then.permission.sneakCost	string
@@ -29053,6 +29119,7 @@ movesAwaitingTokens[].millTail.run.then.permission.followUp	string
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject	object
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.permission.forage	bool
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords	array
@@ -29074,6 +29141,7 @@ movesAwaitingTokens[].millTail.run.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].millTail.run.then.permission.perType[]	string
 movesAwaitingTokens[].millTail.run.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].millTail.run.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].millTail.run.then.permission.scope	string
 movesAwaitingTokens[].millTail.run.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].millTail.run.then.permission.sneakCost	string
@@ -29640,6 +29708,7 @@ movesAwaitingTokens[].millTail.then.permission.followUp	string
 movesAwaitingTokens[].millTail.then.permission.followUpObject	object
 movesAwaitingTokens[].millTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].millTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.permission.forage	bool
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords	array
@@ -29661,6 +29730,7 @@ movesAwaitingTokens[].millTail.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].millTail.then.permission.perType[]	string
 movesAwaitingTokens[].millTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].millTail.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].millTail.then.permission.scope	string
 movesAwaitingTokens[].millTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].millTail.then.permission.sneakCost	string
@@ -31165,6 +31235,7 @@ movesAwaitingTokens[].tokenTail.then.permission.followUp	string
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject	object
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.permission.forage	bool
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords	array
@@ -31186,6 +31257,7 @@ movesAwaitingTokens[].tokenTail.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].tokenTail.then.permission.perType[]	string
 movesAwaitingTokens[].tokenTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].tokenTail.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].tokenTail.then.permission.scope	string
 movesAwaitingTokens[].tokenTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].tokenTail.then.permission.sneakCost	string
@@ -32986,6 +33058,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
@@ -33007,6 +33080,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.perTypeUsed[]	str
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.sneakCost	string
@@ -33607,6 +33681,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUp	st
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
@@ -33628,6 +33703,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.perTypeUsed
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.sacrificeFood	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.scope	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.sneakCost	string
@@ -34194,6 +34270,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords	array
@@ -34215,6 +34292,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.sneakCost	string
@@ -34801,6 +34879,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords	array
@@ -34822,6 +34901,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.perTypeUsed[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.sneakCost	string
@@ -35474,6 +35554,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject.epoch	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.forage	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
@@ -35495,6 +35576,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.perTypeUsed[]	strin
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.sacrificeFood	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.sneakCost	string
@@ -38673,6 +38755,7 @@ pendingChoices[].attackSplit.tail.permission.followUp	string
 pendingChoices[].attackSplit.tail.permission.followUpObject	object
 pendingChoices[].attackSplit.tail.permission.followUpObject.epoch	number:int
 pendingChoices[].attackSplit.tail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.permission.forage	bool
 pendingChoices[].attackSplit.tail.permission.gainsAbilities	array
 pendingChoices[].attackSplit.tail.permission.gainsAbilities[]	string
 pendingChoices[].attackSplit.tail.permission.gainsKeywords	array
@@ -38694,6 +38777,7 @@ pendingChoices[].attackSplit.tail.permission.perTypeUsed[]	string
 pendingChoices[].attackSplit.tail.permission.perType[]	string
 pendingChoices[].attackSplit.tail.permission.player	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission.requiresNoSpellsCast	bool
+pendingChoices[].attackSplit.tail.permission.sacrificeFood	bool
 pendingChoices[].attackSplit.tail.permission.scope	string
 pendingChoices[].attackSplit.tail.permission.seesLibraryTop	bool
 pendingChoices[].attackSplit.tail.permission.sneakCost	string
@@ -40666,6 +40750,7 @@ pendingChoices[].diceRoll.then.permission.followUp	string
 pendingChoices[].diceRoll.then.permission.followUpObject	object
 pendingChoices[].diceRoll.then.permission.followUpObject.epoch	number:int
 pendingChoices[].diceRoll.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.permission.forage	bool
 pendingChoices[].diceRoll.then.permission.gainsAbilities	array
 pendingChoices[].diceRoll.then.permission.gainsAbilities[]	string
 pendingChoices[].diceRoll.then.permission.gainsKeywords	array
@@ -40687,6 +40772,7 @@ pendingChoices[].diceRoll.then.permission.perTypeUsed[]	string
 pendingChoices[].diceRoll.then.permission.perType[]	string
 pendingChoices[].diceRoll.then.permission.player	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].diceRoll.then.permission.sacrificeFood	bool
 pendingChoices[].diceRoll.then.permission.scope	string
 pendingChoices[].diceRoll.then.permission.seesLibraryTop	bool
 pendingChoices[].diceRoll.then.permission.sneakCost	string
@@ -41634,6 +41720,7 @@ pendingChoices[].divideShield.walk.each.permission.followUp	string
 pendingChoices[].divideShield.walk.each.permission.followUpObject	object
 pendingChoices[].divideShield.walk.each.permission.followUpObject.epoch	number:int
 pendingChoices[].divideShield.walk.each.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.permission.forage	bool
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities[]	string
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords	array
@@ -41655,6 +41742,7 @@ pendingChoices[].divideShield.walk.each.permission.perTypeUsed[]	string
 pendingChoices[].divideShield.walk.each.permission.perType[]	string
 pendingChoices[].divideShield.walk.each.permission.player	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission.requiresNoSpellsCast	bool
+pendingChoices[].divideShield.walk.each.permission.sacrificeFood	bool
 pendingChoices[].divideShield.walk.each.permission.scope	string
 pendingChoices[].divideShield.walk.each.permission.seesLibraryTop	bool
 pendingChoices[].divideShield.walk.each.permission.sneakCost	string
@@ -42223,6 +42311,7 @@ pendingChoices[].divideShield.walk.then.permission.followUp	string
 pendingChoices[].divideShield.walk.then.permission.followUpObject	object
 pendingChoices[].divideShield.walk.then.permission.followUpObject.epoch	number:int
 pendingChoices[].divideShield.walk.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.permission.forage	bool
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities[]	string
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords	array
@@ -42244,6 +42333,7 @@ pendingChoices[].divideShield.walk.then.permission.perTypeUsed[]	string
 pendingChoices[].divideShield.walk.then.permission.perType[]	string
 pendingChoices[].divideShield.walk.then.permission.player	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].divideShield.walk.then.permission.sacrificeFood	bool
 pendingChoices[].divideShield.walk.then.permission.scope	string
 pendingChoices[].divideShield.walk.then.permission.seesLibraryTop	bool
 pendingChoices[].divideShield.walk.then.permission.sneakCost	string
@@ -42818,6 +42908,7 @@ pendingChoices[].libraryOrder.then.permission.followUp	string
 pendingChoices[].libraryOrder.then.permission.followUpObject	object
 pendingChoices[].libraryOrder.then.permission.followUpObject.epoch	number:int
 pendingChoices[].libraryOrder.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.permission.forage	bool
 pendingChoices[].libraryOrder.then.permission.gainsAbilities	array
 pendingChoices[].libraryOrder.then.permission.gainsAbilities[]	string
 pendingChoices[].libraryOrder.then.permission.gainsKeywords	array
@@ -42839,6 +42930,7 @@ pendingChoices[].libraryOrder.then.permission.perTypeUsed[]	string
 pendingChoices[].libraryOrder.then.permission.perType[]	string
 pendingChoices[].libraryOrder.then.permission.player	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].libraryOrder.then.permission.sacrificeFood	bool
 pendingChoices[].libraryOrder.then.permission.scope	string
 pendingChoices[].libraryOrder.then.permission.seesLibraryTop	bool
 pendingChoices[].libraryOrder.then.permission.sneakCost	string
@@ -43463,6 +43555,7 @@ pendingChoices[].nameThen.permission.followUp	string
 pendingChoices[].nameThen.permission.followUpObject	object
 pendingChoices[].nameThen.permission.followUpObject.epoch	number:int
 pendingChoices[].nameThen.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].nameThen.permission.forage	bool
 pendingChoices[].nameThen.permission.gainsAbilities	array
 pendingChoices[].nameThen.permission.gainsAbilities[]	string
 pendingChoices[].nameThen.permission.gainsKeywords	array
@@ -43484,6 +43577,7 @@ pendingChoices[].nameThen.permission.perTypeUsed[]	string
 pendingChoices[].nameThen.permission.perType[]	string
 pendingChoices[].nameThen.permission.player	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.requiresNoSpellsCast	bool
+pendingChoices[].nameThen.permission.sacrificeFood	bool
 pendingChoices[].nameThen.permission.scope	string
 pendingChoices[].nameThen.permission.seesLibraryTop	bool
 pendingChoices[].nameThen.permission.sneakCost	string
@@ -44524,6 +44618,7 @@ pendingChoices[].pickTail.permission.followUp	string
 pendingChoices[].pickTail.permission.followUpObject	object
 pendingChoices[].pickTail.permission.followUpObject.epoch	number:int
 pendingChoices[].pickTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].pickTail.permission.forage	bool
 pendingChoices[].pickTail.permission.gainsAbilities	array
 pendingChoices[].pickTail.permission.gainsAbilities[]	string
 pendingChoices[].pickTail.permission.gainsKeywords	array
@@ -44545,6 +44640,7 @@ pendingChoices[].pickTail.permission.perTypeUsed[]	string
 pendingChoices[].pickTail.permission.perType[]	string
 pendingChoices[].pickTail.permission.player	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].pickTail.permission.sacrificeFood	bool
 pendingChoices[].pickTail.permission.scope	string
 pendingChoices[].pickTail.permission.seesLibraryTop	bool
 pendingChoices[].pickTail.permission.sneakCost	string
@@ -45157,6 +45253,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.followUp	st
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords	array
@@ -45178,6 +45275,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.perTypeUsed
 pendingChoices[].replacementResume.event.counterTail.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.sneakCost	string
@@ -45755,6 +45853,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.followU
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject	object
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords	array
@@ -45776,6 +45875,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.perType
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.perType[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.scope	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.sneakCost	string
@@ -46344,6 +46444,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.followU
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords	array
@@ -46365,6 +46466,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.perType
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.scope	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.sneakCost	string
@@ -47105,6 +47207,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.followUp	str
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords	array
@@ -47126,6 +47229,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.perTypeUsed[
 pendingChoices[].replacementResume.event.damageTail.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.sneakCost	string
@@ -47814,6 +47918,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
@@ -47835,6 +47940,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.sneakCost	string
@@ -48479,6 +48585,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followU
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords	array
@@ -48500,6 +48607,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.perType
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.sneakCost	string
@@ -49068,6 +49176,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUp	str
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords	array
@@ -49089,6 +49198,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.perTypeUsed[
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.perType[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.sneakCost	string
@@ -49689,6 +49799,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
@@ -49710,6 +49821,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.perType[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.sneakCost	string
@@ -50298,6 +50410,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.follow
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.forage	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords	array
@@ -50319,6 +50432,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.perTyp
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.sneakCost	string
@@ -51310,6 +51424,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.follo
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords	array
@@ -51331,6 +51446,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.perTy
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.sneakCost	string
@@ -51921,6 +52037,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUp	
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.forage	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords	array
@@ -51942,6 +52059,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.perTypeUs
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.scope	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.sneakCost	string
@@ -52513,6 +52631,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.followUp	strin
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords	array
@@ -52534,6 +52653,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.perTypeUsed[]	
 pendingChoices[].replacementResume.event.lifeTail.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.sneakCost	string
@@ -53906,6 +54026,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.followUp	s
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.permission.forage	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords	array
@@ -53927,6 +54048,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.perTypeUse
 pendingChoices[].replacementResume.event.millTail.run.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.scope	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.sneakCost	string
@@ -54493,6 +54615,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.followUp	strin
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords	array
@@ -54514,6 +54637,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.perTypeUsed[]	
 pendingChoices[].replacementResume.event.millTail.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.millTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.millTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.sneakCost	string
@@ -56018,6 +56142,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.followUp	stri
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.permission.forage	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords	array
@@ -56039,6 +56164,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.perTypeUsed[]
 pendingChoices[].replacementResume.event.tokenTail.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.sneakCost	string
@@ -57839,6 +57965,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
@@ -57860,6 +57987,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.sneakCost	string
@@ -58460,6 +58588,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
@@ -58481,6 +58610,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.perType[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.sneakCost	string
@@ -59047,6 +59177,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fol
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
@@ -59068,6 +59199,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.sneakCost	string
@@ -59654,6 +59786,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
@@ -59675,6 +59808,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.p
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.sneakCost	string
@@ -60327,6 +60461,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.forage	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
@@ -60348,6 +60483,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.perType[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.sacrificeFood	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.sneakCost	string
@@ -61345,6 +61481,7 @@ pendingChoices[].scryThen.permission.followUp	string
 pendingChoices[].scryThen.permission.followUpObject	object
 pendingChoices[].scryThen.permission.followUpObject.epoch	number:int
 pendingChoices[].scryThen.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].scryThen.permission.forage	bool
 pendingChoices[].scryThen.permission.gainsAbilities	array
 pendingChoices[].scryThen.permission.gainsAbilities[]	string
 pendingChoices[].scryThen.permission.gainsKeywords	array
@@ -61366,6 +61503,7 @@ pendingChoices[].scryThen.permission.perTypeUsed[]	string
 pendingChoices[].scryThen.permission.perType[]	string
 pendingChoices[].scryThen.permission.player	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.requiresNoSpellsCast	bool
+pendingChoices[].scryThen.permission.sacrificeFood	bool
 pendingChoices[].scryThen.permission.scope	string
 pendingChoices[].scryThen.permission.seesLibraryTop	bool
 pendingChoices[].scryThen.permission.sneakCost	string
@@ -61979,6 +62117,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.followUp	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject	object
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject.epoch	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject.id	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.permission.forage	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords	array
@@ -62000,6 +62139,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.perTypeUsed[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.perType[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.player	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.sacrificeFood	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.scope	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.seesLibraryTop	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.sneakCost	string
@@ -67445,6 +67585,7 @@ seats[].castPermissions[].followUp	string
 seats[].castPermissions[].followUpObject	object
 seats[].castPermissions[].followUpObject.epoch	number:int
 seats[].castPermissions[].followUpObject.id	custom(uuid.UUID)
+seats[].castPermissions[].forage	bool
 seats[].castPermissions[].gainsAbilities	array
 seats[].castPermissions[].gainsAbilities[]	string
 seats[].castPermissions[].gainsKeywords	array
@@ -67466,6 +67607,7 @@ seats[].castPermissions[].perTypeUsed[]	string
 seats[].castPermissions[].perType[]	string
 seats[].castPermissions[].player	custom(uuid.UUID)
 seats[].castPermissions[].requiresNoSpellsCast	bool
+seats[].castPermissions[].sacrificeFood	bool
 seats[].castPermissions[].scope	string
 seats[].castPermissions[].seesLibraryTop	bool
 seats[].castPermissions[].sneakCost	string
