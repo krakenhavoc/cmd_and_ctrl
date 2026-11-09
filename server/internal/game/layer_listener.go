@@ -617,6 +617,17 @@ func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
 			}
 		}
 	}
+	// ADR 0216 §6, CR 901.7: a face-up plane's statics function from the
+	// command zone, so they are read like a permanent's.
+	if g.Planechase != nil && g.PlanarFaceUp != nil {
+		for i := range g.PlanarFaceUp.Cards {
+			for _, ab := range staticAbilitiesOf(&g.PlanarFaceUp.Cards[i]) {
+				if want(ab) {
+					return true
+				}
+			}
+		}
+	}
 	return false
 }
 

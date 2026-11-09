@@ -77,6 +77,19 @@ func (g *Game) spellStaticsLocked() []spellStaticGrant {
 			}
 		}
 	}
+	// ADR 0216 §6, CR 901.7: a face-up plane's static ability over spells
+	// ("Instant and sorcery spells have rebound", Trail of the
+	// Mage-Rings) functions from the command zone.
+	if g.Planechase != nil && g.PlanarFaceUp != nil {
+		for i := range g.PlanarFaceUp.Cards {
+			src := &g.PlanarFaceUp.Cards[i]
+			for _, ab := range staticAbilitiesOf(src) {
+				if ab.AffectsSpells && ab.AppliesTo != nil {
+					out = append(out, spellStaticGrant{ability: ab, source: src, ts: src.layerTimestamp()})
+				}
+			}
+		}
+	}
 	return out
 }
 

@@ -31,6 +31,7 @@ var (
 	planeEonFog   = planeFixture{"a04d05ed-1b9b-4407-8780-c75c102a94dd", "The Eon Fog", "Plane — Equilor"}
 	planeFourth   = planeFixture{"13e801cd-e537-4ea6-8c3d-21b142bdc026", "The Fourth Sphere", "Plane — Phyrexia"}
 	planeOtaria   = planeFixture{"29e3371d-aa41-46a9-921a-96565be47eff", "Otaria", "Plane — Dominaria"}
+	planeTrail    = planeFixture{"b2c95c7a-a04c-46ef-a879-6eb08e444093", "Trail of the Mage-Rings", "Plane — Vryn"}
 	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -680,5 +681,48 @@ func TestOtariaGivesEveryGraveyardsInstantsAndSorceriesFlashbackAndChaosTakesExt
 	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
 	if perm := grantedPermissionOn(g, me.ID, spell, game.ZoneGraveyard); perm.Granted() {
 		t.Error("flashback outlived the plane")
+	}
+}
+
+// --- Trail of the Mage-Rings -------------------------------------------------
+
+func TestTrailOfTheMageRingsGivesEveryPlayersInstantsAndSorceriesRebound(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTrail)
+	g, _ := newPlaneGame(t, planeTrail)
+	seat := g.Turn.ActiveSeat
+	me, opp := g.Seats[seat], g.Seats[(seat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	instant := castPlainSpell(t, g, me, "Instant")
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(instant) || reboundTriggersFor(g, instant) != 1 {
+		t.Fatal("an instant cast from hand on Trail of the Mage-Rings did not rebound")
+	}
+	creature := castPlainSpell(t, g, me, "Creature — Bear")
+	passPriorityAroundTable(t, g)
+	if g.Exile.Contains(creature) {
+		t.Error("a creature spell rebounded")
+	}
+	g.WithWriteLock(func() { g.Turn.PriorityHolder = (seat + 1) % len(g.Seats) })
+	theirs := castPlainSpell(t, g, opp, "Instant")
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(theirs) || reboundTriggersFor(g, theirs) != 1 {
+		t.Error("another player's instant did not rebound")
+	}
+}
+
+func TestTrailOfTheMageRingsChaosMayTutorAnInstantOrSorcery(t *testing.T) {
+	g, _ := newPlaneGame(t, planeTrail)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bolt := uuid.New()
+	g.WithWriteLock(func() {
+		me.Library.PushTop(game.Card{InstanceID: bolt, Name: "Test Bolt", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, bolt)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(bolt) {
+		t.Error("the instant did not reach the hand")
 	}
 }
