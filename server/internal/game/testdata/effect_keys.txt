@@ -1343,6 +1343,7 @@ payunless pay-unless/energy-plus-one-counter-on-this
 payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esper-sentinel-draw
+payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -1571,6 +1572,7 @@ run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
 run prompt-run/namazu-trader-surveil
+run prompt-run/necrotic-hex-zombies
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
 run prompt-run/plunge-into-darkness-sacrifice
