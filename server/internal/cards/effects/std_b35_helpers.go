@@ -207,3 +207,21 @@ func b35YourSpecialAction() CostPredicate {
 		return q.Controller == q.Source.Controller
 	}
 }
+
+// b35CardTypesAmongOtherNonlandPermanents counts the distinct nonland card
+// types among the permanents `controller` controls other than `except`
+// (Loot, the Key to Everything), read through the layered view.
+func b35CardTypesAmongOtherNonlandPermanents(g *game.Game, controller, except uuid.UUID) int {
+	seen := map[string]bool{}
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != controller || c.InstanceID == except || c.IsLand() {
+			continue
+		}
+		for _, t := range []string{"artifact", "battle", "creature", "enchantment", "kindred", "planeswalker"} {
+			if c.HasCardType(t) {
+				seen[t] = true
+			}
+		}
+	}
+	return len(seen)
+}

@@ -42,6 +42,7 @@ const (
 	b35BonnyPallOracle           = "fcb811a8-c6e6-4bc4-b64b-8963a7183669"
 	b35KambalOracle              = "619e0686-e88c-4238-8364-75395e733533"
 	b35DuplicatorOracle          = "0752fe67-9b8a-42c0-90e3-087d426b2f3b"
+	b35LootOracle                = "542be13f-b9c0-4b79-b486-be576c531a82"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -77,6 +78,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35BonnyPallOracle:           "Bonny Pall, Clearcutter",
 		b35KambalOracle:              "Kambal, Profiteering Mayor",
 		b35DuplicatorOracle:          "Esoteric Duplicator",
+		b35LootOracle:                "Loot, the Key to Everything",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1410,5 +1412,26 @@ func TestB35EsotericDuplicatorDoesNothingIfYouDontPay(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 0 {
 		t.Errorf("%d Clues, want none", n)
+	}
+}
+
+func TestB35LootExilesAsManyCardsAsCardTypesAmongYourOtherNonlandPermanents(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Loot, the Key to Everything", "Legendary Creature — Beast Noble", b35LootOracle, 3, 3)
+	b12Push(g, me.ID, "Golem Friend", "Artifact Creature — Golem", "", 2, 2)
+	b12Push(g, me.ID, "Old Aura", "Enchantment", "", 0, 0)
+	gaPut(g, me.ID, "Forest", "Basic Land — Forest", "")
+	// Another creature and the land add no new type.
+	b12Creature(g, me.ID, "More Bears", "Creature — Bear", 2, 2)
+	advanceToUpkeepOf(t, g, 1)
+	before := me.Library.Size()
+	advanceToUpkeepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if got := before - me.Library.Size(); got != 3 {
+		t.Errorf("exiled %d cards, want 3 (artifact, creature, enchantment)", got)
+	}
+	if n := len(g.Exile.Cards); n < 3 {
+		t.Errorf("%d cards in exile, want at least 3", n)
 	}
 }
