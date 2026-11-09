@@ -592,3 +592,37 @@ func TestFinB9TravelingChocoboDoublesLandfallForYourLandsOnly(t *testing.T) {
 		t.Errorf("Choco power %d, want 5 (landfall twice)", v.CurrentPower())
 	}
 }
+
+const finB9GarlandOracle = "ab914053-4384-415f-b1e8-09fecb5a30b8"
+
+func TestFinB9GarlandCrownsAnOpponentStealsWhileTheyHoldItAndPumpsWhatYouDontOwn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	victim := b12Creature(g, opp.ID, "Ogre", "Creature — Ogre", 3, 3)
+	own := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	castCreatureCard(t, g, "Garland, Royal Kidnapper", "Legendary Creature — Human Knight", finB9GarlandOracle, 3, 4)
+	pickTargetRefs(t, g, me.ID, nil, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID})
+	passPriorityAroundTable(t, g)
+	if g.Monarch != opp.ID {
+		t.Fatalf("monarch is %v, want the targeted opponent", g.Monarch)
+	}
+	pickCard(t, g, me.ID, victim)
+	passPriorityAroundTable(t, g)
+	c, _ := g.LookupCardForEffect(victim)
+	if c.Controller != me.ID {
+		t.Fatal("Garland did not steal the creature")
+	}
+	if v := s58p6View(t, g, victim); v.CurrentPower() != 5 || v.CurrentToughness() != 5 {
+		t.Errorf("the stolen creature is %d/%d, want 5/5", v.CurrentPower(), v.CurrentToughness())
+	}
+	if v := s58p6View(t, g, own); v.CurrentPower() != 2 {
+		t.Errorf("your own creature is %d/%d, want unchanged", v.CurrentPower(), v.CurrentToughness())
+	}
+	// Another player takes the crown: the effect is over.
+	g.WithWriteLock(func() { _ = g.SetMonarchForEffect(third.ID) })
+	g.ReadSnapshot(func() {})
+	c, _ = g.LookupCardForEffect(victim)
+	if c.Controller != opp.ID {
+		t.Errorf("the creature is controlled by %v after they lost the crown, want its owner", c.Controller)
+	}
+}
