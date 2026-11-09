@@ -1,0 +1,440 @@
+package effects
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// std_b11_cards_test.go — Standard set leftovers, batches 11 and 12
+// (#4452): each test plays the real catalog entry through the engine.
+
+const (
+	sb11JavelineerOracle  = "bd31487e-e95a-4d90-8c85-742aa83c3e90"
+	sb11RevenantOracle    = "bbea79bc-71d4-4100-92f4-783c2c4b46da"
+	sb11ConquerorOracle   = "f1266a1b-bae6-4ded-b4d5-7586a5b6c5d0"
+	sb11GuardianOracle    = "41129dc1-be88-4198-94f9-032817a79bc7"
+	sb11MaelstromOracle   = "49e9fba7-8465-4bbb-95db-73a7e149f494"
+	sb11DancersOracle     = "83c8f1ca-194e-4cb6-9d5f-029133c1edbc"
+	sb11BattlefrontOracle = "892a83a0-a3cb-4cfb-9106-4008e4e75c0f"
+	sb11DeathBegetsOracle = "53e86135-3b24-4618-bcc0-af4d81e672dd"
+)
+
+// --- Grim Javelineer ------------------------------------------------------
+
+func TestSb11GrimJavelineerPumpsAnAttackerAndSurveilsWhenItDies(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Grim Javelineer", "Creature — Human Warrior", sb11JavelineerOracle, 3, 2)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	idle := b12Creature(g, me.ID, "Idle", "Creature — Bear", 2, 2)
+	declareAttack(t, g, opp.ID, bear)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatal("no target prompt: whenever you attack")
+	}
+	if hasID(pick.PickTargetCards, idle) {
+		t.Error("a creature that isn't attacking is not a legal target")
+	}
+	pickCard(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	if p, _ := ptOf(t, g, bear); p != 3 {
+		t.Errorf("the target has power %d, want 3", p)
+	}
+	killCreature(t, g, me.ID, bear)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if surveilChoiceFor(g, me.ID) == nil {
+		t.Error("the target died this turn: a surveil 1 prompt")
+	}
+}
+
+func TestSb11GrimJavelineerSurveilsNothingForAnotherCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Grim Javelineer", "Creature — Human Warrior", sb11JavelineerOracle, 3, 2)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	other := b12Creature(g, me.ID, "Other", "Creature — Bear", 2, 2)
+	declareAttack(t, g, opp.ID, bear, other)
+	pickCard(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	killCreature(t, g, me.ID, other)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if surveilChoiceFor(g, me.ID) != nil {
+		t.Error("another creature dying surveils nothing")
+	}
+}
+
+// --- Qarsi Revenant -------------------------------------------------------
+
+func TestSb11QarsiRevenantRenewPutsThreeKeywordCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushBattlefieldCreature(g, me.ID)
+	id, _ := activateFromGraveyard(t, g, "Qarsi Revenant", "Creature — Vampire",
+		sb11RevenantOracle, 3, 3, "{B}{B}{B}", game.ActivateAbilityParams{
+			Targets: []game.TargetRef{{Kind: game.TargetCard, ID: target}},
+		})
+	if !g.Exile.Contains(id) {
+		t.Fatal("renew's cost did not exile Qarsi Revenant")
+	}
+	passPriorityAroundTable(t, g)
+	for _, kw := range []string{"flying", "deathtouch", "lifelink"} {
+		if countersOn(g, target, kw) != 1 {
+			t.Errorf("no %s counter on the target", kw)
+		}
+		if !hasEffectiveKeyword(t, g, target, kw) {
+			t.Errorf("the target has no %s from its counter", kw)
+		}
+	}
+}
+
+// --- Death Begets Life ----------------------------------------------------
+
+func TestSb11DeathBegetsLifeDrawsForEachPermanentDestroyed(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	ench := b12Permanent(g, opp.ID, "Pacifism", "Enchantment — Aura")
+	art := b12Permanent(g, opp.ID, "Rock", "Artifact")
+	for i := 0; i < 6; i++ {
+		pushLibraryTopForTest(me, "Filler")
+	}
+	before := handSize(me)
+	castCatalogSpell(t, g, "Death Begets Life", "Sorcery", sb11DeathBegetsOracle, nil)
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{mine, theirs, ench} {
+		if g.Battlefield.Contains(id) {
+			t.Error("a creature or enchantment survived")
+		}
+	}
+	if !g.Battlefield.Contains(art) {
+		t.Error("an artifact was destroyed")
+	}
+	if got := handSize(me) - before; got != 3 {
+		t.Errorf("drew %d cards, want 3 (one per permanent destroyed)", got)
+	}
+}
+
+func TestSb11DeathBegetsLifeDoesNotCountAnIndestructibleCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	tough := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Tough", TypeLine: "Creature — Golem", Power: 2, Toughness: 2,
+		Keywords: []string{"indestructible"}, Owner: me.ID, Controller: me.ID,
+	})
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	for i := 0; i < 4; i++ {
+		pushLibraryTopForTest(me, "Filler")
+	}
+	before := handSize(me)
+	castCatalogSpell(t, g, "Death Begets Life", "Sorcery", sb11DeathBegetsOracle, nil)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(tough) {
+		t.Error("an indestructible creature was destroyed")
+	}
+	if got := handSize(me) - before; got != 1 {
+		t.Errorf("drew %d cards, want 1", got)
+	}
+}
+
+// --- Clarion Conqueror ----------------------------------------------------
+
+func TestSb11ClarionConquerorShutsOffArtifactsCreaturesAndPlaneswalkers(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me, them := g.Seats[0], g.Seats[1]
+	birds := b21Push(g, me.ID, "Birds of Paradise", "Creature — Bird", actBirdsOracle, 0, 1, "G")
+	theirBirds := b21Push(g, them.ID, "Birds of Paradise", "Creature — Bird", actBirdsOracle, 0, 1, "G")
+	solRing := b21Push(g, me.ID, "Sol Ring", "Artifact", actSolRingOracle, 0, 0)
+	forest := b21Push(g, me.ID, "Forest", "Basic Land — Forest", "", 0, 0)
+	pw := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Walker", TypeLine: "Legendary Planeswalker — Test",
+		Owner: me.ID, Controller: me.ID, Counters: map[string]int{game.CounterLoyalty: 4},
+	})
+	if err := g.ActivateManaAbility(me.ID, solRing, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("setup: Sol Ring before the Conqueror: %v", err)
+	}
+	b21Push(g, me.ID, "Clarion Conqueror", "Creature — Dragon", sb11ConquerorOracle, 3, 3, "W")
+	for _, c := range []struct {
+		who  *game.Player
+		id   uuid.UUID
+		name string
+	}{{me, birds, "your Birds"}, {them, theirBirds, "their Birds"}} {
+		if err := g.ActivateManaAbility(c.who.ID, c.id, 0, game.ManaAbilityParams{}); !errors.Is(err, game.ErrCantActivate) {
+			t.Errorf("%s: err = %v, want ErrCantActivate (mana abilities included)", c.name, err)
+		}
+	}
+	if err := g.ActivateLoyalty(me.ID, pw, "+1", 1); !errors.Is(err, game.ErrCantActivate) {
+		t.Errorf("a loyalty ability: err = %v, want ErrCantActivate", err)
+	}
+	if err := g.ActivateManaAbility(me.ID, forest, 0, game.ManaAbilityParams{}); errors.Is(err, game.ErrCantActivate) {
+		t.Errorf("a plain land is none of the three types: err = %v", err)
+	}
+}
+
+// --- Karakyk Guardian -----------------------------------------------------
+
+func sb11Guardian(g *game.Game, owner uuid.UUID) uuid.UUID {
+	id := pushDiesCreatureForTest(g, owner, "Karakyk Guardian", sb11GuardianOracle, "Creature — Dragon", 6, 5)
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventZoneMove, CardID: id, OldZone: game.ZoneHand, NewZone: game.ZoneBattlefield})
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	return id
+}
+
+func TestSb11KarakykGuardianHasHexproofUntilItDealsAnyDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	guardian := sb11Guardian(g, me.ID)
+	if !effectiveAbilitiesContain(t, g, guardian, "hexproof") || creatureTargetableBy(g, opp.ID, guardian) {
+		t.Fatal("before it has dealt damage an opponent can't target it")
+	}
+	if !creatureTargetableBy(g, me.ID, guardian) {
+		t.Fatal("its controller still can")
+	}
+	// Damage that is fully prevented is not dealt; a zero never marks it.
+	g.WithWriteLock(func() {
+		if err := g.DealDamageToPlayerForEffect(guardian, opp.ID, 0); err != nil {
+			t.Fatalf("damage: %v", err)
+		}
+	})
+	if !effectiveAbilitiesContain(t, g, guardian, "hexproof") {
+		t.Fatal("0 damage is no damage")
+	}
+	// Noncombat damage counts, unlike Ruric Thar's combat-only gate.
+	g.WithWriteLock(func() {
+		if err := g.DealDamageToPlayerForEffect(guardian, opp.ID, 1); err != nil {
+			t.Fatalf("damage: %v", err)
+		}
+	})
+	if effectiveAbilitiesContain(t, g, guardian, "hexproof") || !creatureTargetableBy(g, opp.ID, guardian) {
+		t.Error("after dealing noncombat damage it has lost hexproof")
+	}
+}
+
+func TestSb11KarakykGuardianLosesHexproofInCombatAndGetsItBackAsANewObject(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	guardian := sb11Guardian(g, me.ID)
+	attackWith(t, g, opp.ID, guardian)
+	if opp.Life != 40-6 {
+		t.Fatalf("opponent life %d, want 34", opp.Life)
+	}
+	if effectiveAbilitiesContain(t, g, guardian, "hexproof") {
+		t.Fatal("after combat damage it has lost hexproof")
+	}
+	g.WithWriteLock(func() {
+		if err := g.BounceToHandForEffect(guardian); err != nil {
+			t.Fatalf("bounce: %v", err)
+		}
+	})
+	for _, c := range me.Hand.Cards {
+		if c.InstanceID == guardian && c.DealtDamage {
+			t.Error("the card in hand still remembers dealing damage")
+		}
+	}
+}
+
+// --- Maelstrom of the Spirit Dragon -----------------------------------------
+
+func TestSb11MaelstromManaCastsOnlyDragonAndOmenSpells(t *testing.T) {
+	t.Run("a Dragon spell is paid", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		land := pushCatalogPermanent(g, me.ID, "Maelstrom of the Spirit Dragon", "Land", sb11MaelstromOracle, false)
+		castFromHandForTest(t, g, me, "Spark Dragon", "Creature — Dragon", "{R}", "", autoPay)
+		if !permanentTapped(g, land) {
+			t.Error("the Maelstrom was not tapped for the Dragon")
+		}
+	})
+	t.Run("an Elf is refused", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		pushCatalogPermanent(g, me.ID, "Maelstrom of the Spirit Dragon", "Land", sb11MaelstromOracle, false)
+		_, err := castFromHandErr(g, me, "Llanowar Elves", "Creature — Elf Druid", "{G}", "", autoPay)
+		var short *game.InsufficientManaError
+		if !errors.As(err, &short) {
+			t.Errorf("an Elf off the restricted mana: %v, want insufficient mana", err)
+		}
+	})
+	t.Run("an Omen spell is paid", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		land := pushCatalogPermanent(g, me.ID, "Maelstrom of the Spirit Dragon", "Land", sb11MaelstromOracle, false)
+		params := autoPay
+		params.Face = 1
+		castFromHand(t, g, tdmOmenCards["Sagu Wildling"], params)
+		if !permanentTapped(g, land) {
+			t.Error("the Maelstrom was not tapped for the Omen")
+		}
+	})
+	t.Run("an ordinary instant is refused", func(t *testing.T) {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		pushCatalogPermanent(g, me.ID, "Maelstrom of the Spirit Dragon", "Land", sb11MaelstromOracle, false)
+		_, err := castFromHandErr(g, me, "Shock", "Instant", "{R}", "", autoPay)
+		var short *game.InsufficientManaError
+		if !errors.As(err, &short) {
+			t.Errorf("an ordinary instant off the restricted mana: %v, want insufficient mana", err)
+		}
+	})
+}
+
+func TestSb11MaelstromSacrificesToFetchADragon(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	land := pushCatalogPermanent(g, me.ID, "Maelstrom of the Spirit Dragon", "Land", sb11MaelstromOracle, false)
+	dragon := pushLibraryCardForTest(me, game.Card{Name: "Spark Dragon", TypeLine: "Creature — Dragon"})
+	pushLibraryCardForTest(me, game.Card{Name: "Bear", TypeLine: "Creature — Bear"})
+	b06AddMana(me, "C", "C", "C", "C")
+	b16Activate(t, g, me.ID, land, 0, game.ActivateAbilityParams{})
+	if g.Battlefield.Contains(land) {
+		t.Error("the land was not sacrificed")
+	}
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no search prompt")
+	}
+	if searchOptionNamed(g, c, "Bear") != uuid.Nil {
+		t.Error("a non-Dragon was offered")
+	}
+	answerSearchByID(t, g, me.ID, dragon)
+	if !me.Hand.Contains(dragon) {
+		t.Error("the Dragon is not in hand")
+	}
+}
+
+// --- Lotuslight Dancers -----------------------------------------------------
+
+func sb11DancersSetup(t *testing.T) (g *game.Game, me *game.Player, ids map[string]uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[g.Turn.ActiveSeat]
+	ids = map[string]uuid.UUID{}
+	for _, c := range []game.Card{
+		{Name: "Black A", TypeLine: "Creature — Zombie", Colors: []string{"B"}},
+		{Name: "Black B", TypeLine: "Creature — Zombie", Colors: []string{"B"}},
+		{Name: "Green", TypeLine: "Creature — Elf", Colors: []string{"G"}},
+		{Name: "Blue", TypeLine: "Creature — Merfolk", Colors: []string{"U"}},
+		{Name: "Three", TypeLine: "Creature — Dragon", Colors: []string{"B", "G", "U"}},
+		{Name: "White", TypeLine: "Creature — Human", Colors: []string{"W"}},
+	} {
+		ids[c.Name] = pushLibraryCardForTest(me, c)
+	}
+	castAndResolveCreature(t, g, "Lotuslight Dancers", "Creature — Zombie Bard", sb11DancersOracle)
+	passPriorityAroundTable(t, g)
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no search prompt")
+	}
+	if searchOptionNamed(g, c, "White") != uuid.Nil {
+		t.Error("a white card was offered")
+	}
+	return g, me, ids
+}
+
+func TestSb11LotuslightDancersPutsOneCardPerColorIntoTheGraveyard(t *testing.T) {
+	g, me, ids := sb11DancersSetup(t)
+	answerSearchByID(t, g, me.ID, ids["Black A"], ids["Green"], ids["Blue"])
+	for _, n := range []string{"Black A", "Green", "Blue"} {
+		if !me.Graveyard.Contains(ids[n]) {
+			t.Errorf("%s is not in the graveyard", n)
+		}
+	}
+	if me.Graveyard.Contains(ids["Black B"]) || me.Graveyard.Contains(ids["White"]) {
+		t.Error("an unchosen card is in the graveyard")
+	}
+}
+
+func TestSb11LotuslightDancersLetsAMulticoloredCardStandForOneColor(t *testing.T) {
+	g, me, ids := sb11DancersSetup(t)
+	// The three-colour card is the green one; Black A and Blue fill the rest.
+	answerSearchByID(t, g, me.ID, ids["Three"], ids["Black A"], ids["Blue"])
+	if !me.Graveyard.Contains(ids["Three"]) || !me.Graveyard.Contains(ids["Black A"]) || !me.Graveyard.Contains(ids["Blue"]) {
+		t.Error("the three cards were not all found")
+	}
+}
+
+func TestSb11LotuslightDancersRefusesTwoCardsForTheSameColorAndAllowsFewer(t *testing.T) {
+	g, me, ids := sb11DancersSetup(t)
+	c := searchChoiceFor(g, me.ID)
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{ids["Black A"], ids["Black B"]}); err == nil {
+		t.Fatal("two black cards were accepted for one black quality")
+	}
+	answerSearchByID(t, g, me.ID, ids["Green"])
+	if !me.Graveyard.Contains(ids["Green"]) || me.Graveyard.Size() != 1 {
+		t.Errorf("a single card should be found: graveyard %d", me.Graveyard.Size())
+	}
+}
+
+// --- United Battlefront -----------------------------------------------------
+
+func TestSb11UnitedBattlefrontPutsUpToTwoCheapNoncreatureNonlandPermanents(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	deep := plTop(me, "Deep Card", "Artifact", "{1}")
+	art4 := plTop(me, "Four Rock", "Artifact", "{4}")
+	inst := plTop(me, "Cheap Instant", "Instant", "{1}")
+	bear := plTop(me, "Bear", "Creature — Bear", "{2}")
+	land := plTop(me, "Forest", "Basic Land — Forest", "")
+	art1 := plTop(me, "Rock", "Artifact", "{1}")
+	ench := plTop(me, "Rite", "Enchantment", "{2}")
+	art2 := plTop(me, "Other Rock", "Artifact", "{3}")
+	castCatalogSpell(t, g, "United Battlefront", "Sorcery", sb11BattlefrontOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("no choose_cards prompt")
+	}
+	for _, bad := range []uuid.UUID{inst, bear, land, art4, deep} {
+		if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{bad}); err == nil {
+			t.Error("an illegal card was accepted")
+		}
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{art1, ench, art2}); err == nil {
+		t.Error("three cards were accepted for up to two")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{art1, ench}); err != nil {
+		t.Fatalf("a legal pick: %v", err)
+	}
+	if !g.Battlefield.Contains(art1) || !g.Battlefield.Contains(ench) {
+		t.Error("the two chosen permanents did not enter")
+	}
+	for _, id := range []uuid.UUID{art2, inst, bear, land, art4} {
+		if g.Battlefield.Contains(id) || !me.Library.Contains(id) {
+			t.Error("an unchosen card left the library")
+		}
+	}
+	// The five looked-at cards not put are the bottom five, in some order,
+	// and the eighth card, never looked at, is not among them.
+	bottom := plBottomIDs(me, 5)
+	for _, id := range []uuid.UUID{art2, inst, bear, land, art4} {
+		if !bottom[id] {
+			t.Error("a looked-at card that was not put is not on the bottom")
+		}
+	}
+	if bottom[deep] {
+		t.Error("the card below the top seven was moved to the bottom")
+	}
+}
+
+var (
+	_ = uuid.Nil
+	_ = game.ZoneHand
+)

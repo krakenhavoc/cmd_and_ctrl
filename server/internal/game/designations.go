@@ -173,6 +173,12 @@ const (
 	// ABSENCE of a mark (Card.DealtCombatDamage). Appended so no existing
 	// kind's value moves.
 	DesignationHasntDealtCombatDamage
+
+	// DesignationHasntDealtDamage is "as long as it hasn't dealt damage
+	// yet" (Karakyk Guardian): DesignationHasntDealtCombatDamage for
+	// damage of any kind, read off the ABSENCE of Card.DealtDamage.
+	// Appended so no existing kind's value moves.
+	DesignationHasntDealtDamage
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -241,6 +247,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Renowned
 	case DesignationHasntDealtCombatDamage:
 		return !c.DealtCombatDamage
+	case DesignationHasntDealtDamage:
+		return !c.DealtDamage
 	case DesignationRingTempted:
 		return c.RingTemptations >= d.N
 	case DesignationChosenOption:
@@ -303,6 +311,12 @@ func RenownedGate() Designation { return Designation{Kind: DesignationRenowned} 
 // hasn't dealt combat damage yet" (#3172).
 func HasntDealtCombatDamage() Designation {
 	return Designation{Kind: DesignationHasntDealtCombatDamage}
+}
+
+// HasntDealtDamage builds the gate for "as long as this creature hasn't
+// dealt damage yet" (Karakyk Guardian).
+func HasntDealtDamage() Designation {
+	return Designation{Kind: DesignationHasntDealtDamage}
 }
 
 // SaddledGate builds a CR 702.171 gate: the ability exists while the

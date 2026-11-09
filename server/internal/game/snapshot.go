@@ -1314,6 +1314,10 @@ type cardSnapshot struct {
 	// after it had connected. Additive within v8: an older binary
 	// ignores the key.
 	DealtCombatDamage bool `json:"dealtCombatDamage,omitempty"`
+	// DealtDamage is "has dealt damage", DealtCombatDamage's twin for
+	// damage of any kind (Karakyk Guardian). Additive within the
+	// version: an older binary ignores the key.
+	DealtDamage bool `json:"dealtDamage,omitempty"`
 	// Bestowed is CR 702.103b's bestowed status (ADR 0141, #2862): a
 	// spell cast bestowed, or the Aura it became. Carried because "not
 	// bestowed" is a legal zero value: a restore that dropped it would
@@ -3100,6 +3104,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
+		DealtDamage:              c.DealtDamage,
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
@@ -4230,6 +4235,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
+		DealtDamage:              c.DealtDamage,
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
