@@ -46,6 +46,7 @@ const (
 	b35JasperFlintOracle         = "bd7c5a8b-cf62-41e1-a664-b16e3e5d142b"
 	b35GhiredOracle              = "34b36022-0d93-48cc-a2cc-90ca4d65dc31"
 	b35KellanKidOracle           = "afacc200-16ff-40f3-9d43-268438131d24"
+	b35ErietteOracle             = "710a3499-64f8-4d2c-8c9c-d58950e47ea7"
 	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
@@ -85,6 +86,7 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35JasperFlintOracle:         "Laughing Jasper Flint",
 		b35GhiredOracle:              "Ghired, Mirror of the Wilds",
 		b35KellanKidOracle:           "Kellan, the Kid",
+		b35ErietteOracle:             "Eriette, the Beguiler",
 		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
@@ -1584,5 +1586,54 @@ func TestB35KellanTheKidMayPutALandIfYouDontCast(t *testing.T) {
 	}
 	if g.Battlefield.Contains(cheap) {
 		t.Error("the Bear entered though the cast was declined")
+	}
+}
+
+func TestB35ErietteStealsAPermanentWhileYourAuraIsAttachedToIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Eriette, the Beguiler", "Legendary Creature — Human Warlock", b35ErietteOracle, 3, 3)
+	cheap := b12Push(g, opp.ID, "Cheap Bear", "Creature — Bear", "", 2, 2)
+	dear := b12Push(g, opp.ID, "Dear Bear", "Creature — Bear", "", 5, 5)
+	for _, id := range []uuid.UUID{cheap, dear} {
+		c := findBattlefieldCardForTest(g, id)
+		if id == cheap {
+			c.ManaCost = "{1}{G}"
+		} else {
+			c.ManaCost = "{4}{G}"
+		}
+	}
+	aura := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Mind Control Aura",
+		TypeLine: "Enchantment — Aura", ManaCost: "{2}{U}", Owner: me.ID, Controller: me.ID})
+	// Too expensive a host: no trigger.
+	g.WithWriteLock(func() {
+		if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: dear}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, dear); c.Controller != opp.ID {
+		t.Fatal("took control of a permanent with greater mana value")
+	}
+	g.WithWriteLock(func() {
+		if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: cheap}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, cheap); c.Controller != me.ID {
+		t.Fatal("did not take control of the cheap Bear")
+	}
+	// Moving the Aura away returns the Bear.
+	g.WithWriteLock(func() {
+		if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: dear}); err != nil {
+			t.Fatal(err)
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, cheap); c.Controller != opp.ID {
+		t.Error("the Bear did not go back when the Aura left it")
 	}
 }
