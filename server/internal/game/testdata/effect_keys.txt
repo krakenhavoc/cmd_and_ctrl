@@ -311,6 +311,7 @@ body speed-young-avenger/unblockable
 body speed/increase
 body spellbook-vendor/sorcerer-role
 body spider-man-to-the-rescue/indestructible
+body stolen-uniform/unattach-the-equipment
 body storm/the-spell-just-cast
 body summon-kujata/fire-damage
 body sunburst/that-spell-gains
@@ -390,6 +391,7 @@ choose choose-cards/ardenn-intrepid-archaeologist-attach
 choose choose-cards/armored-skyhunter-attach
 choose choose-cards/as-enters-permanent
 choose choose-cards/assimilation-assessor-assimilate
+choose choose-cards/atraxa-grand-unifier-card-type
 choose choose-cards/autumn-tail-kitsune-sage-attach
 choose choose-cards/avatar-destiny-milled-creature
 choose choose-cards/awaken-the-honored-dead-return
@@ -419,8 +421,10 @@ choose choose-cards/cemetery-prowler-exile
 choose choose-cards/chain-of-smog-discarded
 choose choose-cards/chain-sacrifice-a-land
 choose choose-cards/chandra-legacy-of-fire-remove
+choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
 choose choose-cards/chief-montgomery-scott-put
+choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
@@ -486,6 +490,7 @@ choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
+choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gert-and-old-lace-search
 choose choose-cards/gift-of-perfection-assimilate
 choose choose-cards/gifts-ungiven-settle
@@ -753,6 +758,7 @@ choose choose-cards/teferi-akosa-tap-any-number
 choose choose-cards/teferi-temporal-pilgrim-return
 choose choose-cards/temporal-conqueror-return-land
 choose choose-cards/teo-spirited-glider-discarded
+choose choose-cards/terra-magical-adept-take-pick
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
 choose choose-cards/the-day-of-the-doctor-spare
@@ -840,6 +846,7 @@ condition activate/you-activate-an-ability-of-a-planeswalker-type
 condition activate/you-next-activate-a-loyalty-ability
 condition attach/this-aura-left
 condition attack/a-creature-you-control-attacks-alone
+condition attack/a-sea-creature-attacks-summon-leviathan
 condition attack/attacks-an-opponent-of-the-controller
 condition attack/attacks-you-or-a-planeswalker-you-control
 condition attack/each-creature-you-control-unblocked
@@ -884,6 +891,7 @@ condition monarch/an-opponent-became
 condition nuka-nuke-launcher/defender-casts-a-spell
 condition pit-automaton/next-exhaust-activation
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
+condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
@@ -927,6 +935,7 @@ confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
 confirm confirm/dwarven-vigilantes-damage
 confirm confirm/eden-sacrifice
+confirm confirm/emet-selch-unsundered-transform
 confirm confirm/end-the-turn
 confirm confirm/endling-pump
 confirm confirm/entrust-the-spark-sacrifice
@@ -1052,6 +1061,9 @@ confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
+confirm may/carpet-of-flowers-add-mana
+confirm may/clive-ifrits-dominant-discard-and-draw
+confirm may/jecht-reluctant-guardian-transform
 drawinstead dredge-2
 drawinstead dredge-3
 drawinstead dredge-4
@@ -1105,6 +1117,7 @@ milluntil until/nonland-card
 milluntil until/strago-and-relm-hit
 milluntil until/total-mana-value
 number assist/help-pay-for-a-spell
+number esper-terra/lore-counters
 number number/aether-refinery-create-an-aetherborn
 number number/aether-spike-counter-unless-paid
 number number/arcane-denial-draw-up-to-two
@@ -1254,6 +1267,7 @@ option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
+option option-pick/vial-smasher-the-fierce-recipient
 option option-pick/villainous-damocles-base
 option option-pick/villainous-davros-dalek-creator
 option option-pick/villainous-dr-eggman
@@ -1413,6 +1427,7 @@ payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
 payunless pay-unless/untap-enchanted-creature
 payunless pay-unless/upkeep-sacrifice-source
+payunless pay-unless/vanille-cheerful-lcie-meld
 payunless pay-unless/veinwitch-coven-return
 payunless pay-unless/vision-of-love-draw-two
 payunless pay-unless/vivis-persistence-return
@@ -1533,6 +1548,8 @@ run prompt-run/humiliate-counter
 run prompt-run/hustle-bustle-turn-face-up
 run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
+run prompt-run/kefka-court-mage-draw
+run prompt-run/kefka-court-mage-transform
 run prompt-run/killmonger-sacrificed
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
@@ -1787,6 +1804,7 @@ tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
 tail charming-prince/after-exile
+tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
@@ -1932,6 +1950,7 @@ tail ensnared-by-the-mara/after-mill
 tail ensnared-by-the-mara/after-mill-2
 tail erica-ortegas/return-a-land-at-end
 tail esper-origins/after-surveil
+tail esper-terra/copied
 tail espers-to-magicite/copy-a-creature-exiled
 tail essence-flux/after-exile
 tail essence-flux/counter-if-spirit
@@ -1957,9 +1976,12 @@ tail fevered-suspicion/after-mill
 tail fiery-annihilation/after-damage
 tail fiery-annihilation/exile-if-it-would-die
 tail fight-rigging/offer
+tail fin/triple-triad-exile-step
+tail fin/triple-triad-grant
 tail final-parting/graveyard-search
 tail finale-of-devastation/pump
 tail finneas-ace-archer/draw-on-power
+tail firion-wild-rose-warrior/sacrifice-the-copy
 tail fishing-gear/after-exile
 tail fishing-gear/entered
 tail flicker/return-exiled
@@ -2018,6 +2040,7 @@ tail if-it-was/cling-to-dust-life-or-draw
 tail if-it-was/consuming-ashes-surveil
 tail if-it-was/deluge-of-the-dead-zombie
 tail if-it-was/feral-appetite-pest
+tail if-it-was/ignis-scientia-food
 tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
@@ -2165,6 +2188,7 @@ tail queens-bay-paladin/lose-life
 tail quintorius-kand/mana-and-cast-from-exiled
 tail quintorius-loremaster/spirit
 tail rabble-rousing/offer-the-exiled-card
+tail ragnarok-divine-deliverance/return
 tail random-encounter/entered
 tail random-encounter/milled
 tail rapid-rescue/after-mill
@@ -2254,6 +2278,8 @@ tail shiko-paragon-of-the-way/copy-exiled
 tail shredder-shadow-master/sacrifice-tokens-at-end-of-combat
 tail silvan-rally/after-mill
 tail simic-fluxmage/take-one
+tail sin-spiras-punishment/copy-exiled
+tail sin-spiras-punishment/repeat-for-a-land
 tail sinners-judgment/check
 tail sins-of-the-father/creature-cards-drain
 tail six/after-mill
@@ -2300,6 +2326,7 @@ tail tchaka/after-mill
 tail tempestra-dame-of-games/haste-and-sacrifice-copy
 tail tempt-with-discovery/caster-search
 tail tempt-with-discovery/next-offer
+tail terra-magical-adept/after-mill
 tail territorial-bruntar/cast-nonland-this-turn
 tail tetzin-gnome-champion/after-mill
 tail the-binding-of-the-titans/gain-per-creature-exiled
@@ -2526,6 +2553,7 @@ tail uss-farragut/haste-then-bottom-at-end-step
 tail uss-farragut/when-you-do-draw
 tail vaan-street-thief/exiled
 tail valgavoths-onslaught/manifest-again
+tail vanille-cheerful-lcie/after-mill
 tail vengeance-mission/loss
 tail vigorbloom-charm/fight
 tail vindictive-triumph/after-exile
