@@ -677,6 +677,8 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 		InstanceID: uuid.New(), Name: "Their Saga", TypeLine: "Enchantment — Saga", Owner: opp.ID, Controller: opp.ID,
 		Counters: map[string]int{game.CounterLore: 1},
 	})
+	// Each Saga entered with its own first lore counter on top of the ones pushed.
+	loreA, loreB := finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore)
 	declareAttack(t, g, opp.ID, garnet)
 	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
@@ -692,11 +694,9 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{sagaA, sagaB}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
-	t.Logf("right after the pick: A=%d B=%d garnet=%d", finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore), finB8Counters(g, garnet, game.CounterPlusOne))
 	passPriorityAroundTable(t, g)
-	t.Logf("garnet counters %d", finB8Counters(g, garnet, game.CounterPlusOne))
-	if finB8Counters(g, sagaA, game.CounterLore) != 1 || finB8Counters(g, sagaB, game.CounterLore) != 0 {
-		t.Errorf("lore counters A=%d B=%d, want 1 and 0", finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore))
+	if finB8Counters(g, sagaA, game.CounterLore) != loreA-1 || finB8Counters(g, sagaB, game.CounterLore) != loreB-1 {
+		t.Errorf("lore counters A=%d B=%d, want %d and %d", finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore), loreA-1, loreB-1)
 	}
 	if got := finB8Counters(g, garnet, game.CounterPlusOne); got != 2 {
 		t.Errorf("Garnet has %d +1/+1 counters, want 2", got)

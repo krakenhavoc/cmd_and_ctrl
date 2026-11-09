@@ -1,9 +1,6 @@
 package effects
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -72,12 +69,8 @@ var garnetRemovePick = askedPick("choose-cards/garnet-princess-of-alexandria-rem
 			continue
 		}
 		before := c.Counters[game.CounterLore]
-		fmt.Fprintf(os.Stderr, "GARNETDEBUG before=%d id=%s\n", before, id)
 		if err := ctx.Game.AddCounterForEffect(id, game.CounterLore, -1); err != nil {
 			return err
-		}
-		if after, ok := ctx.Game.LookupCardForEffect(id); ok {
-			fmt.Fprintf(os.Stderr, "GARNETDEBUG after=%d\n", after.Counters[game.CounterLore])
 		}
 		if after, ok := ctx.Game.LookupCardForEffect(id); ok && after.Counters[game.CounterLore] < before {
 			removed++
