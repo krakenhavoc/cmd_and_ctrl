@@ -30,13 +30,7 @@ func init() {
 			TribalKeywordGrant(yours, "trample"),
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller || source.NamedTribe == "" {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.HasSubtype(source.NamedTribe)
-			}, "Chronicle of Victory — draw a card", Do(DrawCards{N: 1})),
+			On(game.EventCast, YouCastASpellOfTheChosenType, "Chronicle of Victory — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }
