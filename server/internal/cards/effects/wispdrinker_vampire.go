@@ -32,8 +32,9 @@ func init() {
 				Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{5}{W}{B}: Creatures you control with power 2 or less gain deathtouch and lifelink until end of turn.",
-			Cost:  ManaCost("{5}{W}{B}"),
+			Label:   "{5}{W}{B}: Creatures you control with power 2 or less gain deathtouch and lifelink until end of turn.",
+			Cost:    ManaCost("{5}{W}{B}"),
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, c := range g.BattlefieldCardsForEffect() {
@@ -44,7 +45,7 @@ func init() {
 						Target:   c.InstanceID,
 						Keywords: []string{"deathtouch", "lifelink"},
 						Label:    "Wispdrinker Vampire — deathtouch and lifelink until end of turn",
-					}).Apply(ctx); err != nil {
+					}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

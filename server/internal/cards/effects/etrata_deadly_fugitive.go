@@ -36,9 +36,10 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key: etrataGrant,
 			Activated: []ActivatedAbility{{
-				Label:  "{2}{U}{B}: Turn this creature face up. If you can't, exile it, then you may cast the exiled card without paying its mana cost.",
-				Cost:   ManaCost("{2}{U}{B}"),
-				Effect: etrataTurnFaceUpOrCast,
+				Label:   "{2}{U}{B}: Turn this creature face up. If you can't, exile it, then you may cast the exiled card without paying its mana cost.",
+				Cost:    ManaCost("{2}{U}{B}"),
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Effect:  etrataTurnFaceUpOrCast,
 			}},
 			Text: "{2}{U}{B}: Turn this creature face up. If you can't, exile it, then you may cast the exiled card without paying its mana cost.",
 		}},

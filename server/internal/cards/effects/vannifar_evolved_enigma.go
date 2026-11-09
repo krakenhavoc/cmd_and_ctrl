@@ -32,7 +32,7 @@ func init() {
 					if c.Controller != ctx.Controller() || !c.IsCreature() || len(c.EffectiveColors()) != 0 {
 						continue
 					}
-					if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+					if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}
 				}

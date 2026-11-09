@@ -41,7 +41,7 @@ func init() {
 						return ExileTarget{Target: t.ID, Linked: true, ThenTail: ctx.ItemTail(lazavInvestigate)}.Apply(ctx)
 					}),
 				TargetCardInGraveyard("target card in a graveyard")),
-			Optional(On(game.EventSacrifice, lazavYouSacrificedAClue,
+			Optional(On(game.EventSacrifice, lonisYouSacrificedAClue,
 				"Lazav — you may have Lazav become a copy of a creature card exiled with it until end of turn",
 				lazavBecomeACopy),
 				"Lazav, Wearer of Faces — become a copy of a creature card exiled with it until end of turn?"),
@@ -53,16 +53,6 @@ func init() {
 var lazavInvestigate = CardTail("tail/lazav-investigate", func(ctx *Context, _ game.TailOutcome) error {
 	return CreateToken{Template: ClueToken(), N: 1}.Apply(ctx)
 })
-
-// lazavYouSacrificedAClue is "you sacrifice a Clue": EventSacrifice names the
-// sacrificing player and fires before the zone move.
-func lazavYouSacrificedAClue(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventSacrifice || ev.Actor != source.Controller || ev.CardID == uuid.Nil {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasSubtype("Clue")
-}
 
 // lazavCreatureCardsExiledWithIt is the creature cards in exile linked to this
 // Lazav object.

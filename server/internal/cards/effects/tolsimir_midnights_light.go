@@ -62,7 +62,7 @@ func attackedThisCombat(g *game.Game, ref game.ObjectRef) bool {
 // source's controller and the source is among this combat's attackers.
 func tolsimirWolfAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	wolf, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || wolf.Controller != source.Controller || !wolf.HasSubtype("Wolf") {
+	if !ok || wolf.Controller != source.Controller || !wolf.HasSubtype(source.TextSubtype("Wolf")) {
 		return false
 	}
 	return attackedThisCombat(g, game.ObjectRef{ID: source.InstanceID, Epoch: source.ObjectEpoch})

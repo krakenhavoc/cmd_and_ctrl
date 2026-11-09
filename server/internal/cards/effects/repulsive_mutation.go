@@ -26,6 +26,7 @@ func init() {
 		OracleID:     "611bfaa6-b098-48d9-9e49-1e7dc8687f15",
 		Name:         "Repulsive Mutation",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		Targets: TargetCreature("target creature you control", YouControl()).Then(
 			TargetSpell("up to one target spell").WithCount(0, 1)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

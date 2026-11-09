@@ -35,16 +35,16 @@ func init() {
 							continue
 						}
 						mine = append(mine, c)
-						if c.HasSubtype("Elf") {
+						if c.HasSubtype(ctx.TextSubtype("Elf")) {
 							elves++
 						}
-						if c.HasSubtype("Wolf") {
+						if c.HasSubtype(ctx.TextSubtype("Wolf")) {
 							wolves++
 						}
 					}
 					if elves > 0 {
 						for _, c := range mine {
-							if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: elves}).Apply(ctx); err != nil {
+							if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: elves}).Apply(ctx.asGroupMember()); err != nil {
 								return err
 							}
 						}

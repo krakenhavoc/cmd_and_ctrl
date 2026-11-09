@@ -66,19 +66,23 @@ var intrudeTake = PileTail("then/intrude-on-the-mind-take", func(ctx *Context, t
 })
 
 // intrudeSettle puts the chosen pile into the caster's hand and the other
-// into their graveyard, then makes the Thopter.
+// into their graveyard, then makes the Thopter. The hand move is a keyed
+// bounce (a commander asks its question there), so the graveyard half and the
+// Thopter are its tail, told which cards to bin.
 func intrudeSettle(ctx *Context, toHand, toGraveyard []uuid.UUID) error {
-	g := ctx.Game
-	for _, id := range toHand {
-		if g.FindCardZoneForEffect(id) == nil {
-			continue
-		}
-		if err := g.BounceToHandForEffect(id); err != nil {
-			return err
-		}
+	rest := withCarry(ctx.Tail(intrudeRest), toGraveyard...)
+	if len(toHand) == 0 {
+		return rest.Run(ctx.Game, nil)
 	}
+	return ctx.Game.BounceCardsToHandKeyedForEffect(toHand, rest)
+}
+
+// intrudeRest is "the other into your graveyard", then the Thopter with a
+// +1/+1 counter for each card that reached the graveyard this way.
+var intrudeRest = CardTail("tail/intrude-on-the-mind-rest", func(ctx *Context, o game.TailOutcome) error {
+	g := ctx.Game
 	n := 0
-	for _, id := range toGraveyard {
+	for _, id := range o.Tail.Carry {
 		if g.FindCardZoneForEffect(id) == nil {
 			continue
 		}
@@ -90,10 +94,10 @@ func intrudeSettle(ctx *Context, toHand, toGraveyard []uuid.UUID) error {
 		}
 	}
 	return intrudeThopter(ctx, n)
-}
+})
 
 func intrudeThopter(ctx *Context, counters int) error {
-	ids, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), TokenCard("0/0 colorless Thopter artifact with flying"), 1, game.TokenEntryOptions{})
+	ids, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("0/0 colorless Thopter artifact with flying")), 1, game.TokenEntryOptions{})
 	if err != nil || counters <= 0 {
 		return err
 	}
