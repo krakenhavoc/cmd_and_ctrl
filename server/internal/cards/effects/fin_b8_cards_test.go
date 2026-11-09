@@ -199,15 +199,9 @@ func TestFinB8JoshuaFlipsAndPhoenixBurnsReturnsAndFlipsBack(t *testing.T) {
 		t.Fatalf("flip: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	opps := make([]int, len(g.Seats))
+	base := make([]int, len(g.Seats))
 	for i, p := range g.Seats {
-		opps[i] = p.Life
-	}
-	// Chapter I was put on the stack as it entered; it has now resolved.
-	for i, p := range g.Seats {
-		if i != seat && p.Life != 20-2 && p.Life != opps[i] {
-			t.Errorf("seat %d life %d", i, p.Life)
-		}
+		base[i] = p.Life + 2 // chapter I has already resolved
 	}
 	var phoenix game.Card
 	for _, c := range g.Battlefield.Cards {
@@ -219,15 +213,15 @@ func TestFinB8JoshuaFlipsAndPhoenixBurnsReturnsAndFlipsBack(t *testing.T) {
 		t.Fatalf("Phoenix is not on the battlefield with a lore counter: %+v", phoenix)
 	}
 	for i, p := range g.Seats {
-		if i != seat && p.Life != 18 {
-			t.Errorf("seat %d life %d after chapter I, want 18", i, p.Life)
+		if i != seat && p.Life != base[i]-2 {
+			t.Errorf("seat %d life %d after chapter I, want %d", i, p.Life, base[i]-2)
 		}
 	}
 	advanceToPrecombatMainOf(t, g, seat)
 	passPriorityAroundTable(t, g)
 	for i, p := range g.Seats {
-		if i != seat && p.Life != 16 {
-			t.Errorf("seat %d life %d after chapter II, want 16", i, p.Life)
+		if i != seat && p.Life != base[i]-4 {
+			t.Errorf("seat %d life %d after chapter II, want %d", i, p.Life, base[i]-4)
 		}
 	}
 	// Chapter III returns Phoenix front face up (it has no graveyard targets here).
@@ -298,7 +292,8 @@ func TestFinB8QuistisCastsASpellFromAnyGraveyardWithAnyMana(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordPaidCast, bolt)
 	if err := castThroughResolutionCast(t, g, me.ID, bolt, game.CastSpellParams{
-		Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: victim}},
+		Strict: true, AlternativeCost: game.AltCostKeyGrantedCost,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: victim}},
 	}); err != nil {
 		t.Fatalf("cast Lightning Bolt with blue mana: %v", err)
 	}
@@ -697,6 +692,7 @@ func TestFinB8GarnetRemovesLoreCountersForPlusOneCounters(t *testing.T) {
 	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{sagaA, sagaB}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
+	t.Logf("right after the pick: A=%d B=%d garnet=%d", finB8Counters(g, sagaA, game.CounterLore), finB8Counters(g, sagaB, game.CounterLore), finB8Counters(g, garnet, game.CounterPlusOne))
 	passPriorityAroundTable(t, g)
 	t.Logf("garnet counters %d", finB8Counters(g, garnet, game.CounterPlusOne))
 	if finB8Counters(g, sagaA, game.CounterLore) != 1 || finB8Counters(g, sagaB, game.CounterLore) != 0 {

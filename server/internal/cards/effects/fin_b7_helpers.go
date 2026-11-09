@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -102,6 +105,7 @@ var tripleTriadExileStep = game.RegisterTail("fin/triple-triad-exile-step", func
 })
 
 func tripleTriadExileFrom(g *game.Game, step game.KeyedTail, remaining, landed []uuid.UUID) error {
+	fmt.Fprintf(os.Stderr, "TTDEBUG remaining=%d landed=%d next=%v\n", len(remaining), len(landed), step.Next != nil)
 	if len(remaining) == 0 {
 		if step.Next == nil {
 			return nil
