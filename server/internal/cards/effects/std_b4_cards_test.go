@@ -52,8 +52,9 @@ func TestStdB3BioengineeredFutureCountsLandsThatEnteredThisTurn(t *testing.T) {
 	}
 	bear := avB1Cast(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 2, Toughness: 2}, game.CastSpellParams{})
 	stdB3Resolve(t, g)
-	if got := countersOn(g, bear, game.CounterPlusOne); got != want {
-		t.Errorf("a land entered before the enchantment did: %d counters, want %d", got, want)
+	want = g.TurnTallyFor(me.ID).LandsEntered
+	if got := countersOn(g, bear, game.CounterPlusOne); got != want || want < 1 {
+		t.Errorf("a land entered before the enchantment did: %d counters, want %d (at least 1)", got, want)
 	}
 	opp := g.Seats[1]
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 1, 1)

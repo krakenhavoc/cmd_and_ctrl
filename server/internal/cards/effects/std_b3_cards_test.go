@@ -372,6 +372,7 @@ func TestStdB3TannukGivesHasteAndWarpToArtifactsAndRedCreatures(t *testing.T) {
 	}
 	stdB3Resolve(t, g)
 	advanceThroughEndStep(t, g)
+	stdB3Resolve(t, g)
 	for name, id := range map[string]uuid.UUID{"red creature": red, "artifact": rock} {
 		if g.Battlefield.Contains(id) || !g.Exile.Contains(id) {
 			t.Errorf("the warped %s is exiled at the next end step", name)
