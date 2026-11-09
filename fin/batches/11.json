@@ -1,0 +1,285 @@
+{
+ "batch": 11,
+ "set": [
+  "fic"
+ ],
+ "cards": [
+  {
+   "name": "Seifer, Balamb Rival",
+   "oracle_id": "417b9d9c-0a67-4554-a275-a6ae15a04bfb",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Mercenary",
+   "oracle_text": "First strike\nWhenever you attack a player, goad target creature that player controls.\nWhenever a creature attacking one of your opponents becomes blocked by two or more creatures, that attacking creature gains deathtouch until end of turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Goad",
+    "First strike"
+   ],
+   "collector_number": "451",
+   "set": "fic",
+   "rulings": [
+    "If, during a player's declare attackers step, a creature that player controls that's been goaded is tapped, is affected by a spell or ability that says it can't attack, or hasn't been under that player's control continuously since the turn began (and doesn't have haste), then it doesn't attack. If there's a cost associated with having a creature attack a player, its controller isn't forced to pay that cost, so it doesn't have to attack that player.",
+    "If a creature you control has been goaded by multiple opponents, it must attack one of your opponents that hasn't goaded it, as that fulfills the maximum number of goad requirements. If a creature you control has been goaded by each of your opponents, the creature must attack an opponent (rather than a planeswalker or battle), but you choose which opponent it attacks.",
+    "Being goaded isn't an ability the creature has. Once it's been goaded, it must attack as detailed above even if it loses all abilities.",
+    "Attacking with a goaded creature doesn't cause it to stop being goaded. If there is an additional combat phase that turn, or if another player gains control of it before it stops being goaded, it must attack again if able.",
+    "Once Seifer's last ability has triggered, it doesn't matter what happens to the blocking creatures. The creature will keep deathtouch even if one or more of the creatures blocking it are removed from combat or leave the battlefield.",
+    "If the creature doesn't meet any of the above exceptions and can attack, it must attack a player other than the controller of the spell or ability that goaded it if able. If the creature can't attack any of those players but could otherwise attack, it must attack a planeswalker an opponent controls, a battle an opponent protects, or the player that goaded it.",
+    "Seifer's last ability triggers regardless of which player controls the attacking creatures."
+   ]
+  },
+  {
+   "name": "Duelist's Flame",
+   "oracle_id": "bbc990e4-1601-498f-9031-0cd663139367",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Until end of turn, target blocked creature you control gets +X/+0 and gains trample and \"Whenever this creature deals combat damage to a player, look at that many cards from the top of your library. Exile up to one nonland card from among them and put the rest on the bottom of your library in a random order. You may cast the exiled card without paying its mana cost.\"",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "452",
+   "set": "fic",
+   "rulings": [
+    "If the exiled card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "You cast the exiled card while the triggered ability ability is resolving and still on the stack. You can't wait to cast it later in the turn. Timing restrictions based on the card's type are ignored.",
+    "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those to cast the spell."
+   ]
+  },
+  {
+   "name": "Squall, Gunblade Duelist",
+   "oracle_id": "880c2b0a-b708-4f11-a88a-ec990c904602",
+   "layout": "normal",
+   "mana_cost": "{R}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Mercenary",
+   "oracle_text": "First strike\nAs Squall enters, choose a number.\nWhenever one or more creatures attack one of your opponents, if any of those creatures have power or toughness equal to the chosen number, Squall deals damage equal to its power to defending player.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "453",
+   "set": "fic",
+   "rulings": [
+    "Squall's last ability checks the power and toughness of the attacking creatures at the moment it would trigger. If none of them have power or toughness equal to the chosen number, the ability won't trigger at all. If it does trigger, the ability will check the power and toughness of those creatures as it tries to resolve. If none of them have power or toughness equal to the chosen number, the ability won't resolve and none of its effects will happen. If any of those creatures have left the battlefield since the first time the ability checked their power and toughness, use their power and toughness as they last existed on the battlefield.",
+    "If Squall isn't on the battlefield as its last ability resolves, use its power as it last existed on the battlefield to determine how much damage the ability deals."
+   ]
+  },
+  {
+   "name": "Brilliant Wings",
+   "oracle_id": "ed06b85a-e85f-47c4-ba90-1664e69a338f",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Flash\nEnchant creature you control\nEnchanted creature has flying and hexproof.\nWhenever a creature you control enters, you may pay {1}. If you do, attach this Aura to that creature.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enchant",
+    "Flash"
+   ],
+   "collector_number": "454",
+   "set": "fic"
+  },
+  {
+   "name": "Mega Flare",
+   "oracle_id": "891c6ca5-d238-4ac2-8df4-c6dc9a807562",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Kicker {3}{R}{R}\nIf this spell was kicked, create a 6/6 red Dragon creature token with flying.\nFor each opponent, choose up to one target creature that player controls. Mega Flare deals damage equal to the greatest power among creatures you control to each of the chosen creatures.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "456",
+   "set": "fic",
+   "related": [
+    {
+     "name": "Dragon",
+     "type_line": "Token Creature — Dragon",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Use the greatest power among creatures you control as Mega Flare resolves to determine how much damage is dealt."
+   ]
+  },
+  {
+   "name": "Amarant Coral",
+   "oracle_id": "322d2407-fa9f-48d0-bdf0-88f6d24cf865",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Monk",
+   "oracle_text": "Trample\nAmarant Coral attacks each combat if able.\nNo Mercy — Whenever Amarant Coral deals combat damage to an opponent, it deals that much damage to each other opponent.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "No Mercy",
+    "Trample"
+   ],
+   "collector_number": "457",
+   "set": "fic",
+   "rulings": [
+    "The damage dealt by Amarant Coral as a result of its last ability is not combat damage and therefore doesn't cause the ability to trigger again.",
+    "If Amarant Coral can't attack for any reason (such as being tapped or having come under your control that turn), then it doesn't attack. If there's a cost associated with having it attack, you're not forced to pay that cost, so it doesn't have to attack in that case either."
+   ]
+  },
+  {
+   "name": "Vivi's Persistence",
+   "oracle_id": "fd4a1f4b-674d-41f3-a9a6-c2b65bf5c1ab",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Create a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"\nWhenever your commander enters or attacks, you may pay {2}. If you do, return this card from your graveyard to your hand.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "458",
+   "set": "fic",
+   "related": [
+    {
+     "name": "Wizard",
+     "type_line": "Token Creature — Wizard",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The Wizard token's ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack."
+   ]
+  },
+  {
+   "name": "Noctis, Heir Apparent",
+   "oracle_id": "7abe351e-0889-4fc1-91ae-8372bcd28acb",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Whenever a creature you control enters during combat, you may attach target Equipment you control to target creature you control.\nWarp-Strike — {3}: Exile Noctis. Return it to the battlefield under its owner's control tapped and attacking at the beginning of that player's next declare attackers step. It can't be blocked that combat.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Warp-Strike"
+   ],
+   "collector_number": "460",
+   "set": "fic",
+   "rulings": [
+    "If Noctis is exiled with its last ability, it will return during its owner's next declare attackers step after that player has finished declaring attackers. It will return even if its owner declares no attackers."
+   ]
+  },
+  {
+   "name": "Fishing Gear",
+   "oracle_id": "7d309b18-8dc5-41ee-888c-e275761029e7",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Whenever equipped creature deals combat damage to a player, exile the top card of that player's library. If it's a permanent card, you may put it onto the battlefield under your control. If you don't, create a 1/1 blue Fish creature token.\nEquip {2}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "461",
+   "set": "fic",
+   "related": [
+    {
+     "name": "Fish",
+     "type_line": "Token Creature — Fish",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If you put an Aura onto the battlefield this way, you choose what it enchants as it enters the battlefield. This doesn't target any permanent or player, but it must be able to enchant that permanent or player. For example, you could put a green Aura onto the battlefield enchanting a creature with hexproof controlled by an opponent, but not one with protection from green.",
+    "You don't have to put the card on the battlefield even if it's a permanent card. You may choose to leave it in exile and create a 1/1 blue Fish token."
+   ]
+  },
+  {
+   "name": "Chocobo Camp",
+   "oracle_id": "ed77fdf2-59c0-4310-9b12-80d28beeaeef",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped unless you control a legendary creature.\n{T}: Add {G}. When you next cast a Bird creature spell this turn, it enters with an additional +1/+1 counter on it.\n{2}{G}{G}, {T}: Create a 2/2 green Bird creature token with \"Whenever a land you control enters, this token gets +1/+0 until end of turn.\"",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "462",
+   "set": "fic",
+   "related": [
+    {
+     "name": "Bird",
+     "type_line": "Token Creature — Bird",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The legendary creature must already be on the battlefield as the land enters the battlefield. If it enters the battlefield at the same time, the land will enter tapped."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,296 @@
+{
+ "batch": 3,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Ninja's Blades",
+   "oracle_id": "cdaffb13-c2a4-4bc5-a9d6-c1a0d1686a81",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Job select\nEquipped creature gets +1/+1, is a Ninja in addition to its other types, and has \"Whenever this creature deals combat damage to a player, draw a card, then discard a card. That player loses life equal to the discarded card's mana value.\"\nMutsunokami — Equip {2}",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Job select",
+    "Equip",
+    "Mutsunokami"
+   ],
+   "collector_number": "108",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Hero",
+     "type_line": "Token Creature — Hero",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the job select ability causes two Hero tokens to be created (due to an effect such as that of Doubling Season), the Equipment becomes attached to only one of them.",
+    "If the Hero token is destroyed, the Equipment stays on the battlefield.",
+    "The Hero token enters as a 1/1 creature, then the Equipment becomes attached to it. Abilities that trigger when a creature enters the battlefield see that a 1/1 creature entered the battlefield.",
+    "You may pay the Equipment's equip cost as normal to move it from the Hero token to another creature you control.",
+    "If the discarded card has {X} in its mana cost, X is 0 for the purpose of determining its mana value."
+   ]
+  },
+  {
+   "name": "Reno and Rude",
+   "oracle_id": "f749a6d6-2c55-439f-bb02-e95fa54c2ef3",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Assassin",
+   "oracle_text": "Menace\nWhenever Reno and Rude deals combat damage to a player, exile the top card of that player's library. Then you may sacrifice another creature or artifact. If you do, you may play the exiled card this turn, and mana of any type can be spent to cast it.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "113",
+   "set": "fin",
+   "rulings": [
+    "You pay all costs and follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty and only if you have an available land play remaining."
+   ]
+  },
+  {
+   "name": "Resentful Revelation",
+   "oracle_id": "71d6aa12-4888-458d-9dc8-9954b247a246",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.\nFlashback {6}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "114",
+   "set": "fin",
+   "rulings": [
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way."
+   ]
+  },
+  {
+   "name": "Sidequest: Hunt the Mark // Yiazmat, Ultimate Mark",
+   "oracle_id": "d74f9a18-8dab-4549-be3f-9697ff68d73c",
+   "layout": "transform",
+   "cmc": 5.0,
+   "type_line": "Enchantment // Legendary Creature — Dragon",
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Transform",
+    "Treasure"
+   ],
+   "collector_number": "119",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Sidequest: Hunt the Mark",
+     "mana_cost": "{3}{B}{B}",
+     "type_line": "Enchantment",
+     "oracle_text": "When this enchantment enters, destroy up to one target creature.\nAt the beginning of your end step, if a creature died under an opponent's control this turn, create a Treasure token. Then if you control three or more Treasures, transform this enchantment."
+    },
+    {
+     "name": "Yiazmat, Ultimate Mark",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Dragon",
+     "oracle_text": "{1}{B}, Sacrifice another creature or artifact: Yiazmat gains indestructible until end of turn. Tap it.",
+     "power": "5",
+     "toughness": "6"
+    }
+   ],
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "Sidequest: Hunt the Mark's last ability checks at the moment it would trigger to see if a creature died under an opponent's control this turn. If none did, the ability won't trigger at all. Once your end step begins, it's too late to cause creatures your opponents control to die in order to cause this ability to trigger.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile."
+   ]
+  },
+  {
+   "name": "Vincent's Limit Break",
+   "oracle_id": "814679b4-51bd-4b07-a7b8-d3375d36ff45",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Tiered (Choose one additional cost.)\nUntil end of turn, target creature you control gains \"When this creature dies, return it to the battlefield tapped under its owner's control\" and has the chosen base power and toughness.\n• Galian Beast — {0} — 3/2.\n• Death Gigas — {1} — 5/2.\n• Hellmasker — {3} — 7/2.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Hellmasker",
+    "Death Gigas",
+    "Tiered",
+    "Galian Beast"
+   ],
+   "collector_number": "126",
+   "set": "fin",
+   "rulings": [
+    "Vincent's Limit Break will overwrite any previous effects that set the creature's power and toughness to specific numbers. Effects that otherwise modify its power and toughness will still apply no matter when they took effect. The same is true for +1/+1 counters.",
+    "If a mode requires a target, you can select that mode only if there's a legal target available. Ignore the targeting requirements for modes you don't choose.",
+    "You must choose exactly one of the listed modes and pay its associated additional cost in order to cast a spell with tiered.",
+    "The mana value of a spell with tiered is determined only by its mana cost (in the upper right corner of the card). It doesn't matter which mode you choose or which additional costs you pay, including any additional costs imposed by other effects.",
+    "You choose the mode as you cast the spell with tiered. Once the mode is chosen, it can't be changed.",
+    "If the target creature is a token, the ability still triggers when it dies, but you won't return the token to the battlefield.",
+    "If an effect allows you to cast a spell with tiered \"without paying its mana cost,\" you must still choose exactly one mode and pay the associated additional cost.",
+    "If a spell with tiered is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose a new mode."
+   ]
+  },
+  {
+   "name": "Coral Sword",
+   "oracle_id": "d4f0dd14-bc2a-4c6d-bfd5-bc5838ab18a5",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Flash\nWhen this Equipment enters, attach it to target creature you control. That creature gains first strike until end of turn.\nEquipped creature gets +1/+0.\nEquip {1}",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Equip",
+    "Flash"
+   ],
+   "collector_number": "134",
+   "set": "fin"
+  },
+  {
+   "name": "Freya Crescent",
+   "oracle_id": "7e3085d8-9d46-41e0-ad9d-54c44d9ef267",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Rat Knight",
+   "oracle_text": "Jump — During your turn, Freya Crescent has flying.\n{T}: Add {R}. Spend this mana only to cast an Equipment spell or activate an equip ability.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Jump"
+   ],
+   "collector_number": "138",
+   "set": "fin"
+  },
+  {
+   "name": "Hill Gigas",
+   "oracle_id": "137594f7-2422-461b-a3ae-7ce3c135e0c7",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Creature — Giant",
+   "oracle_text": "Trample, haste\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Mountaincycling",
+    "Landcycling",
+    "Haste",
+    "Trample",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "141",
+   "set": "fin"
+  },
+  {
+   "name": "Item Shopkeep",
+   "oracle_id": "7532f0ea-9d13-43ca-9b7d-2d22f2a66017",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "Whenever you attack, target attacking equipped creature gains menace until end of turn. (It can't be blocked except by two or more creatures.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "142",
+   "set": "fin",
+   "rulings": [
+    "If the target creature isn't both attacking and equipped when Item Shopkeep's ability tries to resolve, it won't resolve and none of its effects will happen. However, in cases where it does resolve, it doesn't matter what happens to any of the Equipment on that creature. It'll still have menace even if it stops being equipped."
+   ]
+  },
+  {
+   "name": "Light of Judgment",
+   "oracle_id": "932177b8-70f8-4908-a48f-fe03204daddc",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Light of Judgment deals 6 damage to target creature. Destroy up to one Equipment attached to that creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "144",
+   "set": "fin",
+   "rulings": [
+    "You don't choose the Equipment to destroy until Light of Judgment is resolving.",
+    "Light of Judgment can target a creature that has no Equipment attached to it.",
+    "If the target creature is an illegal target when Light of Judgment tries to resolve, it won't resolve and none of its effects will happen. You won't destroy any Equipment."
+   ]
+  }
+ ]
+}

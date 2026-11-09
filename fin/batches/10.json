@@ -1,0 +1,337 @@
+{
+ "batch": 10,
+ "set": [
+  "fic",
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Judgment Bolt",
+   "oracle_id": "aad9f9f2-4c6b-48d0-80bd-77b73a9ea5f1",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Judgment Bolt deals 5 damage to target creature and X damage to that creature's controller, where X is the number of Equipment you control.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "559",
+   "set": "fin",
+   "rulings": [
+    "The value of X is calculated only once, as Judgment Bolt resolves."
+   ]
+  },
+  {
+   "name": "Choco, Seeker of Paradise",
+   "oracle_id": "7979bf83-5091-4e62-8885-ca1833a97306",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Bird",
+   "oracle_text": "Whenever one or more Birds you control attack, look at that many cards from the top of your library. You may put one of them into your hand. Then put any number of land cards from among them onto the battlefield tapped and the rest into your graveyard.\nLandfall — Whenever a land you control enters, Choco gets +1/+0 until end of turn.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Landfall"
+   ],
+   "collector_number": "569",
+   "set": "fin",
+   "rulings": [
+    "A landfall ability doesn't trigger if a permanent already on the battlefield becomes a land.",
+    "Whenever a land you control enters, each landfall ability of permanents you control will trigger. You can put them on the stack in any order. The last ability you put on the stack will be the first one to resolve. As a result, you can have those abilities resolve in the order of your choosing.",
+    "A landfall ability triggers whenever a land you control enters for any reason. It triggers whenever you play a land, as well as whenever a spell or ability puts a land onto the battlefield under your control."
+   ]
+  },
+  {
+   "name": "Ragnarok, Divine Deliverance",
+   "oracle_id": "14b839ef-80b1-4e7d-b2fd-38e973899cde",
+   "layout": "meld",
+   "mana_cost": "",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Beast Avatar",
+   "oracle_text": "Reach, vigilance, menace, trample, haste\nWhen Ragnarok dies, destroy target permanent and return target nonlegendary permanent card from your graveyard to the battlefield.",
+   "power": "7",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Haste",
+    "Trample",
+    "Menace"
+   ],
+   "collector_number": "99b",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Fang, Fearless l'Cie",
+     "type_line": "Legendary Creature — Human Warrior",
+     "component": "meld_part"
+    },
+    {
+     "name": "Vanille, Cheerful l'Cie",
+     "type_line": "Legendary Creature — Human Cleric",
+     "component": "meld_part"
+    }
+   ],
+   "rulings": [
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "Note that the permanent represented by the combined back faces is colorless unless it has a color indicator.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "If an effect moves a melded permanent to a new zone and then affects \"that card,\" it affects both cards.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "A player prompted to name a card may name the combined back face, and each player has the right to know that combined back face's characteristics at all times.",
+    "When two cards (for example, Fang, Fearless l'Cie and Vanille, Cheerful l'Cie) are melded, the result is a single permanent (in this case, Ragnarok, Divine Deliverance) that's represented by two cards. If the melded permanent goes to your graveyard from the battlefield, both cards are put into your graveyard. As the melded permanent leaves the battlefield, both of those cards are turned face up again. If the cards are put on the top or bottom of a library, their owner chooses their relative order.",
+    "In the Commander variant, a meld card's color identity is determined only by the mana costs and mana symbols in the rules text of its front face. No symbols or rules text of the permanent it melds into are considered.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "When two cards are exiled and melded, they each leave the battlefield, then return together as one new untapped object with no relation to either of the objects that left the battlefield. Counters, Auras, Equipment, and other effects that affected those two cards don't affect the melded permanent.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "Only two cards belonging to the same meld pair can be melded. Tokens, cards that aren't meld cards, or meld cards that don't form a meld pair can't be melded. If an effect instructs a player to meld cards that can't be melded, those cards remain in exile.",
+    "One card in each pair of meld cards has an ability that instructs you to exile the two cards and meld them. If you control more than one object with the specified name, you select one object with that name to exile.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "While a melded permanent is on the battlefield, it has only the characteristics of its combined back face. Any effects that modify how the new object enters the battlefield will consider only the combined back face.",
+    "While a meld card is in any zone other than the battlefield, it has only the characteristics of its front face. The same is true while it's on the battlefield with its front face up.",
+    "The mana value of a melded permanent is the sum of the mana values of its front faces. A permanent that becomes a copy of a melded permanent has only the characteristics of that combined back face, and its mana value is 0."
+   ]
+  },
+  {
+   "name": "Traveling Chocobo",
+   "oracle_id": "2e5675d3-3fb0-43b5-a65c-95aacbe48bf9",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bird",
+   "oracle_text": "You may look at the top card of your library any time.\nYou may play lands and cast Bird spells from the top of your library.\nIf a land or Bird you control entering the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "551c",
+   "set": "fin",
+   "rulings": [
+    "Replacement effects are unaffected by Traveling Chocobo's ability. For example, a Bird that enters the battlefield under your control with one +1/+1 counter on it won't receive an additional +1/+1 counter.",
+    "If the top card of your library changes while you're casting a spell, playing a land, or activating an ability, you can't look at the new top card until you finish doing so. This means that if you cast the top card of your library, you can't look at the next one until you're done paying for that spell.",
+    "In some cases involving linked abilities, an ability requires information about \"the exiled card.\" When this happens, the ability gets multiple answers. If these answers are being used to determine the value of a variable, the sum is used. For example, if Clive's Hideaway's hideaway ability triggers twice, two cards are eventually exiled. The last ability of Clive's Hideaway will allow you to cast both exiled cards without paying their mana costs (assuming you control four or more legendary creatures at that time.)",
+    "If a triggered ability is linked to a second ability, additional instances of that triggered ability are also linked to that second ability. If the second ability refers to \"the exiled card,\" it refers to all cards exiled by instances of the triggered ability.",
+    "Traveling Chocobo's last ability affects a permanent's own \"enters\" triggered abilities (as long as it's a land or Bird you control) as well as other triggered abilities that trigger when a land or Bird you control enters the battlefield. Such triggered abilities start with \"when\" or \"whenever.\" Some keyword abilities also include a triggered ability that happens when a permanent enters the battlefield.",
+    "You must follow all normal timing rules for Bird spells cast and lands played using the middle ability and must pay all costs for spells cast this way. To cast a spell this way, you may choose to pay any alternative costs or optional additional costs the spell may have (such as a kicker cost). You must pay any mandatory additional costs.",
+    "In a Two-Headed Giant game, Traveling Chocobo's second ability does not affect triggered abilities of permanents your teammate controls.",
+    "Traveling Chocobo lets you look at the top card of your library whenever you want (with one restriction—see below), even if you don't have priority. This action doesn't use the stack. Knowing what that card is becomes part of the information you have access to, just like you can look at the cards in your hand.",
+    "If a land or Bird you control entering at the same time as Traveling Chocobo (including Traveling Chocobo itself) causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+    "Abilities that apply \"as [this permanent] enters,\" such as choosing a color with Crossroads Village, are also unaffected.",
+    "If you control two Traveling Chocobos, a land or Bird you control entering causes abilities to trigger three times, not four. A third Traveling Chocobo causes abilities to trigger four times, a fourth causes abilities to trigger five times, and so on.",
+    "The top card of your library isn't in your hand, so you can't cycle it, discard it, or activate any of its abilities that could be activated from your hand.",
+    "Traveling Chocobo's ability doesn't copy the triggered ability; it just causes the ability to trigger an additional time. Any choices made as you put the ability onto the stack, such as modes and targets, are made separately for each instance of the ability. Any choices made on resolution, such as whether to put counters on a permanent, are also made individually."
+   ]
+  },
+  {
+   "name": "Garland, Royal Kidnapper",
+   "oracle_id": "ab914053-4384-415f-b1e8-09fecb5a30b8",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Knight",
+   "oracle_text": "When Garland enters, target opponent becomes the monarch.\nWhenever an opponent becomes the monarch, gain control of target creature that player controls for as long as they're the monarch.\nCreatures you control but don't own get +2/+2 and can't be sacrificed.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "442",
+   "set": "fic",
+   "rulings": [
+    "If the monarch leaves the game during another player's turn, that player becomes the monarch. If the monarch leaves the game during their turn, the next player in turn order becomes the monarch.",
+    "The owner of a token is the player who created that token or, in the case of a resolving copy of a permanent spell that became a token, the player who controlled that spell as it resolved.",
+    "The game starts with no monarch. As a player becomes the monarch, the current monarch (if any) ceases being the monarch. There is never more than one monarch at a time.",
+    "While Garland is on the battlefield, creatures you control but don't own can't be sacrificed for any reason. If an effect instructs you to sacrifice one of them, you can't and it remains on the battlefield. You also can't sacrifice one of them to pay a cost that requires you to sacrifice a creature.",
+    "If the triggered ability that causes the monarch to draw a card goes on the stack and a different player becomes the monarch before that ability resolves, the first player will still draw the card.",
+    "There are two inherent triggered abilities associated with being the monarch. These triggered abilities have no source and are controlled by the player who was the monarch at the time the abilities triggered. The full texts of these abilities are \"At the beginning of the monarch's end step, that player draws a card\" and \"Whenever a creature deals combat damage to the monarch, its controller becomes the monarch.\"",
+    "If an effect instructs you to sacrifice a creature and you control any creatures other than ones you control but don't own, you must sacrifice one of those other creatures. You can't try to sacrifice a creature you control but don't own.",
+    "While Garland's second ability is on the stack, if that opponent stops being the monarch before it resolves, you won't gain control of the target creature at all.",
+    "If combat damage dealt to the monarch causes that player to lose the game, the triggered ability that causes the controller of the attacking creature to become the monarch doesn't resolve. In most cases, the controller of the attacking creature will still become the monarch as it is likely their turn."
+   ]
+  },
+  {
+   "name": "The Destined Warrior",
+   "oracle_id": "393a5d32-fc8e-422b-a957-59e545a54cb6",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "First strike, vigilance, menace\nCleric, Rogue, Warrior, and Wizard spells you cast cost {1} less to cast.\nAt the beginning of combat on your turn, creatures you control get +1/+0 until end of turn. If you have a full party, creatures you control get +3/+0 until end of turn instead.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "First strike",
+    "Menace"
+   ],
+   "collector_number": "443",
+   "set": "fic",
+   "rulings": [
+    "The cost reduction applies only to generic mana in the total cost of Cleric, Rogue, Warrior, and Wizard spells you cast.",
+    "Some cards refer to you having a \"full party.\" This is true if the number of creatures in your party is four.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying (such as a flashback cost), add any cost increases (such as kicker costs), then apply any cost reductions (such as that of The Destined Warrior's fourth ability). The mana value of the spell is determined by only its mana cost, no matter what the total cost to cast that spell was.",
+    "If a creature has more than one party creature type, and there are multiple ways to count that creature that could result in a different number of creatures in your party, the highest such number is used. For example, if you control a Cleric and a Cleric Wizard, the number of creatures in your party is two. You can't choose to have it be just one by counting the Cleric Wizard first as a Cleric.",
+    "The cost reduction applies only once to any spell you cast that's a Cleric, Rogue, Warrior, or Wizard. A spell with more than one of these subtypes will still have its cost reduced by just {1}.",
+    "To determine \"the number of creatures in your party,\" check whether you control a Cleric, whether you control a Rogue, whether you control a Warrior, and whether you control a Wizard. The number is the total number of those checks to which you answered yes. Each creature you control can be counted for only one of those checks."
+   ]
+  },
+  {
+   "name": "The Destined White Mage",
+   "oracle_id": "c8110200-209e-423a-96b7-81a3ac32447c",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Cleric",
+   "oracle_text": "Lifelink\n{W}, {T}: Another target creature you control gains lifelink until end of turn.\nWhenever you gain life, put a +1/+1 counter on target creature you control. If you have a full party, put three +1/+1 counters on that creature instead.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "444",
+   "set": "fic",
+   "rulings": [
+    "If a creature you control is dealt lethal damage at the same time that you gain life, it can't receive a counter from The Destined White Mage's second ability in time to save it.",
+    "In a Two-Headed Giant game, life gained by your teammate won't cause The Destined White Mage's third ability to trigger, even though it caused your team's life total to increase.",
+    "The Destined White Mage's second ability triggers just once for each life-gaining event, whether it's 1 life from Al Bhed Salvagers or 3 life from Balamb T-Rexaur.",
+    "Each creature with lifelink dealing combat damage causes a separate life-gaining event. For example, if two creatures you control with lifelink deal combat damage at the same time, The Destined White Mage's third ability will trigger twice. However, if a single creature you control with lifelink deals combat damage to multiple creatures, players, planeswalkers, and/or battles at the same time (perhaps because it has trample or was blocked by more than one creature), the ability will trigger only once.",
+    "If a creature has more than one party creature type, and there are multiple ways to count that creature that could result in a different number of creatures in your party, the highest such number is used. For example, if you control a Cleric and a Cleric Wizard, the number of creatures in your party is two. You can't choose to have it be just one by counting the Cleric Wizard first as a Cleric.",
+    "If you gain an amount of life \"for each\" of something or \"equal to the number\" of something, that life is gained as one event and The Destined White Mage's third ability triggers only once.",
+    "To determine \"the number of creatures in your party,\" check whether you control a Cleric, whether you control a Rogue, whether you control a Warrior, and whether you control a Wizard. The number is the total number of those checks to which you answered yes. Each creature you control can be counted for only one of those checks.",
+    "Some cards refer to you having a \"full party.\" This is true if the number of creatures in your party is four."
+   ]
+  },
+  {
+   "name": "Chaos Shrine's Black Crystal",
+   "oracle_id": "b1ffba56-1c1b-44a5-ad8c-097c417ab276",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "Whenever a nontoken creature you control dies, exile it.\nAt the beginning of your upkeep, you may put a creature card exiled with Chaos Shrine's Black Crystal onto the battlefield under your control with a finality counter on it.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "445",
+   "set": "fic",
+   "rulings": [
+    "Multiple finality counters on a single permanent are redundant.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead."
+   ]
+  },
+  {
+   "name": "The Destined Thief",
+   "oracle_id": "7857c7b6-9676-47ac-bb28-d0b4cbda5fa7",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rogue",
+   "oracle_text": "The Destined Thief can't be blocked.\n{U}, {T}: Another target creature you control can't be blocked this turn.\nWhenever one or more creatures you control deal combat damage to one or more players, draw a card, then discard a card. If you have a full party, instead draw three cards.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "446",
+   "set": "fic",
+   "rulings": [
+    "If a creature has more than one party creature type, and there are multiple ways to count that creature that could result in a different number of creatures in your party, the highest such number is used. For example, if you control a Cleric and a Cleric Wizard, the number of creatures in your party is two. You can't choose to have it be just one by counting the Cleric Wizard first as a Cleric.",
+    "Once a creature you control has been blocked, activating The Destined Thief's second ability targeting that creature won't cause it to become unblocked.",
+    "Some cards refer to you having a \"full party.\" This is true if the number of creatures in your party is four.",
+    "To determine \"the number of creatures in your party,\" check whether you control a Cleric, whether you control a Rogue, whether you control a Warrior, and whether you control a Wizard. The number is the total number of those checks to which you answered yes. Each creature you control can be counted for only one of those checks.",
+    "If you have a full party, you won't discard at all when The Destined Thief's last ability resolves."
+   ]
+  },
+  {
+   "name": "The Destined Black Mage",
+   "oracle_id": "ef2aa67a-9531-495c-85c7-7f745bc19ce1",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Deathtouch\n{B}, {T}: Another target creature you control gains deathtouch until end of turn.\nWhenever you cast a noncreature spell, The Destined Black Mage deals 1 damage to each opponent. If you have a full party, it deals 3 damage to each opponent instead.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Deathtouch"
+   ],
+   "collector_number": "447",
+   "set": "fic",
+   "rulings": [
+    "The Destined Black Mage's last ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack.",
+    "Some cards refer to you having a \"full party.\" This is true if the number of creatures in your party is four.",
+    "If a creature has more than one party creature type, and there are multiple ways to count that creature that could result in a different number of creatures in your party, the highest such number is used. For example, if you control a Cleric and a Cleric Wizard, the number of creatures in your party is two. You can't choose to have it be just one by counting the Cleric Wizard first as a Cleric.",
+    "To determine \"the number of creatures in your party,\" check whether you control a Cleric, whether you control a Rogue, whether you control a Warrior, and whether you control a Wizard. The number is the total number of those checks to which you answered yes. Each creature you control can be counted for only one of those checks."
+   ]
+  }
+ ]
+}

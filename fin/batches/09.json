@@ -1,0 +1,345 @@
+{
+ "batch": 9,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Jenova, Ancient Calamity",
+   "oracle_id": "9370f6bf-d6a0-4c5b-828f-7229f563cc07",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Alien",
+   "oracle_text": "At the beginning of combat on your turn, put a number of +1/+1 counters equal to Jenova's power on up to one other target creature. That creature becomes a Mutant in addition to its other types.\nWhenever a Mutant you control dies during your turn, you draw cards equal to its power.",
+   "power": "1",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "493",
+   "set": "fin",
+   "rulings": [
+    "If Jenova dies at the same time as one or more Mutants you control, its last ability will trigger for each of those Mutants (including itself if it somehow became a mutant).",
+    "If Jenova isn't on the battlefield at the time its first ability resolves, use Jenova's power as it last existed on the battlefield to determine how many counters to put on the target creature.",
+    "Use the power of the Mutant that died as it last existed on the battlefield to determine how many cards to draw with Jenova's last ability."
+   ]
+  },
+  {
+   "name": "Judge Magister Gabranth",
+   "oracle_id": "1a846ad6-15c9-4bf9-9127-612018a557b9",
+   "layout": "normal",
+   "mana_cost": "{W}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Advisor Knight",
+   "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever another creature or artifact you control dies, put a +1/+1 counter on Judge Magister Gabranth.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "495",
+   "set": "fin"
+  },
+  {
+   "name": "Kefka, Court Mage // Kefka, Ruler of Ruin",
+   "oracle_id": "6d3ca5cb-781d-4608-b7f1-38c020536376",
+   "layout": "transform",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Wizard // Legendary Creature — Avatar Wizard",
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Transform"
+   ],
+   "collector_number": "496",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Kefka, Court Mage",
+     "mana_cost": "{2}{U}{B}{R}",
+     "type_line": "Legendary Creature — Human Wizard",
+     "oracle_text": "Whenever Kefka enters or attacks, each player discards a card. Then you draw a card for each card type among cards discarded this way.\n{8}: Each opponent sacrifices a permanent of their choice. Transform Kefka. Activate only as a sorcery.",
+     "power": "4",
+     "toughness": "5"
+    },
+    {
+     "name": "Kefka, Ruler of Ruin",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Avatar Wizard",
+     "oracle_text": "Flying\nWhenever an opponent loses life during your turn, you draw that many cards.",
+     "power": "5",
+     "toughness": "7"
+    }
+   ],
+   "rulings": [
+    "The card types in Magic include artifact, battle, creature, enchantment, instant, kindred, land, planeswalker, and sorcery. Legendary, basic, and snow are supertypes, not card types; Hero and Saga are subtypes, not card types.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "While resolving Kefka, Court Mage's last ability, the next opponent in turn order chooses a permanent they control, then each other opponent in turn order does the same. Then each of the chosen permanents are sacrificed simultaneously.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so."
+   ]
+  },
+  {
+   "name": "Rinoa Heartilly",
+   "oracle_id": "8896c74b-d466-4c25-94cf-82b5e2b1fdef",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Rebel Warlock",
+   "oracle_text": "When Rinoa Heartilly enters, create Angelo, a legendary 1/1 green and white Dog creature token.\nAngelo Cannon — Whenever Rinoa Heartilly attacks, another target creature you control gets +1/+1 until end of turn for each creature you control.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Angelo Cannon"
+   ],
+   "collector_number": "502",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Angelo",
+     "type_line": "Token Legendary Creature — Dog",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Rufus Shinra",
+   "oracle_id": "0caeb396-e574-4e80-a1f6-79988fe9ba19",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Whenever Rufus Shinra attacks, if you don't control a creature named Darkstar, create Darkstar, a legendary 2/2 white and black Dog creature token.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "503",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Darkstar",
+     "type_line": "Token Legendary Creature — Dog",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Sin, Spira's Punishment",
+   "oracle_id": "3bcc378c-4470-4757-a0d5-025a32c918ea",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{G}{U}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Leviathan Avatar",
+   "oracle_text": "Flying\nWhenever Sin enters or attacks, exile a permanent card from your graveyard at random, then create a tapped token that's a copy of that card. If the exiled card is a land card, repeat this process.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "508",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied card has {X} in its mana cost, X is 0.",
+    "The token copies exactly what was printed on the original card and nothing else. It doesn't copy any information about the object the card was before it was put into your graveyard.",
+    "If a card copied by the token had any \"when [this permanent] enters\" abilities, the token also has those abilities, and they'll trigger when it's created. Similarly, any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities that the token has copied will also work."
+   ]
+  },
+  {
+   "name": "Zidane, Tantalus Thief",
+   "oracle_id": "f267fb54-1881-464c-81af-9e03c3f3b41d",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Mutant Scout",
+   "oracle_text": "When Zidane enters, gain control of target creature an opponent controls until end of turn. Untap it. It gains lifelink and haste until end of turn.\nWhenever an opponent gains control of a permanent from you, you create a Treasure token.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "518",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If an opponent gains control of Zidane from you, Zidane's last ability will trigger and you'll create a Treasure token. If an opponent gains control of Zidane and one or more other permanents from you simultaneously, Zidane's last ability will trigger for each of those permanents, including itself. This means you'll create a Treasure token for each of those permanents, including Zidane."
+   ]
+  },
+  {
+   "name": "Fang, Fearless l'Cie",
+   "oracle_id": "04ac8b2c-95e9-40e9-8cc0-af9b075a94c0",
+   "layout": "meld",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Whenever one or more cards leave your graveyard, you draw a card and you lose 1 life. This ability triggers only once each turn.\n(Melds with Vanille, Cheerful l'Cie.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "526",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Vanille, Cheerful l'Cie",
+     "type_line": "Legendary Creature — Human Cleric",
+     "component": "meld_part"
+    }
+   ],
+   "rulings": [
+    "While a melded permanent is on the battlefield, it has only the characteristics of its combined back face. Any effects that modify how the new object enters the battlefield will consider only the combined back face.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "One card in each pair of meld cards has an ability that instructs you to exile the two cards and meld them. If you control more than one object with the specified name, you select one object with that name to exile.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "While a meld card is in any zone other than the battlefield, it has only the characteristics of its front face. The same is true while it's on the battlefield with its front face up.",
+    "If multiple cards leave your graveyard at the same time, Fang's ability will trigger only once.",
+    "If an effect moves a melded permanent to a new zone and then affects \"that card,\" it affects both cards.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "When two cards are exiled and melded, they each leave the battlefield, then return together as one new untapped object with no relation to either of the objects that left the battlefield. Counters, Auras, Equipment, and other effects that affected those two cards don't affect the melded permanent.",
+    "Vanille's second ability checks the battlefield at the moment it would trigger to see if you own and control Vanille and a creature named Fang, Fearless l'Cie. If you don't, the ability won't trigger at all. If it does trigger, the ability will check again as it tries to resolve. If you don't control both Fang and Vanille at that time, the ability won't resolve, you won't have the opportunity to pay {3}{B}{G}, and none of the ability's other effects will happen.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A player prompted to name a card may name the combined back face, and each player has the right to know that combined back face's characteristics at all times.",
+    "In the Commander variant, a meld card's color identity is determined only by the mana costs and mana symbols in the rules text of its front face. No symbols or rules text of the permanent it melds into are considered.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "Note that the permanent represented by the combined back faces is colorless unless it has a color indicator.",
+    "Only two cards belonging to the same meld pair can be melded. Tokens, cards that aren't meld cards, or meld cards that don't form a meld pair can't be melded. If an effect instructs a player to meld cards that can't be melded, those cards remain in exile.",
+    "The mana value of a melded permanent is the sum of the mana values of its front faces. A permanent that becomes a copy of a melded permanent has only the characteristics of that combined back face, and its mana value is 0.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "When two cards (for example, Fang, Fearless l'Cie and Vanille, Cheerful l'Cie) are melded, the result is a single permanent (in this case, Ragnarok, Divine Deliverance) that's represented by two cards. If the melded permanent goes to your graveyard from the battlefield, both cards are put into your graveyard. As the melded permanent leaves the battlefield, both of those cards are turned face up again. If the cards are put on the top or bottom of a library, their owner chooses their relative order."
+   ]
+  },
+  {
+   "name": "Seifer Almasy",
+   "oracle_id": "7088a901-0489-41c3-9f2f-633939514de8",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Knight",
+   "oracle_text": "Whenever a creature you control attacks alone, it gains double strike until end of turn.\nFire Cross — Whenever Seifer Almasy deals combat damage to a player, you may cast target instant or sorcery card with mana value 3 or less from your graveyard without paying its mana cost. If that spell would be put into your graveyard, exile it instead.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Fire Cross"
+   ],
+   "collector_number": "534",
+   "set": "fin",
+   "rulings": [
+    "You cast the instant or sorcery while Seifer Almasy's last ability is resolving and still on the stack. You can't wait to cast it later in the turn. Timing restrictions based on the card's type are ignored.",
+    "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those to cast the spell.",
+    "If a card in your graveyard has {X} in its mana cost, X is 0 for the purpose of determining its mana value and you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "A creature attacks alone if it's the only creature declared as an attacker during the declare attackers step (including creatures controlled by your teammates, if applicable). For example, Seifer Almasy's first ability won't trigger if you attack with multiple creatures and all but one of them are removed from combat. Similarly, creatures that enter the battlefield attacking later in combat won't be considered when determining whether or not a creature attacked alone."
+   ]
+  },
+  {
+   "name": "Hope Estheim",
+   "oracle_id": "187a110c-032a-42e1-be2d-3cfaaa9495f8",
+   "layout": "normal",
+   "mana_cost": "{W}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Lifelink\nAt the beginning of your end step, each opponent mills X cards, where X is the amount of life you gained this turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Mill"
+   ],
+   "collector_number": "541",
+   "set": "fin",
+   "rulings": [
+    "The value of X is calculated only once, as Hope's last ability resolves."
+   ]
+  }
+ ]
+}

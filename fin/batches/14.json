@@ -1,0 +1,327 @@
+{
+ "batch": 14,
+ "set": [
+  "pfin"
+ ],
+ "cards": [
+  {
+   "name": "Summon: Leviathan",
+   "oracle_id": "b38d1811-64d7-4a35-a86c-3291eecd8391",
+   "layout": "saga",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Enchantment Creature — Saga Leviathan",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Return each creature that isn't a Kraken, Leviathan, Merfolk, Octopus, or Serpent to its owner's hand.\nII, III — Until end of turn, whenever a Kraken, Leviathan, Merfolk, Octopus, or Serpent attacks, draw a card.\nWard {2}",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "77s",
+   "set": "pfin",
+   "rulings": [
+    "If multiple chapter abilities trigger at the same time, their controller puts them on the stack in any order. If any of them require targets, those targets are chosen as you put the abilities on the stack, before any of those abilities resolve.",
+    "Due to a rules change that takes effect with this release (see below for details), a Saga that somehow loses all of its chapter abilities will not be sacrificed as a state-based action. It will also not gain a lore counter at the beginning of each of its controller's first main phases.",
+    "As a Saga enters, its controller puts a lore counter on it. As your first main phase begins (immediately after your draw step), you put another lore counter on each Saga you control. Putting a lore counter on a Saga in either of these ways doesn't use the stack.",
+    "Removing lore counters won't cause a previous chapter ability to trigger. If lore counters are removed from a Saga, the appropriate chapter abilities will trigger again when the Saga receives more lore counters.",
+    "Once a chapter ability has triggered, the ability on the stack won't be affected if the Saga gains or loses counters, or if it leaves the battlefield.",
+    "Saga creatures have two sections to their text boxes. The first section, above the type line, contains their chapter abilities, and the second section, below the type line, contains any other abilities (or italicized flavor text). Any abilities in the latter section aren't chapter abilities and apply no matter how many lore counters are on the creature.",
+    "Each symbol on the left of a Saga's text box represents a chapter ability. A chapter ability is a triggered ability that triggers when a lore counter that is put on the Saga causes the number of lore counters on the Saga to become equal to or greater than the ability's chapter number. Chapter abilities are put onto the stack and may be responded to.",
+    "A chapter ability doesn't trigger if a lore counter is put on a Saga that already had a number of lore counters greater than or equal to that chapter's number. For example, the third lore counter put on a Saga causes the chapter III ability to trigger, but chapters I and II won't trigger again.",
+    "Once the number of lore counters on a Saga is greater than or equal to the greatest number among its chapter abilities, the Saga's controller sacrifices it as soon as its chapter ability has left the stack, most likely by resolving or being countered. This state-based action doesn't use the stack."
+   ]
+  },
+  {
+   "name": "Jecht, Reluctant Guardian // Braska's Final Aeon",
+   "oracle_id": "b6cebf8d-37e1-42de-b3f1-1c174ab17ac8",
+   "layout": "transform",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior // Legendary Enchantment Creature — Saga Nightmare",
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Transform",
+    "Menace"
+   ],
+   "collector_number": "104s",
+   "set": "pfin",
+   "card_faces": [
+    {
+     "name": "Jecht, Reluctant Guardian",
+     "mana_cost": "{3}{B}",
+     "type_line": "Legendary Creature — Human Warrior",
+     "oracle_text": "Menace\nWhenever Jecht deals combat damage to a player, you may exile it, then return it to the battlefield transformed under its owner's control.",
+     "power": "4",
+     "toughness": "3"
+    },
+    {
+     "name": "Braska's Final Aeon",
+     "mana_cost": "",
+     "type_line": "Legendary Enchantment Creature — Saga Nightmare",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II — Jecht Beam — Each opponent discards a card and you draw a card.\nIII — Ultimate Jecht Shot — Each opponent sacrifices two creatures of their choice.\nMenace",
+     "power": "7",
+     "toughness": "7"
+    }
+   ],
+   "rulings": [
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "As Braska's Final Aeon's first or second chapter ability resolves, the next opponent in turn order (or, if it's an opponent's turn, that opponent) chooses a card in hand without revealing it, then each other opponent in turn order does the same. Then the chosen cards are discarded at the same time. Finally, you draw a card."
+   ]
+  },
+  {
+   "name": "Clive, Ifrit's Dominant // Ifrit, Warden of Inferno",
+   "oracle_id": "ceba3d03-be5a-4dd7-b829-7db216a0f44e",
+   "layout": "transform",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Noble Warrior // Legendary Enchantment Creature — Saga Demon",
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Transform",
+    "Fight"
+   ],
+   "collector_number": "133s",
+   "set": "pfin",
+   "card_faces": [
+    {
+     "name": "Clive, Ifrit's Dominant",
+     "mana_cost": "{4}{R}{R}",
+     "type_line": "Legendary Creature — Human Noble Warrior",
+     "oracle_text": "When Clive enters, you may discard your hand, then draw cards equal to your devotion to red. (Each {R} in the mana costs of permanents you control counts toward your devotion to red.)\n{4}{R}{R}, {T}: Exile Clive, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+     "power": "5",
+     "toughness": "5"
+    },
+    {
+     "name": "Ifrit, Warden of Inferno",
+     "mana_cost": "",
+     "type_line": "Legendary Enchantment Creature — Saga Demon",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Lunge — Ifrit fights up to one other target creature.\nII, III — Brimstone — Add {R}{R}{R}{R}. If Ifrit has three or more lore counters on it, exile it, then return it to the battlefield (front face up).",
+     "power": "9",
+     "toughness": "9"
+    }
+   ],
+   "rulings": [
+    "Colorless and generic mana symbols ({C}, {0}, {1}, {2}, {X}, and so on) in mana costs of permanents you control don't count toward your devotion to any color.",
+    "If the exiled card is a land card, you may play it only if you have an available land play remaining this turn.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Mana symbols in the text boxes of permanents you control don't count toward your devotion to any color.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Count the number of red mana symbols among the mana costs of permanents you control as Clive's triggered ability resolves to determine your devotion to red. If Clive is still on the battlefield at that time, it will be included in that count.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "\"Hideaway N\" means \"When this permanent enters, look at the top N cards of your library. Exile one of them face down and put the rest on the bottom of your library in a random order. The exiled card gains ‘The player who controls the permanent that exiled this card may look at this card in the exile zone.'\"",
+    "Clive's Hideaway's last ability only cares if you control four or more legendary creatures at the time it resolves. You don't even have to control four or more legendary creatures when you activate it.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "You may choose to discard your hand even if your hand contains zero cards.",
+    "Any player who has controlled a permanent with a hideaway ability since a card was exiled with it may look at that card.",
+    "If a spell has {X} in its mana cost, you must choose 0 as the value of X when playing it without paying its mana cost.",
+    "Hybrid mana symbols, monocolored hybrid mana symbols, and Phyrexian mana symbols do count toward your devotion to their color(s).",
+    "If you put an Aura on an opponent's permanent, you still control the Aura, and mana symbols in its mana cost count towards your devotion. Similarly, if you make an opponent the protector of a Siege you control, mana symbols in that battle's mana cost count toward your devotion.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "You play the card while Clive's Hideaway's last ability is resolving and still on the stack. You can't wait to play it later in the turn.",
+    "If you cast a spell \"without paying its mana cost,\" you can't choose to cast it for any alternative costs. You can, however, pay additional costs. If the spell has any mandatory additional costs, those must be paid to cast the spell.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color."
+   ]
+  },
+  {
+   "name": "Firion, Wild Rose Warrior",
+   "oracle_id": "df42c768-34ca-4ebf-8f66-eaccf7261f70",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rebel Warrior",
+   "oracle_text": "Equipped creatures you control have haste.\nWhenever a nontoken Equipment you control enters, create a token that's a copy of it, except it has \"This Equipment's equip abilities cost {2} less to activate.\" Sacrifice that token at the beginning of the next upkeep.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "137s",
+   "set": "pfin",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied Equipment has {X} in its mana cost, X is 0.",
+    "If the Equipment copied by the token had any \"when [this permanent] enters\" abilities, the token also has those abilities, and they'll trigger when it's created. Similarly, any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities that the token has copied will also work.",
+    "The token copies exactly what was printed on the original Equipment, with the listed exception (unless that Equipment is copying something else; see below). It doesn't copy whether that Equipment is tapped or untapped, whether it has any counters on it or any Auras or Equipment attached to it, or any non-copy effects that have changed its types, color, power and toughness, and so on.",
+    "If the copied Equipment is copying something else, then the token enters as whatever that Equipment copied, with the listed exception."
+   ]
+  },
+  {
+   "name": "Raubahn, Bull of Ala Mhigo",
+   "oracle_id": "d81d5749-ab4d-42c5-8903-0b400f10fe33",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Ward—Pay life equal to Raubahn's power.\nWhenever Raubahn attacks, attach up to one target Equipment you control to target attacking creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "151s",
+   "set": "pfin",
+   "rulings": [
+    "Use Raubahn's power at the time the ward ability resolves to determine how much life must be paid. If Raubahn is no longer on the battlefield at that time, use Raubahn's power as it last existed on the battlefield. (If this matters, you must have a very good reason for wanting to pay life.)",
+    "If the target Equipment can't legally be attached to the target attacking creature when Raubahn's last ability resolves, the Equipment won't move."
+   ]
+  },
+  {
+   "name": "Jumbo Cactuar",
+   "oracle_id": "e0bdfbb4-3060-4492-bd9b-0c47e719400a",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Plant",
+   "oracle_text": "10,000 Needles — Whenever this creature attacks, it gets +9999/+0 until end of turn.",
+   "power": "1",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "10,000 Needles"
+   ],
+   "collector_number": "191s",
+   "set": "pfin"
+  },
+  {
+   "name": "Serah Farron // Crystallized Serah",
+   "oracle_id": "a8a7a3b7-015c-4fbd-8b90-e0ddf71663e4",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Citizen // Legendary Artifact",
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "240s",
+   "set": "pfin",
+   "card_faces": [
+    {
+     "name": "Serah Farron",
+     "mana_cost": "{1}{G}{W}",
+     "type_line": "Legendary Creature — Human Citizen",
+     "oracle_text": "The first legendary creature spell you cast each turn costs {2} less to cast.\nAt the beginning of combat on your turn, if you control two or more other legendary creatures, you may transform Serah Farron.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "Crystallized Serah",
+     "mana_cost": "",
+     "type_line": "Legendary Artifact",
+     "oracle_text": "The first legendary creature spell you cast each turn costs {2} less to cast.\nLegendary creatures you control get +2/+2."
+    }
+   ],
+   "rulings": [
+    "The cost reduction applies only to generic mana in the total cost of legendary creature spells you cast.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying (such as a flashback cost), add any cost increases (such as kicker costs), then apply any cost reductions (such as that of Serah Farron or Crystallized Serah's first abilities). The mana value of the spell is determined by only its mana cost, no matter what the total cost to cast that spell was.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Serah Farron's last ability checks at the moment it would trigger to see if you control two or more other legendary creatures. If you don't, the ability won't trigger at all. If it does trigger, the ability will check again as it tries to resolve. If you don't control two or more other legendary creatures at that time, the ability won't resolve and none of its effects will happen.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile."
+   ]
+  },
+  {
+   "name": "Excalibur II",
+   "oracle_id": "bfb6651c-e0b3-4dbd-b26a-3eeb690985fc",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Legendary Artifact — Equipment",
+   "oracle_text": "Whenever you gain life, put a charge counter on Excalibur II.\nEquipped creature gets +1/+1 for each charge counter on Excalibur II.\nEquip {3}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "257s",
+   "set": "pfin",
+   "rulings": [
+    "In a Two-Headed Giant game, life gained by your teammate won't cause Excalibur II's first ability to trigger, even though it caused your team's life total to increase.",
+    "If you gain an amount of life \"for each\" of something or \"equal to the number\" of something, that life is gained as one event and Excalibur II's first ability triggers only once.",
+    "If the equipped creature is dealt lethal damage at the same time that you gain life, it will die before Excalibur II's first ability would resolve.",
+    "Each creature with lifelink dealing combat damage causes a separate life-gaining event. For example, if two creatures you control with lifelink deal combat damage at the same time, Excalibur II's ability will trigger twice. However, if a single creature you control with lifelink deals combat damage to multiple creatures, players, planeswalkers, and/or battles at the same time (perhaps because it has trample or was blocked by more than one creature), the ability will trigger only once.",
+    "Excalibur II's first ability triggers just once for each life-gaining event, whether it's 1 life from Al Bhed Salvagers or 3 life from Balamb T-Rexaur."
+   ]
+  },
+  {
+   "name": "Genji Glove",
+   "oracle_id": "8242cd78-6675-43b5-8924-0a88c3aa6f76",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature has double strike.\nWhenever equipped creature attacks, if it's the first combat phase of the turn, untap it. After this phase, there is an additional combat phase.\nEquip {3}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "258s",
+   "set": "pfin"
+  },
+  {
+   "name": "Clive's Hideaway",
+   "oracle_id": "283f743f-6e79-49de-b7ed-08e6ffb64cc6",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Town",
+   "oracle_text": "Hideaway 4 (When this land enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in a random order.)\n{T}: Add {C}.\n{2}, {T}: You may play the exiled card without paying its mana cost if you control four or more legendary creatures.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Hideaway"
+   ],
+   "collector_number": "275s",
+   "set": "pfin",
+   "rulings": [
+    "Town is a land type with no special meaning. It doesn't grant the land any intrinsic abilities. Other cards may care about which lands are Towns."
+   ]
+  }
+ ]
+}

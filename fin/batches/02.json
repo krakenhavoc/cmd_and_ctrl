@@ -1,0 +1,347 @@
+{
+ "batch": 2,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Ice Magic",
+   "oracle_id": "88b0bd3b-d832-4059-b0d9-04630917ae94",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Tiered (Choose one additional cost.)\n• Blizzard — {0} — Return target creature to its owner's hand.\n• Blizzara — {2} — Target creature's owner puts it on their choice of the top or bottom of their library.\n• Blizzaga — {5}{U} — Target creature's owner shuffles it into their library.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Blizzard",
+    "Blizzara",
+    "Blizzaga",
+    "Tiered"
+   ],
+   "collector_number": "56",
+   "set": "fin",
+   "rulings": [
+    "If a mode requires a target, you can select that mode only if there's a legal target available. Ignore the targeting requirements for modes you don't choose.",
+    "If an effect allows you to cast a spell with tiered \"without paying its mana cost,\" you must still choose exactly one mode and pay the associated additional cost.",
+    "You must choose exactly one of the listed modes and pay its associated additional cost in order to cast a spell with tiered.",
+    "If a spell with tiered is copied, the effect that creates the copy may allow you to choose new targets. You cannot choose a new mode.",
+    "You choose the mode as you cast the spell with tiered. Once the mode is chosen, it can't be changed.",
+    "The mana value of a spell with tiered is determined only by its mana cost (in the upper right corner of the card). It doesn't matter which mode you choose or which additional costs you pay, including any additional costs imposed by other effects."
+   ]
+  },
+  {
+   "name": "Il Mheg Pixie",
+   "oracle_id": "c2c47e13-b581-41a8-a4af-542557a6249a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie",
+   "oracle_text": "Flying\nWhenever this creature attacks, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil"
+   ],
+   "collector_number": "57",
+   "set": "fin"
+  },
+  {
+   "name": "Jill, Shiva's Dominant // Shiva, Warden of Ice",
+   "oracle_id": "c6655e05-9e31-4a74-a97d-1eeb473fe900",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble Warrior // Legendary Enchantment Creature — Saga Elemental",
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Transform"
+   ],
+   "collector_number": "58",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Jill, Shiva's Dominant",
+     "mana_cost": "{2}{U}",
+     "type_line": "Legendary Creature — Human Noble Warrior",
+     "oracle_text": "When Jill enters, return up to one other target nonland permanent to its owner's hand.\n{3}{U}{U}, {T}: Exile Jill, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "Shiva, Warden of Ice",
+     "mana_cost": "",
+     "type_line": "Legendary Enchantment Creature — Saga Elemental",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Mesmerize — Target creature can't be blocked this turn.\nIII — Cold Snap — Tap all lands your opponents control. Exile Shiva, then return it to the battlefield (front face up).",
+     "power": "4",
+     "toughness": "5"
+    }
+   ],
+   "rulings": [
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored."
+   ]
+  },
+  {
+   "name": "Qiqirn Merchant",
+   "oracle_id": "560cb970-1c1b-4ba7-8352-bc67b4ea7843",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Beast Citizen",
+   "oracle_text": "{1}, {T}: Draw a card, then discard a card.\n{7}, {T}, Sacrifice this creature: Draw three cards. This ability costs {1} less to activate for each Town you control.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "65",
+   "set": "fin"
+  },
+  {
+   "name": "Retrieve the Esper",
+   "oracle_id": "9d6fdbd4-ba51-4df1-b383-9b709b36a8d7",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 3/3 blue Robot Warrior artifact creature token. Then if this spell was cast from a graveyard, put two +1/+1 counters on that token.\nFlashback {5}{U} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "68",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Robot Warrior",
+     "type_line": "Token Artifact Creature — Robot Warrior",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was."
+   ]
+  },
+  {
+   "name": "Sidequest: Card Collection // Magicked Card",
+   "oracle_id": "0c2095b0-478d-45b4-a34d-b19eb77cea4c",
+   "layout": "transform",
+   "cmc": 4.0,
+   "type_line": "Enchantment // Artifact — Vehicle",
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Transform",
+    "Crew"
+   ],
+   "collector_number": "73",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Sidequest: Card Collection",
+     "mana_cost": "{3}{U}",
+     "type_line": "Enchantment",
+     "oracle_text": "When this enchantment enters, draw three cards, then discard two cards.\nAt the beginning of your end step, if eight or more cards are in your graveyard, transform this enchantment."
+    },
+    {
+     "name": "Magicked Card",
+     "mana_cost": "",
+     "type_line": "Artifact — Vehicle",
+     "oracle_text": "Flying\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+     "power": "4",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Sidequest: Card Collection's last ability checks at the moment it would trigger to see if you have eight or more cards in your graveyard. If you don't, the ability won't trigger at all. If it does trigger, the ability will check again as it tries to resolve. If there aren't eight or more cards in your graveyard at that time, the ability won't resolve and none of its effects will happen.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so."
+   ]
+  },
+  {
+   "name": "Cecil, Dark Knight // Cecil, Redeemed Paladin",
+   "oracle_id": "e4719557-d94e-490f-8a56-c1867a01d2ef",
+   "layout": "transform",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Human Knight // Legendary Creature — Human Knight",
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Protect",
+    "Transform",
+    "Darkness",
+    "Deathtouch"
+   ],
+   "collector_number": "91",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Cecil, Dark Knight",
+     "mana_cost": "{B}",
+     "type_line": "Legendary Creature — Human Knight",
+     "oracle_text": "Deathtouch\nDarkness — Whenever Cecil deals damage, you lose that much life. Then if your life total is less than or equal to half your starting life total, untap Cecil and transform it.",
+     "power": "2",
+     "toughness": "3"
+    },
+    {
+     "name": "Cecil, Redeemed Paladin",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Human Knight",
+     "oracle_text": "Lifelink\nProtect — Whenever Cecil attacks, other attacking creatures gain indestructible until end of turn.",
+     "power": "4",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If Cecil, Dark Knight is dealt lethal damage at the same time it deals damage (probably because it blocked or became blocked), its last ability will still trigger. You'll still lose life, but you won't untap or transform Cecil, Dark Knight because it won't be on the battlefield anymore.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile."
+   ]
+  },
+  {
+   "name": "Dark Knight's Greatsword",
+   "oracle_id": "eda09ed4-7509-4d1e-b169-2b7c1c87e936",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Job select (When this Equipment enters, create a 1/1 colorless Hero creature token, then attach this to it.)\nEquipped creature gets +3/+0 and is a Knight in addition to its other types.\nChaosbringer — Equip—Pay 3 life. Activate only once each turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Chaosbringer",
+    "Job select",
+    "Equip"
+   ],
+   "collector_number": "95",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Hero",
+     "type_line": "Token Creature — Hero",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the Hero token is destroyed, the Equipment stays on the battlefield.",
+    "The Hero token enters as a 1/1 creature, then the Equipment becomes attached to it. Abilities that trigger when a creature enters the battlefield see that a 1/1 creature entered the battlefield.",
+    "If the job select ability causes two Hero tokens to be created (due to an effect such as that of Doubling Season), the Equipment becomes attached to only one of them.",
+    "You may pay the Equipment's equip cost as normal to move it from the Hero token to another creature you control."
+   ]
+  },
+  {
+   "name": "The Final Days",
+   "oracle_id": "f2b88031-bfb7-46c4-abdd-3b6b5f5acfa4",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create two tapped 2/2 black Horror creature tokens. If this spell was cast from a graveyard, instead create X of those tokens, where X is the number of creature cards in your graveyard.\nFlashback {4}{B}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "101",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Horror",
+     "type_line": "Token Creature — Horror",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "The value of X is calculated only once, as The Final Days resolves."
+   ]
+  },
+  {
+   "name": "Hecteyes",
+   "oracle_id": "7a11b4ed-430d-4ef8-b0c1-6a022f12448c",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Ooze Horror",
+   "oracle_text": "When this creature enters, each opponent discards a card.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "103",
+   "set": "fin",
+   "rulings": [
+    "As Hecteyes's ability resolves, the next opponent in turn order (or, if it's an opponent's turn, that opponent) chooses a card in hand without revealing it, then each other opponent in turn order does the same. Then the chosen cards are discarded at the same time."
+   ]
+  }
+ ]
+}

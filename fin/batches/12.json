@@ -1,0 +1,314 @@
+{
+ "batch": 12,
+ "set": [
+  "fca",
+  "fic"
+ ],
+ "cards": [
+  {
+   "name": "Flash Photography",
+   "oracle_id": "a92ae7b0-cbbb-44a8-bfd8-2a68f4c1ce1a",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "You may cast this spell as though it had flash if it targets a permanent you control.\nCreate a token that's a copy of target permanent.\nFlashback {4}{U}{U}",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "463",
+   "set": "fic",
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "If the copied permanent is copying something else, then the token enters as whatever that permanent copied.",
+    "The token copies exactly what was printed on the original permanent (unless that permanent is copying something else or is a token; see below). It doesn't copy whether that permanent is tapped or untapped, whether it has any counters on it or any Auras or Equipment attached to it, or any non-copy effects that have changed its types, color, power and toughness, and so on.",
+    "If the copied permanent is a token, the new token that's created copies the original characteristics of that token as stated by the effect that created the token.",
+    "If the copied permanent has {X} in its mana cost, X is 0.",
+    "If the permanent copied by the token had any \"when [this permanent] enters\" abilities, the token also has those abilities, and they'll trigger when it's created. Similarly, any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities that the token has copied will also work."
+   ]
+  },
+  {
+   "name": "Campsite Cuisine",
+   "oracle_id": "45f58002-c831-4b35-8b8c-9a502118e2ec",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever this enchantment or a legendary creature you control enters, create a Food token.\nWhenever you attack, you may sacrifice X Foods. When you do, up to X target attacking creatures each get +3/+3 and gain trample and indestructible until end of turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "464",
+   "set": "fic",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You can't sacrifice a Food to pay multiple costs. For example, you can't sacrifice a Food token to activate its own ability and also to pay the cost of Campsite Cuisine's last ability.",
+    "If an effect refers to a Food, it means any Food artifact, not just a Food artifact token. For example, you can sacrifice Instant Ramen (an Artifact – Food from the Magic: The Gathering—FINAL FANTASY main set) to pay the cost of Campsite Cuisine's last ability.",
+    "A Food token is a colorless Food artifact token with \"{2}, {T}, Sacrifice this token: You gain 3 life.\""
+   ]
+  },
+  {
+   "name": "Warrior's Resolve",
+   "oracle_id": "e3f68aff-9347-452a-8f26-b344016a275d",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control have training. (Whenever a creature you control attacks with another creature with greater power, put a +1/+1 counter on the creature with lesser power.)\nAt the beginning of your end step, if you control a creature with a +1/+1 counter on it that attacked this turn, draw a card.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "465",
+   "set": "fic",
+   "rulings": [
+    "Warrior's Resolve's last ability checks at the moment it would trigger to see if any creatures you currently control with one or more +1/+1 counters on them attacked this turn. If none did, the ability won't trigger at all. It doesn't matter if the creatures had +1/+1 counters on them when they attacked.",
+    "A creature's training ability triggers only when both that creature and a creature with greater power are declared as attackers. Increasing a creature's power after attackers are declared won't cause a training ability to trigger.",
+    "Once a creature's training ability has triggered, destroying the other attacking creature or reducing its power won't stop the creature with training from getting a +1/+1 counter."
+   ]
+  },
+  {
+   "name": "Godo, Bandit Warlord",
+   "oracle_id": "f890d51a-dc90-4179-8423-4738a72a527c",
+   "layout": "normal",
+   "mana_cost": "{5}{R}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Human Barbarian",
+   "oracle_text": "When Godo enters, you may search your library for an Equipment card, put it onto the battlefield, then shuffle.\nWhenever Godo attacks for the first time each turn, untap it and all Samurai you control. After this phase, there is an additional combat phase.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "13",
+   "set": "fca",
+   "rulings": [
+    "Unlike many effects that grant additional combat phases, you don't get an additional main phase with Godo, Bandit Warlord's ability. The additional combat phase happens immediately after the first combat phase."
+   ]
+  },
+  {
+   "name": "Jodah, the Unifier",
+   "oracle_id": "490a8045-e160-4ccf-a05e-658ad2b7ac2d",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Legendary creatures you control get +X/+X, where X is the number of legendary creatures you control.\nWhenever you cast a legendary spell from your hand, exile cards from the top of your library until you exile a legendary nonland card with lesser mana value. You may cast that card without paying its mana cost. Put the rest on the bottom of your library in a random order.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "17",
+   "set": "fca",
+   "rulings": [
+    "Both Jodah, the Unifier’s triggered ability and the spell cast with that ability resolve before the spell that caused the ability to trigger, even if the original spell was countered in response.",
+    "You exile the cards face up. All players will be able to see them.",
+    "The legendary nonland card exiled may be cast immediately. If you do not cast it immediately, you don’t get to cast it at a later time.",
+    "The types and mana value of a double-faced card in exile are determined by the characteristics of its front face. The mana value of a split card is the total mana value of both halves of the split card added together.",
+    "If the legendary nonland card exiled this way is a modal double-faced card, and the back face is also a nonland card face, you may cast either face, even if the back face isn’t legendary.",
+    "If you choose not to cast the card, it remains in exile. The rest of the cards will be put on the bottom of your library in a random order.",
+    "If you cast a spell “without paying its mana cost,” you can’t choose to cast it for any alternative costs. You can, however, pay additional costs. If the card has any mandatory additional costs, you must pay those to cast the spell.",
+    "If the card has {X} in its mana cost, you must choose 0 as the value of X when casting it without paying its mana cost.",
+    "The mana value of the spell that caused the ability to trigger is determined only by its mana cost, no matter what the total cost to cast the spell was. If that spell had an {X} in its cost, include the chosen value for X when determining its mana value.",
+    "If you exile your entire library without exiling a legendary nonland card with lesser mana value, you will randomize the exiled cards and they again become your library, ending the effect. You will not continue to exile and shuffle your library forever."
+   ]
+  },
+  {
+   "name": "Tymna the Weaver",
+   "oracle_id": "d15642e4-e61c-4d29-af48-de837991245e",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Cleric",
+   "oracle_text": "Lifelink\nAt the beginning of each of your postcombat main phases, you may pay X life, where X is the number of opponents that were dealt combat damage this turn. If you do, draw X cards.\nPartner (You can have two commanders if both have partner.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Partner"
+   ],
+   "collector_number": "18",
+   "set": "fca",
+   "rulings": [
+    "You must pay exactly X life or none. You can't pay less life to draw fewer cards.",
+    "If a player was dealt combat damage and subsequently lost the game, Tymna's triggered ability counts that player to determine the value of X.",
+    "If an effect creates an additional combat phase in a turn, it may also create an additional main phase after that combat phase. Tymna's ability triggers at the beginning of each of these postcombat main phases.",
+    "If your Commander deck has two commanders, you can only include cards whose own color identities are also found in your commanders' combined color identities. If Falthis and Kediss are your commanders, your deck may contain cards with black and/or red in their color identity, but not cards with green, white, or blue.",
+    "Both commanders start in the command zone, and the remaining 98 cards (or 58 cards in a Commander Draft game) of your deck are shuffled to become your library.",
+    "To have two commanders, both must have the partner ability as the game begins. Losing the ability during the game doesn't cause either to cease to be your commander.",
+    "Once the game begins, your two commanders are tracked separately. If you cast one, you won't have to pay an additional {2} the first time you cast the other. A player loses the game after having been dealt 21 damage from any one of them, not from both of them combined.",
+    "If something refers to your commander while you have two commanders, it refers to one of them of your choice. If you are instructed to perform an action on your commander (e.g. put it from the command zone into your hand due to Command Beacon), you choose one of your commanders at the time the effect happens.",
+    "An effect that checks whether you control your commander is satisfied if you control one or both of your two commanders.",
+    "You can choose two commanders with partner that are the same color or colors. In Commander Draft, you can even choose two of the same commander with partner if you drafted them. If you do this, make sure you keep the number of times you've cast each from the command zone clear for \"commander tax\" purposes."
+   ]
+  },
+  {
+   "name": "Winota, Joiner of Forces",
+   "oracle_id": "02598a35-1b11-4abe-89cd-fc44c8c36c15",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Whenever a non-Human creature you control attacks, look at the top six cards of your library. You may put a Human creature card from among them onto the battlefield tapped and attacking. It gains indestructible until end of turn. Put the rest of the cards on the bottom of your library in a random order.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "19",
+   "set": "fca",
+   "rulings": [
+    "If more than one non-Human creature you control attacks, Winota’s ability triggers separately for each of them. For example, if three non-Human creatures attack, you won’t look at the top eighteen cards of your library at once; you’ll look at six, finish resolving the ability, and then repeat the process twice more as the other instances of the ability resolve.",
+    "You choose which player or planeswalker the Human is attacking. It doesn’t have to be attacking the same player or planeswalker that the non-Human creature is attacking.",
+    "Although the Human is an attacking creature, it was never declared as an attacking creature. This means that abilities that trigger whenever a creature attacks won’t trigger when it enters the battlefield attacking.",
+    "Any effects that say that the Human can’t attack (such as that of Propaganda, or if you get a Human with defender) affect only the declaration of attackers. They won’t stop the Human you find from entering the battlefield attacking."
+   ]
+  },
+  {
+   "name": "Kenrith, the Returned King",
+   "oracle_id": "d209b948-9afb-4fd1-a961-72c87282878c",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "{R}: All creatures gain trample and haste until end of turn.\n{1}{G}: Put a +1/+1 counter on target creature.\n{2}{W}: Target player gains 5 life.\n{3}{U}: Target player draws a card.\n{4}{B}: Put target creature card from a graveyard onto the battlefield under its owner's control.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "23",
+   "set": "fca",
+   "rulings": [
+    "Kenrith's last ability can target a creature card in any player's graveyard. Its owner will control the creature, and it will remain on the battlefield even if you leave the game (if you don't own it).",
+    "Kenrith's first ability affects only creatures on the battlefield at the time it resolves. Creatures that enter the battlefield later in the turn won't gain trample or haste."
+   ]
+  },
+  {
+   "name": "Teferi, Mage of Zhalfir",
+   "oracle_id": "2b6cbd55-5adc-4a34-ac45-8531705a7ee1",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Flash\nCreature cards you own that aren't on the battlefield have flash.\nEach opponent can cast spells only any time they could cast a sorcery.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "32",
+   "set": "fca",
+   "rulings": [
+    "While you control Teferi, you may exile creature cards in your hand with suspend any time you could cast an instant.",
+    "If a spell on the stack has split second while you control Teferi, you can't suspend creature cards since split second stops you from casting them, even though suspending them is a special action.",
+    "Teferi's last ability means that in order for an opponent to cast a spell, it must be that opponent's turn, during a main phase, and the stack must be empty. This is true even if a rule or effect allows a sorcery to be cast at another time.",
+    "If a spell or ability lets an opponent cast a spell as part of its effect (such as suspend and rebound do), that opponent can't cast that spell since the resolving ability is still on the stack. This is true even if the spell is an instant.",
+    "If an effect allows an opponent to cast spells any time they could cast an instant (for example, if your opponent also controls Teferi), the restriction of Teferi's last ability takes precedence over that permission."
+   ]
+  },
+  {
+   "name": "Light Up the Stage",
+   "oracle_id": "8d286376-f386-43ab-a9bd-8478fb9e2497",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Spectacle {R} (You may cast this spell for its spectacle cost rather than its mana cost if an opponent lost life this turn.)\nExile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Spectacle"
+   ],
+   "collector_number": "39",
+   "set": "fca",
+   "rulings": [
+    "In a multiplayer game, if an opponent loses life and later that turn leaves the game, you can cast a spell for its spectacle cost. (If a player leaves the game during their turn, that turn continues without an active player.)",
+    "Spectacle doesn't change when you can cast the spell. For example, you can't cast a sorcery with spectacle during an opponent's turn unless another effect allows you to do so, even if that player has lost life this turn.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost you're paying (such as a spectacle cost), add any cost increases, then apply any cost reductions. The mana value of the spell remains unchanged, no matter what the total cost to cast it was.",
+    "A card's spectacle cost is the same no matter how much life your opponents lost or how many opponents lost life.",
+    "Damage dealt to a player causes that player to lose that much life.",
+    "Spectacle cares only that an opponent lost life during the turn, not that the opponent's life total is currently lower than it was. For example, if an opponent loses 1 life and then gains 2 life in the same turn, you can cast a spell for its spectacle cost that turn.",
+    "Casting an exiled card causes it to leave exile. You can't cast it multiple times.",
+    "If you don't play a card exiled this way, it remains in exile.",
+    "Light Up the Stage doesn't change when you can play the exiled cards. For example, if you exile a sorcery card, you can cast it only during your main phase when the stack is empty. If you exile a land card, you can play it only during your main phase and only if you have an available land play remaining."
+   ]
+  }
+ ]
+}

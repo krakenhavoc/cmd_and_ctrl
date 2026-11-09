@@ -1,0 +1,313 @@
+{
+ "batch": 4,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Random Encounter",
+   "oracle_id": "324493fc-a205-4177-aa94-cf4672844c81",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Shuffle your library, then mill four cards. Put each creature card milled this way onto the battlefield. They gain haste. At the beginning of the next end step, return those creatures to their owner's hand.\nFlashback {6}{R}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flashback",
+    "Mill"
+   ],
+   "collector_number": "150",
+   "set": "fin",
+   "rulings": [
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions."
+   ]
+  },
+  {
+   "name": "Sidequest: Play Blitzball // World Champion, Celestial Weapon",
+   "oracle_id": "9c0255ff-6579-4ce4-810d-01df9922ab33",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Enchantment // Legendary Artifact — Equipment",
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Double Overdrive",
+    "Transform",
+    "Equip",
+    "Double"
+   ],
+   "collector_number": "158",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Sidequest: Play Blitzball",
+     "mana_cost": "{2}{R}",
+     "type_line": "Enchantment",
+     "oracle_text": "At the beginning of combat on your turn, target creature you control gets +2/+0 until end of turn.\nAt the end of combat on your turn, if a player was dealt 6 or more combat damage this turn, transform this enchantment, then attach it to a creature you control."
+    },
+    {
+     "name": "World Champion, Celestial Weapon",
+     "mana_cost": "",
+     "type_line": "Legendary Artifact — Equipment",
+     "oracle_text": "Double Overdrive — Equipped creature gets +2/+0 and has double strike.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)"
+    }
+   ],
+   "rulings": [
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so."
+   ]
+  },
+  {
+   "name": "Sorceress's Schemes",
+   "oracle_id": "945e56b9-709f-4bb3-8a6b-0a04d9202a03",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return target instant or sorcery card from your graveyard or exiled card with flashback you own to your hand. Add {R}.\nFlashback {4}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "159",
+   "set": "fin",
+   "rulings": [
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery."
+   ]
+  },
+  {
+   "name": "Unexpected Request",
+   "oracle_id": "f4497af5-8b81-46b3-bb52-eaed1999809b",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. You may attach an Equipment you control to that creature. If you do, unattach it at the beginning of the next end step.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "167",
+   "set": "fin"
+  },
+  {
+   "name": "Vaan, Street Thief",
+   "oracle_id": "24fd1f47-bb15-45c6-a7b1-ba8eb3bb8b1d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Scout",
+   "oracle_text": "Whenever one or more Scouts, Pirates, and/or Rogues you control deal combat damage to a player, exile the top card of that player's library. You may cast it. If you don't, create a Treasure token.\nWhenever you cast a spell you don't own, put a +1/+1 counter on each Scout, Pirate, and Rogue you control.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "168",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You cast the exiled card while Vaan's first ability is still on the stack. You can't wait to cast it later in the turn. Timing restrictions based on the card's type are ignored.",
+    "Vaan's last ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack."
+   ]
+  },
+  {
+   "name": "Chocobo Kick",
+   "oracle_id": "aa00c18b-8719-4095-940a-8e35a57b46c2",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Kicker—Return a land you control to its owner's hand. (You may return a land you control to its owner's hand in addition to any other costs as you cast this spell.)\nTarget creature you control deals damage equal to its power to target creature an opponent controls. If this spell was kicked, the creature you control deals twice that much damage instead.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Kicker"
+   ],
+   "collector_number": "178",
+   "set": "fin",
+   "rulings": [
+    "If a spell's kicker cost was paid, the spell is \"kicked.\"",
+    "If you put a permanent with a kicker ability onto the battlefield without casting it, you can't kick it.",
+    "If a card or token enters as a copy of a permanent, the new permanent isn't kicked, even if the original was.",
+    "If you copy a kicked spell on the stack, the copy is also kicked. If the copied spell is a permanent spell, the token the copy of that spell becomes when it enters is also kicked.",
+    "If either target is illegal as Chocobo Kick resolves, no damage will be dealt. If both targets are illegal, the spell won't resolve at all.",
+    "To determine a spell's total cost, start with the mana cost (or an alternative cost if another card's effect allows you to pay one instead), add any cost increases (such as kicker), then apply any cost reductions. The spell's mana value remains unchanged, no matter what the total cost to cast it was.",
+    "The kicker ability doesn't let you pay a kicker cost more than once."
+   ]
+  },
+  {
+   "name": "Clash of the Eikons",
+   "oracle_id": "b1c38b70-575d-4d87-bc50-0b77b48ee823",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one or more —\n• Target creature you control fights target creature an opponent controls.\n• Remove a lore counter from target Saga you control. (Removing lore counters doesn't cause chapter abilities to trigger.)\n• Put a lore counter on target Saga you control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight"
+   ],
+   "collector_number": "180",
+   "set": "fin",
+   "rulings": [
+    "Removing lore counters won't cause a previous chapter ability to trigger. If lore counters are removed from a Saga, the appropriate chapter abilities will trigger again when the Saga receives more lore counters.",
+    "Putting a lore counter on a Saga will usually cause its next chapter ability to trigger. If it already has a number of lore counters on it that's greater than or equal to its final chapter number, however, no chapter abilities trigger."
+   ]
+  },
+  {
+   "name": "Diamond Weapon",
+   "oracle_id": "3beba02f-4d50-4a93-a13b-78d4595bfbfc",
+   "layout": "normal",
+   "mana_cost": "{7}{G}{G}",
+   "cmc": 9.0,
+   "type_line": "Legendary Artifact Creature — Elemental",
+   "oracle_text": "This spell costs {1} less to cast for each permanent card in your graveyard.\nReach\nImmune — Prevent all combat damage that would be dealt to Diamond Weapon.",
+   "power": "8",
+   "toughness": "8",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Immune"
+   ],
+   "collector_number": "183",
+   "set": "fin",
+   "rulings": [
+    "Diamond Weapon's prevention effect isn't considered while assigning combat damage from a creature with trample that's being blocked by Diamond Weapon. For example, if it blocks a 12/12 creature with trample, that creature's controller must assign at least 8 of that creature's combat damage to Diamond Weapon, and the remainder can be assigned to the defending player, planeswalker, or battle."
+   ]
+  },
+  {
+   "name": "Esper Origins // Summon: Esper Maduin",
+   "oracle_id": "947b40a2-e272-4ef6-85fb-3d767a21bc7a",
+   "layout": "transform",
+   "cmc": 2.0,
+   "type_line": "Sorcery // Enchantment Creature — Saga Elemental",
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Surveil",
+    "Transform",
+    "Flashback"
+   ],
+   "collector_number": "185",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Esper Origins",
+     "mana_cost": "{1}{G}",
+     "type_line": "Sorcery",
+     "oracle_text": "Surveil 2. You gain 2 life. If this spell was cast from a graveyard, exile it, then put it onto the battlefield transformed under its owner's control with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)\nFlashback {3}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+    },
+    {
+     "name": "Summon: Esper Maduin",
+     "mana_cost": "",
+     "type_line": "Enchantment Creature — Saga Elemental",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Reveal the top card of your library. If it's a permanent card, put it into your hand.\nII — Add {G}{G}.\nIII — Other creatures you control get +2/+2 and gain trample until end of turn.",
+     "power": "4",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "Multiple finality counters on a single permanent are redundant.",
+    "A sorcery can't be put onto the battlefield and a permanent can't transform into a sorcery. If an effect exiles Summon: Esper Maduin and then instructs you to return it to the battlefield, it remains face up in exile (unless that effect instructs you to put it onto the battlefield transformed, in which case it returns as Summon: Esper Maduin). If an effect instructs you to transform Summon: Esper Maduin, the instruction is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Summon: Esper Maduin's second chapter ability isn't a mana ability. It uses the stack and can be responded to.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up."
+   ]
+  },
+  {
+   "name": "Galuf's Final Act",
+   "oracle_id": "9268d369-173e-4325-98f6-348beeb8ba62",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Until end of turn, target creature gets +1/+0 and gains \"When this creature dies, put a number of +1/+1 counters equal to its power on up to one target creature.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "186",
+   "set": "fin",
+   "rulings": [
+    "Use the dying creature's power as it last existed on the battlefield to determine how many counters to put on the target creature."
+   ]
+  }
+ ]
+}

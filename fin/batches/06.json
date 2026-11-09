@@ -1,0 +1,293 @@
+{
+ "batch": 6,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Golbez, Crystal Collector",
+   "oracle_id": "533d5bf9-0912-451f-a3f4-3842b0a75b1d",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Whenever an artifact you control enters, surveil 1.\nAt the beginning of your end step, if you control four or more artifacts, return target creature card from your graveyard to your hand. Then if you control eight or more artifacts, each opponent loses life equal to that card's power.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "225",
+   "set": "fin",
+   "rulings": [
+    "Golbez, Crystal Collector's last ability checks at the moment it would trigger to see if you control four or more artifacts. If you don't, the ability won't trigger at all. If it does trigger, the ability will check again as it tries to resolve. If you don't control four or more artifacts at that time, the ability won't resolve and none of its effects will happen.",
+    "If the target creature card is an illegal target as Golbez, Crystal Collector's last ability tries to resolve, it won't resolve and none of its effects will happen. Opponents won't lose life even if you control eight or more artifacts."
+   ]
+  },
+  {
+   "name": "Locke Cole",
+   "oracle_id": "bdcb7aed-3595-4c7e-b9da-543e92de919a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rogue",
+   "oracle_text": "Deathtouch, lifelink\nWhenever Locke Cole deals combat damage to a player, draw a card, then discard a card.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Deathtouch"
+   ],
+   "collector_number": "234",
+   "set": "fin"
+  },
+  {
+   "name": "Noctis, Prince of Lucis",
+   "oracle_id": "2d44bdd2-aa31-415a-be71-d9e98ef12334",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble",
+   "oracle_text": "Lifelink\nYou may cast artifact spells from your graveyard by paying 3 life in addition to paying their other costs. If you cast a spell this way, that artifact enters with a finality counter on it.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "235",
+   "set": "fin",
+   "rulings": [
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "You pay all costs and follow all timing rules for artifact spells cast with the permission granted by Noctis's last ability.",
+    "Multiple finality counters on a single permanent are redundant."
+   ]
+  },
+  {
+   "name": "Rydia, Summoner of Mist",
+   "oracle_id": "a08f79b7-d66f-47da-9670-afd7409c0c5c",
+   "layout": "normal",
+   "mana_cost": "{R}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Shaman",
+   "oracle_text": "Landfall — Whenever a land you control enters, you may discard a card. If you do, draw a card.\nSummon — {X}, {T}: Return target Saga card with mana value X from your graveyard to the battlefield with a finality counter on it. It gains haste until end of turn. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Summon",
+    "Landfall"
+   ],
+   "collector_number": "239",
+   "set": "fin",
+   "rulings": [
+    "A landfall ability doesn't trigger if a permanent already on the battlefield becomes a land.",
+    "Whenever a land you control enters, each landfall ability of permanents you control will trigger. You can put them on the stack in any order. The last ability you put on the stack will be the first one to resolve. As a result, you can have those abilities resolve in the order of your choosing.",
+    "A landfall ability triggers whenever a land you control enters for any reason. It triggers whenever you play a land, as well as whenever a spell or ability puts a land onto the battlefield under your control.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Multiple finality counters on a single permanent are redundant.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally."
+   ]
+  },
+  {
+   "name": "Ultimecia, Time Sorceress // Ultimecia, Omnipotent",
+   "oracle_id": "70773879-b773-4e81-99ca-8f4bba478962",
+   "layout": "transform",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Warlock // Legendary Creature — Nightmare Warlock",
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil",
+    "Transform",
+    "Menace",
+    "Time Compression"
+   ],
+   "collector_number": "247",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Ultimecia, Time Sorceress",
+     "mana_cost": "{3}{U}{B}",
+     "type_line": "Legendary Creature — Human Warlock",
+     "oracle_text": "Whenever Ultimecia enters or attacks, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nAt the beginning of your end step, you may pay {4}{U}{U}{B}{B} and exile eight cards from your graveyard. If you do, transform Ultimecia.",
+     "power": "4",
+     "toughness": "5"
+    },
+    {
+     "name": "Ultimecia, Omnipotent",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Nightmare Warlock",
+     "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nTime Compression — When this creature transforms into Ultimecia, Omnipotent, take an extra turn after this one.",
+     "power": "7",
+     "toughness": "7"
+    }
+   ],
+   "rulings": [
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up."
+   ]
+  },
+  {
+   "name": "The Wandering Minstrel",
+   "oracle_id": "e6e6e3d2-f2fb-46a1-8798-13a2f2efe8cc",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Bard",
+   "oracle_text": "Lands you control enter untapped.\nThe Minstrel's Ballad — At the beginning of combat on your turn, if you control five or more Towns, create a 2/2 Elemental creature token that's all colors.\n{3}{W}{U}{B}{R}{G}: Other creatures you control get +X/+X until end of turn, where X is the number of Towns you control.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "249",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Elemental",
+     "type_line": "Token Creature — Elemental",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The Wandering Minstrel's second ability checks at the moment it would trigger to see if you control five or more Towns. If you don't, the ability won't trigger at all. If it does trigger, the ability will check again as it tries to resolve. If you don't control five or more Towns at that time, the ability won't resolve and none of its effects will happen.",
+    "If The Wandering Minstrel would enter the battlefield at the same time a land you control would enter the battlefield tapped, that land still enters the battlefield tapped.",
+    "If a land has an ability that says it enters the battlefield tapped, you choose the order in which that ability's effect and The Wandering Minstrel's effect apply. This means you can choose to have the land enter tapped or untapped. If a land you control is simply put onto the battlefield tapped without a replacement effect being applied, it always enters untapped if you control The Wandering Minstrel.",
+    "The value of X is calculated only once, as The Wandering Minstrel's last ability resolves."
+   ]
+  },
+  {
+   "name": "Yuna, Hope of Spira",
+   "oracle_id": "3dee768a-612c-4960-bad2-2fe5b83a70c3",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Cleric",
+   "oracle_text": "During your turn, Yuna and enchantment creatures you control have trample, lifelink, and ward {2}.\nAt the beginning of your end step, return up to one target enchantment card from your graveyard to the battlefield with a finality counter on it. (If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.)",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "250",
+   "set": "fin",
+   "rulings": [
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead.",
+    "Multiple finality counters on a single permanent are redundant.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead."
+   ]
+  },
+  {
+   "name": "Iron Giant",
+   "oracle_id": "325b4288-fe1b-4e29-ae13-72924b4db3dd",
+   "layout": "normal",
+   "mana_cost": "{7}",
+   "cmc": 7.0,
+   "type_line": "Artifact Creature — Demon",
+   "oracle_text": "Reach, vigilance, trample",
+   "power": "6",
+   "toughness": "6",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Trample"
+   ],
+   "collector_number": "260",
+   "set": "fin"
+  },
+  {
+   "name": "Lion Heart",
+   "oracle_id": "bd4151cc-743a-40f0-9e51-1f67555d9ab3",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "When this Equipment enters, it deals 2 damage to any target.\nEquipped creature gets +2/+1.\nEquip {2}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "261",
+   "set": "fin"
+  },
+  {
+   "name": "Lunatic Pandora",
+   "oracle_id": "34c65c7f-33ab-4f91-84ce-d0c8f4fc5832",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Legendary Artifact",
+   "oracle_text": "{2}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{6}, {T}, Sacrifice Lunatic Pandora: Destroy target nonland permanent.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "262",
+   "set": "fin"
+  }
+ ]
+}

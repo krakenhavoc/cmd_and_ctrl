@@ -1,0 +1,348 @@
+{
+ "batch": 1,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Dion, Bahamut's Dominant // Bahamut, Warden of Light",
+   "oracle_id": "4a0cc2a2-3711-473a-b2c5-b1e52b34e4fb",
+   "layout": "transform",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Noble Knight // Legendary Enchantment Creature — Saga Dragon",
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Dragonfire Dive",
+    "Flying",
+    "Transform"
+   ],
+   "collector_number": "16",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Dion, Bahamut's Dominant",
+     "mana_cost": "{3}{W}",
+     "type_line": "Legendary Creature — Human Noble Knight",
+     "oracle_text": "Dragonfire Dive — During your turn, Dion and other Knights you control have flying.\nWhen Dion enters, create a 2/2 white Knight creature token.\n{4}{W}{W}, {T}: Exile Dion, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+     "power": "3",
+     "toughness": "3"
+    },
+    {
+     "name": "Bahamut, Warden of Light",
+     "mana_cost": "",
+     "type_line": "Legendary Enchantment Creature — Saga Dragon",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Wings of Light — Put a +1/+1 counter on each other creature you control. Those creatures gain flying until end of turn.\nIII — Gigaflare — Destroy target permanent. Exile Bahamut, then return it to the battlefield (front face up).\nFlying",
+     "power": "5",
+     "toughness": "5"
+    }
+   ],
+   "related": [
+    {
+     "name": "Knight",
+     "type_line": "Token Creature — Knight",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "If the target permanent is an illegal target when Bahamut's third chapter ability tries to resolve, it won't resolve and none of its effects will happen. You won't exile Bahamut and return it to the battlefield front face up. Instead, when the ability leaves the stack without resolving and state-based actions are checked, Bahamut will be sacrificed due to having a number of lore counters greater than or equal to its final chapter number.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "Dion's first ability will still give it flying during your turn even if Dion somehow isn't a Knight.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up."
+   ]
+  },
+  {
+   "name": "From Father to Son",
+   "oracle_id": "87864421-505c-4bdb-b1e3-3e44e05f2beb",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Search your library for a Vehicle card, reveal it, and put it into your hand. If this spell was cast from a graveyard, put that card onto the battlefield instead. Then shuffle.\nFlashback {4}{W}{W}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "20",
+   "set": "fin",
+   "rulings": [
+    "\"Flashback [cost]\" means \"You may cast this card from your graveyard if the resulting spell is an instant or sorcery spell by paying [cost] rather than paying its mana cost\" and \"If the flashback cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack.\"",
+    "You can cast a spell using flashback even if it was somehow put into your graveyard without having been cast.",
+    "If a card with flashback is put into your graveyard during your turn, you can cast it if it's legal to do so before any other player can take any actions.",
+    "You must still follow any timing restrictions and permissions, including those based on the card's type. For instance, you can cast a sorcery using flashback only when you could normally cast a sorcery.",
+    "A spell cast using flashback will always be exiled afterward, whether it resolves, is countered, or leaves the stack in some other way.",
+    "To determine the total cost of a spell, start with the mana cost or alternative cost (such as a flashback cost) you're paying, add any cost increases, then apply any cost reductions. The mana value of the spell is determined only by its mana cost, no matter what the total cost to cast the spell was."
+   ]
+  },
+  {
+   "name": "G'raha Tia",
+   "oracle_id": "0c4603be-d71a-4d33-b62c-04ead1987dbe",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Cat Archer",
+   "oracle_text": "Reach\nThe Allagan Eye — Whenever one or more other creatures and/or artifacts you control die, draw a card. This ability triggers only once each turn.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Reach",
+    "The Allagan Eye"
+   ],
+   "collector_number": "21",
+   "set": "fin",
+   "rulings": [
+    "If G'raha Tia and one or more other creatures and/or artifacts you control die at the same time, its last ability will trigger once (as long as it hasn't already triggered this turn)."
+   ]
+  },
+  {
+   "name": "Sidequest: Catch a Fish // Cooking Campsite",
+   "oracle_id": "bd7c328e-0380-46f8-bb85-7bf4e201b7ac",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Enchantment // Land",
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Transform",
+    "Food"
+   ],
+   "collector_number": "31",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Sidequest: Catch a Fish",
+     "mana_cost": "{2}{W}",
+     "type_line": "Enchantment",
+     "oracle_text": "At the beginning of your upkeep, look at the top card of your library. If it's an artifact or creature card, you may reveal it and put it into your hand. If you put a card into your hand this way, create a Food token and transform this enchantment."
+    },
+    {
+     "name": "Cooking Campsite",
+     "mana_cost": "",
+     "type_line": "Land",
+     "oracle_text": "{T}: Add {W}.\n{3}, {T}, Sacrifice an artifact: Put a +1/+1 counter on each creature you control. Activate only as a sorcery."
+    }
+   ],
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "You don't have to reveal the card even if it's an artifact or creature card. You may choose not to reveal it and instead leave it on top of your library.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored."
+   ]
+  },
+  {
+   "name": "Stiltzkin, Moogle Merchant",
+   "oracle_id": "958c2a27-9fb1-42b4-a0ef-296584763a98",
+   "layout": "normal",
+   "mana_cost": "{W}",
+   "cmc": 1.0,
+   "type_line": "Legendary Creature — Moogle",
+   "oracle_text": "Lifelink\n{2}, {T}: Target opponent gains control of another target permanent you control. If they do, you draw a card.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "34",
+   "set": "fin"
+  },
+  {
+   "name": "Summon: Knights of Round",
+   "oracle_id": "73122880-d7f4-422f-a336-18773bcb7bfe",
+   "layout": "saga",
+   "mana_cost": "{6}{W}{W}",
+   "cmc": 8.0,
+   "type_line": "Enchantment Creature — Saga Knight",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after V.)\nI, II, III, IV — Create three 2/2 white Knight creature tokens.\nV — Ultimate End — Other creatures you control get +2/+2 until end of turn. Put an indestructible counter on each of them.\nIndestructible",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "36",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Knight",
+     "type_line": "Token Creature — Knight",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Saga creatures have two sections to their text boxes. The first section, above the type line, contains their chapter abilities, and the second section, below the type line, contains any other abilities (or italicized flavor text). Any abilities in the latter section aren't chapter abilities and apply no matter how many lore counters are on the creature.",
+    "A chapter ability doesn't trigger if a lore counter is put on a Saga that already had a number of lore counters greater than or equal to that chapter's number. For example, the third lore counter put on a Saga causes the chapter III ability to trigger, but chapters I and II won't trigger again.",
+    "Each symbol on the left of a Saga's text box represents a chapter ability. A chapter ability is a triggered ability that triggers when a lore counter that is put on the Saga causes the number of lore counters on the Saga to become equal to or greater than the ability's chapter number. Chapter abilities are put onto the stack and may be responded to.",
+    "As a Saga enters, its controller puts a lore counter on it. As your first main phase begins (immediately after your draw step), you put another lore counter on each Saga you control. Putting a lore counter on a Saga in either of these ways doesn't use the stack.",
+    "Once a chapter ability has triggered, the ability on the stack won't be affected if the Saga gains or loses counters, or if it leaves the battlefield.",
+    "Removing lore counters won't cause a previous chapter ability to trigger. If lore counters are removed from a Saga, the appropriate chapter abilities will trigger again when the Saga receives more lore counters.",
+    "Due to a rules change that takes effect with this release (see below for details), a Saga that somehow loses all of its chapter abilities will not be sacrificed as a state-based action. It will also not gain a lore counter at the beginning of each of its controller's first main phases.",
+    "If multiple chapter abilities trigger at the same time, their controller puts them on the stack in any order. If any of them require targets, those targets are chosen as you put the abilities on the stack, before any of those abilities resolve.",
+    "Once the number of lore counters on a Saga is greater than or equal to the greatest number among its chapter abilities, the Saga's controller sacrifices it as soon as its chapter ability has left the stack, most likely by resolving or being countered. This state-based action doesn't use the stack."
+   ]
+  },
+  {
+   "name": "Venat, Heart of Hydaelyn // Hydaelyn, the Mothercrystal",
+   "oracle_id": "2e5adbcf-6b5c-4ded-a339-8757040ef878",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elder Wizard // Legendary Creature — God",
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Blessing of Light",
+    "Indestructible",
+    "Transform"
+   ],
+   "collector_number": "39",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Venat, Heart of Hydaelyn",
+     "mana_cost": "{1}{W}{W}",
+     "type_line": "Legendary Creature — Elder Wizard",
+     "oracle_text": "Whenever you cast a legendary spell, draw a card. This ability triggers only once each turn.\nHero's Sundering — {7}, {T}: Exile target nonland permanent. Transform Venat. Activate only as a sorcery.",
+     "power": "3",
+     "toughness": "3"
+    },
+    {
+     "name": "Hydaelyn, the Mothercrystal",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — God",
+     "oracle_text": "Indestructible\nBlessing of Light — At the beginning of combat on your turn, put a +1/+1 counter on another target creature you control. Until your next turn, it gains indestructible. If that creature is legendary, draw a card.",
+     "power": "4",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "If the target creature is an illegal target as Hydaelyn, the Mothercrystal's last ability tries to resolve, it won't resolve and none of its effects will happen. You won't draw a card even if that creature is legendary.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color."
+   ]
+  },
+  {
+   "name": "Weapons Vendor",
+   "oracle_id": "bd0a7a86-a567-4145-b1d8-e0b72091db84",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "When this creature enters, draw a card.\nAt the beginning of combat on your turn, if you control an Equipment, you may pay {1}. When you do, attach target Equipment you control to target creature you control.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "40",
+   "set": "fin",
+   "rulings": [
+    "You don't choose targets for Weapons Vendor's last ability at the time it triggers. Rather, a second \"reflexive\" ability triggers when you pay {1} this way. You choose targets for that ability as it goes on the stack. Each player may respond to this triggered ability as normal."
+   ]
+  },
+  {
+   "name": "Ether",
+   "oracle_id": "566533af-5e67-463f-ac33-dfcf1ec735c9",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}, Exile this artifact: Add {U}. When you next cast an instant or sorcery spell this turn, copy that spell. You may choose new targets for the copy.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "53",
+   "set": "fin",
+   "rulings": [
+    "The copy is created on the stack, so it's not \"cast.\" Abilities that trigger when a player casts a spell won't trigger.",
+    "If the spell has any targets, the copy will have the same targets unless you choose new ones. You may change any number of the targets, including all of them or none of them. The new targets must be legal.",
+    "Ether's ability is a mana ability. It doesn't use the stack and can't be responded to.",
+    "You can't choose to pay any additional costs for the copy. However, effects based on any additional costs that were paid for the original spell are copied as though those same costs were paid for the copy too.",
+    "If the spell that's copied is modal (that is, it says \"Choose one —\" or the like), the copy will have the same mode or modes. You can't choose different ones.",
+    "After Ether's ability resolves, the next instant or sorcery spell you cast that turn will be copied whether or not it has targets and whether or not you spent the mana added by Ether's ability on that spell.",
+    "If the copied spell divides damage or distributes counters among a number of targets, the division and number of targets can't be changed. If you choose new targets, you must choose the same number of targets.",
+    "If the spell that's copied has an X whose value was determined as it was cast, the copy will have the same value of X."
+   ]
+  },
+  {
+   "name": "Ice Flan",
+   "oracle_id": "3b7120a6-700b-4c61-bea4-a835f0cc0bcb",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental Ooze",
+   "oracle_text": "When this creature enters, tap target artifact or creature an opponent controls. Put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Islandcycling",
+    "Landcycling",
+    "Typecycling",
+    "Cycling"
+   ],
+   "collector_number": "55",
+   "set": "fin"
+  }
+ ]
+}

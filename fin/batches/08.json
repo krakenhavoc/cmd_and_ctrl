@@ -1,0 +1,348 @@
+{
+ "batch": 8,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Cid, Timeless Artificer",
+   "oracle_id": "87050537-99c9-4993-a770-4329b2e749e4",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Artifact creatures and Heroes you control get +1/+1 for each Artificer you control and each Artificer card in your graveyard.\nA deck can have any number of cards named Cid, Timeless Artificer.\nCycling {W}{U} ({W}{U}, Discard this card: Draw a card.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "418",
+   "set": "fin",
+   "rulings": [
+    "The second ability of Cid, Timeless Artificer lets you ignore the \"four-of\" rule in constructed play. It doesn't let you ignore format legality. For example, during a Magic: The Gathering—FINAL FANTASY Limited event, you can't add copies of Cid, Timeless Artificer to your deck from your personal collection.",
+    "The second ability of Cid, Timeless Artificer also lets you ignore the \"singleton\" rule in formats like Commander."
+   ]
+  },
+  {
+   "name": "Quistis Trepe",
+   "oracle_id": "821e8648-222c-4b33-a8bd-e8bfff7dcd9e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Blue Magic — When Quistis Trepe enters, you may cast target instant or sorcery card from a graveyard, and mana of any type can be spent to cast that spell. If that spell would be put into a graveyard, exile it instead.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Blue Magic"
+   ],
+   "collector_number": "440",
+   "set": "fin",
+   "rulings": [
+    "You choose whether to cast the target instant or sorcery card as Quistis Trepe's triggered ability resolves. If you do, you do so as part of the resolution of that ability. You can't wait to cast it later in the turn. Timing restrictions based on the card's types are ignored."
+   ]
+  },
+  {
+   "name": "Gaius van Baelsar",
+   "oracle_id": "86d2a45a-e452-4241-8ab4-28a2bb808ffa",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Soldier",
+   "oracle_text": "When Gaius van Baelsar enters, choose one —\n• Each player sacrifices a creature token of their choice.\n• Each player sacrifices a nontoken creature of their choice.\n• Each player sacrifices an enchantment of their choice.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "447",
+   "set": "fin"
+  },
+  {
+   "name": "Kain, Traitorous Dragoon",
+   "oracle_id": "70fbb378-d905-47cf-8c54-cc166a7867b3",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Knight",
+   "oracle_text": "Jump — During your turn, Kain has flying.\nWhenever Kain deals combat damage to a player, that player gains control of Kain. If they do, you draw that many cards, create that many tapped Treasure tokens, then lose that much life.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Jump",
+    "Treasure"
+   ],
+   "collector_number": "449",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "component": "token"
+    }
+   ]
+  },
+  {
+   "name": "Quina, Qu Gourmet",
+   "oracle_id": "2acb15bd-6c89-4ff3-ab32-beac67e9c88a",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Qu",
+   "oracle_text": "If one or more tokens would be created under your control, those tokens plus a 1/1 green Frog creature token are created instead.\n{2}, Sacrifice a Frog: Put a +1/+1 counter on Quina.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "471",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Frog",
+     "type_line": "Token Creature — Frog",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The additional Frog token won't have any abilities the other tokens were created with. Anything else specified in the effect creating the token (such as tapped or \"Exile that token at end of combat\") applies to both the original tokens and the Frog.",
+    "You don't need to control the spell or ability that creates the tokens, but you do have to be the one creating the tokens for Quina's first ability to apply."
+   ]
+  },
+  {
+   "name": "Emet-Selch, Unsundered // Hades, Sorcerer of Eld",
+   "oracle_id": "3b102ccc-7629-457c-aba6-e9b00fd50c85",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elder Wizard // Legendary Creature — Avatar",
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Echo of the Lost",
+    "Transform"
+   ],
+   "collector_number": "483",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Emet-Selch, Unsundered",
+     "mana_cost": "{1}{U}{B}",
+     "type_line": "Legendary Creature — Elder Wizard",
+     "oracle_text": "Vigilance\nWhenever Emet-Selch enters or attacks, draw a card, then discard a card.\nAt the beginning of your upkeep, if there are fourteen or more cards in your graveyard, you may transform Emet-Selch.",
+     "power": "2",
+     "toughness": "4"
+    },
+    {
+     "name": "Hades, Sorcerer of Eld",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Avatar",
+     "oracle_text": "Vigilance\nEcho of the Lost — During your turn, you may play cards from your graveyard.\nIf a card or token would be put into your graveyard from anywhere, exile it instead.",
+     "power": "6",
+     "toughness": "6"
+    }
+   ],
+   "rulings": [
+    "If a Hades, Sorcerer of Eld you control is destroyed by a spell you own, Hades will be exiled and then the spell will be put into your graveyard. Conversely, if a Hades you control is dealt lethal damage by a spell you own, the spell will be exiled, and then Hades will be exiled as well.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "You pay all costs and follow all timing rules for cards played with the permission granted by Hades, Sorcerer of Eld's second ability.",
+    "Emet-Selch's last ability checks your graveyard at the moment it would trigger to see if you have fourteen or more cards in your graveyard. If you don't, the ability won't trigger at all. If it does trigger, the ability will check again as it tries to resolve. If you don't have fourteen or more cards in your graveyard at that time, the ability won't resolve and none of its effects will happen.",
+    "While you control Hades, Sorcerer of Eld, abilities that trigger whenever a permanent you own is put into your graveyard from the battlefield (for example, \"When this creature dies . . .\") won't trigger.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "If you discard a card while you control Hades, Sorcerer of Eld, abilities that function when a card is discarded (such as madness) still work, even though that card never reaches your graveyard. In addition, spells or abilities that check the characteristics of a discarded card (such as connive) can find that card in exile.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up."
+   ]
+  },
+  {
+   "name": "The Emperor of Palamecia // The Lord Master of Hell",
+   "oracle_id": "042c01ec-9f1f-432b-bea9-d64d822cd91e",
+   "layout": "transform",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Noble Wizard // Legendary Creature — Demon Noble Wizard",
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Starfall",
+    "Transform"
+   ],
+   "collector_number": "484",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "The Emperor of Palamecia",
+     "mana_cost": "{U}{R}",
+     "type_line": "Legendary Creature — Human Noble Wizard",
+     "oracle_text": "{T}: Add {U} or {R}. Spend this mana only to cast a noncreature spell.\nWhenever you cast a noncreature spell, if at least four mana was spent to cast it, put a +1/+1 counter on The Emperor of Palamecia. Then if it has three or more +1/+1 counters on it, transform it.",
+     "power": "2",
+     "toughness": "2"
+    },
+    {
+     "name": "The Lord Master of Hell",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Demon Noble Wizard",
+     "oracle_text": "Starfall — Whenever The Lord Master of Hell attacks, it deals X damage to each opponent, where X is the number of noncreature, nonland cards in your graveyard.",
+     "power": "3",
+     "toughness": "3"
+    }
+   ],
+   "rulings": [
+    "The Emperor of Palamecia's last ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack.",
+    "The value of X is calculated only once, as The Lord Master of Hell's ability resolves.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up."
+   ]
+  },
+  {
+   "name": "Garland, Knight of Cornelia // Chaos, the Endless",
+   "oracle_id": "75e930dd-32e9-4c39-81a7-d833a3976b8d",
+   "layout": "transform",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Knight // Legendary Creature — Demon",
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil",
+    "Transform"
+   ],
+   "collector_number": "486",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Garland, Knight of Cornelia",
+     "mana_cost": "{B}{R}",
+     "type_line": "Legendary Creature — Human Knight",
+     "oracle_text": "Whenever you cast a noncreature spell, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{3}{B}{B}{R}{R}: Return this card from your graveyard to the battlefield transformed. Activate only as a sorcery.",
+     "power": "3",
+     "toughness": "2"
+    },
+    {
+     "name": "Chaos, the Endless",
+     "mana_cost": "",
+     "type_line": "Legendary Creature — Demon",
+     "oracle_text": "Flying\nWhen Chaos dies, put it on the bottom of its owner's library.",
+     "power": "5",
+     "toughness": "5"
+    }
+   ],
+   "rulings": [
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored."
+   ]
+  },
+  {
+   "name": "Garnet, Princess of Alexandria",
+   "oracle_id": "8c709873-84b5-46c2-bb29-85b041a6df88",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Noble Cleric",
+   "oracle_text": "Lifelink\nWhenever Garnet attacks, you may remove a lore counter from each of any number of Sagas you control. Put a +1/+1 counter on Garnet for each lore counter removed this way.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "487",
+   "set": "fin",
+   "rulings": [
+    "Removing lore counters won't cause a previous chapter ability to trigger. If lore counters are removed from a Saga, the appropriate chapter abilities will trigger again when the Saga receives more lore counters."
+   ]
+  },
+  {
+   "name": "Ignis Scientia",
+   "oracle_id": "23320d55-80cb-4da3-a53c-8c75abdc8c8f",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Advisor",
+   "oracle_text": "When Ignis Scientia enters, look at the top six cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.\nI've Come Up with a New Recipe! — {1}{G}{U}, {T}: Exile target card from a graveyard. If a creature card was exiled this way, create a Food token.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "492",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "A Food token is an artifact token with \"{2}, {T}, Sacrifice this token: You gain 3 life.\"",
+    "If the target card is an illegal target as Ignis Scientia's last ability resolves, it won't resolve and none of its effects will happen. You won't create a Food token even if the target card was a creature card."
+   ]
+  }
+ ]
+}

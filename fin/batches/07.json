@@ -1,0 +1,346 @@
+{
+ "batch": 7,
+ "set": [
+  "fin"
+ ],
+ "cards": [
+  {
+   "name": "Relentless X-ATM092",
+   "oracle_id": "50994df7-300d-4e30-897a-0974dc0820ee",
+   "layout": "normal",
+   "mana_cost": "{6}",
+   "cmc": 6.0,
+   "type_line": "Artifact Creature — Robot Spider",
+   "oracle_text": "This creature can't be blocked except by three or more creatures.\n{8}: Return this card from your graveyard to the battlefield tapped with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "6",
+   "toughness": "5",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "268",
+   "set": "fin",
+   "rulings": [
+    "Multiple finality counters on a single permanent are redundant.",
+    "Finality counters don't stop permanents from going to zones other than the graveyard from the battlefield. For example, if a permanent with a finality counter on it would be put into its owner's hand from the battlefield, it does so normally.",
+    "Finality counters aren't keyword counters, and a finality counter doesn't give any abilities to the permanent it's on. If that permanent loses its abilities and then would go to a graveyard, it will still be exiled instead.",
+    "Finality counters work on any permanent, not only creatures. If a permanent with a finality counter on it would be put into a graveyard from the battlefield, exile it instead."
+   ]
+  },
+  {
+   "name": "Insomnia, Crown City",
+   "oracle_id": "b7140f72-91b6-4be4-8d71-c019e64c2351",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Town",
+   "oracle_text": "This land enters tapped.\n{T}: Add {W} or {B}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "282",
+   "set": "fin",
+   "rulings": [
+    "Town is a land type with no special meaning. It doesn't grant the land any intrinsic abilities. Other cards may care about which lands are Towns."
+   ]
+  },
+  {
+   "name": "Terra, Magical Adept // Esper Terra",
+   "oracle_id": "54ca5904-9099-497a-9684-101656025487",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Wizard Warrior // Legendary Enchantment Creature — Saga Wizard",
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Transform",
+    "Mill",
+    "Trance"
+   ],
+   "collector_number": "323",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Terra, Magical Adept",
+     "mana_cost": "{1}{R}{G}",
+     "type_line": "Legendary Creature — Human Wizard Warrior",
+     "oracle_text": "When Terra enters, mill five cards. Put up to one enchantment card milled this way into your hand.\nTrance — {4}{R}{G}, {T}: Exile Terra, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+     "power": "4",
+     "toughness": "2"
+    },
+    {
+     "name": "Esper Terra",
+     "mana_cost": "",
+     "type_line": "Legendary Enchantment Creature — Saga Wizard",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II, III — Create a token that's a copy of target nonlegendary enchantment you control. It gains haste. If it's a Saga, put up to three lore counters on it. Sacrifice it at the beginning of your next end step.\nIV — Add {W}{W}, {U}{U}, {B}{B}, {R}{R}, and {G}{G}. Exile Esper Terra, then return it to the battlefield (front face up).\nFlying",
+     "power": "6",
+     "toughness": "6"
+    }
+   ],
+   "related": [
+    {
+     "name": "Copy",
+     "type_line": "Token",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "The token copies exactly what was printed on the original enchantment (unless that enchantment is copying something else or is a token; see below). It doesn't copy whether that enchantment is tapped or untapped, whether it has any counters on it or any Auras or Equipment attached to it, or any non-copy effects that have changed its types, color, power and toughness, and so on.",
+    "Esper Terra's fourth chapter ability isn't a mana ability. It uses the stack and can be responded to.",
+    "If the copied enchantment has {X} in its mana cost, X is 0.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "If the enchantment copied by the token had any \"when [this permanent] enters\" abilities, the token also has those abilities, and they'll trigger when it's created. Similarly, any \"as [this permanent] enters\" or \"[this permanent] enters with\" abilities that the token has copied will also work.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "If the copied enchantment is copying something else, then the token enters as whatever that enchantment copied.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "If the copied enchantment is a token, the new token that's created copies the original characteristics of that token as stated by the effect that created the token.",
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile."
+   ]
+  },
+  {
+   "name": "Stolen Uniform",
+   "oracle_id": "17c0cf45-a031-40e8-a37f-eda98a8f785b",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose target creature you control and target Equipment. Gain control of that Equipment until end of turn. Attach it to the chosen creature. When you lose control of that Equipment this turn, if it's attached to a creature you control, unattach it.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "332",
+   "set": "fin",
+   "rulings": [
+    "If the target creature is an illegal target, you'll still gain control of the target Equipment until end of turn, but you won't attach it to the chosen creature.",
+    "The reflexive triggered ability will trigger any time you lose control of that Equipment this turn, whether it's because the \"until end of turn\" duration ended or because someone else gained control of the Equipment with another effect."
+   ]
+  },
+  {
+   "name": "Zodiark, Umbral God",
+   "oracle_id": "f1190fb9-72a2-48f8-bc2d-61240f1e9119",
+   "layout": "normal",
+   "mana_cost": "{B}{B}{B}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — God",
+   "oracle_text": "Indestructible\nWhen Zodiark enters, each player sacrifices half the non-God creatures they control of their choice, rounded down.\nWhenever a player sacrifices another creature, put a +1/+1 counter on Zodiark.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "336",
+   "set": "fin",
+   "rulings": [
+    "While resolving Zodiark's second ability, you choose half the non-God creatures you control (rounded down), then each other player in turn order does the same. Then each of the chosen creatures are sacrificed simultaneously."
+   ]
+  },
+  {
+   "name": "Triple Triad",
+   "oracle_id": "9567d963-4815-466b-a319-6d138b6a0cd2",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}{R}",
+   "cmc": 6.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your upkeep, each player exiles the top card of their library. Until end of turn, you may play the card you own exiled this way and each other card exiled this way with lesser mana value than it without paying their mana costs.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "340",
+   "set": "fin",
+   "rulings": [
+    "If an exiled card has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "You follow all timing rules for cards played this way. For example, if the exiled card is a land card, you may play it only during your main phase while the stack is empty and only if you have an available land play remaining."
+   ]
+  },
+  {
+   "name": "Tellah, Great Sage",
+   "oracle_id": "1a080b26-c766-4f7c-9198-4974d2133f75",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "Whenever you cast a noncreature spell, create a 1/1 colorless Hero creature token. If four or more mana was spent to cast that spell, draw two cards. If eight or more mana was spent to cast that spell, sacrifice Tellah and it deals that much damage to each opponent.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "349",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Hero",
+     "type_line": "Token Creature — Hero",
+     "component": "token"
+    }
+   ],
+   "rulings": [
+    "Tellah's ability resolves before the spell that caused it to trigger. It resolves even if that spell is countered or otherwise leaves the stack.",
+    "If Tellah is no longer on the battlefield when its ability resolves and eight or more mana was spent to cast the spell that caused its ability to trigger, the ability will still deal damage to each opponent."
+   ]
+  },
+  {
+   "name": "Summon: Fenrir",
+   "oracle_id": "3509171e-8d7d-4e9e-97a1-58e6c7d225ed",
+   "layout": "saga",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment Creature — Saga Wolf",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — Crescent Fang — Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nII — Heavenward Howl — When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter on it.\nIII — Ecliptic Growl — Draw a card if you control the creature with the greatest power or tied for the greatest power.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "372",
+   "set": "fin",
+   "rulings": [
+    "A chapter ability doesn't trigger if a lore counter is put on a Saga that already had a number of lore counters greater than or equal to that chapter's number. For example, the third lore counter put on a Saga causes the chapter III ability to trigger, but chapters I and II won't trigger again.",
+    "Saga creatures have two sections to their text boxes. The first section, above the type line, contains their chapter abilities, and the second section, below the type line, contains any other abilities (or italicized flavor text). Any abilities in the latter section aren't chapter abilities and apply no matter how many lore counters are on the creature.",
+    "Each symbol on the left of a Saga's text box represents a chapter ability. A chapter ability is a triggered ability that triggers when a lore counter that is put on the Saga causes the number of lore counters on the Saga to become equal to or greater than the ability's chapter number. Chapter abilities are put onto the stack and may be responded to.",
+    "Once the number of lore counters on a Saga is greater than or equal to the greatest number among its chapter abilities, the Saga's controller sacrifices it as soon as its chapter ability has left the stack, most likely by resolving or being countered. This state-based action doesn't use the stack.",
+    "As a Saga enters, its controller puts a lore counter on it. As your first main phase begins (immediately after your draw step), you put another lore counter on each Saga you control. Putting a lore counter on a Saga in either of these ways doesn't use the stack.",
+    "If multiple chapter abilities trigger at the same time, their controller puts them on the stack in any order. If any of them require targets, those targets are chosen as you put the abilities on the stack, before any of those abilities resolve.",
+    "Due to a rules change that takes effect with this release (see below for details), a Saga that somehow loses all of its chapter abilities will not be sacrificed as a state-based action. It will also not gain a lore counter at the beginning of each of its controller's first main phases.",
+    "Once a chapter ability has triggered, the ability on the stack won't be affected if the Saga gains or loses counters, or if it leaves the battlefield.",
+    "Removing lore counters won't cause a previous chapter ability to trigger. If lore counters are removed from a Saga, the appropriate chapter abilities will trigger again when the Saga receives more lore counters."
+   ]
+  },
+  {
+   "name": "Vanille, Cheerful l'Cie",
+   "oracle_id": "577725ae-290f-4081-8352-3317521a096f",
+   "layout": "meld",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Cleric",
+   "oracle_text": "When Vanille enters, mill two cards, then return a permanent card from your graveyard to your hand.\nAt the beginning of your first main phase, if you both own and control Vanille and a creature named Fang, Fearless l'Cie, you may pay {3}{B}{G}. If you do, exile them, then meld them into Ragnarok, Divine Deliverance.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Meld",
+    "Mill"
+   ],
+   "collector_number": "392",
+   "set": "fin",
+   "related": [
+    {
+     "name": "Fang, Fearless l'Cie",
+     "type_line": "Legendary Creature — Human Warrior",
+     "component": "meld_part"
+    }
+   ],
+   "rulings": [
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "One card in each pair of meld cards has an ability that instructs you to exile the two cards and meld them. If you control more than one object with the specified name, you select one object with that name to exile.",
+    "Note that the permanent represented by the combined back faces is colorless unless it has a color indicator.",
+    "While a meld card is in any zone other than the battlefield, it has only the characteristics of its front face. The same is true while it's on the battlefield with its front face up.",
+    "If an effect moves a melded permanent to a new zone and then affects \"that card,\" it affects both cards.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile.",
+    "When two cards (for example, Fang, Fearless l'Cie and Vanille, Cheerful l'Cie) are melded, the result is a single permanent (in this case, Ragnarok, Divine Deliverance) that's represented by two cards. If the melded permanent goes to your graveyard from the battlefield, both cards are put into your graveyard. As the melded permanent leaves the battlefield, both of those cards are turned face up again. If the cards are put on the top or bottom of a library, their owner chooses their relative order.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "Only two cards belonging to the same meld pair can be melded. Tokens, cards that aren't meld cards, or meld cards that don't form a meld pair can't be melded. If an effect instructs a player to meld cards that can't be melded, those cards remain in exile.",
+    "A player prompted to name a card may name the combined back face, and each player has the right to know that combined back face's characteristics at all times.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "When two cards are exiled and melded, they each leave the battlefield, then return together as one new untapped object with no relation to either of the objects that left the battlefield. Counters, Auras, Equipment, and other effects that affected those two cards don't affect the melded permanent.",
+    "The mana value of a melded permanent is the sum of the mana values of its front faces. A permanent that becomes a copy of a melded permanent has only the characteristics of that combined back face, and its mana value is 0.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "While a melded permanent is on the battlefield, it has only the characteristics of its combined back face. Any effects that modify how the new object enters the battlefield will consider only the combined back face.",
+    "In the Commander variant, a meld card's color identity is determined only by the mana costs and mana symbols in the rules text of its front face. No symbols or rules text of the permanent it melds into are considered.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so."
+   ]
+  },
+  {
+   "name": "Joshua, Phoenix's Dominant // Phoenix, Warden of Fire",
+   "oracle_id": "f4629329-a79b-4460-a1bc-9ae0f59adf5a",
+   "layout": "transform",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Noble Wizard // Legendary Enchantment Creature — Saga Phoenix",
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink",
+    "Transform"
+   ],
+   "collector_number": "397",
+   "set": "fin",
+   "card_faces": [
+    {
+     "name": "Joshua, Phoenix's Dominant",
+     "mana_cost": "{1}{R}{W}",
+     "type_line": "Legendary Creature — Human Noble Wizard",
+     "oracle_text": "When Joshua enters, discard up to two cards, then draw that many cards.\n{3}{R}{W}, {T}: Exile Joshua, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+     "power": "3",
+     "toughness": "4"
+    },
+    {
+     "name": "Phoenix, Warden of Fire",
+     "mana_cost": "",
+     "type_line": "Legendary Enchantment Creature — Saga Phoenix",
+     "oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Rising Flames — Phoenix deals 2 damage to each opponent.\nIII — Flames of Rebirth — Return any number of target creature cards with total mana value 6 or less from your graveyard to the battlefield. Exile Phoenix, then return it to the battlefield (front face up).\nFlying, lifelink",
+     "power": "4",
+     "toughness": "4"
+    }
+   ],
+   "rulings": [
+    "The back face of a nonmodal double-faced card usually has a color indicator that defines its color.",
+    "A token that is created as a copy of a double-faced permanent or a double-faced card in another zone is a double-faced token. It will have both the front face and back face of whatever object it's copying. If it's copying a double-faced permanent whose back face is up, the token will enter with its back face up. It can transform if instructed to do so.",
+    "Each face of a nonmodal double-faced card has its own set of characteristics: name, types, subtypes, abilities, and so on. While a nonmodal double-faced permanent is on the battlefield, consider only the characteristics of the face that's currently up. The other set of characteristics is ignored.",
+    "The mana value of a nonmodal double-faced card is the mana value of its front face, no matter which face is up.",
+    "A nonmodal double-faced card enters with its front face up by default, unless a spell or ability instructs you to put it onto the battlefield transformed or allows you to cast it transformed, in which case it enters with its back face up.",
+    "If a card in your graveyard has {X} in its mana cost, X is 0 for the purpose of determining its mana value.",
+    "In the Commander variant, a double-faced card's color identity is determined by the mana costs and mana symbols in the rules text of both faces combined. If either face has a color indicator or basic land type, those are also considered. For example, Cecil, Dark Knight's color identity is black and white, since its front face is black and its back face has a white color indicator.",
+    "You can choose to discard no cards when Joshua's first ability resolves. If you do, you won't draw any cards.",
+    "Each nonmodal double-faced card in this release is cast face up. In every zone other than the battlefield, consider only the characteristics of its front face. If it is on the battlefield, consider only the characteristics of the face that's up; the other face's characteristics are ignored.",
+    "If you are instructed to put a card that isn't a double-faced card onto the battlefield transformed, it will not enter at all. In that case, it stays in the zone it was previously in. For example, if a single-faced card is a copy of Crystal Fragments, it will be exiled during the resolution of its second ability and remain in exile."
+   ]
+  }
+ ]
+}
