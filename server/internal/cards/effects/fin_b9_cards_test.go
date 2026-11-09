@@ -719,3 +719,129 @@ func TestFinB9SinRepeatsWhileItExilesLands(t *testing.T) {
 		t.Errorf("%d tokens for %d lands and the creature exiled", tokens, exiledLands)
 	}
 }
+
+func finB9KefkaCard(owner uuid.UUID, back bool) game.Card {
+	c := game.Card{
+		InstanceID: uuid.New(), OracleID: kefkaCourtMageOracle, Layout: game.LayoutTransform,
+		Owner: owner, Controller: owner,
+		Faces: []game.Face{
+			{Name: "Kefka, Court Mage", TypeLine: "Legendary Creature — Human Wizard", ManaCost: "{2}{U}{B}{R}", Colors: []string{"U", "B", "R"}, Power: 4, Toughness: 5},
+			{Name: "Kefka, Ruler of Ruin", TypeLine: "Legendary Creature — Avatar Wizard", Colors: []string{"U", "B", "R"}, Power: 5, Toughness: 7, Keywords: []string{"flying"}},
+		},
+	}
+	if back {
+		c.SetFace(1)
+	} else {
+		c.SetFace(0)
+	}
+	return c
+}
+
+func TestFinB9KefkaEveryPlayerDiscardsThenYouDrawPerCardType(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	for _, p := range g.Seats {
+		for p.Hand.Size() > 0 {
+			p.Hand.Cards = p.Hand.Cards[:0]
+		}
+	}
+	mine := handCardForTest(me, "Bear", "Creature — Bear", "")
+	other := handCardForTest(me, "Spare", "Sorcery", "")
+	_ = other
+	c1 := handCardForTest(g.Seats[1], "Their Bear", "Creature — Bear", "")
+	c2 := handCardForTest(g.Seats[2], "Forest", "Basic Land — Forest", "")
+	c3 := handCardForTest(g.Seats[3], "Rock", "Artifact Creature — Golem", "")
+	castCreatureCard(t, g, "Kefka, Court Mage", "Legendary Creature — Human Wizard", kefkaCourtMageOracle, 4, 5)
+	answerDiscard(t, g, me.ID, mine)
+	answerDiscard(t, g, g.Seats[1].ID, c1)
+	answerDiscard(t, g, g.Seats[2].ID, c2)
+	answerDiscard(t, g, g.Seats[3].ID, c3)
+	// Creature (three of them), land, artifact: three types; the
+	// Sorcery stayed in hand.
+	if got := me.Hand.Size(); got != 1+3 {
+		t.Errorf("hand %d, want the kept Sorcery plus 3 drawn (creature, land, artifact)", got)
+	}
+}
+
+func TestFinB9KefkaTransformsAfterEachOpponentSacrifices(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	kefka := pushBattlefieldCardWithTimestamp(g, finB9KefkaCard(me.ID, false))
+	var fodder [4]uuid.UUID
+	for i := 1; i < 4; i++ {
+		fodder[i] = b12Creature(g, g.Seats[i].ID, "Fodder", "Creature — Bear", 1, 1)
+	}
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{C}{C}{C}{C}{C}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, kefka, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for i := 1; i < 4; i++ {
+		answerSacrifice(t, g, g.Seats[i].ID, fodder[i])
+	}
+	for i := 1; i < 4; i++ {
+		if !g.Seats[i].Graveyard.Contains(fodder[i]) {
+			t.Errorf("opponent %d did not sacrifice", i)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if c := rvBattlefieldCard(g, kefka); c == nil || c.Name != "Kefka, Ruler of Ruin" {
+		t.Fatalf("Kefka did not transform: %+v", c)
+	}
+}
+
+func TestFinB9KefkaRulerOfRuinDrawsWhenAnOpponentLosesLifeOnYourTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	pushBattlefieldCardWithTimestamp(g, finB9KefkaCard(me.ID, true))
+	hand := me.Hand.Size()
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, opp.ID, -3) })
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+3 {
+		t.Errorf("hand %d → %d, want +3", hand, me.Hand.Size())
+	}
+	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, -2) })
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+3 {
+		t.Error("drew for your own life loss")
+	}
+}
+
+func TestFinB9EveryCardIsRegisteredFull(t *testing.T) {
+	for oracle, name := range map[string]string{
+		"9370f6bf-d6a0-4c5b-828f-7229f563cc07":   "Jenova, Ancient Calamity",
+		"1a846ad6-15c9-4bf9-9127-612018a557b9":   "Judge Magister Gabranth",
+		"6d3ca5cb-781d-4608-b7f1-38c020536376":   "Kefka, Court Mage",
+		"6d3ca5cb-781d-4608-b7f1-38c020536376#1": "Kefka, Ruler of Ruin",
+		"8896c74b-d466-4c25-94cf-82b5e2b1fdef":   "Rinoa Heartilly",
+		"0caeb396-e574-4e80-a1f6-79988fe9ba19":   "Rufus Shinra",
+		"3bcc378c-4470-4757-a0d5-025a32c918ea":   "Sin, Spira's Punishment",
+		"f267fb54-1881-464c-81af-9e03c3f3b41d":   "Zidane, Tantalus Thief",
+		"04ac8b2c-95e9-40e9-8cc0-af9b075a94c0":   "Fang, Fearless l'Cie",
+		"7088a901-0489-41c3-9f2f-633939514de8":   "Seifer Almasy",
+		"187a110c-032a-42e1-be2d-3cfaaa9495f8":   "Hope Estheim",
+		"aad9f9f2-4c6b-48d0-80bd-77b73a9ea5f1":   "Judgment Bolt",
+		"7979bf83-5091-4e62-8885-ca1833a97306":   "Choco, Seeker of Paradise",
+		"14b839ef-80b1-4e7d-b2fd-38e973899cde":   "Ragnarok, Divine Deliverance",
+		"2e5675d3-3fb0-43b5-a65c-95aacbe48bf9":   "Traveling Chocobo",
+		"ab914053-4384-415f-b1e8-09fecb5a30b8":   "Garland, Royal Kidnapper",
+		"393a5d32-fc8e-422b-a957-59e545a54cb6":   "The Destined Warrior",
+		"c8110200-209e-423a-96b7-81a3ac32447c":   "The Destined White Mage",
+		"b1ffba56-1c1b-44a5-ad8c-097c417ab276":   "Chaos Shrine's Black Crystal",
+		"7857c7b6-9676-47ac-bb28-d0b4cbda5fa7":   "The Destined Thief",
+		"ef2aa67a-9531-495c-85c7-7f745bc19ce1":   "The Destined Black Mage",
+	} {
+		spec, ok := Lookup(oracle)
+		if !ok {
+			t.Errorf("%s is not registered", name)
+			continue
+		}
+		if spec.Name != name || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+			t.Errorf("%s: name %q, completeness %s, caveats %v", name, spec.Name, spec.Completeness, spec.Caveats)
+		}
+	}
+}
