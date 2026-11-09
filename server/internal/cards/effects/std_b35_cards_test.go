@@ -20,6 +20,10 @@ const (
 	b35HighNoonOracle            = "3c8cbf0f-0288-4b5e-bd4f-0f208670b6b5"
 	b35LegionExtruderOracle      = "c77dc11e-d95d-4e7e-bb24-d971c179e9b0"
 	b35AncientCornucopiaOracle   = "f0950c95-a297-489d-b166-74bba6af5376"
+	b35LotusRingOracle           = "ca4d3d27-ea3a-44ac-96e9-b52b563129f8"
+	b35SwordWealthPowerOracle    = "b3a80545-9a8a-46b2-9d8c-b0d66fb68a5d"
+	b35OltecMatterweaverOracle   = "3cb91696-242f-4e91-806b-61b1bb45a20c"
+	b35WorldwalkerHelmOracle     = "9573c85a-e574-4b4e-aae0-2165c45fd27e"
 )
 
 func TestB35EveryCardIsRegisteredFull(t *testing.T) {
@@ -32,6 +36,10 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35HighNoonOracle:            "High Noon",
 		b35LegionExtruderOracle:      "Legion Extruder",
 		b35AncientCornucopiaOracle:   "Ancient Cornucopia",
+		b35LotusRingOracle:           "Lotus Ring",
+		b35SwordWealthPowerOracle:    "Sword of Wealth and Power",
+		b35OltecMatterweaverOracle:   "Oltec Matterweaver",
+		b35WorldwalkerHelmOracle:     "Worldwalker Helm",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -283,5 +291,125 @@ func TestB35AncientCornucopiaGainsLifePerColorOncePerTurn(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if got := lifeOf(g, me.ID); got != life+2 {
 		t.Errorf("life %d, want still %d: only once each turn", got, life+2)
+	}
+}
+
+func TestB35LotusRingEquipsForThreeThreeVigilanceAndAThreeManaSacrifice(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := gaPut(g, me.ID, "Bear", "Creature — Bear", "")
+	ring := gaPut(g, me.ID, "Lotus Ring", "Artifact — Equipment", b35LotusRingOracle)
+	if !hasEffectiveKeyword(t, g, ring, "indestructible") {
+		t.Error("Lotus Ring is indestructible")
+	}
+	advanceToMain(t, g)
+	floatMana(t, g, me, "{C}{C}{C}")
+	equipTo(t, g, me.ID, ring, bear)
+	if p, tt := ptOf(t, g, bear); p != 3 || tt != 3 {
+		t.Errorf("the equipped creature is %d/%d, want 3/3", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, bear, "vigilance") {
+		t.Error("the equipped creature has vigilance")
+	}
+	if grantedManaRowsOf(g, bear) != 1 {
+		t.Fatal("the equipped creature has the three-mana ability")
+	}
+}
+
+func TestB35SwordOfWealthAndPowerMakesATreasureAndCopiesTheNextInstant(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	sword := gaPut(g, me.ID, "Sword of Wealth and Power", "Artifact — Equipment", b35SwordWealthPowerOracle)
+	advanceToMain(t, g)
+	floatMana(t, g, me, "{C}{C}")
+	equipTo(t, g, me.ID, sword, bear)
+	if p, tt := ptOf(t, g, bear); p != 4 || tt != 4 {
+		t.Errorf("the equipped creature is %d/%d, want 4/4", p, tt)
+	}
+	for _, kw := range []string{game.ProtectionFromCardType("Instant"), game.ProtectionFromCardType("Sorcery")} {
+		if !hasEffectiveKeyword(t, g, bear, kw) {
+			t.Errorf("the equipped creature lacks %q", kw)
+		}
+	}
+	if countTreasures(g, me.ID) != 0 {
+		t.Fatal("a Treasure before any damage")
+	}
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventDealDamage, Source: bear, Target: opp.ID, Actor: me.ID, Amount: 3, Combat: true})
+	})
+	passPriorityAroundTable(t, g)
+	if got := countTreasures(g, me.ID); got != 1 {
+		t.Fatalf("%d Treasures after the combat damage, want 1", got)
+	}
+	life := lifeOf(g, opp.ID)
+	castBoltAtAndKeepTheCopysTarget(t, g, me.ID, opp.ID, 1)
+	if got := lifeOf(g, opp.ID); got != life-6 {
+		t.Errorf("life %d after a copied Bolt, want %d", got, life-6)
+	}
+	castBoltAtAndKeepTheCopysTarget(t, g, me.ID, opp.ID, 0)
+	if got := lifeOf(g, opp.ID); got != life-9 {
+		t.Errorf("life %d after a second Bolt, want %d (only the next spell is copied)", got, life-9)
+	}
+}
+
+func TestB35OltecMatterweaverMakesAGnomeOrCopiesAnArtifactToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Oltec Matterweaver", "Creature — Human Artificer", b35OltecMatterweaverOracle, 3, 2)
+	b12PlayFromHand(t, g, "Bear Cub", "Creature — Bear", "", game.CastSpellParams{})
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 0)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Gnome"); n != 1 {
+		t.Fatalf("%d Gnomes, want 1", n)
+	}
+	b12PlayFromHand(t, g, "Bear Cub", "Creature — Bear", "", game.CastSpellParams{})
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 1)
+	pickCard(t, g, me.ID, func() uuid.UUID {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Gnome" {
+				return c.InstanceID
+			}
+		}
+		return uuid.Nil
+	}())
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Gnome"); n != 2 {
+		t.Fatalf("%d Gnomes after the copy mode, want 2", n)
+	}
+}
+
+func TestB35WorldwalkerHelmAddsAMapToArtifactTokensOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	gaPut(g, me.ID, "Worldwalker Helm", "Artifact", b35WorldwalkerHelmOracle)
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TreasureToken(), 2) })
+	if got := countTreasures(g, me.ID); got != 2 {
+		t.Errorf("%d Treasures, want 2", got)
+	}
+	if n, _ := countTokensNamed(g, me.ID, "Map"); n != 1 {
+		t.Errorf("%d Maps for one instruction, want 1", n)
+	}
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
+	if n, _ := countTokensNamed(g, me.ID, "Map"); n != 1 {
+		t.Errorf("a Goblin-only creation changed the Maps to %d", n)
+	}
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, TreasureToken(), 1) })
+	if n, _ := countTokensNamed(g, opp.ID, "Map"); n != 0 {
+		t.Errorf("an opponent's artifact token got %d Maps", n)
+	}
+}
+
+func TestB35WorldwalkerHelmCopiesAnArtifactToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	helm := gaPut(g, me.ID, "Worldwalker Helm", "Artifact", b35WorldwalkerHelmOracle)
+	clue := pushToken(g, me.ID, ClueToken())
+	b06AddMana(me, "U", "C")
+	b16Activate(t, g, me.ID, helm, 0, game.ActivateAbilityParams{Targets: b16TargetCard(clue)})
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 2 {
+		t.Fatalf("%d Clues, want 2", n)
 	}
 }

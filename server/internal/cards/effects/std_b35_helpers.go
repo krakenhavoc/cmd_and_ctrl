@@ -56,3 +56,32 @@ func b35YouDiscardLoseSacrifice(discard, life, sac int, label string) Effect {
 func b35BatToken() game.Card {
 	return game.Card{Name: "Bat", TypeLine: "Token Creature — Bat", Power: 2, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}}
 }
+
+// b35CopyTargetTokenModeBody is "create a token that's a copy of target
+// <artifact> token you control" as a mode's body (Oltec Matterweaver); the
+// target is read at resolution (CR 608.2b).
+func b35CopyTargetTokenModeBody(_ *game.StackItem, ctx *Context, occ int) error {
+	tr, ok := ModeTarget(ctx, occ)
+	if !ok || tr.Kind != game.TargetCard {
+		return nil
+	}
+	return CreateTokenCopy{Controller: ctx.Controller(), Copy: tr.ID, N: 1}.Apply(ctx)
+}
+
+// b35CopyFirstTargetToken is "create a token that's a copy of target
+// <artifact> token you control" as a resolution (Worldwalker Helm).
+func b35CopyFirstTargetToken(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return CreateTokenCopy{Controller: ctx.Controller(), Copy: t.ID, N: 1}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
+// b35ArtifactTokenYouControl is the clause "target artifact token you
+// control".
+func b35ArtifactTokenYouControl() *game.TargetSpec {
+	return TargetPermanent("target artifact token you control", Artifact(), IsTokenPredicate(), YouControl())
+}
