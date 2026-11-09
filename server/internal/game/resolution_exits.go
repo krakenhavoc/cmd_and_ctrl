@@ -73,6 +73,7 @@ const (
 	resolutionExitWithCounter   = "exile-with-counter"
 	resolutionExitAdventure     = "adventure"
 	resolutionExitOmen          = "omen"
+	resolutionExitExilePlot     = "exile-plot"
 )
 
 // apply rewrites the route the way this exit replaces it, and returns
@@ -94,6 +95,9 @@ func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 	case resolutionExitWithCounter:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		return KeyedTail{Ref: exiledWithCounterTail, Player: controller, Carry: []uuid.UUID{cardID}, Word: e.counter}
+	case resolutionExitExilePlot:
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		return KeyedTail{Ref: exiledAndPlottedTail, Player: controller, Carry: []uuid.UUID{cardID}}
 	case resolutionExitAdventure:
 		// CR 715.3d names the spell's CONTROLLER twice — "its controller
 		// exiles it" and "that player may play it" — so a stolen
@@ -142,6 +146,16 @@ var (
 		}
 		// #3942: the spell's controller puts it.
 		return g.AddCounterByForEffect(o.Tail.Player, o.Tail.Carry[0], o.Tail.Word, 1)
+	})
+	// exiledAndPlottedTail: "if you do, it becomes plotted" (Lilah), once the
+	// card is really in exile (exile_and_plot.go). The plotter is the
+	// spell's controller.
+	exiledAndPlottedTail = RegisterTail("engine/exiled-and-plotted", func(g *Game, o TailOutcome) error {
+		if len(o.Tail.Carry) == 0 || exiledCardByIDLocked(g, o.Tail.Carry[0]) == nil {
+			return nil
+		}
+		g.plotExiledCardLocked(o.Tail.Carry[0], uuid.Nil, o.Tail.Player)
+		return nil
 	})
 	// adventureExiledTail: CR 715.4's permission to cast the creature,
 	// granted once the card is in exile (adventure.go).
@@ -207,6 +221,10 @@ func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 		e := exit("Exile it with a "+item.ExileWithCounter+" counter on it", resolutionExitWithCounter)
 		e.counter = item.ExileWithCounter
 		out = append(out, e)
+	}
+	if item != nil && !item.IsCopy && item.ExileAndPlot {
+		// Lilah: exile it, and it becomes plotted once it is there.
+		out = append(out, exit("Exile it, and it becomes plotted", resolutionExitExilePlot))
 	}
 	if castAsAdventure(c) {
 		// CR 715.3d, and CR 715.4's permission rides the route's

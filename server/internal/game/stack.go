@@ -555,6 +555,13 @@ type StackItem struct {
 	// MarkSpellExilesWithCounterForEffect; never on a copy.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
 
+	// ExileAndPlot is Lilah, Undefeated Slickshot's "exile that spell
+	// instead of putting it into your graveyard as it resolves. If you do,
+	// it becomes plotted" as a fact about this stack object. Resolution
+	// only, like ExileWithCounter: a countered or fizzled spell goes to the
+	// graveyard. Set by MarkSpellExilesAndPlotsForEffect; never on a copy.
+	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+
 	// ExileInsteadOfGraveyard is "If that spell would be put into your
 	// graveyard, exile it instead" as a fact about this stack object
 	// (Torrential Gearhulk, Emet-Selch of the Third Seat; #3863). The
