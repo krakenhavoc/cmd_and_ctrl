@@ -3,6 +3,8 @@ package effects
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -96,4 +98,76 @@ func TestGreatForestChaosGivesPlusTwoToughnessAndTrample(t *testing.T) {
 	if tough != 4 {
 		t.Errorf("toughness %d, want 4", tough)
 	}
+}
+
+var planeThePit = planeFixture{"b60e8617-fc35-4c8a-beb0-4688b88484c4", "The Pit", "Plane — The Abyss"}
+
+func TestThePitEachPlayerChoosesATokenAndTheDemonBites(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeThePit)
+	g, _ := newPlaneGame(t, planeThePit)
+	advanceToMain(t, g)
+	planeswalkToPlane(t, g, planeThePit.Oracle)
+	passPriorityAroundTable(t, g)
+	// Four prompts, one per player in turn order; the active player takes
+	// the Demon, the rest Angels.
+	for i := 0; i < 4; i++ {
+		ch := latestChoiceOfKind(g, game.PendingChoiceOptionPick)
+		if ch == nil {
+			t.Fatalf("prompt %d missing", i)
+		}
+		idx := 0
+		if i == 0 {
+			idx = 1
+		}
+		if err := g.ResolveOptionPick(ch.ID, ch.Chooser, idx); err != nil {
+			t.Fatalf("answering prompt %d: %v", i, err)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	var demons, angels int
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			switch c.Name {
+			case "Demon":
+				demons++
+			case "Angel":
+				angels++
+			}
+		}
+	})
+	if demons != 1 || angels != 3 {
+		t.Fatalf("demons %d angels %d, want 1 and 3", demons, angels)
+	}
+	// Next turn cycle: the Demon's controller reaches an upkeep with no other
+	// creature, so it deals 6 damage to them.
+	life := me.Life
+	for i := 0; i < 4; i++ {
+		toNextUpkeep(t, g)
+		passPriorityAroundTable(t, g)
+	}
+	if g.Seats[g.Turn.ActiveSeat] != me {
+		t.Fatalf("not back at the Demon's controller")
+	}
+	if got := life - me.Life; got != 6 {
+		t.Errorf("the Demon's controller lost %d life, want 6", got)
+	}
+}
+
+func TestThePitChaosEachPlayerSacrificesANonartifactCreature(t *testing.T) {
+	g, _ := newPlaneGame(t, planeThePit)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mine := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
+	theirs := pushVanillaCreature(g, opp.ID, "Ogre", 3, 3)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	g.ReadSnapshot(func() {
+		for _, id := range []uuid.UUID{mine, theirs} {
+			if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneBattlefield {
+				t.Errorf("%v was not sacrificed", id)
+			}
+		}
+	})
 }

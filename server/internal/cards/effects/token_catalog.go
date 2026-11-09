@@ -207,6 +207,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0083's first tokens with an ability of their own that is
 	// not a mana or activated ability.
 	printedPestToken,
+	printedThePitDemonToken,
 	printedNoncreatureCastWizardToken,
 	printedFableGoblinShamanToken,
 	printedFirebendingDragonToken,
