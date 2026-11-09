@@ -2596,6 +2596,27 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 		}
 	}
+	// ADR 0216 §6, CR 901.7: a face-up plane's abilities function from the
+	// command zone, and "instant and sorcery cards in graveyards have
+	// flashback" (Otaria) is about EVERY player's graveyard: each seat
+	// holds the permission over its own pile, the plane's controller
+	// (the planar controller) no more than the others. Nothing is
+	// stored: the plane turning face down is the duration.
+	if CatalogCastPermissions != nil && g.Planechase != nil && g.PlanarFaceUp != nil {
+		for i := range g.PlanarFaceUp.Cards {
+			c := &g.PlanarFaceUp.Cards[i]
+			key := catalogAbilityKeyOf(c)
+			if key == "" {
+				continue
+			}
+			for _, perm := range CatalogCastPermissions(key) {
+				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
+					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+					out = append(out, stamped)
+				}
+			}
+		}
+	}
 	return out
 }
 

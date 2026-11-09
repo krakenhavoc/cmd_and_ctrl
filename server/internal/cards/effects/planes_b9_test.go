@@ -30,6 +30,7 @@ var (
 	planeBarony   = planeFixture{"5503c308-560d-4d5f-a86a-4b06d9947ddc", "The Dark Barony", "Plane — Ulgrotha"}
 	planeEonFog   = planeFixture{"a04d05ed-1b9b-4407-8780-c75c102a94dd", "The Eon Fog", "Plane — Equilor"}
 	planeFourth   = planeFixture{"13e801cd-e537-4ea6-8c3d-21b142bdc026", "The Fourth Sphere", "Plane — Phyrexia"}
+	planeOtaria   = planeFixture{"29e3371d-aa41-46a9-921a-96565be47eff", "Otaria", "Plane — Dominaria"}
 	planeOrzhova  = planeFixture{"c7241e4b-d2c7-4801-96a3-91bb998953a1", "Orzhova", "Plane — Ravnica"}
 )
 
@@ -637,4 +638,47 @@ func TestOrzhovaChaosExilesOpponentCreatureCardsAndPlaneswalkingReturnsAll(t *te
 
 func pickTargetOpen(g *game.Game) bool {
 	return latestChoiceOfKind(g, game.PendingChoicePickTarget) != nil
+}
+
+// --- Otaria ------------------------------------------------------------------
+
+func TestOtariaGivesEveryGraveyardsInstantsAndSorceriesFlashbackAndChaosTakesExtraTurns(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeOtaria)
+	g, _ := newPlaneGame(t, planeOtaria)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	spell := pushGraveyardCardWithTypeLineID(me, "Dead Sorcery", "Sorcery")
+	theirs := pushGraveyardCardWithTypeLineID(opp, "Dead Instant", "Instant")
+	bear := pushGraveyardCardWithTypeLineID(me, "Dead Bear", "Creature — Bear")
+	for _, c := range []struct {
+		owner *game.Player
+		id    uuid.UUID
+		want  bool
+	}{{me, spell, true}, {opp, theirs, true}, {me, bear, false}} {
+		perm := grantedPermissionOn(g, c.owner.ID, c.id, game.ZoneGraveyard)
+		if perm.Granted() != c.want {
+			t.Errorf("flashback granted = %v on %v, want %v", perm.Granted(), c.id, c.want)
+		}
+		if c.want && (perm.AltCostKey != "flashback" || perm.Cost != "" || !perm.ExileOnResolution) {
+			t.Errorf("the grant is %+v, want flashback for the mana cost, exiled after", perm)
+		}
+	}
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+		t.Fatalf("flashback the sorcery: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(spell) {
+		t.Error("a sorcery cast with flashback is exiled as it leaves the stack")
+	}
+	spell = pushGraveyardCardWithTypeLineID(me, "Another Sorcery", "Sorcery")
+	rollChaos(t, g, me.ID)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if n := len(g.ExtraTurnsQueued()); n != 2 {
+		t.Errorf("%d extra turns queued by two chaos rolls, want 2", n)
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if perm := grantedPermissionOn(g, me.ID, spell, game.ZoneGraveyard); perm.Granted() {
+		t.Error("flashback outlived the plane")
+	}
 }
