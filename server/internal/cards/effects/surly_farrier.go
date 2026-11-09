@@ -16,6 +16,7 @@ func init() {
 			Cost:         TapCost(),
 			Targets:      TargetCreature("target creature you control", YouControl()),
 			SorcerySpeed: true,
+			Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "vigilance")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)

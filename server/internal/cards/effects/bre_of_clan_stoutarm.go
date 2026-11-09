@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}, {T}: Another target creature you control gains flying and lifelink until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 0, 0, "flying", "lifelink")), game.AnswerCombatGrant),
 			Cost:    Plus(ManaCost("{1}{W}"), TapCost()),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -36,13 +36,7 @@ func init() {
 				return (ev.Kind == game.EventETB && ev.CardID == source.InstanceID) || ThisTransformedInto(0)(ev, source, lki, g)
 			}, trystanCultivatorLabel, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				if err := (MillCards{N: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				if !dawnhandEulogistElfInGraveyard(ctx) {
-					return nil
-				}
-				return GainLife{Amount: 2}.Apply(ctx)
+				return g.MillToZoneKeyedForEffect(item.Controller, 3, game.ZoneGraveyard, game.MillUntil{}, ctx.ItemTail(trystanCultivatorMilled))
 			}),
 			AtYourPrecombatMain("Trystan, Callous Cultivator — you may pay {B} to transform Trystan", func(g *game.Game, item *game.StackItem) error {
 				return MayPay{
@@ -78,11 +72,25 @@ const (
 	trystanCullerLabel     = "Trystan, Penitent Culler — mill three cards, then you may exile an Elf card from your graveyard; if you do, each opponent loses 2 life"
 )
 
+// trystanCultivatorMilled is the front face's "then if there is an Elf card
+// in your graveyard, you gain 2 life", run once the mill has settled. An
+// on-disk key: never renamed, never reused.
+var trystanCultivatorMilled = CardTail("mill-then/trystan-callous-cultivator", func(ctx *Context, _ game.TailOutcome) error {
+	if !dawnhandEulogistElfInGraveyard(ctx) {
+		return nil
+	}
+	return GainLife{Amount: 2}.Apply(ctx)
+})
+
 func trystanCullerMill(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if err := (MillCards{N: 3}).Apply(ctx); err != nil {
-		return err
-	}
+	return g.MillToZoneKeyedForEffect(item.Controller, 3, game.ZoneGraveyard, game.MillUntil{}, ctx.ItemTail(trystanCullerMilled))
+}
+
+// trystanCullerMilled is the back face's pick after the mill: you may exile an
+// Elf card from your graveyard. An on-disk key: never renamed, never reused.
+var trystanCullerMilled = CardTail("mill-then/trystan-penitent-culler", func(ctx *Context, _ game.TailOutcome) error {
+	g, item := ctx.Game, ctx.Item
 	elf := ctx.TextSubtype("Elf")
 	ids := b42CardsInGraveyardOf(g, item.Controller, func(c game.Card) bool { return c.HasSubtype(elf) })
 	if len(ids) == 0 {
@@ -100,7 +108,7 @@ func trystanCullerMill(g *game.Game, item *game.StackItem) error {
 		Asked:    game.NewAskedItem(item),
 	})
 	return nil
-}
+})
 
 var trystanCullerExile = askedPick("choose-cards/trystan-penitent-culler-exile", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {

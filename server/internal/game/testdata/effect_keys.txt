@@ -602,6 +602,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
 choose choose-cards/living-wish-take
+choose choose-cards/lluwen-imperfect-naturalist-top
 choose choose-cards/london-mulligan-bottom
 choose choose-cards/mad-wizards-lair-cast
 choose choose-cards/mairsil-cage
@@ -615,6 +616,7 @@ choose choose-cards/memory-theft-adventure-to-graveyard
 choose choose-cards/mill-then-take-cache-grab-pick
 choose choose-cards/mill-then-take-first-contact-first-spell-pick
 choose choose-cards/mill-then-take-first-contact-pick
+choose choose-cards/mill-then-take-midnight-tilling-pick
 choose choose-cards/mill-then-take-something-worth-saving-pick
 choose choose-cards/mill-then-take-temporal-anomaly-pick
 choose choose-cards/mill-three-return-land-tapped
@@ -716,6 +718,7 @@ choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
 choose choose-cards/sample-collector-collect-evidence
+choose choose-cards/sanar-innovative-first-year-exile
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
@@ -733,6 +736,7 @@ choose choose-cards/spellweaver-volute-reattach
 choose choose-cards/sphinxs-approach-exile-four
 choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
+choose choose-cards/spry-and-mighty-two
 choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/starseer-mentor-punisher-discarded
 choose choose-cards/stillness-in-motion-restack
@@ -777,6 +781,7 @@ choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
+choose choose-cards/trystan-penitent-culler-exile
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-prophet-take
@@ -1315,6 +1320,7 @@ payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/chain-lightning-offer-copy
+payunless pay-unless/chaos-spewer-blight
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
@@ -1794,6 +1800,7 @@ tail bounding-felidar/gain-life
 tail brago-king-eternal/return-exiled
 tail brass-tunnel-grinder/check-bore
 tail brass-tunnel-grinder/transform
+tail bre-of-clan-stoutarm/after-exile
 tail breach-the-multiverse/phyrexians
 tail breaching-dragonstorm/after-exile
 tail bring-to-light/cast
@@ -1880,6 +1887,8 @@ tail distant-memories/offer
 tail dominion-infiltration/haste-and-exile-copies
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
+tail dream-harvest/after-exile
+tail dream-harvest/exile-step
 tail dredge/return-then-draw
 tail each-player/exile-top-step
 tail each-player/mill-step
@@ -1966,6 +1975,7 @@ tail etali-primal-conqueror/after-mill
 tail exile-then-token-copy/ardyn-the-usurper
 tail exile-then-token-copy/restore-relic
 tail exile-then-token-copy/the-scarab-god
+tail exile-then/trystan-penitent-culler
 tail exile-then/venom-deadly-devourer-counters
 tail exile-until-nonland/grant-cast
 tail exile-until/record-event-return
@@ -2127,8 +2137,12 @@ tail memory-vessel/ban-hands
 tail mill-then-take/cache-grab
 tail mill-then-take/first-contact
 tail mill-then-take/first-contact-first-spell
+tail mill-then-take/midnight-tilling
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
+tail mill-then/lluwen-imperfect-naturalist
+tail mill-then/trystan-callous-cultivator
+tail mill-then/trystan-penitent-culler
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
@@ -2281,6 +2295,7 @@ tail sauron-lord-of-the-rings/mill-then-return
 tail scholar-of-new-horizons/battlefield-or-hand
 tail scholar-of-new-horizons/rest-into-hand
 tail scout-the-city/after-mill
+tail search-then/tend-the-sprigs
 tail selesnya-eulogist/after-exile
 tail selvalas-stampede/shuffle-then-free
 tail sheoldred-the-true-scriptures/flicker-this

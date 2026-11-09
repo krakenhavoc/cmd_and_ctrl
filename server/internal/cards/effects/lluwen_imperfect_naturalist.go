@@ -30,7 +30,8 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{B/G}{B/G}{B/G}, {T}, Discard a land card: Create a 1/1 black and green Worm creature token for each land card in your graveyard.",
+			Label:   "{2}{B/G}{B/G}{B/G}, {T}, Discard a land card: Create a 1/1 black and green Worm creature token for each land card in your graveyard.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: Plus(ManaCost("{2}{B/G}{B/G}{B/G}"), TapCost(),
 				DiscardCardsMatching(1, "a land card", func(c game.Card) bool { return c.IsLand() })),
 			Effect: func(g *game.Game, item *game.StackItem) error {

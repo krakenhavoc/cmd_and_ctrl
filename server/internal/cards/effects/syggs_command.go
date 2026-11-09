@@ -43,13 +43,7 @@ func init() {
 				}),
 			ModeDoing("Target player draws a card.",
 				TargetPlayer("target player"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
-				}),
+				modeTargetPlayerDraws),
 			ModeDoing("Tap target creature. Put a stun counter on it.",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {

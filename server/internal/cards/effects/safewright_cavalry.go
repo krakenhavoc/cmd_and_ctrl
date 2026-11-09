@@ -14,7 +14,7 @@ func init() {
 		BlockRules:   []game.BlockRule{MaxBlockers(OnSelf(), 1)},
 		Activated: []ActivatedAbility{{
 			Label:   "{5}: Target Elf you control gets +2/+2 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: withAnswers(ForTargets(BenefitUntilEOT(0, 2, 2)), game.AnswerPump),
 			Cost:    ManaCost("{5}"),
 			Targets: TargetCreature("target Elf you control", YouControl(), HasSubtype("Elf")),
 			Effect: func(g *game.Game, item *game.StackItem) error {

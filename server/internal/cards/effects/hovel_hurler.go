@@ -23,6 +23,7 @@ func init() {
 			Cost:         Plus(ManaCost("{R/W}{R/W}"), RemoveCountersFromThis("", 1)),
 			Targets:      Another(TargetCreature("another target creature you control", YouControl())),
 			SorcerySpeed: true,
+			Purpose:      ForTargets(BenefitUntilEOT(0, 1, 0, "flying")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)

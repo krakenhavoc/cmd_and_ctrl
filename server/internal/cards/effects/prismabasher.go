@@ -15,11 +15,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	t := WhenThisEnters("Prismabasher — up to X target creatures you control get +X/+X until end of turn (vivid)",
 		prismabasherPump)
-	t.TargetsFrom = func(_ game.TriggerContext, source *game.Card, g *game.Game) *game.TargetSpec {
-		x := len(colorsAmongPermanentsYouControl(g, source.Controller))
-		return TargetCreature("up to X target creatures you control", YouControl()).WithCount(0, x)
+	// X is counted once, as the trigger triggers, and carried on its context.
+	t.StampColorsAmongYours = true
+	t.TargetsFrom = func(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game.TargetSpec {
+		if tc.ColorsAmongYours <= 0 {
+			return nil
+		}
+		return TargetCreature("up to X target creatures you control", YouControl()).WithCount(0, tc.ColorsAmongYours)
 	}
-	t.TargetsFromReadsBoard = true
 	Register(Spec{
 		OracleID:        "f75be4f2-d1a7-40c7-a0e4-ba8b03556ac6",
 		Name:            "Prismabasher",

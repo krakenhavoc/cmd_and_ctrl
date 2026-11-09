@@ -57,13 +57,7 @@ func init() {
 				TokenCopyTheModesTarget),
 			ModeWithPurpose(ModeDoing("Target player draws a card.",
 				TargetPlayer("target player"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
-				}),
+				modeTargetPlayerDraws),
 				ForTargets(game.TargetPurpose{Slot: 0, Draws: 1})),
 		),
 	})
