@@ -72038,6 +72038,7 @@ turnTally.players{}.combatDamageTaken	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
+turnTally.players{}.creaturesExiled	number:int
 turnTally.players{}.creaturesLeft	number:int
 turnTally.players{}.earthbends	number:int
 turnTally.players{}.energyPaidOrLost	number:int

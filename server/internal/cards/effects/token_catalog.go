@@ -203,6 +203,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedB16LanderToken,
 	printedMutagenToken,
 	printedB14ReplicatedRingToken,
+	printedVrenRatToken,
 
 	// ADR 0083's first tokens with an ability of their own that is
 	// not a mana or activated ability.
