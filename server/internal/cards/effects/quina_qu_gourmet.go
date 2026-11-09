@@ -30,7 +30,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, Sacrifice a Frog: Put a +1/+1 counter on Quina.",
-			Purpose: game.Purpose{Answers: game.AnswerPump, SourceCounters: 1},
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet | game.AnswerProtect | game.AnswerSurvive, SourceCounters: 1},
 			Cost:    Plus(ManaCost("{2}"), SacrificeN(1, "a Frog", HasSubtype("Frog"))),
 			Effect:  Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}),
 		}},
