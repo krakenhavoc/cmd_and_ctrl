@@ -123,6 +123,9 @@ var duelistsFlamePicked = askedPick("choose-cards/duelists-flame-exile", func(ct
 		return nil
 	}
 	const name = "Duelist's Flame"
-	return exileWithPermissionThenOffer(ctx.Game, picked, ctx.Source(),
-		ctx.Game.FreeCastFromExilePermission(ctx.Controller(), ctx.Source(), name), name, game.MayCastKeywordFreeCast)
+	// The card is still in the library, so the exile's keyed tail offers the
+	// free cast once it has landed (exiledThenOffer, free_cast_grants.go).
+	perm := ctx.Game.FreeCastFromExilePermission(ctx.Controller(), ctx.Source(), name)
+	return ctx.Game.ExileCardKeyedForEffect(picked, game.KeyedTail{Ref: exiledThenOffer, Source: ctx.Source(), Permission: &perm,
+		Word: game.MayCastKeywordFreeCast + freeCastWordSep + name})
 })
