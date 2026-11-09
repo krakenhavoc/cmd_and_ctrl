@@ -714,7 +714,7 @@ func (t TapTarget) Apply(ctx *Context) error {
 		// is nothing to tap, so the instruction does nothing.
 		return nil
 	}
-	return ctx.Game.TapTargetForEffect(t.Target)
+	return ctx.Game.TapTargetForEffectBy(t.Target, ctx.Controller())
 }
 
 // UntapEachLegalTarget is "Untap target land" / "Untap two target
