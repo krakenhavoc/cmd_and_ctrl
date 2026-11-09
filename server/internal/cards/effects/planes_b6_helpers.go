@@ -67,3 +67,40 @@ func b6TreasuresPingEverything(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// b6PlaneswalkedToThisPlaneThisTurn is the intervening "if you planeswalked to
+// <this plane> this turn" (Unyaro): the planeswalk to the source plane is in
+// the turn's events. It declares no footprint (the planeswalk event is not a
+// state the independence check models).
+type b6PlaneswalkedToThisPlaneThisTurn struct{}
+
+func (b6PlaneswalkedToThisPlaneThisTurn) Holds(ctx *Context) bool {
+	for _, ev := range ctx.Game.EventsThisTurn() {
+		if ev.Kind == game.EventPlaneswalkTo && ev.CardID == ctx.Source() {
+			return true
+		}
+	}
+	return false
+}
+
+func (b6PlaneswalkedToThisPlaneThisTurn) condition() (game.FootprintStep, bool) {
+	return game.FootprintStep{}, false
+}
+
+// b6UntapThenPhaseOutAllCreaturesUntilPlaneswalk is Unyaro's end-step
+// ability: untap all creatures, which then phase out until a player
+// planeswalks (the plane that made the effect must still be face up). The
+// phase-out takes each creature's attachments with it (CR 702.26g).
+func b6UntapThenPhaseOutAllCreaturesUntilPlaneswalk(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	var ids []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.IsCreature() {
+			ids = append(ids, c.InstanceID)
+		}
+	}
+	if err := untapEach(ctx, ids); err != nil {
+		return err
+	}
+	return g.PhaseOutUntilPlaneswalkForEffect(item.SourceCardID, item.SourceCardID, ids...)
+}

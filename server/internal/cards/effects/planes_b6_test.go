@@ -460,3 +460,70 @@ func TestUndercityReachesLetsTheCreaturesControllerDrawAndChaosLiftsHandSize(t *
 		t.Errorf("max hand size %d, want none", got)
 	}
 }
+
+var planeUnyaro = planeFixture{"503fcc43-dafd-484b-a97f-bbd11eed66de", "Unyaro", "Plane — Zhalfir"}
+
+func b6PhasedOut(g *game.Game, id uuid.UUID) bool {
+	var out bool
+	g.ReadSnapshot(func() { out = g.IsPhasedOutForEffect(id) })
+	return out
+}
+
+func TestUnyaroPhasesCreaturesOutUntilAPlayerPlaneswalks(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeUnyaro)
+	g, _ := newPlaneGame(t, planeUnyaro)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mine := pushVanillaCreature(g, me.ID, "Mine", 2, 2)
+	theirs := pushVanillaCreature(g, opp.ID, "Theirs", 2, 2)
+	// Not planeswalked to this turn (it was the starting plane): nothing.
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if b6PhasedOut(g, mine) || b6PhasedOut(g, theirs) {
+		t.Fatal("creatures phased out though the plane was not planeswalked to this turn")
+	}
+	endTurn(t, g)
+
+	// A later turn, planeswalking to Unyaro.
+	g2, _ := newPlaneGame(t, planeUnyaro)
+	advanceToMain(t, g2)
+	me2, opp2 := g2.Seats[g2.Turn.ActiveSeat], opponentOf(g2)
+	mine2 := pushVanillaCreature(g2, me2.ID, "Mine", 2, 2)
+	theirs2 := pushVanillaCreature(g2, opp2.ID, "Theirs", 2, 2)
+	planeswalkToPlane(t, g2, planeUnyaro.Oracle)
+	passPriorityAroundTable(t, g2)
+	advanceTo(t, g2, game.StepEnd)
+	passPriorityAroundTable(t, g2)
+	if !b6PhasedOut(g2, mine2) || !b6PhasedOut(g2, theirs2) {
+		t.Fatalf("every creature should be phased out (mine %v theirs %v)", b6PhasedOut(g2, mine2), b6PhasedOut(g2, theirs2))
+	}
+	// A phased-out creature skips the untap-step phase-in.
+	next := toNextUpkeep(t, g2)
+	_ = next
+	if !b6PhasedOut(g2, mine2) || !b6PhasedOut(g2, theirs2) {
+		t.Fatal("a creature phased in at an untap step")
+	}
+	g2.WithWriteLock(func() { _ = g2.PlaneswalkForEffect(g2.Seats[g2.Turn.ActiveSeat].ID) })
+	if b6PhasedOut(g2, mine2) || b6PhasedOut(g2, theirs2) {
+		t.Error("creatures stayed phased out after a planeswalk")
+	}
+}
+
+func TestUnyaroChaosMakesTwoKnights(t *testing.T) {
+	g, _ := newPlaneGame(t, planeUnyaro)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Knight" && c.Controller == me.ID {
+				n++
+			}
+		}
+	})
+	if n != 2 {
+		t.Errorf("%d Knights, want 2", n)
+	}
+}

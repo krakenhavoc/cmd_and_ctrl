@@ -547,6 +547,12 @@ func (g *Game) sweepPhaseInLocksLocked() bool {
 		if findCardOnBattlefield(g, c.PhaseInLockedBy) >= 0 {
 			continue
 		}
+		// "Until a player planeswalks" (Unyaro): the lock is the face-up
+		// plane that made the effect, and the duration ends the moment it
+		// stops being face up (CR 901.11).
+		if g.PlanarFaceUp != nil && g.PlanarFaceUp.Contains(c.PhaseInLockedBy) {
+			continue
+		}
 		ready = append(ready, c.InstanceID)
 	}
 	if len(ready) == 0 {
@@ -610,5 +616,22 @@ func (g *Game) PhaseOutUntilLeavesForEffect(source, until uuid.UUID, tapOnPhaseI
 		return ErrInvalidParam
 	}
 	g.phaseOutLocked(source, ids, phaseOutOptions{LockedBy: until, TapOnPhaseIn: tapOnPhaseIn})
+	return nil
+}
+
+// PhaseOutUntilPlaneswalkForEffect is the "phase out until a player
+// planeswalks" form (Unyaro, ADR 0216 slice 4, #4870). `plane` is the
+// face-up planar card that made the effect; the permanents stay phased out
+// (and skip their controller's untap-step phase-in, as every "until"
+// phase-out does) until it stops being face up, at which point they phase
+// in at once. A plane that is not face up has already seen the duration
+// end, so nothing phases out (CR 611.2b).
+//
+// Caller must hold g.mu.
+func (g *Game) PhaseOutUntilPlaneswalkForEffect(source, plane uuid.UUID, ids ...uuid.UUID) error {
+	if _, ok := g.UntilPlaneswalkAwayDuration(plane); !ok {
+		return nil
+	}
+	g.phaseOutLocked(source, ids, phaseOutOptions{LockedBy: plane})
 	return nil
 }

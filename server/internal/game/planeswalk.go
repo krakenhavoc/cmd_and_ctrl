@@ -210,6 +210,8 @@ func (g *Game) planeswalkAwayFromLocked(player, cardID uuid.UUID) {
 	c.EnteredBattlefieldAt = 0
 	g.planarDeckForLocked(c.Owner).PushBottom(c)
 	g.endPlaneswalkAwayDurationsLocked(cardID)
+	// Permanents phased out "until a player planeswalks" (Unyaro) phase in.
+	g.sweepPhaseInLocksLocked()
 	// A face-down plane grants nothing: a spell its static gave split
 	// second (Lake Silencio) loses it here (ADR 0216 slice 4).
 	g.refreshSplitSecondForBoardChangeLocked()
