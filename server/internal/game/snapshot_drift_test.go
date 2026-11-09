@@ -637,6 +637,7 @@ var cardFields = plan(
 	// #3172: "has dealt combat damage", the object history behind Ruric
 	// Thar's conditional hexproof, carried for Renowned's reason.
 	"DealtCombatDamage", carried, "",
+	"DealtDamage", carried, "",
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",

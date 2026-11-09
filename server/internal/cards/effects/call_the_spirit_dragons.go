@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Call the Spirit Dragons — for each color, put a +1/+1 counter on a Dragon you control of that color",
 				func(g *game.Game, item *game.StackItem) error {
-					return sb11CallStep(g, item.Controller, item.SourceCardID, 0, nil)
+					return sb11CallStep(g, item.Controller, item.SourceCardID, NewContext(g, item).TextSubtype("Dragon"), 0, nil)
 				}),
 		},
 	})

@@ -30,6 +30,8 @@ const (
 	sb11HarrierOracle     = "23102d8a-3a93-4e83-af5b-401c85ba9dbc"
 	sb11ShapethiefOracle  = "6c540822-4ceb-4ebf-b777-da172ada3f1b"
 	sb11JunkerOracle      = "88075828-a76e-412d-b738-182f50e3a133"
+	sb11TaigamOracle      = "49f2cbc3-bd03-48e6-b1c4-d7f315b8579d"
+	sb11GrapplerOracle    = "e2d21635-182f-4ebf-a6f5-d4c1fd7f9705"
 	sb11DeathBegetsOracle = "53e86135-3b24-4618-bcc0-af4d81e672dd"
 )
 
@@ -1113,6 +1115,101 @@ func TestSb11DemonicJunkerAffinityForArtifactsCutsTheCost(t *testing.T) {
 	}
 	if err := cast(4); err != nil {
 		t.Errorf("with four artifacts the spell costs {2}{B}: %v", err)
+	}
+}
+
+// --- Taigam, Master Opportunist -------------------------------------------------
+
+func TestSb11TaigamCopiesTheSecondSpellAndExilesItWithFourTimeCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Taigam, Master Opportunist", "Legendary Creature — Human Monk", sb11TaigamOracle, 2, 2)
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	second := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	if opp.Life != 40-6 {
+		t.Errorf("opponent life %d, want 34: the first Bolt and the copy resolve, the exiled original does not", opp.Life)
+	}
+	var c game.Card
+	for _, e := range g.Exile.Cards {
+		if e.InstanceID == second {
+			c = e
+		}
+	}
+	if c.InstanceID == uuid.Nil {
+		t.Fatal("the second spell was not exiled")
+	}
+	if c.Counters[game.CounterTime] != 4 {
+		t.Errorf("%d time counters, want 4", c.Counters[game.CounterTime])
+	}
+	if !game.CardHasSuspend(c) {
+		t.Error("the exiled spell did not gain suspend")
+	}
+	if me.Graveyard.Contains(second) {
+		t.Error("the original went to the graveyard")
+	}
+}
+
+func TestSb11TaigamIgnoresTheThirdSpellAndTheFirst(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Taigam, Master Opportunist", "Legendary Creature — Human Monk", sb11TaigamOracle, 2, 2)
+	for i := 0; i < 2; i++ {
+		castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+		passPriorityAroundTable(t, g)
+		if i == 0 && len(g.Exile.Cards) != 0 {
+			t.Fatal("the first spell was exiled")
+		}
+	}
+	third := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	if g.Exile.Contains(third) {
+		t.Error("the third spell was exiled")
+	}
+	if opp.Life != 40-9 {
+		t.Errorf("opponent life %d, want 31: three Bolts and one copy would be 12", opp.Life)
+	}
+}
+
+// --- Flamehold Grappler ----------------------------------------------------------
+
+func TestSb11FlameholdGrapplerCopiesTheNextSpellYouCastThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	castCatalogSpell(t, g, "Flamehold Grappler", "Creature — Human Monk", sb11GrapplerOracle, nil)
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	pc := copyPromptFor(g, me.ID)
+	if pc == nil {
+		t.Fatal("no new-targets prompt for the copy")
+	}
+	if err := g.ResolvePickTarget(pc.ID, me.ID, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}); err != nil {
+		t.Fatalf("answer the new-targets prompt: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != 40-6 {
+		t.Errorf("opponent life %d, want 34: the Bolt and its copy", opp.Life)
+	}
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	if opp.Life != 40-9 {
+		t.Errorf("only the NEXT spell is copied: opponent life %d, want 31", opp.Life)
+	}
+}
+
+func TestSb11FlameholdGrapplerCopyEndsWithTheTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	castCatalogSpell(t, g, "Flamehold Grappler", "Creature — Human Monk", sb11GrapplerOracle, nil)
+	passPriorityAroundTable(t, g)
+	endTurn(t, g)
+	advanceToMainOf(t, g, 0)
+	_ = me
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	if opp.Life != 40-3 {
+		t.Errorf("a spell on a later turn was copied: opponent life %d, want 37", opp.Life)
 	}
 }
 

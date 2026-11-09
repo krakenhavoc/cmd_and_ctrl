@@ -88,7 +88,7 @@ func sb11CallPickLeg(g *game.Game, r game.CardsChosen) error {
 			return err
 		}
 	}
-	return sb11CallStep(g, r.Chooser, r.Source, r.Nums[0]+1, given)
+	return sb11CallStep(g, r.Chooser, r.Source, r.Word, r.Nums[0]+1, given)
 }
 
 // sb11CallPut puts the +1/+1 counter on the Dragon and counts it once.
@@ -107,15 +107,16 @@ func sb11CallPut(g *game.Game, id uuid.UUID, given []uuid.UUID) ([]uuid.UUID, er
 	return append(given, id), nil
 }
 
-// sb11CallStep carries on from colour index `from`: a colour with one
+// sb11CallStep carries on from colour index `from`, `dragon` being the
+// Dragon type word as the enchantment's text has it (CR 612.2): a colour with one
 // Dragon of it takes its counter at once, one with several asks the
 // controller, one with none is skipped. After the last colour the
 // controller wins if five different Dragons got counters.
-func sb11CallStep(g *game.Game, controller, source uuid.UUID, from int, given []uuid.UUID) error {
+func sb11CallStep(g *game.Game, controller, source uuid.UUID, dragon string, from int, given []uuid.UUID) error {
 	for i := from; i < len(sb11CallColors); i++ {
 		var cands []uuid.UUID
 		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller == controller && c.IsCreature() && c.HasSubtype("Dragon") && c.HasColor(sb11CallColors[i]) {
+			if c.Controller == controller && c.IsCreature() && c.HasSubtype(dragon) && c.HasColor(sb11CallColors[i]) {
 				cands = append(cands, c.InstanceID)
 			}
 		}
@@ -137,6 +138,7 @@ func sb11CallStep(g *game.Game, controller, source uuid.UUID, from int, given []
 				ThenKey:   sb11CallPick,
 				Carry:     given,
 				CarryNums: []int{i},
+				CarryWord: dragon,
 				LiveZone:  game.ZoneBattlefield,
 			})
 			return nil
@@ -193,14 +195,15 @@ func (b *MayBehold) Ask(ctx *Context) error {
 	g := ctx.Game
 	me := ctx.Controller()
 	var cands []uuid.UUID
+	word := ctx.TextSubtype(b.subtype)
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == me && c.HasSubtype(b.subtype) {
+		if c.Controller == me && c.HasSubtype(word) {
 			cands = append(cands, c.InstanceID)
 		}
 	}
 	if p := g.PlayerByIDForEffect(me); p != nil && p.Hand != nil {
 		for _, c := range p.Hand.Cards {
-			if c.HasSubtype(b.subtype) {
+			if c.HasSubtype(word) {
 				cands = append(cands, c.InstanceID)
 			}
 		}

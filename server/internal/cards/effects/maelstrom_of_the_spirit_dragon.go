@@ -25,7 +25,6 @@ func init() {
 		OracleID:     "49e9fba7-8465-4bbb-95db-73a7e149f494",
 		Name:         "Maelstrom of the Spirit Dragon",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Tutors: 1},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},
@@ -40,18 +39,21 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}, {T}, Sacrifice this land: Search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
-			Cost:  Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
+			Label:   "{4}, {T}, Sacrifice this land: Search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
+			Cost:    Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
+			Purpose: game.Purpose{Answers: game.AnswerValue, Tutors: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				dragon := ctx.TextSubtype("Dragon")
 				return SearchLibrary{
 					Player:    item.Controller,
-					Predicate: func(c game.Card) bool { return c.HasSubtype("Dragon") },
+					Predicate: func(c game.Card) bool { return c.HasSubtype(dragon) },
 					Dest:      game.ZoneHand,
 					Limit:     1,
 					Reveal:    true,
 					Shuffle:   true,
 					Reason:    "Maelstrom of the Spirit Dragon — a Dragon card",
-				}.Apply(NewContext(g, item))
+				}.Apply(ctx)
 			},
 		}},
 	})

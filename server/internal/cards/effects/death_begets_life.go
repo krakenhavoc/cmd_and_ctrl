@@ -22,14 +22,14 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{Match: Or(Creature(), Enchantment()), ThenTail: ctx.Tail(massDrawForEach)}.Apply(ctx)
+			return DestroyAllMatching{Match: Or(Creature(), Enchantment()), ThenTail: ctx.Tail(deathBegetsLifeDraw)}.Apply(ctx)
 		},
 	})
 }
 
-// massDrawForEach is "draw a card for each permanent destroyed this way"
+// deathBegetsLifeDraw is "draw a card for each permanent destroyed this way"
 // (Death Begets Life).
-var massDrawForEach = MassTail("mass/draw-for-each", func(ctx *Context, _ []game.Card, moved int) error {
+var deathBegetsLifeDraw = MassTail("mass/death-begets-life-draw", func(ctx *Context, _ []game.Card, moved int) error {
 	if moved <= 0 {
 		return nil
 	}

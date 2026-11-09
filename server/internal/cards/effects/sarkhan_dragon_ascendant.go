@@ -34,7 +34,8 @@ func init() {
 				}),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.HasSubtype("Dragon")
+				// "Dragon" is a word of the source's text (CR 612.2, #3984).
+				return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 			}, "Sarkhan, Dragon Ascendant — put a +1/+1 counter on Sarkhan; until end of turn he becomes a Dragon and gains flying",
 				sarkhanGrow),
 		},

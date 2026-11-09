@@ -46,11 +46,21 @@ func spikeshellHarrierBounce(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
-		return err
-	}
+	// The speed clause is about the player, not the card, so it runs once
+	// the bounce has settled whatever became of the card (a commander's
+	// CR 903.9 question included), with the opponent as the tail's player.
+	then := ctx.Tail(spikeshellHarrierSpeed)
+	then.Player = opp
+	return BounceToHand{Target: id, ThenTail: then}.Apply(ctx)
+}
+
+// spikeshellHarrierSpeed is "if that opponent's speed is greater than each
+// other player's speed, reduce that opponent's speed by 1. This effect
+// can't reduce their speed below 1."
+var spikeshellHarrierSpeed = CardTail("spikeshell-harrier/reduce-speed", func(ctx *Context, o game.TailOutcome) error {
+	g, opp := ctx.Game, o.Tail.Player
 	if g.SpeedGreaterThanEachOtherForEffect(opp) {
 		g.ReduceSpeedForEffect(opp, 1, 1)
 	}
 	return nil
-}
+})

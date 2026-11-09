@@ -102,6 +102,7 @@ battlefield.cards[].createdWith.epoch	number:int
 battlefield.cards[].createdWith.id	custom(uuid.UUID)
 battlefield.cards[].damageMarked	number:int
 battlefield.cards[].dealtCombatDamage	bool
+battlefield.cards[].dealtDamage	bool
 battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
@@ -645,6 +646,7 @@ enteringTokens[].createdWith.epoch	number:int
 enteringTokens[].createdWith.id	custom(uuid.UUID)
 enteringTokens[].damageMarked	number:int
 enteringTokens[].dealtCombatDamage	bool
+enteringTokens[].dealtDamage	bool
 enteringTokens[].devoured	number:int
 enteringTokens[].durationCopyBase	object
 enteringTokens[].durationCopyBase.ActiveFace	number:int
@@ -1146,6 +1148,7 @@ exile.cards[].createdWith.epoch	number:int
 exile.cards[].createdWith.id	custom(uuid.UUID)
 exile.cards[].damageMarked	number:int
 exile.cards[].dealtCombatDamage	bool
+exile.cards[].dealtDamage	bool
 exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
@@ -8118,6 +8121,7 @@ frozenEntries[].event.keywordActionTail.armyToken.createdWith.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.damageMarked	number:int
 frozenEntries[].event.keywordActionTail.armyToken.dealtCombatDamage	bool
+frozenEntries[].event.keywordActionTail.armyToken.dealtDamage	bool
 frozenEntries[].event.keywordActionTail.armyToken.devoured	number:int
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase	object
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.ActiveFace	number:int
@@ -10308,6 +10312,7 @@ frozenEntries[].event.millTail.run.planned[].createdWith.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].damageMarked	number:int
 frozenEntries[].event.millTail.run.planned[].dealtCombatDamage	bool
+frozenEntries[].event.millTail.run.planned[].dealtDamage	bool
 frozenEntries[].event.millTail.run.planned[].devoured	number:int
 frozenEntries[].event.millTail.run.planned[].durationCopyBase	object
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.ActiveFace	number:int
@@ -10704,6 +10709,7 @@ frozenEntries[].event.millTail.run.seen[].createdWith.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].damageMarked	number:int
 frozenEntries[].event.millTail.run.seen[].dealtCombatDamage	bool
+frozenEntries[].event.millTail.run.seen[].dealtDamage	bool
 frozenEntries[].event.millTail.run.seen[].devoured	number:int
 frozenEntries[].event.millTail.run.seen[].durationCopyBase	object
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.ActiveFace	number:int
@@ -12803,6 +12809,7 @@ frozenEntries[].event.tokenGroups[].template.createdWith.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.damageMarked	number:int
 frozenEntries[].event.tokenGroups[].template.dealtCombatDamage	bool
+frozenEntries[].event.tokenGroups[].template.dealtDamage	bool
 frozenEntries[].event.tokenGroups[].template.devoured	number:int
 frozenEntries[].event.tokenGroups[].template.durationCopyBase	object
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.ActiveFace	number:int
@@ -13805,6 +13812,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.createdWith.epoch	numb
 frozenEntries[].event.tokensAfterMove[].groups[].template.createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.damageMarked	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.dealtCombatDamage	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.dealtDamage	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.devoured	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.ActiveFace	number:int
@@ -14214,6 +14222,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].createdWith.epoch	numbe
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].damageMarked	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].dealtCombatDamage	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].dealtDamage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].devoured	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ActiveFace	number:int
@@ -14610,6 +14619,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].createdWith.epoch	number:i
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].damageMarked	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].dealtCombatDamage	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].dealtDamage	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].devoured	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ActiveFace	number:int
@@ -18066,6 +18076,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].createdWith.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].createdWith.id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].damageMarked	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].dealtCombatDamage	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].dealtDamage	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].devoured	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.ActiveFace	number:int
@@ -19072,6 +19083,7 @@ lastKnownStack[].card.createdWith.epoch	number:int
 lastKnownStack[].card.createdWith.id	custom(uuid.UUID)
 lastKnownStack[].card.damageMarked	number:int
 lastKnownStack[].card.dealtCombatDamage	bool
+lastKnownStack[].card.dealtDamage	bool
 lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
@@ -25647,6 +25659,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.createdWith.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.damageMarked	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.dealtCombatDamage	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.dealtDamage	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.devoured	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase	object
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.ActiveFace	number:int
@@ -27837,6 +27850,7 @@ movesAwaitingTokens[].millTail.run.planned[].createdWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].damageMarked	number:int
 movesAwaitingTokens[].millTail.run.planned[].dealtCombatDamage	bool
+movesAwaitingTokens[].millTail.run.planned[].dealtDamage	bool
 movesAwaitingTokens[].millTail.run.planned[].devoured	number:int
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase	object
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.ActiveFace	number:int
@@ -28233,6 +28247,7 @@ movesAwaitingTokens[].millTail.run.seen[].createdWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].damageMarked	number:int
 movesAwaitingTokens[].millTail.run.seen[].dealtCombatDamage	bool
+movesAwaitingTokens[].millTail.run.seen[].dealtDamage	bool
 movesAwaitingTokens[].millTail.run.seen[].devoured	number:int
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase	object
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.ActiveFace	number:int
@@ -30332,6 +30347,7 @@ movesAwaitingTokens[].tokenGroups[].template.createdWith.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.damageMarked	number:int
 movesAwaitingTokens[].tokenGroups[].template.dealtCombatDamage	bool
+movesAwaitingTokens[].tokenGroups[].template.dealtDamage	bool
 movesAwaitingTokens[].tokenGroups[].template.devoured	number:int
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase	object
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.ActiveFace	number:int
@@ -31334,6 +31350,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.createdWith.epoch	numb
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.damageMarked	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.dealtCombatDamage	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.dealtDamage	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.devoured	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.ActiveFace	number:int
@@ -31743,6 +31760,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].createdWith.epoch	numbe
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].damageMarked	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].dealtCombatDamage	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].dealtDamage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].devoured	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.ActiveFace	number:int
@@ -32139,6 +32157,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].createdWith.epoch	number:i
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].damageMarked	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].dealtCombatDamage	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].dealtDamage	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].devoured	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.ActiveFace	number:int
@@ -35595,6 +35614,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].createdWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].createdWith.id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].damageMarked	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].dealtCombatDamage	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].dealtDamage	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].devoured	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.ActiveFace	number:int
@@ -37367,6 +37387,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.createdWith.epoch	number:
 pendingChoices[].attackSplit.settled.chosen[].template.createdWith.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.damageMarked	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.dealtCombatDamage	bool
+pendingChoices[].attackSplit.settled.chosen[].template.dealtDamage	bool
 pendingChoices[].attackSplit.settled.chosen[].template.devoured	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase	object
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.ActiveFace	number:int
@@ -37783,6 +37804,7 @@ pendingChoices[].attackSplit.settled.groups[].template.createdWith.epoch	number:
 pendingChoices[].attackSplit.settled.groups[].template.createdWith.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.damageMarked	number:int
 pendingChoices[].attackSplit.settled.groups[].template.dealtCombatDamage	bool
+pendingChoices[].attackSplit.settled.groups[].template.dealtDamage	bool
 pendingChoices[].attackSplit.settled.groups[].template.devoured	number:int
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase	object
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.ActiveFace	number:int
@@ -38765,6 +38787,7 @@ pendingChoices[].attackSplit.template.createdWith.epoch	number:int
 pendingChoices[].attackSplit.template.createdWith.id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.damageMarked	number:int
 pendingChoices[].attackSplit.template.dealtCombatDamage	bool
+pendingChoices[].attackSplit.template.dealtDamage	bool
 pendingChoices[].attackSplit.template.devoured	number:int
 pendingChoices[].attackSplit.template.durationCopyBase	object
 pendingChoices[].attackSplit.template.durationCopyBase.ActiveFace	number:int
@@ -39528,6 +39551,7 @@ pendingChoices[].copyWalk.src.createdWith.epoch	number:int
 pendingChoices[].copyWalk.src.createdWith.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.damageMarked	number:int
 pendingChoices[].copyWalk.src.dealtCombatDamage	bool
+pendingChoices[].copyWalk.src.dealtDamage	bool
 pendingChoices[].copyWalk.src.devoured	number:int
 pendingChoices[].copyWalk.src.durationCopyBase	object
 pendingChoices[].copyWalk.src.durationCopyBase.ActiveFace	number:int
@@ -50342,6 +50366,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.createdWith
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.damageMarked	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.dealtDamage	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.devoured	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.ActiveFace	number:int
@@ -52532,6 +52557,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].createdWith.epoc
 pendingChoices[].replacementResume.event.millTail.run.planned[].createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].damageMarked	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].dealtDamage	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].devoured	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.ActiveFace	number:int
@@ -52928,6 +52954,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].createdWith.epoch	n
 pendingChoices[].replacementResume.event.millTail.run.seen[].createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].damageMarked	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].dealtDamage	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].devoured	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.ActiveFace	number:int
@@ -55027,6 +55054,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.createdWith.epoc
 pendingChoices[].replacementResume.event.tokenGroups[].template.createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.damageMarked	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.dealtDamage	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.devoured	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.ActiveFace	number:int
@@ -56029,6 +56057,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.cre
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.damageMarked	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.dealtDamage	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.devoured	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.ActiveFace	number:int
@@ -56438,6 +56467,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].crea
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].damageMarked	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].dealtDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].devoured	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ActiveFace	number:int
@@ -56834,6 +56864,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].created
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].damageMarked	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].dealtDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].devoured	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ActiveFace	number:int
@@ -60290,6 +60321,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].createdWit
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].createdWith.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].damageMarked	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].dealtCombatDamage	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].dealtDamage	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].devoured	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.ActiveFace	number:int
@@ -62380,6 +62412,7 @@ pendingChoices[].targetWalk.frame.source.createdWith.epoch	number:int
 pendingChoices[].targetWalk.frame.source.createdWith.id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.damageMarked	number:int
 pendingChoices[].targetWalk.frame.source.dealtCombatDamage	bool
+pendingChoices[].targetWalk.frame.source.dealtDamage	bool
 pendingChoices[].targetWalk.frame.source.devoured	number:int
 pendingChoices[].targetWalk.frame.source.durationCopyBase	object
 pendingChoices[].targetWalk.frame.source.durationCopyBase.ActiveFace	number:int
@@ -63115,6 +63148,7 @@ pendingChoices[].triggerFrame.source.createdWith.epoch	number:int
 pendingChoices[].triggerFrame.source.createdWith.id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.damageMarked	number:int
 pendingChoices[].triggerFrame.source.dealtCombatDamage	bool
+pendingChoices[].triggerFrame.source.dealtDamage	bool
 pendingChoices[].triggerFrame.source.devoured	number:int
 pendingChoices[].triggerFrame.source.durationCopyBase	object
 pendingChoices[].triggerFrame.source.durationCopyBase.ActiveFace	number:int
@@ -64198,6 +64232,7 @@ phasedOut.cards[].createdWith.epoch	number:int
 phasedOut.cards[].createdWith.id	custom(uuid.UUID)
 phasedOut.cards[].damageMarked	number:int
 phasedOut.cards[].dealtCombatDamage	bool
+phasedOut.cards[].dealtDamage	bool
 phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
@@ -64597,6 +64632,7 @@ planechase.deck.cards[].createdWith.epoch	number:int
 planechase.deck.cards[].createdWith.id	custom(uuid.UUID)
 planechase.deck.cards[].damageMarked	number:int
 planechase.deck.cards[].dealtCombatDamage	bool
+planechase.deck.cards[].dealtDamage	bool
 planechase.deck.cards[].devoured	number:int
 planechase.deck.cards[].durationCopyBase	object
 planechase.deck.cards[].durationCopyBase.ActiveFace	number:int
@@ -64996,6 +65032,7 @@ planechase.faceUp.cards[].createdWith.epoch	number:int
 planechase.faceUp.cards[].createdWith.id	custom(uuid.UUID)
 planechase.faceUp.cards[].damageMarked	number:int
 planechase.faceUp.cards[].dealtCombatDamage	bool
+planechase.faceUp.cards[].dealtDamage	bool
 planechase.faceUp.cards[].devoured	number:int
 planechase.faceUp.cards[].durationCopyBase	object
 planechase.faceUp.cards[].durationCopyBase.ActiveFace	number:int
@@ -65625,6 +65662,7 @@ resolving.card.createdWith.epoch	number:int
 resolving.card.createdWith.id	custom(uuid.UUID)
 resolving.card.damageMarked	number:int
 resolving.card.dealtCombatDamage	bool
+resolving.card.dealtDamage	bool
 resolving.card.devoured	number:int
 resolving.card.durationCopyBase	object
 resolving.card.durationCopyBase.ActiveFace	number:int
@@ -66592,6 +66630,7 @@ seats[].attractionDeck.cards[].createdWith.epoch	number:int
 seats[].attractionDeck.cards[].createdWith.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].damageMarked	number:int
 seats[].attractionDeck.cards[].dealtCombatDamage	bool
+seats[].attractionDeck.cards[].dealtDamage	bool
 seats[].attractionDeck.cards[].devoured	number:int
 seats[].attractionDeck.cards[].durationCopyBase	object
 seats[].attractionDeck.cards[].durationCopyBase.ActiveFace	number:int
@@ -67124,6 +67163,7 @@ seats[].command.cards[].createdWith.epoch	number:int
 seats[].command.cards[].createdWith.id	custom(uuid.UUID)
 seats[].command.cards[].damageMarked	number:int
 seats[].command.cards[].dealtCombatDamage	bool
+seats[].command.cards[].dealtDamage	bool
 seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
@@ -67525,6 +67565,7 @@ seats[].companion.cards[].createdWith.epoch	number:int
 seats[].companion.cards[].createdWith.id	custom(uuid.UUID)
 seats[].companion.cards[].damageMarked	number:int
 seats[].companion.cards[].dealtCombatDamage	bool
+seats[].companion.cards[].dealtDamage	bool
 seats[].companion.cards[].devoured	number:int
 seats[].companion.cards[].durationCopyBase	object
 seats[].companion.cards[].durationCopyBase.ActiveFace	number:int
@@ -67935,6 +67976,7 @@ seats[].emblems.cards[].createdWith.epoch	number:int
 seats[].emblems.cards[].createdWith.id	custom(uuid.UUID)
 seats[].emblems.cards[].damageMarked	number:int
 seats[].emblems.cards[].dealtCombatDamage	bool
+seats[].emblems.cards[].dealtDamage	bool
 seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
@@ -68432,6 +68474,7 @@ seats[].graveyard.cards[].createdWith.epoch	number:int
 seats[].graveyard.cards[].createdWith.id	custom(uuid.UUID)
 seats[].graveyard.cards[].damageMarked	number:int
 seats[].graveyard.cards[].dealtCombatDamage	bool
+seats[].graveyard.cards[].dealtDamage	bool
 seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
@@ -68829,6 +68872,7 @@ seats[].hand.cards[].createdWith.epoch	number:int
 seats[].hand.cards[].createdWith.id	custom(uuid.UUID)
 seats[].hand.cards[].damageMarked	number:int
 seats[].hand.cards[].dealtCombatDamage	bool
+seats[].hand.cards[].dealtDamage	bool
 seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
@@ -69231,6 +69275,7 @@ seats[].junkyard.cards[].createdWith.epoch	number:int
 seats[].junkyard.cards[].createdWith.id	custom(uuid.UUID)
 seats[].junkyard.cards[].damageMarked	number:int
 seats[].junkyard.cards[].dealtCombatDamage	bool
+seats[].junkyard.cards[].dealtDamage	bool
 seats[].junkyard.cards[].devoured	number:int
 seats[].junkyard.cards[].durationCopyBase	object
 seats[].junkyard.cards[].durationCopyBase.ActiveFace	number:int
@@ -69637,6 +69682,7 @@ seats[].library.cards[].createdWith.epoch	number:int
 seats[].library.cards[].createdWith.id	custom(uuid.UUID)
 seats[].library.cards[].damageMarked	number:int
 seats[].library.cards[].dealtCombatDamage	bool
+seats[].library.cards[].dealtDamage	bool
 seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
@@ -70075,6 +70121,7 @@ seats[].sideboard.cards[].createdWith.epoch	number:int
 seats[].sideboard.cards[].createdWith.id	custom(uuid.UUID)
 seats[].sideboard.cards[].damageMarked	number:int
 seats[].sideboard.cards[].dealtCombatDamage	bool
+seats[].sideboard.cards[].dealtDamage	bool
 seats[].sideboard.cards[].devoured	number:int
 seats[].sideboard.cards[].durationCopyBase	object
 seats[].sideboard.cards[].durationCopyBase.ActiveFace	number:int
@@ -70787,6 +70834,7 @@ stack.cards[].createdWith.epoch	number:int
 stack.cards[].createdWith.id	custom(uuid.UUID)
 stack.cards[].damageMarked	number:int
 stack.cards[].dealtCombatDamage	bool
+stack.cards[].dealtDamage	bool
 stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int

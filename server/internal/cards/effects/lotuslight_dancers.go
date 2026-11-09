@@ -26,17 +26,20 @@ func init() {
 		Purpose:         game.Purpose{SelfMillTutor: 3},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Lotuslight Dancers — search for a black card, a green card, and a blue card", func(g *game.Game, item *game.StackItem) error {
+				// The three colours are words of the card's text (CR 612.2).
+				ctx := NewContext(g, item)
+				black, green, blue := ctx.TextColor("B"), ctx.TextColor("G"), ctx.TextColor("U")
 				return SearchLibrary{
 					Player: item.Controller,
 					Predicate: func(c game.Card) bool {
-						return c.HasColor("B") || c.HasColor("G") || c.HasColor("U")
+						return c.HasColor(black) || c.HasColor(green) || c.HasColor(blue)
 					},
 					Dest:    game.ZoneGraveyard,
 					Limit:   3,
 					Shuffle: true,
-					Rule:    searchRuleOneCardPerColor.WithN(sb11ColorMask("B", "G", "U")),
+					Rule:    searchRuleOneCardPerColor.WithN(sb11ColorMask(black, green, blue)),
 					Reason:  "Lotuslight Dancers — a black card, a green card, and a blue card",
-				}.Apply(NewContext(g, item))
+				}.Apply(ctx)
 			}),
 		},
 	})

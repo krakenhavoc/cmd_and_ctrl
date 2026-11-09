@@ -170,6 +170,7 @@ body grant/double-strike-and-trample-until-eot
 body graveyard/return-listed-to-hand
 body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
+body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
 body guide-of-souls/angel
 body havengul-lich/gains-its-abilities
@@ -361,6 +362,7 @@ body weeping-angel/owner-shuffles-it-in
 body wicks-patrol/shrink
 body winter-tormented-loner/edict
 body wolf-in-blank-clothing/shrink
+body yathan-roadwatcher/return
 body yunas-whistle/counters
 body zara/return-to-hand
 body ziatora/fling
@@ -413,6 +415,7 @@ choose choose-cards/breeches-the-blastmaker-sacrifice
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
 choose choose-cards/calamity-galloping-inferno-copy
+choose choose-cards/call-the-spirit-dragons-pick
 choose choose-cards/caparocti-sunborn-tap-two
 choose choose-cards/captain-james-t-kirk-draw
 choose choose-cards/cecily-haunted-mage-cast
@@ -715,6 +718,7 @@ choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
 choose choose-cards/sample-collector-collect-evidence
+choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/seasoned-cryomancer-discarded
 choose choose-cards/sensational-spider-man-remove-stun
 choose choose-cards/seven-of-nine-tertiary-adjunct-discarded
@@ -1646,6 +1650,7 @@ searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
 searchrule search/corpse-harvester-zombie-and-swamp
 searchrule search/different-names
+searchrule search/one-card-per-color
 searchrule search/total-mana-value-at-most
 steps steps/ad-nauseam-pass
 steps steps/zimones-hypothesis-rest
@@ -2094,6 +2099,8 @@ tail mass/blood-money-treasures
 tail mass/ceaseless-conflict-spirits
 tail mass/culling-ritual-mana
 tail mass/deadly-tempest-loss
+tail mass/death-begets-life-draw
+tail mass/demonic-junker-counters
 tail mass/flood-of-tears-put
 tail mass/gain-life-for-each
 tail mass/gain-two-life-for-each
@@ -2295,6 +2302,7 @@ tail soul-shackled-zombie/drain-if-creature
 tail sparring-dummy/after-mill
 tail speak-secrets/after-mill
 tail spelunking/gain-life-for-a-cave
+tail spikeshell-harrier/reduce-speed
 tail ss-botany-bay/then-you
 tail stillness-in-motion/after-exile
 tail stillness-in-motion/after-mill
