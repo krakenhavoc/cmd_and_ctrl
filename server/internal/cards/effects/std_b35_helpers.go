@@ -85,3 +85,29 @@ func b35CopyFirstTargetToken(g *game.Game, item *game.StackItem) error {
 func b35ArtifactTokenYouControl() *game.TargetSpec {
 	return TargetPermanent("target artifact token you control", Artifact(), IsTokenPredicate(), YouControl())
 }
+
+// b35YouActivatedAnAbilityTargetingACreatureOrPlayer is Ertha Jo's trigger
+// condition: "you activate an ability that targets a creature or player".
+// It reads the ability's chosen targets off its stack item as the
+// activation put it there (CR 602.2b); a mana ability never used the stack
+// and never raises the event.
+func b35YouActivatedAnAbilityTargetingACreatureOrPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventActivateAbility || source == nil || ev.Actor != source.Controller || ev.StackItemID == uuid.Nil {
+		return false
+	}
+	it := g.StackItemForEffect(ev.StackItemID)
+	if it == nil {
+		return false
+	}
+	for _, t := range it.Targets {
+		switch t.Kind {
+		case game.TargetPlayer:
+			return true
+		case game.TargetCard:
+			if c, ok := g.LookupCardForEffect(t.ID); ok && c.IsCreature() {
+				return true
+			}
+		}
+	}
+	return false
+}

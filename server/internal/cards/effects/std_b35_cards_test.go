@@ -26,6 +26,9 @@ const (
 	b35WorldwalkerHelmOracle     = "9573c85a-e574-4b4e-aae0-2165c45fd27e"
 	b35CollectorsCageOracle      = "8f5b71fd-469f-4370-a806-9bfefbae03a2"
 	b35OmenpathJourneyOracle     = "8b067e44-2001-4b49-aa4a-2c86f8929751"
+	b35ErthaJoOracle             = "0a66ce8b-af99-411f-8ecb-52a5d2f6af3d"
+	b35JoleneOracle              = "fb8efd6e-b8f8-4da8-ac65-5b745c02d2bb"
+	b35IntimidationCampaignOra   = "5915039b-3dbd-4a49-8bd3-23ff0fd9c90a"
 )
 
 func TestB35EveryCardIsRegisteredFull(t *testing.T) {
@@ -44,6 +47,9 @@ func TestB35EveryCardIsRegisteredFull(t *testing.T) {
 		b35WorldwalkerHelmOracle:     "Worldwalker Helm",
 		b35CollectorsCageOracle:      "Collector's Cage",
 		b35OmenpathJourneyOracle:     "Omenpath Journey",
+		b35ErthaJoOracle:             "Ertha Jo, Frontier Mentor",
+		b35JoleneOracle:              "Jolene, Plundering Pugilist",
+		b35IntimidationCampaignOra:   "Intimidation Campaign",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -536,5 +542,113 @@ func TestB35OmenpathJourneyExilesDifferentlyNamedLandsAndPutsOneOutEachEndStep(t
 		if c.Controller == me.ID && c.IsLand() && !c.Tapped {
 			t.Errorf("%s came in untapped", c.Name)
 		}
+	}
+}
+
+func TestB35ErthaJoMakesAMercenaryAndCopiesAbilitiesThatTargetACreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	msc17Play(t, g, me, game.Card{Name: "Ertha Jo, Frontier Mentor", TypeLine: "Legendary Creature — Kor Advisor",
+		ManaCost: "{2}{R}{W}", OracleID: b35ErthaJoOracle, Power: 2, Toughness: 3})
+	otjMPOneMercenary(t, g, me.ID)
+	mine := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	merc := pushToken(g, me.ID, MercenaryToken())
+	b16Activate(t, g, me.ID, merc, 0, game.ActivateAbilityParams{Targets: b16TargetCard(mine)})
+	for i := 0; i < 32; i++ {
+		if p := latestPickTarget(g, me.ID); p != nil {
+			if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: mine}); err != nil {
+				t.Fatalf("ResolvePickTarget: %v", err)
+			}
+			continue
+		}
+		if stackFullyEmpty(g) {
+			break
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if p, tt := ptOf(t, g, mine); p != 4 || tt != 2 {
+		t.Errorf("the Bear is %d/%d, want 4/2: the pump and its copy", p, tt)
+	}
+}
+
+func TestB35JoleneMakesOneTreasureForABigAttackAndPingsForATreasure(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Jolene, Plundering Pugilist", "Legendary Creature — Human Mercenary", b35JoleneOracle, 3, 3)
+	small := pushVanillaCreature(g, me.ID, "Small", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(small, opp.ID); err != nil {
+		t.Fatal(err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	if got := countTreasures(g, me.ID); got != 0 {
+		t.Fatalf("%d Treasures for a power-2 attacker, want 0", got)
+	}
+}
+
+func TestB35JoleneBigAttackersMakeOneTreasureTotal(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Jolene, Plundering Pugilist", "Legendary Creature — Human Mercenary", b35JoleneOracle, 3, 3)
+	big1 := pushVanillaCreature(g, me.ID, "Big One", 4, 4)
+	big2 := pushVanillaCreature(g, me.ID, "Big Two", 5, 5)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{big1, big2} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	if got := countTreasures(g, me.ID); got != 1 {
+		t.Fatalf("%d Treasures for two big attackers, want 1", got)
+	}
+}
+
+func TestB35JoleneSacrificesATreasureToPing(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	jolene := b12Push(g, me.ID, "Jolene, Plundering Pugilist", "Legendary Creature — Human Mercenary", b35JoleneOracle, 3, 3)
+	treasure := pushToken(g, me.ID, TreasureToken())
+	life := lifeOf(g, opp.ID)
+	b06AddMana(me, "R", "C")
+	b16Activate(t, g, me.ID, jolene, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{treasure}, Targets: b16TargetPlayer(opp.ID)})
+	passPriorityAroundTable(t, g)
+	if got := lifeOf(g, opp.ID); got != life-1 {
+		t.Errorf("life %d, want %d", got, life-1)
+	}
+	if g.Battlefield.Contains(treasure) {
+		t.Error("the Treasure was not sacrificed")
+	}
+}
+
+func TestB35IntimidationCampaignDrainsAndMayReturnOnACrime(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	life, oppLife, hand := lifeOf(g, me.ID), lifeOf(g, opp.ID), len(me.Hand.Cards)
+	camp := msc17Play(t, g, me, game.Card{Name: "Intimidation Campaign", TypeLine: "Enchantment",
+		ManaCost: "{1}{U}{B}", OracleID: b35IntimidationCampaignOra})
+	if lifeOf(g, me.ID) != life+1 || lifeOf(g, opp.ID) != oppLife-1 {
+		t.Errorf("drain: you %d (from %d), them %d (from %d)", lifeOf(g, me.ID), life, lifeOf(g, opp.ID), oppLife)
+	}
+	if len(me.Hand.Cards) != hand+1 { // the card is added then cast (net 0), then the draw
+		t.Errorf("hand %d, want %d", len(me.Hand.Cards), hand+1)
+	}
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventBecomesTarget, CrimeCommitted: true, Actor: me.ID})
+	})
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(camp) {
+		t.Error("the enchantment did not return to hand")
+	}
+	if !handHasID(me, camp) {
+		t.Error("the enchantment is not in its owner's hand")
 	}
 }
