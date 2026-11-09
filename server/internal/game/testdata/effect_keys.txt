@@ -730,6 +730,7 @@ choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/summon-esper-valigarmanda-exile-each
 choose choose-cards/summon-kujata-fire-discard
+choose choose-cards/summoners-grimoire-put
 choose choose-cards/sunbirds-invocation-cast
 choose choose-cards/surtland-elementalist-cast
 choose choose-cards/surveillance-monitor-collect-evidence
@@ -771,6 +772,7 @@ choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-prophet-take
 choose choose-cards/ultimate-green-goblin-treasure
 choose choose-cards/ultimate-magic-meteor-walk
+choose choose-cards/ultimecia-exile
 choose choose-cards/ultra-magnus-tactician-put
 choose choose-cards/under-the-skin-return
 choose choose-cards/undercity-plague-sacrifice
@@ -1209,6 +1211,7 @@ option option-pick/psychic-puppetry-tap-or-untap
 option option-pick/put-attacking-from-exile
 option option-pick/put-attacking-from-graveyard
 option option-pick/put-attacking-from-graveyard-finality
+option option-pick/put-attacking-from-hand
 option option-pick/put-attacking-from-library
 option option-pick/rattleback-apothecary-keyword
 option option-pick/read-the-runes-answer
@@ -1395,6 +1398,7 @@ payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/tolarian-kraken-tap-or-untap
 payunless pay-unless/trudge-garden-fungus-beast
 payunless pay-unless/ty-lee-artful-acrobat
+payunless pay-unless/ultimecia-exile
 payunless pay-unless/ultron-artificial-malevolence-copy
 payunless pay-unless/ultron-unlimited-robot-villain
 payunless pay-unless/unassuming-sage-sorcerer-role
@@ -2497,6 +2501,7 @@ tail turtles-forever/library-found
 tail twinflame/exile-copies
 tail ugin-eye-of-the-storms/free-cast-permission
 tail uldaros-theorix/copy-exiled
+tail ultimecia/transform
 tail ultra-magnus-tactician/convert-at-end-of-combat
 tail under-the-skin/offer-return
 tail undercity-throne-of-the-dead-three/hexproof-then-shuffle

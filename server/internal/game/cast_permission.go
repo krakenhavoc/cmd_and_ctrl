@@ -733,6 +733,14 @@ type CastPermission struct {
 	// discard payoff sees it. Any card but the one being cast.
 	DiscardCard bool `json:"discardCard,omitempty"`
 
+	// LifeInAddition is "You may cast ... by paying N life in addition to
+	// paying its other costs" (Noctis, Prince of Lucis, #4462): N life the
+	// synthesised offer charges on top of the card's printed mana cost.
+	// Read only with an AltCostKey, as CostLess is; the offer carries the
+	// life as AlternativeCost.Life, so a player short of it cannot claim
+	// it (CR 119.4). Zero charges none, which is every permission written
+	// before this. Additive within a snapshot version.
+	LifeInAddition int `json:"lifeInAddition,omitempty"`
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
 	// (CR 702.34a). A REPLACEMENT, so it also catches a granted
@@ -914,6 +922,12 @@ type CastPermission struct {
 	// this way gets nothing. Zero, or no kind, adds nothing.
 	EntersWithCounterKind string `json:"entersWithCounterKind,omitempty"`
 	EntersWithCounters    int    `json:"entersWithCounters,omitempty"`
+	// EntersWithCountersPermanent widens that rider from creature spells to
+	// any permanent spell the permission opens: Noctis, Prince of Lucis's
+	// "that artifact enters with a finality counter on it" (#4462).
+	// Additive within a snapshot version; false is the creature-only
+	// rider every earlier permission has.
+	EntersWithCountersPermanent bool `json:"entersWithCountersPermanent,omitempty"`
 
 	// MaxSpellManaValue caps the mana value of the SPELL this
 	// permission lets a player cast (ADR 0099 §3). Discover's "if the
@@ -1471,6 +1485,9 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		// than stored on the permission (no snapshot field, and a
 		// restored table prices the cast the same way).
 		out.Life = MadnessLifeFor(CatalogKey(card))
+	}
+	if p.LifeInAddition > 0 {
+		out.Life += p.LifeInAddition
 	}
 	if p.LifeEqualToManaValue {
 		// CR 202.3: the life is the card's mana value, read off the

@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // next_spell_promise.go — #1852: "the next <kind> spell you cast this
 // turn <does something>".
@@ -182,6 +186,15 @@ type PromisedCounter struct {
 	Count      int       `json:"count"`
 	Source     uuid.UUID `json:"source,omitempty"`
 	SourceName string    `json:"sourceName,omitempty"`
+	// PerSubtype, when set, makes Count a MULTIPLIER rather than a total:
+	// the permanent enters with Count counters for each permanent its
+	// controller controls that has any of these subtypes (a "|"-joined
+	// list: "Dog|Wolf"), counted as it enters (CR 614.1c), not as the
+	// mark was written. Torgal, A Fine Hound's "for each Dog and/or Wolf
+	// you control" (#4462). A string, not a slice, so the mark stays
+	// comparable. Additive within a snapshot version; empty is a plain
+	// total.
+	PerSubtype string `json:"perSubtype,omitempty"`
 }
 
 // copyPromisedCounters gives a mark slice its own backing array. Nil
@@ -369,8 +382,34 @@ func (g *Game) promisedEntryCountersLocked(ev *ReplacementEvent, item *StackItem
 		return
 	}
 	for _, m := range item.PromisedCounters {
-		if m.Count > 0 && m.Kind != "" {
-			ev.AddCounterAtETB(m.Kind, m.Count)
+		n := m.Count
+		if m.PerSubtype != "" {
+			n *= g.countControlledWithSubtypesLocked(item.Controller, strings.Split(m.PerSubtype, "|"))
+		}
+		if n > 0 && m.Kind != "" {
+			ev.AddCounterAtETB(m.Kind, n)
 		}
 	}
+}
+
+// countControlledWithSubtypesLocked is how many battlefield permanents
+// `controller` controls that have at least one of `subtypes`, as the
+// layers see them (a changeling counts for every creature type).
+//
+// Caller must hold g.mu.
+func (g *Game) countControlledWithSubtypesLocked(controller uuid.UUID, subtypes []string) int {
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := g.Battlefield.Cards[i]
+		if c.Controller != controller {
+			continue
+		}
+		for _, st := range subtypes {
+			if c.HasSubtypeWord(st) {
+				n++
+				break
+			}
+		}
+	}
+	return n
 }

@@ -1986,6 +1986,7 @@ followUpParks[].then.permission.energyEqualToManaValue	bool
 followUpParks[].then.permission.entersTapped	bool
 followUpParks[].then.permission.entersWithCounterKind	string
 followUpParks[].then.permission.entersWithCounters	number:int
+followUpParks[].then.permission.entersWithCountersPermanent	bool
 followUpParks[].then.permission.exileInsteadOfGraveyard	bool
 followUpParks[].then.permission.exileInsteadOnlyInstantOrSorcery	bool
 followUpParks[].then.permission.exileOnResolution	bool
@@ -2041,6 +2042,7 @@ followUpParks[].then.permission.ifNotCast	string
 followUpParks[].then.permission.label	string
 followUpParks[].then.permission.lapseOnPass	string
 followUpParks[].then.permission.lifeEqualToManaValue	bool
+followUpParks[].then.permission.lifeInAddition	number:int
 followUpParks[].then.permission.manaValueBudget	number:int
 followUpParks[].then.permission.maxSpellManaValue	number:int
 followUpParks[].then.permission.notBeforeSeq	number:int
@@ -2600,6 +2602,7 @@ frozenEntries[].event.counterTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.counterTail.then.permission.entersTapped	bool
 frozenEntries[].event.counterTail.then.permission.entersWithCounterKind	string
 frozenEntries[].event.counterTail.then.permission.entersWithCounters	number:int
+frozenEntries[].event.counterTail.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.counterTail.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.counterTail.then.permission.exileOnResolution	bool
@@ -2655,6 +2658,7 @@ frozenEntries[].event.counterTail.then.permission.ifNotCast	string
 frozenEntries[].event.counterTail.then.permission.label	string
 frozenEntries[].event.counterTail.then.permission.lapseOnPass	string
 frozenEntries[].event.counterTail.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.counterTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.counterTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeSeq	number:int
@@ -3193,6 +3197,7 @@ frozenEntries[].event.damageTail.each.each.permission.energyEqualToManaValue	boo
 frozenEntries[].event.damageTail.each.each.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.each.permission.entersWithCounterKind	string
 frozenEntries[].event.damageTail.each.each.permission.entersWithCounters	number:int
+frozenEntries[].event.damageTail.each.each.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.damageTail.each.each.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.each.each.permission.exileOnResolution	bool
@@ -3248,6 +3253,7 @@ frozenEntries[].event.damageTail.each.each.permission.ifNotCast	string
 frozenEntries[].event.damageTail.each.each.permission.label	string
 frozenEntries[].event.damageTail.each.each.permission.lapseOnPass	string
 frozenEntries[].event.damageTail.each.each.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.damageTail.each.each.permission.lifeInAddition	number:int
 frozenEntries[].event.damageTail.each.each.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeSeq	number:int
@@ -3777,6 +3783,7 @@ frozenEntries[].event.damageTail.each.then.permission.energyEqualToManaValue	boo
 frozenEntries[].event.damageTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.each.then.permission.entersWithCounterKind	string
 frozenEntries[].event.damageTail.each.then.permission.entersWithCounters	number:int
+frozenEntries[].event.damageTail.each.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.damageTail.each.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.each.then.permission.exileOnResolution	bool
@@ -3832,6 +3839,7 @@ frozenEntries[].event.damageTail.each.then.permission.ifNotCast	string
 frozenEntries[].event.damageTail.each.then.permission.label	string
 frozenEntries[].event.damageTail.each.then.permission.lapseOnPass	string
 frozenEntries[].event.damageTail.each.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.damageTail.each.then.permission.lifeInAddition	number:int
 frozenEntries[].event.damageTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeSeq	number:int
@@ -4532,6 +4540,7 @@ frozenEntries[].event.damageTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.damageTail.then.permission.entersTapped	bool
 frozenEntries[].event.damageTail.then.permission.entersWithCounterKind	string
 frozenEntries[].event.damageTail.then.permission.entersWithCounters	number:int
+frozenEntries[].event.damageTail.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.damageTail.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.damageTail.then.permission.exileOnResolution	bool
@@ -4587,6 +4596,7 @@ frozenEntries[].event.damageTail.then.permission.ifNotCast	string
 frozenEntries[].event.damageTail.then.permission.label	string
 frozenEntries[].event.damageTail.then.permission.lapseOnPass	string
 frozenEntries[].event.damageTail.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.damageTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.damageTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeSeq	number:int
@@ -5234,6 +5244,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.energyEqualTo
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersWithCounterKind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersWithCounters	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
@@ -5289,6 +5300,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.ifNotCast	str
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.label	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.lapseOnPass	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
@@ -5893,6 +5905,7 @@ frozenEntries[].event.entryTail.batch.then.permission.energyEqualToManaValue	boo
 frozenEntries[].event.entryTail.batch.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.entersWithCounterKind	string
 frozenEntries[].event.entryTail.batch.then.permission.entersWithCounters	number:int
+frozenEntries[].event.entryTail.batch.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.batch.then.permission.exileOnResolution	bool
@@ -5948,6 +5961,7 @@ frozenEntries[].event.entryTail.batch.then.permission.ifNotCast	string
 frozenEntries[].event.entryTail.batch.then.permission.label	string
 frozenEntries[].event.entryTail.batch.then.permission.lapseOnPass	string
 frozenEntries[].event.entryTail.batch.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.entryTail.batch.then.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.batch.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeSeq	number:int
@@ -6477,6 +6491,7 @@ frozenEntries[].event.entryTail.keyed.permission.energyEqualToManaValue	bool
 frozenEntries[].event.entryTail.keyed.permission.entersTapped	bool
 frozenEntries[].event.entryTail.keyed.permission.entersWithCounterKind	string
 frozenEntries[].event.entryTail.keyed.permission.entersWithCounters	number:int
+frozenEntries[].event.entryTail.keyed.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.entryTail.keyed.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.keyed.permission.exileOnResolution	bool
@@ -6532,6 +6547,7 @@ frozenEntries[].event.entryTail.keyed.permission.ifNotCast	string
 frozenEntries[].event.entryTail.keyed.permission.label	string
 frozenEntries[].event.entryTail.keyed.permission.lapseOnPass	string
 frozenEntries[].event.entryTail.keyed.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.entryTail.keyed.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.keyed.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeSeq	number:int
@@ -7093,6 +7109,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.energyEqualToMan
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersWithCounterKind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersWithCounters	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.exileOnResolution	bool
@@ -7148,6 +7165,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.ifNotCast	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.label	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.lapseOnPass	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
@@ -7697,6 +7715,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.energyEqualToManaValue	bo
 frozenEntries[].event.entryTail.tokens.then.permission.entersTapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.entersWithCounterKind	string
 frozenEntries[].event.entryTail.tokens.then.permission.entersWithCounters	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.entryTail.tokens.then.permission.exileOnResolution	bool
@@ -7752,6 +7771,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.ifNotCast	string
 frozenEntries[].event.entryTail.tokens.then.permission.label	string
 frozenEntries[].event.entryTail.tokens.then.permission.lapseOnPass	string
 frozenEntries[].event.entryTail.tokens.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.entryTail.tokens.then.permission.lifeInAddition	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeSeq	number:int
@@ -8700,6 +8720,7 @@ frozenEntries[].event.keywordActionTail.then.permission.energyEqualToManaValue	b
 frozenEntries[].event.keywordActionTail.then.permission.entersTapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.entersWithCounterKind	string
 frozenEntries[].event.keywordActionTail.then.permission.entersWithCounters	number:int
+frozenEntries[].event.keywordActionTail.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.keywordActionTail.then.permission.exileOnResolution	bool
@@ -8755,6 +8776,7 @@ frozenEntries[].event.keywordActionTail.then.permission.ifNotCast	string
 frozenEntries[].event.keywordActionTail.then.permission.label	string
 frozenEntries[].event.keywordActionTail.then.permission.lapseOnPass	string
 frozenEntries[].event.keywordActionTail.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.keywordActionTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.keywordActionTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeSeq	number:int
@@ -9306,6 +9328,7 @@ frozenEntries[].event.lifeTail.each.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.each.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.entersWithCounterKind	string
 frozenEntries[].event.lifeTail.each.then.permission.entersWithCounters	number:int
+frozenEntries[].event.lifeTail.each.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.lifeTail.each.then.permission.exileOnResolution	bool
@@ -9361,6 +9384,7 @@ frozenEntries[].event.lifeTail.each.then.permission.ifNotCast	string
 frozenEntries[].event.lifeTail.each.then.permission.label	string
 frozenEntries[].event.lifeTail.each.then.permission.lapseOnPass	string
 frozenEntries[].event.lifeTail.each.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.lifeTail.each.then.permission.lifeInAddition	number:int
 frozenEntries[].event.lifeTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeSeq	number:int
@@ -9893,6 +9917,7 @@ frozenEntries[].event.lifeTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.lifeTail.then.permission.entersTapped	bool
 frozenEntries[].event.lifeTail.then.permission.entersWithCounterKind	string
 frozenEntries[].event.lifeTail.then.permission.entersWithCounters	number:int
+frozenEntries[].event.lifeTail.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.lifeTail.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.lifeTail.then.permission.exileOnResolution	bool
@@ -9948,6 +9973,7 @@ frozenEntries[].event.lifeTail.then.permission.ifNotCast	string
 frozenEntries[].event.lifeTail.then.permission.label	string
 frozenEntries[].event.lifeTail.then.permission.lapseOnPass	string
 frozenEntries[].event.lifeTail.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.lifeTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.lifeTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeSeq	number:int
@@ -11273,6 +11299,7 @@ frozenEntries[].event.millTail.run.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.run.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.run.then.permission.entersWithCounterKind	string
 frozenEntries[].event.millTail.run.then.permission.entersWithCounters	number:int
+frozenEntries[].event.millTail.run.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.millTail.run.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.millTail.run.then.permission.exileOnResolution	bool
@@ -11328,6 +11355,7 @@ frozenEntries[].event.millTail.run.then.permission.ifNotCast	string
 frozenEntries[].event.millTail.run.then.permission.label	string
 frozenEntries[].event.millTail.run.then.permission.lapseOnPass	string
 frozenEntries[].event.millTail.run.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.millTail.run.then.permission.lifeInAddition	number:int
 frozenEntries[].event.millTail.run.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeSeq	number:int
@@ -11855,6 +11883,7 @@ frozenEntries[].event.millTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.millTail.then.permission.entersTapped	bool
 frozenEntries[].event.millTail.then.permission.entersWithCounterKind	string
 frozenEntries[].event.millTail.then.permission.entersWithCounters	number:int
+frozenEntries[].event.millTail.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.millTail.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.millTail.then.permission.exileOnResolution	bool
@@ -11910,6 +11939,7 @@ frozenEntries[].event.millTail.then.permission.ifNotCast	string
 frozenEntries[].event.millTail.then.permission.label	string
 frozenEntries[].event.millTail.then.permission.lapseOnPass	string
 frozenEntries[].event.millTail.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.millTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.millTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeSeq	number:int
@@ -12510,6 +12540,7 @@ frozenEntries[].event.stackItem.promisedCounters	array
 frozenEntries[].event.stackItem.promisedCounters[]	object
 frozenEntries[].event.stackItem.promisedCounters[].count	number:int
 frozenEntries[].event.stackItem.promisedCounters[].kind	string
+frozenEntries[].event.stackItem.promisedCounters[].perSubtype	string
 frozenEntries[].event.stackItem.promisedCounters[].source	custom(uuid.UUID)
 frozenEntries[].event.stackItem.promisedCounters[].sourceName	string
 frozenEntries[].event.stackItem.seq	number:uint64
@@ -13368,6 +13399,7 @@ frozenEntries[].event.tokenTail.then.permission.energyEqualToManaValue	bool
 frozenEntries[].event.tokenTail.then.permission.entersTapped	bool
 frozenEntries[].event.tokenTail.then.permission.entersWithCounterKind	string
 frozenEntries[].event.tokenTail.then.permission.entersWithCounters	number:int
+frozenEntries[].event.tokenTail.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.tokenTail.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.tokenTail.then.permission.exileOnResolution	bool
@@ -13423,6 +13455,7 @@ frozenEntries[].event.tokenTail.then.permission.ifNotCast	string
 frozenEntries[].event.tokenTail.then.permission.label	string
 frozenEntries[].event.tokenTail.then.permission.lapseOnPass	string
 frozenEntries[].event.tokenTail.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.tokenTail.then.permission.lifeInAddition	number:int
 frozenEntries[].event.tokenTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeSeq	number:int
@@ -15172,6 +15205,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.energyEqualToMana
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersWithCounterKind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersWithCounters	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
@@ -15227,6 +15261,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.label	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.lapseOnPass	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
@@ -15788,6 +15823,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.energyEqual
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCounterKind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCounters	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
@@ -15843,6 +15879,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	s
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.label	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.lapseOnPass	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
@@ -16370,6 +16407,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.energyEqualToManaValue
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersWithCounterKind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersWithCounters	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.exileOnResolution	bool
@@ -16425,6 +16463,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.ifNotCast	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.label	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.lapseOnPass	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
@@ -16972,6 +17011,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.energyEqualToManaVal
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersWithCounterKind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersWithCounters	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.exileOnResolution	bool
@@ -17027,6 +17067,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.ifNotCast	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.label	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.lapseOnPass	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
@@ -17639,6 +17680,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.energyEqualToManaVa
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersWithCounterKind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersWithCounters	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.entersWithCountersPermanent	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
@@ -17694,6 +17736,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.ifNotCast	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.label	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.lapseOnPass	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.lifeEqualToManaValue	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.lifeInAddition	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.manaValueBudget	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
@@ -19506,6 +19549,7 @@ lastKnownStack[].item.promisedCounters	array
 lastKnownStack[].item.promisedCounters[]	object
 lastKnownStack[].item.promisedCounters[].count	number:int
 lastKnownStack[].item.promisedCounters[].kind	string
+lastKnownStack[].item.promisedCounters[].perSubtype	string
 lastKnownStack[].item.promisedCounters[].source	custom(uuid.UUID)
 lastKnownStack[].item.promisedCounters[].sourceName	string
 lastKnownStack[].item.seq	number:uint64
@@ -20087,6 +20131,7 @@ movesAwaitingTokens[].counterTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].counterTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].counterTail.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].counterTail.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].counterTail.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].counterTail.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].counterTail.then.permission.exileOnResolution	bool
@@ -20142,6 +20187,7 @@ movesAwaitingTokens[].counterTail.then.permission.ifNotCast	string
 movesAwaitingTokens[].counterTail.then.permission.label	string
 movesAwaitingTokens[].counterTail.then.permission.lapseOnPass	string
 movesAwaitingTokens[].counterTail.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].counterTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].counterTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeSeq	number:int
@@ -20680,6 +20726,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.energyEqualToManaValue	boo
 movesAwaitingTokens[].damageTail.each.each.permission.entersTapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.entersWithCounterKind	string
 movesAwaitingTokens[].damageTail.each.each.permission.entersWithCounters	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].damageTail.each.each.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].damageTail.each.each.permission.exileOnResolution	bool
@@ -20735,6 +20782,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.ifNotCast	string
 movesAwaitingTokens[].damageTail.each.each.permission.label	string
 movesAwaitingTokens[].damageTail.each.each.permission.lapseOnPass	string
 movesAwaitingTokens[].damageTail.each.each.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].damageTail.each.each.permission.lifeInAddition	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeSeq	number:int
@@ -21264,6 +21312,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.energyEqualToManaValue	boo
 movesAwaitingTokens[].damageTail.each.then.permission.entersTapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].damageTail.each.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].damageTail.each.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].damageTail.each.then.permission.exileOnResolution	bool
@@ -21319,6 +21368,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.ifNotCast	string
 movesAwaitingTokens[].damageTail.each.then.permission.label	string
 movesAwaitingTokens[].damageTail.each.then.permission.lapseOnPass	string
 movesAwaitingTokens[].damageTail.each.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].damageTail.each.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeSeq	number:int
@@ -22019,6 +22069,7 @@ movesAwaitingTokens[].damageTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].damageTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].damageTail.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].damageTail.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].damageTail.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].damageTail.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].damageTail.then.permission.exileOnResolution	bool
@@ -22074,6 +22125,7 @@ movesAwaitingTokens[].damageTail.then.permission.ifNotCast	string
 movesAwaitingTokens[].damageTail.then.permission.label	string
 movesAwaitingTokens[].damageTail.then.permission.lapseOnPass	string
 movesAwaitingTokens[].damageTail.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].damageTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].damageTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeSeq	number:int
@@ -22721,6 +22773,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.energyEqualTo
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
@@ -22776,6 +22829,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.ifNotCast	str
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.label	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.lapseOnPass	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
@@ -23380,6 +23434,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.energyEqualToManaValue	boo
 movesAwaitingTokens[].entryTail.batch.then.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].entryTail.batch.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.exileOnResolution	bool
@@ -23435,6 +23490,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.ifNotCast	string
 movesAwaitingTokens[].entryTail.batch.then.permission.label	string
 movesAwaitingTokens[].entryTail.batch.then.permission.lapseOnPass	string
 movesAwaitingTokens[].entryTail.batch.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeSeq	number:int
@@ -23964,6 +24020,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].entryTail.keyed.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.entersWithCounterKind	string
 movesAwaitingTokens[].entryTail.keyed.permission.entersWithCounters	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].entryTail.keyed.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].entryTail.keyed.permission.exileOnResolution	bool
@@ -24019,6 +24076,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.ifNotCast	string
 movesAwaitingTokens[].entryTail.keyed.permission.label	string
 movesAwaitingTokens[].entryTail.keyed.permission.lapseOnPass	string
 movesAwaitingTokens[].entryTail.keyed.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].entryTail.keyed.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeSeq	number:int
@@ -24580,6 +24638,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.energyEqualToMan
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.entersWithCounterKind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.entersWithCounters	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.exileOnResolution	bool
@@ -24635,6 +24694,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.ifNotCast	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.label	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.lapseOnPass	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
@@ -25184,6 +25244,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.energyEqualToManaValue	bo
 movesAwaitingTokens[].entryTail.tokens.then.permission.entersTapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.exileOnResolution	bool
@@ -25239,6 +25300,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.ifNotCast	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.label	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.lapseOnPass	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeSeq	number:int
@@ -26187,6 +26249,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.energyEqualToManaValue	b
 movesAwaitingTokens[].keywordActionTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].keywordActionTail.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.exileOnResolution	bool
@@ -26242,6 +26305,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.ifNotCast	string
 movesAwaitingTokens[].keywordActionTail.then.permission.label	string
 movesAwaitingTokens[].keywordActionTail.then.permission.lapseOnPass	string
 movesAwaitingTokens[].keywordActionTail.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeSeq	number:int
@@ -26793,6 +26857,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.entersTapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].lifeTail.each.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.exileOnResolution	bool
@@ -26848,6 +26913,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.ifNotCast	string
 movesAwaitingTokens[].lifeTail.each.then.permission.label	string
 movesAwaitingTokens[].lifeTail.each.then.permission.lapseOnPass	string
 movesAwaitingTokens[].lifeTail.each.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeSeq	number:int
@@ -27380,6 +27446,7 @@ movesAwaitingTokens[].lifeTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].lifeTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].lifeTail.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].lifeTail.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].lifeTail.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].lifeTail.then.permission.exileOnResolution	bool
@@ -27435,6 +27502,7 @@ movesAwaitingTokens[].lifeTail.then.permission.ifNotCast	string
 movesAwaitingTokens[].lifeTail.then.permission.label	string
 movesAwaitingTokens[].lifeTail.then.permission.lapseOnPass	string
 movesAwaitingTokens[].lifeTail.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].lifeTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].lifeTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeSeq	number:int
@@ -28760,6 +28828,7 @@ movesAwaitingTokens[].millTail.run.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].millTail.run.then.permission.entersTapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].millTail.run.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].millTail.run.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].millTail.run.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].millTail.run.then.permission.exileOnResolution	bool
@@ -28815,6 +28884,7 @@ movesAwaitingTokens[].millTail.run.then.permission.ifNotCast	string
 movesAwaitingTokens[].millTail.run.then.permission.label	string
 movesAwaitingTokens[].millTail.run.then.permission.lapseOnPass	string
 movesAwaitingTokens[].millTail.run.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].millTail.run.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].millTail.run.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeSeq	number:int
@@ -29342,6 +29412,7 @@ movesAwaitingTokens[].millTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].millTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].millTail.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].millTail.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].millTail.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].millTail.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].millTail.then.permission.exileOnResolution	bool
@@ -29397,6 +29468,7 @@ movesAwaitingTokens[].millTail.then.permission.ifNotCast	string
 movesAwaitingTokens[].millTail.then.permission.label	string
 movesAwaitingTokens[].millTail.then.permission.lapseOnPass	string
 movesAwaitingTokens[].millTail.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].millTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].millTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeSeq	number:int
@@ -29997,6 +30069,7 @@ movesAwaitingTokens[].stackItem.promisedCounters	array
 movesAwaitingTokens[].stackItem.promisedCounters[]	object
 movesAwaitingTokens[].stackItem.promisedCounters[].count	number:int
 movesAwaitingTokens[].stackItem.promisedCounters[].kind	string
+movesAwaitingTokens[].stackItem.promisedCounters[].perSubtype	string
 movesAwaitingTokens[].stackItem.promisedCounters[].source	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.promisedCounters[].sourceName	string
 movesAwaitingTokens[].stackItem.seq	number:uint64
@@ -30855,6 +30928,7 @@ movesAwaitingTokens[].tokenTail.then.permission.energyEqualToManaValue	bool
 movesAwaitingTokens[].tokenTail.then.permission.entersTapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].tokenTail.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].tokenTail.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].tokenTail.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].tokenTail.then.permission.exileOnResolution	bool
@@ -30910,6 +30984,7 @@ movesAwaitingTokens[].tokenTail.then.permission.ifNotCast	string
 movesAwaitingTokens[].tokenTail.then.permission.label	string
 movesAwaitingTokens[].tokenTail.then.permission.lapseOnPass	string
 movesAwaitingTokens[].tokenTail.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].tokenTail.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].tokenTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeSeq	number:int
@@ -32659,6 +32734,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.energyEqualToMana
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
@@ -32714,6 +32790,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.label	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.lapseOnPass	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
@@ -33275,6 +33352,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.energyEqual
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.entersWithCounterKind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.entersWithCounters	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
@@ -33330,6 +33408,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	s
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.label	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.lapseOnPass	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
@@ -33857,6 +33936,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.energyEqualToManaValue
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.exileOnResolution	bool
@@ -33912,6 +33992,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.ifNotCast	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.label	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.lapseOnPass	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
@@ -34459,6 +34540,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.energyEqualToManaVal
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.exileOnResolution	bool
@@ -34514,6 +34596,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.ifNotCast	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.label	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.lapseOnPass	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
@@ -35126,6 +35209,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.energyEqualToManaVa
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.entersWithCounterKind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.entersWithCounters	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.entersWithCountersPermanent	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
@@ -35181,6 +35265,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.ifNotCast	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.label	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.lapseOnPass	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.lifeEqualToManaValue	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.lifeInAddition	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
@@ -36034,6 +36119,7 @@ pausedModeWalk.item.promisedCounters	array
 pausedModeWalk.item.promisedCounters[]	object
 pausedModeWalk.item.promisedCounters[].count	number:int
 pausedModeWalk.item.promisedCounters[].kind	string
+pausedModeWalk.item.promisedCounters[].perSubtype	string
 pausedModeWalk.item.promisedCounters[].source	custom(uuid.UUID)
 pausedModeWalk.item.promisedCounters[].sourceName	string
 pausedModeWalk.item.seq	number:uint64
@@ -36359,6 +36445,7 @@ pausedResolutionTail.item.promisedCounters	array
 pausedResolutionTail.item.promisedCounters[]	object
 pausedResolutionTail.item.promisedCounters[].count	number:int
 pausedResolutionTail.item.promisedCounters[].kind	string
+pausedResolutionTail.item.promisedCounters[].perSubtype	string
 pausedResolutionTail.item.promisedCounters[].source	custom(uuid.UUID)
 pausedResolutionTail.item.promisedCounters[].sourceName	string
 pausedResolutionTail.item.seq	number:uint64
@@ -36678,6 +36765,7 @@ pausedStepWalk.item.promisedCounters	array
 pausedStepWalk.item.promisedCounters[]	object
 pausedStepWalk.item.promisedCounters[].count	number:int
 pausedStepWalk.item.promisedCounters[].kind	string
+pausedStepWalk.item.promisedCounters[].perSubtype	string
 pausedStepWalk.item.promisedCounters[].source	custom(uuid.UUID)
 pausedStepWalk.item.promisedCounters[].sourceName	string
 pausedStepWalk.item.seq	number:uint64
@@ -38295,6 +38383,7 @@ pendingChoices[].attackSplit.tail.permission.energyEqualToManaValue	bool
 pendingChoices[].attackSplit.tail.permission.entersTapped	bool
 pendingChoices[].attackSplit.tail.permission.entersWithCounterKind	string
 pendingChoices[].attackSplit.tail.permission.entersWithCounters	number:int
+pendingChoices[].attackSplit.tail.permission.entersWithCountersPermanent	bool
 pendingChoices[].attackSplit.tail.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].attackSplit.tail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].attackSplit.tail.permission.exileOnResolution	bool
@@ -38350,6 +38439,7 @@ pendingChoices[].attackSplit.tail.permission.ifNotCast	string
 pendingChoices[].attackSplit.tail.permission.label	string
 pendingChoices[].attackSplit.tail.permission.lapseOnPass	string
 pendingChoices[].attackSplit.tail.permission.lifeEqualToManaValue	bool
+pendingChoices[].attackSplit.tail.permission.lifeInAddition	number:int
 pendingChoices[].attackSplit.tail.permission.manaValueBudget	number:int
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValue	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeSeq	number:int
@@ -39187,6 +39277,7 @@ pendingChoices[].copyWalk.item.promisedCounters	array
 pendingChoices[].copyWalk.item.promisedCounters[]	object
 pendingChoices[].copyWalk.item.promisedCounters[].count	number:int
 pendingChoices[].copyWalk.item.promisedCounters[].kind	string
+pendingChoices[].copyWalk.item.promisedCounters[].perSubtype	string
 pendingChoices[].copyWalk.item.promisedCounters[].source	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.promisedCounters[].sourceName	string
 pendingChoices[].copyWalk.item.seq	number:uint64
@@ -40272,6 +40363,7 @@ pendingChoices[].diceRoll.then.permission.energyEqualToManaValue	bool
 pendingChoices[].diceRoll.then.permission.entersTapped	bool
 pendingChoices[].diceRoll.then.permission.entersWithCounterKind	string
 pendingChoices[].diceRoll.then.permission.entersWithCounters	number:int
+pendingChoices[].diceRoll.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].diceRoll.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].diceRoll.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].diceRoll.then.permission.exileOnResolution	bool
@@ -40327,6 +40419,7 @@ pendingChoices[].diceRoll.then.permission.ifNotCast	string
 pendingChoices[].diceRoll.then.permission.label	string
 pendingChoices[].diceRoll.then.permission.lapseOnPass	string
 pendingChoices[].diceRoll.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].diceRoll.then.permission.lifeInAddition	number:int
 pendingChoices[].diceRoll.then.permission.manaValueBudget	number:int
 pendingChoices[].diceRoll.then.permission.maxSpellManaValue	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeSeq	number:int
@@ -41233,6 +41326,7 @@ pendingChoices[].divideShield.walk.each.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.each.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.each.permission.entersWithCounterKind	string
 pendingChoices[].divideShield.walk.each.permission.entersWithCounters	number:int
+pendingChoices[].divideShield.walk.each.permission.entersWithCountersPermanent	bool
 pendingChoices[].divideShield.walk.each.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].divideShield.walk.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].divideShield.walk.each.permission.exileOnResolution	bool
@@ -41288,6 +41382,7 @@ pendingChoices[].divideShield.walk.each.permission.ifNotCast	string
 pendingChoices[].divideShield.walk.each.permission.label	string
 pendingChoices[].divideShield.walk.each.permission.lapseOnPass	string
 pendingChoices[].divideShield.walk.each.permission.lifeEqualToManaValue	bool
+pendingChoices[].divideShield.walk.each.permission.lifeInAddition	number:int
 pendingChoices[].divideShield.walk.each.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValue	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeSeq	number:int
@@ -41817,6 +41912,7 @@ pendingChoices[].divideShield.walk.then.permission.energyEqualToManaValue	bool
 pendingChoices[].divideShield.walk.then.permission.entersTapped	bool
 pendingChoices[].divideShield.walk.then.permission.entersWithCounterKind	string
 pendingChoices[].divideShield.walk.then.permission.entersWithCounters	number:int
+pendingChoices[].divideShield.walk.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].divideShield.walk.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].divideShield.walk.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].divideShield.walk.then.permission.exileOnResolution	bool
@@ -41872,6 +41968,7 @@ pendingChoices[].divideShield.walk.then.permission.ifNotCast	string
 pendingChoices[].divideShield.walk.then.permission.label	string
 pendingChoices[].divideShield.walk.then.permission.lapseOnPass	string
 pendingChoices[].divideShield.walk.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].divideShield.walk.then.permission.lifeInAddition	number:int
 pendingChoices[].divideShield.walk.then.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValue	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeSeq	number:int
@@ -42407,6 +42504,7 @@ pendingChoices[].libraryOrder.then.permission.energyEqualToManaValue	bool
 pendingChoices[].libraryOrder.then.permission.entersTapped	bool
 pendingChoices[].libraryOrder.then.permission.entersWithCounterKind	string
 pendingChoices[].libraryOrder.then.permission.entersWithCounters	number:int
+pendingChoices[].libraryOrder.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].libraryOrder.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].libraryOrder.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].libraryOrder.then.permission.exileOnResolution	bool
@@ -42462,6 +42560,7 @@ pendingChoices[].libraryOrder.then.permission.ifNotCast	string
 pendingChoices[].libraryOrder.then.permission.label	string
 pendingChoices[].libraryOrder.then.permission.lapseOnPass	string
 pendingChoices[].libraryOrder.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].libraryOrder.then.permission.lifeInAddition	number:int
 pendingChoices[].libraryOrder.then.permission.manaValueBudget	number:int
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValue	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeSeq	number:int
@@ -43047,6 +43146,7 @@ pendingChoices[].nameThen.permission.energyEqualToManaValue	bool
 pendingChoices[].nameThen.permission.entersTapped	bool
 pendingChoices[].nameThen.permission.entersWithCounterKind	string
 pendingChoices[].nameThen.permission.entersWithCounters	number:int
+pendingChoices[].nameThen.permission.entersWithCountersPermanent	bool
 pendingChoices[].nameThen.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].nameThen.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].nameThen.permission.exileOnResolution	bool
@@ -43102,6 +43202,7 @@ pendingChoices[].nameThen.permission.ifNotCast	string
 pendingChoices[].nameThen.permission.label	string
 pendingChoices[].nameThen.permission.lapseOnPass	string
 pendingChoices[].nameThen.permission.lifeEqualToManaValue	bool
+pendingChoices[].nameThen.permission.lifeInAddition	number:int
 pendingChoices[].nameThen.permission.manaValueBudget	number:int
 pendingChoices[].nameThen.permission.maxSpellManaValue	number:int
 pendingChoices[].nameThen.permission.notBeforeSeq	number:int
@@ -44095,6 +44196,7 @@ pendingChoices[].pickTail.permission.energyEqualToManaValue	bool
 pendingChoices[].pickTail.permission.entersTapped	bool
 pendingChoices[].pickTail.permission.entersWithCounterKind	string
 pendingChoices[].pickTail.permission.entersWithCounters	number:int
+pendingChoices[].pickTail.permission.entersWithCountersPermanent	bool
 pendingChoices[].pickTail.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].pickTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].pickTail.permission.exileOnResolution	bool
@@ -44150,6 +44252,7 @@ pendingChoices[].pickTail.permission.ifNotCast	string
 pendingChoices[].pickTail.permission.label	string
 pendingChoices[].pickTail.permission.lapseOnPass	string
 pendingChoices[].pickTail.permission.lifeEqualToManaValue	bool
+pendingChoices[].pickTail.permission.lifeInAddition	number:int
 pendingChoices[].pickTail.permission.manaValueBudget	number:int
 pendingChoices[].pickTail.permission.maxSpellManaValue	number:int
 pendingChoices[].pickTail.permission.notBeforeSeq	number:int
@@ -44723,6 +44826,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.energyEqual
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.exileOnResolution	bool
@@ -44778,6 +44882,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.ifNotCast	s
 pendingChoices[].replacementResume.event.counterTail.then.permission.label	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeSeq	number:int
@@ -45316,6 +45421,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.energyE
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.exileOnResolution	bool
@@ -45371,6 +45477,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.ifNotCa
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.label	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeSeq	number:int
@@ -45900,6 +46007,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.energyE
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.exileOnResolution	bool
@@ -45955,6 +46063,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.ifNotCa
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.label	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeSeq	number:int
@@ -46655,6 +46764,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.energyEqualT
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.exileOnResolution	bool
@@ -46710,6 +46820,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.ifNotCast	st
 pendingChoices[].replacementResume.event.damageTail.then.permission.label	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeSeq	number:int
@@ -47357,6 +47468,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.exileOnResolution	bool
@@ -47412,6 +47524,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.label	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
@@ -48016,6 +48129,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.energyE
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.exileOnResolution	bool
@@ -48071,6 +48185,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.ifNotCa
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.label	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeSeq	number:int
@@ -48600,6 +48715,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.energyEqualT
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.exileOnResolution	bool
@@ -48655,6 +48771,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.ifNotCast	st
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.label	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeSeq	number:int
@@ -49216,6 +49333,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.exileOnResolution	bool
@@ -49271,6 +49389,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.label	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
@@ -49820,6 +49939,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.energy
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.exileOnResolution	bool
@@ -49875,6 +49995,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.ifNotC
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.label	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeSeq	number:int
@@ -50823,6 +50944,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.energ
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.exileOnResolution	bool
@@ -50878,6 +51000,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.ifNot
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.label	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeSeq	number:int
@@ -51429,6 +51552,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.energyEqu
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.exileOnResolution	bool
@@ -51484,6 +51608,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.ifNotCast
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.label	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeSeq	number:int
@@ -52016,6 +52141,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.energyEqualToM
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.exileOnResolution	bool
@@ -52071,6 +52197,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.ifNotCast	stri
 pendingChoices[].replacementResume.event.lifeTail.then.permission.label	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeSeq	number:int
@@ -53396,6 +53523,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.energyEqua
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.exileOnResolution	bool
@@ -53451,6 +53579,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.ifNotCast	
 pendingChoices[].replacementResume.event.millTail.run.then.permission.label	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeSeq	number:int
@@ -53978,6 +54107,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.energyEqualToM
 pendingChoices[].replacementResume.event.millTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.millTail.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.exileOnResolution	bool
@@ -54033,6 +54163,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.ifNotCast	stri
 pendingChoices[].replacementResume.event.millTail.then.permission.label	string
 pendingChoices[].replacementResume.event.millTail.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.millTail.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeSeq	number:int
@@ -54633,6 +54764,7 @@ pendingChoices[].replacementResume.event.stackItem.promisedCounters	array
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[]	object
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].count	number:int
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].kind	string
+pendingChoices[].replacementResume.event.stackItem.promisedCounters[].perSubtype	string
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.promisedCounters[].sourceName	string
 pendingChoices[].replacementResume.event.stackItem.seq	number:uint64
@@ -55491,6 +55623,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.energyEqualTo
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.exileOnResolution	bool
@@ -55546,6 +55679,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.ifNotCast	str
 pendingChoices[].replacementResume.event.tokenTail.then.permission.label	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeSeq	number:int
@@ -57295,6 +57429,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.exileOnResolution	bool
@@ -57350,6 +57485,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.label	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
@@ -57911,6 +58047,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.exileOnResolution	bool
@@ -57966,6 +58103,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.label	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
@@ -58493,6 +58631,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.ene
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.exileOnResolution	bool
@@ -58548,6 +58687,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.ifN
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.label	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
@@ -59095,6 +59235,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.e
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.exileOnResolution	bool
@@ -59150,6 +59291,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.i
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.label	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
@@ -59762,6 +59904,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersTapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersWithCounterKind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersWithCounters	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.entersWithCountersPermanent	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.exileOnResolution	bool
@@ -59817,6 +59960,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.label	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.lapseOnPass	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.lifeEqualToManaValue	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.lifeInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.manaValueBudget	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
@@ -60771,6 +60915,7 @@ pendingChoices[].scryThen.permission.energyEqualToManaValue	bool
 pendingChoices[].scryThen.permission.entersTapped	bool
 pendingChoices[].scryThen.permission.entersWithCounterKind	string
 pendingChoices[].scryThen.permission.entersWithCounters	number:int
+pendingChoices[].scryThen.permission.entersWithCountersPermanent	bool
 pendingChoices[].scryThen.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].scryThen.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].scryThen.permission.exileOnResolution	bool
@@ -60826,6 +60971,7 @@ pendingChoices[].scryThen.permission.ifNotCast	string
 pendingChoices[].scryThen.permission.label	string
 pendingChoices[].scryThen.permission.lapseOnPass	string
 pendingChoices[].scryThen.permission.lifeEqualToManaValue	bool
+pendingChoices[].scryThen.permission.lifeInAddition	number:int
 pendingChoices[].scryThen.permission.manaValueBudget	number:int
 pendingChoices[].scryThen.permission.maxSpellManaValue	number:int
 pendingChoices[].scryThen.permission.notBeforeSeq	number:int
@@ -61400,6 +61546,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.energyEqualToManaValue	bo
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersTapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersWithCounterKind	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.entersWithCounters	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.entersWithCountersPermanent	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileInsteadOfGraveyard	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileInsteadOnlyInstantOrSorcery	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.exileOnResolution	bool
@@ -61455,6 +61602,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.ifNotCast	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.label	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.lapseOnPass	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.lifeEqualToManaValue	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.lifeInAddition	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.manaValueBudget	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeSeq	number:int
@@ -63581,6 +63729,7 @@ pendingTriggers[].promisedCounters	array
 pendingTriggers[].promisedCounters[]	object
 pendingTriggers[].promisedCounters[].count	number:int
 pendingTriggers[].promisedCounters[].kind	string
+pendingTriggers[].promisedCounters[].perSubtype	string
 pendingTriggers[].promisedCounters[].source	custom(uuid.UUID)
 pendingTriggers[].promisedCounters[].sourceName	string
 pendingTriggers[].seq	number:uint64
@@ -65953,6 +66102,7 @@ resolving.item.promisedCounters	array
 resolving.item.promisedCounters[]	object
 resolving.item.promisedCounters[].count	number:int
 resolving.item.promisedCounters[].kind	string
+resolving.item.promisedCounters[].perSubtype	string
 resolving.item.promisedCounters[].source	custom(uuid.UUID)
 resolving.item.promisedCounters[].sourceName	string
 resolving.item.seq	number:uint64
@@ -66826,6 +66976,7 @@ seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].entersTapped	bool
 seats[].castPermissions[].entersWithCounterKind	string
 seats[].castPermissions[].entersWithCounters	number:int
+seats[].castPermissions[].entersWithCountersPermanent	bool
 seats[].castPermissions[].exileInsteadOfGraveyard	bool
 seats[].castPermissions[].exileInsteadOnlyInstantOrSorcery	bool
 seats[].castPermissions[].exileOnResolution	bool
@@ -66881,6 +67032,7 @@ seats[].castPermissions[].ifNotCast	string
 seats[].castPermissions[].label	string
 seats[].castPermissions[].lapseOnPass	string
 seats[].castPermissions[].lifeEqualToManaValue	bool
+seats[].castPermissions[].lifeInAddition	number:int
 seats[].castPermissions[].manaValueBudget	number:int
 seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
@@ -71113,6 +71265,7 @@ stackMeta[].promisedCounters	array
 stackMeta[].promisedCounters[]	object
 stackMeta[].promisedCounters[].count	number:int
 stackMeta[].promisedCounters[].kind	string
+stackMeta[].promisedCounters[].perSubtype	string
 stackMeta[].promisedCounters[].source	custom(uuid.UUID)
 stackMeta[].promisedCounters[].sourceName	string
 stackMeta[].seq	number:uint64
