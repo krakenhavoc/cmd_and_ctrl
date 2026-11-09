@@ -71,14 +71,15 @@ var textWordLiteralAllowed = map[string]string{
 	// mana cost") is judged as the card is cast from a hand (CR 601.2b),
 	// before anything can change its text: a change lives on a permanent
 	// or a spell already on the stack.
-	"angelic_favor.go":  "alternative cost, judged as cast",
-	"lashknife.go":      "alternative cost, judged as cast",
-	"bards_company.go":  "alternative cost, judged as cast",
-	"orims_cure.go":     "alternative cost, judged as cast",
-	"ramosian_rally.go": "alternative cost, judged as cast",
-	"sivvis_ruse.go":    "alternative cost, judged as cast",
-	"sivvis_valor.go":   "alternative cost, judged as cast",
-	"snuff_out.go":      "alternative cost, judged as cast",
+	"angelic_favor.go":     "alternative cost, judged as cast",
+	"lashknife.go":         "alternative cost, judged as cast",
+	"bards_company.go":     "alternative cost, judged as cast",
+	"illusion_spinners.go": "flash condition, judged as cast (Bard's Company's shape)",
+	"orims_cure.go":        "alternative cost, judged as cast",
+	"ramosian_rally.go":    "alternative cost, judged as cast",
+	"sivvis_ruse.go":       "alternative cost, judged as cast",
+	"sivvis_valor.go":      "alternative cost, judged as cast",
+	"snuff_out.go":         "alternative cost, judged as cast",
 
 	// "This land enters tapped unless you control …": asked as the land
 	// enters, a new object no text change has reached (CR 400.7, 614.12).
