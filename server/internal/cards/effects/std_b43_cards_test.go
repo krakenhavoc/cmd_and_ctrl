@@ -1635,3 +1635,111 @@ func TestStdB45DeadlyCoverUpMayExileABasicLand(t *testing.T) {
 	}
 	x.exiled(t, "gy forest")
 }
+
+// --- batch 46 ------------------------------------------------------------
+
+const stdVojaOracle = "d94ff0b8-5499-4eeb-80f0-20c7fbf07499"
+
+func TestStdB46VojaCountsElvesForCountersAndWolvesForCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	voja := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Voja, Jaws of the Conclave", TypeLine: "Legendary Creature — Wolf", OracleID: stdVojaOracle,
+		Power: 5, Toughness: 5, Keywords: []string{"haste"}, Owner: me.ID, Controller: me.ID,
+	})
+	elfA := typedCreature(g, me.ID, "Elf A", "Creature — Elf Warrior", "", 1, 1)
+	elfB := typedCreature(g, me.ID, "Elf B", "Creature — Elf Druid", "", 1, 1)
+	wolf := typedCreature(g, me.ID, "Wolf", "Creature — Wolf", "", 2, 2)
+	theirs := reqCreature(g, g.Seats[1].ID, "Their Elf", "", 1, 1)
+	for i := 0; i < 5; i++ {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	}
+	hand := me.Hand.Size()
+	attackAndTrigger(t, g, voja)
+	passPriorityAroundTable(t, g)
+	// Two Elves: two counters on each creature I control.
+	for _, id := range []uuid.UUID{voja, elfA, elfB, wolf} {
+		if c := tmtB1Card(t, g, id); c.Counters["+1/+1"] != 2 {
+			t.Errorf("%s has %d counters, want 2", c.Name, c.Counters["+1/+1"])
+		}
+	}
+	if c := tmtB1Card(t, g, theirs); c.Counters["+1/+1"] != 0 {
+		t.Error("an opponent's creature got counters")
+	}
+	// Voja and the Wolf: two cards.
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("drew %d, want 2 (Voja and one other Wolf)", got)
+	}
+}
+
+const (
+	stdCrocodelfOracle = "3ba223b7-743f-4f99-836e-869778fb2e99"
+	stdTeysaOracle     = "d4f5748f-bb0e-4c48-8802-45a7ad5a80a4"
+)
+
+func TestStdB46UndercoverCrocodelfInvestigatesOnCombatDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	advanceToMain(t, g)
+	c := b12Push(g, me.ID, "Undercover Crocodelf", "Creature — Elf Crocodile Detective", stdCrocodelfOracle, 5, 5)
+	dealCombatDamageToPlayer(g, c, opp.ID, 5)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 1 {
+		t.Fatalf("%d Clues, want 1", n)
+	}
+	ac := game.AlternativeCostByKey(stdCrocodelfOracle, "disguise")
+	if ac == nil || ac.FaceDown == nil || ac.FaceDown.FaceUpCost != "{3}{G/U}{G/U}" {
+		t.Errorf("disguise offer %+v", ac)
+	}
+}
+
+func stdTeysaBoard(t *testing.T) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Teysa, Opulent Oligarch", "Legendary Creature — Human Advisor", stdTeysaOracle, 2, 4)
+	return g, me
+}
+
+func TestStdB46TeysaInvestigatesForEachOpponentWhoLostLife(t *testing.T) {
+	g, me := stdTeysaBoard(t)
+	g.WithWriteLock(func() {
+		for _, i := range []int{1, 2} {
+			if err := g.ChangePlayerLifeForEffect(uuid.Nil, g.Seats[i].ID, -1); err != nil {
+				t.Fatalf("lose life: %v", err)
+			}
+		}
+	})
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Clue"); n != 2 {
+		t.Fatalf("%d Clues, want 2 (two opponents lost life)", n)
+	}
+}
+
+func TestStdB46TeysaMakesASpiritOnlyOnceEachTurnForAClue(t *testing.T) {
+	g, me := stdTeysaBoard(t)
+	clueA := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Clue", TypeLine: "Token Artifact — Clue", Owner: me.ID, Controller: me.ID})
+	clueB := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Clue", TypeLine: "Token Artifact — Clue", Owner: me.ID, Controller: me.ID})
+	theirs := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Clue", TypeLine: "Token Artifact — Clue", Owner: g.Seats[1].ID, Controller: g.Seats[1].ID})
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{theirs}) })
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Spirit"); n != 0 {
+		t.Fatalf("an opponent's Clue made %d Spirits", n)
+	}
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{clueA}) })
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.DestroyPermanentsForEffect([]uuid.UUID{clueB}) })
+	g.RunStateChecksForTest()
+	b30SettleOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Spirit"); n != 1 {
+		t.Fatalf("%d Spirits, want 1 (once each turn)", n)
+	}
+}
