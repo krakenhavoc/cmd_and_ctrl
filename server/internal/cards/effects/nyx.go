@@ -33,14 +33,7 @@ func init() {
 			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 				return target.IsCreature() && !target.IsToken()
 			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				for _, t := range c.Types {
-					if t == "Enchantment" {
-						return
-					}
-				}
-				c.Types = append(c.Types, "Enchantment")
-			},
+			Apply: addEnchantmentType,
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

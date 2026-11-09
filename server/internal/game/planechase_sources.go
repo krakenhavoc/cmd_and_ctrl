@@ -80,7 +80,9 @@ func (g *Game) harvestFromPlanesLocked(pass *harvestPass) {
 		g.harvestFromZone(pass, g.PlanarFaceUp)
 	}
 	ev := pass.ev
-	if ev.Kind != EventPlaneswalkFrom || g.PlanarDeck == nil {
+	// "Chaos ensues on that plane" (CR 311.7): the plane's chaos ability can
+	// trigger while the card is still on the planar deck, revealed.
+	if ev.Kind != EventPlaneswalkFrom && ev.Kind != EventChaosEnsues || g.PlanarDeck == nil {
 		return
 	}
 	for _, c := range g.PlanarDeck.Cards {

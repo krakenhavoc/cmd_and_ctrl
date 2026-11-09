@@ -660,3 +660,102 @@ func TestStrixhavenChaosReturnsAnInstantOrSorceryFromAnyGraveyard(t *testing.T) 
 		t.Error("the card did not go to its owner's hand")
 	}
 }
+
+// --- The planar deck planes -------------------------------------------------------------------------
+
+// pushPlanarCard puts a planar card on top of the planar deck.
+func pushPlanarCard(g *game.Game, oracle, name, typeLine string) uuid.UUID {
+	c := planeTemplate(oracle, name, typeLine)
+	c.InstanceID = uuid.New()
+	g.WithWriteLock(func() {
+		c.Owner, c.Controller = g.Planechase.Controller, g.Planechase.Controller
+		g.PlanarDeck.PushTop(c)
+	})
+	return c.InstanceID
+}
+
+func TestTheFertileLandsOfSaulviniaDoublesLandManaAndChaosRevealsAPlaneAndItsChaosEnsues(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeFertileLands)
+	g, _ := newPlaneGame(t, planeFertileLands)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	for _, p := range []*game.Player{me, opp} {
+		forest := b31Push(g, p.ID, "Forest", "Basic Land — Forest", "", "", 0, 0)
+		tapForMana(t, g, p.ID, forest)
+		if got := p.ManaPool.Total(); got != 2 {
+			t.Errorf("%s tapped a Forest for %d mana, want 2", p.Name, got)
+		}
+	}
+
+	pano := pushPlanarCard(g, planePanopticon.Oracle, planePanopticon.Name, planePanopticon.TypeLine)
+	phen := pushPlanarCard(g, "00000000-0000-0000-0000-00000000f00d", "Test Phenomenon", "Phenomenon")
+	// Panopticon's chaos ability draws a card; reveal order is phenomenon, then the plane.
+	_ = phen
+	hand := me.Hand.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	for i := 0; i < 4 && latestOptionPickFor(g, me.ID) != nil; i++ {
+		answerOptionPick(t, g, me.ID, 0)
+	}
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 1 {
+		t.Errorf("drew %d cards, want 1 (Panopticon's chaos ability, triggered from the planar deck)", got)
+	}
+	deck := g.PlanarDeckCards()
+	if len(deck) < 2 || (deck[0].InstanceID != pano && deck[1].InstanceID != pano) || (deck[0].InstanceID != phen && deck[1].InstanceID != phen) {
+		t.Error("the revealed cards are not the two at the bottom of the planar deck")
+	}
+	if _, ok := faceUpPlane(g, planePanopticon.Oracle); ok {
+		t.Error("Panopticon was turned face up; chaos only ensued on it")
+	}
+	if _, ok := faceUpPlane(g, planeFertileLands.Oracle); !ok {
+		t.Error("The Fertile Lands left the face-up planes")
+	}
+}
+
+func TestNornsSeedcoreChaosEnsuesOnArrivalAndPlaneswalksToARevealedPlaneStayingPut(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeNornsSeedcore)
+	g, _ := newPlaneGame(t, planeNornsSeedcore)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pano := pushPlanarCard(g, planePanopticon.Oracle, planePanopticon.Name, planePanopticon.TypeLine)
+	phen := pushPlanarCard(g, "00000000-0000-0000-0000-00000000f00d", "Test Phenomenon", "Phenomenon")
+	hand := me.Hand.Size()
+	planeswalkToPlane(t, g, planeNornsSeedcore.Oracle)
+	for i := 0; i < 8; i++ {
+		answerAnyTriggerOrderPromptIfAny(t, g, me.ID)
+		passPriorityAroundTable(t, g)
+		if latestOptionPickFor(g, me.ID) != nil {
+			answerOptionPick(t, g, me.ID, 0)
+		}
+	}
+	if _, ok := faceUpPlane(g, planeNornsSeedcore.Oracle); !ok {
+		t.Fatal("Norn's Seedcore left the face-up planes: the planeswalk is not to walk away from any plane")
+	}
+	if _, ok := faceUpPlane(g, planePanopticon.Oracle); !ok {
+		t.Fatal("the revealed plane was not turned face up")
+	}
+	if got := me.Hand.Size() - hand; got != 1 {
+		t.Errorf("drew %d cards, want 1 (Panopticon: when you planeswalk to it)", got)
+	}
+	if g.PlanarDeck.Contains(pano) || !g.PlanarDeck.Contains(phen) {
+		t.Error("the plane should have left the planar deck and the phenomenon stayed on it")
+	}
+	if g.PlanarDeck.Cards[0].InstanceID != phen {
+		t.Error("the revealed phenomenon is not at the bottom of the planar deck")
+	}
+	// The next planeswalk leaves every face-up plane.
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	answerOptionPickIfAny(t, g, me.ID)
+	g.WithWriteLock(func() {})
+	if n := len(g.PlanarFaceUpCards()); n != 1 {
+		t.Errorf("%d face-up planes after planeswalking, want just the new one", n)
+	}
+}
+
+func answerOptionPickIfAny(t *testing.T, g *game.Game, who uuid.UUID) {
+	t.Helper()
+	for i := 0; i < 4 && latestOptionPickFor(g, who) != nil; i++ {
+		answerOptionPick(t, g, who, 0)
+	}
+}

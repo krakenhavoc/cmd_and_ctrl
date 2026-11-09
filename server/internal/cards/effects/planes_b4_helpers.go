@@ -141,3 +141,27 @@ var untilNonlandPermanentRef = game.RegisterMillUntil("until/nonland-permanent-c
 
 // UntilNonlandPermanent is "until they exile a nonland permanent card".
 var UntilNonlandPermanent = game.MillUntil{Ref: untilNonlandPermanentRef}
+
+// addEnchantmentType is the layer-4 Apply of "<permanents> are enchantments
+// in addition to their other types" (Nyx, Secret Arcade // Dusty Parlor).
+func addEnchantmentType(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+	for _, t := range c.Types {
+		if t == "Enchantment" {
+			return
+		}
+	}
+	c.Types = append(c.Types, "Enchantment")
+}
+
+// yourCreaturesAnyNumber is the candidates of "sacrifice any number of
+// creatures" (Plunge into Darkness, Kharasha Foothills): the creatures `of`
+// controls, no floor and no ceiling.
+func yourCreaturesAnyNumber(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == of && c.IsCreature() {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out, 0, 0
+}

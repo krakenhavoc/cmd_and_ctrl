@@ -1063,6 +1063,7 @@ var delayedTriggerFields = plan(
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
+	"ManaAddsProduced", carried, "", // #4870, CR 605.1b: the any-land triggered mana record (Selesnya Loft Gardens)
 )
 
 var pendingChoiceFields = plan(

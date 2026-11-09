@@ -968,6 +968,7 @@ confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
 confirm confirm/kellan-daring-traveler-to-graveyard
+confirm confirm/kharasha-foothills-copy
 confirm confirm/killmonger-sacrifice
 confirm confirm/kimahri-ronso-rage-copy
 confirm confirm/krile-baldesion-return
@@ -1116,6 +1117,7 @@ milluntil until/creature-card-or-count
 milluntil until/land-card
 milluntil until/legendary-card
 milluntil until/nonland-card
+milluntil until/nonland-permanent-card
 milluntil until/strago-and-relm-hit
 milluntil until/total-mana-value
 number assist/help-pay-for-a-spell
@@ -1201,6 +1203,8 @@ option option-pick/gluntch-the-bestower-third
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
+option option-pick/ketria-counter
+option option-pick/ketria-placement
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/land-mana-each
 option option-pick/leatherhead-remove-a-counter
@@ -1291,6 +1295,7 @@ option option-pick/winters-chill-pay
 option option-pick/wishclaw-talisman-hand-it-over
 option option-pick/zara-renegade-recruiter-attack
 option option-pick/zimones-hypothesis-parity
+option planechase/bottom-any-order
 option planechase/bottom-order
 option retarget/pinned-slot
 option sticker/choose-sticker
@@ -1554,6 +1559,7 @@ run prompt-run/ill-gotten-gains-return
 run prompt-run/in-the-pale-moonlight-romulans
 run prompt-run/kefka-court-mage-draw
 run prompt-run/kefka-court-mage-transform
+run prompt-run/kharasha-foothills-sacrifice
 run prompt-run/killmonger-sacrificed
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
@@ -1609,6 +1615,7 @@ run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/tenured-tethermage-tokens
+run prompt-run/the-aether-flues-reveal
 run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
@@ -2068,6 +2075,8 @@ tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kang-prime/time-counters
 tail kaya-orzhov-usurper/gain-2-if-creature
+tail ketria/exiled-until-a-nonland-permanent
+tail kharasha-foothills/exile-tokens-at-next-end-step
 tail kindred-charge/haste-and-exile-copies
 tail kodamas-reach/basic-land-to-hand
 tail kotose-the-silent-spider/after-exile
@@ -2084,6 +2093,7 @@ tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
 tail liliana-deaths-majesty/black-zombies
+tail littjara/counters-of-the-chosen-type
 tail living-death/return-exiled
 tail living-death/sacrifice-creatures
 tail loafing-giant/after-mill
@@ -2175,6 +2185,8 @@ tail permanents-pick/sacrificed
 tail pestilent-cauldron/draw-a-card
 tail phelia-exuberant-shepherd/counter-if-yours
 tail phelia-exuberant-shepherd/schedule-return
+tail planes/reveal-until-to-hand-rest-on-bottom
+tail planes/shuffle-library
 tail plargg-and-nassari/after-mill
 tail ponder/ask-shuffle
 tail port-of-karfell/after-mill
@@ -2260,6 +2272,7 @@ tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/swarm-culler-draw
+tail sacrificed-one/prompt-run/the-aether-flues-reveal
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
@@ -2446,6 +2459,7 @@ tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/northampton-farm-rest-to-hand
+tail then/nyx-devotion-mana
 tail then/one-ring-to-rule-them-all-mill
 tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered

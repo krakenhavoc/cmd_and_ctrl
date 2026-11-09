@@ -13751,6 +13751,18 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
   controller. Test the static or triggered half and the chaos half, that a
   blank does nothing, and one face-down case. `requirePlaneRegisteredFull`
   checks the registration.
+- **"Chaos ensues" and the planar deck** (batch 4, Norn's Seedcore, The Fertile
+  Lands of Saulvinia): `g.ChaosEnsuesForEffect(item.Controller, uuid.Nil)` says chaos
+  ensues (every face-up plane's chaos ability triggers), with a plane's ID it ensues
+  on that plane, even while it is still on the planar deck, revealed.
+  `RevealPlanarUntilPlaneForEffect`, `PlaneswalkToCardForEffect` and
+  `PutPlanarCardsOnBottomInAnyOrderForEffect` are the planar deck walks.
+- **A face-up plane's statics** reach the layer pass, the replacement pipeline, the
+  triggered mana judge, the granted alternative costs, the zone grants and the
+  ascend sweep. A static over *cards in a zone* (Naktamun) is `GrantAbilitiesInZone`
+  with `ManaCostOfThis()` for "equal to its mana cost"; a granted alternative cost
+  is `BlitzForCreatureSpellsFromHand`; "creatures with power N or greater can't
+  attack or block" is `AttackBlockPowerCeiling` (Hedron Fields).
 - **Coverage.** A plane counts in the registry keys like any card, and the
   census's planar line ("planes and phenomena … N of M") counts it against
   `coverage/planar_cards.txt`. Generate only your planes' oracle fixtures.

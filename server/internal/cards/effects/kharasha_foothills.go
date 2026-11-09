@@ -37,17 +37,9 @@ func init() {
 			Targeting(WheneverChaosEnsues("Kharasha Foothills — you may sacrifice any number of creatures; if you do, it deals that much damage to target creature",
 				func(g *game.Game, item *game.StackItem) error {
 					return ChoosePermanents{
-						Question: "Kharasha Foothills — sacrifice any number of creatures",
-						Keyed:    kharashaSacrificed,
-						Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-							var out []uuid.UUID
-							for _, c := range g.BattlefieldCardsForEffect() {
-								if c.Controller == of && c.IsCreature() {
-									out = append(out, c.InstanceID)
-								}
-							}
-							return out, 0, 0 // "any number": no floor, no ceiling
-						},
+						Question:   "Kharasha Foothills — sacrifice any number of creatures",
+						Keyed:      kharashaSacrificed,
+						Candidates: yourCreaturesAnyNumber, // "any number": no floor, no ceiling
 					}.Apply(NewContext(g, item))
 				}), TargetCreature("target creature")),
 		},

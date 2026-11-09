@@ -63,7 +63,8 @@ const (
 // place instead of being invisible in the default arm of a switch. The
 // rows that remain are the ones whose silence survived being read.
 var silentEventKinds = map[string]string{
-	"EventFight": "fight participation is consumed by triggers; the resolving ability and resulting damage already have log entries",
+	"EventChaosEnsues": "chaos ensuing is told by the chaos abilities it triggers, each a LogTrigger line naming its plane (CR 311.7, #4870); the event exists for \"whenever chaos ensues\"",
+	"EventFight":       "fight participation is consumed by triggers; the resolving ability and resulting damage already have log entries",
 	// --- already told, by another line -------------------------------
 	"EventForage":          "the payment itself is the line: the three cards' exile or the Food's sacrifice (#5184, CR 701.61a); the event exists for \"whenever you forage\" (Corpseberry Cultivator), whose own LogTrigger line follows",
 	"EventWaterbend":       "the payment itself is the line: the mana and the taps (#5276, CR 701.67c); the event exists for \"whenever you waterbend\" (Avatar Aang), whose own LogTrigger line follows",
