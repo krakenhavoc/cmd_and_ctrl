@@ -72,22 +72,19 @@ var specterOfMortalityExiled = game.RegisterChooseCardsThen("choose-cards/specte
 		return nil
 	}
 	ctx := NewContext(g, r.Asked)
-	n := 0
-	for _, id := range r.Picked {
-		if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
-			n++
-		}
-	}
-	if n == 0 {
+	return g.ExileCardsKeyedForEffect(r.Picked, ctx.ItemTail(specterOfMortalityExiledTail))
+})
+
+// specterOfMortalityExiledTail raises the reflexive sweep once the exile has
+// settled, with the number of cards that really reached exile. An on-disk key.
+var specterOfMortalityExiledTail = CardTail("specter-of-mortality/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
 		return nil
 	}
 	return ReflexiveTrigger{
 		Label:  "Specter of Mortality — each other creature gets -X/-X until end of turn, where X is the number of cards exiled this way",
 		Body:   specterOfMortalitySweepBody,
-		Params: game.EffectParams{Amount: n},
+		Params: game.EffectParams{Amount: len(o.IDs)},
 	}.Apply(ctx)
 })
 

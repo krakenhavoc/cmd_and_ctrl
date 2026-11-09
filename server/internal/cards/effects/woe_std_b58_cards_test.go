@@ -614,6 +614,7 @@ func TestB55RedtoothVanguardReturnsWhenYourEnchantmentEntersAndYouPay(t *testing
 	g.WithWriteLock(func() { g.EmitEvent(game.Event{Kind: game.EventETB, CardID: ench, Actor: me.ID}) })
 	floatForTest(g, me, "CC")
 	passPriorityAroundTable(t, g)
+	floatForTest(g, me, "CC")
 	answerPayUnless(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(card.InstanceID) {

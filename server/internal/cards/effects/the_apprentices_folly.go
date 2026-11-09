@@ -48,7 +48,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					var ids []uuid.UUID
 					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.HasSubtype("Reflection") {
+						if c.Controller == item.Controller && c.HasSubtypeWord("Reflection") {
 							ids = append(ids, c.InstanceID)
 						}
 					}

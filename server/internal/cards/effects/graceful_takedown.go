@@ -35,21 +35,23 @@ func init() {
 			if !ok || victim.Kind != game.TargetCard {
 				return nil
 			}
-			for _, slot := range []int{0, 1} {
-				for _, t := range ctx.ClauseTargets(slot) {
-					if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
-						continue
-					}
-					c, found := ctx.Game.LookupCardForEffect(t.ID)
-					if !found {
-						continue
-					}
-					if err := (DealDamage{Source: t.ID, Target: victim.ID, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
-						return err
+			return ctx.Game.DamageInstanceForEffect(func() error {
+				for _, slot := range []int{0, 1} {
+					for _, t := range ctx.ClauseTargets(slot) {
+						if t.Kind != game.TargetCard || !ctx.IsTargetLegal(t) {
+							continue
+						}
+						c, found := ctx.Game.LookupCardForEffect(t.ID)
+						if !found {
+							continue
+						}
+						if err := (DealDamage{Source: t.ID, Target: victim.ID, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
+							return err
+						}
 					}
 				}
-			}
-			return nil
+				return nil
+			})
 		},
 	})
 }

@@ -33,7 +33,7 @@ func init() {
 						}
 					}
 					for _, c := range b26AttackingCreatures(g) {
-						if c.HasSubtype("Rat") {
+						if c.HasSubtypeWord("Rat") {
 							return thisGainsKeywordUntilEndOfTurn("trample", "Charging Hooligan — trample until end of turn")(g, item)
 						}
 					}
