@@ -1182,6 +1182,7 @@ option option-pick/done-for-the-day-reward
 option option-pick/dwarven-armorer-counter
 option option-pick/elemental-teachings-opponent
 option option-pick/emergent-ultimatum-opponent
+option option-pick/emeria-shepherd-return
 option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
 option option-pick/explosion-of-riches-draw
@@ -1860,6 +1861,7 @@ tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
+tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
@@ -2414,6 +2416,7 @@ tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
+tail then/grasp-of-fate-exiled-one
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
