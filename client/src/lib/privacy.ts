@@ -187,6 +187,10 @@ export const PRIVACY_FACTS = {
   podMemberCap: 12,
   /** pods.MaxPodsPerPerson: pods one person can be in. */
   podsPerPerson: 10,
+  /** pods.SuggestGames: ended games the same 3 or 4 people must share before a pod is suggested. */
+  podSuggestGames: 3,
+  /** pods.SuggestWindow, in days: how far back those games count. */
+  podSuggestDays: 30,
   /** schedule.Keep, in hours: a scheduled table and its list are kept this long after the start, or after a cancel. */
   scheduledKeepHours: 24,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */

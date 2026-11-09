@@ -26,9 +26,23 @@ export interface PodInviteForMe {
   since: number;
 }
 
+/**
+ * One suggested pod (ADR 0220 §4): the same 3 or 4 people at 3 or more
+ * ended games in the last `days` days. `key` is a hash of the set, and
+ * `people` are the others by name and avatar: no account id.
+ */
+export interface PodSuggestion {
+  key: string;
+  people: { display_name: string; avatar_url?: string }[];
+  games: number;
+  last_at: number;
+  days: number;
+}
+
 export interface MyPods {
   pods: PodRow[];
   invites: PodInviteForMe[];
+  suggestions: PodSuggestion[];
   max_pods: number;
   max_members: number;
 }
@@ -107,14 +121,24 @@ export async function fetchMyPods(): Promise<MyPods> {
   return {
     pods: b.pods ?? [],
     invites: b.invites ?? [],
+    suggestions: b.suggestions ?? [],
     max_pods: b.max_pods ?? 10,
     max_members: b.max_members ?? 12,
   };
 }
 
-export async function createPod(name: string): Promise<PodRow> {
-  const res = await authFetch("/pods", { method: "POST", body: JSON.stringify({ name }) });
+/** Makes a pod; with `suggestion` (its key), also invites the others in it (§4). */
+export async function createPod(name: string, suggestion?: string): Promise<PodRow> {
+  const res = await authFetch("/pods", {
+    method: "POST",
+    body: JSON.stringify(suggestion ? { name, suggestion } : { name }),
+  });
   return (await res.json()) as PodRow;
+}
+
+/** Not now: hides a suggestion from the caller for 180 days. */
+export async function dismissPodSuggestion(key: string): Promise<void> {
+  await authFetch(`/me/pod-suggestions/${enc(key)}/dismiss`, { method: "POST" });
 }
 
 export async function fetchPod(id: string): Promise<PodDetail> {
@@ -214,6 +238,17 @@ function dateText(ms: number): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/** namesLine is "Bea", "Bea and Cal" or "Bea, Cal and Dee". */
+export function namesLine(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** suggestionLine is a suggestion card's sentence (ADR 0220 §4). */
+export function suggestionLine(s: Pick<PodSuggestion, "games" | "days">): string {
+  return `You’ve played ${s.games} games together in the last ${s.days} days.`;
 }
 
 export function joinedLine(at: number | undefined): string {

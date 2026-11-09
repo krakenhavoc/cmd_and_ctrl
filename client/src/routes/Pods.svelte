@@ -1,7 +1,8 @@
 <script lang="ts">
   // Pods — #/pods, my pods (ADR 0220 §11, slice 3 of #4880): the invites
-  // waiting on you first, then your pods, one `.card` row each, and New
-  // pod, the page's one primary. Suggested pods are slice 4's.
+  // waiting on you first, then Suggested, then your pods, one `.card` row each, and New
+  // pod, the page's one primary. Between them, Suggested (slice 4): people
+  // you keep sitting with, each card with Make this pod and Not now.
   //
   // Signed-in only (the router sends a signed-out visitor away). A guest
   // seat or the admin token is not a person and gets a line saying so; a
@@ -13,10 +14,13 @@
   import {
     answerPodInvite,
     createPod,
+    dismissPodSuggestion,
     fetchMyPods,
     memberCountLine,
+    namesLine,
     podErrorLine,
     podHash,
+    suggestionLine,
     type MyPods,
   } from "../lib/pods";
   import { navigate } from "../lib/router";
@@ -64,6 +68,48 @@
         ok: true,
         text: accept ? `You joined ${podName}.` : `Declined. ${podName} isn’t told.`,
       };
+      await load(false);
+    } catch (err) {
+      note = { ok: false, text: podErrorLine(err) };
+      await load(false);
+    } finally {
+      busy = null;
+    }
+  }
+
+  // The suggestion being named, by key.
+  let suggesting = $state<string | null>(null);
+  let suggestedName = $state("");
+
+  function startSuggestion(key: string, people: string[]): void {
+    suggesting = key;
+    suggestedName = people.length > 0 ? `${people[0]} & co` : "";
+  }
+
+  async function makeSuggested(e: SubmitEvent, key: string): Promise<void> {
+    e.preventDefault();
+    if (busy) return;
+    busy = key;
+    note = null;
+    try {
+      const row = await createPod(suggestedName.trim(), key);
+      navigate(podHash(row.id));
+    } catch (err) {
+      note = { ok: false, text: podErrorLine(err) };
+      await load(false);
+    } finally {
+      busy = null;
+    }
+  }
+
+  async function notNow(key: string): Promise<void> {
+    if (busy) return;
+    busy = key;
+    note = null;
+    try {
+      await dismissPodSuggestion(key);
+      if (suggesting === key) suggesting = null;
+      note = { ok: true, text: "Okay. We won’t suggest that group for a while." };
       await load(false);
     } catch (err) {
       note = { ok: false, text: podErrorLine(err) };
@@ -184,6 +230,76 @@
                   >{L.declinePodInvite}</button
                 >
               </span>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if data.suggestions.length > 0}
+      <section class="card" aria-labelledby="p-suggested">
+        <h2 id="p-suggested">Suggested</h2>
+        <ul class="rows">
+          {#each data.suggestions as sg (sg.key)}
+            <li class="suggestion">
+              <span class="who">
+                <span class="faces" aria-hidden="true">
+                  {#each sg.people as person (person.display_name)}
+                    {#if person.avatar_url}
+                      <img class="avatar" src={person.avatar_url} alt="" width="32" height="32" />
+                    {:else}
+                      <span class="avatar fallback">{initial(person.display_name)}</span>
+                    {/if}
+                  {/each}
+                </span>
+                <span class="text">
+                  <span class="name wrap"
+                    >{namesLine(sg.people.map((person) => person.display_name))}</span
+                  >
+                  <span class="sub">{suggestionLine(sg)}</span>
+                </span>
+              </span>
+              {#if suggesting === sg.key}
+                <form class="inline-name" onsubmit={(e) => void makeSuggested(e, sg.key)}>
+                  <label for="sg-name-{sg.key}">Name your pod</label>
+                  <input
+                    id="sg-name-{sg.key}"
+                    type="text"
+                    maxlength="40"
+                    autocomplete="off"
+                    required
+                    bind:value={suggestedName}
+                  />
+                  <button
+                    type="submit"
+                    class="btn sm primary"
+                    disabled={busy !== null || suggestedName.trim() === ""}>Make pod</button
+                  >
+                  <button type="button" class="btn sm ghost" onclick={() => (suggesting = null)}
+                    >Cancel</button
+                  >
+                  <span class="hint">Each of them gets an invite and chooses for themselves.</span>
+                </form>
+              {:else}
+                <span class="acts">
+                  <button
+                    type="button"
+                    class="btn sm primary"
+                    disabled={busy !== null}
+                    onclick={() =>
+                      startSuggestion(
+                        sg.key,
+                        sg.people.map((person) => person.display_name),
+                      )}>{L.makeSuggestedPod}</button
+                  >
+                  <button
+                    type="button"
+                    class="btn sm ghost"
+                    disabled={busy !== null}
+                    onclick={() => void notNow(sg.key)}>{L.dismissPodSuggestion}</button
+                  >
+                </span>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -343,6 +459,37 @@
   .sub {
     font-size: 0.78rem;
     color: var(--fg-muted);
+  }
+  .faces {
+    display: flex;
+    flex: 0 0 auto;
+  }
+  .faces .avatar + .avatar {
+    margin-left: -8px;
+    box-shadow: 0 0 0 2px var(--surface);
+  }
+  .name.wrap {
+    white-space: normal;
+  }
+  .suggestion .inline-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 100%;
+  }
+  .inline-name label {
+    flex: 1 1 100%;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .inline-name input {
+    flex: 1 1 200px;
+    min-width: 0;
+  }
+  .inline-name .hint {
+    flex: 1 1 100%;
+    margin: 2px 0 0;
   }
   .acts {
     display: flex;
