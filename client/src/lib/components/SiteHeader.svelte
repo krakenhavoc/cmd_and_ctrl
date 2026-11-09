@@ -240,7 +240,8 @@
     // A deck's stats page (ADR 0217 §8) is part of Stats.
     if (name === "stats") return $route.name === "stats" || $route.name === "statsDeck";
     // A pod's page is part of Pods (ADR 0220 §11).
-    if (name === "pods") return $route.name === "pods" || $route.name === "pod";
+    if (name === "pods")
+      return $route.name === "pods" || $route.name === "pod" || $route.name === "podStats";
     return $route.name === name;
   }
 

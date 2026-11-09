@@ -296,6 +296,11 @@ type Config struct {
 	// a person whose advanced stats are on.
 	AdvancedStats gamestats.AdvancedStore
 
+	// PodStats reads the seats a pod's stats and leaderboard stand on
+	// (ADR 0220 slice 5): GET /pods/{id}/stats and /leaderboard. Nil (no
+	// database): both answer 503.
+	PodStats gamestats.PodStore
+
 	// ModelKeys is a signed-in person's own model key for the AI seats
 	// they add (ADR 0182, migration 0025), behind /me/model-key and the
 	// own_key option of POST /games/{id}/seats/bot. Nil means the

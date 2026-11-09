@@ -466,11 +466,17 @@ func podAction(c Config, w http.ResponseWriter, r *http.Request) error {
 	return httpError(http.StatusNotFound, "not found")
 }
 
-// podRead is GET /pods/{id}/{action}: /pods/join/{token} now, and slice
-// 5's stats routes later.
+// podRead is GET /pods/{id}/{action}: /pods/join/{token}, and a pod's
+// stats and leaderboard (pod_stats.go).
 func podRead(c Config, w http.ResponseWriter, r *http.Request) error {
 	if r.PathValue("id") == "join" {
 		return previewPodLink(c, w, r, r.PathValue("action"))
+	}
+	switch r.PathValue("action") {
+	case "stats":
+		return getPodStats(c, w, r)
+	case "leaderboard":
+		return getPodLeaderboard(c, w, r)
 	}
 	if _, err := podCaller(c, r); err != nil {
 		return err

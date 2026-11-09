@@ -7,11 +7,13 @@
   // picker of your own friends who are not in the pod or already
   // invited. The owner also has the invite link (shown once, when made),
   // Rename and Delete pod; everyone has Leave pod. Leaving, removing and
-  // declining are silent (§3). The sharing switch and the pod's stats
-  // are slice 5's: joining shares nothing.
+  // declining are silent (§3). The sharing switch (one switch for every
+  // pod, §7) sits under the members, with a link to the pod's stats page
+  // (slice 5): joining shares nothing.
   import { onMount } from "svelte";
   import Page from "../lib/components/Page.svelte";
   import MoreMenu from "../lib/components/MoreMenu.svelte";
+  import PodShareSwitch from "../lib/components/PodShareSwitch.svelte";
   import { fetchFriends, type FriendEntry } from "../lib/friends";
   import { L } from "../lib/labels";
   import { signedInUserID } from "../lib/myGames";
@@ -36,8 +38,10 @@
     type PodLink,
     type PodMember,
   } from "../lib/pods";
+  import { podStatsHash } from "../lib/podStats";
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
+  import { loadStatsPrefs } from "../lib/statsPrefs";
 
   interface Props {
     id: string;
@@ -87,8 +91,10 @@
   }
 
   onMount(() => {
-    if (isPerson) void load();
-    else loading = false;
+    if (isPerson) {
+      void load();
+      void loadStatsPrefs();
+    } else loading = false;
   });
 
   async function act(fn: () => Promise<unknown>, done: string, then?: () => void): Promise<void> {
@@ -236,6 +242,7 @@
     {/if}
   {/snippet}
   {#snippet actions()}
+    {#if pod}<a class="btn" href={podStatsHash(id)}>{L.podStatsLink}</a>{/if}
     <a class="btn ghost" href={PODS_HASH}>All pods</a>
   {/snippet}
 
@@ -316,10 +323,7 @@
             </li>
           {/each}
         </ul>
-        <p class="hint">
-          Joining a pod shares nothing. A member who isn’t sharing their stats shows as Not sharing,
-          with no numbers.
-        </p>
+        <PodShareSwitch onchange={() => void load(false)} />
       </section>
 
       <div class="col">

@@ -208,3 +208,33 @@ func TestPrefsStoreShareLinkWithoutASwitch(t *testing.T) {
 		t.Errorf("a deleted account's link still works: %v", err)
 	}
 }
+
+func TestSetSharePodsLeavesTheOtherColumnsAlone(t *testing.T) {
+	s, d := openPrefs(t)
+	mustUser(t, d, "u1")
+	mustUser(t, d, "u2")
+	ctx := context.Background()
+	now := time.UnixMilli(1000)
+	if _, err := s.SetAdvanced(ctx, "u1", true, SetByAdmin, now); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.SetSharePods(ctx, "u1", true, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.SharePods || got.Advanced == nil || !*got.Advanced || got.SetBy != SetByAdmin {
+		t.Errorf("after sharing: %+v, want share_pods and the admin's advanced switch both kept", got)
+	}
+	got, err = s.SetSharePods(ctx, "u1", false, now)
+	if err != nil || got.SharePods {
+		t.Errorf("switching off: %+v %v", got, err)
+	}
+	if _, err := s.SetSharePods(ctx, "nobody", true, now); !errors.Is(err, ErrNoUser) {
+		t.Errorf("an unknown account: %v, want ErrNoUser", err)
+	}
+	// A person with no row at all can switch it on, and keeps following the default.
+	got, err = s.SetSharePods(ctx, "u2", true, now)
+	if err != nil || !got.SharePods || got.Advanced != nil {
+		t.Errorf("a new row: %+v %v, want sharing and advanced following the default", got, err)
+	}
+}

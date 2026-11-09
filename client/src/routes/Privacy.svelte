@@ -75,7 +75,7 @@
     {
       what: "Stats settings",
       details:
-        "Whether advanced stats are on for you, and whether you or an admin set it. If you make a share link, a fingerprint of it (never the link itself) and when you made it, kept until you revoke it, make a new one or delete your account. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
+        "Whether advanced stats are on for you, and whether you or an admin set it. Whether you share your stats with your pods (off until you turn it on). If you make a share link, a fingerprint of it (never the link itself) and when you made it, kept until you revoke it, make a new one or delete your account. Kept until you change it or delete your account. Advanced stats are off unless you turn them on, or until a server admin turns them on for everyone who has not chosen; an admin can also switch them on for you, and you can always switch them off yourself in Settings › Stats.",
       why: "So the Stats page shows the advanced stats only to the people who want them.",
       howLong: "Until you change it or delete your account.",
       source: "migration 0030 stats_prefs; lobby/stats_prefs.go, lobby/stats_share.go",
@@ -243,6 +243,12 @@
       // routes/SharedStats.svelte.
       who: "Sharing your stats",
       what: "If you make a share link, anyone with the link can see your stats pages under your display name, including your deck names, commanders and the cards you cast or held. They never show the other players’ names. You can revoke the link at any time.",
+    },
+    {
+      // ADR 0220 §12, slice 5 (ADR 0217 slice 7): lobby/pod_stats.go,
+      // routes/PodStats.svelte.
+      who: "Your pods",
+      what: "If you switch on Share with my pods, the members of every pod you are in can see your stats and your place on its leaderboard. People you have blocked, or who have blocked you, never see them through a pod. Joining a pod does not share anything by itself.",
     },
     {
       who: "Discord",

@@ -48,7 +48,14 @@ const DECK = deckFixture().deck.id;
 
 beforeEach(() => {
   session.set(person());
-  prefs = { available: true, advanced: true, choice: "on", set_by: "self", default: false };
+  prefs = {
+    available: true,
+    advanced: true,
+    choice: "on",
+    set_by: "self",
+    default: false,
+    share_pods: false,
+  };
   statsPrefs.set(prefs);
   calls = [];
   deckStatus = 200;

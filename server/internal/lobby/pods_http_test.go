@@ -19,6 +19,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/social"
 )
@@ -47,6 +48,8 @@ func newPodStack(t *testing.T) podStack {
 		c.AdminToken = "shared-admin-token"
 		c.Pods = pods.NewStore(d, c.Social)
 		c.Accounts = accountdelete.NewSQLStore(d)
+		c.StatsPrefs = gamestats.NewSQLPrefsStore(d)
+		c.PodStats = gamestats.NewSQLStore(d)
 		st.social, st.pods, st.db = c.Social, c.Pods, d
 	})
 	for i, p := range []*podPerson{&st.ann, &st.bea, &st.cal, &st.dee} {

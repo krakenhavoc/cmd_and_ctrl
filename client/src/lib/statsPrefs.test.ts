@@ -24,8 +24,20 @@ describe("normalizeStatsPrefs", () => {
   it("keeps who set it only when someone chose", () => {
     expect(
       normalizeStatsPrefs({ available: true, advanced: true, choice: "on", set_by: "admin" }),
-    ).toEqual({ available: true, advanced: true, choice: "on", set_by: "admin", default: false });
+    ).toEqual({
+      available: true,
+      advanced: true,
+      choice: "on",
+      set_by: "admin",
+      default: false,
+      share_pods: false,
+    });
     expect(normalizeStatsPrefs({ choice: "default", set_by: "self" }).set_by).toBeUndefined();
+  });
+  it("reads the pod-sharing switch as off unless it is exactly true", () => {
+    expect(normalizeStatsPrefs({ share_pods: true }).share_pods).toBe(true);
+    expect(normalizeStatsPrefs({ share_pods: "yes" }).share_pods).toBe(false);
+    expect(normalizeStatsPrefs({}).share_pods).toBe(false);
   });
 });
 

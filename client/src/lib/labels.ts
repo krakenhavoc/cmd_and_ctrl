@@ -1840,6 +1840,20 @@ export const LABEL_SPECS = {
     owners: ["routes/Pods.svelte"],
     doc: "hides a suggested pod from you for 180 days and from nobody else (ADR 0220 §4, slice 4)",
   }),
+  sharePodsSwitch: label({
+    name: "Share my stats with my pods",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/PodShareSwitch.svelte"],
+    doc: "Settings → Stats and a pod's page: the person's one pod-sharing switch (PUT /me/stats/prefs share_pods); it covers every pod they are in, and joining a pod never turns it on (ADR 0220 §7)",
+  }),
+  podStatsLink: label({
+    name: "Pod stats",
+    kind: "text",
+    role: "link",
+    owners: ["routes/Pod.svelte"],
+    doc: "a pod's page: the link to #/pods/<id>/stats, the pod's leaderboard and the sharing members' records (ADR 0220 §11)",
+  }),
   joinPod: label({
     name: "Join",
     kind: "text",

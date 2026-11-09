@@ -20,6 +20,7 @@
   import Friends from "./routes/Friends.svelte";
   import Pods from "./routes/Pods.svelte";
   import Pod from "./routes/Pod.svelte";
+  import PodStats from "./routes/PodStats.svelte";
   import PodJoin from "./routes/PodJoin.svelte";
   import SharedStats from "./routes/SharedStats.svelte";
   import StatsDeck from "./routes/StatsDeck.svelte";
@@ -213,6 +214,8 @@
   <Pods />
 {:else if $route.name === "pod"}
   <Pod id={$route.id} />
+{:else if $route.name === "podStats"}
+  <PodStats id={$route.id} />
 {:else if $route.name === "podJoin"}
   <PodJoin token={$route.token} />
 {:else if $route.name === "statsShared"}

@@ -934,6 +934,7 @@ func main() {
 		Social:            socialStore,
 		Pods:              podStore,
 		AdvancedStats:     newAdvancedStatsStore(database),
+		PodStats:          newPodStatsStore(database),
 		Log:               log,
 		Bots:              bots,
 		BotBudget:         botBudget,
@@ -1737,6 +1738,15 @@ func newGameStatsStore(database *db.DB) gamestats.Store {
 // the advanced-stats read routes (ADR 0217 slice 5), or nil with no
 // database.
 func newAdvancedStatsStore(database *db.DB) gamestats.AdvancedStore {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLStore(database)
+}
+
+// newPodStatsStore reads the seats a pod's stats stand on (ADR 0220
+// slice 5), or nil with no database.
+func newPodStatsStore(database *db.DB) gamestats.PodStore {
 	if database == nil {
 		return nil
 	}

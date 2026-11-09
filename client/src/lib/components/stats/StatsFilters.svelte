@@ -18,8 +18,10 @@
     range: StatsRange;
     onchange: (makeup: Makeup, range: StatsRange) => void;
     disabled?: boolean;
+    /** False for a page with only a date range (a pod's stats, ADR 0220 §7). */
+    showMakeup?: boolean;
   }
-  const { makeup, range, onchange, disabled = false }: Props = $props();
+  const { makeup, range, onchange, disabled = false, showMakeup = true }: Props = $props();
 
   let announcement = $state("");
 
@@ -31,23 +33,25 @@
 </script>
 
 <div class="filters" data-testid="stats-filters">
-  <fieldset {disabled}>
-    <legend>{L.statsMakeupFilter}</legend>
-    <div class="pills">
-      {#each MAKEUPS as m (m)}
-        <label class="pill" class:on={m === makeup}>
-          <input
-            type="radio"
-            name="stats-makeup"
-            value={m}
-            checked={m === makeup}
-            onchange={() => pick(m, range)}
-          />
-          {MAKEUP_TEXT[m]}
-        </label>
-      {/each}
-    </div>
-  </fieldset>
+  {#if showMakeup}
+    <fieldset {disabled}>
+      <legend>{L.statsMakeupFilter}</legend>
+      <div class="pills">
+        {#each MAKEUPS as m (m)}
+          <label class="pill" class:on={m === makeup}>
+            <input
+              type="radio"
+              name="stats-makeup"
+              value={m}
+              checked={m === makeup}
+              onchange={() => pick(m, range)}
+            />
+            {MAKEUP_TEXT[m]}
+          </label>
+        {/each}
+      </div>
+    </fieldset>
+  {/if}
   <fieldset {disabled}>
     <legend>{L.statsRangeFilter}</legend>
     <div class="pills">
