@@ -341,7 +341,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	// ADR 0207 §2: the Attraction deck, likewise.
 	r.Attractions = sideboardCards(list.Attractions, verdicts)
 
-	if err := deck.Validate(list); err != nil {
+	if err := deck.Validate(list, game.FormatCommander); err != nil {
 		var ve *deck.ValidationError
 		if errors.As(err, &ve) {
 			r.Violations = append(r.Violations, ve.Violations...)

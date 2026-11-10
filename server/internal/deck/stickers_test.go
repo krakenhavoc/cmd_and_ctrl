@@ -112,7 +112,7 @@ func TestEveryImporterPutsSheetsWithTheSheets(t *testing.T) {
 func TestALegalStickerPoolSeatsAsData(t *testing.T) {
 	list := legalDeck()
 	list.StickerSheets = stickerSheetCards(10)
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Fatalf("a legal deck with ten sheets: %v", err)
 	}
 	if text := list.Text(); !strings.Contains(text, "Stickers:\n") {
@@ -142,7 +142,7 @@ func TestAnIllegalStickerPoolIsSaidAndNotSeated(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			list := legalDeck()
 			list.StickerSheets = sheets
-			codes := violationCodes(Validate(list))
+			codes := violationCodes(Validate(list, game.FormatCommander))
 			if !slices.Equal(codes, []string{CodeStickerSheetsIllegal}) {
 				t.Fatalf("codes %v, want only %s", codes, CodeStickerSheetsIllegal)
 			}

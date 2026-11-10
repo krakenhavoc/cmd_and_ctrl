@@ -3,6 +3,7 @@ package deck
 import (
 	"errors"
 	"fmt"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"slices"
 	"strings"
 	"testing"
@@ -90,7 +91,7 @@ func TestPartnerWithPairIsAllowed(t *testing.T) {
 	if len(list.Commanders) != 2 {
 		t.Fatalf("commanders %d, want 2", len(list.Commanders))
 	}
-	if err := Validate(pairDeck(frodoCard(), samCard())); err != nil {
+	if err := Validate(pairDeck(frodoCard(), samCard()), game.FormatCommander); err != nil {
 		t.Errorf("Validate refused the pair: %v", err)
 	}
 }
@@ -105,14 +106,14 @@ func TestPartnerWithCardAloneIsACommander(t *testing.T) {
 	list := pairDeck(frodoCard(), samCard())
 	list.Commanders = list.Commanders[:1]
 	list.Mainboard = append(list.Mainboard, basicLegal("Plains", "Basic Land — Plains", "W"))
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("Validate refused a lone Frodo: %v", err)
 	}
 }
 
 // Two partner-with cards that name other cards are not a pair.
 func TestPartnerWithRefusedWhenItNamesAnotherCard(t *testing.T) {
-	vs := violationsOf(t, Validate(pairDeck(frodoCard(), toothyCard())))
+	vs := violationsOf(t, Validate(pairDeck(frodoCard(), toothyCard()), game.FormatCommander))
 	var got *Violation
 	for i := range vs {
 		if vs[i].Code == CodeInvalidPartnerPair {
@@ -137,7 +138,7 @@ func TestPartnerWithRefusedWhenOnlyOneNamesTheOther(t *testing.T) {
 	plainSam.OracleText = "Vigilance"
 
 	for _, sam := range []cards.Card{samElsewhere, plainSam} {
-		vs := violationsOf(t, Validate(pairDeck(frodoCard(), sam)))
+		vs := violationsOf(t, Validate(pairDeck(frodoCard(), sam), game.FormatCommander))
 		found := false
 		for _, v := range vs {
 			if v.Code == CodeInvalidPartnerPair && v.Card == "Sam, Loyal Attendant" {
@@ -155,7 +156,7 @@ func TestPartnerWithRefusedWhenOnlyOneNamesTheOther(t *testing.T) {
 func TestTwoCommandersWithoutPartnerWithAreTooMany(t *testing.T) {
 	a := basicLegal("Commander A", "Legendary Creature — Human", "W")
 	b := basicLegal("Commander B", "Legendary Creature — Human", "W")
-	assertHasViolation(t, Validate(pairDeck(a, b)), CodeTooManyCommanders)
+	assertHasViolation(t, Validate(pairDeck(a, b), game.FormatCommander), CodeTooManyCommanders)
 }
 
 // No partner ability allows a third commander (CR 702.124g).
@@ -163,7 +164,7 @@ func TestThreeCommandersAreRefused(t *testing.T) {
 	list := pairDeck(frodoCard(), samCard())
 	list.Commanders = append(list.Commanders, toothyCard())
 	list.Mainboard = list.Mainboard[1:]
-	assertHasViolation(t, Validate(list), CodeTooManyCommanders)
+	assertHasViolation(t, Validate(list, game.FormatCommander), CodeTooManyCommanders)
 }
 
 // The pair's colour identities combine (CR 702.124c): Frodo is W/B and
@@ -172,11 +173,11 @@ func TestPartnerPairIdentityIsTheUnion(t *testing.T) {
 	list := pairDeck(frodoCard(), samCard())
 	list.Mainboard[0] = basicLegal("Green Spell", "Instant", "G")
 	list.Mainboard[1] = basicLegal("Black Spell", "Instant", "B")
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
 	list.Mainboard[2] = basicLegal("Blue Spell", "Instant", "U")
-	vs := violationsOf(t, Validate(list))
+	vs := violationsOf(t, Validate(list, game.FormatCommander))
 	if len(vs) != 1 || vs[0].Code != CodeColorIdentity || vs[0].Card != "Blue Spell" {
 		t.Errorf("violations %+v, want one colour identity violation for Blue Spell", vs)
 	}
@@ -186,7 +187,7 @@ func TestPartnerPairIdentityIsTheUnion(t *testing.T) {
 func TestPartnerPairChecksBothCommanders(t *testing.T) {
 	sam := samCard()
 	sam.TypeLine = "Creature — Halfling Peasant"
-	vs := violationsOf(t, Validate(pairDeck(frodoCard(), sam)))
+	vs := violationsOf(t, Validate(pairDeck(frodoCard(), sam), game.FormatCommander))
 	found := false
 	for _, v := range vs {
 		if v.Code == CodeNotLegalCommander && v.Card == sam.Name {
@@ -289,11 +290,11 @@ func TestChooseABackgroundPairIsAllowed(t *testing.T) {
 			d.Mainboard[i] = basicLegal("Mountain", "Basic Land — Mountain", "R")
 		}
 	}
-	if err := Validate(d); err != nil {
+	if err := Validate(d, game.FormatCommander); err != nil {
 		t.Fatalf("Validate refused Karlach and a Background: %v", err)
 	}
 	d.Mainboard[2] = basicLegal("White Spell", "Instant", "W")
-	vs := violationsOf(t, Validate(d))
+	vs := violationsOf(t, Validate(d, game.FormatCommander))
 	if len(vs) != 1 || vs[0].Code != CodeColorIdentity || vs[0].Card != "White Spell" {
 		t.Errorf("violations %+v, want one colour identity violation for White Spell", vs)
 	}
@@ -314,7 +315,7 @@ func TestBackgroundAloneIsNotACommander(t *testing.T) {
 	list := pairDeck(karlachCard(), agentCard())
 	list.Commanders = []cards.Card{agentCard()}
 	list.Mainboard = append(list.Mainboard, basicLegal("Plains", "Basic Land — Plains", "W"))
-	vs := violationsOf(t, Validate(list))
+	vs := violationsOf(t, Validate(list, game.FormatCommander))
 	found := false
 	for _, v := range vs {
 		if v.Code == CodeNotLegalCommander && v.Card == "Agent of the Iron Throne" {
@@ -326,10 +327,10 @@ func TestBackgroundAloneIsNotACommander(t *testing.T) {
 	}
 
 	list.Commanders = []cards.Card{facelessOneCard()}
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("Faceless One alone: %v", err)
 	}
-	if err := Validate(pairDeck(facelessOneCard(), agentCard())); err != nil {
+	if err := Validate(pairDeck(facelessOneCard(), agentCard()), game.FormatCommander); err != nil {
 		t.Errorf("Faceless One and a Background: %v", err)
 	}
 	// A Choose a Background commander alone is an ordinary commander.
@@ -342,7 +343,7 @@ func TestBackgroundAloneIsNotACommander(t *testing.T) {
 	for i := 38; i < len(list.Mainboard); i++ {
 		list.Mainboard[i] = basicLegal("Mountain", "Basic Land — Mountain", "R")
 	}
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("Karlach alone: %v", err)
 	}
 }
@@ -367,7 +368,7 @@ func TestChooseABackgroundRefusesOtherPairs(t *testing.T) {
 		{agentCard(), plainPartnerCard("Partner Guy", "R"), "Partner Guy"},
 	}
 	for _, tc := range cases {
-		vs := violationsOf(t, Validate(pairDeck(tc.a, tc.b)))
+		vs := violationsOf(t, Validate(pairDeck(tc.a, tc.b), game.FormatCommander))
 		found := false
 		for _, v := range vs {
 			if v.Code == CodeInvalidPartnerPair && v.Card == tc.culprit {
@@ -384,10 +385,10 @@ func TestChooseABackgroundRefusesOtherPairs(t *testing.T) {
 // the same one (CR 702.124i). Different partner abilities never
 // combine (CR 702.124f).
 func TestPartnerAndPartnerTextPairs(t *testing.T) {
-	if err := Validate(pairDeck(plainPartnerCard("Thrasios", "W"), plainPartnerCard("Tymna", "W"))); err != nil {
+	if err := Validate(pairDeck(plainPartnerCard("Thrasios", "W"), plainPartnerCard("Tymna", "W")), game.FormatCommander); err != nil {
 		t.Errorf("two partners: %v", err)
 	}
-	if err := Validate(pairDeck(friendsForeverCard("Will", "W"), friendsForeverCard("Mike", "W"))); err != nil {
+	if err := Validate(pairDeck(friendsForeverCard("Will", "W"), friendsForeverCard("Mike", "W")), game.FormatCommander); err != nil {
 		t.Errorf("two friends forever: %v", err)
 	}
 	survivor := basicLegal("Abby", "Legendary Creature — Human Survivor", "W")
@@ -399,7 +400,7 @@ func TestPartnerAndPartnerTextPairs(t *testing.T) {
 		{plainPartnerCard("Thrasios", "W"), basicLegal("No Partner", "Legendary Creature — Human", "W")},
 	}
 	for _, pair := range refused {
-		assertHasViolation(t, Validate(pairDeck(pair[0], pair[1])), CodeInvalidPartnerPair)
+		assertHasViolation(t, Validate(pairDeck(pair[0], pair[1]), game.FormatCommander), CodeInvalidPartnerPair)
 	}
 	// Resolve no longer refuses a partner commander.
 	idx := indexWith(plainPartnerCard("Thrasios", "W"), friendsForeverCard("Will", "W"))
@@ -412,14 +413,14 @@ func TestPartnerAndPartnerTextPairs(t *testing.T) {
 // ability and the other a Time Lord Doctor with no other creature types
 // (CR 702.124m).
 func TestDoctorsCompanionPairsWithALoneDoctor(t *testing.T) {
-	if err := Validate(pairDeck(doctorCard(), companionCard())); err != nil {
+	if err := Validate(pairDeck(doctorCard(), companionCard()), game.FormatCommander); err != nil {
 		t.Errorf("the Doctor and a companion: %v", err)
 	}
 	notOnlyDoctor := basicLegal("Romana", "Legendary Creature — Time Lord Scientist", "W")
 	twoCompanions := companionCard()
 	twoCompanions.Name = "Another Companion"
 	for _, other := range []cards.Card{notOnlyDoctor, twoCompanions, plainPartnerCard("Partner Guy", "W")} {
-		vs := violationsOf(t, Validate(pairDeck(companionCard(), other)))
+		vs := violationsOf(t, Validate(pairDeck(companionCard(), other), game.FormatCommander))
 		found := false
 		for _, v := range vs {
 			if v.Code == CodeInvalidPartnerPair && v.Card == other.Name {
@@ -433,5 +434,5 @@ func TestDoctorsCompanionPairsWithALoneDoctor(t *testing.T) {
 	// Two Doctors are not a pair: the ability is the companion's.
 	other := doctorCard()
 	other.Name = "The War Doctor"
-	assertHasViolation(t, Validate(pairDeck(doctorCard(), other)), CodeTooManyCommanders)
+	assertHasViolation(t, Validate(pairDeck(doctorCard(), other), game.FormatCommander), CodeTooManyCommanders)
 }

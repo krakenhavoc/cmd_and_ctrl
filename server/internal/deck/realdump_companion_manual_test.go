@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"slices"
 	"testing"
@@ -71,7 +72,7 @@ func TestRealDumpCompanion(t *testing.T) {
 			continue
 		}
 		var codes []string
-		if err := Validate(list); err != nil {
+		if err := Validate(list, game.FormatCommander); err != nil {
 			codes = violationCodes(err)
 		}
 		t.Logf("%s: %d cards, violations %v", tc.file, len(list.Commanders)+len(list.Mainboard), codes)

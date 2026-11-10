@@ -1443,7 +1443,9 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 	if g.State != StateLobby {
 		return nil, ErrGameNotInLobby
 	}
-	if len(g.Seats) >= MaxPlayers {
+	// The format's seat cap (ADR 0222 §1): four in Commander, as it
+	// always was, two at a Standard table.
+	if len(g.Seats) >= g.Settings.FormatSpec().MaxSeats {
 		return nil, ErrGameFull
 	}
 

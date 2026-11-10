@@ -1295,6 +1295,12 @@ type createGameRequest struct {
 	// /games/{id}/settings would apply it. The host can still change it
 	// there while the table is in the lobby.
 	Planechase bool `json:"planechase,omitempty"`
+	// Format is the table's format (ADR 0222 §1): "commander" (the
+	// default when empty) or "standard". Applied through the engine's
+	// UpdateSettings before anyone sits down, so the creator's seat
+	// already starts at the format's life total. A format this server
+	// does not know is a 400 and no table is made.
+	Format string `json:"format,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1480,6 +1486,12 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			return game.ErrPlanechaseNotOffered
 		}
 
+		format := game.Format(strings.ToLower(strings.TrimSpace(body.Format)))
+		formatSpec, known := game.LookupFormat(format)
+		if !known {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown format %q (want %s)", body.Format, formatNames()))
+		}
+
 		if strings.TrimSpace(body.Name) == "" && !server {
 			// A blank name is a surprise (#2630); the creator's own name
 			// lets some templates be personal. The admin token has no
@@ -1510,6 +1522,24 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			logAdminAction(c.Log, "POST /games", p, "game_id", meta.ID.String())
 		} else if c.Log != nil {
 			c.Log.Info("table created", "user_id", p.UserID.String(), "game_id", meta.ID.String())
+		}
+
+		if formatSpec.Format != game.FormatCommander {
+			// ADR 0222 §1. Before the creator sits down: the seat cap
+			// and the starting life are the format's from the first
+			// seat. A table that cannot be given the format it was
+			// asked for is not left behind as a Commander table.
+			f := formatSpec.Format
+			if _, ferr := c.Lobby.UpdateSettings(meta.ID, uuid.Nil, game.SettingsPatch{Format: &f}); ferr != nil {
+				_ = c.Lobby.Delete(meta.ID)
+				return ferr
+			}
+			// The meta in hand was read before the format was set; it
+			// carries the invites, so it is amended, not re-read.
+			meta.Format = string(formatSpec.Format)
+			if formatSpec.MaxSeats != game.MaxPlayers {
+				meta.MaxSeats = formatSpec.MaxSeats
+			}
 		}
 
 		out := createGameResponse{GameMeta: meta}
@@ -2008,7 +2038,7 @@ func previewGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, previewResponse{
 		Game:     meta,
 		Invite:   kind,
-		MaxSeats: game.MaxPlayers,
+		MaxSeats: maxSeatsOfMeta(meta),
 	})
 }
 
@@ -3445,7 +3475,10 @@ func detectDeckFormat(source string) string {
 // returns the installed-ready list and any non-fatal warnings. When
 // `written` is true the handler has already answered the request (a
 // 422 with the violation list) and the caller must return nil.
-func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, format, source string) (*deck.List, []deck.Violation, bool, error) {
+//
+// table is the format of the table the deck is for (ADR 0222 §2): the
+// deck is checked against that format's rules, Commander's when empty.
+func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, table game.Format, format, source string) (*deck.List, []deck.Violation, bool, error) {
 	if format == "" {
 		format = detectDeckFormat(source)
 	}
@@ -3498,6 +3531,10 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 		return nil, nil, false, httpError(http.StatusBadRequest, perr.Error())
 	}
 
+	// ADR 0222 §2: a constructed list's unheaded last block is its
+	// sideboard, not the commander a Commander export puts there.
+	entries = deck.EntriesFor(table, entries)
+
 	list, err := deck.Resolve(c.Cards, deckName, entries)
 	if err != nil {
 		// Resolve failures that carry a per-card Violation list are
@@ -3530,7 +3567,7 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 			Code:    "dev_skip_validation",
 			Message: "CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation was bypassed",
 		})
-	} else if verr := deck.Validate(list); verr != nil {
+	} else if verr := deck.Validate(list, table); verr != nil {
 		var ve *deck.ValidationError
 		if errors.As(verr, &ve) {
 			for _, v := range ve.Violations {
@@ -3645,7 +3682,16 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err
+	}
+	if deckID != "" {
+		if err := prebuiltFitsTable(deckID, table); err != nil {
+			return err
+		}
+	}
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, format, source)
 	if written || err != nil {
 		return err
 	}
@@ -3882,7 +3928,11 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusForbidden, "not your deck")
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, saved.SourceFormat, saved.SourceText)
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err
+	}
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, saved.SourceFormat, saved.SourceText)
 	if written || err != nil {
 		return err
 	}
@@ -4542,6 +4592,15 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err
+	}
+	if deckID != "" {
+		if err := botDeckFitsTable(c, deckID, table); err != nil {
+			return err
+		}
+	}
 	tier := strings.ToLower(strings.TrimSpace(body.Tier))
 	var own ownKeySeat
 	if body.OwnKey {
@@ -4564,7 +4623,7 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, format, source)
 	if written || err != nil {
 		return err
 	}
@@ -4926,7 +4985,10 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered):
 		status = http.StatusBadRequest
 	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked),
-		errors.Is(err, game.ErrPlanechaseLocked):
+		errors.Is(err, game.ErrPlanechaseLocked),
+		// ADR 0222 §1: a format change the table's state refuses.
+		errors.Is(err, game.ErrFormatLocked), errors.Is(err, game.ErrFormatSeats),
+		errors.Is(err, ErrFormatDecksLoaded), errors.Is(err, ErrDeckWrongFormat):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
@@ -4994,3 +5056,44 @@ func constantTimeEqual(a, b string) bool {
 // compile-time assertion we haven't dropped context-awareness from
 // critical methods.
 var _ = context.Background
+
+// formatNames lists the formats this server knows, for an error.
+func formatNames() string {
+	var names []string
+	for _, f := range game.Formats() {
+		names = append(names, string(f.Format))
+	}
+	return strings.Join(names, ", ")
+}
+
+// maxSeatsOfMeta is the seat cap a meta reports: its format's, or the
+// global four when it names none.
+func maxSeatsOfMeta(m GameMeta) int {
+	if m.MaxSeats > 0 {
+		return m.MaxSeats
+	}
+	return game.MaxPlayers
+}
+
+// wrongFormatError refuses a named deck at a table of another format
+// (ADR 0222 §2), before the deck check would refuse it card by card.
+func wrongFormatError(name string, deckFormat, table game.Format) error {
+	return fmt.Errorf("%w: %s is a %s deck, and this is a %s table",
+		ErrDeckWrongFormat, name, deckFormat.Spec().Name, table.Spec().Name)
+}
+
+// botDeckFitsTable is prebuiltFitsTable for the bot deck catalog, whose
+// rows name their format as text ("" is Commander).
+func botDeckFitsTable(c Config, deckID string, table game.Format) error {
+	if c.BotDecks == nil {
+		return nil
+	}
+	info, _, ok := c.BotDecks.Decklist(deckID)
+	if !ok {
+		return nil
+	}
+	if f := game.Format(info.Format).Spec().Format; f != table.Spec().Format {
+		return wrongFormatError(info.Name, f, table)
+	}
+	return nil
+}

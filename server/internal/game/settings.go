@@ -91,6 +91,7 @@ const (
 	SettingFreeMulligans   = "free_mulligans"
 	SettingAwayAfter       = "away_after"
 	SettingPlanechase      = "planechase"
+	// SettingFormat is declared in format.go.
 )
 
 // TableSettings is one table's configuration (ADR 0075 §2.2). The JSON
@@ -139,6 +140,12 @@ type TableSettings struct {
 	// Start builds the planar deck. omitempty keeps every snapshot of a
 	// table without it byte-identical.
 	Planechase bool `json:"planechase,omitempty"`
+	// Format is the table's format (ADR 0222 §1, format.go). Read it
+	// only through EffectiveFormat or FormatSpec: the stored zero value
+	// is Commander, which is what a snapshot written before the field
+	// existed holds, and omitempty keeps every Commander table's
+	// snapshot byte-identical. Fixed once the game is active.
+	Format Format `json:"format,omitempty"`
 }
 
 // EffectiveAwayAfter is the away time in minutes, 0 for never.
@@ -188,6 +195,11 @@ type SettingsPatch struct {
 	AwayAfter *int `json:"away_after,omitempty"`
 	// Planechase is refused after Start (ErrPlanechaseLocked).
 	Planechase *bool `json:"planechase,omitempty"`
+	// Format is refused after Start (ErrFormatLocked), and when more
+	// seats are taken than the format has (ErrFormatSeats). A change
+	// with no StartingLife beside it also sets the format's own
+	// starting life.
+	Format *Format `json:"format,omitempty"`
 }
 
 // Validate range-checks every present field. It does not know the
@@ -227,6 +239,11 @@ func (p SettingsPatch) Validate() error {
 		return fmt.Errorf("%w: %s %d (want 0 for never, or 1..%d minutes)",
 			ErrInvalidSetting, SettingAwayAfter, *p.AwayAfter, MaxAwayAfter)
 	}
+	if p.Format != nil {
+		if err := validateFormat(*p.Format); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -238,8 +255,9 @@ func (p SettingsPatch) Validate() error {
 // The whole patch is validated before anything is applied, so a patch
 // with one bad field changes nothing. A StartingLife change after
 // Start is refused with ErrStartingLifeLocked, a FreeMulligans
-// change with ErrFreeMulliganLocked and a Planechase change with
-// ErrPlanechaseLocked; a StartingLife in the
+// change with ErrFreeMulliganLocked, a Planechase change with
+// ErrPlanechaseLocked and a Format change with ErrFormatLocked; a
+// StartingLife in the
 // lobby also resets every already-seated player's life, because that
 // is the value Start would otherwise have stamped.
 //
@@ -275,6 +293,21 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	}
 	old := g.Settings
 	next := old
+	if patch.Format != nil {
+		spec := patch.Format.Spec()
+		if spec.Format != old.EffectiveFormat() {
+			if g.State != StateLobby {
+				return ErrFormatLocked
+			}
+			if len(g.Seats) > spec.MaxSeats {
+				return ErrFormatSeats
+			}
+			next.Format = storedFormat(spec.Format)
+			// The format's own starting life, unless the patch names
+			// one (a saved setup's complete patch does).
+			next.StartingLife = spec.StartingLife
+		}
+	}
 	if patch.UndoLimit != nil {
 		next.UndoLimit = *patch.UndoLimit
 	}
@@ -335,6 +368,9 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 			SettingNew: to,
 		})
 	}
+	// The format first: its line explains the starting life line that
+	// a format change brings with it.
+	emit(SettingFormat, string(old.EffectiveFormat()), string(next.EffectiveFormat()))
 	emit(SettingUndoLimit, strconv.Itoa(old.UndoLimit), strconv.Itoa(next.UndoLimit))
 	emit(SettingUndoScope, string(old.UndoScope), string(next.UndoScope))
 	emit(SettingStartingLife, strconv.Itoa(old.StartingLife), strconv.Itoa(next.StartingLife))

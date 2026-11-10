@@ -2,6 +2,7 @@ package lobby
 
 import (
 	"encoding/json"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -377,7 +378,7 @@ func TestPlaceholderBotDeckIsLegal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: Resolve: %v", info.ID, err)
 		}
-		if err := deck.Validate(list); err != nil {
+		if err := deck.Validate(list, game.FormatCommander); err != nil {
 			t.Fatalf("%s is not a legal Commander deck: %v", info.ID, err)
 		}
 		if got := len(list.Commanders) + len(list.Mainboard); got != 100 {

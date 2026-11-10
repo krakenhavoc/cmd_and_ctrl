@@ -2,6 +2,7 @@ package decks
 
 import (
 	"fmt"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"path/filepath"
 	"sort"
@@ -254,7 +255,7 @@ func report(t *testing.T, byOracle map[string]catalog.Entry, name string, list *
 	t.Logf("  caveats       %4d   (registered, skips at least one printed clause)", caveated)
 	t.Logf("  unreviewed    %4d   (registered, nobody has graded it)", unreviewed)
 	t.Logf("  UNREGISTERED  %4d   (no implementation — moved by hand)", unregd)
-	if err := deck.Validate(list); err != nil {
+	if err := deck.Validate(list, game.FormatCommander); err != nil {
 		t.Logf("  note: not a legal Commander deck as written: %v", err)
 	}
 

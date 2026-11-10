@@ -11,10 +11,12 @@ import (
 // is describing a different deck than the one being installed.
 func TestCoverageAccountsForEveryCard(t *testing.T) {
 	covs := Coverages(nil)
-	if len(covs) != len(All()) {
-		t.Fatalf("Coverages returned %d profiles for %d decks", len(covs), len(All()))
+	// Every, not All: the picker serves a profile for the decks of
+	// every format (ADR 0222 slice 1).
+	if len(covs) != len(Every()) {
+		t.Fatalf("Coverages returned %d profiles for %d decks", len(covs), len(Every()))
 	}
-	for _, d := range All() {
+	for _, d := range Every() {
 		cov, ok := covs[d.ID]
 		if !ok {
 			t.Fatalf("%s: no coverage profile", d.ID)

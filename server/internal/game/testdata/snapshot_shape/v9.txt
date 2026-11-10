@@ -72738,6 +72738,7 @@ settings.allowSpawn	bool
 settings.awayAfter	number:int
 settings.botPace	string
 settings.commanderDamage	number:int
+settings.format	string
 settings.freeFirstMulligan	bool
 settings.freeMulligans	number:int
 settings.planechase	bool

@@ -3656,6 +3656,9 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s turned on Planechase", who)
 		}
 		return fmt.Sprintf("%s turned off Planechase", who)
+	case game.SettingFormat:
+		// ADR 0222 §1.
+		return fmt.Sprintf("%s set the format to %s", who, game.Format(e.Choice).Spec().Name)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

@@ -2,6 +2,7 @@ package deck
 
 import (
 	"fmt"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"path/filepath"
 	"slices"
@@ -67,7 +68,7 @@ func violationCodes(err error) []string {
 }
 
 func TestCompanionDeckThatFulfilsJeganthaValidates(t *testing.T) {
-	if err := Validate(companionDeck()); err != nil {
+	if err := Validate(companionDeck(), game.FormatCommander); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
 }
@@ -84,7 +85,7 @@ func TestCompanionIsOutsideTheHundred(t *testing.T) {
 	// A second Jegantha in the 99 is a different card from the
 	// companion; singleton covers only the 100.
 	list.Mainboard[0] = jegantha()
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("Validate: %v", err)
 	}
 }
@@ -123,7 +124,7 @@ func TestJeganthaConditionEdgeCases(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Validate(companionDeck(tc.card))
+			err := Validate(companionDeck(tc.card), game.FormatCommander)
 			failed := slices.Contains(violationCodes(err), CodeCompanionConditionNotMet)
 			if failed != tc.fails {
 				t.Errorf("condition failed = %v, want %v (%v)", failed, tc.fails, err)
@@ -138,7 +139,7 @@ func TestJeganthaConditionEdgeCases(t *testing.T) {
 func TestJeganthaConditionCountsTheCommander(t *testing.T) {
 	list := companionDeck()
 	list.Commanders[0].ManaCost = "{W}{W}{U}{B}{R}{G}"
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	ve, _ := err.(*ValidationError)
 	if ve == nil {
 		t.Fatal("Validate passed a commander with {W}{W}")
@@ -158,7 +159,7 @@ func TestJeganthaConditionListsAtMostTenOffenders(t *testing.T) {
 		bad = append(bad, costed(fmt.Sprintf("Double %d", i), "Instant", "{R}{R}", "R"))
 	}
 	n := 0
-	for _, code := range violationCodes(Validate(companionDeck(bad...))) {
+	for _, code := range violationCodes(Validate(companionDeck(bad...), game.FormatCommander)) {
 		if code == CodeCompanionConditionNotMet {
 			n++
 		}
@@ -172,7 +173,7 @@ func TestCompanionMustFitTheCommandersColourIdentity(t *testing.T) {
 	list := companionDeck()
 	list.Commanders[0].ColorIdentity = []string{"R"}
 	list.Commanders[0].ManaCost = "{2}{R}"
-	codes := violationCodes(Validate(list))
+	codes := violationCodes(Validate(list, game.FormatCommander))
 	if !slices.Contains(codes, CodeCompanionColorIdentity) {
 		t.Errorf("codes %v, want %s", codes, CodeCompanionColorIdentity)
 	}
@@ -183,7 +184,7 @@ func TestCompanionMustFitTheCommandersColourIdentity(t *testing.T) {
 func TestCompanionSameCardAsCommanderIsRefused(t *testing.T) {
 	list := companionDeck()
 	list.Commanders = []cards.Card{jegantha()}
-	codes := violationCodes(Validate(list))
+	codes := violationCodes(Validate(list, game.FormatCommander))
 	if !slices.Contains(codes, CodeCompanionIsCommander) {
 		t.Errorf("codes %v, want %s", codes, CodeCompanionIsCommander)
 	}
@@ -206,7 +207,7 @@ func TestCompanionCardAsCommanderResolvesAndValidates(t *testing.T) {
 		if list.Companion != nil || len(list.Commanders) != 1 {
 			t.Fatalf("%s as commander: companion %v, commanders %d", name, list.Companion, len(list.Commanders))
 		}
-		for _, code := range violationCodes(Validate(list)) {
+		for _, code := range violationCodes(Validate(list, game.FormatCommander)) {
 			if strings.HasPrefix(code, "companion") || code == CodeUnsupportedMechanic {
 				t.Errorf("%s as commander: unexpected %s", name, code)
 			}
@@ -241,7 +242,7 @@ func TestCompanionViolations(t *testing.T) {
 		{"a second companion", two, CodeTooManyCompanions},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if codes := violationCodes(Validate(tc.list)); !slices.Contains(codes, tc.want) {
+			if codes := violationCodes(Validate(tc.list, game.FormatCommander)); !slices.Contains(codes, tc.want) {
 				t.Errorf("codes %v, want %s", codes, tc.want)
 			}
 		})
@@ -264,7 +265,7 @@ func TestCompanionFromALoneSideboardCard(t *testing.T) {
 	if lone.Companion == nil || lone.Companion.Name != j.Name || !lone.CompanionFromSideboard || len(lone.Sideboard) != 0 {
 		t.Fatalf("lone sideboard: companion %v, from sideboard %v, sideboard %d", lone.Companion, lone.CompanionFromSideboard, len(lone.Sideboard))
 	}
-	if codes := violationCodes(Validate(lone)); !slices.Contains(codes, CodeCompanionFromSideboard) || slices.Contains(codes, CodeSideboardUnsupported) {
+	if codes := violationCodes(Validate(lone, game.FormatCommander)); !slices.Contains(codes, CodeCompanionFromSideboard) || slices.Contains(codes, CodeSideboardUnsupported) {
 		t.Errorf("lone sideboard codes %v, want %s and no sideboard warning", codes, CodeCompanionFromSideboard)
 	}
 
@@ -355,8 +356,8 @@ func TestParseTextTrailingCommanderBlock(t *testing.T) {
 	assertEntries(t, []Entry{
 		{Name: "Sol Ring", Count: 1},
 		{Name: "Arcane Signet", Count: 1},
-		{Name: "Tymna the Weaver", Count: 1, IsCommander: true},
-		{Name: "Thrasios, Triton Hero", Count: 1, IsCommander: true},
+		{Name: "Tymna the Weaver", Count: 1, IsCommander: true, CommanderInferred: true},
+		{Name: "Thrasios, Triton Hero", Count: 1, IsCommander: true, CommanderInferred: true},
 	}, entries)
 
 	for name, src := range map[string]string{
