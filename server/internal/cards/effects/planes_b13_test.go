@@ -277,3 +277,58 @@ func TestRaidersAllegianceRaidsTreasuresAndProliferates(t *testing.T) {
 		}
 	}
 }
+
+var planeWindyCity = planeFixture{"04491781-0e6a-4a30-a69f-db226702adfc", "The Windy City", "Plane — Chicago"}
+
+func TestTheWindyCityGivesFlyingExilesFlyersAndCleansUp(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeWindyCity)
+	g, plane := newPlaneGame(t, planeWindyCity)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	foe := opponentOf(g)
+	mine := pushBattlefieldCreature(g, me.ID)
+	theirs := pushBattlefieldCreature(g, foe.ID)
+	g.BumpLayerVersionForTest()
+
+	// Walk away first (its "away" ability has nothing to remove), then back.
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	passPriorityAroundTable(t, g)
+	planeswalkToPlane(t, g, planeWindyCity.Oracle)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, mine)
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, mine); c.Counters[game.CounterFlying] != 1 || !p1g2HasKeyword(g, mine, "flying") {
+		t.Fatalf("the creature has %v counters and flying %v, want a flying counter and flying", c.Counters, p1g2HasKeyword(g, mine, "flying"))
+	}
+
+	// Chaos exiles a creature with flying; an opponent's, without it, is no target.
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the plane")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, game.TargetRef{Kind: game.TargetCard, ID: theirs}); err == nil {
+		t.Fatal("a creature without flying was accepted as the target")
+	}
+	answerPickTarget(t, g, mine)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, mine); ok {
+		t.Fatal("the flier was not exiled")
+	}
+	if g.CastPermissionOnCardByIDForEffect(mine) == nil {
+		t.Error("its owner was given no permission to cast it")
+	} else if p := g.CastPermissionOnCardByIDForEffect(mine); p.Cost != "{2}" || p.Player != me.ID {
+		t.Errorf("permission %+v, want the owner paying {2}", p)
+	}
+
+	// Walking away removes every flying counter.
+	other := pushBattlefieldCreature(g, foe.ID)
+	g.WithWriteLock(func() { _ = g.AddCounterByForEffect(me.ID, other, game.CounterFlying, 2) })
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	passPriorityAroundTable(t, g)
+	if c, _ := battlefieldCard(g, other); c.Counters[game.CounterFlying] != 0 {
+		t.Errorf("%d flying counters remain after the planeswalk away", c.Counters[game.CounterFlying])
+	}
+}
