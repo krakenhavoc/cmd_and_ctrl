@@ -9,44 +9,6 @@ import (
 // cmdr_b1_helpers.go — shared pieces of the Foundations Commander
 // angel deck cards (batches 1 and 2, #5368).
 
-// cmdrB1OtherAngelsEnterWithCountersForEachAngel is Giada, Font of
-// Hope's "each other Angel you control enters with an additional
-// +1/+1 counter on it for each Angel you already control": a CR 614
-// replacement on the entry of an Angel under the source's controller's
-// control. "Already control" is every Angel on the battlefield under
-// that controller, counted as the entering one arrives (it is not on
-// the battlefield yet), Giada included.
-func cmdrB1OtherAngelsEnterWithCountersForEachAngel(label string) game.ReplacementEffect {
-	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield || src == nil || ev.CardID == src.InstanceID {
-				return false
-			}
-			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.Controller == src.Controller &&
-				entering.HasSubtype(src.TextSubtype("Angel"))
-		},
-		Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
-			n := 0
-			for i := range g.Battlefield.Cards {
-				c := &g.Battlefield.Cards[i]
-				if c.Controller == src.Controller && c.IsCreature() && c.HasSubtype(src.TextSubtype("Angel")) {
-					n++
-				}
-			}
-			if n > 0 {
-				ev.AddCounterAtETB("+1/+1", n)
-			}
-			return nil
-		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			return src.Controller
-		},
-		Label: label,
-	}
-}
-
 // cmdrB1NontokenCreaturesYouControl selects Always Watching's
 // subjects: nontoken creatures under the source's controller.
 func cmdrB1NontokenCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
