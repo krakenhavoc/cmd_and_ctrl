@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -53,4 +55,14 @@ func cmdrB13SpellTargetsPermanentOrPlayer(g *game.Game, spellID uuid.UUID) bool 
 		}
 	}
 	return false
+}
+
+// cmdrB13TotalPowerAtMost is "with total power n or less", the set rule
+// TotalManaValueAtMost is for mana value (Reunion of the House).
+func cmdrB13TotalPowerAtMost(n int) *game.TargetTotal {
+	return &game.TargetTotal{
+		Label: "have total power " + strconv.Itoa(n) + " or less",
+		Stat:  game.TargetTotalPower,
+		Max:   n,
+	}
 }

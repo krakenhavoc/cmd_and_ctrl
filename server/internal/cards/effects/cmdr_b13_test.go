@@ -243,3 +243,45 @@ func TestCmdrB13ZurgoDrainsWhenANonattackingTokenLeaves(t *testing.T) {
 		t.Errorf("controller life changed")
 	}
 }
+
+const cmdrB13ReunionOracle = "ad5ff61f-79d6-4dd9-b4fe-17f7a0055c44"
+
+func cmdrB13GraveCreature(g *game.Game, me *game.Player, name string, power int) uuid.UUID {
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: "Creature — Bear", Power: power, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	})
+	return id
+}
+
+func TestCmdrB13ReunionReturnsCreaturesUpToTenPowerAndExilesItself(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	a := cmdrB13GraveCreature(g, me, "Six", 6)
+	b := cmdrB13GraveCreature(g, me, "Four", 4)
+	zero := cmdrB13GraveCreature(g, me, "Zero", 0)
+	c := cmdrB13GraveCreature(g, me, "Extra", 1)
+	pick := func(ids ...uuid.UUID) []game.TargetRef {
+		var out []game.TargetRef
+		for _, id := range ids {
+			out = append(out, game.TargetRef{Kind: game.TargetCard, ID: id})
+		}
+		return out
+	}
+	if err := castCatalogSpellErr(t, g, "Reunion of the House", "Sorcery", cmdrB13ReunionOracle, pick(a, b, c)); err == nil {
+		t.Fatal("targets with total power 11 were accepted")
+	}
+	id := castCatalogSpell(t, g, "Reunion of the House", "Sorcery", cmdrB13ReunionOracle, pick(a, b, zero))
+	passPriorityAroundTable(t, g)
+	for _, want := range []uuid.UUID{a, b, zero} {
+		if !g.Battlefield.Contains(want) {
+			t.Errorf("a target did not return")
+		}
+	}
+	if !me.Graveyard.Contains(c) || g.Battlefield.Contains(c) {
+		t.Error("an untargeted creature card moved")
+	}
+	if me.Graveyard.Contains(id) {
+		t.Error("Reunion of the House went to the graveyard instead of exile")
+	}
+}
