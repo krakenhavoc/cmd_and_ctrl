@@ -201,3 +201,88 @@ func TestMinamoLetsTheCasterDrawAndChaosReturnsBlueCards(t *testing.T) {
 		t.Error("a card that was not chosen returned")
 	}
 }
+
+var planeMirroredDepths = planeFixture{"b6329c2f-ea7f-4611-986c-f82bacf2a872", "Mirrored Depths", "Plane — Karsus"}
+
+func TestMirroredDepthsCountersASpellOnALostFlipOnly(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeMirroredDepths)
+	g, plane := newPlaneGame(t, planeMirroredDepths)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	sawWin, sawLoss := false, false
+	for i := 0; i < 24 && !(sawWin && sawLoss); i++ {
+		id := castCatalogSpell(t, g, "Test Ritual", "Sorcery", "", nil)
+		for j := 0; j < 8 && latestChoiceOfKind(g, game.PendingChoiceCoinCall) == nil; j++ {
+			if err := g.PassPriority(); err != nil && !errors.Is(err, game.ErrChoicePending) {
+				t.Fatalf("pass: %v", err)
+			}
+		}
+		flip := latestChoiceOfKind(g, game.PendingChoiceCoinCall)
+		if flip == nil {
+			t.Fatal("the caster was not asked to call a coin")
+		}
+		if flip.Chooser != me.ID {
+			t.Fatalf("the coin is called by %v, want the caster", flip.Chooser)
+		}
+		if err := g.ResolveCoinCall(flip.ID, me.ID, "heads"); err != nil {
+			t.Fatalf("coin: %v", err)
+		}
+		flips := randomEvents(g, game.EventFlipCoin)
+		won := flips[len(flips)-1].Won
+		onStack := g.StackItemForEffect(id) != nil
+		if won != onStack {
+			t.Fatalf("flip won=%v but the spell is on the stack=%v", won, onStack)
+		}
+		if won {
+			sawWin = true
+		} else {
+			sawLoss = true
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if !sawWin || !sawLoss {
+		t.Fatalf("never saw both a won and a lost flip (win %v, loss %v)", sawWin, sawLoss)
+	}
+	_ = plane
+}
+
+func TestMirroredDepthsChaosCastsTheRevealedNonlandCardFree(t *testing.T) {
+	g, plane := newPlaneGame(t, planeMirroredDepths)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the chaos ability")
+	}
+	// A land on top is revealed and not offered.
+	land := putOnTopOfLibrary(g, opp, "Test Forest", "Basic Land — Forest", "")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, opp.ID)
+	passPriorityAroundTable(t, g)
+	if c := latestChoiceOfKind(g, game.PendingChoiceResolutionCast); c != nil {
+		t.Fatal("a land was offered for the free cast")
+	}
+	if !inZone(opp.Library, land) {
+		t.Error("the revealed land left the library")
+	}
+	// A nonland card is cast free by the planar controller, from the
+	// target's library.
+	spell := putOnTopOfLibrary(g, opp, "Test Charm", "Instant", "")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, opp.ID)
+	passPriorityAroundTable(t, g)
+	c := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
+	if c == nil {
+		t.Fatal("the revealed nonland card was not offered")
+	}
+	answerKeywordCast(t, g, c, true)
+	if inZone(opp.Library, spell) {
+		t.Error("the cast card is still in the library")
+	}
+	if g.StackItemForEffect(spell) == nil {
+		t.Error("the card is not on the stack")
+	}
+}
