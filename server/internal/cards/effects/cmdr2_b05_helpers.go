@@ -146,7 +146,7 @@ func cmdr2B05EachPlayerLosesAThirdOfTheirLife(g *game.Game, item *game.StackItem
 // that is not a token, read through the layers.
 func cmdr2B05ControlsAnotherNontokenPirate(g *game.Game, controller, self uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.InstanceID != self && !c.IsToken() && c.IsCreature() && c.HasSubtype("Pirate") {
+		if c.Controller == controller && c.InstanceID != self && !c.IsToken() && isPirate(c) {
 			return true
 		}
 	}
