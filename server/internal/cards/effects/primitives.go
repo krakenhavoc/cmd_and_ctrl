@@ -623,6 +623,12 @@ type ScheduleDelayedTrigger struct {
 	// ends at cleanup whether or not it fired (CR 603.7b, a stated
 	// duration).
 	EachThisTurn bool
+
+	// AfterThisTurn is "on your next turn" read strictly (Kav Landseeker):
+	// the trigger skips the turn it was scheduled in, even when that is the
+	// controller's own and the step has not begun yet. Pair with
+	// ControllerTurnOnly.
+	AfterThisTurn bool
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -646,6 +652,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		Params:             s.Params,
 		OnExtraTurn:        s.OnExtraTurn,
 		OnPhaseID:          s.OnPhase,
+		AfterThisTurn:      s.AfterThisTurn,
 	}
 	if s.EachThisTurn {
 		d := ctx.Game.UntilEndOfTurnDuration()
@@ -1166,6 +1173,12 @@ type SearchLibrary struct {
 	// library this way, shuffle" — if and only if they chose it; see
 	// game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle as the card
 	// prints it; the answer decides whether the library was searched.
+	// OntoBattlefieldIfSubtype is game.SearchLibrarySpec's (#5406): with
+	// Dest ZoneHand and Limit 1, a found card of this subtype is put onto
+	// the battlefield instead — Celestial Reunion's "if the revealed card
+	// is the chosen type".
+	OntoBattlefieldIfSubtype string
+
 	AlsoGraveyard bool
 	// AlsoGraveyardAndHand is "search that player's GRAVEYARD, HAND, AND
 	// library" (#3988, Kotose, the Silent Spider): the library owner's
@@ -1256,6 +1269,8 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		TakeAll:              s.TakeAll,
 		EntersAttachedTo:     s.EntersAttachedTo,
 		LinkTo:               s.LinkTo,
+		// #5406
+		OntoBattlefieldIfSubtype: s.OntoBattlefieldIfSubtype,
 	})
 }
 

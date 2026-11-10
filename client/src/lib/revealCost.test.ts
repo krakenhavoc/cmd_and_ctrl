@@ -35,6 +35,7 @@ describe("reveal and behold branches", () => {
       behold: false,
       exile: false,
       options: ["elf"],
+      count: 1,
     });
     expect(castRevealCost(vanquisher(), { costBranch: 1 })).toBeUndefined();
     expect(castRevealCost(vanquisher(), undefined)).toBeUndefined();
@@ -89,6 +90,7 @@ describe("optional behold offers", () => {
       behold: true,
       exile: false,
       options: ["hero", "scout"],
+      count: 1,
     });
   });
 
@@ -131,10 +133,65 @@ describe("behold-and-exile costs", () => {
       behold: true,
       exile: true,
       options: ["kithkin", "token"],
+      count: 1,
     });
   });
 
   it("offers nothing when there is nothing to behold", () => {
     expect(castRevealCost(champion([]), undefined)?.options).toEqual([]);
+  });
+});
+
+// #5406: Celestial Reunion's "you may choose a creature type and behold
+// two creatures of that type". Ticking the offer lists the types; once a
+// type is chosen the pick is that type's cards, two of them, and the type
+// rides cast_spell as behold_type.
+function reunion(): CardView {
+  return {
+    instance_id: "cr",
+    name: "Celestial Reunion",
+    owner: "p0",
+    controller: "p0",
+    optional_costs: [
+      {
+        index: 0,
+        key: "behold",
+        label: "Choose a creature type and behold two creatures of that type",
+        max_times: 1,
+        reveal: true,
+        behold: true,
+        behold_count: 2,
+        behold_types: [
+          { type: "Elf", cards: ["elf1", "elf2", "elf3"] },
+          { type: "Goblin", cards: ["gob1", "gob2"] },
+        ],
+        reveal_options: { cards: ["elf1", "elf2", "elf3", "gob1", "gob2"], min: 2, max: 2 },
+      },
+    ],
+  } as CardView;
+}
+
+describe("behold of a chosen creature type", () => {
+  it("lists the types, then that type's cards, two to pick", () => {
+    const before = castRevealCost(reunion(), { optionalCosts: [0] });
+    expect(before?.count).toBe(2);
+    expect(before?.types?.map((t) => t.type)).toEqual(["Elf", "Goblin"]);
+    const after = castRevealCost(reunion(), { optionalCosts: [0], beholdType: "Goblin" });
+    expect(after?.options).toEqual(["gob1", "gob2"]);
+    expect(after?.count).toBe(2);
+  });
+
+  it("lists no types for a behold that prints its type", () => {
+    expect(castRevealCost(hyperion(["hero"]), { optionalCosts: [0] })?.types).toBeUndefined();
+  });
+
+  it("sends the type with the picks", () => {
+    const sent: Record<string, unknown> = {};
+    applyCastChoices(sent, { optionalCosts: [0], beholdType: "Elf", revealIDs: ["elf1", "elf2"] });
+    expect(sent.behold_type).toBe("Elf");
+    expect(sent.reveal_ids).toEqual(["elf1", "elf2"]);
+    const none: Record<string, unknown> = {};
+    applyCastChoices(none, { optionalCosts: [0], revealIDs: ["hero"] });
+    expect(none.behold_type).toBeUndefined();
   });
 });

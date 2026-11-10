@@ -272,7 +272,7 @@ func boundAdmitsAt(g *Game, s *TargetSpec, c Card, bound int) bool {
 		return false
 	}
 	if s.ManaValueEqualsX {
-		return v == bound
+		return v == bound+s.ManaValueEqualsXPlus
 	}
 	return v <= bound
 }

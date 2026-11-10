@@ -741,6 +741,18 @@ type CastPermission struct {
 	// it (CR 119.4). Zero charges none, which is every permission written
 	// before this. Additive within a snapshot version.
 	LifeInAddition int `json:"lifeInAddition,omitempty"`
+
+	// RemoveCountersInAddition is "by removing N counters from among
+	// creatures you control in addition to paying their other costs"
+	// (Dawnhand Dissident, #5406): the synthesised offer charges the
+	// card's printed mana cost and the counter removal Quilled
+	// Greatwurm's offer charges (AlternativeCost.RemoveCounters, #5390):
+	// exactly N counters of any kinds, split among the caster's creatures
+	// however they choose (CR 601.2b, 601.2h). Read only with an
+	// AltCostKey, as LifeInAddition is; a caster whose creatures hold
+	// fewer than N counters in all cannot claim it (CR 118.3). Zero
+	// charges none. Additive within a snapshot version.
+	RemoveCountersInAddition int `json:"removeCountersInAddition,omitempty"`
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
 	// (CR 702.34a). A REPLACEMENT, so it also catches a granted
@@ -850,6 +862,11 @@ type CastPermission struct {
 	//
 	NotBeforeSeq int `json:"notBeforeSeq,omitempty"`
 
+	// Warped marks the permission warp leaves over the card its delayed
+	// trigger exiled (CR 702.185b): the card is a "warped card in exile" for
+	// as long as this permission covers it (Close Encounter).
+	Warped bool `json:"warped,omitempty"`
+
 	// LegacyNotBeforeTurn is populated only while decoding a snapshot
 	// written before ADR 0059. restoreGame converts the old round unit
 	// to NotBeforeSeq and clears it before the game can be captured again.
@@ -885,7 +902,9 @@ type CastPermission struct {
 	// pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no
 	// EventTapCard, and nothing that watches an untapped permanent
 	// entering sees one. A spell that does not become a permanent
-	// ignores it.
+	// ignores it. A LAND played through the permission enters tapped the
+	// same way (Lightstall Inquisitor: "Each land played this way enters
+	// tapped"), seeded on its entry event in CastSpell's land branch.
 	EntersTapped bool `json:"entersTapped,omitempty"`
 
 	// GainsKeywords and GainsAbilities are "If you cast a creature spell
@@ -1488,6 +1507,9 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	}
 	if p.LifeInAddition > 0 {
 		out.Life += p.LifeInAddition
+	}
+	if p.RemoveCountersInAddition > 0 {
+		out.RemoveCounters = CreatureCounterRemovalCost(p.RemoveCountersInAddition)
 	}
 	if p.LifeEqualToManaValue {
 		// CR 202.3: the life is the card's mana value, read off the
@@ -3203,4 +3225,28 @@ func (g *Game) grantIncreaseLocked(playerID uuid.UUID, card Card, from ZoneKind,
 		return 0
 	}
 	return grant.CostMore
+}
+
+// CreatureCountersLabel is the clause of a "removing N counters from among
+// creatures you control" cast cost (#5390, #5406).
+const CreatureCountersLabel = "creatures you control"
+
+// CreatureCounterRemovalCost is "remove N counters from among creatures
+// you control" as a cast cost (#5406): any kinds, split among the
+// caster's creatures (Among). The engine enforces "you control"; the
+// clause matches creatures. Built afresh on every offer, never stored.
+func CreatureCounterRemovalCost(n int) *CounterRemovalCost {
+	return &CounterRemovalCost{
+		N: n,
+		From: &TargetSpec{
+			Mode:  "permanent",
+			Label: CreatureCountersLabel,
+			Zones: []ZoneKind{ZoneBattlefield},
+			CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+				return c.IsCreature()
+			},
+			Min: 1, Max: 1,
+		},
+		Among: true,
+	}
 }

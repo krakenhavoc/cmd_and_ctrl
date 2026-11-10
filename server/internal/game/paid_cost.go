@@ -313,6 +313,14 @@ type PaidCost struct {
 	// the Food. A CR 707.10 copy keeps it, as it keeps CostBranch.
 	Foraged bool `json:"foraged,omitempty"`
 
+	// BeholdType is the creature type the caster chose for a behold that
+	// prints none (#5406, CR 601.2b): Celestial Reunion's "choose a
+	// creature type and behold two creatures of that type", in its
+	// canonical CR 205.3m spelling. Empty when the announcement paid no
+	// such cost. "The chosen type" reads it at resolution through
+	// ctx.BeheldType; a CR 707.10 copy keeps it, as it keeps CostBranch.
+	BeholdType string `json:"beholdType,omitempty"`
+
 	// Discarded is the cards the additional cost discarded (ADR 0100,
 	// owner decision 6), in the order named — a branch's discard, a
 	// plain DiscardCost and a discarding optional cost alike. Nil for a
@@ -406,6 +414,11 @@ type PaidTap struct {
 	// reader falls back to Power. Read it through
 	// PaidTapStationPowerForEffect.
 	StationPower int `json:"stationPower,omitempty"`
+	// StationAnyPower is StationPower for CostPowerStationAny: what the
+	// object counts for when it stations any permanent (Tapestry Warden's
+	// toughness), kept and rewritten at the same two moments. Zero falls
+	// back to Power. Read it through PaidTapStationAnyPowerForEffect.
+	StationAnyPower int `json:"stationAnyPower,omitempty"`
 }
 
 // PaidOptionalCost reports whether the optional cost at `index` was

@@ -370,6 +370,11 @@ func (g *Game) checkBlockRestrictionsLocked(base blockAssignment, decls []BlockD
 	if err := g.blockLimitRefusalLocked(base, after, decls); err != nil {
 		return nil, nil, err
 	}
+	// #5396, CR 506.5 / 509.1b: a creature that can't block alone
+	// may not be its controller's only blocker.
+	if err := g.blockAloneRefusalLocked(after, decls); err != nil {
+		return nil, nil, err
+	}
 	// #1501: a legal block, but too late.
 	if late != nil {
 		return nil, nil, late
@@ -604,6 +609,14 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 		// the minimum is met and further blockers are singles.
 		min, _ := g.blockerBoundsLocked(atk)
 		if min < 2 {
+			// #5396: a creature that can't block alone, offered with a
+			// companion while the seat has staged nothing.
+			for _, decls := range g.notAloneBlockerGroupsLocked(seat, atk, pool, base, cache, perAttackerCap) {
+				out = append(out, BlockOption{Blocks: decls})
+				if maxTotal > 0 && len(out) >= maxTotal {
+					return out
+				}
+			}
 			continue
 		}
 		if base.blockerCounts()[atk.InstanceID] > 0 {

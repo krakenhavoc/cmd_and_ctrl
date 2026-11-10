@@ -697,6 +697,15 @@ func ManaValueAtMostTheEventAmount(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ManaValueEqualsTheEventAmount is ManaValueAtMostTheEventAmount for an exact
+// value: "target artifact or enchantment with mana value X" where X is the
+// triggering event's Amount (Webstrike Elite's cycling X). Data on the clause
+// (game.TargetSpec.ManaValueEqualsEventAmount).
+func ManaValueEqualsTheEventAmount(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ManaValueEqualsEventAmount = true
+	return spec
+}
+
 // OfAnOpponentsChoice is "target … of an opponent's choice" (#2055, ADR
 // 0019's 2026-10-16 amendment): as the spell or ability is put on the
 // stack, its controller chooses an opponent and THAT opponent chooses

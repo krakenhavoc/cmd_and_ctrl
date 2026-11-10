@@ -125,7 +125,7 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 	// resume path re-enters the pipeline and finishes it, and returning
 	// nil tells the caller the draw is "in flight" (no ErrZoneEmpty).
 	// draw_instead.go.
-	return g.drawRunLocked(playerID, 1, DrawThen{})
+	return g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, 1), DrawThen{})
 }
 
 // actuallyDrawCardsLocked performs the N individual card draws a
@@ -438,6 +438,13 @@ type CastSpellParams struct {
 	// control. Refused rather than ignored when the announcement pays no
 	// such cost.
 	RevealIDs []uuid.UUID
+	// BeholdType is the creature type the caster chooses for a behold
+	// that prints none (#5406, CR 601.2b): Celestial Reunion's "choose a
+	// creature type and behold two creatures of that type". RevealIDs
+	// then names the objects of that type. Refused when the announcement
+	// pays no such cost. Lands on StackItem.Paid.BeholdType. On the wire
+	// as `behold_type`.
+	BeholdType string
 
 	// AlternativeCost names the cost the caster is paying INSTEAD of
 	// the mana cost (CR 118.9) — the Key of one of the card's
@@ -1672,11 +1679,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
-	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
+	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs, params.BeholdType); err != nil {
 		slog.Warn("cast_spell rejected: bad reveal payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"reveal_received", len(params.RevealIDs),
+			"behold_type", params.BeholdType,
 			"err", err,
 		)
 		return err
@@ -1919,6 +1927,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// A permission's "it gains ..." rider (Serra Paragon) for a
 			// land played through it; zero for anything else.
 			landGains: castGains,
+			// "Each land played this way enters tapped" (Lightstall
+			// Inquisitor): the permission's EntersTapped, seeded on the entry
+			// event as a spell's is, so it enters tapped and is never
+			// tapped afterwards (CR 614.1c).
+			EntersTapped: castGains.entersTapped,
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -2264,9 +2277,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// ADR 0135 §4: and the objects the alternative cost's card
 		// component pays with, named while they are still where they were
 		// — Adipose Offspring's "the sacrificed creature's toughness".
-		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
+		//
+		// #5406: and the creature type a behold chose (CR 601.2b) —
+		// Celestial Reunion's "the revealed card is the chosen type".
+		Paid: paidWithBeholdType(paidWithAltCostObjects(paidWithBranchAndDiscards(
 			paidWithGift(paidWithExiledCards(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.ExileIDs), params.GiftOpponent),
-			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
+			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)), planBeholdType(costPlan, params.BeholdType)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
 		// the resolution re-check and per-slot effect checks use it.
@@ -2341,7 +2357,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// same reason — with the spell on the stack, so a leaves-the-battlefield
 	// watcher lands above it. Not a sacrifice: nothing dies.
 	if len(params.ExilePermanentIDs) > 0 {
-		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
+		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, g.permanentSpellCostLinkLocked(cardID)); err != nil {
 			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
@@ -2476,7 +2492,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// spell on the stack, so the table sees the Elf the Vanquisher paid
 	// with. Nothing moves — unless the behold exiles its card (#4687, the
 	// Champions): it is exiled here, linked to the spell (CR 607.2q).
-	if err := g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs, params.commanderAnswers); err != nil {
+	if err := g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs, params.BeholdType, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: behold-and-exile cost failed after validation",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -7955,6 +7971,17 @@ type ManaAbilityParams struct {
 	// the auto-tap never claims it (CR 601.2b).
 	PhyrexianLife int
 
+	// CostBranch is the branch of an either/or cost the activator pays
+	// (#5397): forage on a mana ability, Thornvault Forager's "{T},
+	// Forage:" — 0 exiles three cards from the graveyard (named in
+	// ExileIDs), 1 sacrifices a Food (named in SacrificeIDs). The same
+	// field and wire name (`cost_branch`) as ActivateAbilityParams.
+	// CostBranch, with the same rule: required on an ability whose cost
+	// has branches and refused on any other (ErrAbilityCostBranch),
+	// before anything is paid. The auto-tapper never sets it, because
+	// it never plans such an ability.
+	CostBranch *int
+
 	// commanderAnswers are the CR 903.9 answers the owners of the
 	// commanders this activation's cost moves gave before it began
 	// (#1397, cost_commander_choice.go). Unexported: only the parked
@@ -8059,6 +8086,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// #5397, CR 605.3 / 602.2b / 601.2b: an either/or cost (forage) is
+	// announced with the branch it pays, and from here on the row's cost
+	// IS that branch folded in (ChosenManaAbilityShape). Before every
+	// gate below, so a missing or bad branch is refused with nothing
+	// paid, and every validator and payer reads one ordinary cost.
+	ab, err := ChosenManaAbilityShape(ab, params.CostBranch)
+	if err != nil {
+		return err
+	}
 	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
 	// controller, or anyone for an any-player row.
 	if !MayActivateMana(playerID, *card, srcZone, ab) {
@@ -8280,7 +8316,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if params.PhyrexianLife != 0 && ab.ManaCost == "" {
 		return ErrInvalidParam
 	}
-	if ab.ManaCost != "" {
+	// #5382: a tap-only mana ability can still owe mana — an activation
+	// cost increase (Skyseer's Chariot naming Sol Ring) — and CR 605.3
+	// has it paid like any other activation's (CR 602.2b, 601.2f), so
+	// the gate is the priced cost rather than the printed string. The
+	// mana the ability makes cannot pay it: the cost is paid first.
+	chargesMana := g.ManaAbilityChargesManaForEffect(playerID, *card, ab)
+	if chargesMana {
 		priced, perr := g.ManaAbilityManaCostForEffect(playerID, *card, ab)
 		if perr != nil {
 			return ErrInvalidParam
@@ -8437,7 +8479,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Tap before sacrifice: the tap has to happen while the
 	// permanent is still on the battlefield, and sacrifices move
 	// cards, which invalidates `card`.
-	if ab.ManaCost != "" {
+	if chargesMana {
 		// Same context the validation above used. Spending under a
 		// different context than the check would let a restricted
 		// token pay for something it was never cleared for.
@@ -8559,7 +8601,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// it queues wait for the state-check pass on the way out, so they
 	// reach the stack with the mana already in the pool (CR 605.3a).
 	if len(params.ExilePermanentIDs) > 0 {
-		exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+		exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
 		if err != nil {
 			return err
 		}
@@ -8598,7 +8640,19 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
 			return err
 		}
+		paid.Exiled = append(paid.Exiled, exiles...)
 		needStateChecks = true
+	}
+	// #5397, CR 701.61a: a forage paid — either branch, now that its
+	// cards or its Food have moved. Recorded as the CR 602 path records
+	// it (PaidCost.Foraged) and announced once (EventForage), so
+	// "whenever you forage" (Corpseberry Cultivator) triggers; the
+	// trigger reaches the stack on the way out, with the mana already
+	// in the pool (CR 605.3b), through the queue drain below.
+	if ab.Forage {
+		paid.Foraged = true
+		paid.CostBranch = *params.CostBranch + 1
+		g.noteForageLocked(playerID, cardID)
 	}
 	// #1228: the exile-this component, LAST — after the discards, for
 	// the reason they are last: it moves the SOURCE and invalidates

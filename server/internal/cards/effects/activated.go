@@ -239,6 +239,9 @@ func ExertThis() game.AbilityCost { return game.AbilityCost{Exert: true} }
 // ctx.X() or item.X.
 func PayXEnergy() game.AbilityCost { return game.AbilityCost{EnergyX: true} }
 
+// PayXLife is "Pay X life": the announced X is the amount (AbilityCost.LifeX).
+func PayXLife() game.AbilityCost { return game.AbilityCost{LifeX: true} }
+
 // LoyaltyCost is a planeswalker's loyalty cost — the "+1", "[0]" or
 // "−3" printed to the left of the ability. Positive adds counters,
 // negative removes them, zero does neither and still spends the
@@ -331,6 +334,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// stronger than printed, the #259 direction.
 		if !c.LifeFrom.IsZero() {
 			out.LifeFrom = c.LifeFrom
+		}
+		// "Pay X life" (Krumar Initiate): dropped, the ability would be
+		// free of its life — stronger than printed, the #259 direction.
+		if c.LifeX {
+			out.LifeX = true
 		}
 		if c.Loyalty != nil {
 			out.Loyalty = c.Loyalty
@@ -956,6 +964,23 @@ func ExileAnyNumberFromGraveyardWithSymbols(label, color string, atLeast int, ma
 		From:        game.ZoneGraveyard,
 		Match:       match,
 		SymbolTotal: &game.ManaSymbolTotal{Color: color, AtLeast: atLeast},
+	}}
+}
+
+// ExileXFromGraveyardAsCost is "Exile X <kind> cards from your graveyard"
+// as a CR 602 activated ability's cost, with X in no other part of the
+// cost (Winter, Cursed Rider's exhaust, #4464): the activator announces X
+// by naming that many matching cards (game.ExileCost.CountIsX), and the
+// effect reads X back as len(ctx.Exiled()).
+//
+//	Plus(ManaCost("{2}{U}{B}"), TapCost(), ExileXFromGraveyardAsCost("X artifact cards", artifactCard))
+func ExileXFromGraveyardAsCost(label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{
+		AnyNumber: true,
+		CountIsX:  true,
+		Label:     label,
+		From:      game.ZoneGraveyard,
+		Match:     match,
 	}}
 }
 

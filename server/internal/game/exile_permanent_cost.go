@@ -815,7 +815,7 @@ func movedSourceAlso(sourceID uuid.UUID, exileSelf bool, lists ...[]uuid.UUID) [
 // as payReturnToHandCostLocked skips one.
 //
 // Caller must hold g.mu.
-func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) ([]uuid.UUID, error) {
+func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool, link PermissionCardRef) ([]uuid.UUID, error) {
 	var moved []uuid.UUID
 	for _, id := range ids {
 		// ADR 0137: a craft material in the activator's graveyard goes
@@ -836,6 +836,10 @@ func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []
 			// #1397: the owner's CR 903.9 answer, asked before the
 			// payment by askCostCommanderLocked.
 			commanderAnswer: commanderAnswerFor(answers, id),
+			// CR 607.2q: a permanent spell's cost exile is linked to the
+			// spell object (zero for an ability's cost or a non-permanent
+			// spell); relinkCostExilesLocked moves it to the permanent.
+			ExiledWith: link,
 		}); err != nil {
 			return moved, err
 		}
@@ -848,3 +852,20 @@ func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []
 // — the values ExilePermanentsCost.CardType may name, lowercase. Read by
 // effects.Register's boot check.
 var PermanentCardTypes = []string{"artifact", "battle", "creature", "enchantment", "land", "planeswalker"}
+
+// permanentSpellCostLinkLocked is the link a cast's exile-a-permanent
+// cost stamps on what it exiles (CR 607.2q, Fear of Abduction): the spell
+// object {instance, stack epoch} while the spell on the stack is a
+// permanent spell, so the permanent it becomes can read "each card exiled
+// with it" (relinkCostExilesLocked, from landEntryLocked). An instant or
+// sorcery spell becomes no permanent and links nothing (Soul Exchange),
+// and neither does a spell that is no longer on the stack.
+//
+// Caller must hold g.mu.
+func (g *Game) permanentSpellCostLinkLocked(castID uuid.UUID) PermissionCardRef {
+	sc, ok := g.stackCardLocked(castID)
+	if !ok || !sc.IsPermanent() {
+		return PermissionCardRef{}
+	}
+	return PermissionCardRef{ID: castID, Epoch: sc.ObjectEpoch}
+}

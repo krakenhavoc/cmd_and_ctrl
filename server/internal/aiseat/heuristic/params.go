@@ -202,6 +202,12 @@ type playerManaParams struct {
 	PlayerAbility string `json:"player_ability"`
 }
 
+// manaCostBranchParams is the field that marks an activate_mana_ability
+// move paying an either/or cost (#5397): forage on a mana ability.
+type manaCostBranchParams struct {
+	CostBranch *int `json:"cost_branch"`
+}
+
 type discardSelectionParams struct {
 	CardIDs []string `json:"card_ids"`
 }

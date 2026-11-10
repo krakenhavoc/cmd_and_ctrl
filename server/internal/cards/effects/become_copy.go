@@ -60,6 +60,17 @@ const (
 	// object. The duration is pinned to Of, not to the permanent that
 	// becomes the copy, and never starts if Of is untapped or gone.
 	CopyWhileOfRemainsTapped
+
+	// CopyWhileSourceAttached is "for as long as this Equipment remains
+	// attached to it" (#5399, Assimilation Aegis): the copy lasts while
+	// the ability's source stays on the battlefield as the same object,
+	// attached to the one permanent that became the copy, which is still
+	// the same object too (game.WhileSourceAttachedToPinned, CR 400.7).
+	// It needs exactly one target, and never starts if the source is not
+	// attached to it as the effect would begin (CR 611.2b). Moving the
+	// Equipment ends it for good, even if it comes back later: that
+	// attach is a new duration of its own.
+	CopyWhileSourceAttached
 )
 
 // BecomeCopy makes each of Targets a copy of Of.
@@ -137,25 +148,41 @@ func (b BecomeCopy) ApplyReports(ctx *Context) (bool, error) {
 	if b.Except != nil {
 		b.Except(&v)
 	}
-	var d game.Duration
-	switch b.Duration {
-	case CopyIndefinite:
-		d = game.IndefiniteDuration()
-	case CopyUntilYourNextTurn:
-		d = ctx.Game.UntilYourNextTurnDuration(ctx.Controller())
-	case CopyWhileOfRemainsTapped:
-		var ok bool
-		if d, ok = ctx.Game.ForAsLongAsPinnedTappedDuration(b.Of); !ok {
-			return false, nil // CR 611.2b: it never starts
-		}
-	default:
-		d = ctx.Game.UntilEndOfTurnDuration()
+	d, ok := copyDurationFor(ctx.Game, b.Duration, ctx.Source(), ctx.Controller(), b.Of, targets)
+	if !ok {
+		return false, nil // CR 611.2b: it never starts
 	}
 	label := b.Label
 	if label == "" {
 		label = "becomes a copy"
 	}
 	return ctx.Game.BecomeCopyForEffect(ctx.Source(), b.Of, targets, v, d, label), nil
+}
+
+// copyDurationFor is the game.Duration a BecomeCopy of kind `kind` lasts
+// for: `source` and `controller` are the effect's source and its
+// controller ("your" next turn), `of` is the object copied and `targets`
+// the permanents that become the copy. False when the duration never
+// starts (CR 611.2b): Of is not tapped on the battlefield for
+// CopyWhileOfRemainsTapped; for CopyWhileSourceAttached, there is not
+// exactly one target or the source is not attached to it.
+//
+// Caller must hold g.mu.
+func copyDurationFor(g *game.Game, kind CopyDuration, source, controller, of uuid.UUID, targets []uuid.UUID) (game.Duration, bool) {
+	switch kind {
+	case CopyIndefinite:
+		return game.IndefiniteDuration(), true
+	case CopyUntilYourNextTurn:
+		return g.UntilYourNextTurnDuration(controller), true
+	case CopyWhileOfRemainsTapped:
+		return g.ForAsLongAsPinnedTappedDuration(of)
+	case CopyWhileSourceAttached:
+		if len(targets) != 1 {
+			return game.Duration{}, false
+		}
+		return g.WhileAttachedToDuration(source, targets[0])
+	}
+	return g.UntilEndOfTurnDuration(), true
 }
 
 // selfBecomesCopyOfTarget is the Effect of every "{cost}: this

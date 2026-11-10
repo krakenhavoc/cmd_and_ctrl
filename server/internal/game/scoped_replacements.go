@@ -195,7 +195,7 @@ var (
 func scopedReplacementWatches(kind ModKind) []EventKind {
 	switch kind {
 	case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource, ModMultiplyDamage,
-		ModPreventFromSource, ModRedirectDamage:
+		ModPreventFromSource, ModRedirectDamage, ModAddDamage:
 		return watchDamage
 	case ModExileInsteadOfLeaving, ModExileInsteadOfGraveyard, ModExileIfWouldDie:
 		return watchZoneMove
@@ -528,6 +528,12 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 				// once per event (CR 614.5).
 				a.effect.Optional = m.Optional
 			}
+			if m.Kind == ModAddDamage {
+				// #4468: two additions on one event commute (+X+Y is
+				// +Y+X), so no order is asked between them; beside a
+				// multiplier or a prevention shield it still is.
+				a.identity = replacementIdentity{card: "scoped:" + string(m.Kind)}
+			}
 			if m.Kind == ModMultiplyDamage {
 				// Two multipliers on one event (two Insults, an Insult and
 				// an Isengard) commute — ×2×3 is ×3×2 — so CR 616 has one
@@ -738,6 +744,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return g.fromSourceMeetsLocked(e, m, ev)
 	case ModMultiplyDamage:
 		return g.multiplyDamageAppliesLocked(e, m, ev)
+	case ModAddDamage:
+		return g.addDamageAppliesLocked(e, m, ev)
 	case ModRedirectDamage:
 		return g.redirectDamageAppliesLocked(e, m, ev)
 	}
@@ -776,6 +784,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		g.applyFromSourceLocked(e, mod, m, ev)
 	case ModMultiplyDamage:
 		g.applyMultiplyDamageLocked(e, mod, m, ev)
+	case ModAddDamage:
+		applyAddDamageLocked(m, ev)
 	case ModRedirectDamage:
 		g.applyRedirectDamageLocked(e, mod, m, ev)
 	case ModPreventDamage:

@@ -181,6 +181,10 @@ export const BLOCK_REFUSAL_REASONS = [
   // declaring blockers this combat — a late block, such as one on a
   // ninja that entered attacking after the declaration.
   "blocks_declared",
+  // #5396 (CR 506.5, 509.1b): the declaration would leave a creature
+  // that can't block alone as its controller's only blocker. Declare
+  // another blocker first, or both together.
+  "cant_block_alone",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -2169,8 +2173,11 @@ export interface PendingChoiceView {
   // shuffled if and only if "library" was chosen.
   search_zones_pending?: boolean;
   // The zone an and/or search offers beside the library: "graveyard" or
-  // "hand". On every such prompt, asked or answered.
-  search_other_zone?: "graveyard" | "hand";
+  // "hand", or "graveyard_and_hand" for "search your graveyard, hand,
+  // and/or library" (#5408), whose answer names any non-empty subset of
+  // "library", "graveyard" and "hand". On every such prompt, asked or
+  // answered.
+  search_other_zone?: "graveyard" | "hand" | "graveyard_and_hand";
   // An and/or search answered with the other zone alone: the library is not
   // searched, shown or shuffled.
   search_library_skipped?: boolean;
@@ -3394,6 +3401,14 @@ export interface OptionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #5406: a behold that chooses its creature type ("choose a creature
+  // type and behold two creatures of that type", Celestial Reunion).
+  // `behold_count` is how many objects it beholds and `behold_types` the
+  // types you could choose, each with your objects of it; `reveal_options`
+  // is every object of every listed type. Taken, the type rides cast_spell
+  // as `behold_type` and exactly `behold_count` of its cards as `reveal_ids`.
+  behold_count?: number;
+  behold_types?: BeholdTypeOption[];
   // #5193: "you may collect evidence N" (CR 701.59a) — exile any number of
   // cards from your graveyard with total mana value `collect_evidence` or
   // greater. `evidence_options` is your graveyard cards that could be
@@ -4497,6 +4512,13 @@ export interface SacrificeGroupView {
   cards?: string[];
 }
 
+// BeholdTypeOption is one creature type a behold that chooses its type
+// could be paid with, and the viewer's objects of that type (#5406).
+export interface BeholdTypeOption {
+  type: string;
+  cards: string[];
+}
+
 export interface LegalTargetsView {
   // #1943: compatible candidates keyed by the earlier clause's pick.
   relation?: { slot: number; pairs: Record<string, string[]> };
@@ -5184,6 +5206,10 @@ export interface CardView extends CastSurfaceView {
   // block any number. Both omitted for the ordinary one-attacker case.
   block_capacity?: number;
   blocks_any_number?: boolean;
+  // #5396: the creature "can't block alone" (CR 506.5, 509.1b): it may
+  // block only beside another blocker of its controller's. Omitted
+  // otherwise.
+  cant_block_alone?: boolean;
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat
@@ -5728,6 +5754,13 @@ export interface ManaAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // #5397: an either/or part of the cost — forage, Thornvault Forager's
+  // "{T}, Forage: Add two mana in any combination of colors" (exile three
+  // cards from your graveyard, or sacrifice a Food). The same entries
+  // ActivatedAbilityView.cost_branches carries; the client asks which
+  // first, folds the branch into the row (withCostBranch) and sends its
+  // index on activate_mana_ability as `cost_branch`.
+  cost_branches?: AbilityCostBranchView[];
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1

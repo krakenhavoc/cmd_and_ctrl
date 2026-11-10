@@ -936,7 +936,7 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 	// dredge offer, Underrealm Lich's pick) holds the rest of the
 	// instruction behind it (CR 121.6b) instead of the later draws
 	// racing ahead of the question.
-	if err := g.drawRunLocked(playerID, n, DrawThen{}); err != nil {
+	if err := g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, n), DrawThen{}); err != nil {
 		if err == ErrZoneEmpty {
 			// Flag set, stop drawing. SBA loop will handle the loss.
 			return nil
@@ -2350,6 +2350,17 @@ type SearchLibrarySpec struct {
 	// follows". The closure form (Then) is gone since #4361 S4.
 	ThenTail KeyedTail
 
+	// OntoBattlefieldIfSubtype is "put it into your hand. If <it is the
+	// chosen type>, put that card onto the battlefield instead" (#5406,
+	// Celestial Reunion): with Dest ZoneHand and Limit 1, a found card
+	// that has this subtype goes to the battlefield instead of the hand
+	// (CR 614.1a). Decided as the card is found and revealed, before it
+	// moves, so the card never passes through the hand; an Opposition
+	// Agent's exile still replaces either. Read with Card.HasSubtype, so
+	// a changeling card is every creature type (CR 702.73a). Empty is the
+	// ordinary search. Ignored for any other Dest or Limit.
+	OntoBattlefieldIfSubtype string
+
 	// ToTop puts the found cards on TOP of the library, after the
 	// shuffle, when Dest is ZoneLibrary. It is what the "search your
 	// library for a card, then shuffle and PUT THAT CARD ON TOP"
@@ -2439,6 +2450,14 @@ type SearchLibrarySpec struct {
 	// shuffles nor fires EventSearchLibrary. The hand searched is the
 	// library owner's own, so combining this with LibraryOwner is not
 	// meaningful. Dest must be a zone the cards leave to.
+	//
+	// AlsoHand WITH AlsoGraveyard is "search your graveyard, hand, and/or
+	// library" (#5408, Say Its Name): all three zones are offered, and the
+	// zone question asks any non-empty subset of them (search_other_zone
+	// SearchZoneGraveyardAndHand). The library is shuffled, and the search
+	// announced, if and only if the library is among the chosen zones (CR
+	// 701.23a, 701.24a); a search of the graveyard, the hand or both never
+	// looks at the library.
 	AlsoHand bool
 
 	// TakeAll is "search … for ALL cards with the same name …" on an
@@ -2516,12 +2535,15 @@ func (spec SearchLibrarySpec) asksZones() bool {
 }
 
 // otherZoneName is the zone an and/or search offers beside the library,
-// "graveyard" or "hand" (SearchZoneGraveyard, SearchZoneHand); "" when the
-// search does not ask.
+// "graveyard" or "hand" (SearchZoneGraveyard, SearchZoneHand), or both of
+// them for "your graveyard, hand, and/or library" (SearchZoneGraveyardAndHand,
+// #5408); "" when the search does not ask.
 func (spec SearchLibrarySpec) otherZoneName() string {
 	switch {
 	case !spec.asksZones():
 		return ""
+	case spec.AlsoGraveyard && spec.AlsoHand:
+		return SearchZoneGraveyardAndHand
 	case spec.AlsoGraveyard:
 		return SearchZoneGraveyard
 	}
@@ -2929,6 +2951,14 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		}
 		ids = append(taken, ids...)
 		spec.graveyardFinds = nil
+	}
+	// #5406: "put it into your hand ... put that card onto the battlefield
+	// instead" — decided as the card is found, before Opposition Agent's
+	// replacement below, which still applies to either destination.
+	if spec.OntoBattlefieldIfSubtype != "" && spec.Dest == ZoneHand && spec.Limit == 1 && len(ids) == 1 {
+		if c, ok := g.LookupCardForEffect(ids[0]); ok && c.HasSubtype(spec.OntoBattlefieldIfSubtype) {
+			spec.Dest = ZoneBattlefield
+		}
 	}
 	// #3998: "While an opponent is searching their library, they exile
 	// each card they find" (Opposition Agent). A replacement of the

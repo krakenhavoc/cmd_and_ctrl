@@ -144,6 +144,14 @@ type AbilityCost struct {
 	// charged is on PaidCost.LifePaid; nothing re-reads the count.
 	LifeFrom LifeCostCount
 
+	// LifeX is "Pay X life" (CR 119.4, CR 107.3a): the announced X is
+	// the amount, added to Life (normally zero) — Krumar Initiate's
+	// "{X}{B}, {T}, Pay X life". The X is the one the mana's {X} announces
+	// (DemandsX counts it, so the view, the enumerator and the client ask
+	// for X as for any {X}), and X may not exceed the life the player can
+	// pay (AbilityLifeCostAtXLocked, life_x_cost.go). EnergyX's sibling.
+	LifeX bool
+
 	// Energy is "Pay N {E}" (CR 107.14): remove N energy counters from
 	// the activating player (CR 602.1a). Zero means no such component.
 	// ADR 0129 §2. Checked with the other costs before anything is
@@ -713,7 +721,7 @@ type AbilityCost struct {
 // ADR 0129 §2: "Pay X {E}" (EnergyX) is a third such owner — Sphinx of
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LoyaltyX ||
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LifeX || c.LoyaltyX || SacrificeManaValueX(c.SacrificeOther) ||
 		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards) ||
 		ExileTotalManaValueX(c.ExilePermanents)
 }
@@ -1976,7 +1984,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// payment below charges — a computed count (War Room) is read
 	// once and locked in, so nothing that happens after the
 	// announcement changes what was paid.
-	lifeCost, lifeOK := g.AbilityLifeCostLocked(playerID, cardID, ab.Cost)
+	lifeCost, lifeOK := g.AbilityLifeCostAtXLocked(playerID, cardID, ab.Cost, params.XValue)
 	if !lifeOK || !g.CanPayLifeLocked(p, lifeCost) {
 		// CR 119.4 forbids paying more life than you have. Paying
 		// down to exactly 0 is legal; the SBA loop ends the game
@@ -2191,7 +2199,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// and the spend riders are judged on what the payment was FOR.
 	var riderCtx ManaSpendContext
 	var riderSource Card
-	if ab.Cost.Mana != "" {
+	// #5382: an activation cost increase (Skyseer's Chariot) can owe
+	// mana on a cost that printed none — a {T}-only ability, a crew or a
+	// loyalty cost (CR 602.2b through 601.2f, CR 606.4) — so the gate is
+	// the priced cost, with this activation's targets, not the printed
+	// string.
+	if g.AbilityChargesManaForEffect(playerID, *source, srcZone, ab, params.Targets) {
 		riderCtx, riderSource = ManaSpendForAbility(*source), *source
 		// ADR 0155 Decision 7: which row the mana pays for, so a
 		// "spend mana as though any color to activate those abilities"
@@ -2416,7 +2429,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// item is built so the leaves-triggers it queues sit ABOVE the
 	// ability (CR 603.3b). Not a sacrifice: no EventSacrifice, and
 	// nothing dies.
-	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
+	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
 	if err != nil {
 		return err
 	}
@@ -2900,6 +2913,12 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// payment.
 		if cost.SacrificeSelf && id == sourceID {
 			return nil, ErrInvalidParam
+		}
+		// "Sacrifice a creature with mana value X" (Sidisi, Regent of the
+		// Mire): X is the announced value, and the pick must have it
+		// (sacrifice_mv_x.go).
+		if !sacrificeManaValueXAdmits(g, cost.SacrificeOther, *c, x) {
+			return nil, ErrIllegalTarget
 		}
 		// "Sacrifice ANOTHER creature": the source is not a legal pick
 		// (compared by object, not by name).

@@ -1051,7 +1051,10 @@ type cardSnapshot struct {
 	// ManaAbilityText is Card.ManaAbilityText (#3943). Additive; absent
 	// means PrintedUnknown, which is what every older file says, and
 	// HasPrintedManaAbility then asks the catalog as it always did.
-	ManaAbilityText PrintedFact         `json:"manaAbilityText,omitempty"`
+	ManaAbilityText PrintedFact `json:"manaAbilityText,omitempty"`
+	// NoAbilitiesText is Card.NoAbilitiesText (#4464). Additive; absent
+	// means PrintedUnknown, which is what every older file says.
+	NoAbilitiesText PrintedFact         `json:"noAbilitiesText,omitempty"`
 	Owner           uuid.UUID           `json:"owner"`
 	Controller      uuid.UUID           `json:"controller"`
 	Tapped          bool                `json:"tapped"`
@@ -1314,6 +1317,10 @@ type cardSnapshot struct {
 	// after it had connected. Additive within v8: an older binary
 	// ignores the key.
 	DealtCombatDamage bool `json:"dealtCombatDamage,omitempty"`
+	// DealtDamage is "has dealt damage", DealtCombatDamage's twin for
+	// damage of any kind (Karakyk Guardian). Additive within the
+	// version: an older binary ignores the key.
+	DealtDamage bool `json:"dealtDamage,omitempty"`
 	// Bestowed is CR 702.103b's bestowed status (ADR 0141, #2862): a
 	// spell cast bestowed, or the Aura it became. Carried because "not
 	// bestowed" is a legal zero value: a restore that dropped it would
@@ -1809,7 +1816,8 @@ type delayedTriggerSnapshot struct {
 	Label              string     `json:"label,omitempty"`
 	At                 Step       `json:"at"`
 	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
-	TurnOf             *uuid.UUID `json:"turnOf,omitempty"` // #1538
+	NotBeforeSeq       int        `json:"notBeforeSeq,omitempty"` // Kav Landseeker: "on your next turn"
+	TurnOf             *uuid.UUID `json:"turnOf,omitempty"`       // #1538
 	// OnExtraTurn is ADR 0059 Decision 8's binding to one extra turn.
 	// Additive: an older binary drops it, but every card that binds a
 	// trigger also names a body that binary lacks, so it refuses the
@@ -3030,6 +3038,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintsManaAbility:        c.PrintsManaAbility,
 		PrintsTapAbility:         c.PrintsTapAbility,
 		ManaAbilityText:          c.ManaAbilityText,
+		NoAbilitiesText:          c.NoAbilitiesText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -3100,6 +3109,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
+		DealtDamage:              c.DealtDamage,
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
@@ -3398,6 +3408,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		NotBeforeSeq:       d.NotBeforeSeq,
 		OnExtraTurn:        d.OnExtraTurn,
 		OnPhaseID:          d.OnPhaseID,
 		OnSeq:              d.OnSeq,
@@ -4161,6 +4172,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintsManaAbility:        c.PrintsManaAbility,
 		PrintsTapAbility:         c.PrintsTapAbility,
 		ManaAbilityText:          c.ManaAbilityText,
+		NoAbilitiesText:          c.NoAbilitiesText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -4230,6 +4242,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
+		DealtDamage:              c.DealtDamage,
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
@@ -4519,6 +4532,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		NotBeforeSeq:       d.NotBeforeSeq,
 		OnExtraTurn:        d.OnExtraTurn,
 		OnPhaseID:          d.OnPhaseID,
 		OnSeq:              d.OnSeq,

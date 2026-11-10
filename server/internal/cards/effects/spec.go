@@ -2676,6 +2676,22 @@ type ManaAbilityCost struct {
 	// exile is a decision, and the planner makes none.
 	ExileCards *game.ExileCost
 
+	// Forage is "Forage" as part of the activation cost (CR 701.61a,
+	// #5397): Thornvault Forager's "{T}, Forage: Add two mana in any
+	// combination of colors." The mana-ability spelling of Forage(): the
+	// built ability's cost is an either/or over game.ForageAbilityBranches
+	// (exile three cards from your graveyard, or sacrifice a Food), the
+	// activator names the way as `cost_branch` with the cards in
+	// `exile_ids` or the Food in `sacrifice_ids`, and with fewer than
+	// three cards and no Food the ability can't be activated (CR 118.3).
+	// Paying it records PaidCost.Foraged and emits game.EventForage.
+	//
+	// Declared beside no SacrificeOther, DiscardCards or ExileCards
+	// (Register refuses it): the chosen branch is folded into those
+	// clauses. The auto-tapper never plans such an ability — which way
+	// to forage is the player's decision.
+	Forage bool
+
 	// ExilePermanents is an "Exile a creature you control" component of
 	// the activation cost (#1600) — Food Chain's "Exile a creature you
 	// control: Add X mana of any one color, where X is 1 plus the

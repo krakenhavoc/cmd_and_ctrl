@@ -30,6 +30,11 @@ describe("chargedManaCostNote", () => {
     );
   });
 
+  it("says the printed cost has no mana when a tax charges a row that prints none (#5382)", () => {
+    expect(chargedManaCostNote({ charged_mana_cost: "{2}" })).toBe("printed cost has no mana");
+    expect(chargedManaCostLabel({ charged_mana_cost: "{2}" })).toBe("{2}");
+  });
+
   it("names the printed cost even when the discount empties it out completely", () => {
     expect(chargedManaCostNote({ mana_cost: "{3}", charged_mana_cost: "" })).toBe(
       "printed cost {3}",

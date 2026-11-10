@@ -744,6 +744,12 @@ func dispatch(g *game.Game, a Action) error {
 			// card from your hand or pay {3}"). Absent unless the
 			// chosen cost_branch reveals.
 			RevealIDs []string `json:"reveal_ids,omitempty"`
+			// #5406 — the creature type a behold that prints none
+			// chooses (Celestial Reunion's "choose a creature type and
+			// behold two creatures of that type", CR 601.2b). reveal_ids
+			// then names the objects of that type. Absent unless the
+			// announced optional behold chooses its type.
+			BeholdType string `json:"behold_type,omitempty"`
 			// #3402 — the permanents a mandatory exile-a-permanent
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
@@ -957,6 +963,7 @@ func dispatch(g *game.Game, a Action) error {
 		params.CounterCounts = p.CounterCounts
 		params.CounterKind = p.CounterKind
 		params.CounterKinds = p.CounterKinds
+		params.BeholdType = p.BeholdType
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {
@@ -2773,6 +2780,13 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #5397 — cost_branch is the branch of an either/or cost
+			// the activation pays: forage on a mana ability (Thornvault
+			// Forager), 0 exiles three graveyard cards (exile_ids), 1
+			// sacrifices a Food (sacrifice_ids). The wire name
+			// activate_ability uses; a pointer, because 0 is a branch.
+			// See game.ManaAbilityParams.CostBranch.
+			CostBranch *int `json:"cost_branch,omitempty"`
 			// #4885 — player_ability names a mana ability the PLAYER
 			// has, bound to no card (Channel's "pay 1 life: add {C}"),
 			// by the object that granted it
@@ -2866,6 +2880,7 @@ func dispatch(g *game.Game, a Action) error {
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
 			PhyrexianLife:     p.PhyrexianLife,
+			CostBranch:        p.CostBranch,
 		})
 
 	case TypeSetMaxHandSize:

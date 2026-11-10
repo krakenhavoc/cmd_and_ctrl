@@ -241,7 +241,7 @@ func (b *blockSet) survivable(k int) bool {
 		b.exhausted = true
 		return false
 	}
-	if !b.dies() {
+	if !b.dies() && !b.loneCantBlockAlone() {
 		return true
 	}
 	if k >= len(b.free) || b.hopeless(k) {
@@ -260,6 +260,26 @@ func (b *blockSet) survivable(k int) bool {
 		}
 	}
 	return b.survivable(k + 1)
+}
+
+// loneCantBlockAlone reports whether the blocks as they stand are one
+// creature that can't block alone (#5396, cant_block_alone; CR 506.5,
+// 509.1b): a declaration the engine would never complete with it in, so
+// it is no way to survive, however much damage it stops. The search goes
+// on to add a companion.
+func (b *blockSet) loneCantBlockAlone() bool {
+	var only *protocol.CardView
+	for _, on := range b.on {
+		for _, c := range on {
+			switch {
+			case only == nil:
+				only = c
+			case only.InstanceID != c.InstanceID:
+				return false
+			}
+		}
+	}
+	return only != nil && only.CantBlockAlone
 }
 
 // blockOutcome is what survivable says about one block move.
