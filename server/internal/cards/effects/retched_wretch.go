@@ -49,7 +49,7 @@ func retchedWretchReturn(g *game.Game, item *game.StackItem) error {
 		Targets: []uuid.UUID{item.SourceCardID},
 		EntersAs: &game.EntersAs{
 			LoseAllAbilities: true,
-			Label:             "Retched Wretch — loses all abilities",
+			Label:            "Retched Wretch — loses all abilities",
 		},
 	}.Apply(ctx)
 }
