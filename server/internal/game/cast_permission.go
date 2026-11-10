@@ -1017,6 +1017,15 @@ type CastPermission struct {
 	// Empty is no such cap. Additive.
 	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
 
+	// MinSpellManaValue is the floor of the same test: the SPELL this
+	// permission lets a player cast must have at least this mana value
+	// (Glarb, Calamity's Augur's "cast spells with mana value 4 or greater
+	// from the top of your library"). Judged exactly as MaxSpellManaValue is
+	// (the face being cast, X as zero, in validateCastPathLocked, the one gate
+	// CastSpell, the view's offers and the bot enumerator share). A pointer so
+	// that nil is no floor. Additive within a snapshot version.
+	MinSpellManaValue *int `json:"minSpellManaValue,omitempty"`
+
 	// ManaValueBudget is the total mana value this permission may still
 	// open across ALL the spells cast through it (#2017, ADR 0066's
 	// 2026-10-14 amendment): "you may cast any number of spells with

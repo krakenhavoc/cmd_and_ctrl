@@ -61,6 +61,11 @@ var textWordLiteralAllowed = map[string]string{
 	// permanent or a spell).
 	"marang_river_prowler.go": "graveyard-only clause",
 
+	// "is a Reflection in addition to its other types" names a type the
+	// token copy gains; it is a template edit of a token being created, not
+	// a word of the Saga's own text a text-changing effect could reach.
+	"the_apprentices_folly.go": "a type a created token gains",
+
 	// An alternative cost's condition ("If you control a Plains, you may
 	// tap an untapped creature you control rather than pay this spell's
 	// mana cost") is judged as the card is cast from a hand (CR 601.2b),
@@ -71,14 +76,15 @@ var textWordLiteralAllowed = map[string]string{
 	// spell on the stack could reach it.
 	"std_b53_helpers.go": "as-you-cast value, judged as cast",
 
-	"angelic_favor.go":  "alternative cost, judged as cast",
-	"lashknife.go":      "alternative cost, judged as cast",
-	"bards_company.go":  "alternative cost, judged as cast",
-	"orims_cure.go":     "alternative cost, judged as cast",
-	"ramosian_rally.go": "alternative cost, judged as cast",
-	"sivvis_ruse.go":    "alternative cost, judged as cast",
-	"sivvis_valor.go":   "alternative cost, judged as cast",
-	"snuff_out.go":      "alternative cost, judged as cast",
+	"angelic_favor.go":     "alternative cost, judged as cast",
+	"lashknife.go":         "alternative cost, judged as cast",
+	"bards_company.go":     "alternative cost, judged as cast",
+	"illusion_spinners.go": "flash condition, judged as cast (Bard's Company's shape)",
+	"orims_cure.go":        "alternative cost, judged as cast",
+	"ramosian_rally.go":    "alternative cost, judged as cast",
+	"sivvis_ruse.go":       "alternative cost, judged as cast",
+	"sivvis_valor.go":      "alternative cost, judged as cast",
+	"snuff_out.go":         "alternative cost, judged as cast",
 
 	// "This land enters tapped unless you control …": asked as the land
 	// enters, a new object no text change has reached (CR 400.7, 614.12).

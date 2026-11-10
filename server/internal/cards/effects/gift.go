@@ -140,7 +140,13 @@ func (g *Gift) giveTo(ctx *Context, to uuid.UUID) error {
 	if to == uuid.Nil {
 		return nil
 	}
-	return g.give(ctx, to)
+	if err := g.give(ctx, to); err != nil {
+		return err
+	}
+	// "Whenever you give a gift" (Jolly Gerbils): the gift's effect has
+	// happened for the chosen opponent.
+	ctx.Game.GiftGivenForEffect(ctx.Controller(), to, ctx.Source())
+	return nil
 }
 
 // wrapResolve is the instant-and-sorcery half (CR 702.174b, j): when

@@ -74,6 +74,9 @@ type ExileGrantSnapshot struct {
 	Key       string    `json:"key"`
 	Source    uuid.UUID `json:"source,omitempty"`
 	Activator uuid.UUID `json:"activator,omitempty"`
+	// UntilEndOfTurn is additive within the snapshot version: absent on
+	// every older point, which reads as false.
+	UntilEndOfTurn bool `json:"untilEndOfTurn,omitempty"`
 }
 
 func exileGrantsToSnapshot(in []GrantedAbility) []ExileGrantSnapshot {

@@ -486,11 +486,14 @@ func (g *Game) consumePassClosedGrantLocked(holder uuid.UUID, card Card) {
 // card as it will be cast: the face already materialised, X locked at
 // zero (a free cast, CR 107.3b). An unreadable cost fails it.
 func spellManaValueWithinCap(card Card, grant *CastPermission) bool {
-	if grant == nil || (grant.MaxSpellManaValue == nil && grant.ManaValueBudget == nil) {
+	if grant == nil || (grant.MaxSpellManaValue == nil && grant.MinSpellManaValue == nil && grant.ManaValueBudget == nil) {
 		return true
 	}
 	mv, ok := card.ParsedManaValue()
 	if !ok {
+		return false
+	}
+	if grant.MinSpellManaValue != nil && mv < *grant.MinSpellManaValue {
 		return false
 	}
 	// #2017: the permission's running total is a cap on this spell too —

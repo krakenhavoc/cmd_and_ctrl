@@ -4066,6 +4066,9 @@ export interface ActivatedAbilityView {
   // (`granted_by`) is the payment, so nothing is picked and nothing is
   // sent.
   exile_grantor?: boolean;
+  // "Tap <the permanent that grants this>" (Fishing Pole): advisory, the
+  // grantor is `granted_by`, nothing is sent.
+  tap_grantor?: boolean;
   // Deconstruction Hammer's "Sacrifice <the permanent that grants this>" on
   // a granted row. Advisory like `exile_grantor`.
   sacrifice_grantor?: boolean;

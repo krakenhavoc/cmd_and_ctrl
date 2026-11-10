@@ -72,6 +72,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 green and white Human Citizen":                                {Name: "Human Citizen", TypeLine: "Token Creature — Human Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Citizen":                                      {Name: "Citizen", TypeLine: "Token Creature — Citizen", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"1/1 green and white Kithkin":                                      {Name: "Kithkin", TypeLine: "Token Creature — Kithkin", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
+	"2/2 black and green Elf":                                          {Name: "Elf", TypeLine: "Token Creature — Elf", Power: 2, Toughness: 2, Colors: []string{"B", "G"}},
 	"1/1 green and white Elf Warrior":                                  {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
 	"3/3 blue Serpent named Koma's Coil":                               {Name: "Koma's Coil", TypeLine: "Token Creature — Serpent", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"1/1 blue Faerie Dragon with flying":                               {Name: "Faerie Dragon", TypeLine: "Token Creature — Faerie Dragon", Power: 1, Toughness: 1, Colors: []string{"U"}, Keywords: []string{"flying"}},
@@ -142,7 +143,6 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Forest Tentacle":                                        {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Forest Dryad":                                           {Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Elf Warrior":                                            {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G"}},
-	"2/2 black and green Elf":                                          {Name: "Elf", TypeLine: "Token Creature — Elf", Power: 2, Toughness: 2, Colors: []string{"B", "G"}},
 	"1/1 green Elf":                                                    {Name: "Elf", TypeLine: "Token Creature — Elf", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Snake":                                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"5/4 green Snake":                                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 5, Toughness: 4, Colors: []string{"G"}},
@@ -266,6 +266,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Ape":                                                    {Name: "Ape", TypeLine: "Token Creature — Ape", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Beast":                                                  {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 green Raccoon":                                                {Name: "Raccoon", TypeLine: "Token Creature — Raccoon", Power: 3, Toughness: 3, Colors: []string{"G"}},
+	"3/3 green Elk":                                                    {Name: "Elk", TypeLine: "Token Creature — Elk", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/2 colorless Shapeshifter with changeling":                       {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 3, Toughness: 2, Keywords: []string{"changeling"}},
 	"3/2 white Hero with vigilance":                                    {Name: "Hero", TypeLine: "Token Creature — Hero", Power: 3, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"3/3 colorless Robot Villain artifact named Doombot":               {Name: "Doombot", TypeLine: "Token Artifact Creature — Robot Villain", Power: 3, Toughness: 3},
@@ -297,6 +298,7 @@ var tokenTable = map[string]game.Card{
 	"2/1 blue Phyrexian Myr artifact":                                  {Name: "Phyrexian Myr", TypeLine: "Token Artifact Creature — Phyrexian Myr", Power: 2, Toughness: 1, Colors: []string{"U"}},
 	"1/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"4/1 black Skeleton with menace":                                   {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 4, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace"}},
+	"4/4 white and blue Elemental":                                     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"W", "U"}}, // #4471: Hylda of the Icy Crown
 	"4/4 blue and red Elemental":                                       {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"U", "R"}},
 	"4/4 blue Giant Wizard":                                            {Name: "Giant Wizard", TypeLine: "Token Creature — Giant Wizard", Power: 4, Toughness: 4, Colors: []string{"U"}},
 	"2/2 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}},
@@ -412,4 +414,7 @@ var tokenTable = map[string]game.Card{
 	// #4462: Final Fantasy's Robot Warrior (Retrieve the Esper) and Horror (The Final Days).
 	"3/3 blue Robot Warrior artifact": {Name: "Robot Warrior", TypeLine: "Token Artifact Creature — Robot Warrior", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"2/2 black Horror":                {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+	// #4465: Foundations' Ninja (Kaito, Cunning Infiltrator).
+	"2/1 blue Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 2, Toughness: 1, Colors: []string{"U"}},
 }

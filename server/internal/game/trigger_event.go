@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // trigger_event.go — #1223: the triggering event, carried as DATA on
 // the triggered ability's stack item (CR 603.2, CR 603.10).
@@ -294,6 +298,12 @@ type TriggerContext struct {
 	// state triggered the instance, and Fired is false because nothing
 	// happened (state_triggers.go).
 	Object *ObjectSnapshot
+
+	// ColorsAmongYours is the number of colors among the permanents the
+	// source's controller controlled as the ability triggered, stamped only
+	// for a row that sets TriggeredAbility.StampColorsAmongYours (Vivid
+	// clauses whose TARGET COUNT is that number). Zero otherwise.
+	ColorsAmongYours int `json:"colorsAmongYours,omitempty"`
 }
 
 // Fired reports whether this context describes a real triggering
@@ -470,6 +480,24 @@ func (g *Game) triggerTargetsLocked(t TriggeredAbility, tc TriggerContext, sourc
 		return xCountedTriggerTargets(t.Targets, source)
 	}
 	return t.Targets
+}
+
+// colorsAmongPermanentsLocked is the number of colors among the permanents
+// `player` controls, read through the layered view (CR 105.2): colorless is
+// not a color, so it counts only white, blue, black, red and green.
+//
+// Caller must hold g.mu.
+func (g *Game) colorsAmongPermanentsLocked(player uuid.UUID) int {
+	seen := map[string]bool{}
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller != player {
+			continue
+		}
+		for _, col := range c.EffectiveColors() {
+			seen[strings.ToUpper(col)] = true
+		}
+	}
+	return len(seen)
 }
 
 // xCountedTriggerTargets is the clause of "When this enters, tap X target

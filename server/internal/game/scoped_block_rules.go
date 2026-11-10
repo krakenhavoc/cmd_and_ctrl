@@ -95,6 +95,10 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedByObject rule needs Text, the blocker's name as the refusal sentence reads it"
 		}
+	case ModCantBeBlockedByMoreThan:
+		if m.Amount < 1 {
+			return fmt.Sprintf("a cantBeBlockedByMoreThan rule needs a maximum of at least 1, got %d", m.Amount)
+		}
 	case ModLimitBlockersPerDefender:
 		if m.Amount < 1 {
 			return fmt.Sprintf("a limitBlockersPerDefender rule needs an amount of at least 1, got %d", m.Amount)
@@ -122,6 +126,12 @@ func CantBeBlockedExceptByMod(keywords, subtypes []string, text string) Mod {
 // (ScopeOpponentsCreatures).
 func LimitBlockersPerDefenderMod(n int) Mod {
 	return Mod{Kind: ModLimitBlockersPerDefender, Amount: n}
+}
+
+// CantBeBlockedByMoreThanMod is "<creature> can't be blocked by more than
+// N creatures" for a duration (Full Steam Ahead, CR 509.1b).
+func CantBeBlockedByMoreThanMod(n int) Mod {
+	return Mod{Kind: ModCantBeBlockedByMoreThan, Amount: n}
 }
 
 // CantBeBlockedByPlayerMod is "<creature> can't be blocked by creatures
@@ -279,6 +289,17 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return blocker != nil && barred.ID != uuid.Nil && blocker.InstanceID == barred.ID &&
 					blocker.ObjectEpoch == barred.Epoch && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedByMoreThan:
+		affected := affectedPredicate(e.Affected)
+		n := m.Amount
+		return BlockRule{
+			Count: func(g *Game, attacker, _ *Card) (int, int) {
+				if attacker == nil || !affected(attacker, g, nil) {
+					return 0, 0
+				}
+				return 0, n
 			},
 		}
 	case ModLimitBlockersPerDefender:

@@ -1750,6 +1750,9 @@ type stackItemSnapshot struct {
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
+	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
+	// Carried for the reason ExileWithCounter is.
+	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
 	// ExileInsteadOfGraveyard (#3863) is Torrential Gearhulk's and
 	// Emet-Selch's "if that spell would be put into your graveyard,
 	// exile it instead". Carried: a restore that lost it would let the
@@ -3305,6 +3308,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
+		ExileAndPlot:     s.ExileAndPlot,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
@@ -4489,6 +4493,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
+		ExileAndPlot:     s.ExileAndPlot,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863

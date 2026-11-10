@@ -38,14 +38,7 @@ func init() {
 			}
 			return Scry{Player: item.Controller, N: 2}.Apply(ctx)
 		}), game.Purpose{Scry: 2}),
-		ModeDoing("Exile target player's graveyard.", TargetPlayer("target player"),
-			func(item *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok || t.Kind != game.TargetPlayer {
-					return nil
-				}
-				return exileGraveyardForEffect(ctx.Game, item, t.ID)
-			}),
+		ModeDoing("Exile target player's graveyard.", TargetPlayer("target player"), exileTheModesTargetPlayersGraveyard),
 	)
 	Register(Spec{
 		OracleID:        "ba557e19-a409-4c02-a9ac-a8fb77762e43",

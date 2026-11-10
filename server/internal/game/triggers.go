@@ -208,6 +208,17 @@ type TriggeredAbility struct {
 	// opponent stopped needing the flag. No catalog row sets it today.
 	TargetsFromReadsBoard bool
 
+	// StampColorsAmongYours has the dispatch count the colors among the
+	// permanents the source's controller controls ONCE, as the trigger
+	// triggers, and carry the count on the trigger context
+	// (TriggerContext.ColorsAmongYours). It is data, not a func: a TargetsFrom
+	// that wants "up to X targets, X the number of colors among permanents
+	// you control" (Prismabasher's Vivid) reads the count off its context
+	// like Aurelia's Vindicator reads the event's Amount, so it reads nothing
+	// the board can change and needs no TargetsFromReadsBoard — restore
+	// re-derives the same clause from the carried count.
+	StampColorsAmongYours bool
+
 	// SourceBlind records that this row's Effect reads nothing of its
 	// stack item but the controller: not its source object, not its
 	// trigger context, not its targets, modes or Params. Two items of
@@ -970,6 +981,9 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 	// as its walk ends — so a context built any later would be
 	// missing exactly the half a dies-trigger needs.
 	tc := g.triggerContextLocked(ev)
+	if t.StampColorsAmongYours {
+		tc.ColorsAmongYours = g.colorsAmongPermanentsLocked(source.Controller)
+	}
 	if t.SubjectIsEventSource {
 		// #3033: the subject is the object that caused the event
 		// (the creature that dealt the damage), read here for the

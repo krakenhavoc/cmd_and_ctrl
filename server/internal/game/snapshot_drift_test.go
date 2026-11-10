@@ -976,6 +976,7 @@ var stackItemFields = plan(
 	// gave flashback to could then be flashed back again forever.
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
+	"ExileAndPlot", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
 	"BottomInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",

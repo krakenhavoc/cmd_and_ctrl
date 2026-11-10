@@ -957,6 +957,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
+		ExileAndPlot:     s.ExileAndPlot,
 		Seq:              s.Seq,
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,

@@ -2125,6 +2125,17 @@ type CastTally struct {
 	// sorcery spell each turn" is InstantSorcery == 1 once the tally is
 	// bumped, which is before EventCast.
 	InstantSorcery int `json:"instantSorcery,omitempty"`
+	// Instants, Sorceries and OtterSpellsExceptAlania count the instant
+	// spells, the sorcery spells and the Otter spells other than Alania,
+	// Divergent Storm that the player cast this turn, read as each spell
+	// became cast like InstantSorcery: Alania's "if it's the first instant
+	// spell, the first sorcery spell, or the first Otter spell other than
+	// Alania you've cast this turn" reads Instants == 1 on an instant
+	// spell, and so on, because the tally is bumped before EventCast.
+	// Additive within the snapshot version.
+	Instants                int `json:"instants,omitempty"`
+	Sorceries               int `json:"sorceries,omitempty"`
+	OtterSpellsExceptAlania int `json:"otterSpellsExceptAlania,omitempty"`
 	// InstantSorceryVillain counts the spells the player cast this turn that
 	// are an instant, a sorcery or a Villain (Lady Loki, Agent of Chaos's
 	// "your first instant, sorcery, or Villain spell each turn"), read as
