@@ -907,3 +907,68 @@ func TestCabinetRoomChaosVotesAndExilesTheMostVotedCreatures(t *testing.T) {
 		t.Error("a creature with no votes was exiled")
 	}
 }
+
+// --- The Doctor's Tomb -------------------------------------------------------
+
+func TestDoctorsTombExilesDyingCreaturesAndCostsTheirControllerTwoLife(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeDoctorsTomb)
+	g, _ := newPlaneGame(t, planeDoctorsTomb)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	wolf := b12Creature(g, opp.ID, "Wolf", "Creature — Wolf", 2, 2)
+	life := opp.Life
+	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(wolf) })
+	g.RunStateChecksForTest()
+	if !g.Exile.Contains(wolf) || opp.Graveyard.Contains(wolf) {
+		t.Error("the creature did not go to exile instead of the graveyard")
+	}
+	if opp.Life != life-2 {
+		t.Errorf("the creature's controller is at %d, want %d", opp.Life, life-2)
+	}
+	_ = me
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	bear := b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(bear) })
+	g.RunStateChecksForTest()
+	if !opp.Graveyard.Contains(bear) {
+		t.Error("the replacement outlived the plane")
+	}
+}
+
+func TestDoctorsTombChaosRedistributesLifeTotals(t *testing.T) {
+	g, _ := newPlaneGame(t, planeDoctorsTomb)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	a := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	b := g.Seats[(g.Turn.ActiveSeat+2)%4]
+	me.Life, a.Life, b.Life = 5, 15, 30
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answer := func(label string) {
+		t.Helper()
+		c := latestOptionPickFor(g, me.ID)
+		if c == nil {
+			t.Fatalf("no option prompt waiting for the planar controller (wanted %q)", label)
+		}
+		for i, o := range c.PickOptions {
+			if o.Label == label {
+				if err := g.ResolveOptionPick(c.ID, me.ID, i); err != nil {
+					t.Fatalf("answering %q: %v", label, err)
+				}
+				return
+			}
+		}
+		t.Fatalf("the prompt %q offers no %q: %+v", c.Reason, label, c.PickOptions)
+	}
+	// Include me (5) and the 30-life player, leave the 15-life player out.
+	answer("Redistribute " + me.Name + "'s life total (5)")
+	answer("Leave " + a.Name + "'s life total as it is")
+	answer("Redistribute " + b.Name + "'s life total (30)")
+	answer("Leave " + g.Seats[(g.Turn.ActiveSeat+3)%4].Name + "'s life total as it is")
+	// Two players, two totals: I get 30, so the other gets 5.
+	answer(b.Name + "'s life total (30)")
+	if me.Life != 30 || b.Life != 5 || a.Life != 15 {
+		t.Errorf("life totals %d, %d, %d, want 30, 5 and the third player's untouched 15", me.Life, b.Life, a.Life)
+	}
+}
