@@ -229,6 +229,7 @@ body nightmares-and-daydreams/target-player-mills
 body nine-lives-familiar/return
 body nine-lives/incarnation-counter
 body noctis/warp-strike-return
+body north-pole-research-base/stun
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
 body ondu-rising/attacker-gains-lifelink
@@ -1269,6 +1270,8 @@ option option-pick/put-attacking-from-library
 option option-pick/rattleback-apothecary-keyword
 option option-pick/read-the-runes-answer
 option option-pick/reality-fracture-remove-up-to-counters
+option option-pick/redistribute-life-assign
+option option-pick/redistribute-life-include
 option option-pick/rejoinder-tap-or-untap
 option option-pick/remove-a-counter-of-your-choice
 option option-pick/reselect-attack
@@ -1617,6 +1620,7 @@ run prompt-run/necrotic-hex-zombies
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
 run prompt-run/plunge-into-darkness-sacrifice
+run prompt-run/pompeii-planeswalk
 run prompt-run/pox-plague-sacrifice
 run prompt-run/priest-of-forgotten-gods-payout
 run prompt-run/promise-of-loyalty-keep
@@ -2687,6 +2691,7 @@ vote vote/messenger-jays
 vote vote/mob-verdict
 vote vote/orchard-elemental
 vote vote/plea-for-power
+vote vote/prime-ministers-cabinet-room
 vote vote/sail-into-the-west
 vote vote/selvalas-stampede
 vote vote/split-decision
