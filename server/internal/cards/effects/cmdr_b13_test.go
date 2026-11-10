@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -1490,5 +1491,35 @@ func TestCmdrB16RampartArchitectMakesWallsAndFetchesWhenADefenderDies(t *testing
 	answerSearchNamed(t, g, me.ID, "Forest")
 	if !g.Battlefield.Contains(ids[0]) || !b16Tapped(t, g, ids[0]) {
 		t.Error("the Forest did not enter tapped")
+	}
+}
+
+const cmdrB16ArborOracle = "9640225a-8f31-495f-b9de-53ed348ff24b"
+
+func TestCmdrB16ArborAdherentAddsOneOfAnyColorOrTheGreatestOtherToughnessOfOne(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	adherent := b12Push(g, me.ID, "Arbor Adherent", "Creature — Dog Druid", cmdrB16ArborOracle, 2, 4)
+	b12Creature(g, me.ID, "Wall", "Creature — Wall", 0, 6)
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	b12Creature(g, g.Seats[1].ID, "Their Giant", "Creature — Giant", 9, 9)
+	if err := g.ActivateManaAbility(me.ID, adherent, 0, game.ManaAbilityParams{Colors: []string{"R"}}); err != nil {
+		t.Fatalf("first ability: %v", err)
+	}
+	if got := poolColors(me); !reflect.DeepEqual(got, []string{"R"}) {
+		t.Errorf("pool after ability 1 = %v, want [R]", got)
+	}
+	// Untap and use the second: six mana of one colour (the Wall's 6; neither
+	// the Adherent's own 4 nor an opponent's 9 counts).
+	g.WithWriteLock(func() {
+		c := findBattlefieldCardByID(g, adherent)
+		c.Tapped = false
+	})
+	me.ManaPool = game.ManaPool{}
+	if err := g.ActivateManaAbility(me.ID, adherent, 1, game.ManaAbilityParams{Colors: []string{"G"}}); err != nil {
+		t.Fatalf("second ability: %v", err)
+	}
+	if got := poolColors(me); !reflect.DeepEqual(got, []string{"G", "G", "G", "G", "G", "G"}) {
+		t.Errorf("pool after ability 2 = %v, want six green", got)
 	}
 }
