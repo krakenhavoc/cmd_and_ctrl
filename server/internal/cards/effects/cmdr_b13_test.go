@@ -540,3 +540,40 @@ func TestCmdrB14AfterlifeTakesOneCreatureFromEachGraveyardAsZombies(t *testing.T
 		t.Error("the untargeted card left the graveyard")
 	}
 }
+
+const cmdrB14BoneDevourerOracle = "0ee41ef9-0b39-4d00-a68e-7914839a7175"
+
+func TestCmdrB14BoneDevourerGrowsByDeathsAndPaysOutWhenItDies(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for _, name := range []string{"Bear One", "Bear Two"} {
+		id := b12Creature(g, me.ID, name, "Creature — Bear", 2, 2)
+		g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(id) })
+		passPriorityAroundTable(t, g)
+	}
+	devourer := castHoldCreature(t, g, "Bone Devourer", "Creature — Dragon", cmdrB14BoneDevourerOracle, 2, 2)
+	if got := plusOnes(g, devourer); got != 2 {
+		t.Fatalf("%d +1/+1 counters after two deaths, want 2", got)
+	}
+	for i := 0; i < 6; i++ {
+		stapleLibraryCard(me, "Spare", "Sorcery")
+	}
+	hand, life := me.Hand.Size(), me.Life
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(devourer) })
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+2 || me.Life != life-2 {
+		t.Errorf("hand %d->%d, life %d->%d; want to draw 2 and lose 2", hand, me.Hand.Size(), life, me.Life)
+	}
+}
+
+func TestCmdrB14BoneDevourerWithNoDeathsDrawsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	devourer := castHoldCreature(t, g, "Bone Devourer", "Creature — Dragon", cmdrB14BoneDevourerOracle, 2, 2)
+	hand, life := me.Hand.Size(), me.Life
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(devourer) })
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand || me.Life != life {
+		t.Errorf("hand %d->%d, life %d->%d; want no change", hand, me.Hand.Size(), life, me.Life)
+	}
+}
