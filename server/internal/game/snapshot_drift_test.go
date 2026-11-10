@@ -692,6 +692,8 @@ var cardFields = plan(
 	// #2651: the ability half of that link (CR 607.2a). The zero ref is
 	// a legal state too: a replacement's link, or a file before it.
 	"ExiledWithAbility", carried, "",
+	// #4458: the turn that link was made on; zero is "not this turn".
+	"ExiledWithTurn", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
@@ -1116,6 +1118,10 @@ var pendingChoiceFields = plan(
 	// abilities. A restored Birds pick that lost it would put the mana
 	// in the pool and skip Wild Growth's {G}.
 	"ManaTapped", carried, "",
+	// The "becomes that color" rider of the pick's ability (Foraging
+	// Wickermaw): a restored pick that lost it would leave the source
+	// its old colour.
+	"ManaRecolorsSource", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	// #4289: a keyed MayPayX's "choose X" holds no frame, so its bounds are

@@ -238,7 +238,8 @@ func stampExileCounterLocked(dst *Zone, cardID uuid.UUID, kind string) {
 //
 // Called after MoveCard, which has already cleared any older link:
 // the stamp names the move that just happened and no earlier one.
-func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef, ability AbilityRef) {
+// `turn` is the Turn.Seq the link is made on (Card.ExiledWithTurn).
+func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef, ability AbilityRef, turn int) {
 	if dst == nil || dst.Kind != ZoneExile || ref.ID == uuid.Nil {
 		return
 	}
@@ -246,6 +247,7 @@ func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef, a
 		if dst.Cards[i].InstanceID == cardID {
 			dst.Cards[i].ExiledWith = ref
 			dst.Cards[i].ExiledWithAbility = ability
+			dst.Cards[i].ExiledWithTurn = turn
 			return
 		}
 	}

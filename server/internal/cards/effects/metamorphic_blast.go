@@ -40,13 +40,7 @@ func init() {
 				}),
 			SpreeModeDoing("Target player draws two cards.", "{3}",
 				TargetPlayer("target player"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
-					if !ok || t.Kind != game.TargetPlayer {
-						return nil
-					}
-					return DrawCards{Player: t.ID, N: 2}.Apply(ctx)
-				}),
+				TheModesTargetPlayerDrawsTwo),
 		),
 	})
 }

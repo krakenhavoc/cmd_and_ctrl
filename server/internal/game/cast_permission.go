@@ -380,6 +380,17 @@ type PermissionFilter struct {
 	// object the card must be linked to. Zero on every catalog entry.
 	ExiledWith PermissionCardRef `json:"exiledWith"`
 
+	// ExiledWithSourceThisTurn narrows ExiledWithSource to the cards
+	// linked during the current turn: Maralen, Fae Ascendant's "from
+	// among cards exiled with Maralen this turn" (#4458). The card's
+	// Card.ExiledWithTurn must equal ExiledOnTurn, which the standing
+	// derivation fills with the current Turn.Seq (fillDerivedLiveLocked)
+	// for the reason ExiledWith is derived: a catalog entry cannot name
+	// a turn. A flag with no derived turn matches nothing. Set it with
+	// ExiledWithSource. Additive.
+	ExiledWithSourceThisTurn bool `json:"exiledWithSourceThisTurn,omitempty"`
+	ExiledOnTurn             int  `json:"exiledOnTurn,omitempty"`
+
 	// Subtype is a subtype a qualifying card must have, read from its
 	// effective subtypes (any case): Herald of Amity's "an Aura spell"
 	// (#4834). Empty constrains nothing. Additive.
@@ -501,6 +512,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
+	if f.ExiledWithSourceThisTurn && (f.ExiledOnTurn == 0 || c.ExiledWithTurn != f.ExiledOnTurn) {
+		return false
+	}
 	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
 		return false
 	}
@@ -520,6 +534,7 @@ func (f PermissionFilter) faceBlind() bool {
 	f.NotOwnedByHolder, f.OwnedByHolder = false, false
 	f.WithCounter = ""
 	f.ExiledWithSource, f.ExiledWith = false, PermissionCardRef{}
+	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
@@ -983,6 +998,16 @@ type CastPermission struct {
 	// list and the bot enumerator share, so all three refuse the same
 	// casts.
 	MaxSpellManaValue *int `json:"maxSpellManaValue,omitempty"`
+	// MaxSpellManaValueCountOf is a MaxSpellManaValue that is a count,
+	// not a constant: "a spell with mana value less than or equal to the
+	// number of Elves and Faeries you control" (Maralen, Fae Ascendant,
+	// #4458) is []string{"Elf", "Faerie"}, the permanents the holder
+	// controls that have any of these subtypes, each counted once. Only a
+	// STANDING permission reads it: the derivation (fillDerivedLiveLocked)
+	// counts the battlefield on every query and writes the result into
+	// MaxSpellManaValue, so the cap is the count as the spell is cast.
+	// Empty is no such cap. Additive.
+	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
 
 	// ManaValueBudget is the total mana value this permission may still
 	// open across ALL the spells cast through it (#2017, ADR 0066's
@@ -2588,6 +2613,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			for _, perm := range CatalogCastPermissions(key) {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+					g.fillDerivedLiveLocked(&stamped, p.ID)
 					out = append(out, stamped)
 				}
 			}
@@ -2604,6 +2630,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
 				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+				g.fillDerivedLiveLocked(&stamped, p.ID)
 				out = append(out, stamped)
 			}
 		}
@@ -2626,6 +2653,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			for _, perm := range CatalogCastPermissions(key) {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+					g.fillDerivedLiveLocked(&stamped, p.ID)
 					out = append(out, stamped)
 				}
 			}
