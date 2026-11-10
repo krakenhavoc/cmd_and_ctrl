@@ -18,7 +18,7 @@ func init() {
 		Name:         "Skola Grovedancer",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard,
+			OnAny([]game.EventKind{game.EventMill, game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard,
 				"Skola Grovedancer — gain 1 life", Do(GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{

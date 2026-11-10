@@ -73,5 +73,5 @@ func cmdr2B13LandCardToYourGraveyard(ev game.Event, source *game.Card, _ game.Ch
 // cmdr2B13OneOrMoreLandCardsToYourGraveyard is the "one or more land
 // cards" form of the same trigger: one batch fires it once (CR 603.2c).
 func cmdr2B13OneOrMoreLandCardsToYourGraveyard(label string, effect Effect) game.TriggeredAbility {
-	return OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard, label, effect))
+	return OncePerBatch(OnAny([]game.EventKind{game.EventMill, game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard, label, effect))
 }
