@@ -100,6 +100,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)](#cards-from-outside-the-game-wishes-and-the-sideboard-adr-0191-3506)
   - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
   - [Omen cards (CR 720, #5175)](#omen-cards-cr-720-5175)
+  - [Clash (CR 701.30, #5424)](#clash-cr-70130-5424)
   - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
@@ -12455,6 +12456,43 @@ CreateToken{Controller: p, Template: MapToken(), N: 2}.Apply(ctx)               
   library was empty (CR 701.44b).
 - Not built: simultaneous explores in APNAP order (CR 701.44d), and a
   replacement window on the action (Topography Tracker).
+
+### Clash (CR 701.30, #5424)
+
+"Clash with <a player>" is `Game.ClashForEffect(source, player, opponent,
+then)` and "clash with an opponent" is
+`Game.ClashWithAnOpponentForEffect(source, player, then)`
+(`game/clash.go`). The card side is in `cards/effects/clash.go`.
+
+```go
+Clash{Opponent: defender}.Apply(ctx)                    // Marvo: "clash with defending player"
+ClashWithAnOpponent{Then: ctx.Tail(rest)}.Apply(ctx)    // Hoarder's Greed: "clash with an opponent. If you win, …"
+On(game.EventClashWon, youWonAClash, label, effect)     // "Whenever you win a clash, …"
+```
+
+- Both players reveal their top card at the same time, each then gets a
+  top-or-bottom question in APNAP order, and the cards move once both
+  answers are in (CR 701.30c). The questions are prompts, so anything
+  printed after the clash goes in `Then`, a registered tail (`CardTail`
+  or `game.RegisterTail`), never after `Apply` returns.
+- `Then` runs on every outcome. `wonTheClash(o)` (its
+  `TailOutcome.Amount == 1`) is "if you win": the controller revealed a
+  card with a higher mana value than the other card revealed
+  (CR 701.30d). A tie has no winner. A player with an empty library
+  reveals nothing and cannot win; the other clasher then wins with any
+  card.
+- "Clash with an opponent" asks the controller which opponent as the
+  effect resolves (CR 701.30b). It is a choice, not a target. A card that
+  repeats its process (Hoarder's Greed) asks again each time.
+- "Whenever you win a clash" watches `game.EventClashWon`: `Actor` won and
+  `Target` is the player they clashed with, whichever of them started
+  the clash. "Whenever you clash" would watch `game.EventClashed`, one
+  per clashing player (`Label` is `game.ClashPutOnBottom`,
+  `game.ClashKeptOnTop`, or empty for no card revealed); no card uses it
+  yet.
+- A clasher who leaves the game with their question open leaves their
+  card on top, and the clash still finishes.
+- Not built: a replacement window on the action.
 
 ### Reconfigure (CR 702.151, #2639)
 
