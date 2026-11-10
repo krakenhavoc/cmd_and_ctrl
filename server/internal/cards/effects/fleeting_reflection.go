@@ -25,6 +25,7 @@ func init() {
 		OracleID:     "c915f815-77d7-4e08-b178-82b29a58bb03",
 		Name:         "Fleeting Reflection",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof")),
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			Distinct(TargetCreature("up to one other target creature").WithCount(0, 1)),

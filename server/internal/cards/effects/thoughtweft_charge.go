@@ -14,7 +14,7 @@ func init() {
 		OracleID:     "a8cdcaa0-8e25-4c17-b5ce-16f72b535123",
 		Name:         "Thoughtweft Charge",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Answers: game.AnswerPump, Draws: 1},
+		Purpose:      game.Purpose{Answers: game.AnswerPump, Draws: 1, Targets: game.ForTargets(BenefitUntilEOT(0, 3, 3))},
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := vsPumpTheTarget(ctx, 3, 3, "Thoughtweft Charge — +3/+3 until end of turn"); err != nil {

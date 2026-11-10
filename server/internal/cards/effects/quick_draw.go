@@ -23,6 +23,7 @@ func init() {
 		OracleID:     "ae0d17f6-859c-4b41-8b66-b68abb837bbb",
 		Name:         "Quick Draw",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "first strike")),
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
 			TargetPlayer("target opponent", Opponent()),
