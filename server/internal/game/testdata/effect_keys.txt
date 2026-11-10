@@ -680,6 +680,7 @@ choose choose-cards/narset-of-the-ancient-way-discarded
 choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
 choose choose-cards/necrobloom-dredge-pick
+choose choose-cards/necromantic-selection-pick
 choose choose-cards/nexus-of-becoming-exile
 choose choose-cards/nezumi-shortfang-discarded
 choose choose-cards/nick-fury-spymaster-put
@@ -774,6 +775,7 @@ choose choose-cards/take-rest-bottom-random
 choose choose-cards/take-rest-graveyard
 choose choose-cards/take-reveal-rest-bottom-any-order
 choose choose-cards/take-reveal-rest-bottom-random
+choose choose-cards/tasigur-the-golden-fang-return
 choose choose-cards/taster-of-wares-exile
 choose choose-cards/taster-of-wares-reveal
 choose choose-cards/teferi-akosa-discard-the-one
@@ -1282,6 +1284,7 @@ option option-pick/slithermuse-opponent
 option option-pick/sorcerous-spyglass-look
 option option-pick/starseer-mentor-punisher
 option option-pick/tap-or-untap-that-permanent
+option option-pick/tasigur-the-golden-fang-opponent
 option option-pick/teferis-realm-phase-out
 option option-pick/teyo-geometric-tactician-direction
 option option-pick/thanos-destroy-parity
@@ -2163,6 +2166,7 @@ tail mass/genesis-of-the-daleks-drain
 tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
 tail mass/mass-polymorph-reveal
+tail mass/necromantic-selection-return
 tail mass/oversimplify-exiled
 tail mass/overwrite-the-multiverse-empower
 tail mass/phyrexian-rebirth-horror
@@ -2199,6 +2203,7 @@ tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
+tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
 tail nesting-grounds/remove

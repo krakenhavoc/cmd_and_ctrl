@@ -3,7 +3,7 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Shalai, Voice of Plenty — Legendary Creature — Angel {3}{W}, 3/4
-// (Foundations Commander):
+// (Tarkir: Dragonstorm Commander):
 //
 //	"Flying
 //	 You, planeswalkers you control, and other creatures you control have

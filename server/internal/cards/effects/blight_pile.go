@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Blight Pile — Creature — Phyrexian {1}{B}, 3/3 (Foundations
-// Commander):
+// Blight Pile — Creature — Phyrexian {1}{B}, 3/3 (Tarkir: Dragonstorm Commander):
 //
 //	"Defender
 //	 {2}{B}, {T}: Each opponent loses X life, where X is the number of

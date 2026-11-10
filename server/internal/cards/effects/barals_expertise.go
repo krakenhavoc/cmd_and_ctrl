@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Baral's Expertise — Sorcery {3}{U}{U} (Foundations Commander; first
-// printed in Kaladesh):
+// Baral's Expertise — Sorcery {3}{U}{U} (Tarkir: Dragonstorm Commander):
 //
 //	"Return up to three target artifacts and/or creatures to their
 //	 owners' hands.

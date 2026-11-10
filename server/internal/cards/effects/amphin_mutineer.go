@@ -3,7 +3,7 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Amphin Mutineer — Creature — Salamander Pirate {3}{U}, 3/3 (Tarkir:
-// Dragonstorm Commander; first printed in Lost Caverns of Ixalan):
+// Dragonstorm Commander):
 //
 //	"When this creature enters, exile up to one target non-Salamander
 //	 creature. That creature's controller creates a 4/3 blue Salamander

@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Forbidden Alchemy — Instant {2}{U} (Foundations Commander; first
-// printed in Innistrad):
+// Forbidden Alchemy — Instant {2}{U} (Tarkir: Dragonstorm Commander):
 //
 //	"Look at the top four cards of your library. Put one of them into
 //	 your hand and the rest into your graveyard.

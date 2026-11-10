@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Haughty Djinn — Creature — Djinn {1}{U}{U}, */4 (Foundations Commander;
-// first printed in Kaladesh):
+// Haughty Djinn — Creature — Djinn {1}{U}{U}, */4 (Tarkir: Dragonstorm Commander):
 //
 //	"Flying
 //	 Haughty Djinn's power is equal to the number of instant and sorcery

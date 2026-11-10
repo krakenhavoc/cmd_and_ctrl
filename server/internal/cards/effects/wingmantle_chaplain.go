@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Wingmantle Chaplain — Creature — Human Cleric {3}{W}, 0/3 (Foundations
-// Commander):
+// Wingmantle Chaplain — Creature — Human Cleric {3}{W}, 0/3 (Tarkir: Dragonstorm Commander):
 //
 //	"Defender
 //	 When this creature enters, create a 1/1 white Bird creature token

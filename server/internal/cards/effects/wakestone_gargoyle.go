@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Wakestone Gargoyle — Creature — Gargoyle {3}{W}, 3/4 (Foundations
-// Commander):
+// Wakestone Gargoyle — Creature — Gargoyle {3}{W}, 3/4 (Tarkir: Dragonstorm Commander):
 //
 //	"Defender, flying
 //	 {1}{W}: Creatures you control with defender can attack this turn as

@@ -2,7 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Twilight Drover — Creature — Spirit {2}{W}, 1/1 (Foundations Commander):
+// Twilight Drover — Creature — Spirit {2}{W}, 1/1 (Tarkir: Dragonstorm Commander):
 //
 //	"Whenever a creature token leaves the battlefield, put a +1/+1
 //	 counter on this creature.

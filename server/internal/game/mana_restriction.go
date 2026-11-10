@@ -138,6 +138,13 @@ const (
 	// known (weaker than printed, never stronger). The mirror image of
 	// ManaRestrictNotFromHand, read from the same CastFrom.
 	ManaRestrictCastFromExile = "cast:from-exile"
+	// ManaRestrictCastFromGraveyard is the same POSITIVE clause for the
+	// graveyard — "spend this mana only to cast a spell from your
+	// graveyard" (Lord of the Forsaken, #5368). It admits a spell cast
+	// from a graveyard and nothing else: not an activation, not a cast
+	// from the hand, exile, the command zone or a library, and not a cast
+	// whose zone is not known (weaker than printed, never stronger).
+	ManaRestrictCastFromGraveyard = "cast:from-graveyard"
 	// ManaRestrictMonocolored permits the token only when the object
 	// being paid for is exactly one colour (CR 105.2a) — Throne of
 	// Eldraine's "spend this mana only to cast monocolored spells of
@@ -700,6 +707,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return false
 	case ManaRestrictCastFromExile:
 		return ctx.Purpose == SpendPurposeCast && ctx.CastFrom == ZoneExile
+	case ManaRestrictCastFromGraveyard:
+		return ctx.Purpose == SpendPurposeCast && ctx.CastFrom == ZoneGraveyard
 	case ManaRestrictNotNonartifactSpell:
 		switch ctx.Purpose {
 		case SpendPurposeActivate:

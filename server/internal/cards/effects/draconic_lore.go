@@ -2,8 +2,7 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Draconic Lore — Instant {5}{U} (Tarkir: Dragonstorm Commander; first
-// printed in Dragons of Tarkir):
+// Draconic Lore — Instant {5}{U} (Tarkir: Dragonstorm Commander):
 //
 //	"This spell costs {2} less to cast if you control a Dragon.
 //	 Draw three cards."
