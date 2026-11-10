@@ -19,8 +19,10 @@ run:
   # makes lint rebuild the type data of nearly the whole tree, cards/effects
   # included, and twice ran past 6m on GitHub-hosted runners with 0 issues;
   # an ordinary PR lints in about 5m.
+  # 20m (#5434): the push of a roll-up to develop (hundreds of cards/effects files
+  # and internal/game together, cold cache) ran past 10m twice with 0 issues.
   # `migrate` drops this key (v2 has no timeout by default); it is kept on purpose.
-  timeout: 10m
+  timeout: 20m
 
 linters:
   default: none
