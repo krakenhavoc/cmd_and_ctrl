@@ -1,0 +1,9 @@
+# Sets recorded as draftable (ADR 0222 §4, #5437). GENERATED: do not edit.
+# Source: the Scryfall default-cards dump
+# TestDraftableLedger fails when a set listed here stops being draftable.
+# Regenerate on purpose only; see testdata/README.md.
+# <set code> <pack cards> <name>
+#
+# EMPTY ON PURPOSE: the session that added this file had no Scryfall dump
+# to generate it from. Until someone with the dump runs -update-draftable,
+# no real set is protected by the ledger.

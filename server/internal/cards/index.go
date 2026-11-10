@@ -213,6 +213,16 @@ type Card struct {
 	// FrameEffects is Scryfall's frame_effects list ("showcase",
 	// "extendedart", "legendary", ...).
 	FrameEffects []string `json:"frame_effects,omitempty"`
+	// Rarity, Booster and PromoTypes are Scryfall's rarity ("common",
+	// "uncommon", "rare", "mythic", "special", "bonus"), its booster flag
+	// (this printing is found in the set's boosters) and its promo_types
+	// list ("boosterfun", "prerelease", ...). Printing data read by one
+	// package, internal/draftpacks, which builds a booster pack for a
+	// set (ADR 0222 §4, #5437). Nothing in the rules reads them. All
+	// omitted on the wire when empty.
+	Rarity     string   `json:"rarity,omitempty"`
+	Booster    bool     `json:"booster,omitempty"`
+	PromoTypes []string `json:"promo_types,omitempty"`
 	// AllParts is Scryfall's all_parts list, KEPT ONLY for its meld
 	// entries (component "meld_part" / "meld_result"): Load drops every
 	// other related card (tokens, combo pieces) as it decodes, so the
