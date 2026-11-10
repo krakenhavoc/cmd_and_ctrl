@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+	"github.com/google/uuid"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"testing"
 )
@@ -127,5 +129,75 @@ func TestKilnspireDistrictChaosPaysXForDamage(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if got := life - opp.Life; got != 3 {
 		t.Errorf("the target lost %d life, want 3", got)
+	}
+}
+
+var planeMinamo = planeFixture{"6491f511-87e6-4504-84f5-fe5cf44768d7", "Minamo", "Plane — Kamigawa"}
+
+func TestMinamoLetsTheCasterDrawAndChaosReturnsBlueCards(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeMinamo)
+	g, plane := newPlaneGame(t, planeMinamo)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+
+	// A spell's caster may draw; it resolves before the spell.
+	before := me.Hand.Size()
+	castCatalogSpell(t, g, "Test Ritual", "Sorcery", "", nil)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 1 {
+		t.Fatalf("the cast put %d plane items up, want 1", n)
+	}
+	for i := 0; i < 8 && itemsFromPlane(g, plane.InstanceID) > 0; i++ {
+		if err := g.PassPriority(); err != nil && !errors.Is(err, game.ErrChoicePending) {
+			t.Fatalf("pass: %v", err)
+		}
+	}
+	c := latestConfirmFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the caster was not asked whether to draw")
+	}
+	if err := g.ResolveConfirm(c.ID, me.ID, true); err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand %d, want %d (the spell left, a card was drawn)", got, before+1)
+	}
+	passPriorityAroundTable(t, g)
+
+	// Chaos: each player may return a blue card; all return together.
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the chaos ability")
+	}
+	blue := game.Card{InstanceID: uuid.New(), Name: "Blue One", TypeLine: "Instant", Colors: []string{"U"}, Owner: me.ID, Controller: me.ID}
+	me.Graveyard.PushTop(blue)
+	red := pushGraveyardCardWithTypeLineID(me, "Red One", "Instant")
+	theirs := game.Card{InstanceID: uuid.New(), Name: "Their Blue", TypeLine: "Instant", Colors: []string{"U"}, Owner: opp.ID, Controller: opp.ID}
+	opp.Graveyard.PushTop(theirs)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	c = latestOptionPickFor(g, me.ID)
+	if c == nil || len(c.PickOptions) != 2 {
+		t.Fatalf("the active player's offer: %+v (only the blue card, plus declining)", c)
+	}
+	if err := g.ResolveOptionPick(c.ID, me.ID, 1); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	if me.Hand.Contains(blue.InstanceID) {
+		t.Error("the card returned before the other players chose")
+	}
+	c = latestOptionPickFor(g, opp.ID)
+	if c == nil {
+		t.Fatal("the next player was not asked")
+	}
+	if err := g.ResolveOptionPick(c.ID, opp.ID, 0); err != nil {
+		t.Fatalf("decline: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(blue.InstanceID) {
+		t.Error("the chosen blue card did not return")
+	}
+	if me.Hand.Contains(red) || opp.Hand.Contains(theirs.InstanceID) {
+		t.Error("a card that was not chosen returned")
 	}
 }

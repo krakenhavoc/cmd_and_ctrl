@@ -38,3 +38,9 @@ func planesR6PlaneswalkedToThisOrYourFirstMain(ev game.Event, source *game.Card,
 	}
 	return false
 }
+
+// planesR6APlayerCastsASpell is "Whenever a player casts a spell": any
+// player's cast, the plane's controller's included.
+func planesR6APlayerCastsASpell(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventCast && ev.Actor != uuid.Nil
+}
