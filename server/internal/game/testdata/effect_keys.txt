@@ -113,6 +113,7 @@ body doom-reigns-supreme/exile-and-cast
 body dorothea/sacrifice-at-end-of-combat
 body dr-leonard-mccoy/return-at-next-end-step
 body dr-leonard-mccoy/when-it-dies-this-turn
+body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
@@ -668,6 +669,7 @@ choose choose-cards/mind-extraction-discard-wur
 choose choose-cards/mind-extraction-discard-wurg
 choose choose-cards/mind-roots-lands
 choose choose-cards/mind-roots-put-land
+choose choose-cards/minion-of-the-mighty-put
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
 choose choose-cards/mog-moogle-warrior-discarded
@@ -1208,6 +1210,7 @@ option option-pick/done-for-the-day-reward
 option option-pick/dwarven-armorer-counter
 option option-pick/elemental-teachings-opponent
 option option-pick/emergent-ultimatum-opponent
+option option-pick/emeria-shepherd-return
 option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
 option option-pick/explosion-of-riches-draw
@@ -1237,6 +1240,7 @@ option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/memories-returning-opponent
+option option-pick/minion-of-the-mighty-attacks
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/multiform-wonder-keyword
@@ -1373,6 +1377,7 @@ payunless pay-unless/energy-plus-one-counter-on-this
 payunless pay-unless/energy-sacrifice-this
 payunless pay-unless/era-of-innovation-get-energy
 payunless pay-unless/esper-sentinel-draw
+payunless pay-unless/eternal-taskmaster-return
 payunless pay-unless/extort-drain
 payunless pay-unless/fire-lord-sozin-reanimate
 payunless pay-unless/flameblast-dragon-x-damage
@@ -1608,6 +1613,7 @@ run prompt-run/mica-reader-of-ruins-copy
 run prompt-run/midnight-crusader-shuttle-take
 run prompt-run/momentum-breaker-discard
 run prompt-run/namazu-trader-surveil
+run prompt-run/necrotic-hex-zombies
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
 run prompt-run/plunge-into-darkness-sacrifice
@@ -1904,6 +1910,7 @@ tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
+tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
 tail demonic-consultation/taken
@@ -1923,6 +1930,7 @@ tail dinas-guidance/after-hand
 tail dinas-guidance/found
 tail distant-memories/offer
 tail dominion-infiltration/haste-and-exile-copies
+tail dragonhawk-fates-tempest/schedule-damage
 tail drain/gain-the-life-lost
 tail dread-summons/zombie-per-creature-milled
 tail dredge/return-then-draw
@@ -2170,6 +2178,7 @@ tail mass/starfall-invocation-return
 tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
+tail mass/whiptongue-hydra-counters
 tail mass/worlds-within-worlds-exiled
 tail mass/zero-point-ballad-return
 tail mazes-end/win-the-game
@@ -2181,6 +2190,7 @@ tail mill-then-take/first-contact
 tail mill-then-take/first-contact-first-spell
 tail mill-then-take/something-worth-saving
 tail mill-then-take/temporal-anomaly
+tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
@@ -2478,6 +2488,7 @@ tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
+tail then/grasp-of-fate-exiled-one
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
