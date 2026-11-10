@@ -3654,6 +3654,9 @@ export interface AbilityCostBranchView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Bloodthorn Flail's "Pay {3}" branch: the mana the branch pays from the
+  // pool (game.AbilityCostBranchMana). Always offered; the payment checks it.
+  mana_cost?: string;
 }
 
 export interface PayOptionView {
@@ -4052,6 +4055,9 @@ export interface ActivatedAbilityView {
   // (`granted_by`) is the payment, so nothing is picked and nothing is
   // sent.
   exile_grantor?: boolean;
+  // Deconstruction Hammer's "Sacrifice <the permanent that grants this>" on
+  // a granted row. Advisory like `exile_grantor`.
+  sacrifice_grantor?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.

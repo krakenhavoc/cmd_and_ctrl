@@ -922,6 +922,13 @@ type CastPermission struct {
 	// cast this way gains nothing. Empty gains nothing.
 	GainsKeywords  []string `json:"gainsKeywords,omitempty"`
 	GainsAbilities []string `json:"gainsAbilities,omitempty"`
+	// GainsSubtypes are creature types the permanent is IN ADDITION to its
+	// own: The Tomb of Aclazotz's "If you do, it enters with a finality
+	// counter on it and is a Vampire in addition to its other types". The
+	// same one scoped effect as the keywords, a layer-4 AddSubtypesMod
+	// that lasts as long as the permanent is that object. Additive within a
+	// snapshot version.
+	GainsSubtypes []string `json:"gainsSubtypes,omitempty"`
 
 	// EntersWithCounterKind and EntersWithCounters are "If you cast a
 	// creature spell this way, that creature enters with an additional

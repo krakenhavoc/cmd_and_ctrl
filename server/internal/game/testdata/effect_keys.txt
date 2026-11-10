@@ -340,6 +340,7 @@ body terra-herald-of-hope/return
 body territorial-aetherkite/damage-each-other
 body tester-of-the-tangential/move
 body tether-technician/strike
+body the-ancient-one/mill
 body the-falcon-airship-restored/return
 body the-fire-nation-drill/destroy
 body the-last-ronin/attacks-alone
@@ -402,6 +403,7 @@ choose choose-cards/aminatous-augury-land
 choose choose-cards/amys-home-exile
 choose choose-cards/archon-of-cruelty-payout
 choose choose-cards/ardenn-intrepid-archaeologist-attach
+choose choose-cards/armored-kincaller-reveal
 choose choose-cards/armored-skyhunter-attach
 choose choose-cards/as-enters-permanent
 choose choose-cards/assimilation-assessor-assimilate
@@ -455,6 +457,7 @@ choose choose-cards/connive-x-discarded
 choose choose-cards/conspiracy-theorist-draw
 choose choose-cards/conspiracy-theorist-exile
 choose choose-cards/cosmic-cube-cast
+choose choose-cards/cosmium-confluence-animate-cave
 choose choose-cards/court-of-ambition-discarded-3
 choose choose-cards/court-of-ambition-discarded-6
 choose choose-cards/crashing-wave-stun-among
@@ -740,6 +743,7 @@ choose choose-cards/rottenmouth-viper-punisher-discarded
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
+choose choose-cards/sage-of-days-rest-to-graveyard
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sarkhan-dragon-ascendant-behold
 choose choose-cards/seasoned-cryomancer-discarded
@@ -790,6 +794,7 @@ choose choose-cards/teo-spirited-glider-discarded
 choose choose-cards/terra-magical-adept-take-pick
 choose choose-cards/tether-technician-strike
 choose choose-cards/thassas-oracle-arranged
+choose choose-cards/the-ancient-one-discard
 choose choose-cards/the-day-of-the-doctor-spare
 choose choose-cards/the-gitrog-ravenous-ride-sacrifice
 choose choose-cards/the-grim-captain-put
@@ -799,6 +804,7 @@ choose choose-cards/the-ur-sphinx-cast
 choose choose-cards/the-wrath-of-khan-exile-from-hand
 choose choose-cards/this-is-how-it-ends-shuffle
 choose choose-cards/thornplate-intimidator-punisher-discarded
+choose choose-cards/thousand-moons-smithy-tap-five
 choose choose-cards/tmc-b8-counters-on-the-picked-creature
 choose choose-cards/tomb-of-annihilation-veils-discarded
 choose choose-cards/toph-hardheaded-teacher-return
@@ -933,6 +939,7 @@ confirm confirm/ad-nauseam-repeat
 confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
+confirm confirm/another-chance-mill
 confirm confirm/arc-of-fortune-embark
 confirm confirm/arc-of-fortune-may-wheel
 confirm confirm/armor-wars-draw
@@ -1139,6 +1146,7 @@ drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
 drawthen teferi-akosa-discard
 drawthen teo-spirited-glider/discard
+drawthen the-ancient-one/discard
 drawthen the-theorist/counters-equal-to-hand
 drawthen trade-route-envoy-counter-unless-drew
 drawthen yunas-decision/put
@@ -1488,6 +1496,7 @@ payunless pay-unless/weapons-vendor-attach
 payunless pay-unless/wildborn-preserver-counters
 payunless pay-unless/wolfbat-return
 payunless pay-unless/zoraline-cosmos-caller-return
+payunless pay-unless/zoyowa-lava-tongue-damage
 pick revealed-pick/binding-negotiation-exiled-to-graveyard
 pick revealed-pick/cloak-and-dagger-entwined-return
 pick revealed-pick/cruelclaws-heist-may-cast
@@ -1536,6 +1545,7 @@ run blight/sourbread-auntie-tokens
 run blight/warren-torchmaster-when-you-do
 run dalek-intensive-care/exile
 run prompt-run/acererak-the-archlich-sacrificed
+run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
 run prompt-run/ambrosia-whiteheart-return
 run prompt-run/annihilator-sacrifice
@@ -1981,6 +1991,7 @@ tail engine/exile-return-transformed-with-counter
 tail engine/exile-until-another-granted
 tail engine/exiled-creature-or-hand
 tail engine/exiled-with-counter
+tail engine/explore-after-scry
 tail engine/explore-ask
 tail engine/explore-done
 tail engine/face-down-permitted-granted
@@ -2445,9 +2456,11 @@ tail then/blastoneuron-haste-and-sacrifice
 tail then/bonehoard-dracosaur-exiled
 tail then/boommobile-color-chosen
 tail then/boseiju-who-endures-search
+tail then/brackish-blunder-map
 tail then/braids-arisen-nightmare-ask-opponents
 tail then/braids-arisen-nightmare-next-opponent
 tail then/breeches-the-blastmaker-flip
+tail then/bringer-of-the-last-gift-return
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
 tail then/caustic-bronco-life
@@ -2537,6 +2550,7 @@ tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered
 tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
+tail then/palanis-hatcher-dinosaur
 tail then/patriarchs-bidding-type-chosen
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy

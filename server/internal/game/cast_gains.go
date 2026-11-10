@@ -32,6 +32,7 @@ type permissionCastGains struct {
 	entersTapped bool
 	keywords     []string
 	abilities    []string
+	subtypes     []string
 	label        string
 	// #4679: "that creature enters with an additional <kind> counter",
 	// and the permission's source, which the mark names for the log.
@@ -55,6 +56,7 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 		entersTapped: p.EntersTapped,
 		keywords:     append([]string(nil), p.GainsKeywords...),
 		abilities:    append([]string(nil), p.GainsAbilities...),
+		subtypes:     append([]string(nil), p.GainsSubtypes...),
 		label:        p.SourceName,
 		counterKind:  p.EntersWithCounterKind,
 		counters:     p.EntersWithCounters,
@@ -111,7 +113,7 @@ func (g *Game) markPermissionEntryCountersLocked(cardID uuid.UUID, gains permiss
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantGainsForCastLocked(cardID uuid.UUID, gains permissionCastGains) {
-	if len(gains.keywords) == 0 && len(gains.abilities) == 0 {
+	if len(gains.keywords) == 0 && len(gains.abilities) == 0 && len(gains.subtypes) == 0 {
 		return
 	}
 	c, ok := g.LookupCardForEffect(cardID)
@@ -119,6 +121,9 @@ func (g *Game) grantGainsForCastLocked(cardID uuid.UUID, gains permissionCastGai
 		return
 	}
 	var mods []Mod
+	if len(gains.subtypes) > 0 {
+		mods = append(mods, AddSubtypesMod(gains.subtypes...))
+	}
 	if len(gains.keywords) > 0 {
 		mods = append(mods, AddKeywordsMod(gains.keywords...))
 	}

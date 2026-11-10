@@ -346,6 +346,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
 
+	// Thousand Moons Smithy's Gnome Soldier: a */* artifact creature whose
+	// size is its controller's artifacts and creatures (#4470).
+	printedGnomeSoldierToken,
+
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,

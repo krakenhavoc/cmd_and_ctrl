@@ -27,12 +27,6 @@ func init() {
 			TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature()))},
 		Targets: TargetCardInGraveyard("target creature card in your graveyard with mana value 4 or less",
 			YouOwn(), Creature(), ManaValueLE(4)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
-		},
+		OnResolve: returnTargetCardToTheBattlefield,
 	})
 }

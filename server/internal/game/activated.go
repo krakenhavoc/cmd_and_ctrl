@@ -551,6 +551,16 @@ type AbilityCost struct {
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
 
+	// SacrificeGrantor sacrifices the permanent that GRANTED this ability
+	// as part of the cost — Deconstruction Hammer's equipped creature has
+	// "{3}, {T}, Sacrifice Deconstruction Hammer: …". ExileGrantor's
+	// sibling, one verb over: the grantor goes through the ordinary
+	// sacrifice payment (CR 701.21a), so it must be controlled by the
+	// payer — an Equipment whose controller differs from the creature's
+	// controller can't pay it. Only on a granted row; see
+	// sacrifice_grantor_cost.go.
+	SacrificeGrantor bool
+
 	// UnattachEquipment is "Unattach an Equipment from <this>" as a cost
 	// (#4799, ADR 0020's 2026-11-02 amendment) — Captain America, First
 	// Avenger's "{3}, Unattach an Equipment from Captain America:". The
@@ -1794,6 +1804,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	sacrifices, err = g.addSacrificeGrantorLocked(playerID, ab.Cost, origins.At(index), sacrifices)
+	if err != nil {
+		return err
+	}
 	crew, err := g.validateCrewCostLocked(playerID, cardID, ab.Cost, params.CrewIDs)
 	if err != nil {
 		return err
@@ -2418,7 +2432,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// item is built so the leaves-triggers it queues sit ABOVE the
 	// ability (CR 603.3b). Not a sacrifice: no EventSacrifice, and
 	// nothing dies.
-	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
+	// ADR 0137: craft's materials (the only ExilePermanents clause that
+	// reads a graveyard) say so on the move, for Market Gnome.
+	exileKind := MoveCauseCost
+	if ab.Cost.ExilePermanents != nil && ab.Cost.ExilePermanents.FromGraveyard {
+		exileKind = MoveCauseCraftCost
+	}
+	exiledPermanents, err := g.payExilePermanentsCostKindLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, exileKind, PermissionCardRef{})
 	if err != nil {
 		return err
 	}
