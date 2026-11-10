@@ -197,3 +197,62 @@ func TestGrantAbilitiesGivesACreatureTheBundlesManaAbility(t *testing.T) {
 		t.Errorf("pool has %d tokens, want one {G}", n)
 	}
 }
+
+// ADR 0093 amendment 2026-11-10 (#5402): Register lets a bundle static
+// grant only by the explicit opt-in, and only one bundle the same card
+// declares, with no static of its own.
+func TestCheckFixedBundleGrantsRefusesEveryOtherShape(t *testing.T) {
+	yours := func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		return target.Controller == source.Controller
+	}
+	mana := TapForManaGrant("fixture/inner-mana", "{G}", "Add {G}", "{T}: Add {G}.")
+	withStatic := AbilityGrant{Key: "fixture/inner-static", Text: "x", Static: []game.StaticAbility{PumpAttached(1, 1)}}
+	outer := func(s game.StaticAbility) AbilityGrant {
+		return AbilityGrant{Key: "fixture/outer", Text: "x", Static: []game.StaticAbility{s}}
+	}
+	ok := outer(GrantedFixedBundle("x", yours, mana.Key))
+	checkFixedBundleGrants("Fixture", ok, []AbilityGrant{ok, mana})
+	checkGrantAbilities("Fixture", ok)
+
+	expectRegisterPanic(t, "grants abilities itself", func() {
+		checkGrantAbilities("Fixture", outer(GrantAbilities(yours, mana.Key)))
+	})
+	two := GrantedFixedBundle("x", yours, mana.Key)
+	two.GrantAbilities = append(two.GrantAbilities, mana.Key)
+	expectRegisterPanic(t, "exactly one bundle", func() {
+		checkFixedBundleGrants("Fixture", outer(two), []AbilityGrant{outer(two), mana})
+	})
+	expectRegisterPanic(t, "does not declare", func() {
+		checkFixedBundleGrants("Fixture", ok, []AbilityGrant{ok})
+	})
+	self := outer(GrantedFixedBundle("x", yours, "fixture/outer"))
+	expectRegisterPanic(t, "its own bundle", func() {
+		checkFixedBundleGrants("Fixture", self, []AbilityGrant{self})
+	})
+	nested := outer(GrantedFixedBundle("x", yours, withStatic.Key))
+	expectRegisterPanic(t, "a bundle with a static", func() {
+		checkFixedBundleGrants("Fixture", nested, []AbilityGrant{nested, withStatic})
+	})
+	layer7 := GrantedFixedBundle("x", yours, mana.Key)
+	layer7.Layer = game.Layer7PT
+	expectRegisterPanic(t, "layer-6 static", func() {
+		checkFixedBundleGrants("Fixture", outer(layer7), []AbilityGrant{outer(layer7), mana})
+	})
+}
+
+// The catalog's one fixed-bundle grant passes the resolution-time check,
+// and its outer bundle's static is accepted by the engine.
+func TestRoarOfTheFifthPeopleChapterIIBundleIsAcceptedOnlyByOptIn(t *testing.T) {
+	if err := checkGrantMods([]game.Mod{game.GrantAbilitiesMod(roarChapterII)}); err != nil {
+		t.Fatalf("Roar of the Fifth People's chapter II bundle was refused: %v", err)
+	}
+	def := defs[game.GrantKey(roarChapterII)]
+	if def == nil || len(def.Static) != 1 || !def.Static[0].GrantsFixedBundle {
+		t.Fatalf("chapter II bundle = %+v, want one opted-in static", def)
+	}
+	s := def.Static[0]
+	s.GrantsFixedBundle = false
+	if game.GrantedStaticProblem(s) == "" {
+		t.Error("the same static without the opt-in was accepted")
+	}
+}

@@ -3989,6 +3989,12 @@ export interface ActivatedAbilityView {
   // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #5401: the "with total mana value X" form (Fabrication Foundry's
+  // "Exile one or more other artifacts you control with total mana value
+  // X"). `demands_x` is set, but the picks ARE the announcement: the
+  // client sends their total mana value as `x_value` and narrows the
+  // target clause by it, and never asks for X separately.
+  exile_permanent_total_mana_value_x?: boolean;
   // #4799: an "Unattach an Equipment from <this>" cost (Captain America,
   // First Avenger). The Equipment attached to this permanent right now,
   // whoever controls them, min / max the cost's count (1). The pick rides

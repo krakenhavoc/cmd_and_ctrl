@@ -1229,7 +1229,14 @@ the recipient's and the grant's timestamps (CR 613.7a), and it ends
 when the recipient loses the grant. A keyword in a bundle is an `Apply`
 that appends the token (`GrantToAttached`, `AppendKeywordAbility`).
 Layers 1-5, 7a, and a granted static that removes, grants or borrows
-abilities are refused (`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
+abilities are refused (`game.GrantedStaticProblem`), with one exception
+(#5402, amendment 2026-11-10): a granted static that grants ONE fixed
+bundle with no static of its own, declared with
+`GrantedFixedBundle(label, appliesTo, innerKey)`. The inner bundle must
+be in the same card's `Grants`. 'This Saga gains "Creatures you control
+have '{T}: Add {R}, {G}, or {W}.'"' (Roar of the Fifth People) is a
+chapter that grants the Saga the outer bundle, as Urza's Saga does; see
+`huatli_poet_of_unity.go`. A granted equip is `EquipAbility(cost)`
 in a bundle's `Activated`: it is the recipient's own row and attaches
 the recipient. "<Permanents> are Equipment in addition to their other
 types" is `AreAlsoEquipment(label, applies)` (Gemcutter Buccaneer). A

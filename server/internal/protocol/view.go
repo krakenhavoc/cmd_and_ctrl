@@ -5304,6 +5304,16 @@ type ActivatedAbilityView struct {
 	// is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// ExilePermanentTotalManaValueX marks the "with total mana value X"
+	// form (#5401) — Fabrication Foundry's "Exile one or more other
+	// artifacts you control with total mana value X". `demands_x` is set
+	// beside it, but X is not asked for: the permanents picked ARE the
+	// announcement, so the client sends their total mana value as
+	// `x_value` (the engine refuses any other) and narrows the ability's
+	// target clause by it before targets are chosen
+	// (`mana_value_at_most_x`). `exile_permanent_options` is the open
+	// count (min 1, max 0). Public: it is the printed rule.
+	ExilePermanentTotalManaValueX bool `json:"exile_permanent_total_mana_value_x,omitempty"`
 	// UnattachLabel / UnattachOptions describe an "Unattach an Equipment
 	// from <this>" cost component (#4799) — Captain America, First
 	// Avenger's throw. The same LegalTargetsView the return and exile
@@ -13991,6 +14001,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if ec := a.Cost.ExilePermanents; !ec.Empty() {
 			v.ExilePermanentLabel = ec.Label
 			v.ExilePermanentOptions = exilePermanentCostOptions(g, caster, c.InstanceID, ec)
+			v.ExilePermanentTotalManaValueX = game.ExileTotalManaValueX(ec)
+			// #5401: with nothing to exile no X can be paid (CR 118.3).
+			if v.CantActivate == "" && v.ExilePermanentTotalManaValueX && len(v.ExilePermanentOptions.Cards) < ec.Count {
+				v.CantActivate = "Nothing you control can be exiled for this cost."
+			}
 		}
 		// #4799: the unattach component, from the walk the engine
 		// validates against.
