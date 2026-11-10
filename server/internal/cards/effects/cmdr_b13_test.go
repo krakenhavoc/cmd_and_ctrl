@@ -772,3 +772,46 @@ func TestCmdrB14AlignedHeartMakesMoreMonksEachFlurry(t *testing.T) {
 		t.Errorf("%d Monks after the third spell, want 1", n)
 	}
 }
+
+const cmdrB14IronwillOracle = "eee99fdc-b116-4f06-9f9f-7b7dda5743c1"
+
+func cmdrB14IronwillMyriadCopies(t *testing.T, withCommander bool) int {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp1 := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Ironwill Forger", "Creature — Orc Artificer", cmdrB14IronwillOracle, 3, 3)
+	if withCommander {
+		pushBattlefieldCardWithTimestamp(g, game.Card{
+			InstanceID: uuid.New(), Name: "My Commander", TypeLine: "Legendary Creature — Elf",
+			Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID, IsCommander: true,
+		})
+	}
+	knight := pushVanillaCreature(g, me.ID, "Knight", 3, 3)
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	for i := 0; i < 4 && latestPickTarget(g, me.ID) != nil; i++ {
+		pickCard(t, g, me.ID, knight)
+		passPriorityAroundTable(t, g)
+	}
+	declareAttack(t, g, opp1.ID, knight)
+	passPriorityAroundTable(t, g)
+	for i := 0; i < 3 && len(g.PendingChoices) > 0; i++ {
+		answerMayChoice(t, g, me.ID, true)
+	}
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Knight" && c.InstanceID != knight && IsToken(c) {
+			n++
+		}
+	}
+	return n
+}
+
+func TestCmdrB14IronwillForgerGivesMyriadOnlyWithYourCommander(t *testing.T) {
+	if got := cmdrB14IronwillMyriadCopies(t, true); got != 2 {
+		t.Errorf("with a commander: %d myriad copies, want 2 (one per other opponent)", got)
+	}
+	if got := cmdrB14IronwillMyriadCopies(t, false); got != 0 {
+		t.Errorf("without a commander: %d myriad copies, want 0", got)
+	}
+}
