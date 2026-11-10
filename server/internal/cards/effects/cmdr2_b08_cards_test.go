@@ -287,7 +287,7 @@ func TestCmdr2B08WaytaFightsAndDiscountsTwoOfYourCreatures(t *testing.T) {
 		t.Error("the opponent's 1/1 survived the fight")
 	}
 	// Two of your creatures: {G} is enough. Untap Wayta for the second go.
-	g.WithWriteLock(func() { g.UntapPermanentForEffect(wayta) })
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(wayta) })
 	cmdr2B07Fund(me, "G", 1)
 	if err := g.ActivateCatalogAbility(me.ID, wayta, 0, game.ActivateAbilityParams{Strict: true, Targets: two}); err != nil {
 		t.Fatalf("discounted fight: %v", err)
