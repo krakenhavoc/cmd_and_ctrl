@@ -378,7 +378,7 @@ func TestCmdr2B07ScavengerExilesACreatureCardAndGainsLife(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	cmdr2B07PickIfAsked(t, g, me.ID, dead)
 	passPriorityAroundTable(t, g)
-	answerConfirmFor(t, g, me, true)
+	cmdr2B07AnswerPrompt(t, g, me, true)
 	passPriorityAroundTable(t, g)
 	if opp.Graveyard.Contains(dead) {
 		t.Error("the card is still in the graveyard")
@@ -400,7 +400,7 @@ func TestCmdr2B07ScavengerExilesANoncreatureCardAndGrows(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	cmdr2B07PickIfAsked(t, g, me.ID, spell)
 	passPriorityAroundTable(t, g)
-	answerConfirmFor(t, g, me, true)
+	cmdr2B07AnswerPrompt(t, g, me, true)
 	passPriorityAroundTable(t, g)
 	if opp.Graveyard.Contains(spell) {
 		t.Error("the card is still in the graveyard")
@@ -421,7 +421,7 @@ func TestCmdr2B07ScavengerMayDecline(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	cmdr2B07PickIfAsked(t, g, me.ID, dead)
 	passPriorityAroundTable(t, g)
-	answerConfirmFor(t, g, me, false)
+	cmdr2B07AnswerPrompt(t, g, me, false)
 	passPriorityAroundTable(t, g)
 	if !opp.Graveyard.Contains(dead) {
 		t.Error("declined, yet the card left the graveyard")
@@ -479,4 +479,18 @@ func TestCmdr2B07RaptorDamagesAnEnteringDinosaurAndPumps(t *testing.T) {
 	if len(toks) != 1 || toks[0].DamageMarked != 2 {
 		t.Errorf("tokens %+v, want one with 2 damage", toks)
 	}
+}
+
+// cmdr2B07AnswerPrompt answers an open "you may" trigger prompt.
+func cmdr2B07AnswerPrompt(t *testing.T, g *game.Game, me *game.Player, yes bool) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == me.ID {
+			if err := g.ResolveTriggerPrompt(c.ID, me.ID, yes); err != nil {
+				t.Fatalf("ResolveTriggerPrompt: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no trigger prompt for %s: %+v", me.Name, g.PendingChoices)
 }
