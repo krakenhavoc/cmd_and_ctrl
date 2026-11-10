@@ -46,7 +46,7 @@ func init() {
 			if n == 0 {
 				return nil
 			}
-			return CreateToken{Controller: ctx.Controller(), Template: ClueToken(), N: n}.Apply(ctx)
+			return Investigate{Player: ctx.Controller(), N: n}.Apply(ctx)
 		},
 	})
 }

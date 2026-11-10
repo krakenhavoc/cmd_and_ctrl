@@ -23,7 +23,7 @@ func init() {
 				return jmpB7FirstLegalTargetGains("Toxin Analysis — deathtouch and lifelink",
 					"deathtouch", "lifelink")(ctx.Game, ctx.Item)
 			}),
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 		),
 	})
 }

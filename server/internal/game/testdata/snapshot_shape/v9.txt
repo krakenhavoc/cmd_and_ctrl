@@ -73675,6 +73675,7 @@ turnTally.players{}.earthbends	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.equipActivations	number:int
 turnTally.players{}.firebends	number:int
+turnTally.players{}.investigates	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.landsToGraveyard	number:int
 turnTally.players{}.lifeGained	number:int

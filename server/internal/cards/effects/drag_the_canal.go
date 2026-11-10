@@ -27,7 +27,7 @@ func init() {
 			If{Cond: dragTheCanalACreatureDied{}, Then: []Applier{
 				GainLife{Amount: 2},
 				Surveil{N: 2},
-				CreateToken{Template: ClueToken(), N: 1},
+				Investigate{N: 1},
 			}},
 		),
 	})

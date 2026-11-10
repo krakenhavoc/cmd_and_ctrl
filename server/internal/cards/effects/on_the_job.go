@@ -18,7 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			BoostUntilEOT{Match: And(Creature(), YouControl()), Power: 2, Toughness: 1, Label: "On the Job — +2/+1"},
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 		),
 	})
 }

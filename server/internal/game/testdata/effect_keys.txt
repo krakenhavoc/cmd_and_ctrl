@@ -1687,6 +1687,7 @@ run blight/scuzzback-scrounger-treasure
 run blight/sourbread-auntie-tokens
 run blight/warren-torchmaster-when-you-do
 run dalek-intensive-care/exile
+run engine/explore-each-pick
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
@@ -2172,6 +2173,7 @@ tail engine/face-down-permitted-granted
 tail engine/foretold-exiled
 tail engine/gain-suspend-exiled
 tail engine/impulse-exile-granted
+tail engine/investigated
 tail engine/library-order-leg-landed
 tail engine/manifest-dread-entered
 tail engine/manifest-dread-finished

@@ -28,10 +28,9 @@ func cmdrB1CluesYouControl(target *game.Card, _ *game.Game, source *game.Card) b
 	return target.Controller == source.Controller && target.HasSubtype("Clue")
 }
 
-// cmdrB1Investigate is "investigate" as one Do step: create a Clue
-// token (CR 701.16a).
+// cmdrB1Investigate is "investigate" as one Do step (CR 701.16a).
 func cmdrB1Investigate() Applier {
-	return CreateToken{Template: ClueToken(), N: 1}
+	return Investigate{N: 1}
 }
 
 // cmdrB1GainThatMuchDamage is "you gain that much life" for a

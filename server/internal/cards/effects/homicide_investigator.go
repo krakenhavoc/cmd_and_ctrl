@@ -26,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			TriggersOnlyOnceEachTurn(OncePerBatch(On(game.EventLTB, skullsporeNontokenCreatureYouControlDied,
 				"Homicide Investigator — investigate (nontoken creatures you control died)",
-				Do(CreateToken{Template: ClueToken(), N: 1})))),
+				Do(Investigate{N: 1})))),
 		},
 	})
 }

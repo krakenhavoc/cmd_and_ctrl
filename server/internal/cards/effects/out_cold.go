@@ -31,7 +31,7 @@ func init() {
 					return err
 				}
 			}
-			return CreateToken{Template: ClueToken(), N: 1}.Apply(ctx)
+			return Investigate{N: 1}.Apply(ctx)
 		},
 	})
 }

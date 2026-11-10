@@ -24,7 +24,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, YouCastYourSecondSpellEachTurn,
 				"Malcolm, the Eyes — investigate",
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 		},
 	})
 }

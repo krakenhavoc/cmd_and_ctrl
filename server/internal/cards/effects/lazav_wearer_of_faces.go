@@ -51,7 +51,7 @@ func init() {
 
 // lazavInvestigate is "then investigate", once the exile is done.
 var lazavInvestigate = CardTail("tail/lazav-investigate", func(ctx *Context, _ game.TailOutcome) error {
-	return CreateToken{Template: ClueToken(), N: 1}.Apply(ctx)
+	return Investigate{N: 1}.Apply(ctx)
 })
 
 // lazavCreatureCardsExiledWithIt is the creature cards in exile linked to this

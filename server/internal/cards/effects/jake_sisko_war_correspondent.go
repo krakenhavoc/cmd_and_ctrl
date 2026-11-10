@@ -38,5 +38,5 @@ func jakeSiskoLandfall(g *game.Game, item *game.StackItem) error {
 	if g.ResolvedThisTurn(item.SourceCardID, jakeSiskoLandfallLabel) != 2 {
 		return nil
 	}
-	return CreateToken{Template: ClueToken(), N: 1}.Apply(ctx)
+	return Investigate{N: 1}.Apply(ctx)
 }

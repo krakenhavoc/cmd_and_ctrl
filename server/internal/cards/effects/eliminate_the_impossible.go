@@ -23,7 +23,7 @@ func init() {
 		// Each sentence waits for the prompt the one before asks (a CR 616 order on the Clue;
 		// CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 			BoostUntilEOT{
 				Match: opponentsCreatures(), Power: -2,
 				Label: "Eliminate the Impossible — -2/-0 until end of turn",

@@ -25,7 +25,7 @@ func init() {
 		Name:         "Antarctic Research Base",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(Investigate{N: 1})),
 			Targeting(WheneverChaosEnsues("Antarctic Research Base — put X +1/+1 counters on target creature you control (X = artifacts you control); it becomes a Plant",
 				antarcticResearchBaseChaos), TargetCreature("target creature you control", YouControl())),
 		},

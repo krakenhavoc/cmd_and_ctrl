@@ -28,7 +28,7 @@ func init() {
 				"Chalk Outline — create a 2/2 Detective, then investigate",
 				Do(
 					CreateToken{Template: TokenCard("2/2 white and blue Detective"), N: 1},
-					CreateToken{Template: ClueToken(), N: 1},
+					Investigate{N: 1},
 				))),
 		},
 	})
