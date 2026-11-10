@@ -1125,3 +1125,40 @@ func TestCmdrB15JawsOfDefeatDrainsByThePowerToughnessDifference(t *testing.T) {
 		t.Errorf("a 3/3 changed the life total: %d", life-opp.Life)
 	}
 }
+
+const cmdrB15WelcomeOracle = "affa0b6c-a9fd-49fc-b9ce-9a3486af8320"
+
+func TestCmdrB15WelcomeTheDeadLootsPaysLifeAndCountsGraveyardEntries(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 12; i++ {
+		stapleLibraryCard(me, "Spare", "Sorcery")
+	}
+	advanceTo(t, g, game.StepPrecombatMain)
+	// Two cards milled earlier this turn count.
+	g.WithWriteLock(func() { _ = g.MillNForEffect(me.ID, 2) })
+	life := me.Life
+	hand := me.Hand.Size()
+	castCatalogSpell(t, g, "Welcome the Dead", "Sorcery", cmdrB15WelcomeOracle, nil)
+	passPriorityAroundTable(t, g)
+	discardFromHand(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 1 {
+		t.Errorf("hand grew by %d, want 1 (drew two, discarded one; the spell's own card was cast from hand)", got)
+	}
+	if me.Life != life-2 {
+		t.Errorf("life %d, want %d", me.Life, life-2)
+	}
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Zombie Druid" && c.Controller == me.ID {
+			n++
+			if !c.Tapped {
+				t.Error("a Zombie Druid entered untapped")
+			}
+		}
+	}
+	if n != 3 {
+		t.Errorf("%d Zombie Druids, want 3 (two milled and one discarded)", n)
+	}
+}
