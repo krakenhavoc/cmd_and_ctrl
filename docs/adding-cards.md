@@ -13869,6 +13869,18 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
   controller. Test the static or triggered half and the chaos half, that a
   blank does nothing, and one face-down case. `requirePlaneRegisteredFull`
   checks the registration.
+- **Planes have more seams than the shapes above** (batches 2 and 3, #4870). A face-up plane's
+  abilities are read from the command zone by: the layer pass and the harvester (batch 1),
+  `Spec.Replacements` and `Spec.CostModifiers`, `Spec.CastPermissions` (an "each creature card
+  in your graveyard has escape", `game/cast_permission.go`), `Spec.HandSize` (`PlayersHaveNoMaxHandSize`)
+  and `Spec.PlanarLandPlays` (a count of extra land plays per player the plane remembers a
+  choice for). A plane's memory of a per-player choice is a counter named `<choice>:<player ID>`
+  on the face-up card (`g.SetFaceUpPlanarCounterForEffect`, Two Streams Facility), which a
+  planeswalk away ends (CR 901.7a). "Until you planeswalk away" for a *phase-out* is the plane
+  as the lock of `g.PhaseOutUntilLeavesForEffect` (The Doctor's Childhood Barn). A "this turn"
+  effect of a chaos ability that must outlive the plane is a duration effect on the player, not
+  a static of the plane (`g.GrantActivationDiscountForEffect`, The Dining Car). Shared helpers
+  are in `planes_b2_helpers.go` and `planes_b2_redistribute.go`.
 - **Coverage.** A plane counts in the registry keys like any card, and the
   census's planar line ("planes and phenomena … N of M") counts it against
   `coverage/planar_cards.txt`. Generate only your planes' oracle fixtures.
