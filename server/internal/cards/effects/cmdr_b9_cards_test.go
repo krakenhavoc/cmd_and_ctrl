@@ -1534,3 +1534,68 @@ func TestCmdrB9DepthshakerTitanAnimatesArtifactsGrantsKeywordsAndSacrificesThemA
 		t.Error("something besides the animated artifact was sacrificed")
 	}
 }
+
+func TestCmdrB9MoxiteRefineryMovesXCountersOffOnePermanentOfAnyKinds(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	refinery := b12Push(g, me.ID, "Moxite Refinery", "Artifact", cmdrB9Oracle(t, "Moxite Refinery"), 0, 0)
+	bear := pushCounterCreature(g, me.ID, "Bear", game.CounterPlusOne, 2)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(bear, game.CounterCharge, 1) })
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	other := pushCounterCreature(g, me.ID, "Ox", game.CounterPlusOne, 1)
+	floatForTest(g, me, "CC")
+	// Counters from two permanents are refused.
+	if err := g.ActivateCatalogAbility(me.ID, refinery, 0, game.ActivateAbilityParams{Strict: true,
+		Targets:          []game.TargetRef{{Kind: game.TargetCard, ID: rock}},
+		CounterSourceIDs: []uuid.UUID{bear, other}, CounterCounts: []int{1, 1}, CounterKinds: []string{game.CounterPlusOne, game.CounterPlusOne}}); err == nil {
+		t.Fatal("counters from two permanents were accepted")
+	}
+	// Three counters of two kinds off the Bear, onto the Rock.
+	if err := g.ActivateCatalogAbility(me.ID, refinery, 0, game.ActivateAbilityParams{Strict: true,
+		Targets:          []game.TargetRef{{Kind: game.TargetCard, ID: rock}},
+		CounterSourceIDs: []uuid.UUID{bear, bear}, CounterCounts: []int{2, 1}, CounterKinds: []string{game.CounterPlusOne, game.CounterCharge}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, rock, game.CounterCharge); got != 3 {
+		t.Errorf("%d charge counters on the Rock, want X = 3", got)
+	}
+	if counterCount(g, bear, game.CounterPlusOne) != 0 || counterCount(g, bear, game.CounterCharge) != 0 {
+		t.Error("the counters were not removed from the Bear")
+	}
+}
+
+func TestCmdrB9MoxiteRefineryPutsPlusOnePlusOneCountersAtSorcerySpeedOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	refinery := b12Push(g, me.ID, "Moxite Refinery", "Artifact", cmdrB9Oracle(t, "Moxite Refinery"), 0, 0)
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(rock, game.CounterCharge, 2) })
+	bear := seedCreature(g, "Bear", me.ID)
+	floatForTest(g, me, "CC")
+	params := game.ActivateAbilityParams{Strict: true,
+		Targets:          []game.TargetRef{{Kind: game.TargetCard, ID: rock}},
+		CounterSourceIDs: []uuid.UUID{rock}, CounterCounts: []int{2}, CounterKinds: []string{game.CounterCharge}}
+	if err := g.ActivateCatalogAbility(me.ID, refinery, 1, params); err == nil {
+		t.Fatal("an artifact was accepted as the target of the creature mode")
+	}
+	params.Targets = []game.TargetRef{{Kind: game.TargetCard, ID: bear}}
+	if err := g.ActivateCatalogAbility(me.ID, refinery, 1, params); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, bear, game.CounterPlusOne); got != 2 {
+		t.Errorf("%d +1/+1 counters on the Bear, want 2", got)
+	}
+	// Not at instant speed.
+	advanceTo(t, g, game.StepBeginCombat)
+	untap(g, refinery)
+	floatForTest(g, me, "CC")
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(rock, game.CounterCharge, 1) })
+	params.CounterCounts = []int{1}
+	if err := g.ActivateCatalogAbility(me.ID, refinery, 1, params); err == nil {
+		t.Error("activated outside a main phase")
+	}
+}

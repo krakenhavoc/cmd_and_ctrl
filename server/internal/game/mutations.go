@@ -9300,6 +9300,21 @@ func (g *Game) maxCounterPaymentLocked(playerID, sourceID uuid.UUID, rc *Counter
 	if !rc.Variable {
 		return PaidCost{CountersRemoved: rc.N}
 	}
+	if rc.OnePermanent {
+		// Every counter off ONE permanent, whatever its kinds: the largest
+		// permanent's total.
+		most := 0
+		for _, o := range g.CounterCostOptionsForEffect(playerID, sourceID, rc) {
+			sum := 0
+			for _, k := range o.Kinds {
+				sum += k.Count
+			}
+			if sum > most {
+				most = sum
+			}
+		}
+		return PaidCost{CountersRemoved: most}
+	}
 	total := 0
 	for _, o := range g.CounterCostOptionsForEffect(playerID, sourceID, rc) {
 		best := 0

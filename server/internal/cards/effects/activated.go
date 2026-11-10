@@ -1095,6 +1095,24 @@ func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicat
 	}}
 }
 
+// RemoveCountersXFromOne is "Remove X counters from <a permanent you
+// control>" of ANY kinds, all off a single permanent (Moxite Refinery's
+// "Remove X counters from an artifact or creature you control"): the
+// activator announces X and names the permanent and the counters of each
+// kind it gives, and a payment spread over two permanents is refused. The
+// floor is one counter, since X of zero removes nothing and the ability
+// then does nothing at all. The count reaches the effect as
+// Context.CountersRemoved.
+func RemoveCountersXFromOne(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		N:            1,
+		From:         TargetPermanent(label, preds...),
+		Among:        true,
+		Variable:     true,
+		OnePermanent: true,
+	}}
+}
+
 // RemoveCountersAmongOthers is RemoveCountersAmong for "from among
 // OTHER <permanents> you control": the source is not one of the
 // permanents the counters come off (compared by object, not by name).
