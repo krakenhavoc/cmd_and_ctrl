@@ -632,7 +632,8 @@ const (
 	// active player, whose turn gets them, and `card_id` the card whose
 	// effect added them. `label` is what was added: the phase kinds in
 	// the order they will occur, comma-separated ("combat,main"), or
-	// "step:<step>" for a single step ("step:end"). `amount` is how
+	// "step:<step>" for a step ("step:end"; "step:upkeep" with an
+	// `amount` of 3 is three upkeep steps, #5405). `amount` is how
 	// many. Narrated for LogExtraTurn's reason: it changes the turn's
 	// structure, and a player about to pass priority out of a main phase
 	// has to know another combat is coming.
@@ -3520,7 +3521,7 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("%s (%s)", line, card)
 	case LogExtraPhase:
-		what := describeAddedPhases(e.Label)
+		what := describeAddedPhases(e.Label, e.Amount)
 		if e.CardID == "" {
 			return fmt.Sprintf("%s's turn gets %s", actor, what)
 		}
@@ -4158,10 +4159,18 @@ func (r *logRing) drain() []LogEvent {
 // thing the turn gets: "step:end" is "an additional end step",
 // "combat,main" is "an additional combat phase and an additional main
 // phase", and a run of the same kind is counted ("combat,combat" is
-// "two additional combat phases").
-func describeAddedPhases(label string) string {
+// "two additional combat phases"). A step label with an amount above
+// one is counted too: "step:upkeep" for 3 is "three additional upkeep
+// steps".
+func describeAddedPhases(label string, amount int) string {
 	if step, ok := strings.CutPrefix(label, "step:"); ok {
-		return "an additional " + strings.ReplaceAll(step, "_", " ") + " step"
+		name := strings.ReplaceAll(step, "_", " ")
+		if amount > 1 {
+			// #5405: "you get that many additional upkeep steps after
+			// this phase" (Obeka, Splitter of Seconds) adds several.
+			return countWord(amount) + " additional " + name + " steps"
+		}
+		return "an additional " + name + " step"
 	}
 	if label == "" {
 		return "an additional phase"

@@ -325,6 +325,18 @@ func (c *Context) TappedStationPower() (power int, ok bool) {
 	return c.Game.PaidTapStationPowerForEffect(taps[0]), true
 }
 
+// TappedStationAnyPower is TappedStationPower for the station ability of a
+// permanent that is not a Spacecraft (a Planet): what the first permanent
+// the cost tapped counts for when it stations one, with CR 702.184c's
+// modifiers that reach every station ability (Tapestry Warden).
+func (c *Context) TappedStationAnyPower() (power int, ok bool) {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 || c.Game == nil {
+		return 0, false
+	}
+	return c.Game.PaidTapStationAnyPowerForEffect(taps[0]), true
+}
+
 // TappedToPay is the permanents a tap-permanents cost tapped, as the
 // objects they were when tapped (instance ID and epoch), in the order
 // named — "the creature tapped to pay this spell's additional cost"

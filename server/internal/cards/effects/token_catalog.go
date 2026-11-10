@@ -349,6 +349,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// creatures with flying (Wilds of Eldraine, #4471).
 	printedFlyingBlockerFaerieToken,
 
+	// Desculpting Blast's Drone: flying, and it can block only creatures
+	// with flying (Edge of Eternities, #4461).
+	printedDroneToken,
+
 	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
 	// legendary Equipment token, +1/+1, vigilance, trample and haste,
 	// equip {2}.
@@ -361,6 +365,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// artifact creature that stops being a creature when an opponent
 	// casts a creature spell.
 	printedAlienAngelToken,
+
+	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
+	printedReliquaryDragonToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

@@ -850,6 +850,11 @@ type CastPermission struct {
 	//
 	NotBeforeSeq int `json:"notBeforeSeq,omitempty"`
 
+	// Warped marks the permission warp leaves over the card its delayed
+	// trigger exiled (CR 702.185b): the card is a "warped card in exile" for
+	// as long as this permission covers it (Close Encounter).
+	Warped bool `json:"warped,omitempty"`
+
 	// LegacyNotBeforeTurn is populated only while decoding a snapshot
 	// written before ADR 0059. restoreGame converts the old round unit
 	// to NotBeforeSeq and clears it before the game can be captured again.
@@ -885,7 +890,9 @@ type CastPermission struct {
 	// pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no
 	// EventTapCard, and nothing that watches an untapped permanent
 	// entering sees one. A spell that does not become a permanent
-	// ignores it.
+	// ignores it. A LAND played through the permission enters tapped the
+	// same way (Lightstall Inquisitor: "Each land played this way enters
+	// tapped"), seeded on its entry event in CastSpell's land branch.
 	EntersTapped bool `json:"entersTapped,omitempty"`
 
 	// GainsKeywords and GainsAbilities are "If you cast a creature spell

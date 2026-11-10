@@ -883,6 +883,9 @@ export const ADDS_NO_MANA = "adds no mana right now";
 // falsy. A plain `!a.charged_mana_cost` check would conflate the two
 // and go silent on the most dramatic discount there is.
 export function chargedManaCostNote(a: AbilityCost): string {
+  // #5382: an activation cost increase (Skyseer's Chariot) can charge
+  // mana on a row that prints none — a {T}-only, crew or loyalty cost.
+  if (!a.mana_cost && a.charged_mana_cost) return "printed cost has no mana";
   if (!a.mana_cost || a.charged_mana_cost === undefined || a.charged_mana_cost === a.mana_cost) {
     return "";
   }

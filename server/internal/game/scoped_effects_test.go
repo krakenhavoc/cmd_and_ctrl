@@ -366,6 +366,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
+		// #4468: the additive sibling. Its cases are in
+		// add_damage_test.go.
+		ModAddDamage: true,
 		// ADR 0108 §9: the redirection is a replacement. Its cases are in
 		// redirect_damage_test.go.
 		ModRedirectDamage: true,
