@@ -92,7 +92,7 @@ func thePitCreate(ctx *Context, picks []int) error {
 		}
 		specs = append(specs, game.TokenCreation{
 			Controller: p, Source: ctx.Source(),
-			Groups: []game.TokenGroup{{Template: tmpl, Count: 1}},
+			Groups: []game.TokenGroup{{Template: ctx.TextToken(tmpl), Count: 1}},
 		})
 	}
 	return ctx.Game.CreateTokensForPlayersTogetherForEffect(specs)

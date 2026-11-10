@@ -4263,6 +4263,7 @@ frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughnessIfGreater	boo
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.damageTail.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.damageTail.sourceLki.DamageByToughness	bool
+frozenEntries[].event.damageTail.sourceLki.DamageByToughnessAlways	bool
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers	array
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[]	object
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -12420,6 +12421,7 @@ frozenEntries[].event.sourceLki.CostPower[].UseToughnessIfGreater	bool
 frozenEntries[].event.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.sourceLki.DamageByToughness	bool
+frozenEntries[].event.sourceLki.DamageByToughnessAlways	bool
 frozenEntries[].event.sourceLki.DefenderWaivers	array
 frozenEntries[].event.sourceLki.DefenderWaivers[]	object
 frozenEntries[].event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -18636,6 +18638,7 @@ heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughnessIfGreater	boo
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Uses	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.DamageAsPositivePower	bool
 heldCombatDamage.answers[].frame.SourceLKI.DamageByToughness	bool
+heldCombatDamage.answers[].frame.SourceLKI.DamageByToughnessAlways	bool
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers	array
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[]	object
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -18814,6 +18817,7 @@ lastKnownBattlefield{}.CostPower[].UseToughnessIfGreater	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
+lastKnownBattlefield{}.DamageByToughnessAlways	bool
 lastKnownBattlefield{}.DefenderWaivers	array
 lastKnownBattlefield{}.DefenderWaivers[]	object
 lastKnownBattlefield{}.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -18996,6 +19000,7 @@ lastKnownPermanents{}[].characteristic.CostPower[].UseToughnessIfGreater	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
+lastKnownPermanents{}[].characteristic.DamageByToughnessAlways	bool
 lastKnownPermanents{}[].characteristic.DefenderWaivers	array
 lastKnownPermanents{}[].characteristic.DefenderWaivers[]	object
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -21880,6 +21885,7 @@ movesAwaitingTokens[].damageTail.sourceLki.CostPower[].UseToughnessIfGreater	boo
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Uses	number:uint8
 movesAwaitingTokens[].damageTail.sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].damageTail.sourceLki.DamageByToughness	bool
+movesAwaitingTokens[].damageTail.sourceLki.DamageByToughnessAlways	bool
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers	array
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[]	object
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -30037,6 +30043,7 @@ movesAwaitingTokens[].sourceLki.CostPower[].UseToughnessIfGreater	bool
 movesAwaitingTokens[].sourceLki.CostPower[].Uses	number:uint8
 movesAwaitingTokens[].sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].sourceLki.DamageByToughness	bool
+movesAwaitingTokens[].sourceLki.DamageByToughnessAlways	bool
 movesAwaitingTokens[].sourceLki.DefenderWaivers	array
 movesAwaitingTokens[].sourceLki.DefenderWaivers[]	object
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -40253,6 +40260,7 @@ pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughnessIfGreater	bo
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
+pendingChoices[].damageAssignment.SourceLKI.DamageByToughnessAlways	bool
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers	array
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[]	object
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -41071,6 +41079,7 @@ pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughnessIfGreater	boo
 pendingChoices[].divideShield.staged[].lki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].lki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].lki.DamageByToughness	bool
+pendingChoices[].divideShield.staged[].lki.DamageByToughnessAlways	bool
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers	array
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[]	object
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -41238,6 +41247,7 @@ pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughnessIfGreat
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].sourceLki.DamageByToughness	bool
+pendingChoices[].divideShield.staged[].sourceLki.DamageByToughnessAlways	bool
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers	array
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[]	object
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -46705,6 +46715,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseTou
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageByToughness	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageByToughnessAlways	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -54862,6 +54873,7 @@ pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughnessIfGre
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.sourceLki.DamageByToughness	bool
+pendingChoices[].replacementResume.event.sourceLki.DamageByToughnessAlways	bool
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers	array
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[]	object
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -62561,6 +62573,7 @@ pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].targetWalk.frame.lki.DamageAsPositivePower	bool
 pendingChoices[].targetWalk.frame.lki.DamageByToughness	bool
+pendingChoices[].targetWalk.frame.lki.DamageByToughnessAlways	bool
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers	array
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[]	object
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -63301,6 +63314,7 @@ pendingChoices[].triggerFrame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].triggerFrame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].triggerFrame.lki.DamageAsPositivePower	bool
 pendingChoices[].triggerFrame.lki.DamageByToughness	bool
+pendingChoices[].triggerFrame.lki.DamageByToughnessAlways	bool
 pendingChoices[].triggerFrame.lki.DefenderWaivers	array
 pendingChoices[].triggerFrame.lki.DefenderWaivers[]	object
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool

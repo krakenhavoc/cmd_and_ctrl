@@ -37,15 +37,7 @@ func init() {
 					}, furnaceLayerDiscarded, nil)
 				}),
 				ChosenAtRandom(TargetPlayer("target player selected at random"))),
-			Targeting(Optional(WheneverChaosEnsues("Furnace Layer — you may destroy target nonland permanent",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return DestroyTarget{Target: id}.Apply(ctx)
-				}), "Furnace Layer — destroy the target nonland permanent?"),
+			Targeting(Optional(WheneverChaosEnsues("Furnace Layer — you may destroy target nonland permanent", destroyFirstLegalTarget), "Furnace Layer — destroy the target nonland permanent?"),
 				TargetPermanent("target nonland permanent", Not(Land()))),
 		},
 	})

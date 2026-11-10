@@ -30,15 +30,17 @@ func b6ToughnessDamagePair(g *game.Game, item *game.StackItem) error {
 		}
 		ids[i], amt[i], ok[i] = t.ID, g.ToughnessAnywhereForEffect(c), true
 	}
-	for i := range ids {
-		j := 1 - i
-		if ok[i] && ok[j] {
-			if err := (DealDamage{Source: ids[i], Target: ids[j], Amount: amt[i]}).Apply(ctx); err != nil {
-				return err
+	return g.DamageInstanceForEffect(func() error {
+		for i := range ids {
+			j := 1 - i
+			if ok[i] && ok[j] {
+				if err := (DealDamage{Source: ids[i], Target: ids[j], Amount: amt[i]}).Apply(ctx); err != nil {
+					return err
+				}
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // b6TreasuresPingEverything is The Western Cloud's chaos ability: create
@@ -58,14 +60,16 @@ func b6TreasuresPingEverything(g *game.Game, item *game.StackItem) error {
 			victims = append(victims, c.InstanceID)
 		}
 	}
-	for _, tok := range tokens {
-		for _, v := range victims {
-			if err := (DealDamage{Source: tok, Target: v, Amount: 1}).Apply(ctx); err != nil {
-				return err
+	return g.DamageInstanceForEffect(func() error {
+		for _, tok := range tokens {
+			for _, v := range victims {
+				if err := (DealDamage{Source: tok, Target: v, Amount: 1}).Apply(ctx); err != nil {
+					return err
+				}
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // b6PlaneswalkedToThisPlaneThisTurn is the intervening "if you planeswalked to

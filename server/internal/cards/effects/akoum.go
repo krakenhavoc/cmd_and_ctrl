@@ -24,15 +24,7 @@ func init() {
 		Completeness: CompletenessFull,
 		CastTimings:  []game.CastTimingRule{flash},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WheneverChaosEnsues("Akoum — destroy target creature that isn't enchanted",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					id, ok := b16FirstLegalTargetCard(ctx)
-					if !ok {
-						return nil
-					}
-					return DestroyTarget{Target: id}.Apply(ctx)
-				}),
+			Targeting(WheneverChaosEnsues("Akoum — destroy target creature that isn't enchanted", destroyFirstLegalTarget),
 				TargetCreature("target creature that isn't enchanted", b15NotEnchanted())),
 		},
 	})

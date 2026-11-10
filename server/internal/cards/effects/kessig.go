@@ -29,8 +29,8 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			PreventAllDamageDealtTo(PreventionStatic{
 				To: ToAnything, Damage: CombatDamage,
-				From: func(_ *game.ReplacementEvent, _ *game.Game, lki *game.Characteristic, _ *game.Card) bool {
-					return lki != nil && slices.Contains(lki.Types, "Creature") && !slices.Contains(lki.Subtypes, "Werewolf")
+				From: func(_ *game.ReplacementEvent, _ *game.Game, lki *game.Characteristic, src *game.Card) bool {
+					return lki != nil && slices.Contains(lki.Types, "Creature") && !slices.Contains(lki.Subtypes, src.TextSubtype("Werewolf"))
 				},
 				Label: "Kessig — prevent all combat damage that would be dealt by non-Werewolf creatures",
 			}),
@@ -45,7 +45,7 @@ func init() {
 					if err := (GrantKeywordUntilEOT{Match: mine, Keywords: []string{"trample"}, Label: "Kessig — trample"}).Apply(ctx); err != nil {
 						return err
 					}
-					return untilEndOfTurn(ctx, uuid.Nil, mine, "Kessig — a Werewolf in addition to its other types", game.AddSubtypesMod("Werewolf"))
+					return untilEndOfTurn(ctx, uuid.Nil, mine, "Kessig — a Werewolf in addition to its other types", game.AddSubtypesMod(ctx.TextSubtype("Werewolf")))
 				}),
 		},
 	})

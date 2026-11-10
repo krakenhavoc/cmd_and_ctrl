@@ -32,14 +32,14 @@ func init() {
 		Name:         "Agyrem",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventLTB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
-				return ok && leftAsColor(ev, dead, "W")
+				return ok && leftAsColor(ev, dead, source.TextColor("W"))
 			}, "Agyrem — return it to the battlefield under its owner's control at the beginning of the next end step",
 				b6AgyremSchedule(agyremReturnToBattlefieldBody, "Agyrem — return the white creature to the battlefield under its owner's control")),
-			On(game.EventLTB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
-				return ok && !leftAsColor(ev, dead, "W")
+				return ok && !leftAsColor(ev, dead, source.TextColor("W"))
 			}, "Agyrem — return it to its owner's hand at the beginning of the next end step",
 				b6AgyremSchedule(agyremReturnToHandBody, "Agyrem — return the nonwhite creature to its owner's hand")),
 			WheneverChaosEnsues("Agyrem — creatures can't attack you until a player planeswalks",

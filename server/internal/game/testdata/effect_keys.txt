@@ -247,6 +247,8 @@ body phyrexian-vindicator/prevented
 body phyrexian-vindicator/strike
 body pit-automaton/copy-exhaust
 body planechase/planeswalk
+body planes-b6/agyrem-return-to-battlefield
+body planes-b6/agyrem-return-to-hand
 body portent/draw
 body power-pack/cast-exiled-free
 body prepare/stensian-sanguinist-becomes-prepared
@@ -501,6 +503,7 @@ choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
+choose choose-cards/furnace-layer-discarded
 choose choose-cards/gandalf-party-guest-cast
 choose choose-cards/garnet-princess-of-alexandria-remove
 choose choose-cards/gert-and-old-lace-search
@@ -796,6 +799,7 @@ choose choose-cards/toph-hardheaded-teacher-return
 choose choose-cards/torment-of-hailfire-punisher-discarded
 choose choose-cards/town-greeter-land
 choose choose-cards/transpose-after-discard
+choose choose-cards/turri-island-take
 choose choose-cards/turtles-forever-outside
 choose choose-cards/turtles-forever-take
 choose choose-cards/twilight-prophet-take
@@ -1072,6 +1076,7 @@ confirm confirm/turtles-in-time-ask
 confirm confirm/tymna-the-weaver-pay-and-draw
 confirm confirm/ugins-binding-exile
 confirm confirm/uncover-the-moon-letters-draw
+confirm confirm/undercity-reaches-draw
 confirm confirm/uss-enterprise-c-discard-hand
 confirm confirm/vaultguard-trooper-discard-hand
 confirm confirm/wandering-archaic-copy
@@ -1284,6 +1289,7 @@ option option-pick/thanos-destroy-parity
 option option-pick/the-black-gate-most-life
 option option-pick/the-cloning-of-shredder-copy
 option option-pick/the-master-gallifreys-end-opponent
+option option-pick/the-pit-token-choice
 option option-pick/thornplate-intimidator-punisher
 option option-pick/thrull-wizard-pay
 option option-pick/time-travel
@@ -1652,6 +1658,7 @@ run prompt-run/the-goose-mother-sacrifice-draw
 run prompt-run/the-legend-of-yangchen-exile
 run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
+run prompt-run/the-wilds-food
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/time-wipe-return-and-destroy
 run prompt-run/titan-of-industry-shield
