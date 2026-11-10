@@ -425,7 +425,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Register` refuses it on a spell, an activated ability, a granted
    ability and any trigger that watches more than `EventETB`. A
    "choose up to X" whose X is something else (Riku of Many Paths,
-   Bumi, King of Three Trials) is not this.
+   Bumi, King of Three Trials) is not this: it is `ChooseUpToCount(count,
+   …)` with a count registered once at init, `game.RegisterModeCount`
+   for a count of the board (Bumi's Lessons) or
+   `game.RegisterModeCountOfEvent` for one read off the triggering
+   event (Riku's "the number of times you chose a mode for that spell",
+   #4468: `len(StackItem.Modes)` of the spell `ev.CardID` names).
 
    **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
    **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
@@ -2823,6 +2828,20 @@ a replacement, not a prevention effect, so "damage can't be prevented"
 never stops it. `Next` is one instance of damage (CR 615.8), spent the
 way `PreventNextDamageFromSource` is. "Choose a source you control" is
 `ChooseSourcePrompt.Controller`.
+
+**"It deals that much damage plus X instead" for the rest of the turn**
+(#4468, Taii Wakeen, Perfect Shot) is the additive sibling, the
+`ScopedEffect` kind `addDamage`, written with `g.AddDamageForEffect`
+(`server/internal/game/add_damage.go`). It takes the multiplier's
+`Sources`, `Recipients` and `CombatOnly`, plus `NoncombatOnly` for "would
+deal noncombat damage". An amount below 1 registers nothing. Two
+additions commute, so no CR 616 order is asked between them; beside a
+multiplier the affected player orders the two.
+
+```go
+g.AddDamageForEffect(game.DamageAddition{EffectSource: ctx.Source(), Controller: ctx.Controller(),
+    Amount: ctx.X(), Sources: game.DamageSourcesYours, NoncombatOnly: true})  // Taii Wakeen
+```
 
 **Choosing a source is a keyed prompt** (#4253 slice 10c). A
 `game.ChooseSourcePrompt` names what happens to the pinned source as data,
@@ -5621,6 +5640,24 @@ go first, which is the order that leaves the least to pay. The
 activation prices at the announced X (`AbilityManaCostAtXForEffect`);
 the menu row, the enumerator and the auto-tap preview price before X is
 chosen, at 0, which only ever shows more than the activation charges.
+
+**A tax on activating (#5382, S79):** "Activated abilities of sources
+with the chosen name cost {2} more to activate" (Skyseer's Chariot) is an
+activation-scoped increase, `ActivationCostsMore(n, label, preds...)`:
+
+```go
+AsEnters:      ChooseCardNameAsEnters("Skyseer's Chariot — choose a nonland card name"),
+CostModifiers: []game.CostModifier{
+    ActivationCostsMore(2, label, OfASourceWithTheChosenNonlandName()),
+},
+```
+
+Unlike a reduction, an increase reaches a cost that prints no mana — a
+{T}-only ability, a mana ability, crew, a loyalty ability — and that
+activation then owes the {n}. Every reader asks
+`Game.AbilityChargesManaForEffect` / `ManaAbilityChargesManaForEffect`,
+never `Cost.Mana != ""`, so the payment, the enumerator, the view's
+`charged_mana_cost` and auto-tap all see it. Several increases sum.
 `OfACreatureYouControl()` is the source predicate: a creature on the
 battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
@@ -10864,7 +10901,17 @@ return ExtraCombatAndMainAfterThisMain().Apply(ctx)            // "after this ma
 return AddPhases{Anchor: game.PhaseAnchor{Kind: game.AnchorThisPhase},
     Kinds: []game.PhaseKind{game.PhaseKindBeginning}}.Apply(ctx) // Sphinx of the Second Sun
 return AddStepAfterThisStep{Step: game.StepEnd}.Apply(ctx)     // Y'shtola Rhul
+return YouGetUpkeepStepsAfterThisPhase{N: n}.Apply(ctx)        // Obeka: "you get that many additional upkeep steps after this phase"
 ```
+
+**An added upkeep step after a phase** (#5405, CR 500.10) is a beginning
+phase of its own holding only the upkeep: its untap and draw steps are
+skipped, so nothing untaps and nobody draws, while "at the beginning of
+your upkeep" triggers fire in each one and the active player gets
+priority in each. `YouGetUpkeepStepsAfterThisPhase` adds nothing on
+another player's turn (CR 500.10a's "you get"). The steps are plan
+entries, so a restore point keeps them and the phase strip shows each
+as "+ Upkeep".
 
 Four things the engine does so a card does not:
 

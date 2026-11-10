@@ -8305,7 +8305,13 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if params.PhyrexianLife != 0 && ab.ManaCost == "" {
 		return ErrInvalidParam
 	}
-	if ab.ManaCost != "" {
+	// #5382: a tap-only mana ability can still owe mana — an activation
+	// cost increase (Skyseer's Chariot naming Sol Ring) — and CR 605.3
+	// has it paid like any other activation's (CR 602.2b, 601.2f), so
+	// the gate is the priced cost rather than the printed string. The
+	// mana the ability makes cannot pay it: the cost is paid first.
+	chargesMana := g.ManaAbilityChargesManaForEffect(playerID, *card, ab)
+	if chargesMana {
 		priced, perr := g.ManaAbilityManaCostForEffect(playerID, *card, ab)
 		if perr != nil {
 			return ErrInvalidParam
@@ -8462,7 +8468,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Tap before sacrifice: the tap has to happen while the
 	// permanent is still on the battlefield, and sacrifices move
 	// cards, which invalidates `card`.
-	if ab.ManaCost != "" {
+	if chargesMana {
 		// Same context the validation above used. Spending under a
 		// different context than the check would let a restricted
 		// token pay for something it was never cleared for.

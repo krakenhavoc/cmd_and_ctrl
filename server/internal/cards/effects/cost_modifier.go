@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -165,6 +166,41 @@ func CostsAtLeast(n int, label string, when ...CostPredicate) game.CostModifier 
 // something different here and should not be reached for.
 func ActivationCostsLess(n int, label string, when ...CostPredicate) game.CostModifier {
 	return ActivationCostsLessEach(func(game.CostQuery) int { return n }, label, when...)
+}
+
+// ActivationCostsMore is "<matching> activated abilities cost {n} more
+// to activate" — Skyseer's Chariot (#5382). The increase twin of
+// ActivationCostsLess: an activation-scoped CostIncrease, added at
+// CR 601.2f through CR 602.2b (and CR 605.3 for a mana ability, CR
+// 606.4 for a loyalty ability's). Unlike a reduction it reaches a cost
+// that prints no mana at all — a {T}-only ability, a sacrifice-only
+// one, crew — which then owes the {n}: the engine's activation
+// pricers run the pass for such a cost exactly when an increase like
+// this one applies (game.AbilityChargesManaForEffect). Several stack,
+// each adding its own {n}.
+func ActivationCostsMore(n int, label string, when ...CostPredicate) game.CostModifier {
+	m := CostsMore(n, label, when...)
+	m.Activations = true
+	return m
+}
+
+// OfASourceWithTheChosenNonlandName — "activated abilities of sources
+// with the chosen name", for a permanent that chose "a nonland card
+// name" as it entered (Skyseer's Chariot, #5382): the ability's source
+// (q.Card) has a non-land face called what the modifier's own permanent
+// (q.Source) chose, matched as Phyrexian Revoker matches it
+// (nonlandFaceNamed, CR 201.2b). "Sources", so whoever controls the
+// source and whatever zone it works from. No name chosen yet — the
+// as-enters window, or a copy that entered some other way — names
+// nothing and taxes nothing.
+func OfASourceWithTheChosenNonlandName() CostPredicate {
+	return func(q game.CostQuery) bool {
+		named := strings.TrimSpace(q.Source.ChosenName)
+		if named == "" || q.Ability == nil {
+			return false
+		}
+		return nonlandFaceNamed(q.Card, named)
+	}
 }
 
 // KeepsOneMana adds a reduction's one-mana floor: "This effect can't
