@@ -17,6 +17,10 @@ const (
 	cmdrB21WitnessOracle       = "a52a06aa-56fc-4845-bbcd-a54f16369b34"
 	cmdrB21TowerDefenseOracle  = "58853200-efbe-41cc-87f1-720841308f4d"
 	cmdrB21TitanOracle         = "a95309ac-f920-474d-81b5-0f68c8a54f34"
+	cmdrB21AronOracle          = "d8b06606-9b1f-4e72-a280-12a6e912bb50"
+	cmdrB21AtarkaOracle        = "c0b3bbce-977c-42a9-afcb-dabdfc717c97"
+	cmdrB21BaralOracle         = "386a6fa7-db5b-4e82-bd25-fd86d910ed0c"
+	cmdrB21ExpansionOracle     = "af6f771f-5154-4fb3-8ed4-768d71eea568"
 )
 
 func cmdrB21AssertFull(t *testing.T, oracle, name string) {
@@ -230,5 +234,235 @@ func TestCmdrB21ToweringTitanCountsToughnessAndSacrificesForTrample(t *testing.T
 	}
 	if their != 1 {
 		t.Errorf("%d of the opponent's creatures have trample, want 1 (all creatures)", their)
+	}
+}
+
+func TestCmdrB21AronSacrificesAnotherCreatureForACounterOnEach(t *testing.T) {
+	cmdrB21AssertFull(t, cmdrB21AronOracle, "Aron, Benalia's Ruin")
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	aron := pushCatalogPermanent(g, me.ID, "Aron, Benalia's Ruin", "Legendary Creature — Phyrexian Human", cmdrB21AronOracle, false)
+	a := b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	b := b12Creature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, g.Seats[1].ID, "Their Bear", "Creature — Bear", 2, 2)
+	if !hasEffectiveKeyword(t, g, aron, "menace") {
+		t.Error("Aron should have menace")
+	}
+	// The cost: {W}{B}. An empty pool is refused, and Aron can't pay with himself.
+	if err := g.ActivateCatalogAbility(me.ID, aron, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{a}}); err == nil {
+		t.Fatal("activated with an empty pool")
+	}
+	apaMana(me, "W", "B")
+	if err := g.ActivateCatalogAbility(me.ID, aron, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{aron}}); err == nil {
+		t.Fatal("Aron sacrificed himself; the cost says another creature")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, aron, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{a}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if _, still := battlefieldCard(g, a); still {
+		t.Error("Bear A was not sacrificed")
+	}
+	if c := plusOneCounters(g, aron); c != 1 {
+		t.Errorf("Aron has %d counters, want 1", c)
+	}
+	if c := plusOneCounters(g, b); c != 1 {
+		t.Errorf("Bear B has %d counters, want 1", c)
+	}
+	if c := plusOneCounters(g, theirs); c != 0 {
+		t.Errorf("their Bear has %d counters, want 0", c)
+	}
+}
+
+func TestCmdrB21AtarkaGivesEveryAttackingDragonDoubleStrike(t *testing.T) {
+	cmdrB21AssertFull(t, cmdrB21AtarkaOracle, "Atarka, World Render")
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	atarka := pushCatalogPermanent(g, me.ID, "Atarka, World Render", "Legendary Creature — Dragon", cmdrB21AtarkaOracle, false)
+	whelp := b12Creature(g, me.ID, "Whelp", "Creature — Dragon", 2, 2)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	declareAttack(t, g, opp.ID, atarka, whelp, bear)
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{atarka, whelp} {
+		if !hasEffectiveKeyword(t, g, id, "double strike") {
+			t.Errorf("attacking Dragon %s lacks double strike", id)
+		}
+	}
+	if hasEffectiveKeyword(t, g, bear, "double strike") {
+		t.Error("the attacking Bear gained double strike")
+	}
+}
+
+// cmdrB21SplitInHand puts Expansion // Explosion into me's hand.
+func cmdrB21SplitInHand(me *game.Player) uuid.UUID {
+	card := game.Card{
+		InstanceID: uuid.New(), OracleID: cmdrB21ExpansionOracle, Layout: game.LayoutSplit, Owner: me.ID, Controller: me.ID,
+		Faces: []game.Face{
+			{Name: "Expansion", TypeLine: "Instant", ManaCost: "{U/R}{U/R}", Colors: []string{"U", "R"}},
+			{Name: "Explosion", TypeLine: "Instant", ManaCost: "{X}{U}{U}{R}{R}", Colors: []string{"U", "R"}},
+		},
+	}
+	card.SetFace(0)
+	me.Hand.PushTop(card)
+	return card.InstanceID
+}
+
+func TestCmdrB21ExpansionCopiesASmallSpellButNotABigOne(t *testing.T) {
+	cmdrB21AssertFull(t, cmdrB21ExpansionOracle, "Expansion")
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	big := handCardFull(me, "Big Spell", "Instant", "{3}{R}{R}", "", []string{"R"})
+	if err := g.CastSpell(me.ID, big, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast the big spell: %v", err)
+	}
+	exp := cmdrB21SplitInHand(me)
+	apaMana(me, "U", "R")
+	if err := g.CastSpell(me.ID, exp, game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: big}}}); err == nil {
+		t.Fatal("Expansion targeted a mana value 5 spell")
+	}
+	// A mana value 4 spell is a legal target and gets copied.
+	small := handCardFull(me, "Small Bolt", "Instant", "{2}{R}{R}", boltOracleCombat, []string{"R"})
+	if err := g.CastSpell(me.ID, small, game.CastSpellParams{Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("cast the small spell: %v", err)
+	}
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	apaMana(me, "U", "R")
+	lifeBefore := opp.Life
+	if err := g.CastSpell(me.ID, exp, game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: small}}}); err != nil {
+		t.Fatalf("Expansion on a mana value 4 spell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("the copy did not offer new targets")
+	}
+	if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}); err != nil {
+		t.Fatalf("re-pick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != lifeBefore-6 {
+		t.Errorf("opponent life %d -> %d, want the Bolt and its copy (6)", lifeBefore, opp.Life)
+	}
+}
+
+func TestCmdrB21ExplosionDealsXAndTheOtherTargetDraws(t *testing.T) {
+	spec, ok := Lookup(cmdrB21ExpansionOracle + "#1")
+	if !ok || spec.Name != "Explosion" || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("Explosion registered wrongly: %+v", spec)
+	}
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	advanceToMain(t, g)
+	exp := cmdrB21SplitInHand(me)
+	handBefore := third.Hand.Size()
+	lifeBefore := opp.Life
+	apaMana(me, "U", "U", "R", "R", "C", "C", "C")
+	if err := g.CastSpell(me.ID, exp, game.CastSpellParams{
+		Strict: true, Face: 1, XValue: 3,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}, {Kind: game.TargetPlayer, ID: third.ID}},
+	}); err != nil {
+		t.Fatalf("cast Explosion: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != lifeBefore-3 {
+		t.Errorf("opponent life %d -> %d, want 3 damage", lifeBefore, opp.Life)
+	}
+	if third.Hand.Size() != handBefore+3 {
+		t.Errorf("third player's hand %d -> %d, want 3 cards drawn", handBefore, third.Hand.Size())
+	}
+}
+
+func cmdrB21BaralTable(t *testing.T) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	pushCatalogPermanent(g, me.ID, "Baral and Kari Zev", "Legendary Creature — Human", cmdrB21BaralOracle, false)
+	g.WithWriteLock(func() { me.Hand.Cards = nil })
+	return g, me
+}
+
+func cmdrB21Ragavans(g *game.Game, owner uuid.UUID) []uuid.UUID {
+	var out []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "First Mate Ragavan" && c.Controller == owner {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
+}
+
+func TestCmdrB21BaralOffersALesserSpellSharingATypeAndCastingItMakesNoMonkey(t *testing.T) {
+	cmdrB21AssertFull(t, cmdrB21BaralOracle, "Baral and Kari Zev")
+	g, me := cmdrB21BaralTable(t)
+	cheapInstant := handCardFull(me, "Cheap Instant", "Instant", "{1}", "", nil)
+	cheapSorcery := handCardFull(me, "Cheap Sorcery", "Sorcery", "{1}", "", nil)
+	equalInstant := handCardFull(me, "Equal Instant", "Instant", "{2}{U}", "", []string{"U"})
+	cheapCreature := handCardFull(me, "Cheap Creature", "Creature — Bear", "{1}", "", nil)
+	big := handCardFull(me, "Big Instant", "Instant", "{2}{U}", "", []string{"U"})
+	if err := g.CastSpell(me.ID, big, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, cheapInstant)
+	for _, no := range []uuid.UUID{cheapSorcery, equalInstant, cheapCreature} {
+		if hasID(offer.DiscardOptions, no) {
+			t.Errorf("card %s was offered though it is not a lesser spell sharing a type", no)
+		}
+	}
+	if err := castThroughResolutionCast(t, g, me.ID, cheapInstant, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n := len(cmdrB21Ragavans(g, me.ID)); n != 0 {
+		t.Errorf("%d Ragavan tokens after casting the spell, want 0", n)
+	}
+	// A second instant this turn doesn't trigger again.
+	second := handCardFull(me, "Second Instant", "Instant", "{3}", "", nil)
+	handCardFull(me, "Tiny Instant", "Instant", "{1}", "", nil)
+	if err := g.CastSpell(me.ID, second, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast second: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if resolutionCastOfferFor(g, me.ID) != nil || len(cmdrB21Ragavans(g, me.ID)) != 0 {
+		t.Error("the second instant or sorcery this turn triggered Baral and Kari Zev")
+	}
+}
+
+func TestCmdrB21BaralDecliningMakesAHastyRagavan(t *testing.T) {
+	g, me := cmdrB21BaralTable(t)
+	cheapSorcery := handCardFull(me, "Cheap Sorcery", "Sorcery", "{1}", "", nil)
+	big := handCardFull(me, "Big Sorcery", "Sorcery", "{3}", "", nil)
+	if err := g.CastSpell(me.ID, big, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, cheapSorcery)
+	declineResolutionCast(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	tokens := cmdrB21Ragavans(g, me.ID)
+	if len(tokens) != 1 {
+		t.Fatalf("%d Ragavan tokens, want 1", len(tokens))
+	}
+	c, _ := battlefieldCard(g, tokens[0])
+	if c.Power != 2 || c.Toughness != 1 || !c.IsLegendary() || !c.HasSubtype("Monkey") || !c.HasSubtype("Pirate") {
+		t.Errorf("token = %s %d/%d %q", c.Name, c.Power, c.Toughness, c.TypeLine)
+	}
+	if !hasEffectiveKeyword(t, g, tokens[0], "haste") {
+		t.Error("the token should have haste this turn")
+	}
+}
+
+func TestCmdrB21BaralWithNothingToCastMakesRagavanAtOnce(t *testing.T) {
+	g, me := cmdrB21BaralTable(t)
+	handCardFull(me, "Cheap Creature", "Creature — Bear", "{1}", "", nil)
+	big := handCardFull(me, "Big Instant", "Instant", "{1}", "", nil)
+	if err := g.CastSpell(me.ID, big, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n := len(cmdrB21Ragavans(g, me.ID)); n != 1 {
+		t.Errorf("%d Ragavan tokens, want 1 (no lesser spell to cast)", n)
 	}
 }

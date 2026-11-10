@@ -406,4 +406,7 @@ var tokenTable = map[string]game.Card{
 	// #4462: Final Fantasy's Robot Warrior (Retrieve the Esper) and Horror (The Final Days).
 	"3/3 blue Robot Warrior artifact": {Name: "Robot Warrior", TypeLine: "Token Artifact Creature — Robot Warrior", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"2/2 black Horror":                {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
+
+	// #5368: Tarkir: Dragonstorm Commander's First Mate Ragavan (Baral and Kari Zev).
+	"2/1 red Legendary Monkey Pirate named First Mate Ragavan": {Name: "First Mate Ragavan", TypeLine: "Token Legendary Creature — Monkey Pirate", Power: 2, Toughness: 1, Colors: []string{"R"}},
 }
