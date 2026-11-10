@@ -109,3 +109,64 @@ func TestSkyDeckPutsGlassCountersAndDestroysThemOnTheWayOut(t *testing.T) {
 		t.Error("a creature with no glass counter was destroyed")
 	}
 }
+
+var planeTheBean = planeFixture{"b977ff66-6c52-4f33-8f25-e310d835be8b", "The Bean", "Plane — Chicago"}
+
+// reflectionsOf lists the battlefield cards controlled by `seat` that are
+// Reflections.
+func reflectionsOf(g *game.Game, seat uuid.UUID) []game.Card {
+	var out []game.Card
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == seat && c.HasSubtype("Reflection") {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func TestTheBeanCopiesEachPlayersCreatureAsAShadowReflection(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTheBean)
+	g, _ := newPlaneGame(t, planeTheBean)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	mine := map[uuid.UUID]uuid.UUID{}
+	for _, p := range g.Seats {
+		mine[p.ID] = pushBattlefieldCreature(g, p.ID)
+		pushBattlefieldCreature(g, p.ID) // a second choice each
+	}
+	g.BumpLayerVersionForTest()
+	planeswalkToPlane(t, g, planeTheBean.Oracle)
+	passPriorityAroundTable(t, g)
+	for i := range g.Seats {
+		seat := g.Seats[(g.Turn.ActiveSeat+i)%len(g.Seats)]
+		answerChooseCardsOrPick(t, g, seat.ID, mine[seat.ID])
+	}
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		refl := reflectionsOf(g, p.ID)
+		if len(refl) != 1 || !refl[0].IsToken() {
+			t.Fatalf("%s has %d Reflection tokens, want 1", p.Name, len(refl))
+		}
+		if !refl[0].IsCreature() || !refl[0].HasSubtype("Test") {
+			t.Errorf("the copy lost its other types: %q", refl[0].TypeLine)
+		}
+		if !p1g2HasKeyword(g, refl[0].InstanceID, "shadow") {
+			t.Errorf("%s's Reflection has no shadow", p.Name)
+		}
+	}
+	// A blank does nothing; chaos copies one of the planar controller's.
+	before := len(reflectionsOf(g, me.ID))
+	rollBlank(t, g, me.ID)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerChooseCardsOrPick(t, g, me.ID, mine[me.ID])
+	passPriorityAroundTable(t, g)
+	if got := len(reflectionsOf(g, me.ID)); got != before+1 {
+		t.Errorf("planar controller has %d Reflections after chaos, want %d", got, before+1)
+	}
+	for _, p := range g.Seats[1:] {
+		if len(reflectionsOf(g, p.ID)) != 1 {
+			t.Errorf("chaos gave %s a Reflection", p.Name)
+		}
+	}
+}
