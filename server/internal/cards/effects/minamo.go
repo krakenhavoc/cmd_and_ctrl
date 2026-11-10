@@ -50,14 +50,14 @@ func init() {
 
 // minamoBlueCards is the blue cards in `player`'s graveyard, in graveyard
 // order.
-func minamoBlueCards(g *game.Game, player uuid.UUID) []game.Card {
+func minamoBlueCards(g *game.Game, player uuid.UUID, blue string) []game.Card {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return nil
 	}
 	var out []game.Card
 	for _, c := range p.Graveyard.Cards {
-		if c.HasColor("U") {
+		if c.HasColor(blue) {
 			out = append(out, c)
 		}
 	}
@@ -70,7 +70,7 @@ func minamoBlueCards(g *game.Game, player uuid.UUID) []game.Card {
 func minamoAsk(ctx *Context, order, chosen []uuid.UUID) error {
 	for len(order) > 0 {
 		who, rest := order[0], order[1:]
-		blue := minamoBlueCards(ctx.Game, who)
+		blue := minamoBlueCards(ctx.Game, who, ctx.TextColor("U"))
 		if len(blue) == 0 {
 			order = rest
 			continue

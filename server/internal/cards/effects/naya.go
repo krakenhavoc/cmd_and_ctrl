@@ -25,6 +25,7 @@ func init() {
 		Name:                "Naya",
 		Completeness:        CompletenessFull,
 		AdditionalLandPlays: game.UnlimitedLandPlays,
+		Purpose:             game.Purpose{ExtraLandDrops: game.UnlimitedLandPlays},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WheneverChaosEnsues("Naya — target red, green, or white creature you control gets +1/+1 until end of turn for each land you control",
 				func(g *game.Game, item *game.StackItem) error {
