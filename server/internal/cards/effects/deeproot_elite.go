@@ -20,14 +20,7 @@ func init() {
 				On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Merfolk"))
 				}, "Deeproot Elite — put a +1/+1 counter on target Merfolk you control",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						id, ok := b16FirstLegalTargetCard(ctx)
-						if !ok {
-							return nil
-						}
-						return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-					}),
+					b36CounterOnChosenAnimal),
 				TargetCreature("target Merfolk you control", YouControl(), HasSubtype("Merfolk")),
 			),
 		},
