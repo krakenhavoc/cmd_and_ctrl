@@ -459,6 +459,15 @@ func (g *Game) freezePaidTapsOnExitLocked(cardID uuid.UUID) {
 			t.StationAnyPower = c.CountedPower(CostPowerStationAny)
 			t.Left = true
 		}
+		// A Chosen behold's permanent (chosen_cost.go) is frozen the same way.
+		for i := range item.Paid.Chosen {
+			t := &item.Paid.Chosen[i]
+			if t.ID != cardID || t.Left || t.Epoch != c.ObjectEpoch {
+				continue
+			}
+			t.Power = c.PowerForComparison()
+			t.Left = true
+		}
 	}
 }
 

@@ -71,6 +71,11 @@ const (
 	// Equipment ends it for good, even if it comes back later: that
 	// attach is a new duration of its own.
 	CopyWhileSourceAttached
+	// CopyUntilNextEndStep is "until the next end step" (Niko, Light of
+	// Hope): the copy ends as the next end step of any turn begins
+	// (game.UntilNextEndStep), a window of its own: shorter than "until end
+	// of turn" and not tied to any player's turn.
+	CopyUntilNextEndStep
 )
 
 // BecomeCopy makes each of Targets a copy of Of.
@@ -181,6 +186,8 @@ func copyDurationFor(g *game.Game, kind CopyDuration, source, controller, of uui
 			return game.Duration{}, false
 		}
 		return g.WhileAttachedToDuration(source, targets[0])
+	case CopyUntilNextEndStep:
+		return g.UntilNextEndStepDuration(), true
 	}
 	return g.UntilEndOfTurnDuration(), true
 }
