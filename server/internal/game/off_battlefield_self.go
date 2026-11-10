@@ -1,6 +1,10 @@
 package game
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/google/uuid"
+)
 
 // off_battlefield_self.go — a card's own "As long as this card isn't on
 // the battlefield, it's a ..." (#5427).
@@ -58,6 +62,10 @@ import "sync"
 // permanent keeps both, so "whenever a creature dies" does not see a
 // creature in a Grist that left the battlefield (CR 603.10a looks
 // back), while the card now in the graveyard is a creature card.
+//
+// The entry window is the one place that asks about a card that is not
+// yet a permanent as though it were one (CR 614.12): see
+// entryDropsOffBattlefieldSelfLocked.
 //
 // A face-down object has no catalog key (CR 708.2a), so a face-down
 // spell or permanent is not reached. The PrintedIs* accessors are not
@@ -120,6 +128,28 @@ func offBattlefieldSelfOf(c *Card) *OffBattlefieldSelf {
 	self := offBattlefieldSelfIndex.byKey[key]
 	offBattlefieldSelfIndex.RUnlock()
 	return self
+}
+
+// entryDropsOffBattlefieldSelfLocked reports whether `ev` puts a card
+// onto the battlefield face up that has its own off-battlefield sentence
+// where it is now. CR 614.12: "To determine which replacement effects
+// apply and how they apply, check the characteristics of the permanent
+// as it would exist on the battlefield". There the sentence is off, so
+// "creatures your opponents control enter tapped" must not read the
+// creature spell or the creature card that is entering: the entry
+// window answers for it with the dry run's characteristics
+// (entryOverwriteViewLocked).
+//
+// Caller must hold g.mu.
+func (g *Game) entryDropsOffBattlefieldSelfLocked(ev *ReplacementEvent) bool {
+	if ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield || ev.FaceDown != FaceDownNone || ev.CardID == uuid.Nil {
+		return false
+	}
+	z, pos := g.locateCardLocked(ev.CardID)
+	if z == nil || z.Kind == ZoneBattlefield {
+		return false
+	}
+	return offBattlefieldSelfOf(&z.Cards[pos]) != nil
 }
 
 // hasType and hasSubtype answer the type and subtype fast paths.
