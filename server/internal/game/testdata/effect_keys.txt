@@ -1705,6 +1705,8 @@ run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/cmdr2-b09-foul-rebirth-token
+run prompt-run/cmdr2-b09-promise-of-aclazotz-populate
 run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
@@ -2519,6 +2521,8 @@ tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
+tail sacrificed-one/prompt-run/cmdr2-b09-foul-rebirth-token
+tail sacrificed-one/prompt-run/cmdr2-b09-promise-of-aclazotz-populate
 tail sacrificed-one/prompt-run/comet-crawler-pump
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
