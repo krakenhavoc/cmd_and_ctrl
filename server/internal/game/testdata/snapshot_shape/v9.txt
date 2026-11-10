@@ -1669,6 +1669,8 @@ extraTurns[].effects[].mods[].sourceFilter[].except[].Supertypes	array
 extraTurns[].effects[].mods[].sourceFilter[].except[].Supertypes[]	string
 extraTurns[].effects[].mods[].sourceFilter[].except[].Types	array
 extraTurns[].effects[].mods[].sourceFilter[].except[].Types[]	string
+extraTurns[].effects[].mods[].sourceFilter[].names	array
+extraTurns[].effects[].mods[].sourceFilter[].names[]	string
 extraTurns[].effects[].mods[].sourceFilter[].noCounters	array
 extraTurns[].effects[].mods[].sourceFilter[].noCounters[]	string
 extraTurns[].effects[].mods[].sourceFilter[].powerAtMost	number:int
@@ -2258,6 +2260,8 @@ followUpParks[].then.records[].mods[].sourceFilter[].except[].Supertypes	array
 followUpParks[].then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 followUpParks[].then.records[].mods[].sourceFilter[].except[].Types	array
 followUpParks[].then.records[].mods[].sourceFilter[].except[].Types[]	string
+followUpParks[].then.records[].mods[].sourceFilter[].names	array
+followUpParks[].then.records[].mods[].sourceFilter[].names[]	string
 followUpParks[].then.records[].mods[].sourceFilter[].noCounters	array
 followUpParks[].then.records[].mods[].sourceFilter[].noCounters[]	string
 followUpParks[].then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -2876,6 +2880,8 @@ frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].except[].
 frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -3473,6 +3479,8 @@ frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].excep
 frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -4061,6 +4069,8 @@ frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].excep
 frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -4821,6 +4831,8 @@ frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].except[].S
 frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -5529,6 +5541,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceF
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -6193,6 +6207,8 @@ frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].excep
 frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -6781,6 +6797,8 @@ frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].except[].S
 frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -7401,6 +7419,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilt
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -8009,6 +8029,8 @@ frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].exce
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -9020,6 +9042,8 @@ frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].exc
 frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -9630,6 +9654,8 @@ frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].except[
 frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -10221,6 +10247,8 @@ frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].except[].Sup
 frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -11613,6 +11641,8 @@ frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].except[]
 frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -12199,6 +12229,8 @@ frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].except[].Sup
 frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.millTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -13723,6 +13755,8 @@ frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].except[].Su
 frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -15543,6 +15577,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilte
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -16163,6 +16199,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourc
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -16749,6 +16787,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].e
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -17355,6 +17395,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[]
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -18027,6 +18069,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].names	array
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].names[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].noCounters	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -20493,6 +20537,8 @@ movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].except[].
 movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -21090,6 +21136,8 @@ movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].excep
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -21678,6 +21726,8 @@ movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].excep
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -22438,6 +22488,8 @@ movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].except[].S
 movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -23146,6 +23198,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceF
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -23810,6 +23864,8 @@ movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].excep
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -24398,6 +24454,8 @@ movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].except[].S
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -25018,6 +25076,8 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilt
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -25626,6 +25686,8 @@ movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].exce
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -26637,6 +26699,8 @@ movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].exc
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -27247,6 +27311,8 @@ movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].except[
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -27838,6 +27904,8 @@ movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].except[].Sup
 movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -29230,6 +29298,8 @@ movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].except[]
 movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -29816,6 +29886,8 @@ movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].except[].Sup
 movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -31340,6 +31412,8 @@ movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].except[].Su
 movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -33160,6 +33234,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilte
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -33780,6 +33856,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourc
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -34366,6 +34444,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].e
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -34972,6 +35052,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[]
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -35644,6 +35726,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].names	array
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].names[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].noCounters	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -38842,6 +38926,8 @@ pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].except[].Super
 pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].names	array
+pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -40834,6 +40920,8 @@ pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].except[].Supertyp
 pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].diceRoll.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -41801,6 +41889,8 @@ pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].except[]
 pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].names	array
+pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -42389,6 +42479,8 @@ pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].except[]
 pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -42983,6 +43075,8 @@ pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].except[].Supe
 pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -43627,6 +43721,8 @@ pendingChoices[].nameThen.records[].mods[].sourceFilter[].except[].Supertypes	ar
 pendingChoices[].nameThen.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].nameThen.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].nameThen.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].nameThen.records[].mods[].sourceFilter[].names	array
+pendingChoices[].nameThen.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].nameThen.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].nameThen.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].nameThen.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -44686,6 +44782,8 @@ pendingChoices[].pickTail.records[].mods[].sourceFilter[].except[].Supertypes	ar
 pendingChoices[].pickTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].pickTail.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].pickTail.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].pickTail.records[].mods[].sourceFilter[].names	array
+pendingChoices[].pickTail.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].pickTail.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].pickTail.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].pickTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -45318,6 +45416,8 @@ pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourc
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -45915,6 +46015,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].s
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -46503,6 +46605,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].s
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -47263,6 +47367,8 @@ pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].source
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -47971,6 +48077,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.recor
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -48635,6 +48743,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].s
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -49223,6 +49333,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].source
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -49843,6 +49955,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -50451,6 +50565,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -51462,6 +51578,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[]
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -52072,6 +52190,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sou
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -52663,6 +52783,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFi
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -54055,6 +54177,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sour
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -54641,6 +54765,8 @@ pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFi
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -56165,6 +56291,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceF
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -57985,6 +58113,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -58605,6 +58735,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.rec
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -59191,6 +59323,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -59797,6 +59931,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mo
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -60469,6 +60605,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].m
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].names	array
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -61486,6 +61624,8 @@ pendingChoices[].scryThen.records[].mods[].sourceFilter[].except[].Supertypes	ar
 pendingChoices[].scryThen.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].scryThen.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].scryThen.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].scryThen.records[].mods[].sourceFilter[].names	array
+pendingChoices[].scryThen.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].scryThen.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].scryThen.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].scryThen.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -62119,6 +62259,8 @@ pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].exce
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].except[].Supertypes[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].except[].Types	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].except[].Types[]	string
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].names	array
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].names[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].noCounters	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].noCounters[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].sourceFilter[].powerAtMost	number:int
@@ -62267,6 +62409,8 @@ pendingChoices[].sourceShield.prevent.Filter.except[].Supertypes	array
 pendingChoices[].sourceShield.prevent.Filter.except[].Supertypes[]	string
 pendingChoices[].sourceShield.prevent.Filter.except[].Types	array
 pendingChoices[].sourceShield.prevent.Filter.except[].Types[]	string
+pendingChoices[].sourceShield.prevent.Filter.names	array
+pendingChoices[].sourceShield.prevent.Filter.names[]	string
 pendingChoices[].sourceShield.prevent.Filter.noCounters	array
 pendingChoices[].sourceShield.prevent.Filter.noCounters[]	string
 pendingChoices[].sourceShield.prevent.Filter.powerAtMost	number:int
@@ -62400,6 +62544,8 @@ pendingChoices[].sourceShield.redirect.SourceFilter.except[].Supertypes	array
 pendingChoices[].sourceShield.redirect.SourceFilter.except[].Supertypes[]	string
 pendingChoices[].sourceShield.redirect.SourceFilter.except[].Types	array
 pendingChoices[].sourceShield.redirect.SourceFilter.except[].Types[]	string
+pendingChoices[].sourceShield.redirect.SourceFilter.names	array
+pendingChoices[].sourceShield.redirect.SourceFilter.names[]	string
 pendingChoices[].sourceShield.redirect.SourceFilter.noCounters	array
 pendingChoices[].sourceShield.redirect.SourceFilter.noCounters[]	string
 pendingChoices[].sourceShield.redirect.SourceFilter.powerAtMost	number:int
@@ -64404,6 +64550,8 @@ phaseEffects[].effect.mods[].sourceFilter[].except[].Supertypes	array
 phaseEffects[].effect.mods[].sourceFilter[].except[].Supertypes[]	string
 phaseEffects[].effect.mods[].sourceFilter[].except[].Types	array
 phaseEffects[].effect.mods[].sourceFilter[].except[].Types[]	string
+phaseEffects[].effect.mods[].sourceFilter[].names	array
+phaseEffects[].effect.mods[].sourceFilter[].names[]	string
 phaseEffects[].effect.mods[].sourceFilter[].noCounters	array
 phaseEffects[].effect.mods[].sourceFilter[].noCounters[]	string
 phaseEffects[].effect.mods[].sourceFilter[].powerAtMost	number:int
@@ -66815,6 +66963,8 @@ scopedEffects[].mods[].sourceFilter[].except[].Supertypes	array
 scopedEffects[].mods[].sourceFilter[].except[].Supertypes[]	string
 scopedEffects[].mods[].sourceFilter[].except[].Types	array
 scopedEffects[].mods[].sourceFilter[].except[].Types[]	string
+scopedEffects[].mods[].sourceFilter[].names	array
+scopedEffects[].mods[].sourceFilter[].names[]	string
 scopedEffects[].mods[].sourceFilter[].noCounters	array
 scopedEffects[].mods[].sourceFilter[].noCounters[]	string
 scopedEffects[].mods[].sourceFilter[].powerAtMost	number:int
