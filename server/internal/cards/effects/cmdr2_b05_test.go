@@ -245,3 +245,107 @@ func TestCmdr2B05BanneretHasIslandwalk(t *testing.T) {
 		t.Fatalf("blocking an islandwalker against an Island: reason %q, want landwalk", r)
 	}
 }
+
+// --- Singer of Swift Rivers ----------------------------------------
+
+func TestCmdr2B05SingerGrantsFlashToMerfolkSpellsOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	cmdr2B05Card(g, me.ID, "Singer of Swift Rivers", "Creature — Merfolk Shaman", cmdr2B05SingerOracle, 3, 2)
+	advanceTo(t, g, game.StepUpkeep)
+	cast := func(name, typeLine string) error {
+		id := uuid.New()
+		me.Hand.PushTop(game.Card{
+			InstanceID: id, Name: name, TypeLine: typeLine, ManaCost: "{1}{U}", Colors: []string{"U"},
+			Owner: me.ID, Controller: me.ID,
+		})
+		return g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true})
+	}
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{U}{U}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cast("Bear", "Creature — Bear"); err == nil {
+		t.Fatal("a non-Merfolk creature was cast in the upkeep")
+	}
+	if err := cast("Fish", "Creature — Merfolk"); err != nil {
+		t.Fatalf("a Merfolk spell in the upkeep: %v", err)
+	}
+}
+
+func TestCmdr2B05SingerEntersAndShieldsAnotherCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	mine := b12Creature(g, me.ID, "Runner", "Creature — Bear", 2, 2)
+	advanceToMain(t, g)
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Singer of Swift Rivers", TypeLine: "Creature — Merfolk Shaman",
+			OracleID: cmdr2B05SingerOracle, ManaCost: "{1}{G}{U}", Power: 3, Toughness: 2, Owner: me.ID, Controller: me.ID})
+	})
+	floatForTest(g, me, "GUU")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, mine)
+	passPriorityAroundTable(t, g)
+	if got := counterOn(g, mine, game.CounterShield); got != 1 {
+		t.Errorf("the other creature has %d shield counters, want 1", got)
+	}
+	if got := counterOn(g, id, game.CounterShield); got != 0 {
+		t.Errorf("the Singer shielded itself: %d", got)
+	}
+}
+
+// --- Surgespanner --------------------------------------------------
+
+func cmdr2B05SurgespannerAttack(t *testing.T) (g *game.Game, me *game.Player, victim uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[0]
+	sp := cmdr2B05Card(g, me.ID, "Surgespanner", "Creature — Merfolk Wizard", cmdr2B05SurgespannerOracl, 2, 2)
+	victim = b12Creature(g, g.Seats[1].ID, "Victim", "Creature — Bear", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(sp, g.Seats[1].ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+	if p := latestPickTarget(g, me.ID); p != nil {
+		b40PickCard(t, g, me.ID, victim)
+	}
+	passPriorityAroundTable(t, g)
+	return g, me, victim
+}
+
+func TestCmdr2B05SurgespannerPaysToBounceWhenItBecomesTapped(t *testing.T) {
+	g, me, victim := cmdr2B05SurgespannerAttack(t)
+	b06AddMana(me, "U", "C")
+	ask := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if ask == nil {
+		t.Fatal("tapping Surgespanner does not ask about {1}{U}")
+	}
+	if ask.PayCost != "{1}{U}" {
+		t.Errorf("the optional cost is %s", ask.PayCost)
+	}
+	if err := g.ResolvePayUnless(ask.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
+	if g.Battlefield.Contains(victim) {
+		t.Error("paying returns the target permanent")
+	}
+}
+
+func TestCmdr2B05SurgespannerDecliningBouncesNothing(t *testing.T) {
+	g, me, victim := cmdr2B05SurgespannerAttack(t)
+	b06AddMana(me, "U", "C")
+	ask := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if ask == nil {
+		t.Fatal("no payment prompt")
+	}
+	if err := g.ResolvePayUnless(ask.ID, me.ID, false); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
+	if !g.Battlefield.Contains(victim) {
+		t.Error("declining bounced the permanent")
+	}
+}
