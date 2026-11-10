@@ -3,12 +3,12 @@ package deck
 import (
 	"errors"
 	"fmt"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // partner_test.go — the partner abilities as deck-construction

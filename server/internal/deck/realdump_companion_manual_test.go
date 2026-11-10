@@ -1,12 +1,12 @@
 package deck
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"slices"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // realdump_companion_manual_test.go — ADR 0172 against the real

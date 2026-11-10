@@ -2,11 +2,11 @@ package deck
 
 import (
 	"errors"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // TestRealDumpDeckCopyAllowances pins CR 113.6n against the real oracle

@@ -1,12 +1,12 @@
 package deckcoverage
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 func TestRealDumpSquallDeckFullyAutomated(t *testing.T) {

@@ -2,7 +2,6 @@ package deck
 
 import (
 	"fmt"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // companion_test.go — ADR 0172: the companion slot in every import

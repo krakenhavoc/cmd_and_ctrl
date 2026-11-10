@@ -152,12 +152,12 @@ package decks
 
 import (
 	"fmt"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"sort"
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Card is one row of a curated decklist.

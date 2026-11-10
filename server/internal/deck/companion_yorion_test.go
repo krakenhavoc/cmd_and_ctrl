@@ -1,13 +1,13 @@
 package deck
 
 import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // companion_yorion_test.go — #4128: Yorion, Sky Nomad's companion

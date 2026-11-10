@@ -2,12 +2,12 @@ package deck
 
 import (
 	"fmt"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // attractions_test.go — ADR 0207 §2: a deck declares its Attraction

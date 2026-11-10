@@ -2,7 +2,6 @@ package decks
 
 import (
 	"fmt"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,6 +11,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // triage_manual_test.go — "how much of THIS deck does the engine
