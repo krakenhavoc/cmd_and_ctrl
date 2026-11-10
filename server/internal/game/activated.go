@@ -119,6 +119,15 @@ type AbilityCost struct {
 	// bundle itself.
 	ManaFromSource bool
 
+	// ManaValueFromSource is "{X}, where X is its mana value" (#5429,
+	// Graywater's Fixer's encore): the mana component is generic mana equal
+	// to the mana value (CR 202.3) of the card that has the row. Only in an
+	// ability bundle granted to a card, as ManaFromSource is: the row
+	// builder (activatedAbilityRows) writes "{N}" into Mana, so every
+	// reader of a granted row sees a plain string. Mana stays empty on the
+	// bundle itself.
+	ManaValueFromSource bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'

@@ -4609,6 +4609,12 @@ component that picks permanents.
 or by the card moving. The bundle's mana component is `ItsManaCost()` (`AbilityCost.ManaFromSource`); the row builder
 writes the card's own mana cost into it, so every reader of the row sees a plain string.
 
+"Each outlaw creature card in your graveyard has encore {X}, where X is its mana value" (Graywater's Fixer, #5429) is
+the same idea for a mana VALUE: `ItsManaValue()` (`AbilityCost.ManaValueFromSource`) in the bundle's cost, and the row
+builder writes `{N}`, generic mana equal to the mana value of the card that has the row (CR 202.3; an `{X}` in its cost
+is 0 off the stack, CR 202.3e). Use it only in an `AbilityGrant` bundle given to cards, with a standing zone grant
+(`GrantAbilitiesInZone`) or a resolved one.
+
 ### "Can't have counters put on it" (#4692, CR 101.2)
 
 Blossombind's "Enchanted creature … can't have counters put on it" is
@@ -4855,6 +4861,18 @@ Any card may be cloaked, a nonpermanent one included. It turns face up for its
 mana cost if it is a creature card (`TurnFaceUpOffers`); `TurnFaceUpForEffect`
 turns it up as an effect, refused for a face-down instant or sorcery (Etrata's
 "if you can't").
+
+### Manifest the top card of another player's library (#5429, CR 701.40a)
+
+"Manifest the top card of that player's library" (Thieving Amalgam, Orochi
+Soul-Reaver) is `ManifestTopOfLibrary{LibraryOwner: thatPlayer}`
+([effects/manifest_library.go](../server/internal/cards/effects/manifest_library.go),
+`game.ManifestTopOfLibraryForEffect(controller, libraryOwner)`): cloak's split
+for manifest. The resolving item's controller controls the face-down 2/2 and is
+the only player who may look at it (CR 708.5); the library's owner still owns
+the card. Read "that player" off the trigger (`item.Trigger.Event.Actor` for an
+upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
+library.
 
 
 ### Adding a block-rule card (S37+, #750)
