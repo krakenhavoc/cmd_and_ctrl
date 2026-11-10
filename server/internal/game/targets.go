@@ -109,6 +109,12 @@ type TargetSource struct {
 	// that carries it still excludes nothing and compares nothing.
 	text *TextWords
 
+	// tribe is the creature type chosen for the ability's source, lent to a
+	// COST clause (costSourceLocked) that names it: Etchings of the Chosen's
+	// "Sacrifice a creature of the chosen type". A cost walk holds no source
+	// object, so OfSourcesChosenType would otherwise read an empty type.
+	tribe string
+
 	// casting says Object is a card being CAST (SourceCast), not a spell
 	// already on the stack or a permanent: CR 601.2a moves the card to
 	// the stack before CR 601.2c's targets are announced, so the card is
@@ -211,6 +217,11 @@ func (s TargetSource) lend(c Card) Card {
 func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
 	src := SourceChooser(playerID)
 	src.text = g.costTextLocked(sourceID)
+	if sourceID != uuid.Nil {
+		if c := findBattlefieldCard(g, sourceID); c != nil {
+			src.tribe = c.NamedTribe
+		}
+	}
 	return src
 }
 
@@ -1878,7 +1889,7 @@ func (s TargetSource) namedTribe() string {
 	case s.Object != nil:
 		return s.Object.NamedTribe
 	}
-	return ""
+	return s.tribe
 }
 
 // PaidForSourceKind names which payment PaidForSource asks about. The

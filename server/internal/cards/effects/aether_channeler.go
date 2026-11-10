@@ -17,13 +17,7 @@ func init() {
 		}),
 		ModeDoing("Return another target nonland permanent to its owner's hand.",
 			Another(TargetPermanent("another target nonland permanent", Nonland())),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok {
-					return nil
-				}
-				return BounceToHand{Target: t.ID}.Apply(ctx)
-			}),
+			BounceTheModesTarget),
 		ModeDoing("Draw a card.", nil, func(item *game.StackItem, ctx *Context, _ int) error {
 			return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 		}),

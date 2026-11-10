@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -73,3 +75,85 @@ func cmdr2B03NotAManaAbility() CostPredicate {
 		return q.Ability != nil && !q.Ability.Mana
 	}
 }
+
+// --- creature-type reveals (Descendants' Fury, Heirloom Blade, Kindred Summons) ---
+
+// cmdr2B03AllTypesWord is the tail word of a creature that is every creature
+// type (a changeling, CR 702.73a); any other creature's word is its creature
+// types joined by "|".
+const cmdr2B03AllTypesWord = "*"
+
+// cmdr2B03TypesWord encodes the creature types a creature had as one word a
+// keyed tail can carry: "reveal cards until a creature card that shares a
+// creature type with the sacrificed creature" reads the sacrificed creature
+// after it has gone.
+func cmdr2B03TypesWord(subtypes []string, everyType bool) string {
+	if everyType {
+		return cmdr2B03AllTypesWord
+	}
+	var types []string
+	for _, s := range subtypes {
+		if game.IsCreatureType(s) {
+			types = append(types, s)
+		}
+	}
+	return strings.Join(types, "|")
+}
+
+// cmdr2B03SharesTypeWith is "a creature card that shares a creature type
+// with" the creature a cmdr2B03TypesWord describes. An empty word (a
+// creature with no creature type) is shared with nothing, and a changeling
+// shares with every creature that has any creature type (CR 702.73a).
+func cmdr2B03SharesTypeWith(word string) func(game.Card) bool {
+	return func(c game.Card) bool {
+		if word == "" || !c.IsCreature() {
+			return false
+		}
+		if word == cmdr2B03AllTypesWord {
+			return len(game.CreatureTypesOf(&c)) > 0
+		}
+		for _, t := range strings.Split(word, "|") {
+			if c.HasSubtype(t) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// cmdr2B03RevealUntilSharingTypeToHand is "reveal cards from the top of your
+// library until you reveal a creature card that shares a creature type with
+// <it>. Put that card into your hand and the rest on the bottom of your
+// library in a random order" (Heirloom Blade); the battlefield half of the
+// sentence (Descendants' Fury) is RevealUntilThenPutOntoBattlefield.
+func cmdr2B03RevealUntilSharingTypeToHand(ctx *Context, word, reason string) error {
+	player := ctx.Controller()
+	run, hit := revealUntil(ctx, player, cmdr2B03SharesTypeWith(word), reason)
+	return TakeFromLibraryToHand{
+		Player: player,
+		Cards:  run,
+		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+		All:    true,
+		Key:    takeRestBottomRandom,
+	}.Apply(ctx)
+}
+
+// cmdr2B03CreaturesYouControlOfType counts the creatures `player` controls
+// that have creature type t (a changeling has every one).
+func cmdr2B03CreaturesYouControlOfType(g *game.Game, player uuid.UUID, t string) int {
+	n := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == player && c.IsCreature() && c.HasSubtype(t) {
+			n++
+		}
+	}
+	return n
+}
+
+// cmdr2B03ShuffleRestIntoLibraryTail is "then shuffle the rest of the revealed
+// cards into your library": the rest are still in it, so shuffling is
+// putting them in. An on-disk key.
+var cmdr2B03ShuffleRestIntoLibraryTail = PutFromLibraryTail("cmdr2-b03/shuffle-rest-into-library",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		return ctx.Game.ShuffleLibraryForEffect(res.Player)
+	})
