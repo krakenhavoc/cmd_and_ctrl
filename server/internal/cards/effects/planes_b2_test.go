@@ -972,3 +972,76 @@ func TestDoctorsTombChaosRedistributesLifeTotals(t *testing.T) {
 		t.Errorf("life totals %d, %d, %d, want 30, 5 and the third player's untouched 15", me.Life, b.Life, a.Life)
 	}
 }
+
+// --- The Doctor's Childhood Barn ---------------------------------------------
+
+func TestChildhoodBarnMakesCreaturesEnterTapped(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeChildhoodBarn)
+	g, _ := newPlaneGame(t, planeChildhoodBarn)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Test Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	var tapped, found bool
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Test Bear" && c.Controller == me.ID {
+			found, tapped = true, c.Tapped
+		}
+	}
+	if !found || !tapped {
+		t.Errorf("the creature is on the battlefield %v, tapped %v, want both", found, tapped)
+	}
+}
+
+func TestChildhoodBarnChaosPhasesOutUntilThePlaneIsLeft(t *testing.T) {
+	g, plane := newPlaneGame(t, planeChildhoodBarn)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	rock := b12Permanent(g, opp.ID, "Rock", "Artifact")
+	land := b12Permanent(g, opp.ID, "Island", "Basic Land — Island")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == rock {
+				g.Battlefield.Cards[i].Tapped = true
+			}
+		}
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(land)); err == nil {
+		t.Fatal("a land was accepted as the target")
+	}
+	answerPickTarget(t, g, rock)
+	for i := 0; i < 3 && latestChoiceOfKind(g, game.PendingChoicePickTarget) != nil; i++ {
+		ch := latestChoiceOfKind(g, game.PendingChoicePickTarget)
+		if err := g.ResolvePickTargets(ch.ID, ch.Chooser, nil); err != nil {
+			t.Fatalf("declining an opponent's clause: %v", err)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	var out bool
+	g.ReadSnapshot(func() { out = g.IsPhasedOutForEffect(rock) })
+	if !out {
+		t.Fatal("the permanent did not phase out")
+	}
+	// Around to the owner's untap step: it stays out while the plane is face up.
+	for range 4 {
+		endTurn(t, g)
+	}
+	g.ReadSnapshot(func() { out = g.IsPhasedOutForEffect(rock) })
+	if !out {
+		t.Fatal("the permanent phased in at its controller's untap step with the plane face up")
+	}
+	if _, ok := faceUpPlane(g, planeChildhoodBarn.Oracle); !ok {
+		t.Fatal("the plane is not face up any more")
+	}
+	_ = plane
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(g.Seats[g.Turn.ActiveSeat].ID) })
+	g.RunStateChecksForTest()
+	g.ReadSnapshot(func() { out = g.IsPhasedOutForEffect(rock) })
+	if out {
+		t.Error("the permanent did not phase in when the table planeswalked")
+	}
+}

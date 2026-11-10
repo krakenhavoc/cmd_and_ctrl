@@ -547,6 +547,14 @@ func (g *Game) sweepPhaseInLocksLocked() bool {
 		if findCardOnBattlefield(g, c.PhaseInLockedBy) >= 0 {
 			continue
 		}
+		// ADR 0216 §6: the lock may be a face-up plane (The Doctor's
+		// Childhood Barn's "can't phase in for as long as it remains face
+		// up"), which is in the command zone and never on the battlefield.
+		// A planeswalk turns it face down, and the permanents phase in as
+		// the table settles after it.
+		if g.PlanarFaceUp != nil && g.PlanarFaceUp.Contains(c.PhaseInLockedBy) {
+			continue
+		}
 		ready = append(ready, c.InstanceID)
 	}
 	if len(ready) == 0 {
