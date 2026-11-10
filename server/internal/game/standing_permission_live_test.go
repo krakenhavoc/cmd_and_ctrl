@@ -42,15 +42,13 @@ func TestFillDerivedLiveCountsElvesAndFaeriesOnce(t *testing.T) {
 	g := &Game{Battlefield: &Zone{Kind: ZoneBattlefield}}
 	g.Turn.Seq = 3
 	me, them := uuid.New(), uuid.New()
-	for _, c := range []Card{
+	g.Battlefield.Cards = append(g.Battlefield.Cards, []Card{
 		{InstanceID: uuid.New(), Controller: me, TypeLine: "Creature — Elf Faerie"},
 		{InstanceID: uuid.New(), Controller: me, TypeLine: "Creature — Elf"},
 		{InstanceID: uuid.New(), Controller: me, TypeLine: "Kindred Enchantment — Faerie"},
 		{InstanceID: uuid.New(), Controller: me, TypeLine: "Creature — Goblin"},
 		{InstanceID: uuid.New(), Controller: them, TypeLine: "Creature — Elf"},
-	} {
-		g.Battlefield.Cards = append(g.Battlefield.Cards, c)
-	}
+	}...)
 	perm := CastPermission{
 		Filter:                   PermissionFilter{ExiledWithSource: true, ExiledWithSourceThisTurn: true},
 		MaxSpellManaValueCountOf: []string{"Elf", "Faerie"},
