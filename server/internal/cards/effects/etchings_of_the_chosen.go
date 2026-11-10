@@ -20,8 +20,11 @@ func init() {
 			TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1),
 		},
 		Activated: []ActivatedAbility{{
-			Label:   "{1}, Sacrifice a creature of the chosen type: Target creature you control gains indestructible until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerSacOutlet},
+			Label: "{1}, Sacrifice a creature of the chosen type: Target creature you control gains indestructible until end of turn.",
+			Purpose: game.Purpose{
+				Answers: game.AnswerSurvive | game.AnswerSacOutlet,
+				Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
+			},
 			Cost:    Plus(ManaCost("{1}"), sacrifice),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
