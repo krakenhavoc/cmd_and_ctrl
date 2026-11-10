@@ -413,6 +413,14 @@ type Characteristic struct {
 	// when it snapshots every combatant's amount.
 	DamageByToughness bool `json:",omitempty"`
 
+	// DamageAlwaysByToughness is "assigns combat damage equal to its
+	// toughness rather than its power" with no condition (CR 510.1c,
+	// Walking Bulwark's activated ability, #5368): combatDamagePower
+	// answers with the toughness whether or not it is the greater. The
+	// conditional form is DamageByToughness. Set only by a scoped effect
+	// (ModDamageByToughness) or a static that says so.
+	DamageAlwaysByToughness bool `json:",omitempty"`
+
 	// DamageAsPositivePower is "if this creature's power is negative, it
 	// assigns combat damage as though its power were positive" (Loot,
 	// the Anomaly, #3505): combatDamagePower answers with the absolute

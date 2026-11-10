@@ -333,6 +333,8 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Lita, Mechanical Engineer's Zeppelin: flying, crew 3 (#5075).
 	printedAvB24ZeppelinToken,
+	// Pia Nalaar, Chief Mechanic's Nalaar Aetherjet: X/X, flying, crew 2 (#5368).
+	printedCmdrB23NalaarAetherjetToken,
 	// Synapse Necromage's Fungus: can't block (The Lost Caverns of
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,

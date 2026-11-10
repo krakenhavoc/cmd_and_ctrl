@@ -10689,6 +10689,9 @@ func (c *Card) combatDamagePower() int {
 			p = -raw
 		}
 	}
+	if c.effective != nil && c.effective.DamageAlwaysByToughness {
+		return c.CurrentToughness()
+	}
 	if c.effective != nil && c.effective.DamageByToughness {
 		if t := c.CurrentToughness(); t > p {
 			return t
