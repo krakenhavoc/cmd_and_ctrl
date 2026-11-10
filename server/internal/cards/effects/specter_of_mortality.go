@@ -28,6 +28,10 @@ func init() {
 		Name:            "Specter of Mortality",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
+		// -X/-X to every other creature, X the cards exiled: a partial
+		// minus sweep whose amount is its X (ADR 0126).
+		Purpose: game.Purpose{Sweep: game.Sweep{
+			Matches: game.SweepCreatures, How: game.SweepMinus, AmountIsX: true, Partial: true}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Specter of Mortality — you may exile one or more creature cards from your graveyard; when you do, each other creature gets -X/-X until end of turn",
 				specterOfMortalityEnters),
