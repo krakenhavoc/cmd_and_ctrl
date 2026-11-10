@@ -2422,7 +2422,13 @@ func hasCardType(c *Card, lowerType string) bool {
 		if c.Bestowed {
 			return typeListHas(bestowBaseline(c).Types, lowerType)
 		}
-		return typeLineHas(c.TypeLine, lowerType)
+		if typeLineHas(c.TypeLine, lowerType) {
+			return true
+		}
+		// #5427, CR 113.6c: a type the card's own text gives it while
+		// it isn't on the battlefield (off_battlefield_self.go).
+		self := offBattlefieldSelfOf(c)
+		return self != nil && self.hasType(lowerType)
 	}
 	return typeListHas(c.effective.Types, lowerType)
 }
@@ -2479,6 +2485,15 @@ func hasSubtype(c *Card, subtype string) bool {
 		}
 		if typeListHas(printed, subtype) {
 			return true
+		}
+		// #5427, CR 113.6c: and a subtype the card's own text gives it
+		// while it isn't on the battlefield (off_battlefield_self.go).
+		// A spell with a changed word has it in the baseline above,
+		// already read through the change (CR 612.2).
+		if c.TextWords == nil {
+			if self := offBattlefieldSelfOf(c); self != nil && self.hasSubtype(subtype) {
+				return true
+			}
 		}
 	} else if typeListHas(c.effective.Subtypes, subtype) {
 		return true

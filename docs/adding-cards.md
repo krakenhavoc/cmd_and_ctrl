@@ -11488,6 +11488,19 @@ and then discard the change to `docs/engine-seams.md`.
   Adding a dependency-ordered bucket other than layer 4 needs a
   catalogued pair that wants it and a benchmark — the ADR has the
   numbers.
+
+  A card's OWN "As long as this card isn't on the battlefield, it's a
+  1/1 Insect creature in addition to its other types" (Grist, the
+  Hunger Tide) has no battlefield source, so it is not `AffectsZones`.
+  Declare `Spec.OffBattlefield: &game.OffBattlefieldSelf{Types,
+  Subtypes, Power, Toughness}`: the types and subtypes it adds and the
+  power and toughness it has in a hand, a library, a graveyard, exile,
+  the command zone and on the stack (CR 113.6c). It is data: the type,
+  subtype and power/toughness readers apply it to a card that is not a
+  permanent, before any `AffectsZones` static, and on the battlefield
+  the card is its printed self. `Register` refuses one without the
+  Creature type. See `grist_the_hunger_tide.go` and
+  `game/off_battlefield_self.go` (#5427).
 - ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
   S20 shipped structured targeting and S18.5 the zone browser, so
   "target card in your graveyard" is a real target clause:
