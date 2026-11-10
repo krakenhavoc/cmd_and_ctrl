@@ -251,6 +251,7 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaCostBranchPayment,
     manaExilePermanentPayment,
     manaTapPayment,
   } from "../../manaAbilityCost";
@@ -3064,6 +3065,57 @@
     // one action at the end of the chain. Set at the chain's start, so
     // a chain that was cancelled cannot leak its colour into the next.
     manaColors = colors;
+    manaCostBranch = undefined;
+    // #5397: an either/or cost (forage, Thornvault Forager) asks which
+    // way to pay first, through the branch picker the CR 602 chain uses.
+    // One payable branch is the answer and is taken without a question;
+    // none means the row can't be paid (CR 118.3) and nothing is sent.
+    if (abilityCostBranches(ability).length > 0) {
+      const payable = payableCostBranches(ability);
+      if (payable.length === 0) return;
+      if (payable.length === 1) {
+        afterManaBranch(card, ability, payable[0]);
+        return;
+      }
+      manaBranchPrompt = { card, ability };
+      return;
+    }
+    startManaCardCosts(card, ability);
+  }
+
+  // #5397: the branch of a mana ability's either/or cost, carried on the
+  // side like the discard picks until the one activate_mana_ability goes
+  // out as `cost_branch`. undefined means the row has no branches.
+  let manaBranchPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaCostBranch: number | undefined = undefined;
+  const manaBranchCard = $derived(
+    manaBranchPrompt
+      ? ({
+          ...manaBranchPrompt.card,
+          modes: costBranchModeSpec(manaBranchPrompt.ability),
+        } as CardView)
+      : null,
+  );
+  function confirmManaBranch(modes: number[]): void {
+    const p = manaBranchPrompt;
+    manaBranchPrompt = null;
+    if (!p || modes.length !== 1) return;
+    afterManaBranch(p.card, p.ability, modes[0]);
+  }
+  // afterManaBranch folds the chosen branch into the row and runs the
+  // ordinary mana cost chain on it: the graveyard branch's exile picker or
+  // the Food branch's sacrifice picker.
+  function afterManaBranch(card: CardView, ability: ManaAbilityView, k: number): void {
+    manaCostBranch = k;
+    startManaCardCosts(card, withCostBranch(ability, k));
+  }
+
+  // startManaCardCosts is the head of the mana cost chain once any
+  // either/or branch is folded in (#5397).
+  function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -3257,6 +3309,8 @@
         ...counter,
         // #1443: absent unless the picker named a colour.
         ...manaColorParams(manaColors),
+        // #5397: absent unless the row's cost is an either/or (forage).
+        ...manaCostBranchPayment(manaCostBranch),
       },
       viewerID ?? undefined,
     );
@@ -3269,6 +3323,7 @@
     manaExilePermanentIDs = [];
     manaTapIDs = [];
     manaColors = [];
+    manaCostBranch = undefined;
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -5164,6 +5219,17 @@
     onCancel={() => {
       abilityBranchPrompt = null;
       abilityCostBranch = undefined;
+    }}
+  />
+  <!-- #5397: the same question for a mana ability whose cost forages
+       (Thornvault Forager): exile three cards from your graveyard, or
+       sacrifice a Food. -->
+  <ModePickerModal
+    card={manaBranchCard}
+    onConfirm={confirmManaBranch}
+    onCancel={() => {
+      manaBranchPrompt = null;
+      manaCostBranch = undefined;
     }}
   />
   {#if $zoneBrowser}

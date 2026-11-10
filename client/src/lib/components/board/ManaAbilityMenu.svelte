@@ -357,7 +357,7 @@
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
       {/if}
-      {#if a.mana_cost}
+      {#if a.mana_cost || a.charged_mana_cost}
         <!-- #1190: the ability's OWN mana component (the Signet
              cycle's "{1}", Loot's exhaust "{G}"). Shows what the
              engine actually charges (charged_mana_cost); the tooltip
@@ -435,7 +435,7 @@
       {#if a.tap_cost}
         <span class="cost" aria-label="tap cost">↻</span>
       {/if}
-      {#if a.mana_cost}
+      {#if a.mana_cost || a.charged_mana_cost}
         <!-- #1190: same chip as the mana list above — the row's
              Label text already prints the ability's cost baked in
              by hand, so this is the ONE place a discount that made

@@ -114,6 +114,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [Plane cards (ADR 0216 slice 4, #4870)](#plane-cards-adr-0216-slice-4-4870)
+
+  - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
   - [When in doubt](#when-in-doubt)
 
 ### Recipe
@@ -423,7 +425,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Register` refuses it on a spell, an activated ability, a granted
    ability and any trigger that watches more than `EventETB`. A
    "choose up to X" whose X is something else (Riku of Many Paths,
-   Bumi, King of Three Trials) is not this.
+   Bumi, King of Three Trials) is not this: it is `ChooseUpToCount(count,
+   …)` with a count registered once at init, `game.RegisterModeCount`
+   for a count of the board (Bumi's Lessons) or
+   `game.RegisterModeCountOfEvent` for one read off the triggering
+   event (Riku's "the number of times you chose a mode for that spell",
+   #4468: `len(StackItem.Modes)` of the spell `ev.CardID` names).
 
    **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
    **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
@@ -1895,6 +1902,19 @@ the activator's energy, and the enumerator bounds X by it. The view
 stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
 short for.
 
+**"Pay X life" and "Sacrifice a creature with mana value X"** (S79, #4452)
+are the two other X-priced ability components. `PayXLife()` is `AbilityCost.LifeX`
+beside the mana's `{X}`: Krumar Initiate's `Plus(ManaCost("{X}{B}"), TapCost(),
+PayXLife())` pays the announced X as life, and the life total is a ceiling on X
+(`game/life_x_cost.go`, CR 119.4), in the engine's announce gate and in the
+enumerator. `SacrificeAnotherWithManaValueX(label, preds...)` (`effects/
+std_b7_helpers.go`) is Sidisi, Regent of the Mire's cost: X is announced
+(`DemandsX` counts it), the sacrificed permanent must have mana value X
+(`game/sacrifice_mv_x.go`), and the target clause bound to the same X is
+`TargetCardInGraveyard(...).WithManaValueEqualsXPlus(1)`, "mana value X plus 1"
+(`TargetSpec.ManaValueEqualsXPlus`; the view ships such a clause without the
+client's "mana value X" narrowing, which would hide the cards the engine accepts).
+
 **A mana ability that pays energy** (PR 2) declares it on its cost:
 `ManaAbilityCost{Tap: true, Energy: 1}` is Aether Hub's "{T}, Pay {E}:"
 (`anyColorForEnergyRow` in `effects/energy_mana.go` is the whole row).
@@ -2809,6 +2829,20 @@ never stops it. `Next` is one instance of damage (CR 615.8), spent the
 way `PreventNextDamageFromSource` is. "Choose a source you control" is
 `ChooseSourcePrompt.Controller`.
 
+**"It deals that much damage plus X instead" for the rest of the turn**
+(#4468, Taii Wakeen, Perfect Shot) is the additive sibling, the
+`ScopedEffect` kind `addDamage`, written with `g.AddDamageForEffect`
+(`server/internal/game/add_damage.go`). It takes the multiplier's
+`Sources`, `Recipients` and `CombatOnly`, plus `NoncombatOnly` for "would
+deal noncombat damage". An amount below 1 registers nothing. Two
+additions commute, so no CR 616 order is asked between them; beside a
+multiplier the affected player orders the two.
+
+```go
+g.AddDamageForEffect(game.DamageAddition{EffectSource: ctx.Source(), Controller: ctx.Controller(),
+    Amount: ctx.X(), Sources: game.DamageSourcesYours, NoncombatOnly: true})  // Taii Wakeen
+```
+
 **Choosing a source is a keyed prompt** (#4253 slice 10c). A
 `game.ChooseSourcePrompt` names what happens to the pinned source as data,
 never a closure. The shield, redirection or multiplier the card described
@@ -3041,6 +3075,15 @@ ctx.TextSubtypes("Spirit"), Keywords: []string{"flying"}, BasePT:
 keyword, layer 7b base power and toughness, one record). `Problem`
 refuses an overwrite that both sets and adds types. See
 `excava_the_risen_past.go`.
+
+"... and has no abilities" is `EntersAs.LoseAllAbilities` (Xu-Ifit,
+Osteoharmonist: "It's a Skeleton in addition to its other types and has no
+abilities", `EntersAs{AddSubtypes: ctx.TextSubtypes("Skeleton"),
+LoseAllAbilities: true}`). It rides the same record, registered before the
+zone move and `EventETB`, so the card's own "when this enters" triggers and
+enters-tapped or enters-with-counters clauses never apply. A subtype-only or
+abilities-only overwrite is valid (`Problem` no longer demands a card type
+when one of those is set). See `xu_ifit_osteoharmonist.go`.
 
 A "dies, if it was a creature, return it" trigger (Tom, Bert, and
 William) reads `lki.Types` in `AppliesTo`. The returned artifact was
@@ -4620,9 +4663,22 @@ WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // 
   `PaidCost.Foraged`, read through `ctx.Foraged()` for "if you foraged";
   the cards are on `ctx.Exiled()` and the Food on
   `ctx.SacrificedPermanents()`.
-- Not yet: forage on a MANA ability (Thornvault Forager's "{T}, Forage: Add
-  two mana"), which has no either/or cost, and "cast … by foraging in
-  addition to paying their other costs" (Osteomancer Adept).
+- On a MANA ability (#5397, Thornvault Forager's "{T}, Forage: Add two
+  mana in any combination of colors") the cost is a field, not `Forage()`:
+
+  ```go
+  Cost: ManaAbilityCost{Tap: true, Forage: true},
+  ```
+
+  The activator names the way as `activate_mana_ability.cost_branch`
+  (0 exiles three graveyard cards on `exile_ids`, 1 sacrifices a Food on
+  `sacrifice_ids`); `game.ChosenManaAbilityShape` folds it into the plain
+  `ExileCards` or `SacrificeOther` clause, so declare neither beside it
+  (`Register` refuses it, and a forage off the battlefield). The
+  auto-tapper never plans the row, so give the card its plain mana row
+  too when it prints one.
+- Not yet: "cast … by foraging in addition to paying their other costs"
+  (Osteomancer Adept).
 
 ### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
 
@@ -5584,6 +5640,24 @@ go first, which is the order that leaves the least to pay. The
 activation prices at the announced X (`AbilityManaCostAtXForEffect`);
 the menu row, the enumerator and the auto-tap preview price before X is
 chosen, at 0, which only ever shows more than the activation charges.
+
+**A tax on activating (#5382, S79):** "Activated abilities of sources
+with the chosen name cost {2} more to activate" (Skyseer's Chariot) is an
+activation-scoped increase, `ActivationCostsMore(n, label, preds...)`:
+
+```go
+AsEnters:      ChooseCardNameAsEnters("Skyseer's Chariot — choose a nonland card name"),
+CostModifiers: []game.CostModifier{
+    ActivationCostsMore(2, label, OfASourceWithTheChosenNonlandName()),
+},
+```
+
+Unlike a reduction, an increase reaches a cost that prints no mana — a
+{T}-only ability, a mana ability, crew, a loyalty ability — and that
+activation then owes the {n}. Every reader asks
+`Game.AbilityChargesManaForEffect` / `ManaAbilityChargesManaForEffect`,
+never `Cost.Mana != ""`, so the payment, the enumerator, the view's
+`charged_mana_cost` and auto-tap all see it. Several increases sum.
 `OfACreatureYouControl()` is the source predicate: a creature on the
 battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
@@ -5658,6 +5732,15 @@ dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
 on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
+
+On a PERMANENT spell the exile is also linked to the spell object and, as
+the spell becomes a permanent, relinked to it (CR 607.2q,
+`relinkCostExilesLocked`, as behold-and-exile does), so the permanent's own
+"each card exiled with it" reads the creature the cost exiled beside the
+cards its abilities exile: Fear of Abduction's leave trigger is
+`b36ReturnCardsExiledWithToOwnersHands` and its enters trigger exiles with
+`ExileTarget{Linked: true}`. An instant or sorcery links nothing (Soul
+Exchange).
 
 **Return a permanent you control as an additional cost (#5247):** "As an
 additional cost to cast this spell, return a permanent you control to its
@@ -10815,7 +10898,17 @@ return ExtraCombatAndMainAfterThisMain().Apply(ctx)            // "after this ma
 return AddPhases{Anchor: game.PhaseAnchor{Kind: game.AnchorThisPhase},
     Kinds: []game.PhaseKind{game.PhaseKindBeginning}}.Apply(ctx) // Sphinx of the Second Sun
 return AddStepAfterThisStep{Step: game.StepEnd}.Apply(ctx)     // Y'shtola Rhul
+return YouGetUpkeepStepsAfterThisPhase{N: n}.Apply(ctx)        // Obeka: "you get that many additional upkeep steps after this phase"
 ```
+
+**An added upkeep step after a phase** (#5405, CR 500.10) is a beginning
+phase of its own holding only the upkeep: its untap and draw steps are
+skipped, so nothing untaps and nobody draws, while "at the beginning of
+your upkeep" triggers fire in each one and the active player gets
+priority in each. `YouGetUpkeepStepsAfterThisPhase` adds nothing on
+another player's turn (CR 500.10a's "you get"). The steps are plan
+entries, so a restore point keeps them and the phase strip shows each
+as "+ Upkeep".
 
 Four things the engine does so a card does not:
 
@@ -13754,6 +13847,41 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
 - **Coverage.** A plane counts in the registry keys like any card, and the
   census's planar line ("planes and phenomena … N of M") counts it against
   `coverage/planar_cards.txt`. Generate only your planes' oracle fixtures.
+
+### Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)
+
+Four small seams came with the leftovers of batches 13 and 14.
+
+```go
+// "a creature card with no abilities" (Fang-Druid Summoner, Rise from the Wreck)
+Predicate: b13CreatureCardWithNoAbilities            // SearchLibrary, a func(game.Card) bool
+TargetCardInGraveyard("…", YouOwn(), b13NoAbilities()) // a target clause
+
+// "Exile X artifact cards from your graveyard" as an ability's cost (Winter, Cursed Rider)
+Cost: Plus(ManaCost("{2}{U}{B}"), TapCost(), ExileXFromGraveyardAsCost("X artifact cards", isArtifactCard))
+// the effect: x := len(ctx.Exiled())
+
+// "destroy up to one target artifact or enchantment with mana value X" off a cycling trigger (Webstrike Elite)
+ManaValueEqualsTheEventAmount(TargetPermanent("…", Or(Artifact(), Enchantment())).WithCount(0, 1))
+
+// "except it's 0/0" (Mimeoplasm, Revered One)
+Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
+```
+
+- **"No abilities" is the printed text.** `game.Card.NoAbilitiesText` is stamped by the deck importer from the
+  oracle text (`game.NoAbilitiesInText`, empty text and nothing else), re-derived by `SetFace`, copied with the other
+  printed values, and read through `game.PrintsNoAbilities`. A card the importer never read (a token, a fixture, a
+  restore point from before the stamp) is `PrintedUnknown` and is not "with no abilities". A test fixture says so with
+  `NoAbilitiesText: game.PrintedYes`.
+- **"Exile X cards" on an ability** is `game.ExileCost.CountIsX`, an any-number clause with no floor: the activator
+  announces X by naming that many matching cards, and `ctx.Exiled()` is X. It is graveyard-only, and the wire is the
+  existing `exile_cost_any_number` picker. A cast's "exile X" stays `ExileXFromGraveyardCost`.
+- **An event amount** bounds a triggered clause two ways now: `ManaValueAtMostTheEventAmount` and
+  `ManaValueEqualsTheEventAmount` (`game.TargetSpec.ManaValueEqualsEventAmount`), both read off the trigger's event
+  (`EventCycle.Amount` is the cycling cost's X).
+- **An "as it enters" exile from a graveyard** has no replacement-prompt kind; it is `Spec.AsEnters` queueing a
+  choose-cards prompt over the graveyard whose keyed answer exiles with `ExileLinkedForEffect` (so the cards are
+  "exiled with it", CR 607.2a) and then puts the counters on.
 
 ### When in doubt
 

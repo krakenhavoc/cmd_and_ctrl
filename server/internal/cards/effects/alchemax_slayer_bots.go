@@ -12,17 +12,6 @@ func init() {
 		OracleID:     "cdc7356c-9621-4420-9fda-c8b91df0ec7c",
 		Name:         "Alchemax Slayer-Bots",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{Targeting(WhenThisEnters("Alchemax Slayer-Bots — tap and stun target creature", func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			ts := ctx.LegalTargets()
-			if len(ts) == 0 {
-				return nil
-			}
-			id := ts[0].ID
-			if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-				return err
-			}
-			return (AddCounter{Target: id, Kind: game.CounterStun, N: 1}).Apply(ctx)
-		}), TargetCreature("target creature an opponent controls", OpponentControls()))},
+		Triggered:    []game.TriggeredAbility{Targeting(WhenThisEnters("Alchemax Slayer-Bots — tap and stun target creature", tapAndStunTheTarget), TargetCreature("target creature an opponent controls", OpponentControls()))},
 	})
 }

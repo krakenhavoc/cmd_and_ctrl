@@ -288,6 +288,21 @@ type ExileCost struct {
 	// optional cost and an either/or branch. Plain data, so it adds no
 	// closure route to Game.
 	ManaValueFromTargets bool
+
+	// CountIsX is "Exile X <kind> cards from your graveyard" as an
+	// ACTIVATED ability's cost, where X appears nowhere else in the cost
+	// (Winter, Cursed Rider's exhaust: "{2}{U}{B}, {T}, Exile X artifact
+	// cards from your graveyard: Each other nonartifact creature gets
+	// -X/-X", #4464). The activator announces X (CR 107.3a, CR 602.2b) by
+	// naming that many matching cards, so it is an AnyNumber clause with no
+	// floor: any number of the pile's matching cards, none included, and X
+	// is the number named. The effect reads it back as the number of cards
+	// the cost exiled (Context.Exiled). N is zero and neither floor is set;
+	// effects.Register refuses the flag without AnyNumber, with a floor, and
+	// anywhere but a CR 602 ability. The picker is the any-number picker the
+	// client already has (exile_cost_any_number), so the wire is unchanged.
+	// Build it with effects.ExileXFromGraveyardAsCost.
+	CountIsX bool
 }
 
 // TotalManaValue is the sum of `cards`' mana values as they sit in a

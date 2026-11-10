@@ -679,10 +679,18 @@ func checkEitherCost(spec Spec) {
 			rest := *ac
 			rest.Reveal, rest.Label = nil, ""
 			rc := ac.Reveal
-			if !rc.Exile {
+			if rc.ChooseCreatureOrWarped {
+				// Close Encounter: alone on the mandatory slot, built with
+				// ChooseCreatureOrWarpedCardCost.
+				if rc.Subtype != "" || rc.Color != "" || rc.Behold || rc.Exile || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+					panic(fmt.Sprintf("effects.Register: %q declares a malformed choose-a-creature-or-warped-card cost — build it with ChooseCreatureOrWarpedCardCost, alone on the mandatory slot", spec.Name))
+				}
+			} else if !rc.Exile {
 				panic(fmt.Sprintf("effects.Register: %q declares a reveal / behold cost outside an either/or branch — every printed one is a branch beside mana (ADR 0100 amendment 2026-10-07), or the exiling behold (BeholdAndExileCost)", spec.Name))
 			}
-			if !rc.Behold || rc.Subtype == "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
+			if rc.ChooseCreatureOrWarped {
+				// checked above
+			} else if !rc.Behold || rc.Subtype == "" || rc.Color != "" || !rest.Empty() || rest.Key != "" || rest.Optional || rest.Targets != nil || rest.Repeat > 1 || rest.MinX != 0 {
 				panic(fmt.Sprintf("effects.Register: %q declares a malformed behold-and-exile cost — build it with BeholdAndExileCost, alone on the mandatory slot (#4687)", spec.Name))
 			}
 		}
@@ -726,6 +734,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles cards from hand — only the mandatory slot may, not a branch (#3175)", spec.Name, where))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
+		case b.Reveal != nil && b.Reveal.ChooseCreatureOrWarped:
+			panic(fmt.Sprintf("effects.Register: %q %s chooses a creature or a warped card — only the mandatory slot may (ChooseCreatureOrWarpedCardCost)", spec.Name, where))
 		case b.Reveal != nil && b.Reveal.Exile:
 			panic(fmt.Sprintf("effects.Register: %q %s beholds and exiles — only the mandatory slot may (BeholdAndExileCost, #4687)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):

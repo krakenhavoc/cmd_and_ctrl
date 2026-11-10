@@ -159,7 +159,7 @@ func (g *Game) runDrawThenLocked(d DrawThen) error {
 // prompt a draw pauses on (a dredge offer, a draw-instead pick, a CR
 // 616 ordering prompt) instead of running as the call returns.
 func (g *Game) DrawNThenForEffect(playerID uuid.UUID, n int, then DrawThen) error {
-	err := g.drawRunLocked(playerID, n, then)
+	err := g.drawRunLocked(playerID, g.drawInstructionSizeLocked(playerID, n), then)
 	if errors.Is(err, ErrZoneEmpty) {
 		return nil
 	}

@@ -98,6 +98,8 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			AddCounter:                a.Cost.AddCounter,
 			DiscardCards:              a.Cost.DiscardCards,
 			ExileCards:                a.Cost.ExileCards,
+			Either:                    manaForageBranches(a.Cost.Forage),
+			Forage:                    a.Cost.Forage,
 			ExilePermanents:           a.Cost.ExilePermanents,
 			Produced:                  a.Produced,
 			Label:                     a.Label,
@@ -519,4 +521,14 @@ func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
 		return game.ConditionalLandPlays{}
 	}
 	return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, Another: spec.AdditionalLandPlaysNeedsAnother}
+}
+
+// manaForageBranches is a mana ability's either/or cost: forage's two
+// branches when the cost forages (#5397, ManaAbilityCost.Forage), nil
+// otherwise.
+func manaForageBranches(forage bool) []game.AbilityCostBranch {
+	if !forage {
+		return nil
+	}
+	return game.ForageAbilityBranches()
 }

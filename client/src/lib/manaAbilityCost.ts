@@ -21,6 +21,8 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
     !!ability.exile_cost_n ||
     // #1600: Food Chain's "Exile a creature you control".
     !!ability.exile_permanent_options ||
+    // #5397: an either/or cost (forage) asks which way to pay.
+    (ability.cost_branches?.length ?? 0) > 0 ||
     counterCostNeedsPrompt(ability)
   );
 }
@@ -38,4 +40,11 @@ export function manaTapPayment(tapIDs: string[]): { tap_ids?: string[] } {
 // payload is unchanged.
 export function manaExilePermanentPayment(ids: string[]): { exile_permanent_ids?: string[] } {
   return ids.length > 0 ? { exile_permanent_ids: [...ids] } : {};
+}
+
+// #5397: the branch of an either/or cost (forage) the activation pays,
+// on activate_mana_ability's `cost_branch`. Absent when the row has no
+// branches, so every other mana ability's payload is unchanged.
+export function manaCostBranchPayment(k: number | undefined): { cost_branch?: number } {
+  return k === undefined ? {} : { cost_branch: k };
 }
