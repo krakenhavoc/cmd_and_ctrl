@@ -29,7 +29,7 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "9fb7e7ca-ad2f-4677-bb4d-50808b01b4f9",
+		OracleID:     "9fb7e7ca-ad2f-4677-859c-7a9adf8fb5fd",
 		Name:         "Transforming Flourish",
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{Demonstrate()},

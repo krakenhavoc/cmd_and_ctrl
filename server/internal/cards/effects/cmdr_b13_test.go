@@ -1247,7 +1247,7 @@ func TestCmdrB15ThundermaneDragonDoesNotHelpOpponents(t *testing.T) {
 	}
 }
 
-const cmdrB15FlourishOracle = "9fb7e7ca-ad2f-4677-bb4d-50808b01b4f9"
+const cmdrB15FlourishOracle = "9fb7e7ca-ad2f-4677-859c-7a9adf8fb5fd"
 
 func TestCmdrB15TransformingFlourishDestroysThenGivesTheOwnerAFreeCast(t *testing.T) {
 	g := newCatalogGame(t)
