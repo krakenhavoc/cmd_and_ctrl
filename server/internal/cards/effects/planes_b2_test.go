@@ -798,3 +798,55 @@ func TestTheDrumPumpsOnAnyPlanarRollAndChaosEndsTheTurn(t *testing.T) {
 		t.Errorf("the turn did not end: still turn %d at %s", g.Turn.Seq, g.Turn.Step)
 	}
 }
+
+// --- The Cheetah Planet ------------------------------------------------------
+
+func TestCheetahPlanetMakesACatOfANonCatCreatureEachUpkeep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeCheetahPlanet)
+	g, _ := newPlaneGame(t, planeCheetahPlanet)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	cat := b12Creature(g, me.ID, "Tabby", "Creature — Cat", 1, 1)
+	planeswalkToPlane(t, g, planeCheetahPlanet.Oracle)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(cat)); err == nil {
+		t.Fatal("a Cat was accepted as the target")
+	}
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	c := tmtB1Card(t, g, bear)
+	if c.CurrentPower() != 4 || !c.HasSubtypeWord("Cat") || !c.HasSubtypeWord("Bear") {
+		t.Errorf("the creature is %d/%d %q, want a 4/4 Bear Cat", c.CurrentPower(), c.CurrentToughness(), c.Effective().Subtypes)
+	}
+}
+
+func TestCheetahPlanetChaosGivesEveryCatProvokeUntilEndOfTurn(t *testing.T) {
+	g, _ := newPlaneGame(t, planeCheetahPlanet)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	mine := b12Creature(g, me.ID, "Tabby", "Creature — Cat", 1, 1)
+	theirs := b12Creature(g, opp.ID, "Lion", "Creature — Cat", 3, 3)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	has := func(id uuid.UUID) bool {
+		for _, ga := range layeredCard(t, g, id).Effective().GrantedAbilities {
+			if ga.Key == game.GrantKey(theCheetahPlanetProvoke) {
+				return true
+			}
+		}
+		return false
+	}
+	if !has(mine) || !has(theirs) || has(bear) {
+		t.Errorf("provoke on my Cat %v, their Cat %v, the Bear %v; want true, true, false", has(mine), has(theirs), has(bear))
+	}
+	endTurn(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if has(mine) {
+		t.Error("provoke outlived the turn")
+	}
+}
