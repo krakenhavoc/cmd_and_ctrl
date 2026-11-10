@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -143,5 +144,104 @@ func TestCmdr2B05SvyelunGivesOtherMerfolkWard(t *testing.T) {
 	}
 	if !hasPayUnlessFor(g, opp.ID) {
 		t.Fatal("no ward prompt for a spell aimed at another Merfolk")
+	}
+}
+
+// --- Kopala ---------------------------------------------------------
+
+const cmdr2B05ProbeOracle = "test-cmdr2-b05-probe"
+
+func init() {
+	// {1}: target creature. A probe ability, usable by any player.
+	Register(Spec{
+		OracleID: cmdr2B05ProbeOracle,
+		Name:     "B05 Probe",
+		Activated: []ActivatedAbility{{
+			Label:   "{1}: Target creature does nothing.",
+			Cost:    ManaCost("{1}"),
+			Targets: TargetCreature("target creature"),
+			Effect:  func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+}
+
+func TestCmdr2B05KopalaTaxesOpponentsSpellsAtYourMerfolk(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cmdr2B05Card(g, me.ID, "Kopala, Warden of Waves", "Legendary Creature — Merfolk Wizard", cmdr2B05KopalaOracle, 2, 2)
+	merfolk := b39Creature(g, me.ID, "Merfolk", "Creature — Merfolk", 1, 1)
+	bear := seedBear(g, me.ID)
+	theirs := b39Creature(g, opp.ID, "Their Merfolk", "Creature — Merfolk", 1, 1)
+	at := func(id uuid.UUID) []game.TargetRef { return []game.TargetRef{{Kind: game.TargetCard, ID: id}} }
+
+	if got := priceOpponentsBoltAgainst(t, g, opp, at(merfolk)); got != 3 {
+		t.Errorf("opponent's spell at my Merfolk costs %d, want 3", got)
+	}
+	if got := priceOpponentsBoltAgainst(t, g, opp, at(bear)); got != 1 {
+		t.Errorf("opponent's spell at my non-Merfolk costs %d, want 1", got)
+	}
+	if got := priceOpponentsBoltAgainst(t, g, opp, at(theirs)); got != 1 {
+		t.Errorf("opponent's spell at their own Merfolk costs %d, want 1", got)
+	}
+	if got := priceOpponentsBoltAgainst(t, g, me, at(merfolk)); got != 1 {
+		t.Errorf("my own spell at my Merfolk costs %d, want 1", got)
+	}
+}
+
+func TestCmdr2B05KopalaTaxesOpponentsAbilitiesAtYourMerfolk(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me, opp := g.Seats[0], g.Seats[1]
+	cmdr2B05Card(g, me.ID, "Kopala, Warden of Waves", "Legendary Creature — Merfolk Wizard", cmdr2B05KopalaOracle, 2, 2)
+	merfolk := b39Creature(g, me.ID, "Merfolk", "Creature — Merfolk", 1, 1)
+	bear := seedBear(g, me.ID)
+	probe := pushCatalogPermanent(g, opp.ID, "B05 Probe", "Artifact", cmdr2B05ProbeOracle, false)
+
+	if err := strictProbe(t, g, opp.ID, probe, "{C}", merfolk); !errors.Is(err, game.ErrInsufficientMana) {
+		t.Fatalf("an opponent's ability at my Merfolk with {1}: err = %v, want insufficient mana", err)
+	}
+	drainPool(t, g, opp.ID)
+	if err := strictProbe(t, g, opp.ID, probe, "{C}{C}{C}", merfolk); err != nil {
+		t.Fatalf("with {3} the ability is payable: %v", err)
+	}
+	drainPool(t, g, opp.ID)
+	probe2 := pushCatalogPermanent(g, opp.ID, "B05 Probe", "Artifact", cmdr2B05ProbeOracle, false)
+	if err := strictProbe(t, g, opp.ID, probe2, "{C}", bear); err != nil {
+		t.Fatalf("an ability at a non-Merfolk is untaxed: %v", err)
+	}
+}
+
+// --- Stonybrook Banneret -------------------------------------------
+
+func TestCmdr2B05BanneretDiscountsMerfolkAndWizardSpells(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cmdr2B05Card(g, me.ID, "Stonybrook Banneret", "Creature — Merfolk Wizard", cmdr2B05BanneretOracle, 1, 1)
+	for _, c := range []struct {
+		name, typeLine, cost string
+		seat                 *game.Player
+		want                 int
+	}{
+		{"Merfolk", "Creature — Merfolk", "{1}{U}", me, 1},
+		{"Wizard", "Creature — Human Wizard", "{2}{U}", me, 2},
+		{"Both", "Creature — Merfolk Wizard", "{3}", me, 2},
+		{"Bear", "Creature — Bear", "{1}{G}", me, 2},
+		{"Opponent's Merfolk", "Creature — Merfolk", "{1}{U}", opp, 2},
+	} {
+		if got := priceInHand(t, g, c.seat, c.name, c.typeLine, c.cost); got != c.want {
+			t.Errorf("%s costs %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+func TestCmdr2B05BanneretHasIslandwalk(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := seatsForCombat(g)
+	b := cmdr2B05Card(g, me.ID, "Stonybrook Banneret", "Creature — Merfolk Wizard", cmdr2B05BanneretOracle, 1, 1)
+	bear := pushTribalCreature(g, them.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	seedLand(g, them.ID, "Island", "Basic Land — Island", "")
+	attackIntoBlocks(t, g, them.ID, b)
+	if r := blockRefusal(t, g, bear, b); r != game.BlockReasonLandwalk {
+		t.Fatalf("blocking an islandwalker against an Island: reason %q, want landwalk", r)
 	}
 }

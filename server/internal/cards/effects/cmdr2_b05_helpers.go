@@ -34,3 +34,42 @@ func cmdr2B05SelfKeywordWhileOtherMerfolk(n int, keyword string) game.StaticAbil
 	ab.Label = "Has " + keyword + " as long as you control at least " + numberWord(n) + " other Merfolk."
 	return ab
 }
+
+// cmdr2B05TargetsYourMerfolk passes when one of the announced targets is
+// a Merfolk creature the modifier source's controller controls — Kopala's
+// "that target a Merfolk you control". A target-reading predicate: the
+// modifier that uses it sets ReadsTargets.
+func cmdr2B05TargetsYourMerfolk() CostPredicate {
+	f := cmdr2B05MerfolkFilter(false, false)
+	return func(q game.CostQuery) bool {
+		if q.Game == nil {
+			return false
+		}
+		for _, t := range q.Targets {
+			if t.Kind != game.TargetCard {
+				continue
+			}
+			c, ok := q.Game.LookupCardForEffect(t.ID)
+			if ok && c.Controller == q.Source.Controller && f.Matches(&c, q.Game, &q.Source) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// cmdr2B05SpellOfAnyType passes on a spell of any of the named creature
+// types — "Merfolk spells and Wizard spells". Read off the spell as it
+// sits on the stack, where HasSubtype answers true for every creature
+// type on a changeling (CR 702.73a); the names are words of the source's
+// text (CR 612.2).
+func cmdr2B05SpellOfAnyType(subtypes ...string) CostPredicate {
+	return func(q game.CostQuery) bool {
+		for _, s := range subtypes {
+			if q.Card.HasSubtype(q.Source.TextSubtype(s)) {
+				return true
+			}
+		}
+		return false
+	}
+}
