@@ -578,3 +578,187 @@ func TestCmdrB9ExperimentalAuguryTakesOneBottomsTwoAndProliferates(t *testing.T)
 		t.Errorf("%d counters after proliferate, want 2", got)
 	}
 }
+
+func TestCmdrB9Group2CardsAreRegisteredFull(t *testing.T) {
+	want := map[string]string{}
+	for _, n := range []string{"Sprouting Goblin", "Eumidian Hatchery", "Scouring Swarm", "Gavel of the Righteous"} {
+		want[cmdrB9Oracle(t, n)] = n
+	}
+	cmdrB9Registered(t, want)
+}
+
+func TestCmdrB9SproutingGoblinSearchesOnlyWhenKickedAndOnlyForABasicLandType(t *testing.T) {
+	for _, kicked := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		wastes := frPushTop(me, "Wastes", "Basic Land", "")
+		dual := frPushTop(me, "Tarn", "Land — Island Mountain", "")
+		advanceToMain(t, g)
+		mana, params := "RC", game.CastSpellParams{Strict: true}
+		if kicked {
+			mana, params.OptionalCosts = "RCG", []int{0}
+		}
+		floatForTest(g, me, mana)
+		castFromHandForTest(t, g, me, "Sprouting Goblin", "Creature — Goblin Druid", "{1}{R}", cmdrB9Oracle(t, "Sprouting Goblin"), params)
+		passPriorityAroundTable(t, g)
+		search := searchChoiceFor(g, me.ID)
+		if !kicked {
+			if search != nil {
+				t.Error("an unkicked Goblin searched")
+			}
+			continue
+		}
+		if search == nil {
+			t.Fatal("a kicked Goblin did not search")
+		}
+		if err := g.ResolveSearchLibrary(search.ID, me.ID, []uuid.UUID{wastes}); err == nil {
+			t.Error("a Wastes (no basic land type) was accepted")
+		}
+		if err := g.ResolveSearchLibrary(search.ID, me.ID, []uuid.UUID{dual}); err != nil {
+			t.Fatalf("search: %v", err)
+		}
+		g.SettleResolution()
+		if !me.Hand.Contains(dual) {
+			t.Error("the dual land did not reach the hand")
+		}
+	}
+}
+
+func TestCmdrB9SproutingGoblinSacrificesALandToDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	goblin := b12Push(g, me.ID, "Sprouting Goblin", "Creature — Goblin Druid", cmdrB9Oracle(t, "Sprouting Goblin"), 2, 2)
+	land := seedLandOnBattlefield(g, me.ID, "Mountain", "Basic Land — Mountain")
+	floatForTest(g, me, "R")
+	hand := me.Hand.Size()
+	if err := g.ActivateCatalogAbility(me.ID, goblin, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{land}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 || g.Battlefield.Contains(land) {
+		t.Errorf("hand %d → %d, land still on the battlefield %v", hand, me.Hand.Size(), g.Battlefield.Contains(land))
+	}
+}
+
+func TestCmdrB9EumidianHatcheryCountsHatchlingsAndHatchesThemWhenItDies(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	land := b12Push(g, me.ID, "Eumidian Hatchery", "Land", cmdrB9Oracle(t, "Eumidian Hatchery"), 0, 0)
+	life := me.Life
+	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("tap for mana: %v", err)
+	}
+	if me.Life != life-1 {
+		t.Errorf("life %d → %d, want -1", life, me.Life)
+	}
+	if got := counterCount(g, land, "hatchling"); got != 1 {
+		t.Fatalf("%d hatchling counters, want 1", got)
+	}
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(land, "hatchling", 2) })
+	killCreature(t, g, me.ID, land)
+	passPriorityAroundTable(t, g)
+	if got := countOnBattlefield(g, "Insect", me.ID); got != 3 {
+		t.Fatalf("%d Insect tokens, want 3 (one per hatchling counter)", got)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Insect" && !hasKeywordOnBattlefield(t, g, c.InstanceID, "flying") {
+			t.Error("an Insect lacks flying")
+		}
+	}
+}
+
+func TestCmdrB9ScouringSwarmMakesAnInsectOrACopyDependingOnTheGraveyard(t *testing.T) {
+	for _, lands := range []int{2, 7} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		swarm := b12Push(g, me.ID, "Scouring Swarm", "Creature — Insect", cmdrB9Oracle(t, "Scouring Swarm"), 1, 1)
+		for i := 0; i < lands; i++ {
+			pushToGraveyard(g, me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+		}
+		land := seedLandOnBattlefield(g, me.ID, "Swamp", "Basic Land — Swamp")
+		g.WithWriteLock(func() {
+			g.EmitEvent(game.Event{Kind: game.EventSacrifice, Actor: me.ID, CardID: land})
+		})
+		passPriorityAroundTable(t, g)
+		var made *game.Card
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.InstanceID != swarm && c.Controller == me.ID && c.IsCreature() {
+				made = c
+			}
+		}
+		if made == nil {
+			t.Fatalf("%d lands: no token", lands)
+		}
+		if !made.Tapped || !made.IsToken() {
+			t.Errorf("%d lands: token tapped %v, token %v", lands, made.Tapped, made.IsToken())
+		}
+		isCopy := made.Name == "Scouring Swarm"
+		if isCopy != (lands >= 7) {
+			t.Errorf("%d lands: token is %q", lands, made.Name)
+		}
+		if !isCopy && made.Name != "Insect" {
+			t.Errorf("%d lands: token is %q, want an Insect", lands, made.Name)
+		}
+		if !hasKeywordOnBattlefield(t, g, made.InstanceID, "flying") {
+			t.Errorf("%d lands: the token lacks flying", lands)
+		}
+	}
+}
+
+func TestCmdrB9GavelGrowsEachCombatAndEquipsForManaOrACounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	gavel := b12Push(g, me.ID, "Gavel of the Righteous", "Artifact — Equipment", cmdrB9Oracle(t, "Gavel of the Righteous"), 0, 0)
+	bear := seedCreature(g, "Bear", me.ID)
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, gavel, game.CounterCharge); got != 1 {
+		t.Fatalf("%d charge counters after the beginning of combat, want 1", got)
+	}
+	// Equip by removing the counter.
+	advanceTo(t, g, game.StepPostcombatMain)
+	branch := 1
+	if err := g.ActivateCatalogAbility(me.ID, gavel, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}, CostBranch: &branch, CounterKind: game.CounterCharge}); err != nil {
+		t.Fatalf("equip by removing a counter: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, gavel, game.CounterCharge); got != 0 {
+		t.Errorf("%d counters after paying the counter branch, want 0", got)
+	}
+	if p, tough := ptOf(t, g, bear); p != 2 || tough != 2 {
+		t.Errorf("a 2/2 equipped with no counters is %d/%d", p, tough)
+	}
+	// With no counter left that branch is unpayable; {3} is.
+	if err := g.ActivateCatalogAbility(me.ID, gavel, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}, CostBranch: &branch, CounterKind: game.CounterCharge}); err == nil {
+		t.Error("removed a counter from an Equipment with none")
+	}
+	mana := 0
+	if err := g.ActivateCatalogAbility(me.ID, gavel, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}, CostBranch: &mana}); err == nil {
+		t.Error("equipped for {3} with no mana")
+	}
+	floatForTest(g, me, "CCC")
+	if err := g.ActivateCatalogAbility(me.ID, gavel, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}, CostBranch: &mana}); err != nil {
+		t.Fatalf("equip for {3}: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(gavel, game.CounterCharge, 4) })
+	if p, tough := ptOf(t, g, bear); p != 6 || tough != 6 {
+		t.Errorf("a 2/2 with four counters on its Gavel is %d/%d, want 6/6", p, tough)
+	}
+	if !hasKeywordOnBattlefield(t, g, bear, "double strike") {
+		t.Error("four counters did not grant double strike")
+	}
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(gavel, game.CounterCharge, -1) })
+	if hasKeywordOnBattlefield(t, g, bear, "double strike") {
+		t.Error("three counters still grant double strike")
+	}
+}

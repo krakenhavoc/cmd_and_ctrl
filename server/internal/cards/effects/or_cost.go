@@ -35,6 +35,16 @@ func checkOrCost(name string, i int, cost game.AbilityCost) {
 	}
 	for b, branch := range cost.Either {
 		switch {
+		case branch.Kind == game.AbilityCostBranchMana:
+			if branch.Mana == "" {
+				panic(fmt.Sprintf("effects.Register: %q %s branch %d pays mana but names none (MoreManaBranch)", name, where, b))
+			}
+			continue
+		case branch.Kind == game.AbilityCostBranchRemoveCounters:
+			if (branch.Counter == "" && branch.Count != 1) || branch.Count < 1 || branch.Label == "" || cost.RemoveCounters != nil {
+				panic(fmt.Sprintf("effects.Register: %q %s branch %d removes counters without a count and its words (a kind too, unless it takes one counter of any kind), or beside the cost's own counter removal (RemoveCountersBranch)", name, where, b))
+			}
+			continue
 		case branch.Kind == game.AbilityCostBranchExileGraveyard && !cost.Forage:
 			panic(fmt.Sprintf("effects.Register: %q %s branch %d exiles from a graveyard — only forage's branch does (Forage)", name, where, b))
 		case branch.Kind != game.AbilityCostBranchSacrifice && branch.Kind != game.AbilityCostBranchDiscard && branch.Kind != game.AbilityCostBranchExileGraveyard:

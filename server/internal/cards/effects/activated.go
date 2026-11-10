@@ -518,6 +518,19 @@ func OrCost(branches ...game.AbilityCostBranch) game.AbilityCost {
 	return game.AbilityCost{Either: append([]game.AbilityCostBranch(nil), branches...)}
 }
 
+// ManaBranch is "Pay <mana>" as a branch of an OrCost (Gavel of the
+// Righteous's "Equip—Pay {3} or remove a counter from this Equipment").
+func ManaBranch(mana string) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchMana, Mana: mana}
+}
+
+// RemoveCountersBranch is "Remove <n> <kind> counter(s) from this
+// permanent" as a branch of an OrCost: `label` is the printed object
+// ("a counter from this Equipment").
+func RemoveCountersBranch(kind string, n int, label string) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchRemoveCounters, Counter: kind, Count: n, Label: label}
+}
+
 // SacrificeBranch is "Sacrifice <n> <label>" as a branch of an OrCost:
 // permanents the activator controls matching `of`.
 func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCostBranch {

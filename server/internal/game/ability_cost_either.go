@@ -47,6 +47,14 @@ const (
 	// your graveyard" (ForageAbilityBranches). Folded into ExileCards,
 	// so the graveyard walk, validator and payer are the plain clause's.
 	AbilityCostBranchExileGraveyard AbilityCostBranchKind = "exile_graveyard"
+	// AbilityCostBranchMana pays Mana: "Equip—Pay {3} or remove a counter
+	// from this Equipment" (Gavel of the Righteous). Folded into the
+	// cost's mana, after any mana the rest of the cost already has.
+	AbilityCostBranchMana AbilityCostBranchKind = "mana"
+	// AbilityCostBranchRemoveCounters removes Count counters of kind
+	// Counter from the ability's source. Folded into RemoveCounters, so
+	// the payer, the validator and the enumerator are the plain cost's.
+	AbilityCostBranchRemoveCounters AbilityCostBranchKind = "remove_counters"
 )
 
 // AbilityCostBranch is one way to pay an either/or part of an activated
@@ -66,6 +74,11 @@ type AbilityCostBranch struct {
 	// Nonland narrows a discard to nonland cards. Unused by a
 	// sacrifice.
 	Nonland bool
+	// Mana is the mana a mana branch pays ("{3}").
+	Mana string
+	// Counter is the kind of counter a remove-counters branch takes
+	// from the source ("charge").
+	Counter string
 }
 
 // ErrAbilityCostBranch is returned when an activation names no branch
@@ -106,6 +119,10 @@ func ChosenAbilityCost(c AbilityCost, branch *int) (AbilityCost, error) {
 		out.DiscardCards = b.discardClause()
 	case AbilityCostBranchExileGraveyard:
 		out.ExileCards = &ExileCost{N: b.count(), Label: b.Label, From: ZoneGraveyard}
+	case AbilityCostBranchMana:
+		out.Mana += b.Mana
+	case AbilityCostBranchRemoveCounters:
+		out.RemoveCounters = &CounterRemovalCost{Counter: b.Counter, N: b.count()}
 	default:
 		return c, ErrAbilityCostBranch
 	}
@@ -158,6 +175,10 @@ func (b AbilityCostBranch) BranchLabel() string {
 		return "Discard " + b.Label
 	case AbilityCostBranchExileGraveyard:
 		return "Exile " + b.Label + " from your graveyard"
+	case AbilityCostBranchMana:
+		return "Pay " + b.Mana
+	case AbilityCostBranchRemoveCounters:
+		return "Remove " + b.Label
 	}
 	return b.Label
 }
