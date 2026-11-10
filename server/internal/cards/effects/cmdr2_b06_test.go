@@ -316,3 +316,85 @@ func TestCmdr2B06FleetCaptainDecliningMakesNothing(t *testing.T) {
 		t.Errorf("%d tokens after declining", got)
 	}
 }
+
+// --- Ramirez DePietro, Pillager ----------------------------------------
+
+func TestCmdr2B06RamirezEntersLosesTwoAndMakesTwoTreasures(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	life := me.Life
+	castCatalogSpell(t, g, "Ramirez DePietro, Pillager", "Legendary Creature — Human Pirate", cmdr2B06RamirezOracle, nil)
+	passPriorityAroundTable(t, g)
+	if me.Life != life-2 {
+		t.Errorf("life %d, want %d", me.Life, life-2)
+	}
+	if got := len(battlefieldIDsNamed(g, "Treasure")); got != 2 {
+		t.Errorf("%d Treasures, want 2", got)
+	}
+}
+
+func TestCmdr2B06RamirezExilesTheVictimsTopCardAndLetsYouCastItForAsLongAsItStays(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cmdr2B05Card(g, me.ID, "Ramirez DePietro, Pillager", "Legendary Creature — Human Pirate", cmdr2B06RamirezOracle, 4, 3)
+	pirate := b12Creature(g, me.ID, "Deckhand", "Creature — Human Pirate", 1, 1)
+	bear := seedBear(g, me.ID)
+	top := seedTopOfLibrary(opp, game.Card{Name: "Stolen Spell", TypeLine: "Creature — Bear", ManaCost: "{2}{R}"})
+
+	// Not a Pirate: nothing.
+	dealCombatDamageToPlayer(g, bear, opp.ID, 2)
+	passPriorityAroundTable(t, g)
+	if inExile(g, top) {
+		t.Fatal("a non-Pirate connecting exiled a card")
+	}
+	// Two Pirates at once: one trigger, one card.
+	dealCombatDamageToPlayer(g, pirate, opp.ID, 1)
+	dealCombatDamageToPlayer(g, pirate, opp.ID, 1)
+	passPriorityAroundTable(t, g)
+	if !inExile(g, top) {
+		t.Fatal("the top card of the damaged player's library was not exiled")
+	}
+	perm := grantedPermissionOn(g, me.ID, top, game.ZoneExile)
+	if perm == nil || !perm.Granted() {
+		t.Fatal("no permission to cast the exiled card")
+	}
+}
+
+// --- Francisco, Fowl Marauder -------------------------------------------
+
+func TestCmdr2B06FranciscoCantBlock(t *testing.T) {
+	g := newCatalogGame(t)
+	id := cmdr2B05Card(g, g.Seats[0].ID, "Francisco, Fowl Marauder", "Legendary Creature — Bird Pirate", cmdr2B06FranciscoOracle, 0, 1)
+	assertRestrictions(t, g, id, game.CantBlock)
+}
+
+func cmdr2B06Damage(g *game.Game, src, victim uuid.UUID, combat bool) {
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventDealDamage, Source: src, Target: victim, Amount: 1, Combat: combat})
+	})
+}
+
+func TestCmdr2B06FranciscoExploresOnAnyPirateDamageToAPlayerOncePerBatch(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cmdr2B05Card(g, me.ID, "Francisco, Fowl Marauder", "Legendary Creature — Bird Pirate", cmdr2B06FranciscoOracle, 0, 1)
+	pirate := b12Creature(g, me.ID, "Deckhand", "Creature — Human Pirate", 1, 1)
+	bear := seedBear(g, me.ID)
+	land := seedTopOfLibrary(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+
+	cmdr2B06Damage(g, bear, opp.ID, false)
+	passPriorityAroundTable(t, g)
+	if !me.Library.Contains(land) {
+		t.Fatal("a non-Pirate's damage made Francisco explore")
+	}
+	// Non-combat damage from two Pirates in one batch: one explore.
+	cmdr2B06Damage(g, pirate, opp.ID, false)
+	cmdr2B06Damage(g, pirate, opp.ID, false)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(land) {
+		t.Fatal("Pirate damage did not make Francisco explore (a land goes to hand)")
+	}
+	if me.Library.Size() != 0 {
+		t.Errorf("more than one explore: library %d", me.Library.Size())
+	}
+}

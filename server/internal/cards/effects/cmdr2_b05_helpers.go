@@ -152,3 +152,14 @@ func cmdr2B05ControlsAnotherNontokenPirate(g *game.Game, controller, self uuid.U
 	}
 	return false
 }
+
+// cmdr2B05PirateDealtDamageToAPlayer is "one or more Pirates you control
+// deal damage to a player": damage of any kind from a Pirate creature the
+// source's controller controls, to any player.
+func cmdr2B05PirateDealtDamageToAPlayer(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if !damageToPlayerBy(ev, source.Controller, g) {
+		return false
+	}
+	dealer, ok := g.LookupCardForEffect(ev.Source)
+	return ok && isPirate(game.ThroughTextOf(source, dealer))
+}
