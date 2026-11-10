@@ -95,7 +95,7 @@ func TestCmdr2B08RangingRaptorsFetchesATappedBasicWhenDamaged(t *testing.T) {
 		searchTestLand("Forest", "Basic Land — Forest"),
 		searchTestLand("Wastes Nonbasic", "Land"),
 	)
-	b27Damage(g, raptors, raptors, 1)
+	cmdr2B08Damage(g, raptors, raptors, 1)
 	passPriorityAroundTable(t, g)
 	c := searchChoiceFor(g, me.ID)
 	if c == nil {
@@ -123,7 +123,7 @@ func TestCmdr2B08AegisaurPutsACounterOnEachOtherCreatureYouControl(t *testing.T)
 	a := b16Creature(g, me.ID, "A", "Creature — Bear", 2, 2, "G")
 	b := b16Creature(g, me.ID, "B", "Creature — Bear", 2, 2, "G")
 	theirs := b16Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2, "G")
-	b27Damage(g, theirs, aegis, 2)
+	cmdr2B08Damage(g, theirs, aegis, 2)
 	passPriorityAroundTable(t, g)
 	for _, id := range []uuid.UUID{a, b} {
 		if n := counterCount(g, id, "+1/+1"); n != 1 {
@@ -149,13 +149,13 @@ func TestCmdr2B08TempleAltisaurShieldsOtherDinosaursOnly(t *testing.T) {
 		id   uuid.UUID
 		want int
 	}{{dino, 1}, {temple, 5}, {bear, 5}, {theirs, 5}} {
-		b27Damage(g, src, c.id, 5)
+		cmdr2B08Damage(g, src, c.id, 5)
 		if got := cardByID(g, c.id).DamageMarked; got != c.want {
 			t.Errorf("%v took %d, want %d", c.id, got, c.want)
 		}
 	}
 	// Damage of 1 is left alone.
-	b27Damage(g, src, dino, 1)
+	cmdr2B08Damage(g, src, dino, 1)
 	if got := cardByID(g, dino).DamageMarked; got != 2 {
 		t.Errorf("after a 1-damage hit the Dinosaur has %d marked, want 2", got)
 	}
@@ -195,7 +195,7 @@ func TestCmdr2B08ReckonerReflectsTheDamageToAnyTarget(t *testing.T) {
 	reck := b27Push(g, me.ID, "Boros Reckoner", "Creature — Minotaur Wizard", cmdr2B08ReckonerOID, "{R/W}{R/W}{R/W}", 3, 3, "R", "W")
 	src := b16Creature(g, opp.ID, "Source", "Creature — Ogre", 5, 5, "R")
 	before := opp.Life
-	b27Damage(g, src, reck, 2)
+	cmdr2B08Damage(g, src, reck, 2)
 	answerPickTargetPlayer(t, g, opp.ID)
 	passPriorityAroundTable(t, g)
 	if got := before - opp.Life; got != 2 {
@@ -229,7 +229,7 @@ func TestCmdr2B08AmbusherDrawsThatMany(t *testing.T) {
 	amb := b27Push(g, me.ID, "Illusory Ambusher", "Creature — Cat Illusion", cmdr2B08AmbusherOID, "{4}{U}", 4, 9, "U")
 	src := b16Creature(g, opp.ID, "Source", "Creature — Ogre", 5, 5, "R")
 	before := me.Hand.Size()
-	b27Damage(g, src, amb, 3)
+	cmdr2B08Damage(g, src, amb, 3)
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - before; got != 3 {
 		t.Errorf("drew %d, want 3", got)
@@ -247,7 +247,7 @@ func TestCmdr2B08BodyOfKnowledgeIsAsBigAsYourHandAndDrawsThatMany(t *testing.T) 
 	if p, tough := effectivePower(t, g, body), effectiveToughness(t, g, body); p != n || tough != n {
 		t.Fatalf("%d/%d with %d cards in hand", p, tough, n)
 	}
-	b27Damage(g, src, body, 1)
+	cmdr2B08Damage(g, src, body, 1)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != n+1 {
 		t.Fatalf("hand %d, want %d", me.Hand.Size(), n+1)
@@ -305,7 +305,7 @@ func TestCmdr2B08WaytaDoublesTheEnrageTriggersOfYourPermanents(t *testing.T) {
 	aegis := b27Push(g, me.ID, "Bellowing Aegisaur", "Creature — Dinosaur", cmdr2B08AegisaurOID, "{5}{W}", 3, 9, "W")
 	friend := b16Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2, "G")
 	src := b16Creature(g, opp.ID, "Source", "Creature — Ogre", 5, 5, "R")
-	b27Damage(g, src, aegis, 1)
+	cmdr2B08Damage(g, src, aegis, 1)
 	passPriorityAroundTable(t, g)
 	passPriorityAroundTable(t, g)
 	if n := counterCount(g, friend, "+1/+1"); n != 2 {
@@ -320,7 +320,7 @@ func TestCmdr2B08WaytaDoesNotDoubleDamageToAnOpponentsCreature(t *testing.T) {
 	theirAegis := b27Push(g, opp.ID, "Bellowing Aegisaur", "Creature — Dinosaur", cmdr2B08AegisaurOID, "{5}{W}", 3, 9, "W")
 	theirFriend := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
 	src := b16Creature(g, me.ID, "Source", "Creature — Ogre", 5, 5, "R")
-	b27Damage(g, src, theirAegis, 1)
+	cmdr2B08Damage(g, src, theirAegis, 1)
 	passPriorityAroundTable(t, g)
 	if n := counterCount(g, theirFriend, "+1/+1"); n != 1 {
 		t.Errorf("their Bear has %d counters, want 1 (not a permanent or creature of Wayta's controller)", n)
@@ -337,15 +337,15 @@ func TestCmdr2B08GiselaDoublesDamageToOpponentsAndHalvesDamageToYou(t *testing.T
 	theirs := b16Creature(g, opp.ID, "Their Wall", "Creature — Wall", 0, 20, "W")
 	src := b16Creature(g, opp.ID, "Source", "Creature — Ogre", 5, 5, "R")
 
-	b27Damage(g, src, theirs, 3)
+	cmdr2B08Damage(g, src, theirs, 3)
 	if got := cardByID(g, theirs).DamageMarked; got != 6 {
 		t.Errorf("an opponent's permanent took %d from 3, want 6", got)
 	}
-	b27Damage(g, src, mine, 5)
+	cmdr2B08Damage(g, src, mine, 5)
 	if got := cardByID(g, mine).DamageMarked; got != 2 {
 		t.Errorf("my permanent took %d from 5, want 2 (half rounded up is prevented)", got)
 	}
-	b27Damage(g, src, mine, 1)
+	cmdr2B08Damage(g, src, mine, 1)
 	if got := cardByID(g, mine).DamageMarked; got != 2 {
 		t.Errorf("a 1-damage hit left %d marked, want 2 (all of it was prevented)", got)
 	}
@@ -360,4 +360,11 @@ func TestCmdr2B08GiselaDoublesDamageToOpponentsAndHalvesDamageToYou(t *testing.T
 	if got := mine0 - me.Life; got != 3 {
 		t.Errorf("I lost %d from 7, want 3", got)
 	}
+}
+
+// cmdr2B08Damage deals noncombat damage and lets the batch settle, so the
+// "whenever this is dealt damage" triggers go on the stack.
+func cmdr2B08Damage(g *game.Game, source, target uuid.UUID, n int) {
+	b27Damage(g, source, target, n)
+	g.RunStateChecksForTest()
 }
