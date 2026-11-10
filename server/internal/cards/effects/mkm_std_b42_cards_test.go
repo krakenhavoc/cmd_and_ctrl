@@ -90,7 +90,6 @@ func TestStdB42ReliveThePastReturnsThreeAsFiveFiveElementals(t *testing.T) {
 func TestStdB42ReliveThePastClausesAreEachOptionalAndTypeChecked(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	land := stdB42ToGraveyard(g, me, "Old Forest", "Basic Land — Forest")
 	aura := stdB42ToGraveyard(g, me, "Old Aura", "Enchantment — Aura")
 	if _, err := mscM4TryCast(t, g, "Relive the Past", "Sorcery", stdB42ReliveOracle, nil, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aura, Slot: 2},
@@ -99,7 +98,7 @@ func TestStdB42ReliveThePastClausesAreEachOptionalAndTypeChecked(t *testing.T) {
 	}
 	g = newCatalogGame(t)
 	me = g.Seats[g.Turn.ActiveSeat]
-	land = stdB42ToGraveyard(g, me, "Old Forest", "Basic Land — Forest")
+	land := stdB42ToGraveyard(g, me, "Old Forest", "Basic Land — Forest")
 	if _, err := mscM4TryCast(t, g, "Relive the Past", "Sorcery", stdB42ReliveOracle, nil, []game.TargetRef{
 		{Kind: game.TargetCard, ID: land, Slot: 1},
 	}); err != nil {
