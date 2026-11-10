@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Answers: game.AnswerRemove},
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
-		OnResolve:    cmdrB25DestroyChosenTarget,
+		OnResolve:    destroyTheTargetPermanent,
 	})
 	Register(Spec{
 		OracleID:     "bf276236-18a6-4a48-b47d-5227832d26e6#1",
