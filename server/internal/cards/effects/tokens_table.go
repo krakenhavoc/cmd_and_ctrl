@@ -430,4 +430,5 @@ var tokenTable = map[string]game.Card{
 	"2/1 blue Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 2, Toughness: 1, Colors: []string{"U"}},
 	// #5368: Tarkir: Dragonstorm Commander's First Mate Ragavan (Baral and Kari Zev).
 	"2/1 red Legendary Monkey Pirate named First Mate Ragavan": {Name: "First Mate Ragavan", TypeLine: "Token Legendary Creature — Monkey Pirate", Power: 2, Toughness: 1, Colors: []string{"R"}},
+
 }

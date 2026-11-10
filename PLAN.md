@@ -10,7 +10,9 @@ Change it in a PR, like code, when the owner changes direction.
 ## 1. What C2 is
 
 C2 is a browser table for four-player **Magic: The Gathering Commander**. It
-is free, unofficial fan content and open source.
+is free, unofficial fan content and open source. Commander is what C2 is for.
+Other ways to play (two-player constructed, booster draft) are a secondary
+area built on the same engine and catalog (section 3).
 
 - **An automation-first rules engine.** An original Go server holds the
   authoritative game. Cards in the catalog resolve on their own: stack,
@@ -51,6 +53,23 @@ commander damage, politics, monarch and initiative); accounts, saved decks
 and settings; the public roadmap, About, privacy and legal pages; moderation;
 operating one public host safely: capacity caps, monitoring, backups.
 
+**Also in scope, as a secondary area: other formats.** The owner added this on
+2026-11-10 ([ADR 0222](docs/decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)).
+Commander stays the primary format: when the two compete for time, a
+Commander table's needs come first, and no format work may make a Commander
+table worse.
+
+- **Two-player constructed.** Best-of-one Standard first, then best-of-three
+  matches with sideboards. Other constructed formats follow as configuration.
+- **Booster draft** of a single set with retail-style packs: pick one or pick
+  two, bots filling empty seats so one person can draft alone, then 40-card
+  decks played one against one.
+- **Cube and custom packs**, after set draft.
+
+The same limits hold for every format. Nothing is charged for: packs are made
+from Scryfall data and are never sold or earned. Card data stays in front of
+any sign-in. A format ships only on cards the catalog automates.
+
 **Out of scope, and staying out:**
 
 - **XMage, or any JVM component.** Rejected in S01 ([History](#history)).
@@ -64,7 +83,9 @@ operating one public host safely: capacity caps, monitoring, backups.
   chat-server gate in front of card data, and no cropping of the artist credit.
   Guest play stays, and so do the legal notices and the artist credit.
 - **Phone-width table layouts.** A tablet is the minimum screen.
-- **Other formats** (1v1 constructed, limited, cubes) and native app stores.
+- **Native app stores.**
+- **Formats the charter doesn't name above** (Two-Headed Giant, Archenemy,
+  sealed leagues, tournaments with prizes) until the owner adds them.
 - **Scale beyond one VM** before the beta goals call for it.
 
 ## 4. Tech stack
