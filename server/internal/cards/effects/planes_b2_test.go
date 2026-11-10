@@ -1045,3 +1045,90 @@ func TestChildhoodBarnChaosPhasesOutUntilThePlaneIsLeft(t *testing.T) {
 		t.Error("the permanent did not phase in when the table planeswalked")
 	}
 }
+
+// --- Two Streams Facility ----------------------------------------------------
+
+// answerTwoStreams answers each player's choice in turn order from `first`.
+func answerTwoStreams(t *testing.T, g *game.Game, first int, choices ...int) {
+	t.Helper()
+	for i, idx := range choices {
+		p := g.Seats[(first+i)%4]
+		c := latestOptionPickFor(g, p.ID)
+		if c == nil {
+			t.Fatalf("no choice is waiting for %s", p.Name)
+		}
+		if err := g.ResolveOptionPick(c.ID, p.ID, idx); err != nil {
+			t.Fatalf("ResolveOptionPick: %v", err)
+		}
+	}
+}
+
+func TestTwoStreamsFacilityRemembersEachPlayersChoice(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTwoStreams)
+	g, _ := newPlaneGame(t, planeTwoStreams)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Wolf", "Creature — Wolf", 2, 2)
+	base := g.LandDropsRemainingFor(me.ID)
+	planeswalkToPlane(t, g, planeTwoStreams.Oracle)
+	passPriorityAroundTable(t, g)
+	// Me: red waterfall. Next: green anchor. The rest: green anchor.
+	answerTwoStreams(t, g, g.Turn.ActiveSeat, 1, 0, 0, 0)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if c := layeredCard(t, g, mine); c.CurrentPower() != 4 || !planesB2Keyword(t, g, mine, "haste") {
+		t.Errorf("a creature of a red waterfall player is %d/%d, want power 4 with haste", c.CurrentPower(), c.CurrentToughness())
+	}
+	if c := layeredCard(t, g, theirs); c.CurrentPower() != 2 || planesB2Keyword(t, g, theirs, "haste") {
+		t.Errorf("a creature of a green anchor player is %d/%d, want 2/2 with no haste", c.CurrentPower(), c.CurrentToughness())
+	}
+	if got := g.LandDropsRemainingFor(opp.ID); got != base+1 {
+		t.Errorf("a green anchor player has %d land plays, want %d", got, base+1)
+	}
+	if got := g.LandDropsRemainingFor(me.ID); got != base {
+		t.Errorf("a red waterfall player has %d land plays, want %d", got, base)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if c := layeredCard(t, g, mine); c.CurrentPower() != 2 {
+		t.Errorf("after the flip my creature has power %d, want 2", c.CurrentPower())
+	}
+	if c := layeredCard(t, g, theirs); c.CurrentPower() != 4 || !planesB2Keyword(t, g, theirs, "haste") {
+		t.Errorf("after the flip their creature is %d/%d, want power 4 with haste", c.CurrentPower(), c.CurrentToughness())
+	}
+	if got := g.LandDropsRemainingFor(me.ID); got != base+1 {
+		t.Errorf("after the flip I have %d land plays, want %d", got, base+1)
+	}
+	if got := g.LandDropsRemainingFor(opp.ID); got != base {
+		t.Errorf("after the flip the other player has %d land plays, want %d", got, base)
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if c := layeredCard(t, g, theirs); c.CurrentPower() != 2 {
+		t.Error("the plane's bonus outlived it")
+	}
+	if got := g.LandDropsRemainingFor(me.ID); got != base {
+		t.Errorf("land plays %d after the plane left, want %d", got, base)
+	}
+}
+
+func TestTwoStreamsFacilityAsksAtTheFirstUpkeepOfTheGameOnly(t *testing.T) {
+	g, plane := newPlaneGame(t, planeTwoStreams)
+	me := g.Seats[g.Turn.ActiveSeat]
+	upkeep := game.Event{Kind: game.EventBeginUpkeep, Actor: me.ID}
+	g.Turn.Seq, g.Turn.StepOrdinal = 1, 1
+	if !twoStreamsAsksForChoices(upkeep, &plane, game.Characteristic{}, g) {
+		t.Error("the first upkeep of the game did not ask")
+	}
+	g.Turn.Seq = 2
+	if twoStreamsAsksForChoices(upkeep, &plane, game.Characteristic{}, g) {
+		t.Error("a later upkeep asked")
+	}
+	g.Turn.Seq, g.Turn.StepOrdinal = 1, 2
+	if twoStreamsAsksForChoices(upkeep, &plane, game.Characteristic{}, g) {
+		t.Error("an additional upkeep of the first turn asked")
+	}
+}

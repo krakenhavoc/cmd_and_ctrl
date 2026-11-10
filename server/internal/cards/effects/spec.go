@@ -1624,6 +1624,14 @@ type Spec struct {
 	// Not combined with AdditionalLandPlaysNeedsAnother.
 	AdditionalLandPlaysForEachPlayer bool
 
+	// PlanarLandPlays is a face-up plane's "each player who last chose <X>
+	// may play an additional land during each of their turns" (Two Streams
+	// Facility, ADR 0216 §6, #4870): Plays extra lands for each player the
+	// plane carries a counter of kind Choice+<player ID> for. Read by
+	// EffectiveLandDropsLocked through ConditionalLandPlays.PlanarChoice, so
+	// it comes and goes with the plane and the choice. Label is the ability row.
+	PlanarLandPlays *PlanarLandPlays
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard
@@ -2733,3 +2741,11 @@ type ManaAbilityCost struct {
 // callers don't need this but having it available keeps the
 // effects package self-contained for tests that don't import uuid.
 var ZeroUUID = uuid.Nil
+
+// PlanarLandPlays is Spec.PlanarLandPlays: Plays extra land plays for each
+// player the face-up plane remembers a counter of kind Choice+<player ID> for.
+type PlanarLandPlays struct {
+	Choice string
+	Plays  int
+	Label  string
+}

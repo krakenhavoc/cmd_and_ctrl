@@ -517,6 +517,9 @@ func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
 	if spec.AdditionalLandPlaysForEachPlayer {
 		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, EachPlayer: true}
 	}
+	if spec.PlanarLandPlays != nil {
+		return game.ConditionalLandPlays{Plays: spec.PlanarLandPlays.Plays, PlanarChoice: spec.PlanarLandPlays.Choice, Label: spec.PlanarLandPlays.Label}
+	}
 	if spec.AdditionalLandPlaysNeedsAnother == "" {
 		return game.ConditionalLandPlays{}
 	}

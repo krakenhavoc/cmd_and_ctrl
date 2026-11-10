@@ -76,6 +76,15 @@ type ConditionalLandPlays struct {
 	// "each player may play an additional land on each of their turns".
 	// Another is empty with it.
 	EachPlayer bool
+	// PlanarChoice makes Plays count, for a face-up plane (ADR 0216 §6), for
+	// each player the plane remembers a choice for: the plane card carries a
+	// counter named PlanarChoice followed by the player's ID while the
+	// player's last choice is that one (Two Streams Facility's "each player
+	// who last chose green anchor may play an additional land during each of
+	// their turns"). Plain data, read in EffectiveLandDropsLocked; Label is
+	// the ability row.
+	PlanarChoice string
+	Label        string
 }
 
 // CatalogConditionalLandPlays returns a battlefield permanent's
@@ -133,6 +142,7 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 			}
 		}
 	}
+	n += g.planarLandPlaysLocked(p.ID)
 	n += g.ExtraLandDropsThisTurn[p.ID]
 	if n < 0 {
 		return 0
@@ -217,4 +227,29 @@ func (g *Game) GrantAdditionalLandPlayForEffect(playerID uuid.UUID, n int) {
 		g.ExtraLandDropsThisTurn = make(map[uuid.UUID]int)
 	}
 	g.ExtraLandDropsThisTurn[playerID] += n
+}
+
+// planarLandPlaysLocked is the extra land plays the face-up planes give
+// `player` (ConditionalLandPlays.PlanarChoice): a plane gives them while it
+// remembers the choice for that player. A plane's static abilities function
+// from the command zone (CR 901.7).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) planarLandPlaysLocked(player uuid.UUID) int {
+	if g.Planechase == nil || g.PlanarFaceUp == nil || CatalogConditionalLandPlays == nil {
+		return 0
+	}
+	n := 0
+	for i := range g.PlanarFaceUp.Cards {
+		c := &g.PlanarFaceUp.Cards[i]
+		key := catalogAbilityKeyOf(c)
+		if key == "" {
+			continue
+		}
+		cp := CatalogConditionalLandPlays(key)
+		if cp.PlanarChoice != "" && cp.Plays > 0 && c.Counters[cp.PlanarChoice+player.String()] > 0 {
+			n += cp.Plays
+		}
+	}
+	return n
 }

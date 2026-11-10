@@ -44,3 +44,35 @@ func (g *Game) PutCountersOnFaceUpPlanarCardForEffect(id uuid.UUID, kind string,
 	}
 	return 0, false
 }
+
+// SetFaceUpPlanarCounterForEffect sets the number of `kind` counters on the
+// face-up planar card `id` to `n` (at least zero; zero removes the kind) and
+// reports whether a face-up card had that ID. The door for a plane that
+// remembers a choice per player on itself (Two Streams Facility's "last
+// chose", one counter kind per player and choice): a planeswalk away makes
+// it a new object with none (CR 901.7a), so the memory goes with the plane.
+//
+// Caller must hold g.mu (write).
+func (g *Game) SetFaceUpPlanarCounterForEffect(id uuid.UUID, kind string, n int) bool {
+	up := g.planarFaceUpLocked()
+	if up == nil || kind == "" {
+		return false
+	}
+	for i := range up.Cards {
+		c := &up.Cards[i]
+		if c.InstanceID != id {
+			continue
+		}
+		if n <= 0 {
+			delete(c.Counters, kind)
+		} else {
+			if c.Counters == nil {
+				c.Counters = map[string]int{}
+			}
+			c.Counters[kind] = n
+		}
+		g.layerVersion.Add(1)
+		return true
+	}
+	return false
+}
