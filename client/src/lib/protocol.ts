@@ -2173,8 +2173,11 @@ export interface PendingChoiceView {
   // shuffled if and only if "library" was chosen.
   search_zones_pending?: boolean;
   // The zone an and/or search offers beside the library: "graveyard" or
-  // "hand". On every such prompt, asked or answered.
-  search_other_zone?: "graveyard" | "hand";
+  // "hand", or "graveyard_and_hand" for "search your graveyard, hand,
+  // and/or library" (#5408), whose answer names any non-empty subset of
+  // "library", "graveyard" and "hand". On every such prompt, asked or
+  // answered.
+  search_other_zone?: "graveyard" | "hand" | "graveyard_and_hand";
   // An and/or search answered with the other zone alone: the library is not
   // searched, shown or shuffled.
   search_library_skipped?: boolean;

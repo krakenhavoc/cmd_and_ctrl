@@ -884,13 +884,17 @@ type PendingChoiceView struct {
 	// library") asks before it looks: which zones the searcher searches.
 	// options[] is withheld (looking through the library is searching it,
 	// CR 701.23a), and the answer is {choice_id, search_zones: [...]}, any
-	// non-empty subset of "library" and search_other_zone. The same prompt
-	// then reappears with the candidates of the chosen zones, without this
+	// non-empty subset of "library" and search_other_zone; for
+	// "graveyard_and_hand" (#5408, "search your graveyard, hand, and/or
+	// library") any non-empty subset of "library", "graveyard" and "hand".
+	// The same prompt then reappears with the candidates of the chosen zones, without this
 	// flag. The library is shuffled, and the search announced, if and only
 	// if "library" was chosen. Chooser-only.
 	SearchZonesPending bool `json:"search_zones_pending,omitempty"`
 	// SearchOtherZone (#4519) is the zone an and/or search offers beside
-	// the library, "graveyard" or "hand". Present on every such prompt,
+	// the library, "graveyard" or "hand", or "graveyard_and_hand" when it
+	// offers both (#5408, each then named on its own in search_zones).
+	// Present on every such prompt,
 	// asked or answered; absent for any other search. Chooser-only.
 	SearchOtherZone string `json:"search_other_zone,omitempty"`
 	// SearchLibrarySkipped (#4519) marks an and/or search answered with the
