@@ -140,6 +140,7 @@ body extra-turn/lose-the-game
 body facedown/ward
 body fatal-fissure/earthbend-4
 body felonious-rage/detective
+body felothar-dawn-of-the-abzan/counters
 body fight-for-the-throne/monarch
 body fight-the-blank-fight/fight
 body fin/return-the-objects-to-hand
@@ -287,6 +288,7 @@ body rebound/the-spell-you-just-cast
 body reckless-blaze/add-red
 body red-hulk/damage
 body redirection/that-much-to-the-sources-controller
+body rediscover-the-way/double-strike
 body renown/grow
 body repeated-reverberation/copy-twice
 body return/the-objects-together-under-your-control
@@ -348,6 +350,7 @@ body the-thing/double-counters
 body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
 body thousand-moons-crackshot/tap
+body thunder-of-unity/drain
 body time-to-feed/gain-three-life
 body tolarian-kraken/tap-or-untap
 body transformers/convert-this
@@ -519,6 +522,7 @@ choose choose-cards/golden-wish-take
 choose choose-cards/granted-take
 choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
+choose choose-cards/gurmag-nightwatch-rest
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
 choose choose-cards/heroes-hangout-play
@@ -728,6 +732,7 @@ choose choose-cards/ring-bearer
 choose choose-cards/rinoa-angel-wing-return
 choose choose-cards/ripples-of-potential-phase-out
 choose choose-cards/rishkars-expertise-cast
+choose choose-cards/riverwheel-sweep-play
 choose choose-cards/roads-go-ever-ever-on-put-in-hand
 choose choose-cards/rooms-b-return-chosen-creature
 choose choose-cards/rooms-d-take-up-to-from-milled
@@ -1094,6 +1099,7 @@ confirm fin-b1/sidequest-catch-a-fish-take
 confirm may/carpet-of-flowers-add-mana
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
+confirm std-b9/traveling-botanist-take-land
 drawinstead dredge-2
 drawinstead dredge-3
 drawinstead dredge-4
@@ -1134,6 +1140,7 @@ drawthen silvan-reveler/discard
 drawthen teferi-akosa-discard
 drawthen teo-spirited-glider/discard
 drawthen the-theorist/counters-equal-to-hand
+drawthen trade-route-envoy-counter-unless-drew
 drawthen yunas-decision/put
 keywordinstead return-this-instead-of-learning
 maycast may-cast/free-play-back-land-or-hand
@@ -1572,6 +1579,7 @@ run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
 run prompt-run/extus-oriq-overlord-avatar
 run prompt-run/fatal-grudge-draw
+run prompt-run/felothar-sacrifice
 run prompt-run/final-showdown-indestructible
 run prompt-run/fire-lord-ozai-add-red
 run prompt-run/forgotten-ancient-move
@@ -2154,6 +2162,7 @@ tail manifest-dread/attach-source
 tail manifest-dread/put-counters
 tail manifest-from-hand/prompt-run/kozilek-the-broken-reality-draw
 tail many-partings/create-food
+tail mardu-siegebreaker/sacrifice-the-tokens
 tail mari-the-killing-quill/after-exile
 tail mass/bane-of-progress-counters
 tail mass/blood-money-treasures
@@ -2290,6 +2299,7 @@ tail rhino-terrible-trampler/counters-and-trample
 tail rionya-fire-dancer/exile-the-copies
 tail ripples-of-undeath/after-mill
 tail risen-reef/rest-into-hand
+tail riverwheel-sweep/choose-one
 tail rohirrim-chargers/attach-then-rest
 tail role-tokens/attach-to-host
 tail rooms-b-helpers/after-mill
@@ -2308,6 +2318,7 @@ tail sacrificed-one/prompt-run/dahar-master-sacrifice
 tail sacrificed-one/prompt-run/disciple-of-freyalise-payout
 tail sacrificed-one/prompt-run/dreadfeast-demon-copy
 tail sacrificed-one/prompt-run/exploit-overcharged-amalgam
+tail sacrificed-one/prompt-run/felothar-sacrifice
 tail sacrificed-one/prompt-run/fire-lord-ozai-add-red
 tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice

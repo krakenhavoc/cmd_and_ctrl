@@ -72039,6 +72039,8 @@ turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatDamagedPlayers	map:string
 turnTally.combatDamagedPlayers{}	number:int
+turnTally.countersPut	map:string
+turnTally.countersPut{}	number:int
 turnTally.creaturesDied	number:int
 turnTally.crews	array
 turnTally.crews[]	object
