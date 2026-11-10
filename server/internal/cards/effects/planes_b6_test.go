@@ -1405,3 +1405,31 @@ func TestKessigPreventsNonWerewolfCombatDamageAndChaosMakesWerewolves(t *testing
 		t.Error("not a Werewolf")
 	}
 }
+
+var planeHorizonBoughs = planeFixture{"065346cd-cd81-478e-8a62-2c7ea421bdcd", "Horizon Boughs", "Plane — Pyrulea"}
+
+func TestHorizonBoughsUntapsEverythingInEveryUntapStep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeHorizonBoughs)
+	g, _ := newPlaneGame(t, planeHorizonBoughs)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	setTapped := func(id uuid.UUID) {
+		g.WithWriteLock(func() {
+			for i := range g.Battlefield.Cards {
+				if g.Battlefield.Cards[i].InstanceID == id {
+					g.Battlefield.Cards[i].Tapped = true
+				}
+			}
+		})
+	}
+	mine := pushVanillaCreature(g, me.ID, "Mine", 1, 1)
+	theirs := pushVanillaCreature(g, opp.ID, "Theirs", 1, 1)
+	setTapped(mine)
+	setTapped(theirs)
+	// The next player's untap step untaps my permanent too.
+	endTurn(t, g)
+	advanceTo(t, g, game.StepUpkeep)
+	if tmtB1Card(t, g, mine).Tapped || tmtB1Card(t, g, theirs).Tapped {
+		t.Error("a permanent stayed tapped through an untap step")
+	}
+}

@@ -762,6 +762,21 @@ func (g *Game) activeUntapStepPermissionsLocked(activePlayer uuid.UUID) []boundU
 			}
 		}
 	}
+	// A face-up plane's untap-step permissions too (CR 901.7; Horizon
+	// Boughs, ADR 0216 slice 4, #4870).
+	g.forEachPlanarSourceLocked(func(src *Card) bool {
+		oracle := catalogKeyOf(src)
+		if oracle == "" {
+			return true
+		}
+		for _, perm := range CatalogUntapStepPermissions(oracle) {
+			if perm.AppliesTo == nil || perm.Untaps == nil || !perm.AppliesTo(g, src, activePlayer) {
+				continue
+			}
+			out = append(out, boundUntapPermission{permission: perm, source: src})
+		}
+		return true
+	})
 	return out
 }
 
