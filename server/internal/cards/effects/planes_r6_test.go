@@ -2,9 +2,11 @@ package effects
 
 import (
 	"errors"
-	"github.com/google/uuid"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // planes_r6_test.go — Planechase plane cards, redo 6 (ADR 0216 slice 4,
