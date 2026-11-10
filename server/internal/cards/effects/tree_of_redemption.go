@@ -33,6 +33,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{T}: Exchange your life total with this creature's toughness.",
 			Cost:  TapCost(),
+			// It can raise the Tree's toughness to your life total (ADR 0142).
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if g.AbilitySourceGoneForEffect(item) {
 					return nil

@@ -67,17 +67,6 @@ func cmdrB13TotalPowerAtMost(n int) *game.TargetTotal {
 	}
 }
 
-// cmdrB13OwnedByNthOpponent passes for a card owned by the n-th seat
-// (1-based) after the chooser's in turn order: controlledByNthOpponent's
-// twin for a card in a graveyard, which has an owner and no controller to
-// speak of. Eliminated seats keep their place.
-func cmdrB13OwnedByNthOpponent(n int) CardPredicate {
-	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
-		p := g.OpponentSeatAfter(chooser, n)
-		return p != nil && c.Owner == p.ID
-	}
-}
-
 // cmdrB13PerPlayerGraveyardClauses is "for each player, choose up to one
 // target <what> card in that player's graveyard" (Afterlife from the Loam):
 // one "up to one" clause for the caster's own graveyard, then one per
@@ -89,7 +78,7 @@ func cmdrB13PerPlayerGraveyardClauses(noun string, what ...CardPredicate) *game.
 	var rest []*game.TargetSpec
 	for n := 1; n <= game.MaxPlayers-1; n++ {
 		rest = append(rest, TargetCardInGraveyard("up to one target "+noun+" card in the "+nthOpponentWords[n]+" opponent's graveyard",
-			append([]CardPredicate{cmdrB13OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
+			append([]CardPredicate{trekB36OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
 	}
 	return Clauses(own, rest...)
 }
@@ -146,7 +135,7 @@ func cmdrB13DragonCombatDamageToPlayer(ev game.Event, reader *game.Card, g *game
 // through the layers.
 func cmdrB13EntersTappedUnlessRevealOrControlDragon(name string) game.ReplacementEffect {
 	r := EntersTappedUnlessYouRevealFromHand(name, "a Dragon card", func(c game.Card) bool {
-		return c.HasSubtype("Dragon")
+		return c.HasSubtypeWord("Dragon")
 	})
 	r.RowLabel = "Enters tapped unless you reveal a Dragon card from your hand or you control a Dragon."
 	base := r.AppliesTo
@@ -168,4 +157,18 @@ func cmdrB13EntersTappedUnlessRevealOrControlDragon(name string) game.Replacemen
 		return true
 	}
 	return r
+}
+
+// loseDefenderApply is the layer 6 Apply of "can attack as though they didn't
+// have defender" (Ghalta the Immovable, Felothar the Steadfast): the affected
+// creatures lose the keyword while the static applies, which is observably the
+// same thing (a creature with defender still blocks).
+func loseDefenderApply(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+	kept := c.Abilities[:0:0]
+	for _, a := range c.Abilities {
+		if a != "defender" {
+			kept = append(kept, a)
+		}
+	}
+	c.Abilities = kept
 }

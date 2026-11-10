@@ -31,15 +31,7 @@ func init() {
 			Label:   "{G}, Discard a creature card: Return target land card from your graveyard to the battlefield tapped.",
 			Cost:    Plus(ManaCost("{G}"), DiscardCardsMatching(1, "a creature card", MatchCreature)),
 			Targets: TargetCardInGraveyard("target land card from your graveyard", Land(), YouOwn()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  returnFirstLegalGraveyardTargetToBattlefieldTapped,
 		}},
 	})
 }

@@ -44,6 +44,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "Remove three charge counters from this artifact: When you next cast an instant or sorcery spell this turn, copy it and you may choose new targets for the copy.",
 			Cost:  RemoveCountersFromThis("charge", 3),
+			// It answers nothing: it readies a copy of a spell you cast later (ADR 0142).
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return WhenYouNextCast(
 					"Adaptive Training Post — copy that spell",

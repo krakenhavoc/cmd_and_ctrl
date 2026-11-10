@@ -31,18 +31,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(OnAny([]game.EventKind{game.EventETB, game.EventBecameMonstrous}, Self,
 				"Protector of the Wastes — exile up to two target artifacts and/or enchantments controlled by different players",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				exileEveryLegalCardTarget),
 				TargetPermanent("up to two target artifacts and/or enchantments controlled by different players",
 					Or(Artifact(), Enchantment())).WithCount(0, 2).EachDifferent(EachDifferentController())),
 		},

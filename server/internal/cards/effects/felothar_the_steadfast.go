@@ -38,15 +38,7 @@ func init() {
 			Layer:     game.Layer6Ability,
 			Label:     "Creatures you control can attack as though they didn't have defender.",
 			AppliesTo: yourCreatures,
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				kept := c.Abilities[:0:0]
-				for _, a := range c.Abilities {
-					if a != "defender" {
-						kept = append(kept, a)
-					}
-				}
-				c.Abilities = kept
-			},
+			Apply:     loseDefenderApply,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}, Sacrifice another creature: Draw cards equal to the sacrificed creature's toughness, then discard cards equal to its power.",
