@@ -815,3 +815,66 @@ func TestCmdrB14IronwillForgerGivesMyriadOnlyWithYourCommander(t *testing.T) {
 		t.Errorf("without a commander: %d myriad copies, want 0", got)
 	}
 }
+
+const cmdrB14ProtectorOracle = "4534e260-06fd-4054-8077-505c2f6c5767"
+
+func TestCmdrB14ProtectorOfTheWastesExilesOnePerControllerAndAgainWhenMonstrous(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[g.Turn.ActiveSeat], g.Seats[1], g.Seats[2]
+	rock := b12Permanent(g, opp.ID, "Their Rock", "Artifact")
+	rock2 := b12Permanent(g, opp.ID, "Their Other Rock", "Artifact")
+	aura := b12Permanent(g, third.ID, "Their Shrine", "Enchantment")
+	mine := b12Permanent(g, me.ID, "My Shrine", "Enchantment")
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Protector of the Wastes", TypeLine: "Creature — Dragon",
+		OracleID: cmdrB14ProtectorOracle, Power: 5, Toughness: 5, Owner: me.ID, Controller: me.ID})
+	advanceTo(t, g, game.StepPrecombatMain)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt for the enters trigger")
+	}
+	// Two permanents of one player are refused.
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetCard, ID: rock}, {Kind: game.TargetCard, ID: rock2},
+	}); err == nil {
+		t.Fatal("two targets with the same controller were accepted")
+	}
+	p = latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("the prompt went away after a refused answer")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetCard, ID: rock}, {Kind: game.TargetCard, ID: aura},
+	}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock) || g.Battlefield.Contains(aura) {
+		t.Error("a target was not exiled")
+	}
+	if !g.Battlefield.Contains(rock2) || !g.Battlefield.Contains(mine) {
+		t.Error("an untargeted permanent was exiled")
+	}
+	// Becoming monstrous triggers it again.
+	b06AddMana(me, "W", "C", "C", "C", "C")
+	activateMonstrosity(t, g, me.ID, id, 0)
+	passPriorityAroundTable(t, g)
+	p = latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt for the monstrous trigger")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: rock2}}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock2) {
+		t.Error("the monstrous trigger did not exile its target")
+	}
+	if plusOneCounters(g, id) != 3 {
+		t.Errorf("%d +1/+1 counters after monstrosity 3, want 3", plusOneCounters(g, id))
+	}
+}
