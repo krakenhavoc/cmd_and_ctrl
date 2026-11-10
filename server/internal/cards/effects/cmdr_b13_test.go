@@ -1198,3 +1198,50 @@ func TestCmdrB15GoldlustTriadMyriadAndTreasuresFromEachHit(t *testing.T) {
 		t.Errorf("%d Treasures, want 3 (the Triad and each copy hit a player)", treasures)
 	}
 }
+
+const cmdrB15ThundermaneOracle = "a1602bd0-f346-43cf-86ec-1dd300a7f2ed"
+
+func TestCmdrB15ThundermaneDragonCastsBigCreaturesFromTheTopWithHaste(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Thundermane Dragon", "Creature — Dragon", cmdrB15ThundermaneOracle, 4, 4)
+	advanceToMain(t, g)
+	small := pushLibraryCard(me, game.Card{Name: "Small Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 3, Toughness: 3})
+	floatMana(t, g, me, "{C}{C}{C}{C}{C}{C}{C}{C}")
+	if err := g.CastSpell(me.ID, small, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Fatal("a power 3 creature was cast from the top")
+	}
+	spell := pushLibraryCard(me, game.Card{Name: "Big Sorcery", TypeLine: "Sorcery", ManaCost: "{1}"})
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Fatal("a sorcery was cast from the top")
+	}
+	big := pushLibraryCard(me, game.Card{Name: "Big Ogre", TypeLine: "Creature — Ogre", ManaCost: "{1}", Power: 4, Toughness: 4})
+	if err := g.CastSpell(me.ID, big, game.CastSpellParams{FromZone: "library", Strict: true}); err != nil {
+		t.Fatalf("cast the 4-power creature from the top: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(big) {
+		t.Fatal("the creature did not resolve")
+	}
+	if !hasEffectiveKeyword(t, g, big, "haste") {
+		t.Error("the creature cast this way has no haste")
+	}
+	// Until end of turn: next turn it is no longer granted haste.
+	advanceToNextSeatsTurn(t, g)
+	advanceToUpkeepOf(t, g, 0)
+	if hasEffectiveKeyword(t, g, big, "haste") {
+		t.Error("haste lasted past the turn it was cast")
+	}
+}
+
+func TestCmdrB15ThundermaneDragonDoesNotHelpOpponents(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Thundermane Dragon", "Creature — Dragon", cmdrB15ThundermaneOracle, 4, 4)
+	advanceToMain(t, g)
+	theirs := pushLibraryCard(opp, game.Card{Name: "Their Ogre", TypeLine: "Creature — Ogre", ManaCost: "{1}", Power: 4, Toughness: 4})
+	floatMana(t, g, opp, "{C}")
+	if err := g.CastSpell(opp.ID, theirs, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Error("an opponent cast from the top of their library")
+	}
+}

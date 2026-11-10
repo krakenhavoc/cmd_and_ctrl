@@ -415,6 +415,17 @@ type PermissionFilter struct {
 	// or toughness for this clause (CR 208.3).
 	PowerOrToughnessCapped bool `json:"powerOrToughnessCapped,omitempty"`
 	PowerOrToughnessAtMost int  `json:"powerOrToughnessAtMost,omitempty"`
+
+	// PowerAtLeastCapped and PowerAtLeast are "creature spells with power N
+	// or greater" (Thundermane Dragon: "cast creature spells with power 4 or
+	// greater from the top of your library"): a card qualifies when it is a
+	// creature and its power is N or more, judged on the face being cast and
+	// read as PowerOrToughnessAtMost reads it (a characteristic-defining `*`
+	// is worked out by the game; unknown is never "N or more"). The flag says
+	// the clause is there because 0 is a legal N. Additive, and both write
+	// nothing when unset.
+	PowerAtLeastCapped bool `json:"powerAtLeastCapped,omitempty"`
+	PowerAtLeast       int  `json:"powerAtLeast,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -493,6 +504,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
+		return false
+	}
+	if f.PowerAtLeastCapped && !powerAtLeast(&c, f.PowerAtLeast) {
 		return false
 	}
 	return true
@@ -922,6 +936,12 @@ type CastPermission struct {
 	// cast this way gains nothing. Empty gains nothing.
 	GainsKeywords  []string `json:"gainsKeywords,omitempty"`
 	GainsAbilities []string `json:"gainsAbilities,omitempty"`
+
+	// GainsUntilEndOfTurn is the printed "until end of turn" on those gains
+	// (Thundermane Dragon: "it gains haste until end of turn"): they last to
+	// the end of the turn the cast is made in, rather than for as long as the
+	// permanent is on the battlefield. Additive; false writes nothing.
+	GainsUntilEndOfTurn bool `json:"gainsUntilEndOfTurn,omitempty"`
 
 	// EntersWithCounterKind and EntersWithCounters are "If you cast a
 	// creature spell this way, that creature enters with an additional
