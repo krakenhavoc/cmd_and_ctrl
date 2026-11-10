@@ -1303,6 +1303,7 @@ option option-pick/torment-of-hailfire-punisher
 option option-pick/trigger-opponent-chooser
 option option-pick/turtles-forever-opponent
 option option-pick/turtles-forever-zones
+option option-pick/two-streams-facility-choice
 option option-pick/ultra-magnus-tactician-attacks
 option option-pick/unlock-a-locked-door-of-a-room-you-control
 option option-pick/vial-smasher-the-fierce-recipient
@@ -2580,6 +2581,7 @@ tail then/tamiyo-collector-named
 tail then/teferi-temporal-pilgrim-shuffle-nonland
 tail then/the-black-arrow-destroy-dragon
 tail then/the-cloning-of-shredder-copy
+tail then/the-dining-car-investigate
 tail then/the-falcon-when-you-do
 tail then/the-fantasticar-constructs
 tail then/the-key-to-the-vault-bottom-then-cast

@@ -176,6 +176,13 @@ type PlayerStatic struct {
 	// (player_entry_counters.go). Nil on every other kind of entry.
 	CreaturesEnterWithCounters *EntryCounterGrant `json:"creaturesEnterWithCounters,omitempty"`
 
+	// ActivationDiscount is "activated abilities of <permanents> you control
+	// cost {N} less to activate" for a duration (The Dining Car's chaos
+	// ability, ADR 0216, #4870), read as one more CR 601.2f reduction when an
+	// activation is priced (player_activation_discount.go). Nil on every
+	// other kind of entry; additive within the snapshot version.
+	ActivationDiscount *ActivationDiscountGrant `json:"activationDiscount,omitempty"`
+
 	// CastBan is a granted "you/they can't cast …" statement with a
 	// CR 611.2 duration — Avatar's Wrath's "until your next turn, your
 	// opponents can't cast spells from anywhere other than their

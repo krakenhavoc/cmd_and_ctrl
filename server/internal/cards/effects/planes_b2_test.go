@@ -1132,3 +1132,91 @@ func TestTwoStreamsFacilityAsksAtTheFirstUpkeepOfTheGameOnly(t *testing.T) {
 		t.Error("an additional upkeep of the first turn asked")
 	}
 }
+
+// --- The Dining Car ----------------------------------------------------------
+
+func TestDiningCarGivesEveryPlayerAFoodAndSacrificesTheLeastToughAtUpkeep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeDiningCar)
+	g, _ := newPlaneGame(t, planeDiningCar)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	planeswalkToPlane(t, g, planeDiningCar.Oracle)
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		if planesB2Count(g, "Food", p.ID) != 1 {
+			t.Errorf("%s has %d Foods, want 1", p.Name, planesB2Count(g, "Food", p.ID))
+		}
+	}
+	next := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	big := b12Creature(g, next.ID, "Big", "Creature — Giant", 3, 5)
+	a := b12Creature(g, next.ID, "Small A", "Creature — Bear", 1, 1)
+	b := b12Creature(g, next.ID, "Small B", "Creature — Bear", 1, 1)
+	_ = me
+	toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	c := returnPickFor(g, next.ID)
+	if c == nil {
+		t.Fatal("the new planar controller was not asked what to sacrifice")
+	}
+	if len(c.ChooseCards) != 2 || slices.Contains(c.ChooseCards, big) {
+		t.Fatalf("the choice offers %v, want only the two creatures with the least toughness", c.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(c.ID, next.ID, []uuid.UUID{a}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(a) || !g.Battlefield.Contains(b) || !g.Battlefield.Contains(big) {
+		t.Error("the wrong creature was sacrificed")
+	}
+	if n := planesB2Count(g, "Clue", next.ID); n != 1 {
+		t.Errorf("%d Clues after the sacrifice, want 1", n)
+	}
+}
+
+func TestDiningCarInvestigatesEvenWithNothingToSacrifice(t *testing.T) {
+	g, _ := newPlaneGame(t, planeDiningCar)
+	next := toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	if n := planesB2Count(g, "Clue", next.ID); n != 1 {
+		t.Errorf("%d Clues with no creature to sacrifice, want 1", n)
+	}
+}
+
+func TestDiningCarChaosDiscountsArtifactTokenAbilitiesThisTurn(t *testing.T) {
+	g, _ := newPlaneGame(t, planeDiningCar)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	planeswalkToPlane(t, g, planeDiningCar.Oracle)
+	passPriorityAroundTable(t, g)
+	food := func(p *game.Player) uuid.UUID {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Food" && c.Controller == p.ID {
+				return c.InstanceID
+			}
+		}
+		t.Fatalf("no Food for %s", p.Name)
+		return uuid.Nil
+	}
+	myFood, theirFood := food(me), food(opp)
+	if err := g.ActivateCatalogAbility(me.ID, myFood, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("a Food was activated for free before the chaos ability")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	life := me.Life
+	if err := g.ActivateCatalogAbility(me.ID, myFood, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activating my Food after the chaos ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Life != life+3 {
+		t.Errorf("life %d, want %d", me.Life, life+3)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, theirFood, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Error("an opponent's Food was activated for free")
+	}
+	endTurn(t, g)
+	if err := g.ActivateCatalogAbility(g.Seats[g.Turn.ActiveSeat].ID, food(g.Seats[g.Turn.ActiveSeat]), 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Error("the discount outlived the turn")
+	}
+}

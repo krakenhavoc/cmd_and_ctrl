@@ -807,6 +807,9 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 	// discount its own tap ability, and nothing discounts its own
 	// foretell.
 	if q.Ability != nil {
+		// A duration discount on the activator's abilities (The Dining
+		// Car), held on the player like a next-spell promise.
+		out = append(out, g.activationDiscountModifiersLocked(q)...)
 		// #1296: the ability's OWN clause — "This ability costs {1}
 		// less to activate …" — the activation twin of the self slot
 		// below. Bound to the ability's source with the activator as
