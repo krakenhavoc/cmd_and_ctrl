@@ -427,3 +427,14 @@ func YouHaveCardsInHandAtLeast(n int) func(*game.Game, uuid.UUID) bool {
 		return b14HandSize(g, you) >= n
 	}
 }
+
+// CantBlockAlone — "This creature can't block alone" (#5396: Toby,
+// Beastie Befriender's Beast token; CR 506.5, 509.1b). A restriction on
+// the creature itself: a declaration in which it is its controller's
+// only blocker is illegal. Another blocker of theirs, on any attacker
+// (one that can't block alone too), makes it legal. No scope: the rule
+// is always about the permanent that prints it. See
+// game.BlockRule.NotAlone.
+func CantBlockAlone() game.BlockRule {
+	return game.BlockRule{NotAlone: true}
+}

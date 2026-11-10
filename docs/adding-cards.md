@@ -3225,6 +3225,21 @@ left, came back as a new object, or there was nothing to copy — where
 printed fields from a card file: the record is what lets it end, undo
 and survive a restart.
 
+**"For as long as this Equipment remains attached to it, that creature
+becomes a copy of a creature card exiled with this Equipment"
+(Assimilation Aegis, #5399)** is `BecomeCopyOfExiledWith{Target, Row,
+Match, Duration: CopyWhileSourceAttached}` in
+[copy_of_exiled_with.go](../server/internal/cards/effects/copy_of_exiled_with.go),
+fired by `On(game.EventAttach, ThisBecameAttachedToACreature, …)` with
+"that creature" as `item.Trigger.Event.Target`. `Row` is the Key of the
+ability that exiled the cards (CR 607.2a), which must stamp the link:
+`ExileTarget{Linked: true}`, or `ExileUntil{ThisLeaves: true, Linked:
+true}` for "until this leaves the battlefield". One candidate is copied,
+several are a keyed pick, none copies nothing. `CopyWhileSourceAttached`
+is also a plain `BecomeCopy` duration; it takes exactly one target. An
+"as this becomes attached" choice (Dinosaur Headdress) is `Spec.AsAttached`
+instead: no trigger, no stack.
+
 **Don't reach for this for a token copy.** "Create a token that's a
 copy of target creature" (Follow the Spirit, Kiki-Jiki) is
 `CreateTokenCopy` in
@@ -6396,8 +6411,11 @@ answers these searches with the helpers (`answerSearchByID` and the others in
 `cards/effects`) searches every zone on offer; one that cares which zones
 were searched answers the question first with `answerSearchZones`. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
-its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
-Prodigy) also reads the hand and is not covered.
+its rule. **`AlsoGraveyard: true` with `AlsoHand: true`** is "search your
+graveyard, hand, and/or library" (#5408, Say Its Name): the question offers
+all three zones (`search_other_zone` `"graveyard_and_hand"`), the searcher
+names any non-empty subset, and the library is shuffled only if it is among
+them. `answerSearchZones` names the zones one by one.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `ThenTail`, a registered tail, not on the next line:
