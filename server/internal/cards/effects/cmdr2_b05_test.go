@@ -34,6 +34,13 @@ func cmdr2B05Card(g *game.Game, owner uuid.UUID, name, typeLine, oracle string, 
 func TestCmdr2B05Registered(t *testing.T) {
 	for oracle, name := range map[string]string{
 		cmdr2B05SvyelunOracle:     "Svyelun of Sea and Sky",
+		cmdr2B05KopalaOracle:      "Kopala, Warden of Waves",
+		cmdr2B05BanneretOracle:    "Stonybrook Banneret",
+		cmdr2B05SurgespannerOracl: "Surgespanner",
+		cmdr2B05SingerOracle:      "Singer of Swift Rivers",
+		cmdr2B05MihailOracle:      "Emperor Mihail II",
+		cmdr2B05DeeprootOracle:    "Deeproot Elite",
+		cmdr2B05KumenaOracle:      "Kumena, Tyrant of Orazca",
 		cmdr2B05MistbinderOracle:  "Merfolk Mistbinder",
 		cmdr2B05ShorestalkerOracl: "Triton Shorestalker",
 	} {
@@ -435,5 +442,64 @@ func TestCmdr2B05KumenaFiveMerfolkCounterEachMerfolk(t *testing.T) {
 	}
 	if counterOn(g, bear, game.CounterPlusOne) != 0 || counterOn(g, opp, game.CounterPlusOne) != 0 {
 		t.Error("a non-Merfolk or an opponent's Merfolk got a counter")
+	}
+}
+
+// --- Emperor Mihail II ---------------------------------------------
+
+func TestCmdr2B05MihailCastsMerfolkFromTheTopAndPaysForAToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMain(t, g)
+	pushTopSource(t, g, me.ID, "Emperor Mihail II", "Legendary Creature — Merfolk Noble", cmdr2B05MihailOracle)
+	var vis game.LibraryTopVisibility
+	g.ReadSnapshot(func() { vis = g.LibraryTopVisibilityLocked(me.ID) })
+	if vis != game.LibraryTopOwner {
+		t.Errorf("top-card visibility = %v, want owner-only", vis)
+	}
+	bear := seedTopOfLibrary(me, game.Card{Name: "Top Bear", TypeLine: "Creature — Bear", ManaCost: "{0}"})
+	if grantedPermissionOn(g, me.ID, bear, game.ZoneLibrary).Granted() {
+		t.Error("a non-Merfolk was opened")
+	}
+	fish := seedTopOfLibrary(me, game.Card{Name: "Top Fish", TypeLine: "Creature — Merfolk", ManaCost: "{0}"})
+	if err := g.CastSpell(me.ID, fish, game.CastSpellParams{FromZone: "library"}); err != nil {
+		t.Fatalf("cast a Merfolk off the top: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	b06AddMana(me, "C")
+	ask := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if ask == nil {
+		t.Fatal("casting a Merfolk spell does not ask about {1}")
+	}
+	if err := g.ResolvePayUnless(ask.ID, me.ID, true); err != nil {
+		t.Fatalf("ResolvePayUnless: %v", err)
+	}
+	if got := len(battlefieldIDsNamed(g, "Merfolk")); got != 1 {
+		t.Errorf("%d Merfolk tokens, want 1", got)
+	}
+}
+
+func TestCmdr2B05MihailDecliningMakesNoTokenAndBearsDoNotTrigger(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMain(t, g)
+	pushTopSource(t, g, me.ID, "Emperor Mihail II", "Legendary Creature — Merfolk Noble", cmdr2B05MihailOracle)
+	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKind(g, game.PendingChoicePayUnless) != nil {
+		t.Fatal("a Bear spell triggered Mihail")
+	}
+	castCatalogSpell(t, g, "Fish", "Creature — Merfolk", "", nil)
+	passPriorityAroundTable(t, g)
+	b06AddMana(me, "C")
+	ask := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if ask == nil {
+		t.Fatal("a Merfolk spell did not ask")
+	}
+	if err := g.ResolvePayUnless(ask.ID, me.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(battlefieldIDsNamed(g, "Merfolk")); got != 0 {
+		t.Errorf("declining made %d tokens", got)
 	}
 }
