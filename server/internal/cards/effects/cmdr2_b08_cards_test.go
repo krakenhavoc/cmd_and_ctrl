@@ -81,8 +81,8 @@ func TestCmdr2B08ApexAltisaurFightsOnEntryAndWhenDamaged(t *testing.T) {
 		pickCard(t, g, me.ID, big)
 	}
 	passPriorityAroundTable(t, g)
-	if got := cardByID(g, big).DamageMarked; got != 10 {
-		t.Errorf("the Ogre took %d from the enrage fight, want 10", got)
+	if _, ok := battlefieldCard(g, big); ok {
+		t.Error("the Ogre survived the enrage fight with a 10/10")
 	}
 }
 
