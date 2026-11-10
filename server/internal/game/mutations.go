@@ -8631,6 +8631,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		}
 		paid.Exiled = append(paid.Exiled, exiles...)
 		needStateChecks = true
+		// CR 701.59a: a collect evidence clause (Cryptex's "{T}, Collect
+		// evidence 3") announces its collection once the cards are
+		// exiled, as the CR 602 path does, so "whenever you collect
+		// evidence" triggers; the trigger reaches the stack on the way
+		// out, with the mana already in the pool (CR 605.3b).
+		if ab.ExileCards.IsCollectEvidence() {
+			g.noteCollectEvidenceLocked(playerID, cardID, exiles)
+		}
 	}
 	// #5397, CR 701.61a: a forage paid — either branch, now that its
 	// cards or its Food have moved. Recorded as the CR 602 path records

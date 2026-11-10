@@ -4698,6 +4698,12 @@ var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web
   `Plus`. The activator names the cards on `activate_ability`'s `exile_ids`;
   the row ships `exile_cost_any_number` and `exile_cost_mana_value_min`, and
   is greyed when the graveyard is short.
+- **A mana ability's cost** ("{T}, Collect evidence 3: Add one mana of any
+  color", Cryptex) is `ManaAbilityCost{Tap: true, ExileCards:
+  ManaCollectEvidenceN(n)}`. The cards ride `activate_mana_ability`'s
+  `exile_ids`, the mana row ships the same `exile_cost_any_number` and
+  `exile_cost_mana_value_min` and greys when the graveyard is short, paying
+  it emits the collect evidence event, and the auto-tapper never spends it.
 - **The effect form** ("you may collect evidence N. If you do, …", "When you
   do, …") is a `CollectEvidence` registered once from a package-level var with
   `RegisterCollectEvidence(key, n, then)` and asked with `.Ask(ctx, question)`

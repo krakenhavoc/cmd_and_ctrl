@@ -5722,6 +5722,13 @@ export interface ManaAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Collect evidence N as a mana ability's cost (Cryptex's "{T}, Collect
+  // evidence 3"): `exile_cost_n` is absent, the picker takes any number of
+  // `exile_cost_options`, and the picks are enough once their total mana
+  // value reaches `exile_cost_mana_value_min`. The ActivatedAbilityView
+  // fields of the same names; the engine refuses a pick below the floor.
+  exile_cost_any_number?: boolean;
+  exile_cost_mana_value_min?: number;
   // #5397: an either/or part of the cost — forage, Thornvault Forager's
   // "{T}, Forage: Add two mana in any combination of colors" (exile three
   // cards from your graveyard, or sacrifice a Food). The same entries

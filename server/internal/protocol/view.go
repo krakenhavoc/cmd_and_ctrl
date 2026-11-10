@@ -5683,6 +5683,17 @@ type ManaAbilityView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// ExileCostAnyNumber / ExileCostManaValueMin mark collect evidence N
+	// as a mana ability's cost (CR 701.59a; Cryptex's "{T}, Collect
+	// evidence 3: Add one mana of any color"): ExileCostN is absent, the
+	// picker takes any number of ExileCostOptions, and the picks are
+	// enough once their total mana value is ExileCostManaValueMin or
+	// more. The same wire names ActivatedAbilityView carries for
+	// Forensic Researcher's CR 602 row, so the client's picker is one
+	// component for both ability kinds. The engine refuses a pick below
+	// the floor. Absent for every other mana ability.
+	ExileCostAnyNumber    bool `json:"exile_cost_any_number,omitempty"`
+	ExileCostManaValueMin int  `json:"exile_cost_mana_value_min,omitempty"`
 	// CostBranches are the ways to pay an either/or part of a mana
 	// ability's cost (#5397, game.ManaAbilityShape.Either): forage,
 	// Thornvault Forager's "{T}, Forage: Add two mana in any combination
@@ -9628,6 +9639,13 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 				views[i].CantActivate = short.Error()
 			}
 		}
+		// CR 701.59b: a collect evidence cost (Cryptex) whose graveyard
+		// falls short of the floor can't be chosen, so the row greys with
+		// the CR 602 row's words.
+		if ec := raw[r].ExileCards; views[i].CantActivate == "" && ec.IsCollectEvidence() &&
+			!g.ExileCostPayableForEffect(controller, card.InstanceID, ec) {
+			views[i].CantActivate = "Your graveyard does not hold enough to exile for this cost."
+		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
 		// with the same code — and separately from it, because the
@@ -10130,6 +10148,17 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
+		}
+		// Collect evidence N (Cryptex): the any-number form, off the
+		// same walk, with its mana value floor.
+		if ec := raw[i].ExileCards; ec.IsCollectEvidence() {
+			views[i].ExileCostAnyNumber = true
+			views[i].ExileCostManaValueMin = ec.ManaValueAtLeast
+			views[i].ExileCostLabel = ec.Label
+			views[i].ExileCostZone = string(ec.Zone())
+			if g.ExileCostPayableForEffect(controller, card.InstanceID, ec) {
+				views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
+			}
 		}
 		// #5397: an either/or cost (forage, Thornvault Forager), each
 		// branch projected through the CR 602 row's projection over the

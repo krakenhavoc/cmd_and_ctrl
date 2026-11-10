@@ -897,10 +897,11 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards a card with mana value X — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
-		if ec := ma.Cost.ExileCards; ec != nil && ec.AnyNumber {
+		if ec := ma.Cost.ExileCards; ec != nil && ec.AnyNumber && !ec.IsCollectEvidence() {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles any number of cards — a CR 602 ability's cost only",
 				spec.Name, i))
 		}
+		checkManaCollectEvidence(spec.Name, i, ma)
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		checkManaForage(spec.Name, i, ma)

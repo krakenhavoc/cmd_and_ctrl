@@ -3139,6 +3139,12 @@
   // changed, because the question is the same one; the answer rides
   // its own field, `exile_ids`, because the component is not.
   function askManaExileCost(card: CardView, ability: ManaAbilityView): void {
+    // Collect evidence N (Cryptex): always a choice, so the picker opens
+    // and names the running mana value total, as the CR 602 row's does.
+    if (ability.exile_cost_any_number) {
+      manaExilePrompt = { card, ability };
+      return;
+    }
     if (ability.exile_cost_n) {
       const options = ability.exile_cost_options ?? [];
       if (options.length > ability.exile_cost_n) {
@@ -4911,6 +4917,8 @@
     options={manaExileOptions}
     need={manaExilePrompt?.ability.exile_cost_n}
     label={manaExilePrompt?.ability.exile_cost_label}
+    variable={manaExilePrompt?.ability.exile_cost_any_number}
+    manaValueMin={manaExilePrompt?.ability.exile_cost_mana_value_min}
     verb="Exile"
     note={manaExilePrompt ? exileCostNote(manaExilePrompt.ability) : undefined}
     where={manaExilePrompt ? exileCostWhere(manaExilePrompt.ability) : undefined}

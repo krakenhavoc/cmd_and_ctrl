@@ -172,6 +172,7 @@ var manaRowScopes = map[string]rowScope{
 	"TriggerAdds":  rowPublic,
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	"ExileCostAnyNumber": rowPublic, "ExileCostManaValueMin": rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,
 	"CounterCostLabel": rowPublic, "CounterCostAmong": rowPublic,
 	"CounterCostVariable": rowPublic, "CounterCostMax": rowPublic,
