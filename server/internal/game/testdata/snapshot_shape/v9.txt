@@ -1078,6 +1078,7 @@ events[].source	custom(uuid.UUID)
 events[].stack_item_id	custom(uuid.UUID)
 events[].step	string
 events[].tap_cause	string
+events[].tapped_by	custom(uuid.UUID)
 events[].target	custom(uuid.UUID)
 events[].targeter_kind	string
 events[].unpaid	bool
@@ -1860,6 +1861,7 @@ followUpParks[].then.asked.trigger.Event.source	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.step	string
 followUpParks[].then.asked.trigger.Event.tap_cause	string
+followUpParks[].then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.target	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Event.targeter_kind	string
 followUpParks[].then.asked.trigger.Event.unpaid	bool
@@ -2483,6 +2485,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Event.source	custom(uuid.UU
 frozenEntries[].event.counterTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.step	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.counterTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.counterTail.then.asked.trigger.Event.unpaid	bool
@@ -3085,6 +3088,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Event.source	custom(uui
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.step	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Event.unpaid	bool
@@ -3678,6 +3682,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Event.source	custom(uui
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.step	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Event.unpaid	bool
@@ -4443,6 +4448,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Event.source	custom(uuid.UUI
 frozenEntries[].event.damageTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.step	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.damageTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.damageTail.then.asked.trigger.Event.unpaid	bool
@@ -5156,6 +5162,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.sour
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.step	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Event.unpaid	bool
@@ -5825,6 +5832,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.source	custom(uui
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.step	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Event.unpaid	bool
@@ -6418,6 +6426,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Event.source	custom(uuid.UUI
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.step	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Event.unpaid	bool
@@ -7044,6 +7053,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.source	
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.step	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Event.unpaid	bool
@@ -7657,6 +7667,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.source	custom(uu
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.step	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Event.unpaid	bool
@@ -8673,6 +8684,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.source	custom(u
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.step	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Event.unpaid	bool
@@ -9153,6 +9165,7 @@ frozenEntries[].event.lifeAfterMove[].player	custom(uuid.UUID)
 frozenEntries[].event.lifeAfterMove[].source	custom(uuid.UUID)
 frozenEntries[].event.lifeDelta	number:int
 frozenEntries[].event.lifeFromRadiation	bool
+frozenEntries[].event.lifePayment	bool
 frozenEntries[].event.lifePlayer	custom(uuid.UUID)
 frozenEntries[].event.lifeTail	object
 frozenEntries[].event.lifeTail.each	object
@@ -9288,6 +9301,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.source	custom(uuid.
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.step	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Event.unpaid	bool
@@ -9884,6 +9898,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Event.source	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.step	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.lifeTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Event.unpaid	bool
@@ -11281,6 +11296,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Event.source	custom(uuid.U
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.step	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.millTail.run.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Event.unpaid	bool
@@ -11872,6 +11888,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Event.source	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.step	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.millTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.millTail.then.asked.trigger.Event.unpaid	bool
@@ -12817,6 +12834,7 @@ frozenEntries[].event.stackItem.trigger.Event.source	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.step	string
 frozenEntries[].event.stackItem.trigger.Event.tap_cause	string
+frozenEntries[].event.stackItem.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Event.targeter_kind	string
 frozenEntries[].event.stackItem.trigger.Event.unpaid	bool
@@ -13403,6 +13421,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Event.source	custom(uuid.UUID
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.step	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.tokenTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Event.unpaid	bool
@@ -15228,6 +15247,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.source	c
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.step	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.unpaid	bool
@@ -15854,6 +15874,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.so
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.step	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.unpaid	bool
@@ -16445,6 +16466,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.source	custom
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.step	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Event.unpaid	bool
@@ -17056,6 +17078,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.source	cust
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.step	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Event.unpaid	bool
@@ -17733,6 +17756,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.source	cus
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.step	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.tap_cause	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.targeter_kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Event.unpaid	bool
@@ -19901,6 +19925,7 @@ lastKnownStack[].item.trigger.Event.source	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.step	string
 lastKnownStack[].item.trigger.Event.tap_cause	string
+lastKnownStack[].item.trigger.Event.tapped_by	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.targeter_kind	string
 lastKnownStack[].item.trigger.Event.unpaid	bool
@@ -20206,6 +20231,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Event.source	custom(uuid.UU
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Event.unpaid	bool
@@ -20808,6 +20834,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.source	custom(uui
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.step	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Event.unpaid	bool
@@ -21401,6 +21428,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.source	custom(uui
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Event.unpaid	bool
@@ -22166,6 +22194,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Event.source	custom(uuid.UUI
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Event.unpaid	bool
@@ -22879,6 +22908,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.sour
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Event.unpaid	bool
@@ -23548,6 +23578,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.source	custom(uui
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Event.unpaid	bool
@@ -24141,6 +24172,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.source	custom(uuid.UUI
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.step	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Event.unpaid	bool
@@ -24767,6 +24799,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.source	
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.step	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Event.unpaid	bool
@@ -25380,6 +25413,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.source	custom(uu
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Event.unpaid	bool
@@ -26396,6 +26430,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.source	custom(u
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Event.unpaid	bool
@@ -26876,6 +26911,7 @@ movesAwaitingTokens[].lifeAfterMove[].player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeAfterMove[].source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeDelta	number:int
 movesAwaitingTokens[].lifeFromRadiation	bool
+movesAwaitingTokens[].lifePayment	bool
 movesAwaitingTokens[].lifePlayer	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail	object
 movesAwaitingTokens[].lifeTail.each	object
@@ -27011,6 +27047,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.source	custom(uuid.
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Event.unpaid	bool
@@ -27607,6 +27644,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.source	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Event.unpaid	bool
@@ -29004,6 +29042,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.source	custom(uuid.U
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Event.unpaid	bool
@@ -29595,6 +29634,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Event.source	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].millTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Event.unpaid	bool
@@ -30540,6 +30580,7 @@ movesAwaitingTokens[].stackItem.trigger.Event.source	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.step	string
 movesAwaitingTokens[].stackItem.trigger.Event.tap_cause	string
+movesAwaitingTokens[].stackItem.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].stackItem.trigger.Event.unpaid	bool
@@ -31126,6 +31167,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.source	custom(uuid.UUID
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Event.unpaid	bool
@@ -32951,6 +32993,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.source	c
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Event.unpaid	bool
@@ -33577,6 +33620,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.so
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.step	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.unpaid	bool
@@ -34168,6 +34212,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.source	custom
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Event.unpaid	bool
@@ -34779,6 +34824,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.source	cust
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Event.unpaid	bool
@@ -35456,6 +35502,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.source	cus
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.step	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.tap_cause	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.targeter_kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Event.unpaid	bool
@@ -36657,6 +36704,7 @@ pausedModeWalk.item.trigger.Event.source	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.step	string
 pausedModeWalk.item.trigger.Event.tap_cause	string
+pausedModeWalk.item.trigger.Event.tapped_by	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.target	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.targeter_kind	string
 pausedModeWalk.item.trigger.Event.unpaid	bool
@@ -36986,6 +37034,7 @@ pausedResolutionTail.item.trigger.Event.source	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.step	string
 pausedResolutionTail.item.trigger.Event.tap_cause	string
+pausedResolutionTail.item.trigger.Event.tapped_by	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.target	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.targeter_kind	string
 pausedResolutionTail.item.trigger.Event.unpaid	bool
@@ -37309,6 +37358,7 @@ pausedStepWalk.item.trigger.Event.source	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.step	string
 pausedStepWalk.item.trigger.Event.tap_cause	string
+pausedStepWalk.item.trigger.Event.tapped_by	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.target	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Event.targeter_kind	string
 pausedStepWalk.item.trigger.Event.unpaid	bool
@@ -37496,6 +37546,7 @@ pendingChoices[].asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.step	string
 pendingChoices[].asked.trigger.Event.tap_cause	string
+pendingChoices[].asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Event.targeter_kind	string
 pendingChoices[].asked.trigger.Event.unpaid	bool
@@ -38667,6 +38718,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.step	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.tap_cause	string
+pendingChoices[].attackSplit.tail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Event.targeter_kind	string
 pendingChoices[].attackSplit.tail.asked.trigger.Event.unpaid	bool
@@ -39852,6 +39904,7 @@ pendingChoices[].copyWalk.item.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.step	string
 pendingChoices[].copyWalk.item.trigger.Event.tap_cause	string
+pendingChoices[].copyWalk.item.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Event.targeter_kind	string
 pendingChoices[].copyWalk.item.trigger.Event.unpaid	bool
@@ -40666,6 +40719,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.step	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].diceRoll.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].diceRoll.then.asked.trigger.Event.unpaid	bool
@@ -41638,6 +41692,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Event.source	custom(uuid.U
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.step	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.tap_cause	string
+pendingChoices[].divideShield.walk.each.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.targeter_kind	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Event.unpaid	bool
@@ -42231,6 +42286,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Event.source	custom(uuid.U
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.step	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].divideShield.walk.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Event.unpaid	bool
@@ -42830,6 +42886,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.step	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].libraryOrder.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].libraryOrder.then.asked.trigger.Event.unpaid	bool
@@ -43479,6 +43536,7 @@ pendingChoices[].nameThen.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.step	string
 pendingChoices[].nameThen.asked.trigger.Event.tap_cause	string
+pendingChoices[].nameThen.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Event.targeter_kind	string
 pendingChoices[].nameThen.asked.trigger.Event.unpaid	bool
@@ -44079,6 +44137,7 @@ pendingChoices[].ordered.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.step	string
 pendingChoices[].ordered.asked.trigger.Event.tap_cause	string
+pendingChoices[].ordered.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Event.targeter_kind	string
 pendingChoices[].ordered.asked.trigger.Event.unpaid	bool
@@ -44545,6 +44604,7 @@ pendingChoices[].pickTail.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.step	string
 pendingChoices[].pickTail.asked.trigger.Event.tap_cause	string
+pendingChoices[].pickTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Event.targeter_kind	string
 pendingChoices[].pickTail.asked.trigger.Event.unpaid	bool
@@ -45182,6 +45242,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.so
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Event.unpaid	bool
@@ -45784,6 +45845,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Event.unpaid	bool
@@ -46377,6 +46439,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Event.unpaid	bool
@@ -47142,6 +47205,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.sou
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Event.unpaid	bool
@@ -47855,6 +47919,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Event.unpaid	bool
@@ -48524,6 +48589,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Even
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Event.unpaid	bool
@@ -49117,6 +49183,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.sou
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.unpaid	bool
@@ -49743,6 +49810,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Event.unpaid	bool
@@ -50356,6 +50424,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Eve
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Event.unpaid	bool
@@ -51372,6 +51441,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ev
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Event.unpaid	bool
@@ -51852,6 +51922,7 @@ pendingChoices[].replacementResume.event.lifeAfterMove[].player	custom(uuid.UUID
 pendingChoices[].replacementResume.event.lifeAfterMove[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeDelta	number:int
 pendingChoices[].replacementResume.event.lifeFromRadiation	bool
+pendingChoices[].replacementResume.event.lifePayment	bool
 pendingChoices[].replacementResume.event.lifePlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail	object
 pendingChoices[].replacementResume.event.lifeTail.each	object
@@ -51987,6 +52058,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Event.unpaid	bool
@@ -52583,6 +52655,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.sourc
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Event.unpaid	bool
@@ -53980,6 +54053,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.s
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Event.unpaid	bool
@@ -54571,6 +54645,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.sourc
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Event.unpaid	bool
@@ -55516,6 +55591,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Event.source	custom(u
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.step	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.stackItem.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Event.unpaid	bool
@@ -56102,6 +56178,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.sour
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Event.unpaid	bool
@@ -57927,6 +58004,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Event.unpaid	bool
@@ -58553,6 +58631,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Event.unpaid	bool
@@ -59144,6 +59223,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Event.unpaid	bool
@@ -59755,6 +59835,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Event.unpaid	bool
@@ -60432,6 +60513,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.step	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.tap_cause	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.targeter_kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Event.unpaid	bool
@@ -61454,6 +61536,7 @@ pendingChoices[].scryThen.asked.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.step	string
 pendingChoices[].scryThen.asked.trigger.Event.tap_cause	string
+pendingChoices[].scryThen.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Event.targeter_kind	string
 pendingChoices[].scryThen.asked.trigger.Event.unpaid	bool
@@ -62093,6 +62176,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.source	custom(uu
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.step	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.tap_cause	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.targeter_kind	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.unpaid	bool
@@ -63503,6 +63587,7 @@ pendingChoices[].targetWalk.frame.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.step	string
 pendingChoices[].targetWalk.frame.trigger.Event.tap_cause	string
+pendingChoices[].targetWalk.frame.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Event.targeter_kind	string
 pendingChoices[].targetWalk.frame.trigger.Event.unpaid	bool
@@ -64244,6 +64329,7 @@ pendingChoices[].triggerFrame.trigger.Event.source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.step	string
 pendingChoices[].triggerFrame.trigger.Event.tap_cause	string
+pendingChoices[].triggerFrame.trigger.Event.tapped_by	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.target	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Event.targeter_kind	string
 pendingChoices[].triggerFrame.trigger.Event.unpaid	bool
@@ -64575,6 +64661,7 @@ pendingTriggers[].trigger.Event.source	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.step	string
 pendingTriggers[].trigger.Event.tap_cause	string
+pendingTriggers[].trigger.Event.tapped_by	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.targeter_kind	string
 pendingTriggers[].trigger.Event.unpaid	bool
@@ -66223,6 +66310,7 @@ promptRuns[].asked.trigger.Event.source	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.stack_item_id	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.step	string
 promptRuns[].asked.trigger.Event.tap_cause	string
+promptRuns[].asked.trigger.Event.tapped_by	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.target	custom(uuid.UUID)
 promptRuns[].asked.trigger.Event.targeter_kind	string
 promptRuns[].asked.trigger.Event.unpaid	bool
@@ -66970,6 +67058,7 @@ resolving.item.trigger.Event.source	custom(uuid.UUID)
 resolving.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 resolving.item.trigger.Event.step	string
 resolving.item.trigger.Event.tap_cause	string
+resolving.item.trigger.Event.tapped_by	custom(uuid.UUID)
 resolving.item.trigger.Event.target	custom(uuid.UUID)
 resolving.item.trigger.Event.targeter_kind	string
 resolving.item.trigger.Event.unpaid	bool
@@ -72184,6 +72273,7 @@ stackMeta[].trigger.Event.source	custom(uuid.UUID)
 stackMeta[].trigger.Event.stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.step	string
 stackMeta[].trigger.Event.tap_cause	string
+stackMeta[].trigger.Event.tapped_by	custom(uuid.UUID)
 stackMeta[].trigger.Event.target	custom(uuid.UUID)
 stackMeta[].trigger.Event.targeter_kind	string
 stackMeta[].trigger.Event.unpaid	bool

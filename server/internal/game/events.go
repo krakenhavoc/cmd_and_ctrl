@@ -2268,6 +2268,15 @@ type Event struct {
 	// context verbatim into a snapshot. Additive within the snapshot
 	// schema: omitted when empty.
 	TapCause string `json:"tap_cause,omitempty"`
+
+	// TappedBy is the player whose spell or ability instructed an
+	// EventTapCard's tap ("tap target creature", "tap that creature"):
+	// the effect's controller. Empty for a tap a cost, the untap
+	// rules or an attack made. It is what "whenever you tap an untapped
+	// creature an opponent controls" reads. It is an event fact, so it
+	// rides the trigger context into a snapshot. Additive within the
+	// snapshot schema: omitted when empty.
+	TappedBy uuid.UUID `json:"tapped_by,omitempty"`
 }
 
 // TapCauseTeamwork is Event.TapCause for a creature tapped to pay a

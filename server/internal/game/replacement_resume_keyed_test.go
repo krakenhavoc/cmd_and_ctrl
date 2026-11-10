@@ -58,7 +58,7 @@ func keyedFrameSample() *ReplacementEvent {
 		CounterTarget: id("ct"), CounterName: CounterPlusOne, CounterDelta: 3, CounterPlayer: id("cp"),
 		StartingLoyalty: true, CounterPlacer: id("placer"), CounterFromCombatDamage: true, CounterFromCost: true,
 		CounterFromTurnBasedAction: true,
-		LifePlayer:                 id("lifer"), LifeDelta: -4, LifeFromRadiation: true,
+		LifePlayer:                 id("lifer"), LifeDelta: -4, LifeFromRadiation: true, LifePayment: true,
 		// #4253 slice 9: a discard.
 		DiscardPlayer: id("discarder"), DiscardCause: DiscardCauseEffect, DiscardCauseController: id("dcc"),
 		CardID: id("card"), OldZone: ZoneStack, NewZone: ZoneBattlefield, NewZoneOwner: id("owner"),

@@ -1376,6 +1376,16 @@ func (g *Game) TapTargetForEffect(cardID uuid.UUID) error {
 	return g.setTapStateLocked(cardID, true)
 }
 
+// TapTargetForEffectBy is TapTargetForEffect for a tap an effect's
+// controller instructs: the EventTapCard it emits carries that player as
+// Event.TappedBy, so "whenever you tap an untapped creature an opponent
+// controls" (Icewrought Sentry, Solitary Sanctuary) can tell the tap its
+// controller caused from one a rule or a cost made. A zero by is
+// TapTargetForEffect.
+func (g *Game) TapTargetForEffectBy(cardID, by uuid.UUID) error {
+	return g.setTapStateByLocked(cardID, true, by)
+}
+
 // UntapTargetForEffect untaps a battlefield card.
 func (g *Game) UntapTargetForEffect(cardID uuid.UUID) error {
 	return g.setTapStateLocked(cardID, false)
@@ -1397,6 +1407,12 @@ func (g *Game) UntapTargetForEffect(cardID uuid.UUID) error {
 // untap in the engine — this one, the untap step's, a sandbox click
 // — announces through the same line of code.
 func (g *Game) setTapStateLocked(cardID uuid.UUID, tapped bool) error {
+	return g.setTapStateByLocked(cardID, tapped, uuid.Nil)
+}
+
+// setTapStateByLocked is setTapStateLocked naming the player whose effect
+// instructed a tap (Event.TappedBy), uuid.Nil when none did.
+func (g *Game) setTapStateByLocked(cardID uuid.UUID, tapped bool, by uuid.UUID) error {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.InstanceID != cardID {
@@ -1410,7 +1426,7 @@ func (g *Game) setTapStateLocked(cardID uuid.UUID, tapped bool) error {
 			return nil
 		}
 		c.Tapped = true
-		g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID})
+		g.EmitEvent(Event{Kind: EventTapCard, CardID: cardID, TappedBy: by})
 		return nil
 	}
 	return ErrCardNotFound

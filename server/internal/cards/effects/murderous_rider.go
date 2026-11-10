@@ -29,13 +29,7 @@ func init() {
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Murderous Rider — put it on the bottom of its owner's library",
-				func(g *game.Game, item *game.StackItem) error {
-					z := g.FindCardZoneForEffect(item.SourceCardID)
-					if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
-						return nil
-					}
-					return PutIntoLibrary{Card: item.SourceCardID, ToBottom: true}.Apply(NewContext(g, item))
-				}),
+				putDiedThisOnBottomOfLibrary),
 		},
 	})
 	Register(Spec{
