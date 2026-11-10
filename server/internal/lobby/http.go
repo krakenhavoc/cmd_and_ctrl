@@ -1297,9 +1297,10 @@ type createGameRequest struct {
 	Planechase bool `json:"planechase,omitempty"`
 	// Format is the table's format (ADR 0222 §1): "commander" (the
 	// default when empty) or "standard". Applied through the engine's
-	// UpdateSettings before anyone sits down, so the creator's seat
-	// already starts at the format's life total. A format this server
-	// does not know is a 400 and no table is made.
+	// UpdateSettings as soon as the creator has sat down, before any bot
+	// or other person can, so the seat cap and every seat's starting
+	// life are the format's. A format this server does not know is a 400
+	// and no table is made.
 	Format string `json:"format,omitempty"`
 }
 
@@ -1524,30 +1525,33 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			c.Log.Info("table created", "user_id", p.UserID.String(), "game_id", meta.ID.String())
 		}
 
-		if formatSpec.Format != game.FormatCommander {
-			// ADR 0222 §1. Before the creator sits down: the seat cap
-			// and the starting life are the format's from the first
-			// seat. A table that cannot be given the format it was
-			// asked for is not left behind as a Commander table.
-			f := formatSpec.Format
-			if _, ferr := c.Lobby.UpdateSettings(meta.ID, uuid.Nil, game.SettingsPatch{Format: &f}); ferr != nil {
-				_ = c.Lobby.Delete(meta.ID)
-				return ferr
-			}
-			// The meta in hand was read before the format was set; it
-			// carries the invites, so it is amended, not re-read.
-			meta.Format = string(formatSpec.Format)
-			if formatSpec.MaxSeats != game.MaxPlayers {
-				meta.MaxSeats = formatSpec.MaxSeats
-			}
-		}
-
 		out := createGameResponse{GameMeta: meta}
 		if !server {
 			// #3494: almost every host plays, so the creator sits down
 			// in seat 1 at once, as themselves, before the last setup's
 			// bots and before an #lfg post counts the seats.
 			out.Seat = seatCreator(c, w, r, p, meta)
+		}
+		if formatSpec.Format != game.FormatCommander {
+			// ADR 0222 §1. Before the last setup's bots and before an
+			// #lfg post counts the seats: the seat cap is the format's,
+			// and the creator's seat is reset to its starting life. The
+			// actor is the creator's new seat, so the log names them. A
+			// table that cannot be given the format it was asked for is
+			// not left behind as a Commander table.
+			actor := uuid.Nil
+			if out.Seat != nil {
+				actor = out.Seat.PlayerID
+			}
+			f := formatSpec.Format
+			if _, ferr := c.Lobby.UpdateSettings(meta.ID, actor, game.SettingsPatch{Format: &f}); ferr != nil {
+				_ = c.Lobby.Delete(meta.ID)
+				return ferr
+			}
+			out.Format = string(formatSpec.Format)
+			if formatSpec.MaxSeats != game.MaxPlayers {
+				out.MaxSeats = formatSpec.MaxSeats
+			}
 		}
 		if body.Planechase {
 			// ADR 0216 §1. The actor is the creator's new seat when
@@ -3718,7 +3722,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Save to the caller's deck library (ADR 0051 decision 7, S34
 	// sub-PR 5) — see saveToLibrary for exactly when this does
 	// something and the seats.deck_id it leaves behind.
-	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, id, body.PlayerID, deckID, format, source, list, commanders)
+	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, id, body.PlayerID, table, deckID, format, source, list, commanders)
 	libraryNote := ""
 	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
 		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
@@ -3787,7 +3791,12 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // plain-text paste carries no name of its own (deck.ParseText has
 // nowhere to put one), so an empty list.Name falls back to the first
 // commander's name rather than saving a blank row every time.
-func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, playerID uuid.UUID, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
+//
+// table is the format of the table the deck was seated at, which is the
+// format it passed the check of, and what the saved deck records (ADR
+// 0222 §2). A deck re-saved under the same name from a table of another
+// format takes that table's.
+func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, playerID uuid.UUID, table game.Format, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
 	if deckID != "" || p.UserID == uuid.Nil || c.DeckLibrary == nil {
 		return "", nil
 	}
@@ -3801,6 +3810,9 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 	name := list.Name
 	if name == "" {
 		name = libraryFallbackName(list)
+		if !table.Spec().CommanderExpected {
+			name = constructedFallbackName(list)
+		}
 	}
 	cardCount := len(list.Commanders) + len(list.Mainboard)
 	var (
@@ -3822,6 +3834,11 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 	if err != nil {
 		logDeckLibraryWarning(c, "save deck to library failed", err, "user_id", p.UserID)
 		return "", err
+	}
+	if want := table.Spec().Format; libraryDeckFormat(saved) != want {
+		if _, ferr := c.DeckLibrary.SetFormat(ctx, p.UserID, saved.ID, string(want)); ferr != nil {
+			logDeckLibraryWarning(c, "recording a saved deck's format failed", ferr, "user_id", p.UserID)
+		}
 	}
 	return saved.ID.String(), nil
 }
@@ -3858,6 +3875,20 @@ func libraryFallbackName(list *deck.List) string {
 			names = append(names, c.Name)
 		}
 		return strings.Join(names, " / ")
+	}
+	return "Untitled deck"
+}
+
+// constructedFallbackName names a pasted deck of a format with no
+// commander (ADR 0222 §2): after its first card that is not a basic
+// land, so two different pasted decks do not both save as "Untitled
+// deck" and overwrite each other under the update rule.
+func constructedFallbackName(list *deck.List) string {
+	for _, c := range list.Mainboard {
+		if !strings.Contains(c.TypeLine, "Basic Land") {
+			name, _, _ := strings.Cut(c.Name, " // ")
+			return name + " deck"
+		}
 	}
 	return "Untitled deck"
 }
@@ -3932,6 +3963,10 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// ADR 0222 §2: a saved deck is offered at tables of its format.
+	if f := libraryDeckFormat(saved); f != table {
+		return wrongFormatError(saved.Name, f, table)
+	}
 	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, saved.SourceFormat, saved.SourceText)
 	if written || err != nil {
 		return err
@@ -3996,8 +4031,11 @@ type myDeckCoverageInfo struct {
 
 // myDeckInfo is one entry in GET /me/decks.
 type myDeckInfo struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Format is the format the deck was built for (ADR 0222 §2):
+	// "standard", or omitted for Commander.
+	Format     string    `json:"format,omitempty"`
 	Commanders []string  `json:"commanders"`
 	CardCount  int       `json:"card_count"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -4085,6 +4123,9 @@ func libraryDeckReport(c Config, d decklibrary.Deck, verdicts map[string]catalog
 	}
 	return deckcoverage.BuildWith(c.Cards, deckcoverage.Deck{
 		Name: d.Name, Source: source, SourceURL: d.SourceURL, Entries: entries,
+		// ADR 0222 §2: a saved deck is checked against the format it
+		// was built for.
+		Format: libraryDeckFormat(d),
 	}, verdicts)
 }
 
@@ -4126,6 +4167,7 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 	info := myDeckInfo{
 		ID:         d.ID.String(),
 		Name:       d.Name,
+		Format:     wireFormat(libraryDeckFormat(d)),
 		Commanders: nonNil(d.Commanders),
 		CardCount:  d.CardCount,
 		UpdatedAt:  d.UpdatedAt,
@@ -5096,4 +5138,20 @@ func botDeckFitsTable(c Config, deckID string, table game.Format) error {
 		return wrongFormatError(info.Name, f, table)
 	}
 	return nil
+}
+
+// libraryDeckFormat is the format a saved deck was built for (ADR 0222
+// §2). A deck saved before formats existed, and a stored name this
+// build does not know, is a Commander deck.
+func libraryDeckFormat(d decklibrary.Deck) game.Format {
+	return game.Format(d.Format).Spec().Format
+}
+
+// wireFormat is a format as the lobby's JSON carries it: omitted for
+// Commander, so a Commander table, deck and setup read as they did.
+func wireFormat(f game.Format) string {
+	if f = f.Spec().Format; f != game.FormatCommander {
+		return string(f)
+	}
+	return ""
 }

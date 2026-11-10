@@ -182,6 +182,9 @@ type Deck struct {
 	SourceURL string
 	DeckKey   string
 	Entries   []deck.Entry
+	// Format is the format the deck is checked against (ADR 0222 §2).
+	// Empty is Commander.
+	Format game.Format
 }
 
 // ErrNoIndex is returned when no card index is loaded.
@@ -240,7 +243,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	list := &deck.List{Name: r.DeckName}
 	byKey := map[string]int{} // distinct-card key -> index in r.Cards
 	unknownSeen := map[string]bool{}
-	for _, e := range d.Entries {
+	for _, e := range deck.EntriesFor(d.Format, d.Entries) {
 		if e.Count <= 0 {
 			continue
 		}
@@ -341,7 +344,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	// ADR 0207 §2: the Attraction deck, likewise.
 	r.Attractions = sideboardCards(list.Attractions, verdicts)
 
-	if err := deck.Validate(list, game.FormatCommander); err != nil {
+	if err := deck.Validate(list, d.Format); err != nil {
 		var ve *deck.ValidationError
 		if errors.As(err, &ve) {
 			r.Violations = append(r.Violations, ve.Violations...)

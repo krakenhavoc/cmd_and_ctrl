@@ -6,6 +6,7 @@
 // /games and from the PUT's answer.
 
 import type { GameMeta } from "./api";
+import { tableSeats } from "./formats";
 import { authFetch } from "./session";
 
 /** What the server says about a table's post (GameMeta.lfg_status). */
@@ -31,7 +32,7 @@ export async function setLFG(gameID: string, enabled: boolean): Promise<GameMeta
 export function lfgBlocked(g: GameMeta): string | null {
   if (g.lfg) return null;
   if (g.state !== "lobby" || g.archived_at) return "Only a table waiting to start can be posted.";
-  if (g.players.length >= 4) return "Every seat is taken.";
+  if (g.players.length >= tableSeats(g)) return "Every seat is taken.";
   const host = g.players.find((p) => p.is_host);
   if (host && !host.discord_id) return LFG_GUEST_HINT;
   return null;

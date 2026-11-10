@@ -67,8 +67,13 @@ type Deck struct {
 	// unrated (#3671). An admin sets it with SetPowerLevel; a save that
 	// changes SourceText clears it, since it described the old list.
 	PowerLevel float64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// Format is the format the deck was built for (ADR 0222 §2,
+	// migration 0036): "commander" or "standard". Every deck saved
+	// before formats existed is a Commander deck, and a save names no
+	// format: SetFormat records another.
+	Format    string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // ValidPowerLevel reports whether level is a rating SetPowerLevel
@@ -130,6 +135,11 @@ type Store interface {
 	// ErrNotFound if there is no such deck; ErrInvalidPowerLevel unless
 	// ValidPowerLevel(level).
 	SetPowerLevel(ctx context.Context, id uuid.UUID, level float64) (Deck, error)
+	// SetFormat records the format owner's deck was built for, without
+	// touching its updated_at or its power rating (ADR 0222 §2). The
+	// caller names a format the server knows; the store keeps the text.
+	// ErrNotFound as for Delete.
+	SetFormat(ctx context.Context, owner, id uuid.UUID, format string) (Deck, error)
 	// Get reads one deck by id. ErrNotFound if there is none.
 	Get(ctx context.Context, id uuid.UUID) (Deck, error)
 	// List returns owner's decks, most recently updated first.
@@ -172,6 +182,11 @@ func (NoStore) Rename(context.Context, uuid.UUID, uuid.UUID, string) (Deck, erro
 
 // SetPowerLevel always reports ErrNotFound: there are no decks.
 func (NoStore) SetPowerLevel(context.Context, uuid.UUID, float64) (Deck, error) {
+	return Deck{}, ErrNotFound
+}
+
+// SetFormat always reports ErrNotFound: there are no decks.
+func (NoStore) SetFormat(context.Context, uuid.UUID, uuid.UUID, string) (Deck, error) {
 	return Deck{}, ErrNotFound
 }
 

@@ -108,6 +108,8 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		}},
 		Planechase: &PlanechaseView{PlanarController: ownerID, DeckCount: 74,
 			FaceUp: []CardView{{InstanceID: "plane-1", Name: "Test Plane", Layout: "planar", KnownByYou: true}}},
+		// ADR 0222 slice 1: public, the same for every viewer.
+		NoCommanders: true,
 
 		StackItems:      []StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: "card-1"}},
 		PendingTriggers: []StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: "card-2"}},

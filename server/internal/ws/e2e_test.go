@@ -184,6 +184,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// ADR 0216 §9: the planar controller is a seat id, and the face-up
 	// planes are cards.
 	out.Planechase = n.planechase(v.Planechase)
+	// ADR 0222 slice 1: a bool, nothing to normalise.
+	out.NoCommanders = v.NoCommanders
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
@@ -704,6 +706,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		}},
 		Planechase: &protocol.PlanechaseView{PlanarController: ownerID, DeckCount: 74,
 			FaceUp: []protocol.CardView{{InstanceID: cardID, Name: "Test Plane", Layout: "planar"}}},
+		NoCommanders: true,
 
 		StackItems:      []protocol.StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
 		PendingTriggers: []protocol.StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},

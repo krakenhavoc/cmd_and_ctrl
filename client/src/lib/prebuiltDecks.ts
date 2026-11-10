@@ -54,6 +54,8 @@ export interface PrebuiltDeck {
   archetype?: string;
   summary?: string;
   commander?: string;
+  /** The format the deck is built for (ADR 0222 §2); absent for Commander. */
+  format?: string;
   /** WUBRG letters. */
   colors?: string[];
   /**

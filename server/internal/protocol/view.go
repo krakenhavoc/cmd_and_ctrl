@@ -14790,9 +14790,6 @@ type TableSettingsView struct {
 	// omitted for Commander, the default, so a Commander table's wire
 	// is what it was. Fixed once the game is active.
 	Format string `json:"format,omitempty"`
-	// MaxSeats is how many seats the format has, omitted at a
-	// four-seat table.
-	MaxSeats int `json:"max_seats,omitempty"`
 }
 
 // PlanechaseView is GameView.planechase (ADR 0216 §9).
@@ -14880,7 +14877,6 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		AwayAfter:     s.EffectiveAwayAfter(),
 		Planechase:    s.Planechase,
 		Format:        string(storedFormatOf(s)),
-		MaxSeats:      maxSeatsOf(s),
 	}
 }
 
@@ -14890,14 +14886,6 @@ func storedFormatOf(s game.TableSettings) game.Format {
 		return f
 	}
 	return ""
-}
-
-// maxSeatsOf is the wire's seat cap: 0 for the global four.
-func maxSeatsOf(s game.TableSettings) int {
-	if n := s.FormatSpec().MaxSeats; n != game.MaxPlayers {
-		return n
-	}
-	return 0
 }
 
 // modeMemoryWire is the wire spelling of a "that hasn't been chosen"

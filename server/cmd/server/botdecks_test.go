@@ -7,6 +7,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // The adapter is only useful if it is the interface the lobby holds.
@@ -18,7 +19,27 @@ var _ aiseat.DeckSource = botDeckCatalog{}
 // and it is invisible without an assertion.
 func TestBotDeckCatalogListsEveryCuratedDeck(t *testing.T) {
 	got := (botDeckCatalog{}).List()
-	want := decks.IDs()
+	// Every format's decks (ADR 0222 slice 1): the Commander decks in
+	// their order, then the others, each row naming its format.
+	var want []string
+	for _, d := range decks.Every() {
+		want = append(want, d.ID)
+		for _, info := range got {
+			if info.ID != d.ID {
+				continue
+			}
+			wantFormat := ""
+			if d.FormatOf() != game.FormatCommander {
+				wantFormat = string(d.FormatOf())
+			}
+			if info.Format != wantFormat {
+				t.Errorf("%s: format %q on the wire, want %q", d.ID, info.Format, wantFormat)
+			}
+		}
+	}
+	if n := len(decks.IDs()); len(got) < n || got[n-1].ID != decks.IDs()[n-1] {
+		t.Errorf("the Commander decks are not the picker's first %d rows, in their order", n)
+	}
 	if len(got) != len(want) {
 		t.Fatalf("picker offers %d decks, catalog has %d", len(got), len(want))
 	}
@@ -106,11 +127,18 @@ func TestBotDeckCatalogDecklistParses(t *testing.T) {
 				commanders += e.Count
 			}
 		}
-		if total != 100 {
-			t.Errorf("%s: decklist parses to %d cards, want 100", info.ID, total)
+		// A Commander deck is a commander and 99; a deck of a format
+		// with no commander is the format's minimum, exactly.
+		spec := game.Format(info.Format).Spec()
+		wantTotal, wantCommanders := spec.Deck.MinCards, 0
+		if spec.CommanderExpected {
+			wantCommanders = 1
 		}
-		if commanders != 1 {
-			t.Errorf("%s: %d commanders, want 1", info.ID, commanders)
+		if total != wantTotal {
+			t.Errorf("%s: decklist parses to %d cards, want %d", info.ID, total, wantTotal)
+		}
+		if commanders != wantCommanders {
+			t.Errorf("%s: %d commanders, want %d", info.ID, commanders, wantCommanders)
 		}
 	}
 }
