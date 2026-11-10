@@ -1315,3 +1315,167 @@ func TestCmdrB9SoulOfWindgraceFetchesALandFromAnyGraveyardAndHasLandDiscardAbili
 		t.Error("a nonland card paid 'discard a land card'")
 	}
 }
+
+func TestCmdrB9Group6CardsAreRegisteredFull(t *testing.T) {
+	want := map[string]string{}
+	for _, n := range []string{"Eumidian Wastewaker", "Planetary Annihilation"} {
+		want[cmdrB9Oracle(t, n)] = n
+	}
+	cmdrB9Registered(t, want)
+}
+
+func TestCmdrB9PlanetaryAnnihilationKeepsSixLandsEachAndDealsSixToEveryCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	advanceToMain(t, g)
+	var mine, theirs []uuid.UUID
+	for i := 0; i < 8; i++ {
+		mine = append(mine, seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest"))
+	}
+	for i := 0; i < 6; i++ {
+		theirs = append(theirs, seedLandOnBattlefield(g, opp.ID, "Island", "Basic Land — Island"))
+	}
+	small := b12Creature(g, opp.ID, "Small", "Creature — Bear", 2, 2)
+	big := b12Creature(g, me.ID, "Big", "Creature — Beast", 7, 7)
+	cmdrB9Cast(t, g, me, "Planetary Annihilation", "Sorcery", "{3}{R}{R}", "RRCCC", 0, 0)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || pick.ChooseMin != 6 || pick.ChooseMax != 6 {
+		t.Fatalf("want a pick of exactly six lands, got %+v", pick)
+	}
+	if chooseCardsChoiceFor(g, opp.ID) != nil {
+		t.Error("a player with exactly six lands was asked")
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, mine[:5]); err == nil {
+		t.Fatal("five lands were accepted")
+	}
+	answerChooseCards(t, g, me.ID, mine[2:]...)
+	passPriorityAroundTable(t, g)
+	for i, id := range mine {
+		want := i >= 2
+		if g.Battlefield.Contains(id) != want {
+			t.Errorf("land %d on the battlefield %v, want %v", i, !want, want)
+		}
+	}
+	for _, id := range theirs {
+		if !g.Battlefield.Contains(id) {
+			t.Error("a land of the player with six was sacrificed")
+		}
+	}
+	if g.Battlefield.Contains(small) {
+		t.Error("the 2/2 survived 6 damage")
+	}
+	if !g.Battlefield.Contains(big) {
+		t.Error("the 7/7 died to 6 damage")
+	}
+}
+
+func TestCmdrB9PlanetaryAnnihilationStillDamagesWhenNobodyHasMoreThanSixLands(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	bear := seedCreature(g, "Bear", me.ID)
+	cmdrB9Cast(t, g, me, "Planetary Annihilation", "Sorcery", "{3}{R}{R}", "RRCCC", 0, 0)
+	if g.Battlefield.Contains(bear) {
+		t.Error("the Bear survived")
+	}
+}
+
+func TestCmdrB9WastewakerEachPlayerDiscardsOrSacrificesAndDrawsForLandCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	advanceToMain(t, g)
+	ww := b12Push(g, me.ID, "Eumidian Wastewaker", "Creature — Insect Cleric", cmdrB9Oracle(t, "Eumidian Wastewaker"), 4, 4)
+	// I will discard a land card; the defender will sacrifice a land.
+	myLand := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: myLand, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	theirLand := seedLandOnBattlefield(g, opp.ID, "Island", "Basic Land — Island")
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventAttack, CardID: ww, Actor: me.ID, Target: opp.ID})
+	})
+	passPriorityAroundTable(t, g)
+	pick := latestOptionPickFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("the controller was not asked discard or sacrifice")
+	}
+	if latestOptionPickFor(g, opp.ID) != nil {
+		t.Error("the defending player was asked before the controller answered")
+	}
+	if err := g.ResolveOptionPick(pick.ID, me.ID, 0); err != nil {
+		t.Fatalf("ResolveOptionPick: %v", err)
+	}
+	if c := chooseCardsChoiceFor(g, me.ID); c == nil {
+		t.Fatal("no discard prompt")
+	}
+	answerChooseCards(t, g, me.ID, myLand)
+	passPriorityAroundTable(t, g)
+	pick = latestOptionPickFor(g, opp.ID)
+	if pick == nil {
+		t.Fatal("the defending player was not asked")
+	}
+	sacIdx := -1
+	for i, o := range pick.PickOptions {
+		if o.Label == wastewakerSacrificeOption {
+			sacIdx = i
+		}
+	}
+	if sacIdx < 0 {
+		t.Fatalf("no sacrifice option: %+v", pick.PickOptions)
+	}
+	hand := me.Hand.Size()
+	if err := g.ResolveOptionPick(pick.ID, opp.ID, sacIdx); err != nil {
+		t.Fatalf("ResolveOptionPick: %v", err)
+	}
+	// The defending player names the land to sacrifice.
+	answerSacrifice(t, g, opp.ID, theirLand)
+	passPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(myLand) || g.Battlefield.Contains(theirLand) {
+		t.Fatal("the discard or the sacrifice did not happen")
+	}
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Errorf("drew %d cards for two land cards put into graveyards, want 2", got)
+	}
+}
+
+func TestCmdrB9WastewakerForcedSacrificeAndLandTokensDoNotDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	advanceToMain(t, g)
+	g.WithWriteLock(func() {
+		for _, p := range []*game.Player{me, opp} {
+			for p.Hand.Size() > 0 {
+				c, _ := p.Hand.PopTop()
+				p.Library.PushBottom(c)
+			}
+		}
+	})
+	ww := b12Push(g, me.ID, "Eumidian Wastewaker", "Creature — Insect Cleric", cmdrB9Oracle(t, "Eumidian Wastewaker"), 4, 4)
+	token := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Land Token", TypeLine: "Token Land",
+		Owner: opp.ID, Controller: opp.ID})
+	hand := me.Hand.Size()
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventAttack, CardID: ww, Actor: me.ID, Target: opp.ID})
+	})
+	passPriorityAroundTable(t, g)
+	if latestOptionPickFor(g, me.ID) != nil {
+		t.Error("a player with no cards in hand was offered the discard")
+	}
+	answerSacrifice(t, g, me.ID, ww)
+	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, opp.ID, token)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(ww) || g.Battlefield.Contains(token) {
+		t.Error("the forced sacrifices did not happen")
+	}
+	if me.Hand.Size() != hand {
+		t.Errorf("hand %d → %d, want no draw (a creature card and a land token)", hand, me.Hand.Size())
+	}
+}
