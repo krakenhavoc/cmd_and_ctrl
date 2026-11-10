@@ -722,7 +722,8 @@ type AbilityCost struct {
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
 	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LifeX || c.LoyaltyX || SacrificeManaValueX(c.SacrificeOther) ||
-		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards) ||
+		ExileTotalManaValueX(c.ExilePermanents)
 }
 
 // LoyaltyDelta is the loyalty counters an activation of this cost puts
@@ -1835,6 +1836,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.Cost.ExilePermanents, params.ExilePermanentIDs,
 		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, sacrifices, params.ReturnIDs)); err != nil {
 		return err
+	}
+	// #5401: "Exile one or more other artifacts you control with total
+	// mana value X". X was announced with the activation (CR 601.2b via
+	// CR 602.2b) and bounds the targets; the payment (CR 601.2h) must add
+	// up to exactly that X, so a set worth any other total is the
+	// activator announcing one number and paying another.
+	if ExileTotalManaValueX(ab.Cost.ExilePermanents) {
+		if total, ok := g.ExileTotalManaValueForEffect(playerID, ab.Cost.ExilePermanents, params.ExilePermanentIDs); !ok || total != params.XValue {
+			return errExileTotalNotX
+		}
 	}
 	// #2028: "Return this enchantment to its owner's hand". Nothing to
 	// choose — the source IS the payment — so this is the zone check and

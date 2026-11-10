@@ -258,6 +258,7 @@
   } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import { discardedManaValue } from "../../discardCostX";
+  import { exiledTotalManaValue } from "../../exileTotalX";
   import {
     costConfirmLines,
     costConfirmNote,
@@ -2220,6 +2221,7 @@
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
       abilityDiscardX = undefined;
+      abilityExileX = undefined;
       abilityTapX = undefined;
       abilityCostBranch = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
@@ -2322,6 +2324,9 @@
     ability: ActivatedAbilityView;
   } | null>(null);
   let abilityExilePermanentIDs: string[] = [];
+  // #5401: the X a "with total mana value X" exile announces — the
+  // picked permanents' total mana value.
+  let abilityExileX: number | undefined;
 
   const abilityExilePermanentOptions = $derived.by(() => {
     const p = abilityExilePermanentPrompt;
@@ -2667,6 +2672,7 @@
     abilityWaterbendIDs = undefined;
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
+    abilityExileX = undefined;
     abilityTapX = undefined;
     abilityRevealIDs = [];
     abilityRevealX = undefined;
@@ -2907,7 +2913,16 @@
       return;
     }
     abilityExilePermanentIDs = auto;
+    abilityExileX = exileTotalX(ability, auto);
     askAbilityUnattachCost(card, ability);
+  }
+
+  // exileTotalX is the X a "with total mana value X" exile cost (#5401,
+  // Fabrication Foundry) announces with these picks, or undefined for
+  // any other exile cost.
+  function exileTotalX(ability: ActivatedAbilityView, ids: string[]): number | undefined {
+    if (!ability.exile_permanent_total_mana_value_x) return undefined;
+    return exiledTotalManaValue(view.battlefield.cards, ids);
   }
 
   function confirmAbilityExilePermanentCost(ids: string[]): void {
@@ -2915,6 +2930,7 @@
     abilityExilePermanentPrompt = null;
     if (!p) return;
     abilityExilePermanentIDs = ids;
+    abilityExileX = exileTotalX(p.ability, ids);
     askAbilityUnattachCost(p.card, p.ability);
   }
 
@@ -3439,6 +3455,9 @@
         xValue = abilityDiscardX;
       } else if (abilityRevealX !== undefined) {
         xValue = abilityRevealX;
+      } else if (abilityExileX !== undefined) {
+        // #5401: and the artifacts picked for "with total mana value X".
+        xValue = abilityExileX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -3598,6 +3617,7 @@
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
+    abilityExileX = undefined;
     abilityTapX = undefined;
     abilityCostBranch = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
