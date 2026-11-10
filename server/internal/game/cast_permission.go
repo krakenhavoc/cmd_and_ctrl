@@ -717,6 +717,15 @@ type CastPermission struct {
 	// priced offer is the home of an additional cost here.
 	DiscardLandCard bool `json:"discardLandCard,omitempty"`
 
+	// SacrificeLandInAddition is "by sacrificing a land in addition to
+	// paying its other costs" (Exploration Broodship's last line): the
+	// synthesised offer charges the card's printed mana cost and the
+	// sacrifice of a land the caster controls (AlternativeCost.Sacrifice,
+	// named in CastSpellParams.AltCostIDs), so the sacrifice is a cost
+	// and a payoff sees it. Read only with an AltCostKey, as LifeInAddition
+	// is. Additive within a snapshot version.
+	SacrificeLandInAddition bool `json:"sacrificeLandInAddition,omitempty"`
+
 	// SneakCost is the price of a granted sneak (#4680, Ninja Teen's
 	// "Creature cards in your graveyard have sneak {3}{B}"), read only
 	// under AltCostKeyGrantedSneak: the synthesised offer charges it and
@@ -1515,6 +1524,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.DiscardLandCard {
 		out.DiscardFromHand = RetraceDiscardSpec()
 		out.PayLabel = "a land card"
+	}
+	if p.SacrificeLandInAddition {
+		out.Sacrifice = sacrificeALandSpec()
+		out.PayLabel = "a land"
 	}
 	if p.DiscardCard {
 		// ADR 0135 §2: "by discarding a card rather than paying its
@@ -3063,6 +3076,22 @@ func RetraceDiscardSpec() *TargetSpec {
 		Zones: []ZoneKind{ZoneHand},
 		CardOK: func(_ *Game, caster uuid.UUID, c Card, _ ZoneKind) bool {
 			return c.Owner == caster && c.IsLand()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// sacrificeALandSpec builds the "sacrifice a land" component of a granted
+// offer (CastPermission.SacrificeLandInAddition): one land the caster
+// controls, matched by its effective types. A cost, not a target
+// (CR 601.2h).
+func sacrificeALandSpec() *TargetSpec {
+	return &TargetSpec{
+		Mode:  "permanent",
+		Label: "a land",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.IsLand()
 		},
 		Min: 1, Max: 1,
 	}

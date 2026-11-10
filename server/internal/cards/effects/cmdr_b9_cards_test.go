@@ -762,3 +762,191 @@ func TestCmdrB9GavelGrowsEachCombatAndEquipsForManaOrACounter(t *testing.T) {
 		t.Error("three counters still grant double strike")
 	}
 }
+
+func TestCmdrB9Group3CardsAreRegisteredFull(t *testing.T) {
+	want := map[string]string{}
+	for _, n := range []string{"Hearthhull, the Worldseed", "Inspirit, Flagship Vessel", "Exploration Broodship"} {
+		want[cmdrB9Oracle(t, n)] = n
+	}
+	cmdrB9Registered(t, want)
+}
+
+func cmdrB9Charge(g *game.Game, id uuid.UUID, n int) {
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(id, game.CounterCharge, n) })
+}
+
+func TestCmdrB9HearthhullDrawsAndSacrificesLandsOnlyFromTwoCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	hull := b12Push(g, me.ID, "Hearthhull, the Worldseed", "Legendary Artifact — Spacecraft", cmdrB9Oracle(t, "Hearthhull, the Worldseed"), 6, 7)
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	floatForTest(g, me, "C")
+	// Ability 0 is station, 1 the draw ability.
+	if err := g.ActivateCatalogAbility(me.ID, hull, 1, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{land}}); err == nil {
+		t.Fatal("the 2+ ability worked with no charge counters")
+	}
+	cmdrB9Charge(g, hull, 2)
+	hand, drops := me.Hand.Size(), g.LandDropsRemainingFor(me.ID)
+	if err := g.ActivateCatalogAbility(me.ID, hull, 1, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{land}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+2 {
+		t.Errorf("hand %d → %d, want +2", hand, me.Hand.Size())
+	}
+	if got := g.LandDropsRemainingFor(me.ID); got != drops+1 {
+		t.Errorf("land drops %d → %d, want +1", drops, got)
+	}
+	if c, _ := battlefieldCard(g, hull); c.IsCreature() {
+		t.Error("a Spacecraft with two counters is a creature")
+	}
+}
+
+func TestCmdrB9HearthhullDrainsOnEachSacrificedLandFromEightCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	hull := b12Push(g, me.ID, "Hearthhull, the Worldseed", "Legendary Artifact — Spacecraft", cmdrB9Oracle(t, "Hearthhull, the Worldseed"), 6, 7)
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	emit := func() {
+		g.WithWriteLock(func() { g.EmitEvent(game.Event{Kind: game.EventSacrifice, Actor: me.ID, CardID: land}) })
+		passPriorityAroundTable(t, g)
+	}
+	cmdrB9Charge(g, hull, 7)
+	emit()
+	for _, s := range g.Seats {
+		if s.ID != me.ID && s.Life != 40 {
+			t.Fatalf("seven counters drained: %s at %d", s.Name, s.Life)
+		}
+	}
+	cmdrB9Charge(g, hull, 1)
+	emit()
+	for _, s := range g.Seats {
+		want := 40
+		if s.ID != me.ID {
+			want = 38
+		}
+		if s.Life != want {
+			t.Errorf("%s at %d, want %d", s.Name, s.Life, want)
+		}
+	}
+	if p, tough := ptOf(t, g, hull); p != 6 || tough != 7 {
+		t.Errorf("Hearthhull is %d/%d, want 6/7", p, tough)
+	}
+	for _, kw := range []string{"flying", "vigilance", "haste"} {
+		if !hasKeywordOnBattlefield(t, g, hull, kw) {
+			t.Errorf("no %s at eight counters", kw)
+		}
+	}
+}
+
+func TestCmdrB9InspiritPutsYourChoiceOfCountersOnAnotherArtifact(t *testing.T) {
+	for _, charge := range []bool{false, true} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		inspirit := b12Push(g, me.ID, "Inspirit, Flagship Vessel", "Legendary Artifact — Spacecraft", cmdrB9Oracle(t, "Inspirit, Flagship Vessel"), 5, 5)
+		cmdrB9Charge(g, inspirit, 1)
+		rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+		advanceTo(t, g, game.StepBeginCombat)
+		answerPickTargetIfOpen(t, g, rock)
+		passPriorityAroundTable(t, g)
+		pick := latestOptionPickFor(g, me.ID)
+		if pick == nil {
+			t.Fatal("no counter choice")
+		}
+		idx := 0
+		if charge {
+			idx = 1
+		}
+		if err := g.ResolveOptionPick(pick.ID, me.ID, idx); err != nil {
+			t.Fatalf("ResolveOptionPick: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		plus, charges := counterCount(g, rock, game.CounterPlusOne), counterCount(g, rock, game.CounterCharge)
+		if charge && (plus != 0 || charges != 2) || !charge && (plus != 1 || charges != 0) {
+			t.Errorf("charge %v: +1/+1 %d, charge %d", charge, plus, charges)
+		}
+	}
+}
+
+func TestCmdrB9InspiritDoesNothingBelowOneCounterAndGrantsHexproofAtEight(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	inspirit := b12Push(g, me.ID, "Inspirit, Flagship Vessel", "Legendary Artifact — Spacecraft", cmdrB9Oracle(t, "Inspirit, Flagship Vessel"), 5, 5)
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if latestPickTarget(g, me.ID) != nil || latestOptionPickFor(g, me.ID) != nil {
+		t.Error("the 1+ trigger ran with no charge counters")
+	}
+	if hasKeywordOnBattlefield(t, g, rock, "hexproof") {
+		t.Error("hexproof below eight counters")
+	}
+	cmdrB9Charge(g, inspirit, 8)
+	for _, kw := range []string{"hexproof", "indestructible"} {
+		if !hasKeywordOnBattlefield(t, g, rock, kw) {
+			t.Errorf("the other artifact lacks %s at eight counters", kw)
+		}
+		if hasKeywordOnBattlefield(t, g, inspirit, kw) {
+			t.Errorf("Inspirit itself has %s (other artifacts only)", kw)
+		}
+	}
+	if !hasKeywordOnBattlefield(t, g, inspirit, "flying") {
+		t.Error("no flying at eight counters")
+	}
+}
+
+func TestCmdrB9BroodshipGivesAnExtraLandAtThreeAndRecastsPermanentsFromTheGraveyardAtEight(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	ship := b12Push(g, me.ID, "Exploration Broodship", "Artifact — Spacecraft", cmdrB9Oracle(t, "Exploration Broodship"), 4, 4)
+	base := g.LandDropsRemainingFor(me.ID)
+	cmdrB9Charge(g, ship, 2)
+	if got := g.LandDropsRemainingFor(me.ID); got != base {
+		t.Errorf("two counters: land drops %d, want %d", got, base)
+	}
+	cmdrB9Charge(g, ship, 1)
+	if got := g.LandDropsRemainingFor(me.ID); got != base+1 {
+		t.Errorf("three counters: land drops %d, want %d", got, base+1)
+	}
+	// 3 counters: no graveyard cast yet.
+	cardID := uuid.New()
+	pushToGraveyard(g, me, game.Card{InstanceID: cardID, Name: "Bear", TypeLine: "Creature — Bear", ManaCost: "{1}", Power: 2, Toughness: 2})
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	var bear uuid.UUID
+	for _, c := range me.Graveyard.Cards {
+		if c.Name == "Bear" {
+			bear = c.InstanceID
+		}
+	}
+	floatForTest(g, me, "C")
+	params := game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: explorationBroodshipAltCost, AltCostIDs: []uuid.UUID{land}}
+	if err := g.CastSpell(me.ID, bear, params); err == nil {
+		t.Fatal("cast from the graveyard with only three counters")
+	}
+	cmdrB9Charge(g, ship, 5)
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: explorationBroodshipAltCost}); err == nil {
+		t.Fatal("cast without naming a land to sacrifice")
+	}
+	if err := g.CastSpell(me.ID, bear, params); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(bear) {
+		t.Error("the Bear did not return")
+	}
+	if g.Battlefield.Contains(land) || !me.Graveyard.Contains(land) {
+		t.Error("the land was not sacrificed")
+	}
+	// Once during each of your turns.
+	other := pushToGraveyard(g, me, game.Card{Name: "Ox", TypeLine: "Creature — Ox", ManaCost: "{1}", Power: 2, Toughness: 2})
+	land2 := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	floatForTest(g, me, "C")
+	if err := g.CastSpell(me.ID, other, game.CastSpellParams{Strict: true, FromZone: "graveyard", AlternativeCost: explorationBroodshipAltCost, AltCostIDs: []uuid.UUID{land2}}); err == nil {
+		t.Error("a second graveyard cast in one turn")
+	}
+}
