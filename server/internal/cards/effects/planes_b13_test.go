@@ -217,3 +217,63 @@ func TestOteclanMakesChaosEnsueOnEntryAndAtUpkeepAndDiscovers(t *testing.T) {
 		t.Fatalf("chaos ensuing at the planar controller's upkeep did not discover for them")
 	}
 }
+
+var planeRaiders = planeFixture{"33ed1120-82b1-4936-b210-2f0323a9401c", "Raiders' Allegiance", "Plane — Ixalan"}
+
+func TestRaidersAllegianceRaidsTreasuresAndProliferates(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeRaiders)
+	g, _ := newPlaneGame(t, planeRaiders)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, seat := range []int{(g.Turn.ActiveSeat + 1) % 4, (g.Turn.ActiveSeat + 2) % 4, (g.Turn.ActiveSeat + 2) % 4} {
+		bear := pushBattlefieldCreature(g, me.ID)
+		if err := g.DeclareAttacker(bear, g.Seats[seat].ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lockInAttacks(t, g)
+	advanceTo(t, g, game.StepCombatDamage)
+	passPriorityAroundTable(t, g)
+	advanceTo(t, g, game.StepPostcombatMain)
+	passPriorityAroundTable(t, g)
+	pirates := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == me.ID && c.HasSubtype("Pirate") {
+			pirates++
+		}
+	}
+	if pirates != 2 || me.Counters[planesB13PointCounter] != 2 {
+		t.Fatalf("%d Pirates and %d point counters after two players were dealt combat damage, want 2 and 2", pirates, me.Counters[planesB13PointCounter])
+	}
+
+	// Chaos proliferates once per Pirate: the first ask is open.
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if len(g.PendingChoices) == 0 {
+		t.Error("chaos with two Pirates asked no proliferate")
+	}
+	for len(g.PendingChoices) > 0 {
+		c := g.PendingChoices[0]
+		if err := g.ResolveProliferate(c.ID, c.Chooser, nil); err != nil {
+			t.Fatalf("ResolveProliferate: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+
+	// Walking away: the planar controller has the most point counters.
+	hand := me.Hand.Size()
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Treasure"); n != 3 {
+		t.Errorf("%d Treasures, want 3 for the one player with the most point counters", n)
+	}
+	if got := me.Hand.Size(); got != hand+3 {
+		t.Errorf("hand %d, want %d", got, hand+3)
+	}
+	for _, p := range g.Seats {
+		if p.Counters[planesB13PointCounter] != 0 {
+			t.Errorf("%s kept %d point counters", p.Name, p.Counters[planesB13PointCounter])
+		}
+	}
+}
