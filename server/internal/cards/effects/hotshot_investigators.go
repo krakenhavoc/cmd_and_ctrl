@@ -50,5 +50,5 @@ func hotshotInvestigatorsBounce(g *game.Game, item *game.StackItem) error {
 // hotshotInvestigatorsClue is "investigate", run once the bounce has
 // settled.
 var hotshotInvestigatorsClue = CardTail("hotshot-investigators/investigate", func(ctx *Context, _ game.TailOutcome) error {
-	return CreateToken{Template: ClueToken(), N: 1}.Apply(ctx)
+	return Investigate{N: 1}.Apply(ctx)
 })

@@ -67,8 +67,11 @@ import (
 //
 // Dependency ordering (CR 613.8) among these effects. The battlefield's
 // layer 4 orders a Nexus after an effect that makes something a
-// creature; off the battlefield no catalogued effect makes a card a
-// creature, so timestamp order is the whole answer. Cards outside the
+// creature; off the battlefield the one effect that makes a card a
+// creature is the card's own (Grist, the Hunger Tide, #5427), which is
+// in the baseline this step starts from (off_battlefield_self.go) and
+// so before every static here, as CR 613.8a asks. Timestamp order is
+// the rest of the answer. Cards outside the
 // game (a sideboard, CR 400.11) are not in any zone of the game, and
 // nothing applies to them.
 

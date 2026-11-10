@@ -26,7 +26,7 @@ func init() {
 			Label:   "{4}, {T}: Investigate.",
 			Purpose: game.Purpose{Answers: game.AnswerValue, Tokens: 1},
 			Cost:    Plus(ManaCost("{4}"), TapCost()),
-			Effect:  Do(CreateToken{Template: ClueToken(), N: 1}),
+			Effect:  Do(Investigate{N: 1}),
 		}},
 	})
 }

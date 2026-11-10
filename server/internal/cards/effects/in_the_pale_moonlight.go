@@ -37,7 +37,7 @@ func init() {
 					return EachPlayerSacrifices{ExceptController: true, Match: b04NontokenCreature, Label: "a nontoken creature"}.Apply(NewContext(g, item))
 				}),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, "investigate"),
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 			ChapterTrigger(3, SagaChapterLabel(name, 3, "you may sacrifice an artifact or creature to create two 2/2 black Romulans"),
 				func(g *game.Game, item *game.StackItem) error {
 					return maySacrificeOne(g, item, "In the Pale Moonlight — sacrifice an artifact or creature to create two 2/2 black Romulan creature tokens?",

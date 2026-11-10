@@ -233,13 +233,16 @@ type entryOverwriteView struct {
 }
 
 // entryOverwriteViewLocked sets the view for an entry event that carries
-// an overwrite and returns the function that clears it. It does nothing
-// for any other event, or for a caller holding only a read lock (the dry
+// an overwrite, or whose card stops being what its own text makes it off
+// the battlefield (#5427), and returns the function that clears it. It
+// does nothing for any other event, or for a caller holding only a read lock (the dry
 // run writes the battlefield slice for its span).
 //
 // Caller must hold g.mu (write unless readOnly).
 func (g *Game) entryOverwriteViewLocked(ev *ReplacementEvent, readOnly bool) func() {
-	if readOnly || ev == nil || ev.entersAs == nil || ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield ||
+	// #5427: so is an entering card whose own text makes it something
+	// off the battlefield that it is not there (off_battlefield_self.go).
+	if readOnly || ev == nil || (ev.entersAs == nil && !g.entryDropsOffBattlefieldSelfLocked(ev)) || ev.Kind != RepEventMove || ev.NewZone != ZoneBattlefield ||
 		g.entryView != nil || g.Battlefield == nil || g.Battlefield.Contains(ev.CardID) {
 		return func() {}
 	}

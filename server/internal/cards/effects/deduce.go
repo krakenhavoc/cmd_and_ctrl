@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			DrawCards{N: 1},
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 		),
 	})
 }

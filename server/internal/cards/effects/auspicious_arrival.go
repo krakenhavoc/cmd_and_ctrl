@@ -24,7 +24,7 @@ func init() {
 			OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
 				return BoostUntilEOT{Target: id, Power: 2, Toughness: 2, Label: "Auspicious Arrival — +2/+2"}.Apply(ctx)
 			}),
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 		),
 	})
 }

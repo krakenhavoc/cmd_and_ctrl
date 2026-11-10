@@ -28,7 +28,7 @@ func init() {
 		XMatters:        true,
 		Purpose:         game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Alquist Proft, Master Sleuth — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisEnters("Alquist Proft, Master Sleuth — investigate", Do(Investigate{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{X}{W}{U}{U}, {T}, Sacrifice a Clue: You draw X cards and gain X life.",

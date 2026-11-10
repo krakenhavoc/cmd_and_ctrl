@@ -127,6 +127,16 @@ type CastProvenance struct {
 	// change shape, only where they look.
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
 
+	// GrantedOptional is PaidCost.GrantedOptional carried across the
+	// entry (CR 400.7d, #5428), narrowed to the keys whose payoff is an
+	// ability of the permanent the spell becomes
+	// (RegisterGrantedOptionalEntryTrigger): the Key of each such cost a
+	// permanent gave the spell and its caster paid, one entry per
+	// payment. Offspring from Zinnia, Valley's Voice is the shape. Nil
+	// for every other cast, so a casualty or a conspire grant leaves the
+	// record as it was.
+	GrantedOptional []string `json:"grantedOptional,omitempty"`
+
 	// GiftOpponent is PaidCost.GiftOpponent carried across the entry
 	// (CR 400.7d, ADR 0089 §2): the opponent a gift was promised to,
 	// or uuid.Nil. What a gift PERMANENT's "when this enters, if the
@@ -248,7 +258,7 @@ func (p CastProvenance) Spent() ManaSpent {
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
 		len(p.Mana) > 0 || p.ManaOnPaper || p.PaperMana != 0 || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
-		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.AltCostObjects) > 0
+		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.AltCostObjects) > 0 || len(p.GrantedOptional) > 0
 }
 
 // CastByItsController reports whether the permanent `c` was cast by
@@ -284,6 +294,9 @@ func (p CastProvenance) Clone() CastProvenance {
 	}
 	if len(p.Delved) > 0 {
 		p.Delved = append([]ObjectRef(nil), p.Delved...)
+	}
+	if len(p.GrantedOptional) > 0 {
+		p.GrantedOptional = append([]string(nil), p.GrantedOptional...)
 	}
 	return p
 }
@@ -421,6 +434,9 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 	if len(item.Paid.AltCostObjects) > 0 {
 		prov.AltCostObjects = append([]ObjectRef(nil), item.Paid.AltCostObjects...)
 	}
+	// #5428: the granted optional costs whose payoff is this permanent's
+	// own enters trigger (offspring from Zinnia, Valley's Voice).
+	prov.GrantedOptional = grantedOptionalWithEntryTrigger(item.Paid.GrantedOptional)
 	// ADR 0104: who cast it. A copy was never cast (CR 707.10), and
 	// its token takes another path (resolvePermanentSpellCopyLocked),
 	// so the check here is belt and braces.

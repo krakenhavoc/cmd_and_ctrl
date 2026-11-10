@@ -27,7 +27,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Purpose:         game.Purpose{Tokens: 2},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Ezrim, Agency Chief — investigate twice", Do(CreateToken{Template: ClueToken(), N: 2})),
+			WhenThisEnters("Ezrim, Agency Chief — investigate twice", Do(Investigate{N: 2})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Sacrifice an artifact: Ezrim gains your choice of vigilance, lifelink, or hexproof until end of turn.",

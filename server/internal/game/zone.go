@@ -598,6 +598,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 // forgets the record for any other destination. ADR 0066's 2026-10-15
 // amendment (#3769).
 func stampGraveyardArrival(c *Card, from, to ZoneKind) {
+	c.Surveilled = false
 	if to == ZoneGraveyard {
 		c.PutInGraveyardFrom = from
 		c.PutInGraveyardThisTurn = true

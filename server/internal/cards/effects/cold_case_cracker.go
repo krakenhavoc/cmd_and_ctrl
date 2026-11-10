@@ -20,7 +20,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisDies("Cold Case Cracker — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisDies("Cold Case Cracker — investigate", Do(Investigate{N: 1})),
 		},
 	})
 }

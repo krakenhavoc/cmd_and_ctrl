@@ -88,6 +88,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [The initiative and dungeons (ADR 0203, #4096)](#the-initiative-and-dungeons-adr-0203-4096)
   - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
+  - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
@@ -100,6 +101,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)](#cards-from-outside-the-game-wishes-and-the-sideboard-adr-0191-3506)
   - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
   - [Omen cards (CR 720, #5175)](#omen-cards-cr-720-5175)
+  - [Clash (CR 701.30, #5424)](#clash-cr-70130-5424)
   - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
@@ -1162,6 +1164,8 @@ GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast(
 Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label, with two exceptions it checks: energy and "as though it had flash" (ADR 0129 §5), and emerge's one-creature sacrifice (Herigast, Erupting Nullkite, `EmergeForCreatureSpellsYouCast()`, ADR 0135 PR 6). `GrantedAlternativeCost.PricedAtManaCost` prices an offer at the mana cost of the spell being cast ("The emerge cost is equal to its mana cost"), so its `Offer.ManaCost` stays empty. A card that reads "if its emerge cost was paid" asks `PaidEmerge(key)`, which is true for its own emerge and for Herigast's.
 
 Collect evidence N as the whole price ("You may collect evidence 10 rather than pay the mana cost for spells you cast", Conspiracy Unraveler) is `CollectEvidenceTenForSpellsYouCast()`: `game.AlternativeCost.CollectEvidence` holds the clause, the caster names graveyard cards with total mana value N or more on `alt_cost_ids`, the offer view ships `collect_evidence: N` with the graveyard as `pay_options`, a short graveyard withholds the offer (CR 701.59b), and paying it emits the collect evidence event without making "if evidence was collected" true (CR 701.59c).
+
+"<Spells> you cast from your hand gain evoke {cost} as you cast them" (Ashling, the Limitless; #5428, CR 702.74a) is `EvokeForSpellsYouCastFromHand("{4}", "Elemental permanent spells", game.PermissionFilter{PermanentOnly: true, CreatureType: "Elemental"})` in `effects/granted_evoke.go`. Its key, `granted-evoke` (`game.GrantedAltCostEvoke`), is with granted warp the one granted offer that carries a clause for the permanent the spell becomes: the entry hook reads evoke's sacrifice off the key, so the permanent is sacrificed even if the grantor has left (CR 610.5), and a copy of the spell becomes a token that is sacrificed too. A card that asks "if its evoke cost was paid" reads `effects.PaidEvoke(key)`, never `key == "evoke"`.
 
 A Room door's grant goes in `Door.GrantedAlternativeCosts`, and `Room` gates it on the door (`GrantedAlternativeCost.ActiveWhen`, #3174). "Once each turn" is `OnceEachTurn`, a limit per source object spent as the spell becomes cast (`TurnTally.GrantedAltCostsClaimed`); "during each of your turns" adds `YourTurnOnly`; "by paying life equal to its mana value" is `LifeEqualToManaValue`, with the offer's mana cost, life and energy left empty (a spell with {X} or no mana cost gets no offer). Warped Space is `PayZeroForASpellFromExileOnceEachTurn()` and Access Maze `PayLifeForASpellFromHandOnceEachOfYourTurns()`:
 
@@ -4609,6 +4613,12 @@ component that picks permanents.
 or by the card moving. The bundle's mana component is `ItsManaCost()` (`AbilityCost.ManaFromSource`); the row builder
 writes the card's own mana cost into it, so every reader of the row sees a plain string.
 
+"Each outlaw creature card in your graveyard has encore {X}, where X is its mana value" (Graywater's Fixer, #5429) is
+the same idea for a mana VALUE: `ItsManaValue()` (`AbilityCost.ManaValueFromSource`) in the bundle's cost, and the row
+builder writes `{N}`, generic mana equal to the mana value of the card that has the row (CR 202.3; an `{X}` in its cost
+is 0 off the stack, CR 202.3e). Use it only in an `AbilityGrant` bundle given to cards, with a standing zone grant
+(`GrantAbilitiesInZone`) or a resolved one.
+
 ### "Can't have counters put on it" (#4692, CR 101.2)
 
 Blossombind's "Enchanted creature … can't have counters put on it" is
@@ -4807,7 +4817,7 @@ var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web
   one-sentence payoff with `Do` (Surveillance Monitor's Thopter).
 
 ```go
-WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(CreateToken{Template: ClueToken(), N: 1}))
+WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(Investigate{N: 1}))
 var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", "Incinerator of the Guilty",
 	func(ctx *Context, x int, _ []uuid.UUID) error { … })             // "you may collect evidence X. When you do, …"
 ```
@@ -4855,6 +4865,18 @@ Any card may be cloaked, a nonpermanent one included. It turns face up for its
 mana cost if it is a creature card (`TurnFaceUpOffers`); `TurnFaceUpForEffect`
 turns it up as an effect, refused for a face-down instant or sorcery (Etrata's
 "if you can't").
+
+### Manifest the top card of another player's library (#5429, CR 701.40a)
+
+"Manifest the top card of that player's library" (Thieving Amalgam, Orochi
+Soul-Reaver) is `ManifestTopOfLibrary{LibraryOwner: thatPlayer}`
+([effects/manifest_library.go](../server/internal/cards/effects/manifest_library.go),
+`game.ManifestTopOfLibraryForEffect(controller, libraryOwner)`): cloak's split
+for manifest. The resolving item's controller controls the face-down 2/2 and is
+the only player who may look at it (CR 708.5); the library's owner still owns
+the card. Read "that player" off the trigger (`item.Trigger.Event.Actor` for an
+upkeep, `.Target` for combat damage). `Manifest{N}` stays the door for your own
+library.
 
 
 ### Adding a block-rule card (S37+, #750)
@@ -6148,6 +6170,17 @@ finality counter works the same way (Leonardo, Sewer Samurai, whose
 `PermissionFilter.CreatureTypesAny` holds two types and must not be
 widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
 Turtle spells" is two permissions with the same rider.
+
+"Cards in your graveyard you've surveilled this turn" (Eye of Duskmantle,
+#5429) is `Filter: game.PermissionFilter{SurveilledThisTurn: true}` on a
+graveyard permission. It reads `Card.SurveilledThisTurn()`: a surveil's
+graveyard leg marks each card it really puts into the graveyard
+(`Card.Surveilled`, [game/surveilled_cards.go](../server/internal/game/surveilled_cards.go)),
+whether or not anything is reading it, the mark is forgotten on any move, and
+"this turn" is the graveyard arrival record's. A milled or discarded card is
+not surveilled; "put there from anywhere other than the battlefield this turn"
+(Banon) is `PutInGraveyardThisTurn`. A card predicate that needs the same fact
+calls `c.SurveilledThisTurn()`.
 
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
@@ -11486,6 +11519,19 @@ and then discard the change to `docs/engine-seams.md`.
   Adding a dependency-ordered bucket other than layer 4 needs a
   catalogued pair that wants it and a benchmark — the ADR has the
   numbers.
+
+  A card's OWN "As long as this card isn't on the battlefield, it's a
+  1/1 Insect creature in addition to its other types" (Grist, the
+  Hunger Tide) has no battlefield source, so it is not `AffectsZones`.
+  Declare `Spec.OffBattlefield: &game.OffBattlefieldSelf{Types,
+  Subtypes, Power, Toughness}`: the types and subtypes it adds and the
+  power and toughness it has in a hand, a library, a graveyard, exile,
+  the command zone and on the stack (CR 113.6c). It is data: the type,
+  subtype and power/toughness readers apply it to a card that is not a
+  permanent, before any `AffectsZones` static, and on the battlefield
+  the card is its printed self. `Register` refuses one without the
+  Creature type. See `grist_the_hunger_tide.go` and
+  `game/off_battlefield_self.go` (#5427).
 - ~~**Cards that need a pick-from-zone UI**~~ — no longer a blocker.
   S20 shipped structured targeting and S18.5 the zone browser, so
   "target card in your graveyard" is a real target clause:
@@ -12431,6 +12477,51 @@ crew-only Pilot counts 3 for a crew cost and 1 for a saddle cost.
 Cloudspire Captain, Dynamite Diver, Deathless Pilot and Interface Ace are
 the four printed examples.
 
+### Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)
+
+A leveler card (Scryfall layout `leveler`: "Level up {1}", then "LEVEL
+2-3" and "LEVEL 4+" with a power/toughness box each) is built from two
+helpers in [leveler.go](../server/internal/cards/effects/leveler.go).
+Coralhelm Commander is the example to copy.
+
+```go
+Activated: []ActivatedAbility{LevelUpKeyword("{1}")},
+Static: LevelBands(
+    LevelBand{From: 2, To: 3, Power: 3, Toughness: 3, Keywords: []string{"flying"}},
+    LevelBand{From: 4, Power: 4, Toughness: 4, Keywords: []string{"flying"},
+        Statics: []game.StaticAbility{TribalAnthem(yourOtherMerfolk, 1, 1)}},
+),
+```
+
+- `LevelUpKeyword(cost)` is "Level up [cost]": "[Cost]: Put a level
+  counter on this permanent. Activate only as a sorcery." (CR 702.87a).
+  The counter is `game.CounterLevel`. It is not `LevelUp`, which is a
+  Class's level ability (CR 716, the section above); a Class's level is
+  a designation and never a level counter (CR 702.87c).
+- `LevelBand` is one level symbol with its striation. `To: 0` is the
+  open band "LEVEL N+". `LevelBands` turns each band into ordinary
+  static abilities gated on the source's level counters (CR 711.2a,
+  711.2b): a layer 7b base power and toughness, a layer 6 grant for each
+  keyword, and each of `Statics` with the level check added in front of
+  its own `AppliesTo`. Write a band's static as you would for a card
+  that always has it.
+- Leave the Spec's power and toughness alone: the printed (uppermost)
+  box is the card's size below the first band and in every other zone
+  (CR 711.5, 711.6). Do not put a band's keyword in `PrintedKeywords`,
+  even though Scryfall lists it in `keywords`; the creature does not
+  have it at level 0.
+- A band's abilities other than keywords and statics (a triggered or
+  activated ability printed inside a striation, as on some Rise of the
+  Eldrazi levelers) are not expressed by `LevelBand` yet. Grant them
+  with `Grants` and `GrantAbilities` over the same level check (see
+  "Granting an ability to another permanent"), or extend `LevelBand`.
+
+Nothing in the engine knows about levels. Because the bands are the
+permanent's own statics, a creature that loses all abilities is its
+printed size however many level counters it has, counters and pumps
+apply on top of a band's base power and toughness, and a copy of the
+creature reads its own level counters.
+
 ### Explore (CR 701.44, #2720)
 
 "<Permanent> explores" is `Game.ExploreForEffect(source, explorer
@@ -12453,8 +12544,85 @@ CreateToken{Controller: p, Template: MapToken(), N: 2}.Apply(ctx)               
   `game.EventExplored`: `CardID` is the explorer and `Actor` its
   controller. It fires once the process is complete, including when the
   library was empty (CR 701.44b).
-- Not built: simultaneous explores in APNAP order (CR 701.44d), and a
-  replacement window on the action (Topography Tracker).
+- "Each <kind of> creature you control explores" is
+  `Game.ExploreEachForEffect(source, explorers []ObjectRef, controller)`
+  (`game/explore_each.go`, #5425, CR 701.44d). Read the permanents and
+  their epochs as the effect resolves and hand them over; the player
+  chooses which explores next before each explore, and one left asks
+  nothing (Hakbal of the Surging Soul).
+- "If a creature you control would explore, instead it explores, then it
+  explores again" is `game.RegisterExploreAgainKey(oracleID)` in the
+  card's `init` (Topography Tracker, #5425). "Instead you scry 1, then
+  that creature explores" is `game.RegisterExploreScryKey` (Twists and
+  Turns). Both are read through the permanent's catalog key, so a copy
+  that lost its abilities replaces nothing, and several copies each
+  apply once (CR 614.5).
+- Not built: one instruction that tells several players' permanents to
+  explore. It would be one `ExploreEachForEffect` per player in APNAP
+  order, each behind the last.
+
+### Investigate (CR 701.16, #5425)
+
+"Investigate" is `Investigate{N: 1}` (`cards/effects/investigate.go`),
+never `CreateToken{Template: ClueToken()}`: the engine half
+(`Game.InvestigateForEffect`, `game/investigate.go`) creates the Clue and
+then emits `game.EventInvestigate`, which is what "whenever you
+investigate" watches. A card that prints "create a Clue token" without the
+word keeps `CreateToken` and does not investigate.
+
+```go
+Do(Investigate{N: 1})                                // "investigate"
+Do(Investigate{N: 2})                                // "investigate twice": two investigates
+Investigate{Player: p, N: 1}.Apply(ctx)              // "target player investigates"
+Do(InvestigateForEach{Name: "…", Count: countFn})    // "investigate once for each …" (Wojek Investigator)
+WheneverYouInvestigateForTheFirstTimeEachTurn(label, Do(Investigate{N: 1})) // Erdwal Illuminator
+```
+
+- `Investigate` declares a footprint (`game.FootprintInvestigate`), so a
+  one-sentence "…, investigate" trigger written with `Do` passes
+  `TestOneSentenceTriggersDeclareFootprints`.
+- "Whenever you investigate" without "for the first time each turn" is
+  `On(game.EventInvestigate, ByYou, label, effect)`. The event's `Actor`
+  is the player and there is one event per investigate.
+  `Game.InvestigatedThisTurn(player)` already counts the investigate a
+  trigger is being asked about, so the turn's first reads 1.
+
+### Clash (CR 701.30, #5424)
+
+"Clash with <a player>" is `Game.ClashForEffect(source, player, opponent,
+then)` and "clash with an opponent" is
+`Game.ClashWithAnOpponentForEffect(source, player, then)`
+(`game/clash.go`). The card side is in `cards/effects/clash.go`.
+
+```go
+Clash{Opponent: defender}.Apply(ctx)                    // Marvo: "clash with defending player"
+ClashWithAnOpponent{Then: ctx.Tail(rest)}.Apply(ctx)    // Hoarder's Greed: "clash with an opponent. If you win, …"
+On(game.EventClashWon, youWonAClash, label, effect)     // "Whenever you win a clash, …"
+```
+
+- Both players reveal their top card at the same time, each then gets a
+  top-or-bottom question in APNAP order, and the cards move once both
+  answers are in (CR 701.30c). The questions are prompts, so anything
+  printed after the clash goes in `Then`, a registered tail (`CardTail`
+  or `game.RegisterTail`), never after `Apply` returns.
+- `Then` runs on every outcome. `wonTheClash(o)` (its
+  `TailOutcome.Amount == 1`) is "if you win": the controller revealed a
+  card with a higher mana value than the other card revealed
+  (CR 701.30d). A tie has no winner. A player with an empty library
+  reveals nothing and cannot win; the other clasher then wins with any
+  card.
+- "Clash with an opponent" asks the controller which opponent as the
+  effect resolves (CR 701.30b). It is a choice, not a target. A card that
+  repeats its process (Hoarder's Greed) asks again each time.
+- "Whenever you win a clash" watches `game.EventClashWon`: `Actor` won and
+  `Target` is the player they clashed with, whichever of them started
+  the clash. "Whenever you clash" would watch `game.EventClashed`, one
+  per clashing player (`Label` is `game.ClashPutOnBottom`,
+  `game.ClashKeptOnTop`, or empty for no card revealed); no card uses it
+  yet.
+- A clasher who leaves the game with their question open leaves their
+  card on top, and the clash still finishes.
+- Not built: a replacement window on the action.
 
 ### Reconfigure (CR 702.151, #2639)
 
@@ -13550,6 +13718,15 @@ ctx.SourcePermanent()                                                           
   Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
   engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
   whose own cost already uses `teamwork_ids` (`castTapListTaken`).
+- **"<Spells> you cast gain offspring {cost} as you cast them"** (Zinnia, Valley's Voice; #5428, CR 702.175) is
+  `GrantedOptionalCosts: []game.GrantedOptionalCost{OffspringForSpellsYouCast(label, Creature(), "{2}")}`
+  (`granted_offspring.go`). The cost has its own key, `granted-offspring`, so a creature that prints offspring keeps
+  its own cost beside it, and the grant is `EachSource`: two permanents granting it give two instances (CR 702.175b).
+  The token is the permanent's own enters trigger, derived from its cast record and not from the grantor: a granted
+  optional cost whose payoff belongs to the permanent the spell becomes registers that trigger once, at init, with
+  `game.RegisterGrantedOptionalEntryTrigger(key, trigger)` (`game/granted_entry_trigger.go`). The paid key then rides
+  `CastProvenance.GrantedOptional` (and a CR 707.10 copy of the spell), and the trigger must build a keyed item
+  (`game.NewKeyedTriggeredItem`), since the card has no row for it.
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
@@ -13955,7 +14132,7 @@ The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
 // "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
 WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
 // "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
-WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(Investigate{N: 1})),
 // "When you planeswalk to ~" / "… away from ~" alone
 WhenYouPlaneswalkToThis(label, effect), WhenYouPlaneswalkAwayFromThis(label, effect),
 // "At the beginning of your upkeep / end step / combat on your turn": the ordinary shapes

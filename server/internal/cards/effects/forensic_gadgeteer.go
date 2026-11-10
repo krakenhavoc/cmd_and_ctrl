@@ -32,7 +32,7 @@ func init() {
 				OfAnArtifactYouControl())),
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(Artifact(), "Forensic Gadgeteer — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WheneverYouCast(Artifact(), "Forensic Gadgeteer — investigate", Do(Investigate{N: 1})),
 		},
 	})
 }
