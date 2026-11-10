@@ -116,3 +116,27 @@ func cmdr2B05CountersOnEachMerfolk(n int) Effect {
 		return nil
 	}
 }
+
+// cmdr2B05EachPlayerLosesAThirdOfTheirLife is "each player loses a third
+// of their life, rounded up" (Dire Fleet Ravager): the controller and
+// every opponent, each amount read before any loss is applied. A player
+// at or below 0 life loses nothing more.
+func cmdr2B05EachPlayerLosesAThirdOfTheirLife(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	players := append([]uuid.UUID{item.Controller}, ctx.Opponents()...)
+	amounts := make([]int, len(players))
+	for i, id := range players {
+		if p := g.PlayerByIDForEffect(id); p != nil && !p.Eliminated && p.Life > 0 {
+			amounts[i] = (p.Life + 2) / 3
+		}
+	}
+	for i, id := range players {
+		if amounts[i] <= 0 {
+			continue
+		}
+		if err := g.ChangePlayerLifeForEffect(item.SourceCardID, id, -amounts[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
