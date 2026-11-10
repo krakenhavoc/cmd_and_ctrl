@@ -88,6 +88,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [The initiative and dungeons (ADR 0203, #4096)](#the-initiative-and-dungeons-adr-0203-4096)
   - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
+  - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
@@ -12431,6 +12432,51 @@ snapshot restore keeps it; never hand-write a Pilot template. The
 crew-only Pilot counts 3 for a crew cost and 1 for a saddle cost.
 Cloudspire Captain, Dynamite Diver, Deathless Pilot and Interface Ace are
 the four printed examples.
+
+### Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)
+
+A leveler card (Scryfall layout `leveler`: "Level up {1}", then "LEVEL
+2-3" and "LEVEL 4+" with a power/toughness box each) is built from two
+helpers in [leveler.go](../server/internal/cards/effects/leveler.go).
+Coralhelm Commander is the example to copy.
+
+```go
+Activated: []ActivatedAbility{LevelUpKeyword("{1}")},
+Static: LevelBands(
+    LevelBand{From: 2, To: 3, Power: 3, Toughness: 3, Keywords: []string{"flying"}},
+    LevelBand{From: 4, Power: 4, Toughness: 4, Keywords: []string{"flying"},
+        Statics: []game.StaticAbility{TribalAnthem(yourOtherMerfolk, 1, 1)}},
+),
+```
+
+- `LevelUpKeyword(cost)` is "Level up [cost]": "[Cost]: Put a level
+  counter on this permanent. Activate only as a sorcery." (CR 702.87a).
+  The counter is `game.CounterLevel`. It is not `LevelUp`, which is a
+  Class's level ability (CR 716, the section above); a Class's level is
+  a designation and never a level counter (CR 702.87c).
+- `LevelBand` is one level symbol with its striation. `To: 0` is the
+  open band "LEVEL N+". `LevelBands` turns each band into ordinary
+  static abilities gated on the source's level counters (CR 711.2a,
+  711.2b): a layer 7b base power and toughness, a layer 6 grant for each
+  keyword, and each of `Statics` with the level check added in front of
+  its own `AppliesTo`. Write a band's static as you would for a card
+  that always has it.
+- Leave the Spec's power and toughness alone: the printed (uppermost)
+  box is the card's size below the first band and in every other zone
+  (CR 711.5, 711.6). Do not put a band's keyword in `PrintedKeywords`,
+  even though Scryfall lists it in `keywords`; the creature does not
+  have it at level 0.
+- A band's abilities other than keywords and statics (a triggered or
+  activated ability printed inside a striation, as on some Rise of the
+  Eldrazi levelers) are not expressed by `LevelBand` yet. Grant them
+  with `Grants` and `GrantAbilities` over the same level check (see
+  "Granting an ability to another permanent"), or extend `LevelBand`.
+
+Nothing in the engine knows about levels. Because the bands are the
+permanent's own statics, a creature that loses all abilities is its
+printed size however many level counters it has, counters and pumps
+apply on top of a band's base power and toughness, and a copy of the
+creature reads its own level counters.
 
 ### Explore (CR 701.44, #2720)
 
