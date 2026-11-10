@@ -21,7 +21,9 @@ import (
 // RevealTopOfLibraryForEffect, and each "top or bottom" question is a
 // keyed option pick, so a table waiting on one is a restore point and a
 // clasher who leaves the game with the question open is read as "leave it
-// on top" (the option pick's drop default) and the clash still finishes.
+// on top" (the option pick's drop default) and the clash still finishes,
+// unless the one who left controlled the effect, which ends with them
+// (CR 800.4a).
 // The whole clash rides the prompt as plain data: the two players, the two
 // revealed cards, who won, what has been decided so far and the tail the
 // card handed in.

@@ -688,6 +688,7 @@ choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
+choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
@@ -1241,7 +1242,9 @@ drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
 drawthen glacial-dragonhunt/may-discard
+drawthen hoarders-greed/clash
 drawthen malcolm-discard
+drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
@@ -1339,6 +1342,8 @@ option option-pick/emergent-ultimatum-opponent
 option option-pick/emeria-shepherd-return
 option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
+option option-pick/engine-clash
+option option-pick/engine-clash-opponent
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
@@ -2290,6 +2295,8 @@ tail herald-of-amity/after-exile
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
+tail hoarders-greed/draw-two
+tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
 tail hotel-of-fears/praise-him

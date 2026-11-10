@@ -126,10 +126,13 @@ func TestClashFinishesWhenAClasherLeaves(t *testing.T) {
 	active, other := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 	clashTestTop(active, "Active's One", "{U}")
 	mine := clashTestTop(other, "Other's Three", "{2}{U}")
+	// The clash belongs to a permanent of the clasher who stays: an
+	// effect whose own controller left would end with them (CR 800.4a).
+	source := pushColouredCreature(g, other, "Clash Source", []string{"U"})
 	clashTestToldAmount = -1
 
 	g.WithWriteLock(func() {
-		if err := g.ClashForEffect(uuid.Nil, other.ID, active.ID, KeyedTail{Ref: clashTestTold, Player: other.ID}); err != nil {
+		if err := g.ClashForEffect(source, other.ID, active.ID, KeyedTail{Ref: clashTestTold, Player: other.ID}); err != nil {
 			t.Fatalf("ClashForEffect: %v", err)
 		}
 	})
