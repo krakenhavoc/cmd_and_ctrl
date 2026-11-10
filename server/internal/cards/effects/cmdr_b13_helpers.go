@@ -125,3 +125,14 @@ func cmdrB13PowerAndToughness(g *game.Game, id uuid.UUID) (power, toughness int,
 	}
 	return 0, 0, false
 }
+
+// cmdrB13DragonCombatDamageToPlayer reports whether ev is combat damage dealt
+// to a player by a Dragon controlled by `controller`. "Dragon" is a word of the
+// reader's text (CR 612.2), so a text-changing effect on it is honoured.
+func cmdrB13DragonCombatDamageToPlayer(ev game.Event, reader *game.Card, g *game.Game, controller uuid.UUID) bool {
+	if !combatDamageToPlayerBy(ev, controller, g) {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.Source)
+	return ok && game.ThroughTextOf(reader, c).HasSubtype(reader.TextSubtype("Dragon"))
+}

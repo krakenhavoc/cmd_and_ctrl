@@ -1523,3 +1523,33 @@ func TestCmdrB16ArborAdherentAddsOneOfAnyColorOrTheGreatestOtherToughnessOfOne(t
 		t.Errorf("pool after ability 2 = %v, want six green", got)
 	}
 }
+
+const cmdrB16BroodcallerOracle = "16aa790a-8f7c-401c-9d43-dc9440a6f585"
+
+func TestCmdrB16BroodcallerScourgePutsACardUpToTheTotalDragonDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	scourge := b12Push(g, me.ID, "Broodcaller Scourge", "Creature — Dragon", cmdrB16BroodcallerOracle, 5, 7)
+	other := b12Creature(g, me.ID, "Small Dragon", "Creature — Dragon", 4, 4)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 3, 3)
+	fits := handCardFull(me, "Nine Drop", "Artifact", "{9}", "", nil)
+	tooBig := handCardFull(me, "Ten Drop", "Artifact", "{10}", "", nil)
+	spell := handCardFull(me, "Cheap Instant", "Instant", "{1}", "", nil)
+	attackWith(t, g, opp.ID, scourge, other, bear)
+	passPriorityAroundTable(t, g)
+	c := chooseCardsChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no put-from-hand prompt after the Dragons connected")
+	}
+	if slices.Contains(c.DiscardOptions, tooBig) || slices.Contains(c.DiscardOptions, spell) {
+		t.Errorf("a card that doesn't qualify was offered: %v", c.DiscardOptions)
+	}
+	answerChooseCards(t, g, me.ID, fits)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(fits) {
+		t.Error("the 9-drop was not put onto the battlefield (the Dragons dealt 9)")
+	}
+	if g.Battlefield.Contains(tooBig) || g.Battlefield.Contains(spell) {
+		t.Error("a card that doesn't qualify entered")
+	}
+}
