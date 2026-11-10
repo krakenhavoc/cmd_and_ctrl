@@ -307,3 +307,113 @@ func TestCmdrB25LazotepChancellorPaysOneToAmassOnDiscard(t *testing.T) {
 		t.Errorf("+1/+1 counters %d, want 2", got)
 	}
 }
+
+const (
+	cmdrB25WhirlerRogueOracle = "7060f2c8-fca0-4b7a-bddf-37682f434596"
+	cmdrB25PiaKiranOracle     = "86084ed9-b8bb-4289-9579-6056194787bc"
+)
+
+// cmdrB25Thopters counts the Thopter tokens `owner` controls.
+func cmdrB25Thopters(g *game.Game, owner uuid.UUID) int {
+	return namedOnBattlefield(g, "Thopter", owner)
+}
+
+func TestCmdrB25WhirlerRogueMakesThoptersAndTapsTwoArtifactsForUnblockable(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	msc17Play(t, g, me, game.Card{
+		Name: "Whirler Rogue", TypeLine: "Creature — Human Rogue Artificer", OracleID: cmdrB25WhirlerRogueOracle, Power: 2, Toughness: 2,
+	})
+	if got := cmdrB25Thopters(g, me.ID); got != 2 {
+		t.Fatalf("%d Thopters, want 2", got)
+	}
+	var rogue uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Whirler Rogue" {
+			rogue = c.InstanceID
+		}
+	}
+	target := b12Creature(g, me.ID, "Attacker", "Creature — Bear", 2, 2)
+	var thopters []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Thopter" {
+			thopters = append(thopters, c.InstanceID)
+		}
+	}
+	if err := g.ActivateCatalogAbility(me.ID, rogue, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: target}}, TapIDs: thopters, Strict: true,
+	}); err != nil {
+		t.Fatalf("tap two Thopters: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	tapped := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Thopter" && c.Tapped {
+			tapped++
+		}
+	}
+	if tapped != 2 {
+		t.Errorf("%d Thopters tapped, want 2", tapped)
+	}
+}
+
+func TestCmdrB25WhirlerRogueNeedsTwoUntappedArtifacts(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	rogue := b12Push(g, me.ID, "Whirler Rogue", "Creature — Human Rogue Artificer", cmdrB25WhirlerRogueOracle, 2, 2)
+	trinket := b12Permanent(g, me.ID, "Lone Trinket", "Artifact")
+	target := b12Creature(g, me.ID, "Attacker", "Creature — Bear", 2, 2)
+	if err := g.ActivateCatalogAbility(me.ID, rogue, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: target}}, TapIDs: []uuid.UUID{trinket}, Strict: true,
+	}); err == nil {
+		t.Fatal("activated with only one artifact to tap")
+	}
+}
+
+func TestCmdrB25PiaAndKiranNalaarMakesThoptersAndSacrificesForDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	msc17Play(t, g, me, game.Card{
+		Name: "Pia and Kiran Nalaar", TypeLine: "Legendary Creature — Human Artificer", OracleID: cmdrB25PiaKiranOracle, Power: 2, Toughness: 2,
+	})
+	if got := cmdrB25Thopters(g, me.ID); got != 2 {
+		t.Fatalf("%d Thopters, want 2", got)
+	}
+	var pia uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Pia and Kiran Nalaar" {
+			pia = c.InstanceID
+		}
+	}
+	life := opp.Life
+	var thopter uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Thopter" {
+			thopter = c.InstanceID
+		}
+	}
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{R}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, pia, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}, SacrificeIDs: []uuid.UUID{thopter}, Strict: true,
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-2 {
+		t.Errorf("life %d, want %d", opp.Life, life-2)
+	}
+	if got := cmdrB25Thopters(g, me.ID); got != 1 {
+		t.Errorf("%d Thopters left, want 1 (one was sacrificed)", got)
+	}
+}
+
+func TestCmdrB25PiaAndKiranNalaarNeedsAnArtifactToSacrifice(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pia := b12Push(g, me.ID, "Pia and Kiran Nalaar", "Legendary Creature — Human Artificer", cmdrB25PiaKiranOracle, 2, 2)
+	if err := hobB4Activate(t, g, me.ID, pia, 0, "{C}{C}{R}", []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}); err == nil {
+		t.Fatal("activated with no artifact to sacrifice")
+	}
+}
