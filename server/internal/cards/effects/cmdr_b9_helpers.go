@@ -77,3 +77,20 @@ func cmdrB9AuguryBottomThenProliferate(g *game.Game, res TakeFromLibraryResult) 
 		ThenTail:  game.KeyedTail{Ref: cmdrB9ThenProliferate, Player: res.Player, Source: res.Source},
 	})
 }
+
+// cmdrB9LandsOnly is a discard's set rule: every card chosen is a land card.
+func cmdrB9LandsOnly(picked []game.Card) bool {
+	for _, c := range picked {
+		if !c.IsLand() {
+			return false
+		}
+	}
+	return true
+}
+
+// cmdrB9PermanentCard is "permanent card": a card with a permanent type.
+func cmdrB9PermanentCard() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsPermanent()
+	}
+}

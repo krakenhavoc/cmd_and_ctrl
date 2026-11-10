@@ -1056,3 +1056,262 @@ func TestCmdrB9EvendoBrushrazerCardsAreNotPlayableBeforeASacrifice(t *testing.T)
 		t.Error("played an exiled card before sacrificing a nontoken permanent")
 	}
 }
+
+func TestCmdrB9Group5CardsAreRegisteredFull(t *testing.T) {
+	want := map[string]string{}
+	for _, n := range []string{"World Breaker", "Centaur Vinecrasher", "Loamcrafter Faun", "Soul of Windgrace"} {
+		want[cmdrB9Oracle(t, n)] = n
+	}
+	cmdrB9Registered(t, want)
+}
+
+func TestCmdrB9WorldBreakerExilesOnCastIsColorlessAndComesBackForALand(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	advanceToMain(t, g)
+	rock := b12Permanent(g, opp.ID, "Their Rock", "Artifact")
+	bear := seedCreature(g, "Bear", opp.ID)
+	_ = bear
+	floatForTest(g, me, "GCCCCCC")
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "World Breaker", TypeLine: "Creature — Eldrazi", ManaCost: "{6}{G}",
+			Power: 5, Toughness: 7, OracleID: cmdrB9Oracle(t, "World Breaker"), Owner: me.ID, Controller: me.ID})
+	})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	answerPickTargetIfOpen(t, g, rock)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock) || !g.Exile.Contains(rock) {
+		t.Error("the cast trigger did not exile the artifact")
+	}
+	c, ok := battlefieldCard(g, id)
+	if !ok {
+		t.Fatal("World Breaker did not resolve")
+	}
+	if cols := c.Effective().Colors; len(cols) != 0 {
+		t.Errorf("devoid: colors %v, want none", cols)
+	}
+	if !hasKeywordOnBattlefield(t, g, id, "reach") {
+		t.Error("no reach")
+	}
+	// Back from the graveyard for {2}{C} and a land.
+	killCreature(t, g, me.ID, id)
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	floatForTest(g, me, "CCC")
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{land}}); err != nil {
+		t.Fatalf("return: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(id) || g.Battlefield.Contains(land) {
+		t.Error("World Breaker is not back in hand for the land")
+	}
+}
+
+func TestCmdrB9WorldBreakerNeedsColorlessManaToReturn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	id := uuid.New()
+	me.Graveyard.PushTop(game.Card{InstanceID: id, Name: "World Breaker", TypeLine: "Creature — Eldrazi",
+		OracleID: cmdrB9Oracle(t, "World Breaker"), Owner: me.ID, Controller: me.ID})
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	floatForTest(g, me, "GGG")
+	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{land}}); err == nil {
+		t.Error("{C} was paid with coloured mana")
+	}
+}
+
+func TestCmdrB9CentaurVinecrasherEntersWithACounterPerLandCardInAllGraveyards(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	pushToGraveyard(g, me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	pushToGraveyard(g, opp, game.Card{Name: "Swamp", TypeLine: "Basic Land — Swamp"})
+	pushToGraveyard(g, opp, game.Card{Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2})
+	crasher := cmdrB9Cast(t, g, me, "Centaur Vinecrasher", "Creature — Plant Centaur", "{3}{G}", "GCCC", 1, 1)
+	if got := counterCount(g, crasher, game.CounterPlusOne); got != 2 {
+		t.Errorf("%d counters, want 2 (a land card in each of two graveyards)", got)
+	}
+}
+
+func TestCmdrB9CentaurVinecrasherReturnsFromTheGraveyardOncePerLandCardForGG(t *testing.T) {
+	routes := map[string]func(g *game.Game, me *game.Player, land uuid.UUID){
+		"a land dying": func(g *game.Game, me *game.Player, land uuid.UUID) {
+			_ = g.MoveCardByID(game.ZoneRef{Kind: game.ZoneBattlefield}, game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID}, land)
+		},
+		"a land milled": func(g *game.Game, me *game.Player, land uuid.UUID) {
+			g.WithWriteLock(func() { _ = g.MillNForEffect(me.ID, 1) })
+		},
+		"a land discarded": func(g *game.Game, me *game.Player, land uuid.UUID) {
+			g.WithWriteLock(func() { _ = g.DiscardCardsKeyedForEffect(me.ID, []uuid.UUID{land}, uuid.Nil, game.KeyedTail{}) })
+		},
+	}
+	for name, route := range routes {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		advanceToMain(t, g)
+		crasher := uuid.New()
+		me.Graveyard.PushTop(game.Card{InstanceID: crasher, Name: "Centaur Vinecrasher", TypeLine: "Creature — Plant Centaur",
+			OracleID: cmdrB9Oracle(t, "Centaur Vinecrasher"), Owner: me.ID, Controller: me.ID})
+		land := uuid.New()
+		switch name {
+		case "a land dying":
+			g.Battlefield.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+		case "a land milled":
+			me.Library.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+		case "a land discarded":
+			me.Hand.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+		}
+		route(g, me, land)
+		passPriorityAroundTable(t, g)
+		floatForTest(g, me, "GG")
+		prompts := 0
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoicePayUnless {
+				prompts++
+			}
+		}
+		if prompts != 1 {
+			t.Errorf("%s: %d payment prompts, want 1", name, prompts)
+			continue
+		}
+		pay := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+		if err := g.ResolvePayUnless(pay.ID, me.ID, true); err != nil {
+			t.Fatalf("%s: ResolvePayUnless: %v", name, err)
+		}
+		passPriorityAroundTable(t, g)
+		if !me.Hand.Contains(crasher) {
+			t.Errorf("%s: the Vinecrasher did not return", name)
+		}
+	}
+}
+
+func TestCmdrB9CentaurVinecrasherIgnoresNonlandCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	me.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: "Centaur Vinecrasher", TypeLine: "Creature — Plant Centaur",
+		OracleID: cmdrB9Oracle(t, "Centaur Vinecrasher"), Owner: me.ID, Controller: me.ID})
+	bear := seedCreature(g, "Bear", me.ID)
+	floatForTest(g, me, "GG")
+	killCreature(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKind(g, game.PendingChoicePayUnless) != nil {
+		t.Error("a creature card going to the graveyard offered the return")
+	}
+}
+
+func TestCmdrB9LoamcrafterFaunDiscardsLandsAndReturnsThatManyPermanentCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	for i := 0; i < 2; i++ {
+		me.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	}
+	spell := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: spell, Name: "Shock", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+	bear := pushToGraveyard(g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2})
+	ox := pushToGraveyard(g, me, game.Card{Name: "Ox", TypeLine: "Creature — Ox", Power: 2, Toughness: 2})
+	rock := pushToGraveyard(g, me, game.Card{Name: "Rock", TypeLine: "Artifact"})
+	bolt := pushToGraveyard(g, me, game.Card{Name: "Bolt", TypeLine: "Instant"})
+	forestGY := pushToGraveyard(g, me, game.Card{Name: "Swamp", TypeLine: "Basic Land — Swamp"})
+	cmdrB9Cast(t, g, me, "Loamcrafter Faun", "Creature — Satyr Druid", "{2}{G}", "GCC", 3, 3)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil {
+		t.Fatal("no discard prompt")
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 2 {
+		t.Errorf("discard bounds %d..%d, want 0..2 (the land cards in hand)", pick.ChooseMin, pick.ChooseMax)
+	}
+	var lands []uuid.UUID
+	for _, c := range me.Hand.Cards {
+		if c.IsLand() {
+			lands = append(lands, c.InstanceID)
+		}
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{spell}); err == nil {
+		t.Fatal("discarding a nonland card was accepted")
+	}
+	answerChooseCards(t, g, me.ID, lands...)
+	passPriorityAroundTable(t, g)
+	targets := latestPickTarget(g, me.ID)
+	if targets == nil {
+		t.Fatal("no target prompt for the reflexive trigger")
+	}
+	if err := g.ResolvePickTargets(targets.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetCard, ID: bear}, {Kind: game.TargetCard, ID: ox}, {Kind: game.TargetCard, ID: rock}}); err == nil {
+		t.Fatal("three targets were accepted for two discarded lands")
+	}
+	if err := g.ResolvePickTargets(targets.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: bolt}}); err == nil {
+		t.Fatal("an instant card was accepted as a nonland permanent card")
+	}
+	if err := g.ResolvePickTargets(targets.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: forestGY}}); err == nil {
+		t.Fatal("a land card was accepted as a nonland permanent card")
+	}
+	answerTriggerTargets(t, g, me.ID, bear, ox)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(bear) || !me.Hand.Contains(ox) {
+		t.Error("the targeted permanent cards did not return")
+	}
+	if me.Hand.Contains(rock) {
+		t.Error("a third card returned for two discarded lands")
+	}
+}
+
+func TestCmdrB9SoulOfWindgraceFetchesALandFromAnyGraveyardAndHasLandDiscardAbilities(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	advanceToMain(t, g)
+	theirs := pushToGraveyard(g, opp, game.Card{Name: "Their Island", TypeLine: "Basic Land — Island"})
+	soul := cmdrB9Cast(t, g, me, "Soul of Windgrace", "Legendary Creature — Cat Avatar", "{1}{B}{R}{G}", "BRGC", 5, 4)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || pick.ChooseMin != 0 {
+		t.Fatalf("want an optional pick, got %+v", pick)
+	}
+	answerChooseCards(t, g, me.ID, theirs)
+	passPriorityAroundTable(t, g)
+	c, ok := battlefieldCard(g, theirs)
+	if !ok || !c.Tapped || c.Controller != me.ID {
+		t.Fatalf("the land: on battlefield %v, tapped %v, controller %v", ok, c.Tapped, c.Controller)
+	}
+	// {G}, Discard a land card: gain 3 life.
+	land := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	floatForTest(g, me, "G")
+	life := me.Life
+	if err := g.ActivateCatalogAbility(me.ID, soul, 0, game.ActivateAbilityParams{Strict: true, DiscardIDs: []uuid.UUID{land}}); err != nil {
+		t.Fatalf("gain life: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Life != life+3 {
+		t.Errorf("life %d → %d, want +3", life, me.Life)
+	}
+	// {2}{B}, Discard a land card: indestructible, then tap.
+	land2 := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: land2, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	floatForTest(g, me, "BCC")
+	if err := g.ActivateCatalogAbility(me.ID, soul, 2, game.ActivateAbilityParams{Strict: true, DiscardIDs: []uuid.UUID{land2}}); err != nil {
+		t.Fatalf("indestructible: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !hasKeywordOnBattlefield(t, g, soul, "indestructible") || !tappedForTest(t, g, soul) {
+		t.Error("Soul of Windgrace is not tapped and indestructible")
+	}
+	// A nonland card cannot pay the discard.
+	spell := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: spell, Name: "Shock", TypeLine: "Instant", Owner: me.ID, Controller: me.ID})
+	floatForTest(g, me, "1R")
+	if err := g.ActivateCatalogAbility(me.ID, soul, 1, game.ActivateAbilityParams{Strict: true, DiscardIDs: []uuid.UUID{spell}}); err == nil {
+		t.Error("a nonland card paid 'discard a land card'")
+	}
+}
