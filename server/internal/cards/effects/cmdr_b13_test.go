@@ -1,8 +1,8 @@
 package effects
 
 import (
-	"slices"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -1370,4 +1370,76 @@ func TestCmdrB15WillOfTheJeskaiBothModesGrantsFlashbackToTheDiscardedInstant(t *
 	if perm := grantedPermissionOn(g, me.ID, bolt, game.ZoneGraveyard); !perm.Granted() {
 		t.Error("the discarded Bolt did not gain flashback: the grant ran before the wheel finished")
 	}
+}
+
+const (
+	cmdrB16ShadowSummoningOracle = "b9225046-03aa-4729-89fa-32c049407229"
+	cmdrB16GoldnightOracle       = "3dc51dfc-7a60-41bf-b944-6afad6b06c22"
+	cmdrB16AvalancheOracle       = "e5fcbbaf-9431-4fa8-ac11-12ace1f2054c"
+)
+
+func TestCmdrB16ShadowSummoningMakesTwoTappedFlyingSpirits(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Shadow Summoning", "Sorcery", cmdrB16ShadowSummoningOracle, nil)
+	passPriorityAroundTable(t, g)
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Spirit" && c.Controller == me.ID {
+			n++
+			if !c.Tapped {
+				t.Error("a Spirit entered untapped")
+			}
+			if !hasEffectiveKeyword(t, g, c.InstanceID, "flying") {
+				t.Error("a Spirit lacks flying")
+			}
+		}
+	}
+	if n != 2 {
+		t.Errorf("%d Spirits, want 2", n)
+	}
+}
+
+func TestCmdrB16GoldnightCommanderPumpsOnAnotherCreatureEntering(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	commander := b12Push(g, me.ID, "Goldnight Commander", "Creature — Human Cleric Soldier", cmdrB16GoldnightOracle, 2, 2)
+	bear := auraBear(g, me.ID)
+	theirs := auraBear(g, g.Seats[1].ID)
+	advanceTo(t, g, game.StepPrecombatMain)
+	cmdrB13CastCreature(t, g, me, 1)
+	for name, id := range map[string]uuid.UUID{"Goldnight Commander": commander, "my Bear": bear} {
+		want := map[string]int{"Goldnight Commander": 3, "my Bear": 3}[name]
+		if p := effectivePower(t, g, id); p != want {
+			t.Errorf("%s has power %d, want %d", name, p, want)
+		}
+	}
+	if p := effectivePower(t, g, theirs); p != 2 {
+		t.Errorf("an opponent's creature has power %d, want 2", p)
+	}
+}
+
+func TestCmdrB16BecomeTheAvalancheDrawsPerBigCreatureThenPumpsByHandSize(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	big1 := b12Creature(g, me.ID, "Big One", "Creature — Ogre", 4, 4)
+	big2 := b12Creature(g, me.ID, "Big Two", "Creature — Ogre", 6, 6)
+	small := b12Creature(g, me.ID, "Small", "Creature — Elf", 3, 3)
+	for i := 0; i < 10; i++ {
+		stapleLibraryCard(me, "Spare", "Sorcery")
+	}
+	castCatalogSpell(t, g, "Become the Avalanche", "Sorcery", cmdrB16AvalancheOracle, nil)
+	hand := me.Hand.Size()
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 2 {
+		t.Fatalf("drew %d, want 2 (two creatures with power 4 or greater)", got)
+	}
+	x := me.Hand.Size()
+	if p := effectivePower(t, g, big1); p != 4+x {
+		t.Errorf("Big One has power %d, want %d", p, 4+x)
+	}
+	if p := effectivePower(t, g, small); p != 3+x {
+		t.Errorf("Small has power %d, want %d", p, 3+x)
+	}
+	_ = big2
 }
