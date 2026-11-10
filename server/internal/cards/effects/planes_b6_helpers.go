@@ -134,3 +134,22 @@ func b6ReturnObjectFromGraveyard(g *game.Game, item *game.StackItem, p game.Effe
 	}
 	return ReturnFromGraveyard{Target: id, Dest: dest}.Apply(NewContext(g, item))
 }
+
+// b6WheneverAPlayerCastsTheyMay is "Whenever a player casts a spell, that
+// player may <effect>" (Fields of Summer, Minamo): the trigger is the planar
+// controller's (CR 603.3a) but the "you may" is the caster's (CR 603.5), and
+// the effect is done for the caster, read off the casting event's Actor.
+func b6WheneverAPlayerCastsTheyMay(label, question string, effect func(g *game.Game, item *game.StackItem, caster uuid.UUID) error) game.TriggeredAbility {
+	t := On(game.EventCast, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+		return ev.Kind == game.EventCast && ev.Actor != uuid.Nil
+	}, label, func(g *game.Game, item *game.StackItem) error {
+		return effect(g, item, item.Trigger.Event.Actor)
+	})
+	t.OptionalPrompt = &game.TriggerOptionalPrompt{
+		Question: question,
+		Chooser: func(ev game.Event, _ *game.Card, _ *game.Game) uuid.UUID {
+			return ev.Actor
+		},
+	}
+	return t
+}

@@ -1064,3 +1064,50 @@ func b6Price(t *testing.T, g *game.Game, seat *game.Player, card game.Card) int 
 	}
 	return out.ManaValue()
 }
+
+var planeFieldsOfSummer = planeFixture{"81a0d96a-7ac8-4947-8779-2102c9b33d38", "Fields of Summer", "Plane — Moag"}
+
+func TestFieldsOfSummerLetsTheCasterGainTwoAndChaosLetsYouGainTen(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeFieldsOfSummer)
+	g, _ := newPlaneGame(t, planeFieldsOfSummer)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	life := me.Life
+	castCatalogSpell(t, g, "Test Ritual", "Sorcery", "", nil)
+	ch := latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt)
+	passPriorityAroundTable(t, g)
+	if ch == nil {
+		ch = latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt)
+	}
+	if ch == nil {
+		for _, c := range g.PendingChoices {
+			t.Logf("choice kind %s chooser %v", c.Kind, c.Chooser)
+		}
+		t.Logf("stack %d pending %d life %d", len(g.StackMeta), len(g.PendingTriggers), me.Life)
+		t.Fatal("the caster was not asked")
+	}
+	if ch.Chooser != me.ID {
+		t.Errorf("asked %v, want the caster", ch.Chooser)
+	}
+	if err := g.ResolveTriggerPrompt(ch.ID, ch.Chooser, true); err != nil {
+		t.Fatalf("answering: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := me.Life - life; got != 2 {
+		t.Errorf("gained %d life, want 2", got)
+	}
+	life = me.Life
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch = latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt)
+	if ch == nil {
+		t.Fatal("the planar controller was not asked about the chaos life")
+	}
+	if err := g.ResolveTriggerPrompt(ch.ID, ch.Chooser, true); err != nil {
+		t.Fatalf("answering: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := me.Life - life; got != 10 {
+		t.Errorf("gained %d life, want 10", got)
+	}
+}
