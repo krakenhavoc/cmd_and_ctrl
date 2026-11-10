@@ -338,3 +338,120 @@ func TestMountKeraliaChaosPreventsItsDamageToYourPermanentsForGood(t *testing.T)
 		t.Errorf("an opponent's creature took %d, want 2", got)
 	}
 }
+
+var (
+	planeMurasa = planeFixture{"07cc253d-e23c-450c-bfaf-5cb6a3a588ce", "Murasa", "Plane — Zendikar"}
+	planeNaya   = planeFixture{"5ed6be01-af06-4f3d-8b43-ef8993c52c97", "Naya", "Plane — Alara"}
+)
+
+func TestMurasaFetchesABasicLandForAnyNontokenCreature(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeMurasa)
+	g, plane := newPlaneGame(t, planeMurasa)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	forest := putOnTopOfLibrary(g, me, "Test Forest", "Basic Land — Forest", "")
+	castCatalogSpell(t, g, "Test Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	search := latestChoiceOfKindFor(g, game.PendingChoiceSearchLibrary, me.ID)
+	if search == nil {
+		t.Fatalf("the creature's controller was not offered a search: %+v", g.PendingChoices)
+	}
+	if err := g.BeginSearchLibrary(search.ID, me.ID); err != nil {
+		t.Fatalf("begin the search: %v", err)
+	}
+	search = latestChoiceOfKindFor(g, game.PendingChoiceSearchLibrary, me.ID)
+	if err := g.ResolveSearchLibrary(search.ID, me.ID, []uuid.UUID{forest}); err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	g.SettleResolution()
+	passPriorityAroundTable(t, g)
+	land, ok := battlefieldCard(g, forest)
+	if !ok || !land.Tapped {
+		t.Errorf("the basic land is on the battlefield tapped: %v (found %v)", land.Tapped, ok)
+	}
+	_ = plane
+
+	// A token does not trigger it.
+	g.WithWriteLock(func() {
+		_ = CreateToken{Template: TokenCard("1/1 colorless Myr artifact"), N: 1}.Apply(NewContext(g, &game.StackItem{Controller: me.ID, SourceCardID: uuid.New()}))
+	})
+	g.RunStateChecksForTest()
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Errorf("a token entering triggered the plane (%d items)", n)
+	}
+}
+
+func TestMurasaChaosMakesALandAFourByFourCreature(t *testing.T) {
+	g, plane := newPlaneGame(t, planeMurasa)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	land := b12Push(g, me.ID, "Test Forest", "Basic Land — Forest", "", 0, 0)
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the chaos ability")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, land)
+	passPriorityAroundTable(t, g)
+	c, _ := battlefieldCard(g, land)
+	if !c.IsCreature() || !c.IsLand() || c.CurrentPower() != 4 || c.CurrentToughness() != 4 {
+		t.Fatalf("the land is a %s %d/%d, want a 4/4 land creature", c.TypeLine, c.CurrentPower(), c.CurrentToughness())
+	}
+	// It does not depend on the plane.
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	g.RunStateChecksForTest()
+	c, _ = battlefieldCard(g, land)
+	if !c.IsCreature() || c.CurrentPower() != 4 {
+		t.Error("the land stopped being a creature when the plane was left")
+	}
+}
+
+func TestNayaLetsThePlanarControllerPlayAnyNumberOfLands(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeNaya)
+	g, _ := newPlaneGame(t, planeNaya)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	if got := g.LandDropsRemainingFor(me.ID); got < 100 {
+		t.Errorf("the planar controller has %d land plays, want any number", got)
+	}
+	if got := g.LandDropsRemainingFor(opp.ID); got > 1 {
+		t.Errorf("another player has %d land plays, want the normal one", got)
+	}
+	for range 3 {
+		id := uuid.New()
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Test Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+		if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+			t.Fatalf("playing a land: %v", err)
+		}
+	}
+	// Planeswalked away from, the plane grants nothing.
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if got := g.LandDropsRemainingFor(me.ID); got != 0 {
+		t.Errorf("%d land plays after leaving Naya with three played, want 0", got)
+	}
+}
+
+func TestNayaChaosPumpsAColoredCreatureByItsLands(t *testing.T) {
+	g, plane := newPlaneGame(t, planeNaya)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for range 3 {
+		b12Push(g, me.ID, "Test Forest", "Basic Land — Forest", "", 0, 0)
+	}
+	green := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Green Bear", TypeLine: "Creature — Bear",
+		Colors: []string{"G"}, Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the chaos ability")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, green)
+	passPriorityAroundTable(t, g)
+	c, _ := battlefieldCard(g, green)
+	if c.CurrentPower() != 5 || c.CurrentToughness() != 5 {
+		t.Errorf("the creature is %d/%d, want 5/5 (+3/+3 for three lands)", c.CurrentPower(), c.CurrentToughness())
+	}
+}

@@ -133,9 +133,35 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 			}
 		}
 	}
+	n += g.planarLandPlaysLocked(p)
 	n += g.ExtraLandDropsThisTurn[p.ID]
 	if n < 0 {
 		return 0
+	}
+	return n
+}
+
+// UnlimitedLandPlays is the extra land plays a "you may play any number of
+// lands on each of your turns" static declares (Naya): more than a player
+// can ever have lands to play. A bound, not a count to show.
+const UnlimitedLandPlays = 1000
+
+// planarLandPlaysLocked is the extra land plays the face-up planes grant
+// `p`: a plane's static abilities work from the command zone (CR 901.7) and
+// "you" is the planar controller (CR 901.6), so only the planar controller
+// gets them. The planar zones are outside the card index and the battlefield
+// walk, hence this one.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) planarLandPlaysLocked(p *Player) int {
+	if g.Planechase == nil || g.PlanarFaceUp == nil || CatalogAdditionalLandPlays == nil || g.Planechase.Controller != p.ID {
+		return 0
+	}
+	n := 0
+	for i := range g.PlanarFaceUp.Cards {
+		if key := catalogAbilityKeyOf(&g.PlanarFaceUp.Cards[i]); key != "" {
+			n += CatalogAdditionalLandPlays(key)
+		}
 	}
 	return n
 }
