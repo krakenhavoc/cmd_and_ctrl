@@ -2051,6 +2051,16 @@ type AlternativeCostView struct {
 	// printed offer.
 	Behold bool `json:"behold,omitempty"`
 
+	// CollectEvidence is the N of an offer whose price is "collect
+	// evidence N" (CR 701.59a; Conspiracy Unraveler's granted "collect
+	// evidence 10 rather than pay the mana cost"). `pay_options` are the
+	// caster's graveyard cards, the spell excluded, min 1 and max all of
+	// them; the picks ride `alt_cost_ids` and are enough once their total
+	// mana value is N or more. The engine refuses a set that falls short.
+	// The wire name the optional collect evidence offer carries. Absent
+	// for every other offer. Public with the rest of the printed offer.
+	CollectEvidence int `json:"collect_evidence,omitempty"`
+
 	// TapOptions is the cost's card-shaped half when that half TAPS
 	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
 	// creature you control", Battle Screech's three white creatures,
@@ -8567,7 +8577,14 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// cost's sacrifice picker uses it: a cost does not target, so
 		// the hexproof / shroud gate must not narrow what the client
 		// offers.
-		if paySpec := ac.ExileFromHand; paySpec != nil {
+		if ac.CollectsEvidence() {
+			// Collect evidence N as the price: the engine's own walk of
+			// the caster's graveyard, the spell excluded (CR 601.2a).
+			castID, _ := uuid.Parse(self)
+			cards := cardIDStrings(g.AltCostCandidatesLocked(caster, castID, &ac))
+			v.PayOptions = &LegalTargetsView{Min: 1, Max: len(cards), Cards: cards}
+			v.CollectEvidence = ac.CollectEvidence.ManaValueAtLeast
+		} else if paySpec := ac.ExileFromHand; paySpec != nil {
 			cands := g.SpecCandidatesForEffect(caster, paySpec)
 			opts := viewOfLegalTargets(cands, paySpec)
 			opts.Players = nil

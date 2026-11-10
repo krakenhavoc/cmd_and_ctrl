@@ -3476,6 +3476,11 @@ export interface AlternativeCostView {
   // is revealed, nothing moves or taps. The picker words its prompt
   // "Behold".
   behold?: boolean;
+  // Collect evidence N as the whole price (Conspiracy Unraveler's granted
+  // "collect evidence 10 rather than pay the mana cost"): `pay_options`
+  // are graveyard cards, any number of them, enough once their total mana
+  // value reaches this N. The picks ride `alt_cost_ids`.
+  collect_evidence?: number;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you

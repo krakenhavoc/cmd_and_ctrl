@@ -314,6 +314,24 @@ type AlternativeCost struct {
 	// Zero reads as one.
 	BeholdCount int
 
+	// CollectEvidence is "collect evidence N rather than pay the mana
+	// cost" (CR 701.59a; Conspiracy Unraveler's granted "You may collect
+	// evidence 10 rather than pay the mana cost for spells you cast"):
+	// the graveyard clause collect evidence is (CollectEvidenceCost), as
+	// the WHOLE price. The caster names any number of their own
+	// graveyard cards with total mana value N or more on
+	// CastSpellParams.AltCostIDs, validated by the exile-cards validator
+	// every other collect evidence reads, so a pick below the floor is
+	// refused and a caster whose graveyard falls short can't claim the
+	// offer (CR 701.59b). The spell being cast is on the stack (CR
+	// 601.2a), so a card cast from the graveyard can't pay for itself.
+	// Paying it exiles the cards with the spell on the stack and emits
+	// EventCollectEvidence. It is not the spell's own optional collect
+	// evidence cost: "if evidence was collected" never reads it (CR
+	// 701.59c). A card component like the seven above, so
+	// effects.Register refuses it beside another one.
+	CollectEvidence *ExileCost
+
 	// RemoveCounters is "by removing N counters from among creatures you
 	// control in addition to paying its other costs" (#5390, CR 601.2b,
 	// 601.2h): Quilled Greatwurm's graveyard cast. It is the activated
@@ -740,6 +758,12 @@ func (a *AlternativeCost) PaymentDefinesX() bool {
 	return spec != nil && spec.ManaValueEqualsX
 }
 
+// CollectsEvidence reports whether this offer's price is collect
+// evidence N (CollectEvidence). Nil-safe.
+func (a *AlternativeCost) CollectsEvidence() bool {
+	return a != nil && a.CollectEvidence != nil
+}
+
 // Clears reports whether paying this cost deletes the spell's target
 // clause. Nil-safe, so the cast path can ask without a guard.
 func (a *AlternativeCost) Clears() bool {
@@ -911,7 +935,7 @@ func castCounterPayment(params CastSpellParams) CounterCostPayment {
 // must name a card for. Nil-safe.
 func (a *AlternativeCost) PaysCards() bool {
 	spec, _, _ := a.cardComponent()
-	return spec != nil || a.Beholds()
+	return spec != nil || a.Beholds() || a.CollectsEvidence()
 }
 
 // CardPaymentCount is how many cards the caster must name in
@@ -1030,6 +1054,11 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	// card component off a beholding offer.
 	if rc, n := alt.beholdComponent(); rc != nil {
 		return len(g.RevealCostOptionsForEffect(playerID, castID, rc)) >= n
+	}
+	// CR 701.59b: collect evidence N — the caster's graveyard, the spell
+	// itself excluded, reaches the floor.
+	if alt.CollectsEvidence() {
+		return g.ExileCostPayableForEffect(playerID, castID, alt.CollectEvidence)
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -1153,6 +1182,13 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	}
 	if rc, n := alt.beholdComponent(); rc != nil {
 		return g.validateBeholdPaymentLocked(playerID, castID, rc, n, ids)
+	}
+	// CR 701.59a: collect evidence N — any number of distinct cards from
+	// the caster's own graveyard, the spell excluded, reaching the floor;
+	// the validator every collect evidence cost reads.
+	if alt.CollectsEvidence() {
+		_, err := g.validateExileCardsCostLocked(playerID, castID, alt.CollectEvidence, ids, nil)
+		return err
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -1287,6 +1323,11 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 	if rc, _ := alt.beholdComponent(); rc != nil {
 		return g.RevealCostOptionsForEffect(playerID, castID, rc)
 	}
+	// Collect evidence N: every card in the caster's graveyard but the
+	// spell, the walk every collect evidence cost reads.
+	if alt.CollectsEvidence() {
+		return g.ExileCostOptionsForEffect(playerID, castID, alt.CollectEvidence)
+	}
 	spec, kind, _ := alt.cardComponent()
 	if spec == nil {
 		return nil
@@ -1405,6 +1446,16 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		})
 	case alt.ReturnToHand != nil:
 		return move(ids[0], ZoneHand)
+	case alt.CollectEvidence != nil:
+		// CR 701.59a: collect evidence N, exiled as a cost with the
+		// spell already on the stack, then announced once, so "whenever
+		// you collect evidence" sees it.
+		for _, id := range ids {
+			if err := move(id, ZoneExile); err != nil {
+				return err
+			}
+		}
+		g.noteCollectEvidenceLocked(playerID, castID, ids)
 	case alt.ExileFromGraveyard != nil:
 		// Escape's exiles are a cost, so they happen with the spell
 		// already on the stack — which is what makes an escaped Uro
