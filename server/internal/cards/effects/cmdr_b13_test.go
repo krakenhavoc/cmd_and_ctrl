@@ -740,3 +740,35 @@ func TestCmdrB14FloralEvokerLandfallAndRecursion(t *testing.T) {
 		t.Error("an Instant paid for a creature-card discard")
 	}
 }
+
+const cmdrB14AlignedHeartOracle = "ae61b2ef-2e60-499a-8708-e37b9bd5620e"
+
+func TestCmdrB14AlignedHeartMakesMoreMonksEachFlurry(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	heart := b12Permanent(g, me.ID, "Aligned Heart", "Enchantment")
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == heart {
+				g.Battlefield.Cards[i].OracleID = cmdrB14AlignedHeartOracle
+			}
+		}
+	})
+	advanceTo(t, g, game.StepPrecombatMain)
+	cmdrB13CastCreature(t, g, me, 1)
+	if n := b16CountNamed(g, "Monk"); n != 0 {
+		t.Fatalf("%d Monks after the first spell, want 0", n)
+	}
+	cmdrB13CastCreature(t, g, me, 1)
+	if n := b16CountNamed(g, "Monk"); n != 1 {
+		t.Errorf("%d Monks after the second spell, want 1", n)
+	}
+	if got := countersOn(g, heart, "rally"); got != 1 {
+		t.Errorf("%d rally counters, want 1", got)
+	}
+	// A third spell is not a second spell.
+	cmdrB13CastCreature(t, g, me, 1)
+	if n := b16CountNamed(g, "Monk"); n != 1 {
+		t.Errorf("%d Monks after the third spell, want 1", n)
+	}
+}
