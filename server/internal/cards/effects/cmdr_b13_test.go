@@ -1245,3 +1245,36 @@ func TestCmdrB15ThundermaneDragonDoesNotHelpOpponents(t *testing.T) {
 		t.Error("an opponent cast from the top of their library")
 	}
 }
+
+const cmdrB15FlourishOracle = "9fb7e7ca-ad2f-4677-bb4d-50808b01b4f9"
+
+func TestCmdrB15TransformingFlourishDestroysThenGivesTheOwnerAFreeCast(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	ogre := b12Creature(g, opp.ID, "Their Ogre", "Creature — Ogre", 4, 4)
+	// Their library: a land, then a Bolt on top of the land.
+	opp.Library.Cards = nil
+	opp.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Island", TypeLine: "Basic Land — Island", Owner: opp.ID, Controller: opp.ID})
+	bolt := uuid.New()
+	opp.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Top Land", TypeLine: "Basic Land — Island", Owner: opp.ID, Controller: opp.ID})
+	opp.Library.PushTop(game.Card{InstanceID: bolt, Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", OracleID: lightningBoltOracle, Owner: opp.ID, Controller: opp.ID})
+	// Demonstrate asks first; decline it.
+	castCatalogSpell(t, g, "Transforming Flourish", "Instant", cmdrB15FlourishOracle, b16TargetCard(ogre))
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(ogre) {
+		t.Fatal("the Ogre survived")
+	}
+	// The Bolt was the first nonland card from the top.
+	mustResolutionCastOffer(t, g, opp.ID, game.MayCastKeywordFreeCast, bolt)
+	life := me.Life
+	if err := castThroughResolutionCast(t, g, opp.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{playerTarget(me.ID)},
+	}); err != nil {
+		t.Fatalf("free cast by the destroyed permanent's controller: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Life != life-3 {
+		t.Errorf("caster at %d, want %d", me.Life, life-3)
+	}
+}
