@@ -881,6 +881,12 @@ type playerSnapshot struct {
 	// written before it restores with none, which reads as "nothing
 	// attacked last turn" until the player's next turn ends.
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
+	// CombatAttacks and LastCombatAttacks are Player.CombatAttacks and
+	// Player.LastCombatAttacks (Territorial Hellkite, #5368). Additive
+	// within v9: a file written before them restores with none, which
+	// reads as "nothing attacked in the last combat".
+	CombatAttacks     []AttackRecord `json:"combatAttacks,omitempty"`
+	LastCombatAttacks []AttackRecord `json:"lastCombatAttacks,omitempty"`
 	// LastTurnCastOrPut is Player.LastTurnCastOrPut (#1997, Arboria).
 	// Additive within v9: a file written before it restores with false,
 	// which reads as "did nothing last turn" until the player's next turn
@@ -3205,6 +3211,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:         append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks:     append([]AttackRecord(nil), p.LastCombatAttacks...),
 		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
 		LossCause:             string(p.LossCause),
@@ -4375,6 +4383,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:      append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks:  append([]AttackRecord(nil), p.LastCombatAttacks...),
 		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
 		LossCause:          LossCause(p.LossCause),

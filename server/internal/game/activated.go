@@ -1750,6 +1750,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// a client that sends an X for Krenko is confused about which
 	// ability it is firing, and silently dropping the field would
 	// hide that from whoever has to debug it.
+	if ec := ab.Cost.ExileCards; ec != nil && ec.CountIsX && ab.Cost.DemandsX() {
+		// "{X}, Exile X cards from your graveyard" (Necropolis Fiend, #5368):
+		// the cards named ARE the announced X (CR 107.3a, 602.2b), so the
+		// {X} of the mana cost is the number of cards the cost exiles. The
+		// count the activator names decides X; an X sent beside it is
+		// ignored rather than refused, so a client or a bot that prices the
+		// mana from its own X and names a different number of cards still
+		// pays exactly the X the cards say.
+		params.XValue = len(params.ExileIDs)
+	}
 	if !ab.Cost.DemandsX() {
 		if params.XValue != 0 {
 			return ErrInvalidParam

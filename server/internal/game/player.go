@@ -263,6 +263,15 @@ type Player struct {
 	// AttackedDuringControllersLastTurn and AttackedYouDuringTheirLastTurn.
 	LastTurnAttacks []AttackRecord
 
+	// CombatAttacks and LastCombatAttacks are what this player's
+	// creatures declared as attackers in the combat phase in progress and
+	// in the combat phase before it (last_combat_attacks.go, Territorial
+	// Hellkite's "didn't attack during your last combat"). The first
+	// becomes the second as each of the player's combat phases begins.
+	// Read through PlayersAttackedDuringLastCombatForEffect.
+	CombatAttacks     []AttackRecord
+	LastCombatAttacks []AttackRecord
+
 	// LastTurnCastOrPut is whether this player cast a spell or put a
 	// nontoken permanent onto the battlefield during the last turn they
 	// took (#1997, last_turn_actions.go): Arboria's "unless that player
