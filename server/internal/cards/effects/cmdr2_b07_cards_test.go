@@ -374,7 +374,10 @@ func TestCmdr2B07ScavengerExilesACreatureCardAndGainsLife(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	dead := pushGraveyardCardTyped(opp, "Dead Bear", "Creature — Bear")
 	before := me.Life
-	scav := castCatalogSpell(t, g, "Deathgorge Scavenger", "Creature — Dinosaur", cmdr2B07ScavengerOID, nil)
+	scav, err := trekB37CastFromHand(t, g, game.Card{Name: "Deathgorge Scavenger", TypeLine: "Creature — Dinosaur", OracleID: cmdr2B07ScavengerOID, Power: 3, Toughness: 2, Colors: []string{"G"}}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	passPriorityAroundTable(t, g)
 	cmdr2B07PickIfAsked(t, g, me.ID, dead)
 	passPriorityAroundTable(t, g)
@@ -396,7 +399,10 @@ func TestCmdr2B07ScavengerExilesANoncreatureCardAndGrows(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	spell := pushGraveyardCardTyped(opp, "Dead Bolt", "Instant")
 	before := me.Life
-	scav := castCatalogSpell(t, g, "Deathgorge Scavenger", "Creature — Dinosaur", cmdr2B07ScavengerOID, nil)
+	scav, err := trekB37CastFromHand(t, g, game.Card{Name: "Deathgorge Scavenger", TypeLine: "Creature — Dinosaur", OracleID: cmdr2B07ScavengerOID, Power: 3, Toughness: 2, Colors: []string{"G"}}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	passPriorityAroundTable(t, g)
 	cmdr2B07PickIfAsked(t, g, me.ID, spell)
 	passPriorityAroundTable(t, g)
@@ -417,7 +423,9 @@ func TestCmdr2B07ScavengerMayDecline(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	dead := pushGraveyardCardTyped(opp, "Dead Bear", "Creature — Bear")
-	castCatalogSpell(t, g, "Deathgorge Scavenger", "Creature — Dinosaur", cmdr2B07ScavengerOID, nil)
+	if _, err := trekB37CastFromHand(t, g, game.Card{Name: "Deathgorge Scavenger", TypeLine: "Creature — Dinosaur", OracleID: cmdr2B07ScavengerOID, Power: 3, Toughness: 2}, 0); err != nil {
+		t.Fatal(err)
+	}
 	passPriorityAroundTable(t, g)
 	cmdr2B07PickIfAsked(t, g, me.ID, dead)
 	passPriorityAroundTable(t, g)
