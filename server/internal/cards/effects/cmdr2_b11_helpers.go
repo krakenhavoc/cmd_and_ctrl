@@ -26,17 +26,6 @@ func cmdr2B11FlashByTapping(n int, label string, preds ...CardPredicate) game.Ad
 	}
 }
 
-// cmdr2B11YourFlyerAttacked is "whenever a creature you control with
-// flying attacks" (Shadow Puppeteers): one attack event of yours whose
-// attacker has flying as the layers now stand.
-func cmdr2B11YourFlyerAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if source == nil || !attackDeclaredByYou(ev, source.Controller) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && game.HasKeyword(&c, "flying")
-}
-
 // cmdr2B11BecomeRedDragon is Shadow Puppeteers' "it becomes a red Dragon
 // with base power and toughness 4/4 in addition to its other colors and
 // types until end of turn" for the creature that attacked. The set is

@@ -30,7 +30,7 @@ func init() {
 			Ward(WardMana("{2}"), "Shadow Puppeteers — ward {2}"),
 			WhenThisEnters("Shadow Puppeteers — create two 1/1 black Faerie Rogue creature tokens with flying",
 				Do(CreateToken{Template: FaerieRogueToken(), N: 2})),
-			Optional(On(game.EventAttack, cmdr2B11YourFlyerAttacked,
+			Optional(On(game.EventAttack, jmpB9YouAttackedWithAFlier,
 				"Shadow Puppeteers — the attacking creature becomes a red Dragon with base power and toughness 4/4 until end of turn",
 				cmdr2B11BecomeRedDragon),
 				"Shadow Puppeteers — have the attacking creature become a red Dragon with base power and toughness 4/4 until end of turn?"),
