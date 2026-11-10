@@ -538,3 +538,29 @@ func TestBotDeckMustFitTheTablesFormat(t *testing.T) {
 		t.Errorf("setup bot skip reason = %q", reason)
 	}
 }
+
+// The #lfg post names a table's format, and does not read Standard's
+// own 20 life as a house rule. A Commander table's fields are what they
+// were: none for a default table.
+func TestLFGPostNamesTheFormat(t *testing.T) {
+	if got := lfgSettings(game.DefaultTableSettings()); len(got) != 0 {
+		t.Errorf("a default Commander table's post has settings fields: %+v", got)
+	}
+	commander := game.DefaultTableSettings()
+	commander.StartingLife, commander.CommanderDamage = 30, 15
+	if got := lfgSettings(commander); len(got) != 2 || got[0].Name != "Starting life" || got[1].Name != "Commander damage" {
+		t.Errorf("a Commander table with house rules: %+v", got)
+	}
+
+	std := game.DefaultTableSettings()
+	std.Format, std.StartingLife = game.FormatStandard, 20
+	got := lfgSettings(std)
+	if len(got) != 1 || got[0].Name != "Format" || got[0].Value != "Standard" {
+		t.Errorf("a default Standard table's post fields: %+v", got)
+	}
+	std.StartingLife, std.CommanderDamage = 25, 15
+	got = lfgSettings(std)
+	if len(got) != 2 || got[1].Name != "Starting life" || got[1].Value != "25" {
+		t.Errorf("a Standard table at 25 life: %+v", got)
+	}
+}
