@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -409,5 +410,74 @@ func TestCmdrB13FrostkiteCannotCopyAnOpponentsCreature(t *testing.T) {
 	}
 	if p := effectivePower(t, g, kite); p != 1 {
 		t.Errorf("Frostkite has power %d, want 1: it copied an opponent's creature", p)
+	}
+}
+
+const cmdrB13TranscendentOracle = "e83a629e-2d74-48e2-ad4d-f390067cc51a"
+
+// cmdrB13CastDragonOverBolt has the active seat cast a Bolt at the opponent
+// and then flash in the Dragon over it, targeting the Bolt with the ETB.
+func cmdrB13CastDragonOverBolt(t *testing.T, g *game.Game) (bolt uuid.UUID, me *game.Player) {
+	t.Helper()
+	me = g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[1]
+	bolt = castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
+	castFromSeat(t, g, me, "Transcendent Dragon", "Creature — Dragon", cmdrB13TranscendentOracle, nil)
+	if err := g.PassPriority(); err != nil && !errors.Is(err, game.ErrChoicePending) {
+		t.Fatalf("PassPriority: %v", err)
+	}
+	for i := 0; i < 8 && latestPickTarget(g, me.ID) == nil && resolutionCastOfferFor(g, me.ID) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			break
+		}
+	}
+	if p := latestPickTarget(g, me.ID); p != nil {
+		if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: bolt}); err != nil {
+			t.Fatalf("target the Bolt: %v", err)
+		}
+	}
+	for i := 0; i < 8 && resolutionCastOfferFor(g, me.ID) == nil && !stackFullyEmpty(g); i++ {
+		if err := g.PassPriority(); err != nil {
+			break
+		}
+	}
+	return bolt, me
+}
+
+func TestCmdrB13TranscendentDragonCountersExilesAndCastsFree(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	life := opp.Life
+	bolt, me := cmdrB13CastDragonOverBolt(t, g)
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordExileUntil, bolt)
+	if err := castThroughResolutionCast(t, g, me.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{playerTarget(opp.ID)}, Strict: true,
+	}); err != nil {
+		t.Fatalf("free cast of the countered Bolt: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Errorf("opponent at %d, want %d: the exiled Bolt was cast for free", opp.Life, life-3)
+	}
+	if me.Graveyard.Contains(bolt) && g.Exile.Contains(bolt) {
+		t.Error("the Bolt is in two zones")
+	}
+}
+
+func TestCmdrB13TranscendentDragonDeclinedSpellStaysExiled(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	life := opp.Life
+	bolt, me := cmdrB13CastDragonOverBolt(t, g)
+	declineResolutionCast(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(bolt) {
+		t.Error("a declined countered spell should stay in exile")
+	}
+	if me.Graveyard.Contains(bolt) {
+		t.Error("the countered spell went to the graveyard instead of exile")
+	}
+	if opp.Life != life {
+		t.Errorf("opponent at %d, want %d", opp.Life, life)
 	}
 }
