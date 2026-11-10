@@ -13815,6 +13815,13 @@ SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // 
   controller. Test the static or triggered half and the chaos half, that a
   blank does nothing, and one face-down case. `requirePlaneRegisteredFull`
   checks the registration.
+- **"Chaos ensues" as an instruction** (Oteclán) is `g.ChaosEnsuesForEffect(item.Controller)`:
+  it emits `EventChaosEnsues`, which `WheneverChaosEnsues` watches beside the chaos
+  face of the planar die. It is no die roll, so nothing that watches a roll sees it.
+- **Doublers on a plane** (The Command Zone): a face-up plane's `TriggerDoublers`
+  are read by the trigger scan like a permanent's. **"Each player chooses a
+  creature they control"** is `b13EachPlayerChoosesACreature` (`planes_b13_helpers.go`),
+  one leg per seat in turn order from the planar controller.
 - **Coverage.** A plane counts in the registry keys like any card, and the
   census's planar line ("planes and phenomena … N of M") counts it against
   `coverage/planar_cards.txt`. Generate only your planes' oracle fixtures.

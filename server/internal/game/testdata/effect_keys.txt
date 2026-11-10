@@ -1058,10 +1058,12 @@ confirm confirm/sword-of-light-and-shadow-return
 confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tainted-pact-take
+confirm confirm/tarnation-draw
 confirm confirm/tell-me-what-you-see-draw-or-lose
 confirm confirm/tempt-with-discovery-search
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/the-celestus-loot
+confirm confirm/the-command-zone-put-commander
 confirm confirm/the-day-of-the-doctor-exile-others
 confirm confirm/the-falcon-sacrifice
 confirm confirm/the-legend-of-yangchen-draw
@@ -1646,6 +1648,8 @@ run prompt-run/syphon-flesh-zombies
 run prompt-run/syphon-mind-draw
 run prompt-run/temporal-firestorm-phase-out
 run prompt-run/tenured-tethermage-tokens
+run prompt-run/the-bean-chaos-copy
+run prompt-run/the-bean-planeswalk-copies
 run prompt-run/the-death-of-gwen-stacy-lose-life
 run prompt-run/the-eternal-wanderer-sacrifice-the-rest
 run prompt-run/the-goose-mother-sacrifice-draw
