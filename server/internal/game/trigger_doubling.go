@@ -350,6 +350,14 @@ func (g *Game) scanTriggerModifiersLocked(p *harvestPass) {
 			add(c, nil, false)
 		}
 	}
+	// A face-up plane's abilities function from the command zone (CR 901.7,
+	// ADR 0216 §6), and with them its doublers (The Command Zone). Its
+	// Controller is the planar controller (CR 901.6).
+	if g.PlanarFaceUp != nil {
+		for _, c := range g.PlanarFaceUp.Cards {
+			add(c, nil, false)
+		}
+	}
 	if isBattlefieldExitEvent(p.ev) && p.ev.CardID != uuid.Nil {
 		if c := g.findCardByIDLocked(p.ev.CardID); c != nil {
 			leaving := g.withLastKnownTriggerIdentityLocked(*c)

@@ -394,3 +394,74 @@ func TestPrestonsStageHatsForMagicTricksAndFlashForCreatures(t *testing.T) {
 		t.Errorf("no flash statement for creature cards in hand: %+v", me.Statics)
 	}
 }
+
+var planeCommandZone = planeFixture{"eaa5979c-86d3-4647-9a45-fd80ba4bf192", "The Command Zone", "Plane — MagicCon"}
+
+func TestTheCommandZoneDrawsPutsDoublesAndResetsTax(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeCommandZone)
+	g, plane := newPlaneGame(t, planeCommandZone)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	steady := g.Seats[(g.Turn.ActiveSeat+1)%4] // controls their commander
+	bare := g.Seats[(g.Turn.ActiveSeat+2)%4]   // no commander at all
+
+	// me: Elvish Visionary (draw a card on entering) waits in the command zone.
+	commander := uuid.New()
+	me.Command.PushTop(game.Card{
+		InstanceID: commander, Name: "Elvish Visionary", TypeLine: "Creature — Elf Shaman",
+		OracleID: "c6a3a882-a127-4590-93d7-679ef4313efe", ManaCost: "{1}{G}", Power: 1, Toughness: 1,
+		Owner: me.ID, Controller: me.ID, IsCommander: true,
+	})
+	// steady: a commander on the battlefield.
+	g.Battlefield.PushTop(game.Card{
+		InstanceID: uuid.New(), Name: "Steady Commander", TypeLine: "Legendary Creature — Test", Power: 2, Toughness: 2,
+		Owner: steady.ID, Controller: steady.ID, IsCommander: true,
+	})
+	g.BumpLayerVersionForTest()
+	myHand, steadyHand, bareHand := me.Hand.Size(), steady.Hand.Size(), bare.Hand.Size()
+
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	passPriorityAroundTable(t, g)
+	planeswalkToPlane(t, g, planeCommandZone.Oracle)
+	passPriorityAroundTable(t, g)
+	if got := steady.Hand.Size(); got != steadyHand+1 {
+		t.Errorf("the player who controls their commander has %d cards, want %d", got, steadyHand+1)
+	}
+	if got := bare.Hand.Size(); got != bareHand {
+		t.Errorf("a player with no commander drew (%d → %d)", bareHand, got)
+	}
+	answerMayChoice(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCard(g, commander); !ok {
+		// A put commander is the same card, a new object (CR 400.7).
+		found := false
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.Name == "Elvish Visionary" && c.Controller == me.ID {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("the commander was not put onto the battlefield")
+		}
+	}
+	// Its enter trigger, an ability of my commander during my turn, happens twice.
+	if got := me.Hand.Size(); got != myHand+2 {
+		t.Errorf("hand %d → %d, want two draws from the doubled enter trigger", myHand, got)
+	}
+
+	// Chaos resets every commander's tax.
+	for _, p := range g.Seats {
+		p.CommanderCasts[uuid.New()] = 2
+	}
+	rollBlank(t, g, me.ID)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		for id, n := range p.CommanderCasts {
+			if n != 0 {
+				t.Errorf("%s: commander %s still cast %d times", p.Name, id, n)
+			}
+		}
+	}
+	_ = plane
+}
