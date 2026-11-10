@@ -208,6 +208,7 @@ body magma-pummeler/remove-counters
 body magma-pummeler/strike
 body mana-drain/refund
 body mana-rider/dispatch
+body mana-rider/dispatch-targeted
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
