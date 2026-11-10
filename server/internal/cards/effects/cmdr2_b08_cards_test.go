@@ -76,6 +76,7 @@ func TestCmdr2B08ApexAltisaurFightsOnEntryAndWhenDamaged(t *testing.T) {
 		t.Errorf("the Altisaur took %d from the fight, want 1", got)
 	}
 	// Enrage: it was dealt damage by the fight, which fires its second trigger.
+	g.RunStateChecksForTest()
 	if p := latestPickTarget(g, me.ID); p != nil {
 		pickCard(t, g, me.ID, big)
 	}
