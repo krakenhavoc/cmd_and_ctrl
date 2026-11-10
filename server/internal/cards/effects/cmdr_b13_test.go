@@ -878,3 +878,54 @@ func TestCmdrB14ProtectorOfTheWastesExilesOnePerControllerAndAgainWhenMonstrous(
 		t.Errorf("%d +1/+1 counters after monstrosity 3, want 3", plusOneCounters(g, id))
 	}
 }
+
+const cmdrB15PostOracle = "a6657fcf-f08c-4b03-8ec8-cb0b194eb553"
+
+func TestCmdrB15AdaptiveTrainingPostChargesToThreeThenCopiesTheNextSpell(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	post := pushCatalogPermanent(g, me.ID, "Adaptive Training Post", "Artifact", cmdrB15PostOracle, false)
+	advanceTo(t, g, game.StepPrecombatMain)
+	for i := 1; i <= 4; i++ {
+		castCatalogSpell(t, g, "Filler", "Instant", "", nil)
+		passPriorityAroundTable(t, g)
+		want := i
+		if want > 3 {
+			want = 3
+		}
+		if got := countersOn(g, post, "charge"); got != want {
+			t.Fatalf("after %d spells: %d charge counters, want %d", i, got, want)
+		}
+	}
+	// A creature spell doesn't charge it.
+	cmdrB13CastCreature(t, g, me, 1)
+	if got := countersOn(g, post, "charge"); got != 3 {
+		t.Fatalf("a creature spell changed the count to %d", got)
+	}
+	b16Activate(t, g, me.ID, post, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if got := countersOn(g, post, "charge"); got != 0 {
+		t.Fatalf("%d charge counters left after paying three", got)
+	}
+	life := opp.Life
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
+	passPriorityAroundTable(t, g)
+	if c := latestChoiceOfKind(g, game.PendingChoiceTriggerOrder); c != nil {
+		if err := g.ResolveTriggerOrder(c.ID, c.Chooser, c.TriggerOrderIDs); err != nil {
+			t.Fatalf("ResolveTriggerOrder: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	b16PickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-6 {
+		t.Errorf("opponent at %d, want %d: the Bolt and its copy", opp.Life, life-6)
+	}
+	// Only the next spell: a second Bolt isn't copied.
+	life = opp.Life
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Errorf("opponent at %d, want %d: a second Bolt must not be copied", opp.Life, life-3)
+	}
+}
