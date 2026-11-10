@@ -1979,13 +1979,25 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 	if s.ChosenByTriggerActor {
 		// #1997: the chooser is the triggering event's player, read off
 		// the walk's own event at announce and at the re-check alike.
-		who := triggerActorOf(src)
+		who := triggerChooserOf(src)
 		return who != uuid.Nil && c.Controller == who
 	}
 	if s.chooser != uuid.Nil {
 		return c.Controller == s.chooser
 	}
 	return c.Controller != uuid.Nil && c.Controller != src.Controller
+}
+
+// triggerChooserOf is the player who answers a ChosenByTriggerActor
+// clause: the triggering event's Actor (the upkeep player of The Abyss),
+// except for damage, whose Actor is the damage source's controller and
+// whose "that player" is the one it was dealt to (Bladegriff Prototype's
+// "of that player's choice" after combat damage to a player).
+func triggerChooserOf(src TargetSource) uuid.UUID {
+	if src.Trigger != nil && src.Trigger.Fired() && src.Trigger.Event.Kind == EventDealDamage {
+		return src.Trigger.Event.Target
+	}
+	return triggerActorOf(src)
 }
 
 // triggerActorOf is the player the walk's triggering event names as its

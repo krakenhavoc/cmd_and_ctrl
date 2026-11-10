@@ -187,6 +187,11 @@ const (
 	// (CR 105.2b). The same test that ManaRestrictMulticolored and the
 	// hexproof-from grammar make, here as a protection quality.
 	ProtectionQualityMulticolored
+	// ProtectionQualityManaValueAtLeast is "protection from mana value N
+	// or greater" (CR 702.16a over CR 202.3, Mistmeadow Skulk): the mirror
+	// of ProtectionQualityManaValueAtMost, read the same way. Value is N
+	// in decimal; an unreadable cost matches nothing.
+	ProtectionQualityManaValueAtLeast
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -226,6 +231,8 @@ func (k ProtectionQualityKind) String() string {
 		return "noncreature_permanents"
 	case ProtectionQualityMulticolored:
 		return "multicolored"
+	case ProtectionQualityManaValueAtLeast:
+		return "mana_value_at_least"
 	}
 	return ""
 }
@@ -434,6 +441,9 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	if n, ok := parseManaValueAtMost(lower); ok {
 		return ProtectionQuality{Kind: ProtectionQualityManaValueAtMost, Value: strconv.Itoa(n), Printed: printed}, true
 	}
+	if n, ok := parseManaValueAtLeast(lower); ok {
+		return ProtectionQuality{Kind: ProtectionQualityManaValueAtLeast, Value: strconv.Itoa(n), Printed: printed}, true
+	}
 	// Mana value parity, and two qualities of an object that are not a
 	// single characteristic (#4307). Whole phrases, as printed: the grammar
 	// stays closed.
@@ -477,10 +487,18 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 const protectionRingBearers = "ring-bearers"
 
 // parseManaValueAtMost reads "mana value N or less" (lowercase, whole
-// quality) and returns N. "or greater" and "N or more" are other
-// qualities with other answers and stay outside the grammar.
+// quality) and returns N. "N or more" stays outside the grammar.
 func parseManaValueAtMost(lower string) (int, bool) {
-	const head, tail = "mana value ", " or less"
+	return parseManaValueBound(lower, " or less")
+}
+
+// parseManaValueAtLeast reads "mana value N or greater" (Mistmeadow Skulk).
+func parseManaValueAtLeast(lower string) (int, bool) {
+	return parseManaValueBound(lower, " or greater")
+}
+
+func parseManaValueBound(lower, tail string) (int, bool) {
+	const head = "mana value "
 	if !strings.HasPrefix(lower, head) || !strings.HasSuffix(lower, tail) || len(lower) <= len(head)+len(tail) {
 		return 0, false
 	}
@@ -801,6 +819,9 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		// source whose value the engine could not price is not "0".
 		n, err := strconv.Atoi(q.Value)
 		return err == nil && src.SourceManaValueKnown && src.SourceManaValue <= n
+	case ProtectionQualityManaValueAtLeast:
+		n, err := strconv.Atoi(q.Value)
+		return err == nil && src.SourceManaValueKnown && src.SourceManaValue >= n
 	case ProtectionQualityManaValueOdd:
 		return src.SourceManaValueKnown && src.SourceManaValue%2 == 1
 	case ProtectionQualityManaValueEven:
