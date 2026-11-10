@@ -358,6 +358,9 @@ var tokenTable = map[string]game.Card{
 	"2/2 red Mutant":               {Name: "Mutant", TypeLine: "Token Creature — Mutant", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 white Dinosaur Soldier":   {Name: "Dinosaur Soldier", TypeLine: "Token Creature — Dinosaur Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}},
 
+	// #5368: Amphin Mutineer's Salamander Warrior (Tarkir: Dragonstorm Commander).
+	"4/3 blue Salamander Warrior": {Name: "Salamander Warrior", TypeLine: "Token Creature — Salamander Warrior", Power: 4, Toughness: 3, Colors: []string{"U"}},
+
 	// #4457 batch 12: The Last Ronin's Technique's Ninja Turtle Spirit.
 	"1/1 white Ninja Turtle Spirit": {Name: "Ninja Turtle Spirit", TypeLine: "Token Creature — Ninja Turtle Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	// #4457: Lord Dregg, Insect Invader's token.

@@ -15,6 +15,7 @@ const (
 	cmdrB17DroverOracle     = "b0d60856-80f9-4c64-9768-28a0a690ecb1"
 	cmdrB17GargoyleOracle   = "11284767-7095-4e0e-bc60-c69d58098348"
 	cmdrB17ChaplainOracle   = "99e24041-910e-4ae2-a55b-b938d752eeff"
+	cmdrB17MutineerOracle   = "8910f79a-66c9-41b3-b55a-e3e651ae6f26"
 	cmdrB17BlightPileOracle = "1c0fc9b4-177e-4529-827f-a1e17ff7a752"
 )
 
@@ -196,4 +197,68 @@ func cmdrB17Enter(t *testing.T, g *game.Game, p *game.Player, c game.Card) uuid.
 		t.Fatalf("enter %s: %v", c.Name, err)
 	}
 	return c.InstanceID
+}
+
+func TestCmdrB17AmphinMutineerExilesANonSalamanderAndGivesItsControllerAToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	victim := pushVanillaCreature(g, opp.ID, "Victim", 5, 5)
+	salamander := pushTestPermanent(g, opp.ID, game.Card{Name: "Lizard", TypeLine: "Creature — Salamander", Power: 2, Toughness: 2})
+	castCatalogSpell(t, g, "Amphin Mutineer", "Creature — Salamander Pirate", cmdrB17MutineerOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatal("no target was asked for")
+	}
+	if err := g.ResolvePickTarget(pick.ID, pick.Chooser, game.TargetRef{Kind: game.TargetCard, ID: salamander}); err == nil {
+		t.Fatal("a Salamander is not a legal target")
+	}
+	answerPickTarget(t, g, victim)
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(victim) {
+		t.Fatal("the target was not exiled")
+	}
+	if got := countBattlefieldNamed(g, opp.ID, "Salamander Warrior"); got != 1 {
+		t.Fatalf("the exiled creature's controller has %d Salamander Warriors, want 1", got)
+	}
+	if got := countBattlefieldNamed(g, me.ID, "Salamander Warrior"); got != 0 {
+		t.Errorf("the caster got %d tokens", got)
+	}
+	tok := findBattlefieldByName(g, "Salamander Warrior")
+	if p, tough := effectivePower(t, g, tok), effectiveToughness(t, g, tok); p != 4 || tough != 3 {
+		t.Errorf("token is %d/%d, want 4/3", p, tough)
+	}
+}
+
+func TestCmdrB17AmphinMutineerOnlySalamandersMeansNoTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	salamander := pushTestPermanent(g, opp.ID, game.Card{Name: "Lizard", TypeLine: "Creature — Salamander", Power: 2, Toughness: 2})
+	castCatalogSpell(t, g, "Amphin Mutineer", "Creature — Salamander Pirate", cmdrB17MutineerOracle, nil)
+	passPriorityAroundTable(t, g)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Fatal("a target was offered with only Salamanders around")
+	}
+	if g.Exile.Contains(salamander) || countBattlefieldNamed(g, opp.ID, "Salamander Warrior") != 0 {
+		t.Error("nothing should have happened")
+	}
+}
+
+func TestCmdrB17AmphinMutineerEncoreMakesATokenCopyPerOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	id, _ := activateFromGraveyard(t, g, "Amphin Mutineer", "Creature — Salamander Pirate",
+		cmdrB17MutineerOracle, 3, 3, "{C}{C}{C}{C}{U}{U}", game.ActivateAbilityParams{})
+	if !g.Exile.Contains(id) {
+		t.Fatal("encore's cost exiles the card")
+	}
+	passPriorityAroundTable(t, g)
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Amphin Mutineer" && c.IsToken() {
+			n++
+		}
+	}
+	if n != 3 {
+		t.Fatalf("%d token copies, want one per opponent (3)", n)
+	}
 }
