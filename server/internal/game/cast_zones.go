@@ -585,7 +585,21 @@ func sameOfferPrice(a, b *AlternativeCost) bool {
 	if (sa == nil) != (sb == nil) || za != zb || na != nb || a.PayLabel != b.PayLabel {
 		return false
 	}
-	return sameManaPrice(a.ManaCost, b.ManaCost) && a.Life == b.Life && a.Energy == b.Energy
+	return sameManaPrice(a.ManaCost, b.ManaCost) && a.Life == b.Life && a.Energy == b.Energy &&
+		sameCounterRemoval(a.RemoveCounters, b.RemoveCounters)
+}
+
+// sameCounterRemoval reports whether two offers' counter components
+// (#5390) charge the same: none on either, or the same count, kind and
+// clause.
+func sameCounterRemoval(a, b *CounterRemovalCost) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.N != b.N || a.Counter != b.Counter || a.Among != b.Among || a.Variable != b.Variable || (a.From == nil) != (b.From == nil) {
+		return false
+	}
+	return a.From == nil || a.From.Label == b.From.Label
 }
 
 // castUsesGrantLocked reports whether a cast of `card` out of `srcKind`

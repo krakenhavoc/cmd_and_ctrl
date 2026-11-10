@@ -180,6 +180,10 @@ var manaRowScopes = map[string]rowScope{
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
 	"ExileCostOptions":   rowHiddenUnlessGraveyard,
+	// #5397: forage on a mana ability — the branches stay on the public
+	// row (a graveyard and a Food are public); publicCostBranches clears
+	// a discard branch's hand cards should one ever ship.
+	"CostBranches": rowPublic,
 }
 
 // fillingPointer is the pointer types fillEveryField is inside of.

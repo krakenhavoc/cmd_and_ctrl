@@ -2,23 +2,24 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
-// Sarkhan, Dragon Ascendant — Legendary Creature — Human Druid {1}{R}, 2/2:
+// Sarkhan, Dragon Ascendant — Legendary Creature — Human Druid {1}{R},
+// 2/2 (Tarkir: Dragonstorm, #4463):
 //
 //	"When Sarkhan enters, you may behold a Dragon. If you do, create a
 //	 Treasure token. (To behold a Dragon, choose a Dragon you control or
 //	 reveal a Dragon card from your hand.)
-//	 Whenever a Dragon you control enters, put a +1/+1 counter on
-//	 Sarkhan. Until end of turn, Sarkhan becomes a Dragon in addition to
-//	 his other types and gains flying."
+//	 Whenever a Dragon you control enters, put a +1/+1 counter on Sarkhan.
+//	 Until end of turn, Sarkhan becomes a Dragon in addition to his other
+//	 types and gains flying."
 //
-// Behold is asked as the enters trigger resolves: one pick across the
-// Dragons you control and the Dragon cards in your hand (the cost walk's
-// candidates), optional; a card from your hand is revealed, a permanent is
-// only chosen, and the Treasure follows either. With nothing to behold
-// nothing is asked. The second ability counts Sarkhan himself entering as a
-// Dragon, since "a Dragon you control" is not "another"; it does nothing
-// to a Sarkhan that has left, and "becomes a Dragon" adds the type until
-// end of turn without losing the others.
+// The enters trigger asks MayBehold (std_b11_helpers.go): a Dragon you
+// control or a Dragon card in hand is the choice, a card from hand is
+// revealed, and the Treasure follows the choice, not what happens to the
+// Dragon afterwards. With no Dragon to behold nobody is asked. The second
+// trigger is Dragon's Hoard's (CR 603.2: it triggers on a Dragon entering
+// under your control, Sarkhan himself once he is one included), the
+// counter first and the type and flying until end of turn through the
+// same effect, bound to the object (CR 400.7).
 //
 // No simplification.
 func init() {
@@ -29,33 +30,34 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Sarkhan, Dragon Ascendant — you may behold a Dragon; if you do, create a Treasure token",
 				func(g *game.Game, item *game.StackItem) error {
-					cmdrB5OfferBehold(g, item, "Dragon", sarkhanBeholdPicked,
-						"Sarkhan, Dragon Ascendant — behold a Dragon (choose a Dragon you control or reveal a Dragon card from your hand) to create a Treasure token?")
-					return nil
+					return sarkhanBehold.Ask(NewContext(g, item))
 				}),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Dragon"))
-			}, "Sarkhan, Dragon Ascendant — put a +1/+1 counter on Sarkhan; he becomes a Dragon and gains flying until end of turn",
-				Do(
-					CounterOnThis{Kind: game.CounterPlusOne, N: 1},
-					Instruction(func(ctx *Context) error {
-						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-							return nil
-						}
-						return untilEndOfTurn(ctx, ctx.Source(), nil,
-							"Sarkhan, Dragon Ascendant — a Dragon with flying until end of turn",
-							game.AddSubtypesMod(ctx.TextSubtype("Dragon")), game.AddKeywordsMod("flying"))
-					}),
-				)),
+				// "Dragon" is a word of the source's text (CR 612.2, #3984).
+				return ok && c.HasSubtype(source.TextSubtype("Dragon"))
+			}, "Sarkhan, Dragon Ascendant — put a +1/+1 counter on Sarkhan; until end of turn he becomes a Dragon and gains flying",
+				sarkhanGrow),
 		},
 	})
 }
 
-var sarkhanBeholdPicked = game.RegisterChooseCardsThen("choose-cards/sarkhan-dragon-ascendant-behold",
-	func(g *game.Game, r game.CardsChosen) error {
-		if !cmdrB5RevealBeheld(g, r, "Dragon") {
-			return nil
-		}
-		return CreateToken{Controller: r.Chooser, Template: TreasureToken(), N: 1}.Apply(keyedContext(g, r.Chooser, r.Source))
+var sarkhanBehold = NewMayBehold("Sarkhan, Dragon Ascendant", "Dragon", "choose-cards/sarkhan-dragon-ascendant-behold",
+	func(ctx *Context) error {
+		return CreateToken{Template: TreasureToken(), N: 1}.Apply(ctx)
 	})
+
+func sarkhanGrow(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+		return err
+	}
+	if err := (BecomeCreatureUntilEOT{
+		Target: item.SourceCardID, Types: []string{"Creature"}, Subtypes: []string{"Dragon"},
+		Label: "Sarkhan, Dragon Ascendant — Dragon",
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	return GrantKeywordUntilEOT{Target: item.SourceCardID, Keywords: []string{"flying"},
+		Label: "Sarkhan, Dragon Ascendant — flying"}.Apply(ctx)
+}

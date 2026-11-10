@@ -314,6 +314,29 @@ type AlternativeCost struct {
 	// Zero reads as one.
 	BeholdCount int
 
+	// RemoveCounters is "by removing N counters from among creatures you
+	// control in addition to paying its other costs" (#5390, CR 601.2b,
+	// 601.2h): Quilled Greatwurm's graveyard cast. It is the activated
+	// ability's counter component (AbilityCost.RemoveCounters, #625,
+	// #789, #943), carried by a cast: the same option walk
+	// (CounterCostOptionsForEffect), validator
+	// (validateCounterRemovalLocked) and payer (payCounterRemovalLocked),
+	// with the spell being cast as the "source" the walk is asked about.
+	// The cast is not on the battlefield, so the self form has nothing to
+	// name; effects.Register holds the component to the among form with a
+	// "from" clause and a fixed count.
+	//
+	// It is not a card component: the payment rides cast_spell's own
+	// counter_source_ids / counter_counts / counter_kind / counter_kinds
+	// (CastSpellParams.CounterSourceIDs and friends), the names
+	// activate_ability already uses, and never alt_cost_ids. A caster who
+	// cannot remove N counters in all cannot claim the offer (CR 118.3):
+	// AlternativeCostPayableLocked withholds it, and announce refuses a
+	// payment that does not total exactly N. The counters come off with
+	// the spell already on the stack, before any other board cost, so a
+	// creature both drained and sacrificed by the one cast pays both.
+	RemoveCounters *CounterRemovalCost
+
 	// PayLabel is the picker's prompt copy for the card component —
 	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand,
 	// Sacrifice, TapOthers or Behold ("a blue card", "an Island you
@@ -856,6 +879,34 @@ func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, 
 	return offer, nil
 }
 
+// validateAltCostCountersLocked resolves the claimed offer's
+// counter-removal component (#5390) into the removal to perform,
+// without removing anything: validateCounterRemovalLocked, the one
+// validator the activated and mana abilities use, with the spell being
+// cast as the source. A payment sent with no offer claimed, or with an
+// offer that removes no counters, is refused rather than ignored (the
+// validator's nil-cost branch), as a stray alt_cost_ids is.
+//
+// Caller must hold g.mu.
+func (g *Game) validateAltCostCountersLocked(playerID, castID uuid.UUID, alt *AlternativeCost, pay CounterCostPayment) (counterPayment, error) {
+	var rc *CounterRemovalCost
+	if alt != nil {
+		rc = alt.RemoveCounters
+	}
+	return g.validateCounterRemovalLocked(playerID, castID, rc, pay)
+}
+
+// castCounterPayment is the counter half of a cast_spell payload, in
+// the shape the validator reads.
+func castCounterPayment(params CastSpellParams) CounterCostPayment {
+	return CounterCostPayment{
+		SourceIDs: params.CounterSourceIDs,
+		Counts:    params.CounterCounts,
+		Kind:      params.CounterKind,
+		Kinds:     params.CounterKinds,
+	}
+}
+
 // PaysCards reports whether this cost has a component the caster
 // must name a card for. Nil-safe.
 func (a *AlternativeCost) PaysCards() bool {
@@ -965,6 +1016,13 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	// ADR 0129 §5: the energy component (CR 107.14, CR 118.3), through
 	// the predicate the activation and the payment both read.
 	if EnergyShortfall(p, alt.Energy) != nil {
+		return false
+	}
+	// #5390, CR 118.3: "removing six counters from among creatures you
+	// control" — the counters the caster's creatures hold, in all kinds,
+	// must reach N. The activation's own predicate, with the spell as
+	// the source.
+	if alt.RemoveCounters != nil && !g.CounterCostPayable(playerID, castID, alt.RemoveCounters) {
 		return false
 	}
 	// #4689: "behold three Elementals" — enough distinct candidates in
@@ -1447,6 +1505,12 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		return
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	if alt == nil && item.AltCost == GrantedAltCostWarp {
+		// Tannuk, Steadfast Second: "cards in your hand have warp {2}{R}".
+		// The offer is a static's, not the card's, so the card has no row
+		// to look the key up in; the warp clause is the same one.
+		alt = &AlternativeCost{Key: GrantedAltCostWarp, Label: "Warp", WarpExile: true}
+	}
 	if alt == nil {
 		return
 	}
@@ -1589,6 +1653,7 @@ func warpExile(g *Game, it *StackItem, p EffectParams) error {
 			// owns the card.
 			Duration:     WhileInZoneDuration(),
 			NotBeforeSeq: p.Amount,
+			Warped:       true,
 			Label:        "Warp — cast it from exile",
 		}); err != nil {
 			return err

@@ -339,6 +339,12 @@ type ReplacementEvent struct {
 	// applied to their parent, so two doublers still produce four cards
 	// while dredge and first-draw exceptions are evaluated per card.
 	DrawCount int
+	// DrawInstruction marks the synthetic event Quantum Riddler's kind of
+	// effect is asked about: the WHOLE "draw N cards" instruction, before
+	// any single draw opens its window (draw_instruction.go, CR 121.2).
+	// An effect with DrawInstructionExtra > 0 applies only to such an
+	// event, and the ordinary replacements never see it.
+	DrawInstruction bool
 	// drawPending holds the individual draws introduced by an amount
 	// replacement. Each inherits the effects already applied to its parent,
 	// but opens its own window before it happens (CR 121.2, 614.5).
@@ -1747,6 +1753,15 @@ type ReplacementEffect struct {
 	// Leave Replace nil: the engine cancels the draw itself. The zero
 	// value is "not a draw-substituting effect".
 	DrawInstead DrawInsteadRef
+
+	// DrawInstructionExtra, on a RepEventDraw replacement, is "if you
+	// would draw one or more cards, you draw that many cards plus N
+	// instead" (Quantum Riddler): it adds N to the size of a whole draw
+	// instruction, once, before the individual draws are made, so the
+	// replacements on single draws then apply to each of the N+1
+	// (draw_instruction.go). AppliesTo sees the synthetic event
+	// (ReplacementEvent.DrawInstruction) and must refuse every other.
+	DrawInstructionExtra int
 
 	// KeywordInstead, on a RepEventKeywordAction replacement, replaces
 	// the keyword action with an effect (learn_action.go): Retriever

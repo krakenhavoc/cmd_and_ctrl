@@ -26,6 +26,14 @@ type castParams struct {
 	// Daze's Island, escape's N other cards from the graveyard.
 	// Exactly CardPaymentCount entries, or none.
 	AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+	// CounterSourceIDs / CounterCounts / CounterKind / CounterKinds pay
+	// the claimed offer's "remove N counters from among creatures you
+	// control" (#5390) — CastSpellParams' fields of the same names, in
+	// activateParams' wire words.
+	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+	CounterCounts    []int    `json:"counter_counts,omitempty"`
+	CounterKind      string   `json:"counter_kind,omitempty"`
+	CounterKinds     []string `json:"counter_kinds,omitempty"`
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
 	// cast pays with 2 life each instead of mana (CR 107.4f, CR
 	// 601.2b, #1677) — CastSpellParams.PhyrexianLife. See
@@ -1770,6 +1778,20 @@ func (e *enumerator) castMoveEmitter(
 	ownAnswers := game.CardPurposeOfPtr(&card).Answers
 	permType := e.permType
 	exilePool := exileCardIDs
+	// #5390: the offer's counter removal, ONE payment by the activation's
+	// own rule (counterPaymentChoices: drain the creatures holding the
+	// most first), from the walk the engine validates against. An offer
+	// the board cannot pay was dropped by CastOffersForLocked; the check
+	// is kept because this is the function that writes the payment.
+	var counters counterChoice
+	if offer != nil && offer.RemoveCounters != nil {
+		choices := counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, card.InstanceID, offer.RemoveCounters), offer.RemoveCounters)
+		if len(choices) == 0 {
+			return func([]uuid.UUID, []int, []game.TargetRef, int, int, game.ParsedCost, map[uuid.UUID]int, []uuid.UUID, []uuid.UUID, []uuid.UUID, *MoveValue) {
+			}
+		}
+		counters = choices[0]
+	}
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
@@ -1861,6 +1883,8 @@ func (e *enumerator) castMoveEmitter(
 		}
 		// The same for a discard paid as an additional cost.
 		label += discardLabel(g, discards)
+		// #5390: and for the counters the offer removes.
+		label += castCounterLabel(g, counters)
 		// #2681: the modes, so two moves with the same targets and
 		// different modes are told apart (Prismari Command's [0,1] and
 		// [0,2] at the same two targets).
@@ -1885,8 +1909,10 @@ func (e *enumerator) castMoveEmitter(
 			// ADR 0136 §2: and the mana it charges in all, which the
 			// printed cost on the CardView is not (castManaCost), so a
 			// cast always carries a Cost.
-			Cost: withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
-				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax),
+			// #5390: and the counters the offer removes, priced against
+			// the creatures they come off as an activation's are.
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
@@ -1905,6 +1931,10 @@ func (e *enumerator) castMoveEmitter(
 				FromZone:          from,
 				AlternativeCost:   offerKey(offer),
 				AltCostIDs:        idStrings(altPaid),
+				CounterSourceIDs:  counters.wireIDs(),
+				CounterCounts:     counters.wireCounts(),
+				CounterKind:       counters.wireKind(),
+				CounterKinds:      counters.wireKinds(),
 				PhyrexianLife:     phyLife,
 				Targets:           wireTargets(targets),
 				Modes:             modes,
@@ -1934,6 +1964,38 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// castCounterLabel names the counters a cast's counter removal takes
+// (#5390): " (removing 4 +1/+1 counters from Grizzly Bears, 2 oil
+// counters from Steel Golem)". Empty for a cast that removes none, so
+// every other move's label is unchanged.
+func castCounterLabel(g *game.Game, cc counterChoice) string {
+	if len(cc.parts) == 0 {
+		return ""
+	}
+	parts := make([]string, len(cc.parts))
+	for i, p := range cc.parts {
+		kind := ""
+		if p.kind != "" {
+			kind = p.kind + " "
+		}
+		word := "counters"
+		if p.n == 1 {
+			word = "counter"
+		}
+		parts[i] = fmt.Sprintf("%d %s%s from %s", p.n, kind, word, cardName(g, p.cardID))
+	}
+	return " (removing " + strings.Join(parts, ", ") + ")"
+}
+
+// withCounterPrices adds every part of a counter payment to a
+// (possibly nil) MoveCost, as an activation's are (#5390).
+func withCounterPrices(c *MoveCost, prices []CounterPrice) *MoveCost {
+	for _, p := range prices {
+		c = withCounterPrice(c, p)
+	}
+	return c
 }
 
 // idleCastHint is Move.IdleHint for a cast under `offer` (#1918): the

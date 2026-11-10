@@ -311,6 +311,47 @@ func Retrace(printedCost string) game.AlternativeCost {
 	}
 }
 
+// CastFromGraveyardByRemovingCounters is "You may cast this card from
+// your graveyard by removing N counters from among <permanents> you
+// control in addition to paying its other costs" (#5390): Quilled
+// Greatwurm's
+//
+//	CastFromGraveyardByRemovingCounters("{4}{G}{G}", 6, "creatures you control", Creature())
+//
+// Retrace's model (ADR 0066's 2026-10-07 amendment): the printed mana
+// cost, an additional cost carried on a graveyard-bound offer so the
+// claim is what opens the zone, and no exile clause, so a countered or
+// dead Greatwurm is back in the graveyard ready to be cast again. The
+// additional cost is the activated ability's "remove N counters from
+// among …" (#789, #943): counters of ANY kinds, split across the
+// matching permanents however the caster chooses (CR 601.2b, 601.2h),
+// chosen, not targeted, and the caster's own permanents. A caster whose
+// creatures hold fewer than N counters in all can't claim it (CR 118.3).
+// The payment rides cast_spell's counter_source_ids / counter_counts /
+// counter_kind(s).
+//
+// The card file still opens the zone:
+//
+//	CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
+//	AlternativeCosts: []game.AlternativeCost{CastFromGraveyardByRemovingCounters(...)},
+func CastFromGraveyardByRemovingCounters(printedCost string, n int, label string, preds ...CardPredicate) game.AlternativeCost {
+	what := numberWord(n) + " counters"
+	if n == 1 {
+		what = "a counter"
+	}
+	return game.AlternativeCost{
+		Key:      "remove_counters_from_graveyard",
+		Label:    "Remove " + what + " from among " + label + " to cast this card from your graveyard",
+		ManaCost: printedCost,
+		FromZone: game.ZoneGraveyard,
+		RemoveCounters: &game.CounterRemovalCost{
+			N:     n,
+			From:  TargetPermanent(label, preds...),
+			Among: true,
+		},
+	}
+}
+
 // DiscardInstead is "You may discard <label> rather than pay this
 // spell's mana cost" (CR 118.9, ADR 0135 §2, #2412): Snag's
 //

@@ -41,6 +41,24 @@ describe("addedPhaseMarkers", () => {
     expect(addedPhaseMarkers([...combatSteps(3), { step: "end", phase_id: 5 }], 2)).toEqual([]);
     expect(addedPhaseMarkers(undefined, undefined)).toEqual([]);
   });
+  it("marks an added beginning phase, and an added upkeep step as an upkeep", () => {
+    const sphinx = [
+      { step: "untap", phase_id: 6 },
+      { step: "upkeep", phase_id: 6 },
+      { step: "draw", phase_id: 6 },
+      { step: "end", phase_id: 5 },
+    ];
+    expect(addedPhaseMarkers(sphinx, 4)).toEqual(["+ Begin"]);
+    // Obeka: two upkeep steps after combat, each its own beginning phase.
+    const obeka = [
+      { step: "end_combat", phase_id: 3 },
+      { step: "upkeep", phase_id: 7 },
+      { step: "upkeep", phase_id: 6 },
+      { step: "postcombat_main", phase_id: 4 },
+      { step: "end", phase_id: 5 },
+    ];
+    expect(addedPhaseMarkers(obeka, 3)).toEqual(["+ Upkeep", "+ Upkeep"]);
+  });
   it("does not mark the added phase already in progress", () => {
     expect(addedPhaseMarkers(combatSteps(6), 6)).toEqual([]);
   });

@@ -961,6 +961,9 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// ability". SetFace(0) below narrows a multi-faced card to its
 		// front face, which is the card in a library (CR 712.8a).
 		ManaAbilityText: game.PrintedFactOf(game.ManaAbilityInText(c.TypeLine, oracleTexts(c)...)),
+		// #4464: whether the printed text is empty, for "a creature card
+		// with no abilities" (Fang-Druid Summoner, Rise from the Wreck).
+		NoAbilitiesText: game.PrintedFactOf(game.NoAbilitiesInText(oracleTexts(c)...)),
 		ManaCost:        c.ManaCost,
 		ProducedMana:    append([]string(nil), c.ProducedMana...),
 		Colors:          append([]string(nil), c.Colors...),

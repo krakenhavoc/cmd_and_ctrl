@@ -440,13 +440,17 @@ var replacementEventFields = map[string]replacementEventField{
 	"mustSettleNow": repFieldCarried,
 
 	// A draw.
-	"DrawPlayer":     repFieldCarried,
-	"DrawCount":      repFieldCarried,
-	"drawPending":    repFieldCarried,
-	"drawInstead":    repFieldCarried,
-	"drawTail":       repFieldCarried,
-	"drawThen":       repFieldCarried,
-	"keywordInstead": repFieldCarried,
+	"DrawPlayer":  repFieldCarried,
+	"DrawCount":   repFieldCarried,
+	"drawPending": repFieldCarried,
+	// The synthetic whole-instruction event (draw_instruction.go) is asked
+	// read-only and never pauses, so no frame holds it: if one ever did,
+	// it would not be keyed.
+	"DrawInstruction": repFieldGate,
+	"drawInstead":     repFieldCarried,
+	"drawTail":        repFieldCarried,
+	"drawThen":        repFieldCarried,
+	"keywordInstead":  repFieldCarried,
 
 	// A keyword action. Its tail's data half (a proliferate's lists or
 	// its "ask", a scry's or surveil's prompt kind, an earthbend's land)

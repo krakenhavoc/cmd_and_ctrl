@@ -153,6 +153,18 @@ type DelayedTrigger struct {
 	// trigger is dropped.
 	TurnOf uuid.UUID
 
+	// AfterThisTurn is the input half of "at the beginning of the end step
+	// on YOUR NEXT turn" (Kav Landseeker): the trigger may not fire in the
+	// turn it was scheduled in, even when that turn is the controller's and
+	// the step has not begun yet. ScheduleDelayedTriggerForEffect turns it
+	// into NotBeforeSeq and clears it.
+	AfterThisTurn bool
+
+	// NotBeforeSeq is the first Turn.Seq the trigger may fire in; zero is
+	// no bar. Stamped from AfterThisTurn, so it survives a restore (which
+	// CreatedSeq does not).
+	NotBeforeSeq int
+
 	// CreatedSeq identifies the turn the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
@@ -390,6 +402,10 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 		dt.ID = uuid.New()
 	}
 	dt.CreatedSeq = g.Turn.Seq
+	if dt.AfterThisTurn {
+		dt.NotBeforeSeq = g.Turn.Seq + 1
+		dt.AfterThisTurn = false
+	}
 	if dt.SourceObject.ID == uuid.Nil {
 		dt.SourceObject = g.delayedSourceObjectLocked(dt.SourceCardID)
 	}
@@ -486,7 +502,7 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 			dropped = true
 			continue
 		}
-		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
+		if dt.At == step && g.Turn.Seq >= dt.NotBeforeSeq && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) &&
 			(dt.OnPhaseID == 0 || (dt.OnSeq == g.Turn.Seq && dt.OnPhaseID == g.Turn.PhaseID)) {
@@ -567,6 +583,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		OnPhaseID:          dt.OnPhaseID,
 		OnSeq:              dt.OnSeq,
 		TurnOf:             dt.TurnOf,
+		NotBeforeSeq:       dt.NotBeforeSeq,
 		CreatedSeq:         dt.CreatedSeq,
 		Body:               dt.Body,
 		Params:             cloneEffectParams(dt.Params),

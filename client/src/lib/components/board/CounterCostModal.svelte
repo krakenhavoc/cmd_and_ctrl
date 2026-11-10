@@ -63,9 +63,20 @@
     board: CardView[];
     onConfirm: (choices: CounterChoice[]) => void;
     onCancel: () => void;
+    // #5390: what the counters pay for, for the hint — "pay for this
+    // ability" for an activation, "cast this spell" for a cast's
+    // alternative cost (Quilled Greatwurm's graveyard cast).
+    payFor?: string;
   }
 
-  const { card, ability, board, onConfirm, onCancel }: Props = $props();
+  const {
+    card,
+    ability,
+    board,
+    onConfirm,
+    onCancel,
+    payFor = "pay for this ability",
+  }: Props = $props();
 
   // Single-pick: the chosen row's key. Many-pick: how many counters
   // come off each row, keyed the same way.
@@ -112,19 +123,19 @@
       : (ability.counter_cost_label ?? "a permanent you control");
     if (ability.counter_cost_variable) {
       const floor = n > 0 ? ` At least ${n}.` : "";
-      return `Remove any number of ${kind}counters from ${from} to pay for this ability.${floor}`;
+      return `Remove any number of ${kind}counters from ${from} to ${payFor}.${floor}`;
     }
     const what = n === 1 ? `a ${kind}counter` : `${n} ${kind}counters`;
     if (ability.counter_cost_among && ability.counter_cost_self) {
       // #3987: "Remove two counters from Ghost-Spider" — the rows are
       // the kinds on the source, not permanents to split among.
-      return `Remove ${what} of any kinds from ${from} to pay for this ability. Choose how many of each.`;
+      return `Remove ${what} of any kinds from ${from} to ${payFor}. Choose how many of each.`;
     }
     if (ability.counter_cost_among) {
       const mix = ability.counter_cost_kind ? "" : " Any kinds.";
-      return `Remove ${what} from among ${from} to pay for this ability. Split them however you like.${mix}`;
+      return `Remove ${what} from among ${from} to ${payFor}. Split them however you like.${mix}`;
     }
-    return `Remove ${what} from ${from} to pay for this ability.`;
+    return `Remove ${what} from ${from} to ${payFor}.`;
   });
 
   // The many-pick footer's target: an exact number for an among cost,

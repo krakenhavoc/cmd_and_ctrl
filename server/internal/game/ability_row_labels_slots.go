@@ -183,6 +183,8 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	// #3174: the once-each-turn limit and the "your turn" clause lead
 	// the sentence, as printed.
 	switch {
+	case gr.EveryPlayer && gr.FirstSpellOnOwnTurn && price == "":
+		s = "The first spell each player casts during each of their turns may be cast without paying its mana cost."
 	case gr.OnceEachTurn && gr.YourTurnOnly:
 		s = "Once during each of your turns, you" + strings.TrimPrefix(s, "You")
 	case gr.OnceEachTurn:

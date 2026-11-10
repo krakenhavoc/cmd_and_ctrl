@@ -196,6 +196,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// "+3/-3 and loses all creature types": the power is a benefit, the
 	// toughness and the type loss a harm (#4691).
 	"Nameless Inversion": "partly a benefit and partly a harm",
+	// "+1/-1 until end of turn. When it dies under your control this turn,
+	// draw two cards": the power is a benefit, the toughness a harm, and the
+	// card is cast on your own creature so that it dies.
+	"Desperate Measures": "partly a benefit and partly a harm",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's

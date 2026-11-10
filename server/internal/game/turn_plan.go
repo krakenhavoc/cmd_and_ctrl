@@ -489,6 +489,72 @@ func (g *Game) AddStepAfterCurrentForEffect(source uuid.UUID, step Step) bool {
 	return true
 }
 
+// AddUpkeepStepsAfterThisPhaseForEffect is "you get that many additional
+// upkeep steps after this phase" (Obeka, Splitter of Seconds; #5405).
+// CR 500.10: "Some effects add a step after a particular phase. In that
+// case, that effect first creates the phase which normally contains that
+// step directly after the specified phase. Any other steps that phase
+// would normally have are skipped." An upkeep step lives in the
+// beginning phase (CR 501.1), so each of the n steps is a beginning
+// phase of its own, directly after the phase in progress, holding the
+// upkeep step and nothing else: its untap and draw steps are skipped
+// (CR 500.11), so no permanent untaps and no card is drawn. The Obeka
+// ruling says the same.
+//
+// Each added upkeep is an ordinary plan entry, so everything an upkeep
+// does happens in it as the cursor lands there: EventBeginUpkeep, which
+// "at the beginning of your upkeep" triggers watch (CR 500.6, 503.1a),
+// the delayed triggers bound to the next upkeep, the UpkeepsBegun count,
+// and priority for the active player (CR 503.1). The plan is already
+// what a snapshot carries (Snapshot.TurnPlan) and what the wire shows
+// (TurnView.upcoming), so a restore keeps the steps still to come.
+//
+// They are spliced exactly where AddPhasesForEffect splices an
+// AnchorThisPhase phase, ahead of anything already added after this
+// phase (CR 500.8: "the most recently created phase will occur first").
+//
+// CR 500.10a — "If an effect that says 'you get' an additional step or
+// phase would add a step or phase to a turn other than its controller's,
+// no steps or phases are added" — is `you`: the player who gets them,
+// and nothing is added unless it is that player's turn. uuid.Nil skips
+// the check, for a card that does not say "you get".
+//
+// Returns the new phases' ids in the order they will occur, or nil when
+// nothing was added (n < 1, or another player's turn). Emits one
+// EventPhasesAdded with Step StepUpkeep and Amount n.
+//
+// Caller must hold g.mu.
+func (g *Game) AddUpkeepStepsAfterThisPhaseForEffect(source, you uuid.UUID, n int) []int {
+	if n < 1 {
+		return nil
+	}
+	if you != uuid.Nil && g.activePlayerIDLocked() != you {
+		return nil
+	}
+	g.ensureTurnPlanLocked()
+	at := 0
+	for at < len(g.TurnPlan) && g.TurnPlan[at].PhaseID == g.Turn.PhaseID {
+		at++
+	}
+	added := make([]PlannedStep, 0, n)
+	ids := make([]int, 0, n)
+	for range n {
+		g.NextPhaseID++
+		ids = append(ids, g.NextPhaseID)
+		added = append(added, PlannedStep{Step: StepUpkeep, PhaseID: g.NextPhaseID})
+	}
+	g.TurnPlan = splicePlan(g.TurnPlan, at, added)
+	g.EmitEvent(Event{
+		Kind:   EventPhasesAdded,
+		Actor:  g.activePlayerIDLocked(),
+		Source: source,
+		Amount: n,
+		Step:   StepUpkeep,
+		Label:  string(StepUpkeep),
+	})
+	return ids
+}
+
 // splicePlan returns a FRESH slice with `added` inserted at index at.
 // Never an in-place insert: RestoreFrom hands the live game the backing
 // array an undo snapshot holds.

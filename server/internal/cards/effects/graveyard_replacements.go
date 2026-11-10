@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -101,6 +103,15 @@ type GraveyardBecomesExile struct {
 	// every Blood Artist trigger with it.
 	CardsOnly bool
 
+	// OnlyTypes narrows the effect to cards with at least one of these
+	// card types: Dryad Militant's "if an INSTANT OR SORCERY card would be
+	// put into a graveyard from anywhere" is OnlyTypes {"instant",
+	// "sorcery"} with CardsOnly. Read off the card as it sits in the zone
+	// it is leaving (a resolving spell is still the spell card, so an
+	// instant that finishes resolving is exiled, CR 608.2n). Empty is
+	// every type, as before.
+	OnlyTypes []string
+
 	// LinkExiled makes the exiled card "exiled with" the source
 	// (CR 607.2a): Valgavoth, Terror Eater's "you may play cards exiled
 	// with Valgavoth". The link is Card.ExiledWith, naming the source
@@ -144,6 +155,12 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 			}
 			if r.CardsOnly {
 				if moving, ok := g.LookupCardForEffect(ev.CardID); ok && moving.IsToken() {
+					return false
+				}
+			}
+			if len(r.OnlyTypes) > 0 {
+				moving, ok := g.LookupCardForEffect(ev.CardID)
+				if !ok || !slices.ContainsFunc(r.OnlyTypes, moving.HasCardType) {
 					return false
 				}
 			}

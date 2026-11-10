@@ -44,12 +44,10 @@ import (
 //   - the view, which stamps the computed amount onto the ability row's
 //     life_cost — the "pay N life" chip the client renders.
 //
-// Out of scope, deliberately: "Pay X life" on an ability (Krumar
-// Initiate). That amount is the announced X, and the life total is a
-// CEILING on X — the shape Toxic Deluge's AdditionalCost.PayLifeX has
-// on the cast path, where the enumerator solves X against life. A count
-// that took X as an argument would compute the payment but leave the
-// X search blind to it.
+// "Pay X life" on an ability (Krumar Initiate) is the next file's case,
+// life_x_cost.go (AbilityCost.LifeX): the amount is the announced X, and
+// the life total is a CEILING on X, which a count that took no X could not
+// say.
 
 // LifeCostCount names a registered "pay life equal to <count>" rule.
 // The key is unexported, so the only way to hold a non-zero one is
