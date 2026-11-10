@@ -1746,7 +1746,10 @@ func (g *Game) autoTapAbilityAcceptsFor(asker uuid.UUID, source Card, a ManaAbil
 	if !g.autoTapAcceptsBesidesManaCost(asker, source, a, spend) {
 		return false
 	}
-	if a.ManaCost != "" {
+	// #5382: asked of a tap-only ability too — an activation cost
+	// increase (Skyseer's Chariot) can make one owe mana, and then it is
+	// the costed planner's source, not a free one.
+	if g.ManaAbilityChargesManaForEffect(asker, source, a) {
 		// #1191: priced rather than read off the printed string —
 		// see the file header's MANA-cost bullet. Anything left to
 		// pay after the CR 601.2f pass drops the source from the
@@ -2090,7 +2093,8 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
 			continue
 		}
-		if a.ManaCost != "" {
+		// #5382: a taxed exile-only ability owes mana too.
+		if g.ManaAbilityChargesManaForEffect(asker, source, a) {
 			priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
 			if err != nil || !priced.Empty() {
 				continue

@@ -151,6 +151,16 @@ const (
 	// comes only from the declaration verbs; the option generator never
 	// offers a declared defender anything. Defender names the player.
 	BlockReasonBlocksDeclared BlockReason = "blocks_declared"
+
+	// BlockReasonCantBlockAlone — the declaration would leave a
+	// creature that "can't block alone" as the only creature its
+	// controller blocks with (CR 506.5, 509.1b; BlockRule.NotAlone,
+	// #5396). Another blocker of that player's, on any attacker, makes
+	// it legal: declare that one first, or both in one declaration.
+	// Like the count reasons it is a property of the declaration, so
+	// it comes only from the declaration verbs. Blocker is the creature
+	// and Source the same creature.
+	BlockReasonCantBlockAlone BlockReason = "cant_block_alone"
 )
 
 // BlockReasons lists every reason the engine can return today, in the
@@ -178,6 +188,7 @@ func BlockReasons() []BlockReason {
 		BlockReasonRequirement,
 		BlockReasonBlockerCapacity,
 		BlockReasonBlocksDeclared,
+		BlockReasonCantBlockAlone,
 	}
 }
 
@@ -491,6 +502,10 @@ func (e *BlockRefusedError) Sentence(viewer uuid.UUID) string {
 			return e.DefenderName + " has already finished declaring blockers this combat."
 		}
 		return "Blockers have already been declared this combat."
+	case BlockReasonCantBlockAlone:
+		// #5396. About the blocker alone: which attacker it was
+		// pointed at does not matter, a second blocker anywhere does.
+		return blocker + " can't block alone: declare another blocker with it."
 	}
 	return blocker + " can't block " + attacker + "."
 }

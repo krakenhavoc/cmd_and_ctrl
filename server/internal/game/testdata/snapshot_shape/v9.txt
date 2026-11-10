@@ -1595,6 +1595,7 @@ extraTurns[].effects[].mods[].keywords	array
 extraTurns[].effects[].mods[].keywords[]	string
 extraTurns[].effects[].mods[].kind	string
 extraTurns[].effects[].mods[].next	bool
+extraTurns[].effects[].mods[].noncombatOnly	bool
 extraTurns[].effects[].mods[].objects	array
 extraTurns[].effects[].mods[].objects[]	object
 extraTurns[].effects[].mods[].objects[].epoch	number:int
@@ -2185,6 +2186,7 @@ followUpParks[].then.records[].mods[].keywords	array
 followUpParks[].then.records[].mods[].keywords[]	string
 followUpParks[].then.records[].mods[].kind	string
 followUpParks[].then.records[].mods[].next	bool
+followUpParks[].then.records[].mods[].noncombatOnly	bool
 followUpParks[].then.records[].mods[].objects	array
 followUpParks[].then.records[].mods[].objects[]	object
 followUpParks[].then.records[].mods[].objects[].epoch	number:int
@@ -2804,6 +2806,7 @@ frozenEntries[].event.counterTail.then.records[].mods[].keywords	array
 frozenEntries[].event.counterTail.then.records[].mods[].keywords[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].kind	string
 frozenEntries[].event.counterTail.then.records[].mods[].next	bool
+frozenEntries[].event.counterTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.counterTail.then.records[].mods[].objects	array
 frozenEntries[].event.counterTail.then.records[].mods[].objects[]	object
 frozenEntries[].event.counterTail.then.records[].mods[].objects[].epoch	number:int
@@ -3402,6 +3405,7 @@ frozenEntries[].event.damageTail.each.each.records[].mods[].keywords	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].keywords[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].kind	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].next	bool
+frozenEntries[].event.damageTail.each.each.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.damageTail.each.each.records[].mods[].objects	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].objects[]	object
 frozenEntries[].event.damageTail.each.each.records[].mods[].objects[].epoch	number:int
@@ -3991,6 +3995,7 @@ frozenEntries[].event.damageTail.each.then.records[].mods[].keywords	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].keywords[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].kind	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].next	bool
+frozenEntries[].event.damageTail.each.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.damageTail.each.then.records[].mods[].objects	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].objects[]	object
 frozenEntries[].event.damageTail.each.then.records[].mods[].objects[].epoch	number:int
@@ -4752,6 +4757,7 @@ frozenEntries[].event.damageTail.then.records[].mods[].keywords	array
 frozenEntries[].event.damageTail.then.records[].mods[].keywords[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].kind	string
 frozenEntries[].event.damageTail.then.records[].mods[].next	bool
+frozenEntries[].event.damageTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.damageTail.then.records[].mods[].objects	array
 frozenEntries[].event.damageTail.then.records[].mods[].objects[]	object
 frozenEntries[].event.damageTail.then.records[].mods[].objects[].epoch	number:int
@@ -5461,6 +5467,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].keyword
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].keywords[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].kind	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].next	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].objects	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].objects[]	object
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].objects[].epoch	number:int
@@ -6126,6 +6133,7 @@ frozenEntries[].event.entryTail.batch.then.records[].mods[].keywords	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].keywords[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].kind	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].next	bool
+frozenEntries[].event.entryTail.batch.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.batch.then.records[].mods[].objects	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].objects[]	object
 frozenEntries[].event.entryTail.batch.then.records[].mods[].objects[].epoch	number:int
@@ -6715,6 +6723,7 @@ frozenEntries[].event.entryTail.keyed.records[].mods[].keywords	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].keywords[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].kind	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].next	bool
+frozenEntries[].event.entryTail.keyed.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.keyed.records[].mods[].objects	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].objects[]	object
 frozenEntries[].event.entryTail.keyed.records[].mods[].objects[].epoch	number:int
@@ -7337,6 +7346,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].keywords	a
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].keywords[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].kind	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].next	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].objects	array
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].objects[]	object
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].objects[].epoch	number:int
@@ -7946,6 +7956,7 @@ frozenEntries[].event.entryTail.tokens.then.records[].mods[].keywords	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].keywords[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].kind	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].next	bool
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].objects	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].objects[]	object
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].objects[].epoch	number:int
@@ -8958,6 +8969,7 @@ frozenEntries[].event.keywordActionTail.then.records[].mods[].keywords	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].keywords[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].kind	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].next	bool
+frozenEntries[].event.keywordActionTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.keywordActionTail.then.records[].mods[].objects	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].objects[]	object
 frozenEntries[].event.keywordActionTail.then.records[].mods[].objects[].epoch	number:int
@@ -9569,6 +9581,7 @@ frozenEntries[].event.lifeTail.each.then.records[].mods[].keywords	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].keywords[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].kind	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].next	bool
+frozenEntries[].event.lifeTail.each.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.lifeTail.each.then.records[].mods[].objects	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].objects[]	object
 frozenEntries[].event.lifeTail.each.then.records[].mods[].objects[].epoch	number:int
@@ -10161,6 +10174,7 @@ frozenEntries[].event.lifeTail.then.records[].mods[].keywords	array
 frozenEntries[].event.lifeTail.then.records[].mods[].keywords[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].kind	string
 frozenEntries[].event.lifeTail.then.records[].mods[].next	bool
+frozenEntries[].event.lifeTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.lifeTail.then.records[].mods[].objects	array
 frozenEntries[].event.lifeTail.then.records[].mods[].objects[]	object
 frozenEntries[].event.lifeTail.then.records[].mods[].objects[].epoch	number:int
@@ -11554,6 +11568,7 @@ frozenEntries[].event.millTail.run.then.records[].mods[].keywords	array
 frozenEntries[].event.millTail.run.then.records[].mods[].keywords[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].kind	string
 frozenEntries[].event.millTail.run.then.records[].mods[].next	bool
+frozenEntries[].event.millTail.run.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.millTail.run.then.records[].mods[].objects	array
 frozenEntries[].event.millTail.run.then.records[].mods[].objects[]	object
 frozenEntries[].event.millTail.run.then.records[].mods[].objects[].epoch	number:int
@@ -12141,6 +12156,7 @@ frozenEntries[].event.millTail.then.records[].mods[].keywords	array
 frozenEntries[].event.millTail.then.records[].mods[].keywords[]	string
 frozenEntries[].event.millTail.then.records[].mods[].kind	string
 frozenEntries[].event.millTail.then.records[].mods[].next	bool
+frozenEntries[].event.millTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.millTail.then.records[].mods[].objects	array
 frozenEntries[].event.millTail.then.records[].mods[].objects[]	object
 frozenEntries[].event.millTail.then.records[].mods[].objects[].epoch	number:int
@@ -13667,6 +13683,7 @@ frozenEntries[].event.tokenTail.then.records[].mods[].keywords	array
 frozenEntries[].event.tokenTail.then.records[].mods[].keywords[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].kind	string
 frozenEntries[].event.tokenTail.then.records[].mods[].next	bool
+frozenEntries[].event.tokenTail.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.tokenTail.then.records[].mods[].objects	array
 frozenEntries[].event.tokenTail.then.records[].mods[].objects[]	object
 frozenEntries[].event.tokenTail.then.records[].mods[].objects[].epoch	number:int
@@ -15488,6 +15505,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].keywords	ar
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].kind	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].next	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].objects	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].objects[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].objects[].epoch	number:int
@@ -16110,6 +16128,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].keywo
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].kind	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].next	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects[]	object
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects[].epoch	number:int
@@ -16697,6 +16716,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].kind	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].next	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].objects	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].objects[]	object
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].objects[].epoch	number:int
@@ -17304,6 +17324,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].keywords	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].keywords[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].kind	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].next	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].objects	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].objects[]	object
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].objects[].epoch	number:int
@@ -17977,6 +17998,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].keywords	arra
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].keywords[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].kind	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].next	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].noncombatOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].objects	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].objects[]	object
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].objects[].epoch	number:int
@@ -20445,6 +20467,7 @@ movesAwaitingTokens[].counterTail.then.records[].mods[].keywords	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].kind	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].next	bool
+movesAwaitingTokens[].counterTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].counterTail.then.records[].mods[].objects	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].counterTail.then.records[].mods[].objects[].epoch	number:int
@@ -21043,6 +21066,7 @@ movesAwaitingTokens[].damageTail.each.each.records[].mods[].keywords	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].keywords[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].kind	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].next	bool
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].objects	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].objects[]	object
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].objects[].epoch	number:int
@@ -21632,6 +21656,7 @@ movesAwaitingTokens[].damageTail.each.then.records[].mods[].keywords	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].kind	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].next	bool
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].objects	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].objects[].epoch	number:int
@@ -22393,6 +22418,7 @@ movesAwaitingTokens[].damageTail.then.records[].mods[].keywords	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].kind	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].next	bool
+movesAwaitingTokens[].damageTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].damageTail.then.records[].mods[].objects	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].damageTail.then.records[].mods[].objects[].epoch	number:int
@@ -23102,6 +23128,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].keyword
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].kind	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].next	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].objects	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].objects[].epoch	number:int
@@ -23767,6 +23794,7 @@ movesAwaitingTokens[].entryTail.batch.then.records[].mods[].keywords	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].kind	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].next	bool
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].objects	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].objects[].epoch	number:int
@@ -24356,6 +24384,7 @@ movesAwaitingTokens[].entryTail.keyed.records[].mods[].keywords	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].keywords[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].kind	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].next	bool
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].objects	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].objects[]	object
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].objects[].epoch	number:int
@@ -24978,6 +25007,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].keywords	a
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].keywords[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].kind	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].next	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].objects	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].objects[]	object
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].objects[].epoch	number:int
@@ -25587,6 +25617,7 @@ movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].keywords	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].kind	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].next	bool
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].objects	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].objects[].epoch	number:int
@@ -26599,6 +26630,7 @@ movesAwaitingTokens[].keywordActionTail.then.records[].mods[].keywords	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].kind	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].next	bool
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].objects	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].objects[].epoch	number:int
@@ -27210,6 +27242,7 @@ movesAwaitingTokens[].lifeTail.each.then.records[].mods[].keywords	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].kind	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].next	bool
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].objects	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].objects[].epoch	number:int
@@ -27802,6 +27835,7 @@ movesAwaitingTokens[].lifeTail.then.records[].mods[].keywords	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].kind	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].next	bool
+movesAwaitingTokens[].lifeTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].lifeTail.then.records[].mods[].objects	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].lifeTail.then.records[].mods[].objects[].epoch	number:int
@@ -29195,6 +29229,7 @@ movesAwaitingTokens[].millTail.run.then.records[].mods[].keywords	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].kind	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].next	bool
+movesAwaitingTokens[].millTail.run.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].millTail.run.then.records[].mods[].objects	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].millTail.run.then.records[].mods[].objects[].epoch	number:int
@@ -29782,6 +29817,7 @@ movesAwaitingTokens[].millTail.then.records[].mods[].keywords	array
 movesAwaitingTokens[].millTail.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].kind	string
 movesAwaitingTokens[].millTail.then.records[].mods[].next	bool
+movesAwaitingTokens[].millTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].millTail.then.records[].mods[].objects	array
 movesAwaitingTokens[].millTail.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].millTail.then.records[].mods[].objects[].epoch	number:int
@@ -31308,6 +31344,7 @@ movesAwaitingTokens[].tokenTail.then.records[].mods[].keywords	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].kind	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].next	bool
+movesAwaitingTokens[].tokenTail.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].tokenTail.then.records[].mods[].objects	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].tokenTail.then.records[].mods[].objects[].epoch	number:int
@@ -33129,6 +33166,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].keywords	ar
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].next	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].objects	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].objects[].epoch	number:int
@@ -33751,6 +33789,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].keywo
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].next	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].objects	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].objects[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].objects[].epoch	number:int
@@ -34338,6 +34377,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].kind	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].next	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].objects	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].objects[].epoch	number:int
@@ -34945,6 +34985,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].keywords	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].kind	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].next	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].objects	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].objects[].epoch	number:int
@@ -35618,6 +35659,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].keywords	arra
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].keywords[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].kind	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].next	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].noncombatOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].objects	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].objects[]	object
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].objects[].epoch	number:int
@@ -38821,6 +38863,7 @@ pendingChoices[].attackSplit.tail.records[].mods[].keywords	array
 pendingChoices[].attackSplit.tail.records[].mods[].keywords[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].kind	string
 pendingChoices[].attackSplit.tail.records[].mods[].next	bool
+pendingChoices[].attackSplit.tail.records[].mods[].noncombatOnly	bool
 pendingChoices[].attackSplit.tail.records[].mods[].objects	array
 pendingChoices[].attackSplit.tail.records[].mods[].objects[]	object
 pendingChoices[].attackSplit.tail.records[].mods[].objects[].epoch	number:int
@@ -40815,6 +40858,7 @@ pendingChoices[].diceRoll.then.records[].mods[].keywords	array
 pendingChoices[].diceRoll.then.records[].mods[].keywords[]	string
 pendingChoices[].diceRoll.then.records[].mods[].kind	string
 pendingChoices[].diceRoll.then.records[].mods[].next	bool
+pendingChoices[].diceRoll.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].diceRoll.then.records[].mods[].objects	array
 pendingChoices[].diceRoll.then.records[].mods[].objects[]	object
 pendingChoices[].diceRoll.then.records[].mods[].objects[].epoch	number:int
@@ -41783,6 +41827,7 @@ pendingChoices[].divideShield.walk.each.records[].mods[].keywords	array
 pendingChoices[].divideShield.walk.each.records[].mods[].keywords[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].kind	string
 pendingChoices[].divideShield.walk.each.records[].mods[].next	bool
+pendingChoices[].divideShield.walk.each.records[].mods[].noncombatOnly	bool
 pendingChoices[].divideShield.walk.each.records[].mods[].objects	array
 pendingChoices[].divideShield.walk.each.records[].mods[].objects[]	object
 pendingChoices[].divideShield.walk.each.records[].mods[].objects[].epoch	number:int
@@ -42372,6 +42417,7 @@ pendingChoices[].divideShield.walk.then.records[].mods[].keywords	array
 pendingChoices[].divideShield.walk.then.records[].mods[].keywords[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].kind	string
 pendingChoices[].divideShield.walk.then.records[].mods[].next	bool
+pendingChoices[].divideShield.walk.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].divideShield.walk.then.records[].mods[].objects	array
 pendingChoices[].divideShield.walk.then.records[].mods[].objects[]	object
 pendingChoices[].divideShield.walk.then.records[].mods[].objects[].epoch	number:int
@@ -42967,6 +43013,7 @@ pendingChoices[].libraryOrder.then.records[].mods[].keywords	array
 pendingChoices[].libraryOrder.then.records[].mods[].keywords[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].kind	string
 pendingChoices[].libraryOrder.then.records[].mods[].next	bool
+pendingChoices[].libraryOrder.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].libraryOrder.then.records[].mods[].objects	array
 pendingChoices[].libraryOrder.then.records[].mods[].objects[]	object
 pendingChoices[].libraryOrder.then.records[].mods[].objects[].epoch	number:int
@@ -43612,6 +43659,7 @@ pendingChoices[].nameThen.records[].mods[].keywords	array
 pendingChoices[].nameThen.records[].mods[].keywords[]	string
 pendingChoices[].nameThen.records[].mods[].kind	string
 pendingChoices[].nameThen.records[].mods[].next	bool
+pendingChoices[].nameThen.records[].mods[].noncombatOnly	bool
 pendingChoices[].nameThen.records[].mods[].objects	array
 pendingChoices[].nameThen.records[].mods[].objects[]	object
 pendingChoices[].nameThen.records[].mods[].objects[].epoch	number:int
@@ -44673,6 +44721,7 @@ pendingChoices[].pickTail.records[].mods[].keywords	array
 pendingChoices[].pickTail.records[].mods[].keywords[]	string
 pendingChoices[].pickTail.records[].mods[].kind	string
 pendingChoices[].pickTail.records[].mods[].next	bool
+pendingChoices[].pickTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].pickTail.records[].mods[].objects	array
 pendingChoices[].pickTail.records[].mods[].objects[]	object
 pendingChoices[].pickTail.records[].mods[].objects[].epoch	number:int
@@ -45306,6 +45355,7 @@ pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].keywo
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].objects[].epoch	number:int
@@ -45904,6 +45954,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].k
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].objects[].epoch	number:int
@@ -46493,6 +46544,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].k
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].objects[].epoch	number:int
@@ -47254,6 +47306,7 @@ pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].keywor
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].objects[].epoch	number:int
@@ -47963,6 +48016,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.recor
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].objects[].epoch	number:int
@@ -48628,6 +48682,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].k
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].objects[].epoch	number:int
@@ -49217,6 +49272,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].keywor
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].objects[].epoch	number:int
@@ -49839,6 +49895,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].objects[].epoch	number:int
@@ -50448,6 +50505,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].objects[].epoch	number:int
@@ -51460,6 +51518,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[]
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].objects[].epoch	number:int
@@ -52071,6 +52130,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].key
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].objects[].epoch	number:int
@@ -52663,6 +52723,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].keywords
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].objects[].epoch	number:int
@@ -54056,6 +54117,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].keyw
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].objects[].epoch	number:int
@@ -54643,6 +54705,7 @@ pendingChoices[].replacementResume.event.millTail.then.records[].mods[].keywords
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].objects[].epoch	number:int
@@ -56169,6 +56232,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].keyword
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].objects[].epoch	number:int
@@ -57990,6 +58054,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].objects[].epoch	number:int
@@ -58612,6 +58677,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.rec
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].objects[].epoch	number:int
@@ -59199,6 +59265,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].objects[].epoch	number:int
@@ -59806,6 +59873,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mo
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].objects[].epoch	number:int
@@ -60479,6 +60547,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].m
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].kind	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].next	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].noncombatOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].objects	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].objects[]	object
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].objects[].epoch	number:int
@@ -61497,6 +61566,7 @@ pendingChoices[].scryThen.records[].mods[].keywords	array
 pendingChoices[].scryThen.records[].mods[].keywords[]	string
 pendingChoices[].scryThen.records[].mods[].kind	string
 pendingChoices[].scryThen.records[].mods[].next	bool
+pendingChoices[].scryThen.records[].mods[].noncombatOnly	bool
 pendingChoices[].scryThen.records[].mods[].objects	array
 pendingChoices[].scryThen.records[].mods[].objects[]	object
 pendingChoices[].scryThen.records[].mods[].objects[].epoch	number:int
@@ -62132,6 +62202,7 @@ pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].keywords	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].keywords[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].kind	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].next	bool
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].noncombatOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].objects	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].objects[]	object
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].objects[].epoch	number:int
@@ -64418,6 +64489,7 @@ phaseEffects[].effect.mods[].keywords	array
 phaseEffects[].effect.mods[].keywords[]	string
 phaseEffects[].effect.mods[].kind	string
 phaseEffects[].effect.mods[].next	bool
+phaseEffects[].effect.mods[].noncombatOnly	bool
 phaseEffects[].effect.mods[].objects	array
 phaseEffects[].effect.mods[].objects[]	object
 phaseEffects[].effect.mods[].objects[].epoch	number:int
@@ -66830,6 +66902,7 @@ scopedEffects[].mods[].keywords	array
 scopedEffects[].mods[].keywords[]	string
 scopedEffects[].mods[].kind	string
 scopedEffects[].mods[].next	bool
+scopedEffects[].mods[].noncombatOnly	bool
 scopedEffects[].mods[].objects	array
 scopedEffects[].mods[].objects[]	object
 scopedEffects[].mods[].objects[].epoch	number:int

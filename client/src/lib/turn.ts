@@ -115,8 +115,9 @@ export function phaseCaption(
 }
 
 /**
- * One "+ Combat" / "+ Main" marker per phase an effect has added and
- * the turn has not reached yet, in turn order. The phase in progress
+ * One "+ Combat" / "+ Main" / "+ Begin" / "+ Upkeep" / "+ End" marker per
+ * phase an effect has added and the turn has not reached yet, in turn
+ * order. The phase in progress
  * is not a marker: its own caption already says "Combat 2".
  */
 export function addedPhaseMarkers(
@@ -131,7 +132,10 @@ export function addedPhaseMarkers(
     seen.add(s.phase_id);
     if (s.step === "postcombat_main" || s.step === "precombat_main") out.push("+ Main");
     else if (s.step === "begin_combat") out.push("+ Combat");
-    else if (s.step === "upkeep" || s.step === "untap" || s.step === "draw") out.push("+ Begin");
+    // #5405: an added upkeep step (Obeka) is a beginning phase holding
+    // only its upkeep (CR 500.10), so the phase's first step is the upkeep.
+    else if (s.step === "upkeep") out.push("+ Upkeep");
+    else if (s.step === "untap" || s.step === "draw") out.push("+ Begin");
     else if (s.step === "end" || s.step === "cleanup") out.push("+ End");
   }
   return out;

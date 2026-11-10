@@ -735,6 +735,10 @@ type Mod struct {
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
 	CombatOnly bool `json:"combatOnly,omitempty"`
+	// NoncombatOnly narrows ModAddDamage to noncombat damage (#4468,
+	// Taii Wakeen's "would deal noncombat damage"). Refused on every
+	// other kind, and beside CombatOnly.
+	NoncombatOnly bool `json:"noncombatOnly,omitempty"`
 	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
 	// registered BodyRef's key, scheduled at the next end step for each
 	// card the replacement redirects. On every prevention kind
@@ -1155,6 +1159,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
 	ModMultiplyDamage: {reader: readerReplacement},
+	// #4468: damage increased by N this turn (add_damage.go).
+	ModAddDamage: {reader: readerReplacement},
 	// ADR 0108 §9 (#1905): damage dealt to something else instead.
 	ModRedirectDamage: {reader: readerReplacement},
 	// #4307 (ADR 0208, 2026-10-26): a die added to the next roll, and a

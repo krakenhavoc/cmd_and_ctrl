@@ -772,6 +772,13 @@ func (e *enumerator) choiceMoves() bool {
 				// leaves nothing out; the library is shuffled, as it is
 				// for most searches).
 				other := c.SearchOtherZone()
+				if other == game.SearchZoneGraveyardAndHand {
+					// #5408: "your graveyard, hand, and/or library". Every
+					// non-empty subset of the three zones, all three the
+					// always-legal answer.
+					e.addSearchZoneSubsets(c, reason, base)
+					break
+				}
 				both := []string{game.SearchZoneLibrary, other}
 				p := base()
 				p.SearchZones = both
@@ -3106,4 +3113,28 @@ func payNamingNothingVerbs(g *game.Game, c *game.PendingChoice, a *game.PayActio
 		}
 	}
 	return anyPlayerVerbs(g, c, pay, seat)
+}
+
+// addSearchZoneSubsets answers the zone question of "search your graveyard,
+// hand, and/or library" (#5408, CR 701.23): every non-empty subset of the
+// three zones. Searching all three is the always-legal answer; a subset
+// without the library is the one that leaves it unshuffled.
+func (e *enumerator) addSearchZoneSubsets(c *game.PendingChoice, reason string, base func() choiceParams) {
+	zones := []string{game.SearchZoneLibrary, game.SearchZoneGraveyard, game.SearchZoneHand}
+	for mask := 7; mask >= 1; mask-- {
+		var picked []string
+		for i, z := range zones {
+			if mask&(1<<i) != 0 {
+				picked = append(picked, z)
+			}
+		}
+		p := base()
+		p.SearchZones = picked
+		label := reason + ": search your " + strings.Join(picked, ", ")
+		if mask == 7 {
+			e.addAlwaysLegalChoice(c, label, p)
+			continue
+		}
+		e.addChoice(c, label+" only", p)
+	}
 }
