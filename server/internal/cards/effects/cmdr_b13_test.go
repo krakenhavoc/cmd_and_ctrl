@@ -648,3 +648,31 @@ func TestCmdrB14WithinRangeMakesWarriorsAndDrainsByAttackers(t *testing.T) {
 		t.Errorf("controller life %d, fourth player %d; want 40 and 40", me.Life, g.Seats[3].Life)
 	}
 }
+
+const cmdrB14InfantryShieldOracle = "71c68002-1489-4858-a8fb-1f575641983e"
+
+func TestCmdrB14InfantryShieldGivesMenaceAndMobilizeByPower(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	bear := pushVanillaCreature(g, me.ID, "Bear", 3, 3)
+	other := pushVanillaCreature(g, me.ID, "Other", 2, 2)
+	shield := pushCatalogPermanent(g, me.ID, "Infantry Shield", "Artifact — Equipment", cmdrB14InfantryShieldOracle, false)
+	equipTo(t, g, me.ID, shield, bear)
+	if !hasEffectiveKeyword(t, g, bear, "menace") {
+		t.Error("the equipped creature lacks menace")
+	}
+	if hasEffectiveKeyword(t, g, other, "menace") {
+		t.Error("an unequipped creature has menace")
+	}
+	declareAttack(t, g, opp.ID, bear, other)
+	passPriorityAroundTable(t, g)
+	for c := latestChoiceOfKind(g, game.PendingChoicePayAmount); c != nil; c = latestChoiceOfKind(g, game.PendingChoicePayAmount) {
+		if err := g.ResolvePayAmount(c.ID, me.ID, c.PayAmount.Max); err != nil {
+			t.Fatalf("place the Warriors: %v", err)
+		}
+	}
+	if n := b16CountNamed(g, "Warrior"); n != 3 {
+		t.Errorf("%d Warriors, want 3 (mobilize X for the equipped 3-power creature only)", n)
+	}
+}
