@@ -1553,3 +1553,72 @@ func TestCmdrB16BroodcallerScourgePutsACardUpToTheTotalDragonDamage(t *testing.T
 		t.Error("a card that doesn't qualify entered")
 	}
 }
+
+const cmdrB16TempleOracle = "169a26d2-7bc9-4403-9c92-98d4bd5ca4f3"
+
+func cmdrB16PlayTemple(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+	t.Helper()
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Temple of the Dragon Queen", TypeLine: "Land", OracleID: cmdrB16TempleOracle, Owner: me.ID, Controller: me.ID})
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("play the land: %v", err)
+	}
+	return id
+}
+
+func TestCmdrB16TempleEntersTappedUnlessYouRevealADragonOrControlOne(t *testing.T) {
+	// Declined reveal, no Dragon: tapped.
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	dragonCard := handCardFull(me, "Hand Dragon", "Creature — Dragon", "{4}{R}", "", nil)
+	handCardFull(me, "Hand Bear", "Creature — Bear", "{1}{G}", "", nil)
+	land := cmdrB16PlayTemple(t, g, me)
+	answerEntryReveal(t, g, me.ID)
+	answerColor(t, g, me.ID, "R")
+	if !b13Tapped(t, g, land) {
+		t.Error("a declined reveal with no Dragon should enter tapped")
+	}
+	if !me.Hand.Contains(dragonCard) {
+		t.Error("the Dragon card left the hand")
+	}
+
+	// Reveal a Dragon card: untapped; only the Dragon is offered.
+	g = newCatalogGame(t)
+	me = g.Seats[g.Turn.ActiveSeat]
+	dragonCard = handCardFull(me, "Hand Dragon", "Creature — Dragon", "{4}{R}", "", nil)
+	bear := handCardFull(me, "Hand Bear", "Creature — Bear", "{1}{G}", "", nil)
+	land = cmdrB16PlayTemple(t, g, me)
+	c := entryRevealChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no reveal prompt")
+	}
+	if slices.Contains(c.DiscardOptions, bear) {
+		t.Error("a non-Dragon card was offered")
+	}
+	answerEntryReveal(t, g, me.ID, dragonCard)
+	answerColor(t, g, me.ID, "G")
+	if b13Tapped(t, g, land) {
+		t.Error("a revealed Dragon card should let it enter untapped")
+	}
+	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("tap for mana: %v", err)
+	}
+	if got := poolColors(me); !reflect.DeepEqual(got, []string{"G"}) {
+		t.Errorf("pool = %v, want the chosen green", got)
+	}
+
+	// Controlling a Dragon: no question, untapped.
+	g = newCatalogGame(t)
+	me = g.Seats[g.Turn.ActiveSeat]
+	b12Creature(g, me.ID, "Board Dragon", "Creature — Dragon", 4, 4)
+	handCardFull(me, "Hand Dragon", "Creature — Dragon", "{4}{R}", "", nil)
+	land = cmdrB16PlayTemple(t, g, me)
+	if entryRevealChoiceFor(g, me.ID) != nil {
+		t.Error("asked to reveal while controlling a Dragon")
+	}
+	answerColor(t, g, me.ID, "U")
+	if b13Tapped(t, g, land) {
+		t.Error("controlling a Dragon should let it enter untapped")
+	}
+}

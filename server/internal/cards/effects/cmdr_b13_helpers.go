@@ -136,3 +136,36 @@ func cmdrB13DragonCombatDamageToPlayer(ev game.Event, reader *game.Card, g *game
 	c, ok := g.LookupCardForEffect(ev.Source)
 	return ok && game.ThroughTextOf(reader, c).HasSubtype(reader.TextSubtype("Dragon"))
 }
+
+// cmdrB13EntersTappedUnlessRevealOrControlDragon is "This land enters tapped
+// unless you revealed a Dragon card this way or you control a Dragon" (Temple
+// of the Dragon Queen): the reveal-land replacement
+// (EntersTappedUnlessYouRevealFromHand) that does not apply at all, and so asks
+// nothing, while the entering permanent's controller controls a Dragon. The
+// Dragon is a word of the land's text (CR 612.2), read off the battlefield
+// through the layers.
+func cmdrB13EntersTappedUnlessRevealOrControlDragon(name string) game.ReplacementEffect {
+	r := EntersTappedUnlessYouRevealFromHand(name, "a Dragon card", func(c game.Card) bool {
+		return c.HasSubtype("Dragon")
+	})
+	r.RowLabel = "Enters tapped unless you reveal a Dragon card from your hand or you control a Dragon."
+	base := r.AppliesTo
+	r.AppliesTo = func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+		if !base(ev, g, src) {
+			return false
+		}
+		controller := EnteringPermanentChooser(ev, g, src)
+		dragon := "Dragon"
+		if src != nil {
+			dragon = src.TextSubtype("Dragon")
+		}
+		g.RecomputeLayersIfStaleLocked()
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.Controller == controller && c.IsCreature() && c.HasSubtype(dragon) {
+				return false
+			}
+		}
+		return true
+	}
+	return r
+}
