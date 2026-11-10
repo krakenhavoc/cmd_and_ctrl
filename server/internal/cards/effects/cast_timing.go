@@ -145,6 +145,11 @@ type GrantCastTiming struct {
 	// exists.
 	Player uuid.UUID
 
+	// FromZone narrows the statement to casts out of one zone: Preston's
+	// Stage's "creature cards in your hand have flash" is hand only.
+	// Zero is from anywhere.
+	FromZone game.ZoneKind
+
 	// Label is the clause as printed, for the log.
 	Label string
 }
@@ -170,8 +175,9 @@ func (e GrantCastTiming) Apply(ctx *Context) error {
 	// source, the clause and the window are ITS fields, and the rule
 	// below is only what the statement says.
 	ctx.Game.GrantCastTimingForEffect(player, game.CastTimingRule{
-		Timing: timing,
-		Filter: e.Filter,
+		Timing:   timing,
+		Filter:   e.Filter,
+		FromZone: e.FromZone,
 	}, e.Label, ctx.Source(), window)
 	return nil
 }

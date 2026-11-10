@@ -54,3 +54,32 @@ func b13EachPlayerChoosesACreature(ctx *Context, first uuid.UUID, question strin
 	}
 	return ctx.Game.ChoosePermanentsInOrderKeyedForEffect(legs, then, ctx.Source(), ctx.RunData(carry))
 }
+
+// planesB13HatToken is Preston's Stage's Hat: an artifact token with "{1},
+// {T}, Sacrifice this artifact: Create a 1/1 white Rabbit creature token."
+func planesB13HatToken() game.Card { return tokenFromCatalog(printedPlanesB13HatToken) }
+
+// printedPlanesB13HatToken is the Hat as PRINTED. Its slug is an on-disk
+// identity and is never renamed.
+func printedPlanesB13HatToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "hat",
+		Card: game.Card{
+			Name:     "Hat",
+			TypeLine: "Token Artifact — Hat",
+		},
+		Text: "{1}, {T}, Sacrifice this artifact: Create a 1/1 white Rabbit creature token.",
+		Activated: []game.ActivatedAbilityShape{{
+			Label: "{1}, {T}, Sacrifice this artifact: Create a 1/1 white Rabbit creature token",
+			Cost: game.AbilityCost{
+				Tap:           true,
+				SacrificeSelf: true,
+				Mana:          "{1}",
+			},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return CreateToken{Template: TokenCard("1/1 white Rabbit"), N: 1}.Apply(NewContext(g, item))
+			},
+		}},
+	}
+}

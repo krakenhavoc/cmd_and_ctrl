@@ -332,3 +332,65 @@ func TestTheWindyCityGivesFlyingExilesFlyersAndCleansUp(t *testing.T) {
 		t.Errorf("%d flying counters remain after the planeswalk away", c.Counters[game.CounterFlying])
 	}
 }
+
+var planePrestonsStage = planeFixture{"804c913e-7dcd-4e83-a8d2-47b26e796c2e", "Preston's Stage", "Plane — Las Vegas"}
+
+func TestPrestonsStageHatsForMagicTricksAndFlashForCreatures(t *testing.T) {
+	requirePlaneRegisteredFull(t, planePrestonsStage)
+	g, plane := newPlaneGame(t, planePrestonsStage)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	foe := opponentOf(g)
+
+	// A sorcery is no trick.
+	castCatalogSpell(t, g, "Test Ritual", "Sorcery", "", nil)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a sorcery triggered the plane")
+	}
+	passPriorityAroundTable(t, g)
+	// An instant is.
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", "4457ed35-7c10-48c8-9776-456485fdf070",
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: foe.ID}})
+	passPriorityAroundTable(t, g)
+	if n := countBattlefieldByName(g, "Hat"); n != 1 {
+		t.Fatalf("%d Hats after the planar controller cast an instant, want 1", n)
+	}
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Name == "Hat" && c.Controller != me.ID {
+			t.Errorf("the Hat is controlled by %v, want the player who performed the trick", c.Controller)
+		}
+	}
+	// Turning a face-down creature face up by another player is one too.
+	bear := pushBattlefieldCreature(g, foe.ID)
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventTurnedFaceUp, Actor: foe.ID, CardID: bear})
+	})
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	got := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Name == "Hat" && c.Controller == foe.ID {
+			got++
+		}
+	}
+	if got != 1 {
+		t.Errorf("the opponent has %d Hats after turning a creature face up, want 1", got)
+	}
+
+	// Chaos: a flash statement for creature cards in hand, until my next turn.
+	rollBlank(t, g, me.ID)
+	if len(me.Statics) != 0 {
+		t.Fatalf("a blank granted a statement")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	found := false
+	for _, s := range me.Statics {
+		if s.Timing.Timing == game.TimingFlash && s.Timing.Filter.CreatureOnly && s.Timing.FromZone == game.ZoneHand {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no flash statement for creature cards in hand: %+v", me.Statics)
+	}
+}

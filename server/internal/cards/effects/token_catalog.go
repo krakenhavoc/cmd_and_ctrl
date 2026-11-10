@@ -220,6 +220,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// #750: the first token whose printed text is a block rule.
 	printedKurukSpiritToken,
 
+	// Preston's Stage's Hat (Unknown Event, #4870).
+	printedPlanesB13HatToken,
+
 	// ADR 0103: Spiked Corridor's Devil.
 	printedDevilToken,
 
