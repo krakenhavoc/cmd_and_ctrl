@@ -1,6 +1,6 @@
 # ADR 0222 — Formats beyond Commander: Standard 1v1 and booster draft
 
-**Status:** Proposed · 2026-11-10 · outside the sprint's scope (owner request; see "Sprint" below)
+**Status:** Accepted · 2026-11-10 (Ian read the summary of this ADR and its calls and said to go ahead) · [S81](../sprints.md)
 **Issue:** [#5431](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5431) (the formats epic)
 **Owner decisions:** Ian, 2026-11-10, recorded under [Owner decisions](#owner-decisions). They are **decided**. Everything under [Calls made here](#calls-made-here) is this ADR's and can be changed in review.
 **Numbering:** checked on 2026-11-10 after `git fetch --all --prune`, over `docs/decisions/` on all 129 remote heads: 0221 is the highest number anywhere. This is **0222**.
@@ -120,7 +120,7 @@ Each is one issue and one or more PRs. 1 and 3 can start at once; the rest are i
 6. **Limited decks and rounds:** the limited deck check, the build screen, and section 6.
 7. **Cube:** section 8.
 
-Slices 1 and 2 together are roughly a sprint. Slices 3 to 6 are roughly two. A sprint for them (S81, "Formats: Standard 1v1") is proposed for the next triage; this ADR opens none.
+Slices 1 and 2 together are roughly a sprint. Slices 3 to 6 are roughly two. They are S81's checklist: #2352, #5436, #5437, #5438, #5439, #5440 and #5441, in slice order.
 
 ## Calls made here
 
@@ -144,4 +144,4 @@ Open to change in review.
 
 ## Sprint
 
-Written during S79 (card coverage) at the owner's request, outside that sprint's scope. The work itself belongs to a formats sprint opened at triage.
+S81 — Formats: Standard 1v1 and booster draft, opened by the owner on 2026-11-10 with this ADR.
