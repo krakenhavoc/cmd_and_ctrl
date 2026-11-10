@@ -194,3 +194,52 @@ func TestCmdrB13ShikoDrawsWhenTheSecondSpellHasNoTarget(t *testing.T) {
 		t.Errorf("hand %d, want %d (the cast is net zero, one card drawn)", me.Hand.Size(), hand+1)
 	}
 }
+
+const cmdrB13ZurgoOracle = "0f93d88c-9d2e-416d-a10b-99483360b1fb"
+
+func cmdrB13ZurgoAttacks(t *testing.T, g *game.Game, me, opp *game.Player) uuid.UUID {
+	t.Helper()
+	zurgo := b12Push(g, me.ID, "Zurgo Stormrender", "Legendary Creature — Orc Warrior", cmdrB13ZurgoOracle, 3, 3)
+	declareAttack(t, g, opp.ID, zurgo)
+	passPriorityAroundTable(t, g)
+	for c := latestChoiceOfKind(g, game.PendingChoicePayAmount); c != nil; c = latestChoiceOfKind(g, game.PendingChoicePayAmount) {
+		if err := g.ResolvePayAmount(c.ID, me.ID, c.PayAmount.Max); err != nil {
+			t.Fatalf("place the Warrior: %v", err)
+		}
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Warrior" && c.Controller == me.ID {
+			return c.InstanceID
+		}
+	}
+	t.Fatal("mobilize made no Warrior")
+	return uuid.Nil
+}
+
+func TestCmdrB13ZurgoDrawsWhenAnAttackingTokenLeaves(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	warrior := cmdrB13ZurgoAttacks(t, g, me, opp)
+	hand, life := me.Hand.Size(), opp.Life
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(warrior) })
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 || opp.Life != life {
+		t.Errorf("hand %d->%d, opponent life %d->%d; want a draw and no life loss", hand, me.Hand.Size(), life, opp.Life)
+	}
+}
+
+func TestCmdrB13ZurgoDrainsWhenANonattackingTokenLeaves(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Zurgo Stormrender", "Legendary Creature — Orc Warrior", cmdrB13ZurgoOracle, 3, 3)
+	token := b12Creature(g, me.ID, "Spirit", "Token Creature — Spirit", 1, 1)
+	hand, life := me.Hand.Size(), opp.Life
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(token) })
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand || opp.Life != life-1 || g.Seats[2].Life != life-1 {
+		t.Errorf("hand %d->%d, opponent life %d->%d; want each opponent to lose 1", hand, me.Hand.Size(), life, opp.Life)
+	}
+	if me.Life != life {
+		t.Errorf("controller life changed")
+	}
+}
