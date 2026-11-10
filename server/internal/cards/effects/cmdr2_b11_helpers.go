@@ -25,3 +25,48 @@ func cmdr2B11FlashByTapping(n int, label string, preds ...CardPredicate) game.Ad
 		AsThoughFlash: true,
 	}
 }
+
+// cmdr2B11YourFlyerAttacked is "whenever a creature you control with
+// flying attacks" (Shadow Puppeteers): one attack event of yours whose
+// attacker has flying as the layers now stand.
+func cmdr2B11YourFlyerAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if source == nil || !attackDeclaredByYou(ev, source.Controller) {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsCreature() && game.HasKeyword(&c, "flying")
+}
+
+// cmdr2B11BecomeRedDragon is Shadow Puppeteers' "it becomes a red Dragon
+// with base power and toughness 4/4 in addition to its other colors and
+// types until end of turn" for the creature that attacked. The set is
+// that one object (CR 611.2c); an attacker that has left, or come back as
+// a new object, is not changed (CR 400.7).
+func cmdr2B11BecomeRedDragon(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, ok := ctx.TriggeringPermanent()
+	if !ok || info.Left || item.Trigger == nil {
+		return nil
+	}
+	return ScopedEffectFor{
+		Target: item.Trigger.Event.CardID,
+		Mods: []game.Mod{
+			game.SetBasePowerMod(4),
+			game.SetBaseToughnessMod(4),
+			game.AddColorsMod(ctx.TextColors("R")...),
+			game.AddSubtypesMod(ctx.TextSubtypes("Dragon")...),
+		},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    "Shadow Puppeteers — red Dragon with base power and toughness 4/4 until end of turn",
+	}.Apply(ctx)
+}
+
+// cmdr2B11StolenByTheFaeTokens is "You create X 1/1 blue Faerie creature
+// tokens with flying" once the bounce has settled. An on-disk key.
+var cmdr2B11StolenByTheFaeTokens = CardTail("cmdr2-b11/stolen-by-the-fae-tokens", func(ctx *Context, _ game.TailOutcome) error {
+	x := ctx.X()
+	if x <= 0 {
+		return nil
+	}
+	return CreateToken{Template: TokenCard("1/1 blue Faerie with flying"), N: x}.Apply(ctx)
+})
