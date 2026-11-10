@@ -567,3 +567,132 @@ func TestCmdrB25BootleggersStashLetsYourLandsMakeTreasure(t *testing.T) {
 		t.Error("a tapped land made a second Treasure")
 	}
 }
+
+const cmdrB25GodPharaohsGiftOracle = "9f2d2fda-f098-4375-8fe9-63f929e3928c"
+
+func TestCmdrB25GodPharaohsGiftMakesAHastyFourFourBlackZombieCopy(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	b12Push(g, me.ID, "God-Pharaoh's Gift", "Artifact", cmdrB25GodPharaohsGiftOracle, 0, 0)
+	dead := pushCatalogGraveyardCard(me, "Dead Elf", "Creature — Elf Druid", "", 1, 1)
+	other := pushCatalogGraveyardCard(me, "Old Bolt", "Instant", "", 0, 0)
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil || len(pick.ChooseCards) != 1 || pick.ChooseMin != 0 {
+		t.Fatalf("pick %+v, want up to one creature card", pick)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{dead}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(dead) || !me.Graveyard.Contains(other) {
+		t.Error("the creature card was not exiled, or the instant left the graveyard")
+	}
+	tok := cmdrB25Copy(g, me.ID, "Dead Elf", dead)
+	if tok == nil {
+		t.Fatal("no token copy")
+	}
+	if tok.Power != 4 || tok.Toughness != 4 || len(tok.Colors) != 1 || tok.Colors[0] != "B" {
+		t.Errorf("token %d/%d %v, want a 4/4 black", tok.Power, tok.Toughness, tok.Colors)
+	}
+	if tok.HasSubtype("Elf") || !tok.HasSubtype("Zombie") {
+		t.Errorf("type line %q, want Zombie only (the types are replaced)", tok.TypeLine)
+	}
+	if !containsString(effectiveAbilities(t, g, tok.InstanceID), "haste") {
+		t.Error("the token has no haste")
+	}
+}
+
+func TestCmdrB25GodPharaohsGiftAsksNothingWithNoCreatureCard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	b12Push(g, me.ID, "God-Pharaoh's Gift", "Artifact", cmdrB25GodPharaohsGiftOracle, 0, 0)
+	pushCatalogGraveyardCard(me, "Old Bolt", "Instant", "", 0, 0)
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if latestChooseCardsFor(g, me.ID) != nil {
+		t.Error("asked to exile a creature card with none in the graveyard")
+	}
+}
+
+const cmdrB25FoundryOracle = "aaadfe41-b2be-4183-b45e-a70e53a59d2e"
+
+func TestCmdrB25RetrofitterFoundryChainsServoThopterConstruct(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	foundry := b12Push(g, me.ID, "Retrofitter Foundry", "Artifact", cmdrB25FoundryOracle, 0, 0)
+	run := func(idx int, mana string, sac uuid.UUID) {
+		t.Helper()
+		if mana != "" {
+			if err := g.AddManaForEffect(me.ID, uuid.Nil, mana); err != nil {
+				t.Fatal(err)
+			}
+		}
+		p := game.ActivateAbilityParams{Strict: true}
+		if sac != uuid.Nil {
+			p.SacrificeIDs = []uuid.UUID{sac}
+		}
+		if err := g.ActivateCatalogAbility(me.ID, foundry, idx, p); err != nil {
+			t.Fatalf("ability %d: %v", idx, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	untap := func() { run(0, "{C}{C}{C}", uuid.Nil) }
+	servo := func() uuid.UUID {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Servo" {
+				return c.InstanceID
+			}
+		}
+		return uuid.Nil
+	}
+	thopter := func() uuid.UUID {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Thopter" {
+				return c.InstanceID
+			}
+		}
+		return uuid.Nil
+	}
+
+	run(1, "{C}{C}", uuid.Nil)
+	if servo() == uuid.Nil {
+		t.Fatal("no Servo")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, foundry, 1, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("a tapped Foundry made a second Servo")
+	}
+	untap()
+	run(2, "{C}", servo())
+	if servo() != uuid.Nil || thopter() == uuid.Nil {
+		t.Fatal("the Servo was not turned into a Thopter")
+	}
+	untap()
+	run(3, "", thopter())
+	if thopter() != uuid.Nil {
+		t.Error("the Thopter was not sacrificed")
+	}
+	var construct *game.Card
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].Name == "Construct" {
+			construct = &g.Battlefield.Cards[i]
+		}
+	}
+	if construct == nil || construct.Power != 4 || construct.Toughness != 4 {
+		t.Fatalf("no 4/4 Construct: %+v", construct)
+	}
+}
+
+func TestCmdrB25RetrofitterFoundrySacrificeNeedsTheRightType(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	foundry := b12Push(g, me.ID, "Retrofitter Foundry", "Artifact", cmdrB25FoundryOracle, 0, 0)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, foundry, 2, game.ActivateAbilityParams{Strict: true, SacrificeIDs: []uuid.UUID{bear}}); err == nil {
+		t.Fatal("sacrificed a Bear as a Servo")
+	}
+}
