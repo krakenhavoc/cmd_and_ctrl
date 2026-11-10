@@ -51,8 +51,8 @@ func init() {
 				})),
 			},
 			{
-				Label:   "+1: Create a 1/1 white and black Spirit creature token with flying.",
-				Cost:    LoyaltyCost(1),
+				Label: "+1: Create a 1/1 white and black Spirit creature token with flying.",
+				Cost:  LoyaltyCost(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: kayasGuileSpirit(), N: 1}.Apply(NewContext(g, item))
 				},

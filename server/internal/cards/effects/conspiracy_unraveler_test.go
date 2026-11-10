@@ -102,7 +102,7 @@ func TestConspiracyUnravelerRefusesShortEvidence(t *testing.T) {
 	if !me.Hand.Contains(spell) || me.Graveyard.Size() != 2 || len(evidenceEvents(g)) != 0 {
 		t.Fatal("a refused cast paid something")
 	}
-	gy = append(gy, gyCard(me, "More", "Sorcery", "{1}", ""))
+	gyCard(me, "More", "Sorcery", "{1}", "")
 	if offerWithKey(grantedCardOffers(g, me.ID, spell, game.ZoneHand), GrantedAltCostCollectEvidenceTen) == nil {
 		t.Error("not offered over a graveyard totalling 10")
 	}
