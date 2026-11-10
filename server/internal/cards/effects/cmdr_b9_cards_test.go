@@ -1479,3 +1479,58 @@ func TestCmdrB9WastewakerForcedSacrificeAndLandTokensDoNotDraw(t *testing.T) {
 		t.Errorf("hand %d → %d, want no draw (a creature card and a land token)", hand, me.Hand.Size())
 	}
 }
+
+func TestCmdrB9DepthshakerTitanAnimatesArtifactsGrantsKeywordsAndSacrificesThemAtTheEndStep(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	golem := b12Creature(g, me.ID, "Golem", "Artifact Creature — Golem", 4, 4)
+	other := b12Permanent(g, g.Seats[1].ID, "Their Rock", "Artifact")
+	floatForTest(g, me, "RRCCCCC")
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Depthshaker Titan", TypeLine: "Artifact Creature — Robot", ManaCost: "{5}{R}{R}",
+			Power: 5, Toughness: 5, OracleID: cmdrB9Oracle(t, "Depthshaker Titan"), Owner: me.ID, Controller: me.ID})
+	})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	pick := latestPickTarget(g, me.ID)
+	if pick == nil {
+		t.Fatal("no target prompt")
+	}
+	if err := g.ResolvePickTargets(pick.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: golem}}); err == nil {
+		t.Fatal("an artifact creature was accepted as a noncreature artifact")
+	}
+	if err := g.ResolvePickTargets(pick.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: other}}); err == nil {
+		t.Fatal("an opponent's artifact was accepted")
+	}
+	answerTriggerTargets(t, g, me.ID, rock)
+	passPriorityAroundTable(t, g)
+	if p, tough := ptOf(t, g, rock); p != 3 || tough != 3 {
+		t.Fatalf("the Rock is %d/%d, want 3/3", p, tough)
+	}
+	if c, _ := battlefieldCard(g, rock); !c.IsCreature() || !c.IsArtifact() {
+		t.Error("the Rock is not an artifact creature")
+	}
+	for _, who := range []uuid.UUID{rock, golem, id} {
+		for _, kw := range []string{game.KeywordMelee, "trample", "haste"} {
+			if !hasKeywordOnBattlefield(t, g, who, kw) {
+				t.Errorf("an artifact creature lacks %s", kw)
+			}
+		}
+	}
+	if hasKeywordOnBattlefield(t, g, other, "haste") {
+		t.Error("an opponent's artifact got haste")
+	}
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock) {
+		t.Error("the animated Rock was not sacrificed at the beginning of the end step")
+	}
+	if !g.Battlefield.Contains(golem) || !g.Battlefield.Contains(id) {
+		t.Error("something besides the animated artifact was sacrificed")
+	}
+}
