@@ -1025,3 +1025,69 @@ func TestCmdrB15HammerheadTyrantBouncesOnlyWhatTheSpellCanMatch(t *testing.T) {
 		t.Error("the 4-drop was returned")
 	}
 }
+
+const cmdrB15TemurOracle = "ebe1448e-21c5-4b73-8296-03d3e5097c50"
+
+func TestCmdrB15WillOfTheTemurCopyIsAFourFourFlyingDragon(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rock := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Big Rock", TypeLine: "Artifact", ManaCost: "{6}", Owner: me.ID, Controller: me.ID})
+	castModal(t, g, "Will of the Temur", "Sorcery", cmdrB15TemurOracle, []int{0}, []game.TargetRef{{Kind: game.TargetCard, ID: rock}})
+	passPriorityAroundTable(t, g)
+	var token uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Big Rock" && c.InstanceID != rock {
+			token = c.InstanceID
+		}
+	}
+	if token == uuid.Nil {
+		t.Fatal("no token copy")
+	}
+	if p, tt := effectivePower(t, g, token), effectiveToughness(t, g, token); p != 4 || tt != 4 {
+		t.Errorf("copy is %d/%d, want 4/4", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, token, "flying") {
+		t.Error("the copy lacks flying")
+	}
+	types := effectiveTypes(t, g, token)
+	if !slices.Contains(types, "Creature") || !slices.Contains(types, "Artifact") {
+		t.Errorf("types %v, want Artifact and Creature", types)
+	}
+	if !slices.Contains(effectiveSubtypes(t, g, token), "Dragon") {
+		t.Errorf("subtypes %v, want Dragon", effectiveSubtypes(t, g, token))
+	}
+}
+
+func TestCmdrB15WillOfTheTemurDrawsGreatestManaValueAndBothWithACommander(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rock := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Five", TypeLine: "Artifact", ManaCost: "{5}", Owner: me.ID, Controller: me.ID})
+	for i := 0; i < 12; i++ {
+		stapleLibraryCard(me, "Spare", "Sorcery")
+	}
+	both := []game.TargetRef{{Kind: game.TargetCard, ID: rock}, {Kind: game.TargetPlayer, ID: me.ID}}
+	if err := b22TryModal(g, cmdrB15TemurOracle, []int{0, 1}, both); err == nil {
+		t.Fatal("no commander: choosing both modes was accepted")
+	}
+	// Only the draw: five cards for the Five.
+	hand := me.Hand.Size()
+	castModal(t, g, "Will of the Temur", "Sorcery", cmdrB15TemurOracle, []int{1}, []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}})
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 5 {
+		t.Fatalf("drew %d, want 5 (the greatest mana value is 5)", got)
+	}
+	// With a commander on the battlefield, both: the copy of the Five and then
+	// six cards for the six-drop commander.
+	pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "My Commander", TypeLine: "Legendary Creature — Elf",
+		ManaCost: "{4}{G}{G}", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID, IsCommander: true})
+	advanceToPrecombatMainOf(t, g, 0)
+	hand = me.Hand.Size()
+	castModal(t, g, "Will of the Temur", "Sorcery", cmdrB15TemurOracle, []int{0, 1}, both)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 6 {
+		t.Errorf("drew %d, want 6", got)
+	}
+	if n := b16CountNamed(g, "Five"); n != 2 {
+		t.Errorf("%d permanents named Five, want the original and the token copy", n)
+	}
+}

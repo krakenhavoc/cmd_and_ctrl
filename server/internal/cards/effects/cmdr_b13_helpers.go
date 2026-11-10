@@ -93,3 +93,18 @@ func cmdrB13PerPlayerGraveyardClauses(noun string, what ...CardPredicate) *game.
 	}
 	return Clauses(own, rest...)
 }
+
+// cmdrB13GreatestManaValueYouControl is the greatest mana value among
+// permanents `player` controls, zero with none ({X} in a cost is 0 on the
+// battlefield, CR 202.3e).
+func cmdrB13GreatestManaValueYouControl(g *game.Game, player uuid.UUID) int {
+	best := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == player {
+			if mv := c.ManaValue(); mv > best {
+				best = mv
+			}
+		}
+	}
+	return best
+}
