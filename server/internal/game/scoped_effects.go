@@ -215,6 +215,15 @@ const ModCantAttackOwner ModKind = "cantAttackOwner" // layer 6
 // gains, so a "loses all abilities" does not take it.
 const ModWaiveDefender ModKind = "waiveDefender" // layer 6
 
+// ModDamageByToughness is "<affected> assigns combat damage equal to its
+// toughness rather than its power" from a resolved effect (Walking Bulwark,
+// #5368, CR 510.1c): it sets Characteristic.DamageByToughnessAlways, the
+// unconditional form (whether or not the toughness is the greater). It
+// changes only how damage is assigned, not the creature's power. Reads
+// nothing. Layer 6, in the record's timestamp slot. An on-disk identity:
+// never renamed, never reused.
+const ModDamageByToughness ModKind = "damageByToughness" // layer 6
+
 // ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
 // #1881): "target land becomes an Island until end of turn" (Tidal
 // Warrior), "becomes the basic land type of your choice" (Reef Shaman),
@@ -1144,6 +1153,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantAttackOwner: {layer: Layer6Ability},
 	// #1936: Hightide Hermit's "as though it didn't have defender".
 	ModWaiveDefender: {layer: Layer6Ability},
+	// #5368: Walking Bulwark's "assigns combat damage equal to its toughness".
+	ModDamageByToughness: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
 	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
 	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
@@ -1182,6 +1193,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModOneMoreCounter: {reader: readerReplacement},
 	// #5235: Prairie Dog's one more +1/+1 counter this turn.
 	ModOneMorePlusOneCounter: {reader: readerReplacement},
+	// #5368: Kaya, Geist Hunter's tokens doubled this turn.
+	ModMultiplyTokens: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -1563,6 +1576,12 @@ func CantAttackPlayerMod(player uuid.UUID) Mod {
 // from a resolved effect (ADR 0180 decision 6).
 func CantAttackOwnerMod() Mod {
 	return Mod{Kind: ModCantAttackOwner}
+}
+
+// DamageByToughnessMod is "assigns combat damage equal to its toughness
+// rather than its power" from a resolved effect (#5368).
+func DamageByToughnessMod() Mod {
+	return Mod{Kind: ModDamageByToughness}
 }
 
 // WaiveDefenderMod is "can attack as though it didn't have defender"
@@ -2394,6 +2413,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
+		}
+	case ModDamageByToughness:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.DamageByToughnessAlways = true
 		}
 	case ModWaiveDefender:
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {

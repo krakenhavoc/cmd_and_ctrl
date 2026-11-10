@@ -229,6 +229,13 @@ type PermissionFilter struct {
 	// nothing.
 	CardType string `json:"cardType,omitempty"`
 
+	// CardTypesAny is Baral and Kari Zev's "a spell ... that shares a card
+	// type with it": lowercase card types joined by spaces ("instant
+	// artifact"), a card qualifies when it has AT LEAST ONE of them
+	// (CR 205.2a). A string rather than a slice because PermissionFilter is
+	// compared with ==. Empty constrains nothing. Additive.
+	CardTypesAny string `json:"cardTypesAny,omitempty"`
+
 	// SorceryOnly is Teferi, Time Raveler's +1: "you may cast SORCERY
 	// spells as though they had flash" (#1195). Narrower than
 	// InstantOrSorceryOnly, which would also open an instant that
@@ -475,6 +482,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CardType != "" && !c.HasCardType(strings.ToLower(f.CardType)) {
+		return false
+	}
+	if f.CardTypesAny != "" && !cardHasAnyTypeOf(c, f.CardTypesAny) {
 		return false
 	}
 	if f.SorceryOnly && !c.IsSorcery() {
@@ -3380,4 +3390,15 @@ func CreatureCounterRemovalCost(n int) *CounterRemovalCost {
 		},
 		Among: true,
 	}
+}
+
+// cardHasAnyTypeOf reports whether c has at least one of the card types
+// in the space-joined lowercase list (PermissionFilter.CardTypesAny).
+func cardHasAnyTypeOf(c Card, types string) bool {
+	for _, t := range strings.Fields(types) {
+		if c.HasCardType(t) {
+			return true
+		}
+	}
+	return false
 }
