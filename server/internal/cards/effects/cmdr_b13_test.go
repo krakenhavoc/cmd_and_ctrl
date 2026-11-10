@@ -577,3 +577,34 @@ func TestCmdrB14BoneDevourerWithNoDeathsDrawsNothing(t *testing.T) {
 		t.Errorf("hand %d->%d, life %d->%d; want no change", hand, me.Hand.Size(), life, me.Life)
 	}
 }
+
+const cmdrB14TipOracle = "f7cac691-960f-4e36-8eae-f24bcdc1269b"
+
+func TestCmdrB14TipTheScalesShrinksEveryCreatureByTheSacrificedToughness(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	wall := b12Creature(g, me.ID, "Wall", "Creature — Wall", 0, 3)
+	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 5, 5)
+	small := b12Creature(g, opp.ID, "Small", "Creature — Elf", 2, 3)
+	big := b12Creature(g, opp.ID, "Big", "Creature — Ogre", 6, 6)
+	castCatalogSpell(t, g, "Tip the Scales", "Sorcery", cmdrB14TipOracle, nil)
+	passPriorityAroundTable(t, g)
+	// Sacrifice the Wall (toughness 3).
+	answerOwnPermanents(t, g, me.ID, wall)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(wall) {
+		t.Error("the Wall was not sacrificed")
+	}
+	if g.Battlefield.Contains(small) {
+		t.Error("the 2/3 survived -3/-3")
+	}
+	if !g.Battlefield.Contains(mine) || !g.Battlefield.Contains(big) {
+		t.Fatal("a big creature died")
+	}
+	if p := effectivePower(t, g, mine); p != 2 {
+		t.Errorf("my 5/5 has power %d, want 2", p)
+	}
+	if p := effectivePower(t, g, big); p != 3 {
+		t.Errorf("their 6/6 has power %d, want 3", p)
+	}
+}
