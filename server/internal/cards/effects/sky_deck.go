@@ -28,7 +28,7 @@ func init() {
 		Name:         "Sky Deck",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(OnAny([]game.EventKind{game.EventPlaneswalkTo, game.EventBeginUpkeep, game.EventRollDie},
+			Targeting(OnAny([]game.EventKind{game.EventPlaneswalkTo, game.EventBeginUpkeep, game.EventRollDie, game.EventChaosEnsues},
 				skyDeckTriggers,
 				"Sky Deck — put a glass counter on up to one target nonland permanent",
 				func(g *game.Game, item *game.StackItem) error {
@@ -55,7 +55,7 @@ const planesB13GlassCounter = "glass"
 // skyDeckTriggers is "whenever you planeswalk here, at the beginning of your
 // upkeep, or whenever chaos ensues".
 func skyDeckTriggers(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-	if ev.Kind == game.EventRollDie {
+	if ev.Kind == game.EventRollDie || ev.Kind == game.EventChaosEnsues {
 		return chaosEnsued(ev, source, lki, g)
 	}
 	return youPlaneswalkedToThisOrYourUpkeep(ev, source, lki, g)

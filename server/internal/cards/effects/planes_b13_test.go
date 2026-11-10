@@ -170,3 +170,50 @@ func TestTheBeanCopiesEachPlayersCreatureAsAShadowReflection(t *testing.T) {
 		}
 	}
 }
+
+var planeOteclan = planeFixture{"24b2ba5b-c1cb-4c73-89bf-94d47f468622", "Oteclán", "Plane — Ixalan"}
+
+func TestOteclanMakesChaosEnsueOnEntryAndAtUpkeepAndDiscovers(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeOteclan)
+	g, plane := newPlaneGame(t, planeOteclan)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	me.Library.Cards = nil
+	hit := discoverLibraryCard(me.ID, "Opt", "Instant", "{U}")
+	pushLibraryCardForTest(me, hit)
+
+	planeswalkToPlane(t, g, planeOteclan.Oracle)
+	// Chaos ensues (no die was rolled): the chaos ability follows.
+	passPriorityAroundTable(t, g)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if g.CastPermissionOnCardByIDForEffect(hit.InstanceID) == nil {
+		t.Fatalf("chaos ensuing on entry did not discover 3 the top card")
+	}
+	for _, ev := range g.EventsThisTurn() {
+		if ev.Kind == game.EventRollDie {
+			t.Fatalf("a die was rolled")
+		}
+	}
+	answerMayCastPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+
+	// A blank does nothing.
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the plane")
+	}
+
+	// The next player's upkeep: chaos ensues again, and they discover.
+	next := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	next.Library.Cards = nil
+	top := discoverLibraryCard(next.ID, "Shock", "Instant", "{R}")
+	pushLibraryCardForTest(next, top)
+	toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if g.CastPermissionOnCardByIDForEffect(top.InstanceID) == nil {
+		t.Fatalf("chaos ensuing at the planar controller's upkeep did not discover for them")
+	}
+}
