@@ -241,6 +241,19 @@ type ManaSpendTrigger struct {
 	// Same contract as every triggered effect: read everything off the
 	// item and the *Game handed in; capture nothing.
 	Effect func(g *Game, item *StackItem) error
+
+	// Targets, when set, is the ability's own target clause (#5403):
+	// The Myriad Pools' "up to one other target permanent you control".
+	// It is chosen as the trigger is put on the stack (CR 603.3d), by
+	// the same walk a reflexive trigger's or a TargetedDelayedBody's
+	// clause takes, and the chosen targets are the item's Targets; the
+	// spell the mana paid for is still Payload[0]. "Other" is the
+	// permanent that made the mana, the trigger's source.
+	//
+	// Must build a fresh spec on every call and capture nothing: it is
+	// called when the trigger is announced and again when a restored
+	// item or prompt re-derives its clause from the registry key.
+	Targets func() *TargetSpec
 }
 
 var manaSpendTriggers = struct {
@@ -348,6 +361,29 @@ var manaRiderDispatchBody = DelayedBody("mana-rider/dispatch", func(g *Game, ite
 	}
 	return t.Effect(g, item)
 })
+
+// manaRiderTargetedDispatchBody is "mana-rider/dispatch-targeted"
+// (#5403): manaRiderDispatchBody's twin for a trigger whose
+// registration has a target clause (ManaSpendTrigger.Targets). It is a
+// TargetedDelayedBody, so the clause is announced as the instance goes
+// on the stack (CR 603.3d) and re-derived on restore from Params.Name,
+// the registry key the rider already carries. An on-disk key: never
+// renamed, never reused.
+var manaRiderTargetedDispatchBody = TargetedDelayedBody("mana-rider/dispatch-targeted",
+	func(g *Game, item *StackItem, p EffectParams) error {
+		t, ok := ManaSpendTriggerFor(p.Name)
+		if !ok {
+			return nil
+		}
+		return t.Effect(g, item)
+	},
+	func(_ uuid.UUID, p EffectParams) *TargetSpec {
+		t, ok := ManaSpendTriggerFor(p.Name)
+		if !ok || t.Targets == nil {
+			return nil
+		}
+		return t.Targets()
+	})
 
 // copyManaRiders returns a fresh backing array for a rider list (and for
 // each rider's filter), or nil for an empty one — copyRestrictions' twin
@@ -462,6 +498,10 @@ func (g *Game) applyManaSpendRidersLocked(item *StackItem, ctx ManaSpendContext,
 				// already IS the append-only identity a rider's
 				// ManaRider.Trigger field carries in the snapshot.
 				params := EffectParams{Name: r.Trigger}
+				if t.Targets != nil {
+					g.dispatchTargetedManaSpendTriggerLocked(tok.Source, item, t, params)
+					continue
+				}
 				g.queueHarvestedTriggerLocked(&StackItem{
 					Kind:         StackItemTriggered,
 					Controller:   item.Controller,
@@ -510,6 +550,32 @@ func (g *Game) applyManaSpendRidersLocked(item *StackItem, ctx ManaSpendContext,
 			r.Applied = true
 		}
 	}
+}
+
+// dispatchTargetedManaSpendTriggerLocked puts a targeted "when that
+// mana is spent" trigger on its way to the stack (#5403). Its target
+// clause is announced as it is put on the stack (CR 603.3d), which is
+// the reflexive dispatch's walk: the same prompt, the same CR 603.3d
+// removal when a required clause has nothing to choose, and the same
+// restorable announcement frame, keyed by manaRiderTargetedDispatchBody
+// with the rider's registry key as Params.Name. The source is the
+// permanent that made the mana, as for the untargeted kind, and so is
+// "other"; the spell or ability paid for rides as Payload[0].
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) dispatchTargetedManaSpendTriggerLocked(source uuid.UUID, paidFor *StackItem, t ManaSpendTrigger, params EffectParams) {
+	ev := Event{
+		Kind:   EventCast,
+		Actor:  paidFor.Controller,
+		Source: source,
+		Label:  t.Label,
+	}
+	g.dispatchReflexiveTriggerLocked(source, paidFor.Controller, g.sourceObjectRefLocked(source), ReflexiveTrigger{
+		Label:   t.Label,
+		Payload: []TargetRef{{Kind: TargetCard, ID: paidFor.ID}},
+		Body:    manaRiderTargetedDispatchBody,
+		Params:  params,
+	}, ev)
 }
 
 // manaRiderSpellGainsLocked gives the spell `paidFor` the rider's

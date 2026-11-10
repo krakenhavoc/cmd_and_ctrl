@@ -290,10 +290,13 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		BlockingTargets:     []string{"attacker", "attacker-2"},
 		BlockCapacity:       2,
 		BlocksAnyNumber:     true,
-		GoadedBy:            "goader",
-		Goaders:             []string{"goader"},
-		MustAttack:          true,
-		MustBlock:           true,
+		// #5396: deliberately NOT in redactedCardKeys: it is read off
+		// the card's abilities, which an unknown card does not show.
+		CantBlockAlone: true,
+		GoadedBy:       "goader",
+		Goaders:        []string{"goader"},
+		MustAttack:     true,
+		MustBlock:      true,
 		// #3898: deliberately NOT in redactedCardKeys. The sentence
 		// names both creatures, and the server never stamps either on
 		// a face-down permanent.

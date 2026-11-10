@@ -61,6 +61,11 @@ func beginSearchIfAsked(t *testing.T, g *game.Game, c *game.PendingChoice) {
 		}
 	}
 	if c.SearchZonesPending() {
+		if c.SearchOtherZone() == game.SearchZoneGraveyardAndHand {
+			// #5408: the three zones are named one by one.
+			answerSearchZones(t, g, c.Chooser, game.SearchZoneLibrary, game.SearchZoneGraveyard, game.SearchZoneHand)
+			return
+		}
 		answerSearchZones(t, g, c.Chooser, game.SearchZoneLibrary, c.SearchOtherZone())
 	}
 }

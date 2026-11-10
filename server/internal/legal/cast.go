@@ -59,6 +59,9 @@ type castParams struct {
 	// RevealIDs is the one card a reveal / behold branch shows —
 	// CastSpellParams.RevealIDs.
 	RevealIDs []string `json:"reveal_ids,omitempty"`
+	// BeholdType is the creature type a behold that prints none chooses
+	// (#5406) — CastSpellParams.BeholdType.
+	BeholdType string `json:"behold_type,omitempty"`
 	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
 	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
@@ -1194,7 +1197,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	// ADR 0100 amendment 2026-10-07: a reveal / behold branch names one
 	// card. A seat with none is not offered the branch.
-	revealIDs, ok := e.revealPayment(card.InstanceID, addCost, optional, chosen)
+	revealIDs, beholdType, ok := e.revealPayment(card.InstanceID, addCost, optional, chosen)
 	if !ok {
 		return
 	}
@@ -1250,7 +1253,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, beholdType, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1765,7 +1768,9 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs, exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
+	teamIDs, blightIDs, revealIDs []uuid.UUID,
+	beholdType string,
+	exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1946,6 +1951,7 @@ func (e *enumerator) castMoveEmitter(
 				TeamworkIDs:       idStrings(teamIDs),
 				BlightIDs:         idStrings(blightIDs),
 				RevealIDs:         idStrings(revealIDs),
+				BeholdType:        beholdType,
 				ExilePermanentIDs: idStrings(exileIDs),
 				ReturnIDs:         idStrings(returnIDs),
 				ExileFromHandIDs:  idStrings(handExile),

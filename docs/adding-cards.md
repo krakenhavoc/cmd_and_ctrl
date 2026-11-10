@@ -426,7 +426,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Register` refuses it on a spell, an activated ability, a granted
    ability and any trigger that watches more than `EventETB`. A
    "choose up to X" whose X is something else (Riku of Many Paths,
-   Bumi, King of Three Trials) is not this.
+   Bumi, King of Three Trials) is not this: it is `ChooseUpToCount(count,
+   …)` with a count registered once at init, `game.RegisterModeCount`
+   for a count of the board (Bumi's Lessons) or
+   `game.RegisterModeCountOfEvent` for one read off the triggering
+   event (Riku's "the number of times you chose a mode for that spell",
+   #4468: `len(StackItem.Modes)` of the spell `ev.CardID` names).
 
    **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
    **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
@@ -1217,7 +1222,14 @@ the recipient's and the grant's timestamps (CR 613.7a), and it ends
 when the recipient loses the grant. A keyword in a bundle is an `Apply`
 that appends the token (`GrantToAttached`, `AppendKeywordAbility`).
 Layers 1-5, 7a, and a granted static that removes, grants or borrows
-abilities are refused (`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
+abilities are refused (`game.GrantedStaticProblem`), with one exception
+(#5402, amendment 2026-11-10): a granted static that grants ONE fixed
+bundle with no static of its own, declared with
+`GrantedFixedBundle(label, appliesTo, innerKey)`. The inner bundle must
+be in the same card's `Grants`. 'This Saga gains "Creatures you control
+have '{T}: Add {R}, {G}, or {W}.'"' (Roar of the Fifth People) is a
+chapter that grants the Saga the outer bundle, as Urza's Saga does; see
+`huatli_poet_of_unity.go`. A granted equip is `EquipAbility(cost)`
 in a bundle's `Activated`: it is the recipient's own row and attaches
 the recipient. "<Permanents> are Equipment in addition to their other
 types" is `AreAlsoEquipment(label, applies)` (Gemcutter Buccaneer). A
@@ -2825,6 +2837,20 @@ never stops it. `Next` is one instance of damage (CR 615.8), spent the
 way `PreventNextDamageFromSource` is. "Choose a source you control" is
 `ChooseSourcePrompt.Controller`.
 
+**"It deals that much damage plus X instead" for the rest of the turn**
+(#4468, Taii Wakeen, Perfect Shot) is the additive sibling, the
+`ScopedEffect` kind `addDamage`, written with `g.AddDamageForEffect`
+(`server/internal/game/add_damage.go`). It takes the multiplier's
+`Sources`, `Recipients` and `CombatOnly`, plus `NoncombatOnly` for "would
+deal noncombat damage". An amount below 1 registers nothing. Two
+additions commute, so no CR 616 order is asked between them; beside a
+multiplier the affected player orders the two.
+
+```go
+g.AddDamageForEffect(game.DamageAddition{EffectSource: ctx.Source(), Controller: ctx.Controller(),
+    Amount: ctx.X(), Sources: game.DamageSourcesYours, NoncombatOnly: true})  // Taii Wakeen
+```
+
 **Choosing a source is a keyed prompt** (#4253 slice 10c). A
 `game.ChooseSourcePrompt` names what happens to the pinned source as data,
 never a closure. The shield, redirection or multiplier the card described
@@ -3206,6 +3232,21 @@ left, came back as a new object, or there was nothing to copy — where
 `Apply` just returns nil. Never write a copy by setting a card's
 printed fields from a card file: the record is what lets it end, undo
 and survive a restart.
+
+**"For as long as this Equipment remains attached to it, that creature
+becomes a copy of a creature card exiled with this Equipment"
+(Assimilation Aegis, #5399)** is `BecomeCopyOfExiledWith{Target, Row,
+Match, Duration: CopyWhileSourceAttached}` in
+[copy_of_exiled_with.go](../server/internal/cards/effects/copy_of_exiled_with.go),
+fired by `On(game.EventAttach, ThisBecameAttachedToACreature, …)` with
+"that creature" as `item.Trigger.Event.Target`. `Row` is the Key of the
+ability that exiled the cards (CR 607.2a), which must stamp the link:
+`ExileTarget{Linked: true}`, or `ExileUntil{ThisLeaves: true, Linked:
+true}` for "until this leaves the battlefield". One candidate is copied,
+several are a keyed pick, none copies nothing. `CopyWhileSourceAttached`
+is also a plain `BecomeCopy` duration; it takes exactly one target. An
+"as this becomes attached" choice (Dinosaur Headdress) is `Spec.AsAttached`
+instead: no trigger, no stack.
 
 **Don't reach for this for a token copy.** "Create a token that's a
 copy of target creature" (Follow the Spirit, Kiki-Jiki) is
@@ -4661,9 +4702,22 @@ WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // 
   `PaidCost.Foraged`, read through `ctx.Foraged()` for "if you foraged";
   the cards are on `ctx.Exiled()` and the Food on
   `ctx.SacrificedPermanents()`.
-- Not yet: forage on a MANA ability (Thornvault Forager's "{T}, Forage: Add
-  two mana"), which has no either/or cost, and "cast … by foraging in
-  addition to paying their other costs" (Osteomancer Adept).
+- On a MANA ability (#5397, Thornvault Forager's "{T}, Forage: Add two
+  mana in any combination of colors") the cost is a field, not `Forage()`:
+
+  ```go
+  Cost: ManaAbilityCost{Tap: true, Forage: true},
+  ```
+
+  The activator names the way as `activate_mana_ability.cost_branch`
+  (0 exiles three graveyard cards on `exile_ids`, 1 sacrifices a Food on
+  `sacrifice_ids`); `game.ChosenManaAbilityShape` folds it into the plain
+  `ExileCards` or `SacrificeOther` clause, so declare neither beside it
+  (`Register` refuses it, and a forage off the battlefield). The
+  auto-tapper never plans the row, so give the card its plain mana row
+  too when it prints one.
+- Not yet: "cast … by foraging in addition to paying their other costs"
+  (Osteomancer Adept).
 
 ### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
 
@@ -5625,6 +5679,24 @@ go first, which is the order that leaves the least to pay. The
 activation prices at the announced X (`AbilityManaCostAtXForEffect`);
 the menu row, the enumerator and the auto-tap preview price before X is
 chosen, at 0, which only ever shows more than the activation charges.
+
+**A tax on activating (#5382, S79):** "Activated abilities of sources
+with the chosen name cost {2} more to activate" (Skyseer's Chariot) is an
+activation-scoped increase, `ActivationCostsMore(n, label, preds...)`:
+
+```go
+AsEnters:      ChooseCardNameAsEnters("Skyseer's Chariot — choose a nonland card name"),
+CostModifiers: []game.CostModifier{
+    ActivationCostsMore(2, label, OfASourceWithTheChosenNonlandName()),
+},
+```
+
+Unlike a reduction, an increase reaches a cost that prints no mana — a
+{T}-only ability, a mana ability, crew, a loyalty ability — and that
+activation then owes the {n}. Every reader asks
+`Game.AbilityChargesManaForEffect` / `ManaAbilityChargesManaForEffect`,
+never `Cost.Mana != ""`, so the payment, the enumerator, the view's
+`charged_mana_cost` and auto-tap all see it. Several increases sum.
 `OfACreatureYouControl()` is the source predicate: a creature on the
 battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
@@ -6363,8 +6435,11 @@ answers these searches with the helpers (`answerSearchByID` and the others in
 `cards/effects`) searches every zone on offer; one that cares which zones
 were searched answers the question first with `answerSearchZones`. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
-its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
-Prodigy) also reads the hand and is not covered.
+its rule. **`AlsoGraveyard: true` with `AlsoHand: true`** is "search your
+graveyard, hand, and/or library" (#5408, Say Its Name): the question offers
+all three zones (`search_other_zone` `"graveyard_and_hand"`), the searcher
+names any non-empty subset, and the library is shuffled only if it is among
+them. `answerSearchZones` names the zones one by one.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `ThenTail`, a registered tail, not on the next line:
@@ -10865,7 +10940,17 @@ return ExtraCombatAndMainAfterThisMain().Apply(ctx)            // "after this ma
 return AddPhases{Anchor: game.PhaseAnchor{Kind: game.AnchorThisPhase},
     Kinds: []game.PhaseKind{game.PhaseKindBeginning}}.Apply(ctx) // Sphinx of the Second Sun
 return AddStepAfterThisStep{Step: game.StepEnd}.Apply(ctx)     // Y'shtola Rhul
+return YouGetUpkeepStepsAfterThisPhase{N: n}.Apply(ctx)        // Obeka: "you get that many additional upkeep steps after this phase"
 ```
+
+**An added upkeep step after a phase** (#5405, CR 500.10) is a beginning
+phase of its own holding only the upkeep: its untap and draw steps are
+skipped, so nothing untaps and nobody draws, while "at the beginning of
+your upkeep" triggers fire in each one and the active player gets
+priority in each. `YouGetUpkeepStepsAfterThisPhase` adds nothing on
+another player's turn (CR 500.10a's "you get"). The steps are plan
+entries, so a restore point keeps them and the phase strip shows each
+as "+ Upkeep".
 
 Four things the engine does so a card does not:
 

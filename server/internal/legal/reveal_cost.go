@@ -18,11 +18,36 @@ import (
 // the branch, or the announced set that includes the optional behold, from
 // the move list (it is also unpayable to the view); the unbeholding set is
 // walked on its own and stays.
-func (e *enumerator) revealPayment(castID uuid.UUID, mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (ids []uuid.UUID, ok bool) {
+//
+// #5406: a behold that chooses its creature type names the type too. ONE
+// payment, as for every other cost: the type with the most objects to
+// behold (the alphabetically first on a tie), and count() of its objects,
+// the permanents first (beholdOrder). A seat with no type it has enough of
+// is not offered the set.
+func (e *enumerator) revealPayment(castID uuid.UUID, mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (ids []uuid.UUID, beholdType string, ok bool) {
 	rc := revealCostOf(mandatory, optional, chosen)
 	if rc == nil {
-		return nil, true
+		return nil, "", true
 	}
+	if rc.ChosenType {
+		var best *game.BeholdTypeOption
+		opts := e.g.BeholdTypeOptionsForEffect(e.seat, castID, rc)
+		for i := range opts {
+			if best == nil || len(opts[i].Cards) > len(best.Cards) {
+				best = &opts[i]
+			}
+		}
+		if best == nil {
+			return nil, "", false
+		}
+		return beholdOrder(e.g, e.seat, best.Cards)[:rc.BeholdCount()], best.Type, true
+	}
+	ids, ok = e.oneRevealPayment(castID, rc)
+	return ids, "", ok
+}
+
+// oneRevealPayment is revealPayment's one-card reveal or behold.
+func (e *enumerator) oneRevealPayment(castID uuid.UUID, rc *game.RevealCost) (ids []uuid.UUID, ok bool) {
 	options := e.g.RevealCostOptionsForEffect(e.seat, castID, rc)
 	if len(options) == 0 {
 		return nil, false

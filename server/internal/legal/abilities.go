@@ -460,7 +460,14 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// ADR 0048 addendum §14's rule for a cast, one path over.
 		var basePay abilityManaPayment
 		perTarget := false
-		if ab.Cost.Mana != "" {
+		// #5382: an activation cost increase (Skyseer's Chariot) can
+		// make a cost that prints no mana owe some — a {T}-only, crew or
+		// loyalty ability — so the gate is the engine's own question,
+		// the one ActivateCatalogAbility pays on. Asked with no targets:
+		// a tax that reads them is priced per announcement below.
+		chargesMana := g.AbilityChargesManaForEffect(e.seat, *source, zone, ab, nil) ||
+			(ab.Cost.Mana == "" && g.AbilityPriceReadsTargetsForEffect(ab))
+		if chargesMana {
 			perTarget = g.AbilityPriceReadsTargetsForEffect(ab)
 			if !perTarget {
 				var ok bool
@@ -558,6 +565,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			permanentSets = e.exilePermanentPayments(g.ExilePermanentsOptionsForEffect(e.seat, source.InstanceID, ec), ec, source.InstanceID)
 			if len(permanentSets) == 0 {
 				continue
+			}
+		}
+		// #5401: the totals those payments announce, ascending, for
+		// exileTotalDominated.
+		var exileTotals []int
+		if ec := ab.Cost.ExilePermanents; game.ExileTotalManaValueX(ec) {
+			for _, perms := range permanentSets {
+				if t, ok := g.ExileTotalManaValueForEffect(e.seat, ec, perms); ok {
+					exileTotals = append(exileTotals, t)
+				}
 			}
 		}
 		// #759: a "Tap another untapped creature you control" cost
@@ -816,6 +833,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					if !game.StepsBoundByCountersRemoved(steps) &&
 						!game.SacrificeCountFromX(ab.Cost.SacrificeOther) && !game.TapOthersCountFromX(ab.Cost.TapOthers) &&
 						!game.DiscardCountFromX(ab.Cost.DiscardCards) && !game.DiscardManaValueX(ab.Cost.DiscardCards) &&
+						!game.ExileTotalManaValueX(ab.Cost.ExilePermanents) &&
 						!game.SacrificeManaValueX(ab.Cost.SacrificeOther) {
 						continue
 					}
@@ -971,7 +989,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					// has to hold with these named too. An Eldrazi Spawn
 					// that is both the sacrifice and the mana is a move the
 					// engine refuses; offering it is #544.
-					if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
+					if chargesMana && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
 						!e.payableExcluding(abilityMana, xValue, phyrexianLife, e.abilitySpend(source),
 							game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
 						continue
@@ -981,6 +999,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 						for _, tr := range tapsAtRungs(tapSets, loyaltyXRungs(ab.Cost, ann.xValue, loyaltyFloor, loyaltyCeiling)) {
 							taps := tr.taps
 							tapXValue := xValue
+							// #5401: "with total mana value X" announces the
+							// exiled artifacts' total as X.
+							if game.ExileTotalManaValueX(ab.Cost.ExilePermanents) {
+								if total, ok := g.ExileTotalManaValueForEffect(e.seat, ab.Cost.ExilePermanents, perms); ok {
+									tapXValue = total
+								}
+							}
 							if game.TapOthersCountFromX(ab.Cost.TapOthers) {
 								tapXValue = len(taps)
 							}
@@ -995,7 +1020,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// mana creature that is both the tap and the mana
 							// is a move the engine refuses. #1600: and for the
 							// exiled permanents (ActivationAutoTapExclusions).
-							if ab.Cost.Mana != "" && (len(taps) > 0 || len(perms) > 0) &&
+							if chargesMana && (len(taps) > 0 || len(perms) > 0) &&
 								!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, e.abilitySpend(source),
 									game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps, perms)) {
 								continue
@@ -1020,6 +1045,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// (#544), and costs no budget.
 								if ann.bounded && !g.TargetsWithinBoundForEffect(ann.steps, targets,
 									game.AnnouncedBound{X: tapXValue, CountersRemoved: cc.total}) {
+									continue
+								}
+								// #5401: a larger exile than these targets
+								// need is never offered.
+								if ann.bounded && exileTotalDominated(g, ann.steps, targets, exileTotals, tapXValue, cc.total) {
 									continue
 								}
 								budget--
@@ -1506,6 +1536,17 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 	}
 	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
 	switch {
+	case game.ExileTotalManaValueX(ec):
+		// #5401: "with total mana value X" announces the payment's total
+		// as X, so which artifacts are exiled decides which targets are
+		// legal: one payment per total the candidates reach, the
+		// cheapest to keep standing for it, as Kozilek's discard offers
+		// one per mana value (manaValueDiscardPayments).
+		// Every total is offered: the emitter keeps a (payment, target)
+		// pair only when no smaller total admits the same target
+		// (exileTotalDominated), so each target is paired with the
+		// cheapest payment that reaches it.
+		return e.g.ExileTotalManaValuePaymentsForEffect(e.seat, ec, ordered, 0)
 	case ec.ShareCardType:
 		var out [][]uuid.UUID
 		seen := map[string]bool{}
@@ -1547,6 +1588,21 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 		out = append(out, ordered)
 	}
 	return out
+}
+
+// exileTotalDominated reports whether a "with total mana value X"
+// payment announcing `x` (#5401) exiles more than `targets` need: some
+// smaller total in `totals` (the payments on offer, ascending) admits
+// the same targets, so that cheaper payment is the move and this one is
+// not offered. False for every other cost (`totals` is empty).
+func exileTotalDominated(g *game.Game, steps []game.AnnouncedClause, targets []game.TargetRef, totals []int, x, countersRemoved int) bool {
+	best := -1
+	for _, t := range totals {
+		if t < x && t > best {
+			best = t
+		}
+	}
+	return best >= 0 && g.TargetsWithinBoundForEffect(steps, targets, game.AnnouncedBound{X: best, CountersRemoved: countersRemoved})
 }
 
 // onBattlefield reports whether `id` names a permanent on the
@@ -2280,6 +2336,10 @@ type manaParams struct {
 	// ADR 0131 §2: how many symbols of the mana component are paid with
 	// 2 life each — ManaAbilityParams.PhyrexianLife.
 	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// #5397: the branch of an either/or cost the move pays (forage: 0
+	// exiles three graveyard cards named in exile_ids, 1 sacrifices the
+	// Food named in sacrifice_ids) — activateParams.CostBranch's field.
+	CostBranch *int `json:"cost_branch,omitempty"`
 }
 
 // manaMoves enumerates mana abilities on the seat's permanents and —
@@ -2373,7 +2433,12 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		return
 	}
 	abilities, origins := game.ManaAbilitiesWithOrigins(*source)
-	for idx, ab := range abilities {
+	// #5397: an either/or cost (forage) is walked once per branch, each
+	// folded by game.ChosenManaAbilityShape — the engine's own fold — so
+	// a move pays exactly the branch it names, and a branch the seat
+	// can't pay is no move (CR 118.3).
+	for _, mr := range expandManaCostBranches(abilities) {
+		idx, ab := mr.row, mr.ab
 		// CR 113.6 (#1228): the ability has to function from the zone
 		// the card is in. Same predicate the engine gates on, so a
 		// Forest sitting in a hand is never offered as a mana source
@@ -2471,7 +2536,10 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			// it affordable, and none when mana pays.
 			manaLife int
 		)
-		if ab.ManaCost != "" {
+		// #5382: a tap-only mana ability an activation cost increase
+		// taxes owes mana too (CR 605.3 through 602.2b).
+		manaCharged := g.ManaAbilityChargesManaForEffect(e.seat, *source, ab)
+		if manaCharged {
 			cost, err := g.ManaAbilityManaCostForEffect(e.seat, *source, ab)
 			if err != nil {
 				continue
@@ -2590,7 +2658,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 					// #2215: the mana component again, now that this
 					// payment's picks are known — none of them may be
 					// tapped for it (ManaActivationAutoTapExclusions).
-					if ab.ManaCost != "" && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
+					if manaCharged && (len(sacs) > 0 || len(taps) > 0 || len(exiles) > 0 ||
 						len(manaDiscardIDs) > 0 || len(manaExileIDs) > 0) &&
 						!g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend,
 							game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{
@@ -2612,6 +2680,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						}
 						label += sacrificeLabel(g, sacs)
 						label += exileLabel(g, exiles)
+						// #5397: a forage's graveyard branch names its
+						// cards, as the Food branch's sacrifice label does.
+						if mr.branch != nil {
+							label += exileLabel(g, manaExileIDs)
+						}
 						label += tapLabel(g, taps)
 						label += cc.label(g)
 						handN := e.handDiscardCount(ab.DiscardCards, source.InstanceID)
@@ -2660,8 +2733,9 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 								DiscardIDs:        idStrings(manaDiscardIDs),
 								ExileIDs:          idStrings(manaExileIDs),
 								ExilePermanentIDs: idStrings(exiles),
-								AutoTap:           ab.ManaCost != "",
+								AutoTap:           manaCharged,
 								PhyrexianLife:     manaLife,
+								CostBranch:        mr.branch,
 							}),
 						})
 					}

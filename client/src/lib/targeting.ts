@@ -5,6 +5,7 @@ import type {
   AdditionalCostView,
   AlternativeCostView,
   AssistOfferView,
+  BeholdTypeOption,
   CardView,
   DivideView,
   GameView,
@@ -169,6 +170,10 @@ export interface CastChoices {
   // branch shows. Set only after the branch is chosen; the server refuses
   // it on a cast that does not pay one.
   revealIDs?: string[];
+  // #5406: the creature type a behold that chooses its type names. Set
+  // before `revealIDs`, which are then that type's cards; rides cast_spell
+  // as `behold_type`.
+  beholdType?: string;
   // CR 107.4f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
@@ -312,6 +317,8 @@ export function applyCastChoices(
     params.blight_ids = choices.blightIDs;
   if (choices.revealIDs !== undefined && choices.revealIDs.length > 0)
     params.reveal_ids = choices.revealIDs;
+  if (choices.beholdType !== undefined && choices.beholdType !== "")
+    params.behold_type = choices.beholdType;
   if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
     params.exile_permanent_ids = choices.exilePermanentIDs;
   if (choices.returnIDs !== undefined && choices.returnIDs.length > 0)
@@ -1587,6 +1594,12 @@ export interface ClaimedRevealCost {
   // exile it"), so the prompt says the card is exiled, not shown.
   exile: boolean;
   options: string[];
+  // How many to pick: 1, or a behold N's N (#5406).
+  count: number;
+  // #5406: the creature types a behold that chooses its type could be
+  // paid with, each with its cards. Absent for every other reveal. Once
+  // the cast has a `beholdType`, `options` is that type's cards.
+  types?: BeholdTypeOption[];
 }
 
 // castRevealCost is the reveal / behold cost the chosen either/or branch
@@ -1601,11 +1614,15 @@ export function castRevealCost(
   for (const index of choices?.optionalCosts ?? []) {
     const offer = optionalCostsOf(card)[index];
     if (offer?.reveal) {
+      const types = offer.behold_count !== undefined ? (offer.behold_types ?? []) : undefined;
+      const chosen = types?.find((t) => t.type === choices?.beholdType);
       return {
         label: offer.label ?? (offer.behold ? "Behold" : "Reveal a card from your hand"),
         behold: offer.behold === true,
         exile: false,
-        options: offer.reveal_options?.cards ?? [],
+        options: chosen ? chosen.cards : (offer.reveal_options?.cards ?? []),
+        count: offer.behold_count ?? 1,
+        types,
       };
     }
   }
@@ -1619,6 +1636,7 @@ export function castRevealCost(
     behold: branch.behold === true,
     exile: branch.behold_exile === true,
     options: branch.reveal_options?.cards ?? [],
+    count: 1,
   };
 }
 

@@ -101,6 +101,8 @@ var activatedRowScopes = map[string]rowScope{
 	// #1600: "Exile a creature you control" — its words, and the
 	// permanents on the battlefield that could pay.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
+	// #5401: "with total mana value X" — the printed rule.
+	"ExilePermanentTotalManaValueX": rowPublic,
 	// #4799: "Unattach an Equipment from <this>" — its words, and the
 	// Equipment attached to the permanent, on the battlefield.
 	"UnattachLabel": rowPublic, "UnattachOptions": rowPublic,
@@ -180,6 +182,10 @@ var manaRowScopes = map[string]rowScope{
 	// #1369: the cards in the controller's HAND that could pay.
 	"DiscardCostOptions": rowHiddenZone,
 	"ExileCostOptions":   rowHiddenUnlessGraveyard,
+	// #5397: forage on a mana ability — the branches stay on the public
+	// row (a graveyard and a Food are public); publicCostBranches clears
+	// a discard branch's hand cards should one ever ship.
+	"CostBranches": rowPublic,
 }
 
 // fillingPointer is the pointer types fillEveryField is inside of.

@@ -743,7 +743,8 @@ type AbilityCost struct {
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
 	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LifeX || c.LoyaltyX || SacrificeManaValueX(c.SacrificeOther) ||
-		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards) ||
+		ExileTotalManaValueX(c.ExilePermanents)
 }
 
 // LoyaltyDelta is the loyalty counters an activation of this cost puts
@@ -1857,6 +1858,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, sacrifices, params.ReturnIDs)); err != nil {
 		return err
 	}
+	// #5401: "Exile one or more other artifacts you control with total
+	// mana value X". X was announced with the activation (CR 601.2b via
+	// CR 602.2b) and bounds the targets; the payment (CR 601.2h) must add
+	// up to exactly that X, so a set worth any other total is the
+	// activator announcing one number and paying another.
+	if ExileTotalManaValueX(ab.Cost.ExilePermanents) {
+		if total, ok := g.ExileTotalManaValueForEffect(playerID, ab.Cost.ExilePermanents, params.ExilePermanentIDs); !ok || total != params.XValue {
+			return errExileTotalNotX
+		}
+	}
 	// #2028: "Return this enchantment to its owner's hand". Nothing to
 	// choose — the source IS the payment — so this is the zone check and
 	// the one-permanent-one-component check (CR 118.3) against the
@@ -2219,7 +2230,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// and the spend riders are judged on what the payment was FOR.
 	var riderCtx ManaSpendContext
 	var riderSource Card
-	if ab.Cost.Mana != "" {
+	// #5382: an activation cost increase (Skyseer's Chariot) can owe
+	// mana on a cost that printed none — a {T}-only ability, a crew or a
+	// loyalty cost (CR 602.2b through 601.2f, CR 606.4) — so the gate is
+	// the priced cost, with this activation's targets, not the printed
+	// string.
+	if g.AbilityChargesManaForEffect(playerID, *source, srcZone, ab, params.Targets) {
 		riderCtx, riderSource = ManaSpendForAbility(*source), *source
 		// ADR 0155 Decision 7: which row the mana pays for, so a
 		// "spend mana as though any color to activate those abilities"

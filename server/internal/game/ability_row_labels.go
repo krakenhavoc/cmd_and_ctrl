@@ -134,6 +134,8 @@ func blockRuleRows(v reflect.Value) []string {
 	for _, r := range rules {
 		l := strings.TrimSpace(r.Label)
 		switch {
+		case r.NotAlone:
+			out = append(out, "This creature can't block alone.")
 		case r.Count != nil || r.Limit != nil:
 			if l != "" {
 				out = append(out, capital(l)+".")

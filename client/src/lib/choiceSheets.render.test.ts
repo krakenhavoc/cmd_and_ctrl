@@ -571,6 +571,65 @@ describe("a card grid is a sheet", () => {
       expect(barButton(L.searchLibraryOnly)).toBeNull();
       expect(barButton(L.searchLibraryAndGraveyard)).toBeNull();
     });
+
+    describe("graveyard, hand, and/or library (#5408)", () => {
+      const threeZones = () =>
+        snap({
+          kind: "search_library",
+          reason: "Say Its Name — a card named Altanak, the Thrice-Called",
+          search_max: 1,
+          search_zones_pending: true,
+          search_other_zone: "graveyard_and_hand",
+          options: [],
+        });
+
+      it("Enter searches all three zones", () => {
+        const { sent } = mount(threeZones());
+        expect(nameOf(barPrimary()!)).toBe(L.searchEveryZone);
+        expect(barButton("Find nothing")).toBeNull();
+        expect(sheetText()).toContain("Choose only your graveyard or hand");
+        keyFromBody("Enter");
+        expect(sent).toEqual([
+          {
+            type: "resolve_choice",
+            params: { choice_id: "choice-1", search_zones: ["library", "graveyard", "hand"] },
+          },
+        ]);
+      });
+
+      it("offers the library alone, the other two together, and each alone", () => {
+        const cases: [string, string[]][] = [
+          [L.searchLibraryOnly, ["library"]],
+          [L.searchGraveyardAndHand, ["graveyard", "hand"]],
+          [L.searchGraveyardOnly, ["graveyard"]],
+          [L.searchHandOnly, ["hand"]],
+        ];
+        for (const [label, zones] of cases) {
+          const { sent } = mount(threeZones());
+          expect(barSecondaries()).toContain(barButton(label)!);
+          click(barButton(label)!);
+          expect(sent).toEqual([
+            { type: "resolve_choice", params: { choice_id: "choice-1", search_zones: zones } },
+          ]);
+          cleanup();
+        }
+      });
+
+      it("a search that skipped the library says so", () => {
+        mount(
+          snap({
+            kind: "search_library",
+            reason: "Say Its Name — a card named Altanak, the Thrice-Called",
+            search_max: 1,
+            search_other_zone: "graveyard_and_hand",
+            search_library_skipped: true,
+            options: [],
+          }),
+        );
+        expect(sheetText()).toContain("Nothing you searched matches");
+        expect(sheetText()).toContain("your library wasn't searched");
+      });
+    });
   });
 
   it("search: graveyard, hand and library copies are three tiles, each marked (#3988)", () => {

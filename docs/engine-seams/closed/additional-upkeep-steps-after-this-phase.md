@@ -1,0 +1,6 @@
+---
+title: "Additional upkeep steps after this phase"
+date: 2026-11-09
+issues: [5405]
+---
+**Additional upkeep steps after this phase** (#5405, [ADR 0059](decisions/0059-turn-machinery.md), CR 500.8, 500.10, 500.10a, 503.1) — "you get that many additional upkeep steps after this phase" is `Game.AddUpkeepStepsAfterThisPhaseForEffect` (`game/turn_plan.go`), used through `effects.YouGetUpkeepStepsAfterThisPhase`. CR 500.10 makes each step a beginning phase of its own with its untap and draw steps skipped, so each is one turn-plan entry, an upkeep with a fresh phase id, spliced directly after the phase in progress and ahead of anything added there before (CR 500.8, newest first). The cursor's ordinary upkeep entry does the rest: `EventBeginUpkeep` fires "at the beginning of your upkeep" triggers and the next-upkeep delayed triggers in each, `UpkeepsBegun` counts it, and the active player gets priority. "You get" adds nothing on another player's turn (CR 500.10a). The queue is the turn plan, which the snapshot (`turnPlan`) and the wire (`TurnView.upcoming`) already carry, so no new field was needed; the log counts the steps ("two additional upkeep steps"), the client phase strip marks each as "+ Upkeep", and the heuristic bot no longer holds mana in an upkeep that no main phase follows. **Cards:** Obeka, Splitter of Seconds (Full).
