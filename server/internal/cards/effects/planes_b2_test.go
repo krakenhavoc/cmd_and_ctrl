@@ -333,3 +333,194 @@ func TestStormcageGivesCreatureCardsEscapeAndChaosDetains(t *testing.T) {
 		t.Error("escape outlived the plane")
 	}
 }
+
+// --- North Pole Research Base ------------------------------------------------
+
+func TestNorthPoleResearchBaseGivesAnOpponentACardAndATreasureAtYourUpkeep(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeNorthPole)
+	g, _ := newPlaneGame(t, planeNorthPole)
+	next := toNextUpkeep(t, g)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	before := opp.Hand.Size()
+	if asked := advanceAnsweringPlayerTargets(t, g, game.StepDraw, opp.ID); asked != 1 {
+		t.Fatalf("the upkeep ability asked for a target %d times, want once", asked)
+	}
+	passPriorityAroundTable(t, g)
+	if got := opp.Hand.Size(); got != before+1 {
+		t.Errorf("the opponent's hand is %d, want %d", got, before+1)
+	}
+	if n := planesB2Count(g, "Treasure", opp.ID); n != 1 {
+		t.Errorf("the opponent has %d Treasures, want 1", n)
+	}
+	_ = next
+}
+
+func TestNorthPoleResearchBaseChaosMakesAnAlienAndStunsAnOpponentsCreature(t *testing.T) {
+	g, _ := newPlaneGame(t, planeNorthPole)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	theirs := b12Creature(g, opp.ID, "Wolf", "Creature — Wolf", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if n := planesB2Count(g, "Alien", me.ID); n != 1 {
+		t.Fatalf("%d Aliens after the chaos ability resolved, want 1", n)
+	}
+	answerPickTarget(t, g, theirs)
+	passPriorityAroundTable(t, g)
+	c := tmtB1Card(t, g, theirs)
+	if !c.Tapped || c.Counters[game.CounterStun] != 1 {
+		t.Errorf("the target is tapped %v with %d stun counters, want tapped with 1", c.Tapped, c.Counters[game.CounterStun])
+	}
+}
+
+// --- New New York ------------------------------------------------------------
+
+func TestNewNewYorkMakesNoncreatureArtifactsVehiclesAtCombat(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeNewNewYork)
+	g, _ := newPlaneGame(t, planeNewNewYork)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	golem := b12Creature(g, me.ID, "Golem", "Artifact Creature — Golem", 1, 1)
+	theirs := b12Permanent(g, g.Seats[(g.Turn.ActiveSeat+1)%4].ID, "Their Rock", "Artifact")
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	c := tmtB1Card(t, g, rock)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	c = layeredCard(t, g, rock)
+	if !c.HasSubtypeWord("Vehicle") || c.CurrentPower() != 3 || c.CurrentToughness() != 3 {
+		t.Errorf("the Rock is %d/%d with subtypes %q, want a 3/3 Vehicle", c.CurrentPower(), c.CurrentToughness(), c.Effective().Subtypes)
+	}
+	if !planesB2Keyword(t, g, rock, "flying") || !planesB2Keyword(t, g, rock, "haste") {
+		t.Error("the Rock lacks flying or haste")
+	}
+	if layeredCard(t, g, golem).HasSubtypeWord("Vehicle") {
+		t.Error("an artifact creature became a Vehicle")
+	}
+	if layeredCard(t, g, theirs).HasSubtypeWord("Vehicle") {
+		t.Error("an opponent's artifact became a Vehicle")
+	}
+	endTurn(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if layeredCard(t, g, rock).HasSubtypeWord("Vehicle") {
+		t.Error("the Rock is still a Vehicle after the turn")
+	}
+}
+
+func TestNewNewYorkChaosMakesATreasureAndAnAlien(t *testing.T) {
+	g, _ := newPlaneGame(t, planeNewNewYork)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if planesB2Count(g, "Treasure", me.ID) != 1 || planesB2Count(g, "Alien", me.ID) != 1 {
+		t.Errorf("Treasures %d, Aliens %d, want 1 each", planesB2Count(g, "Treasure", me.ID), planesB2Count(g, "Alien", me.ID))
+	}
+}
+
+// --- Ghirapur ----------------------------------------------------------------
+
+func TestGhirapurMakesPlainArtifactsFiveThreeVehicles(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeGhirapur)
+	g, _ := newPlaneGame(t, planeGhirapur)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	cart := b12Permanent(g, me.ID, "Cart", "Artifact — Vehicle")
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	c := layeredCard(t, g, rock)
+	if !c.HasSubtypeWord("Vehicle") || c.CurrentPower() != 5 || c.CurrentToughness() != 3 {
+		t.Errorf("the Rock is %d/%d, want a 5/3 Vehicle", c.CurrentPower(), c.CurrentToughness())
+	}
+	if !planesB2Keyword(t, g, rock, "trample") || !planesB2Keyword(t, g, rock, "haste") {
+		t.Error("the Rock lacks trample or haste")
+	}
+	if planesB2Keyword(t, g, cart, "trample") {
+		t.Error("a Vehicle that was already one was given trample")
+	}
+}
+
+func TestGhirapurChaosReturnsANoncreatureArtifactCard(t *testing.T) {
+	g, _ := newPlaneGame(t, planeGhirapur)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	golem := pushGraveyardCardWithTypeLineID(me, "Golem", "Artifact Creature — Golem")
+	rock := pushGraveyardCardWithTypeLineID(me, "Rock", "Artifact")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(golem)); err == nil {
+		t.Fatal("an artifact creature card was accepted as the target")
+	}
+	answerPickTarget(t, g, rock)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(rock) {
+		t.Error("the artifact card did not return to hand")
+	}
+}
+
+// --- Esper -------------------------------------------------------------------
+
+func TestEsperMakesArtifactSpellsCostOneLess(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeEsper)
+	g, _ := newPlaneGame(t, planeEsper)
+	advanceToMain(t, g)
+	me, them := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	if got := priceInHand(t, g, me, "My Chalice", "Artifact", "{2}"); got != 1 {
+		t.Errorf("the planar controller's artifact spell costs %d, want 1", got)
+	}
+	if got := priceInHand(t, g, them, "Their Chalice", "Artifact", "{2}"); got != 1 {
+		t.Errorf("an opponent's artifact spell costs %d, want 1", got)
+	}
+	if got := priceInHand(t, g, me, "My Bear", "Creature — Bear", "{1}{G}"); got != 2 {
+		t.Errorf("a creature spell costs %d, want 2", got)
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if got := priceInHand(t, g, me, "My Chalice", "Artifact", "{2}"); got != 2 {
+		t.Errorf("the artifact spell costs %d after the plane left, want 2", got)
+	}
+}
+
+func TestEsperChaosMakesWhiteBlueBlackCreaturesArtifactsAndGivesThemKeywords(t *testing.T) {
+	g, _ := newPlaneGame(t, planeEsper)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	w := b12Creature(g, me.ID, "White Bear", "Creature — Bear", 2, 2)
+	r := b12Creature(g, me.ID, "Red Bear", "Creature — Bear", 2, 2)
+	golem := b12Creature(g, me.ID, "Golem", "Artifact Creature — Golem", 1, 1)
+	theirs := b12Creature(g, opp.ID, "Their White Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			switch g.Battlefield.Cards[i].InstanceID {
+			case w, theirs:
+				g.Battlefield.Cards[i].Colors = []string{"W"}
+			case r:
+				g.Battlefield.Cards[i].Colors = []string{"R"}
+			}
+		}
+	})
+	g.BumpLayerVersionForTest()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	if !layeredCard(t, g, w).IsArtifact() {
+		t.Error("the white creature did not become an artifact")
+	}
+	if layeredCard(t, g, r).IsArtifact() || layeredCard(t, g, theirs).IsArtifact() {
+		t.Error("a red creature or an opponent's creature became an artifact")
+	}
+	for _, id := range []uuid.UUID{w, golem} {
+		for _, kw := range []string{"vigilance", "menace", "lifelink"} {
+			if !planesB2Keyword(t, g, id, kw) {
+				t.Errorf("an artifact creature lacks %s", kw)
+			}
+		}
+	}
+	if planesB2Keyword(t, g, r, "lifelink") {
+		t.Error("a non-artifact creature gained lifelink")
+	}
+}

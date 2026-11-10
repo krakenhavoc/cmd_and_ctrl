@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -29,3 +31,43 @@ func (l planesB2LoseLife) Apply(ctx *Context) error {
 
 // planesB2Alien is the 2/2 white Alien creature token Doctor Who's planes make.
 func planesB2Alien() game.Card { return TokenCard("2/2 white Alien") }
+
+// planesB2CrewGrant is the granted bundle "Crew N": the ability a plane gives
+// to the artifacts it makes into Vehicles (New New York, Ghirapur). Keyed
+// by the granting plane, an on-disk key.
+func planesB2CrewGrant(key string, n int) AbilityGrant {
+	label := fmt.Sprintf("Crew %d", n)
+	return AbilityGrant{
+		Key: key,
+		Activated: []ActivatedAbility{{
+			Label:   label,
+			Cost:    CrewCost(n),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("This Vehicle"),
+		}},
+		Text: label,
+	}
+}
+
+// planesB2BecomeVehicles is "until end of turn, <matching artifacts you
+// control> become <p>/<t> Vehicles in addition to their other types and gain
+// <keywords> and crew <n>" (New New York, Ghirapur). The set is locked as the
+// ability resolves (CR 611.2c, the Ghirapur ruling), and the Vehicle type, the
+// base power and toughness, the keywords and the crew ability are ONE
+// effect at one timestamp (CR 613.7). A Vehicle is a creature only while
+// crewed (CR 301.7), so no creature type is granted.
+func planesB2BecomeVehicles(label, crewKey string, match CardPredicate, power, toughness int, keywords ...string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		mods := []game.Mod{game.AddSubtypesMod("Vehicle")}
+		mods = append(mods, game.SetBasePTMods(power, toughness)...)
+		mods = append(mods, game.AddKeywordsMod(keywords...))
+		return GrantAbilitiesFor{
+			Match:    And(Artifact(), YouControl(), match),
+			Keys:     []string{crewKey},
+			Also:     mods,
+			Duration: DurationUntilEndOfTurn(ctx),
+			Label:    label,
+		}.Apply(ctx)
+	}
+}
