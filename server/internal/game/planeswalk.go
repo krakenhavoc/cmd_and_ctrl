@@ -52,7 +52,10 @@ import (
 // EventPlaneswalkFrom — a player planeswalked away from a planar card
 // (CR 901.11b). Actor is the player who planeswalked, CardID the card
 // that left the face-up set (now on the bottom of the planar deck).
-// Emitted once per card, before EventPlaneswalkTo.
+// Amount is how many counters of every kind it had as it left, last-known
+// information for "equal to the number of <kind> counters on it" (Mount
+// Keralia: a plane keeps one kind). Emitted once per card, before
+// EventPlaneswalkTo.
 const EventPlaneswalkFrom EventKind = "planeswalk_from"
 
 // EventPlaneswalkTo — a player planeswalked to a plane (CR 901.11b).
@@ -203,7 +206,13 @@ func (g *Game) planeswalkAwayFromLocked(player, cardID uuid.UUID) {
 	if err != nil {
 		return
 	}
-	// CR 901.7a: turned face down, it is a new object.
+	// CR 901.7a: turned face down, it is a new object. The counters it had
+	// are told to "when you planeswalk away" as last-known information
+	// (EventPlaneswalkFrom.Amount).
+	counters := 0
+	for _, n := range c.Counters {
+		counters += n
+	}
 	c.ClearKnown()
 	c.Counters = nil
 	c.ObjectEpoch++
@@ -213,7 +222,7 @@ func (g *Game) planeswalkAwayFromLocked(player, cardID uuid.UUID) {
 	// A face-down plane grants nothing: a spell its static gave split
 	// second (Lake Silencio) loses it here (ADR 0216 slice 4).
 	g.refreshSplitSecondForBoardChangeLocked()
-	g.EmitEvent(Event{Kind: EventPlaneswalkFrom, Actor: player, CardID: cardID, PublicNames: map[uuid.UUID]string{cardID: c.Name}})
+	g.EmitEvent(Event{Kind: EventPlaneswalkFrom, Actor: player, CardID: cardID, Amount: counters, PublicNames: map[uuid.UUID]string{cardID: c.Name}})
 }
 
 // planeswalkToTopLocked turns the top card of the planar deck face up
@@ -239,4 +248,27 @@ func (g *Game) planeswalkToTopLocked(player uuid.UUID) {
 	g.planarFaceUpLocked().PushTop(c)
 	g.refreshSplitSecondForBoardChangeLocked()
 	g.EmitEvent(Event{Kind: EventPlaneswalkTo, Actor: player, CardID: c.InstanceID, PublicNames: map[uuid.UUID]string{c.InstanceID: c.Name}})
+}
+
+// planarCardLocked finds the planar card `id` in the face-up set or the
+// planar deck. The planar zones are outside the card index, so a reader that
+// needs a plane's characteristics as a damage source (damageSourceLKILocked)
+// looks here.
+//
+// Caller must hold g.mu.
+func (g *Game) planarCardLocked(id uuid.UUID) (Card, bool) {
+	if id == uuid.Nil || g.Planechase == nil {
+		return Card{}, false
+	}
+	for _, z := range []*Zone{g.PlanarFaceUp, g.PlanarDeck} {
+		if z == nil {
+			continue
+		}
+		for _, c := range z.Cards {
+			if c.InstanceID == id {
+				return c, true
+			}
+		}
+	}
+	return Card{}, false
 }

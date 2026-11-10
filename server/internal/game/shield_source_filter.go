@@ -160,13 +160,18 @@ type DamageSourceFilter struct {
 	// with SourceControllerPlayer.
 	Controller       SourceControllerRel `json:"controller,omitempty"`
 	ControllerPlayer uuid.UUID           `json:"controllerPlayer,omitempty"`
+
+	// Names are "sources named <name>" (Mount Keralia's "planes named Mount
+	// Keralia"): the source must be named one of them, read as the damage
+	// would be dealt, a plane's or a permanent's name alike. Additive.
+	Names []string `json:"names,omitempty"`
 }
 
 // IsZero reports whether f asks nothing.
 func (f DamageSourceFilter) IsZero() bool {
 	return len(f.Except) == 0 && len(f.ExceptObjects) == 0 && !f.PowerBounded && f.PowerAtMost == 0 &&
 		!f.Colorless && len(f.NoCounters) == 0 && f.Combat == SourceCombatAny &&
-		f.Controller == SourceControllerAny && f.ControllerPlayer == uuid.Nil
+		f.Controller == SourceControllerAny && f.ControllerPlayer == uuid.Nil && len(f.Names) == 0
 }
 
 // clone deep-copies f.
@@ -177,6 +182,7 @@ func (f DamageSourceFilter) clone() DamageSourceFilter {
 		f.ExceptObjects = nil
 	}
 	f.NoCounters = copyStrings(f.NoCounters)
+	f.Names = copyStrings(f.Names)
 	return f
 }
 
@@ -216,6 +222,11 @@ func sourceFilterProblem(f DamageSourceFilter) string {
 	for _, k := range f.NoCounters {
 		if k == "" {
 			return "a preventFromSource source filter names an empty counter kind"
+		}
+	}
+	for _, n := range f.Names {
+		if n == "" {
+			return "a preventFromSource source filter names an empty source name"
 		}
 	}
 	return ""
@@ -323,6 +334,9 @@ func sourceFilterMatches(e ScopedEffect, f DamageSourceFilter, v damageSourceVie
 		if v.permanent && v.ref == r {
 			return false
 		}
+	}
+	if len(f.Names) > 0 && !slices.Contains(f.Names, v.ch.Name) {
+		return false
 	}
 	if f.PowerBounded && v.power > f.PowerAtMost {
 		return false

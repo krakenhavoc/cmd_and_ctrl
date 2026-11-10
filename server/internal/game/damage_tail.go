@@ -496,6 +496,12 @@ func (g *Game) damageSourceLKILocked(sourceID uuid.UUID) *Characteristic {
 	}
 	c, ok := g.LookupCardForEffect(sourceID)
 	if !ok {
+		// A plane is outside the card index (ADR 0216 §6): face up in the
+		// command zone, or just planeswalked away from, on the bottom of
+		// the planar deck (Mount Keralia's damage on the way out).
+		c, ok = g.planarCardLocked(sourceID)
+	}
+	if !ok {
 		return nil
 	}
 	// CR 202.3e: a spell on the stack counts its announced X.

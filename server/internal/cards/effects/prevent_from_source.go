@@ -160,6 +160,10 @@ const (
 	// chapter II. Nothing is registered when that permanent is no longer
 	// the object the ability came from (CR 611.2b, CR 400.7).
 	ShieldWhileSourceRemains
+	// ShieldRestOfTheGame is "this game" (CR 611.2a: an effect with no stated
+	// duration lasts until the game ends) — Mount Keralia's chaos ability.
+	// It starts whatever happens to the source, which it does not depend on.
+	ShieldRestOfTheGame
 )
 
 // duration is the shield's game.Duration, or false when the effect never
@@ -170,6 +174,8 @@ func (l ShieldLasts) duration(ctx *Context) (game.Duration, bool) {
 		return ctx.Game.UntilEndOfCombatDuration()
 	case ShieldWhileSourceRemains:
 		return DurationWhileSourceRemains(ctx, ctx.Source())
+	case ShieldRestOfTheGame:
+		return game.Duration{Kind: game.Indefinite}, true
 	}
 	return game.Duration{}, true
 }

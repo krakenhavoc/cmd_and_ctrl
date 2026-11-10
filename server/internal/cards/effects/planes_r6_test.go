@@ -286,3 +286,55 @@ func TestMirroredDepthsChaosCastsTheRevealedNonlandCardFree(t *testing.T) {
 		t.Error("the card is not on the stack")
 	}
 }
+
+var planeMountKeralia = planeFixture{"e0dc9986-1099-4189-bfff-8f41bab9019d", "Mount Keralia", "Plane — Regatha"}
+
+func TestMountKeraliaCountsAtEndStepsAndBlowsUpOnPlaneswalkAway(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeMountKeralia)
+	g, plane := newPlaneGame(t, planeMountKeralia)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	mine := b12Push(g, me.ID, "Mine", "Creature — Bear", "", 2, 9)
+	theirs := b12Push(g, opp.ID, "Theirs", "Creature — Bear", "", 2, 9)
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	up, _ := faceUpPlane(g, planeMountKeralia.Oracle)
+	if up.Counters["pressure"] != 1 {
+		t.Fatalf("pressure counters after one end step: %d, want 1", up.Counters["pressure"])
+	}
+	g.WithWriteLock(func() { _, _ = g.PutCountersOnFaceUpPlanarCardForEffect(plane.InstanceID, "pressure", 2) })
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{mine, theirs} {
+		if got := damageOn(t, g, id); got != 3 {
+			t.Errorf("a creature took %d damage on the planeswalk away, want 3", got)
+		}
+	}
+}
+
+func TestMountKeraliaChaosPreventsItsDamageToYourPermanentsForGood(t *testing.T) {
+	g, plane := newPlaneGame(t, planeMountKeralia)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	mine := b12Push(g, me.ID, "Mine", "Creature — Bear", "", 2, 9)
+	theirs := b12Push(g, opp.ID, "Theirs", "Creature — Bear", "", 2, 9)
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatalf("a blank triggered the chaos ability")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	g.WithWriteLock(func() { _, _ = g.PutCountersOnFaceUpPlanarCardForEffect(plane.InstanceID, "pressure", 2) })
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := damageOn(t, g, mine); got != 0 {
+		t.Errorf("the planar controller's creature took %d, want it prevented", got)
+	}
+	if got := damageOn(t, g, theirs); got != 2 {
+		t.Errorf("an opponent's creature took %d, want 2", got)
+	}
+}
