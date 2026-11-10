@@ -6167,6 +6167,17 @@ finality counter works the same way (Leonardo, Sewer Samurai, whose
 widened in place (see [snapshots.md](snapshots.md)): "Mutant, Ninja, or
 Turtle spells" is two permissions with the same rider.
 
+"Cards in your graveyard you've surveilled this turn" (Eye of Duskmantle,
+#5429) is `Filter: game.PermissionFilter{SurveilledThisTurn: true}` on a
+graveyard permission. It reads `Card.SurveilledThisTurn()`: a surveil's
+graveyard leg marks each card it really puts into the graveyard
+(`Card.Surveilled`, [game/surveilled_cards.go](../server/internal/game/surveilled_cards.go)),
+whether or not anything is reading it, the mark is forgotten on any move, and
+"this turn" is the graveyard arrival record's. A milled or discarded card is
+not surveilled; "put there from anywhere other than the battlefield this turn"
+(Banon) is `PutInGraveyardThisTurn`. A card predicate that needs the same fact
+calls `c.SurveilledThisTurn()`.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse

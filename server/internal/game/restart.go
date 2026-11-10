@@ -402,6 +402,7 @@ func restartCards(c Card) []Card {
 		card.CommanderReturnDue = false
 		card.PutInGraveyardFrom = ""
 		card.PutInGraveyardThisTurn = false
+		card.Surveilled = false
 		card.FaceDownListed = nil
 		card.effective = nil
 	}
