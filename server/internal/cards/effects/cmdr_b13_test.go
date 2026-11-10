@@ -285,3 +285,50 @@ func TestCmdrB13ReunionReturnsCreaturesUpToTenPowerAndExilesItself(t *testing.T)
 		t.Error("Reunion of the House went to the graveyard instead of exile")
 	}
 }
+
+const cmdrB13TempestOracle = "e86bd848-d712-47c5-a82b-8fd5ce1de76a"
+
+func TestCmdrB13TempestTechniqueCountsEnchantmentsAndOnlyYourCreatures(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	mine := auraBear(g, me.ID)
+	theirs := auraBear(g, opp.ID)
+	b12Permanent(g, me.ID, "Pacifism Shrine", "Enchantment")
+	b12Permanent(g, opp.ID, "Their Shrine", "Enchantment")
+	if err := castCatalogSpellErr(t, g, "Tempest Technique", auraTypeLine, cmdrB13TempestOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: theirs}}); err == nil {
+		t.Fatal("enchanted a creature the caster doesn't control")
+	}
+	auraCast(t, g, "Tempest Technique", cmdrB13TempestOracle, mine)
+	// The shrine and the Aura: +2/+2. An opponent's enchantment doesn't count.
+	if p, tt := effectivePower(t, g, mine), effectiveToughness(t, g, mine); p != 4 || tt != 4 {
+		t.Errorf("enchanted creature is %d/%d, want 4/4", p, tt)
+	}
+}
+
+func TestCmdrB13TempestTechniqueStormCopiesEnchantTheirOwnCreatures(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	first := auraBear(g, me.ID)
+	second := auraBear(g, me.ID)
+	stormFiller(t, g)
+	castCatalogSpell(t, g, "Tempest Technique", auraTypeLine, cmdrB13TempestOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: first}})
+	for i := 0; i < 64 && !(stackFullyEmpty(g) && latestPickTarget(g, me.ID) == nil); i++ {
+		if p := latestPickTarget(g, me.ID); p != nil {
+			if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: second}); err != nil {
+				t.Fatalf("re-target the copy: %v", err)
+			}
+			continue
+		}
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	// Two Auras on the table (the card and its token copy): +2/+2 each.
+	for name, id := range map[string]uuid.UUID{"original target": first, "copy's target": second} {
+		if p := effectivePower(t, g, id); p != 4 {
+			t.Errorf("%s has power %d, want 4", name, p)
+		}
+	}
+}
