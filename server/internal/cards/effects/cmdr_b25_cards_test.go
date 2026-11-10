@@ -696,3 +696,109 @@ func TestCmdrB25RetrofitterFoundrySacrificeNeedsTheRightType(t *testing.T) {
 		t.Fatal("sacrificed a Bear as a Servo")
 	}
 }
+
+const (
+	cmdrB25DesertGlorifiedOracle = "190e664b-9875-4335-af46-353886ed18ff"
+	cmdrB25DesertMindfulOracle   = "508f9e7e-2ff7-4593-b0a9-0612d7b5d646"
+	cmdrB25DesertTrueOracle      = "2672e0ca-8d5c-449f-8483-35d0e697fbb2"
+	cmdrB25SlagwoodsOracle       = "e040a8e6-b90c-42d1-a1b1-771d954c61ab"
+	cmdrB25TanglepoolOracle      = "29cd8a7c-108a-43d1-af63-f603a27c24f2"
+	cmdrB25UnholyGrottoOracle    = "c28211c6-a5ee-40c3-bb6a-da3e7e73fd95"
+)
+
+func TestCmdrB25DesertsEnterTappedTapForOneColourAndCycle(t *testing.T) {
+	for _, tc := range []struct{ name, oracle, color, mana string }{
+		{"Desert of the Glorified", cmdrB25DesertGlorifiedOracle, "B", "{C}{B}"},
+		{"Desert of the Mindful", cmdrB25DesertMindfulOracle, "U", "{C}{U}"},
+		{"Desert of the True", cmdrB25DesertTrueOracle, "W", "{C}{W}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			id := b31PlayLand(t, g, tc.name, "Land — Desert", tc.oracle)
+			if !b31Tapped(t, g, id) {
+				t.Fatal("must enter tapped")
+			}
+			g.WithWriteLock(func() { _ = g.UntapTargetForEffect(id) })
+			b28TapForMana(t, g, me.ID, id, "")
+			if got := poolColors(me); len(got) != 1 || got[0] != tc.color {
+				t.Errorf("pool %v, want {%s}", got, tc.color)
+			}
+
+			g2 := newCatalogGame(t)
+			me2 := g2.Seats[g2.Turn.ActiveSeat]
+			hand := me2.Hand.Size()
+			cycleFromHand(t, g2, tc.name, "Land — Desert", tc.oracle, tc.mana)
+			if me2.Hand.Size() != hand || me2.Graveyard.Size() == 0 {
+				t.Errorf("cycling: hand %d (want %d), graveyard %d", me2.Hand.Size(), hand, me2.Graveyard.Size())
+			}
+		})
+	}
+}
+
+func TestCmdrB25BridgesEnterTappedTapForEitherColourAndSurviveDestruction(t *testing.T) {
+	for _, tc := range []struct{ name, oracle, a, b string }{
+		{"Slagwoods Bridge", cmdrB25SlagwoodsOracle, "R", "G"},
+		{"Tanglepool Bridge", cmdrB25TanglepoolOracle, "G", "U"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			id := b31PlayLand(t, g, tc.name, "Artifact Land", tc.oracle)
+			if !b31Tapped(t, g, id) {
+				t.Fatal("must enter tapped")
+			}
+			g.WithWriteLock(func() { _ = g.UntapTargetForEffect(id) })
+			b28TapForMana(t, g, me.ID, id, tc.a)
+			if got := poolColors(me); len(got) != 1 || got[0] != tc.a {
+				t.Errorf("pool %v, want {%s}", got, tc.a)
+			}
+			g.WithWriteLock(func() { _ = g.UntapTargetForEffect(id) })
+			me.ManaPool = nil
+			b28TapForMana(t, g, me.ID, id, tc.b)
+			if got := poolColors(me); len(got) != 1 || got[0] != tc.b {
+				t.Errorf("pool %v, want {%s}", got, tc.b)
+			}
+			if !containsString(effectiveAbilities(t, g, id), "indestructible") {
+				t.Error("not indestructible")
+			}
+			g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(id) })
+			if !g.Battlefield.Contains(id) {
+				t.Error("a destroy effect destroyed the Bridge")
+			}
+			if c, _ := battlefieldCard(g, id); !c.IsArtifact() || !c.IsLand() {
+				t.Errorf("type line %q, want an artifact land", c.TypeLine)
+			}
+		})
+	}
+}
+
+func TestCmdrB25UnholyGrottoPutsAZombieCardOnTopOfYourLibrary(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	grotto := b12Push(g, me.ID, "Unholy Grotto", "Land", cmdrB25UnholyGrottoOracle, 0, 0)
+	zombie := pushCatalogGraveyardCard(me, "Dead Zombie", "Creature — Zombie", "", 2, 2)
+	bear := pushCatalogGraveyardCard(me, "Dead Bear", "Creature — Bear", "", 2, 2)
+	oppZombie := pushCatalogGraveyardCard(g.Seats[1], "Their Zombie", "Creature — Zombie", "", 2, 2)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{B}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, grotto, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}}); err == nil {
+		t.Fatal("targeted a non-Zombie card")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, grotto, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: oppZombie}}}); err == nil {
+		t.Fatal("targeted a card in an opponent's graveyard")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, grotto, 0, game.ActivateAbilityParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: zombie}}}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	top, err := me.Library.Top()
+	if me.Graveyard.Contains(zombie) || err != nil || top.InstanceID != zombie {
+		t.Error("the Zombie card is not on top of the library")
+	}
+}
