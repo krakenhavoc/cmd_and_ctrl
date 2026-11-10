@@ -1162,3 +1162,39 @@ func TestCmdrB15WelcomeTheDeadLootsPaysLifeAndCountsGraveyardEntries(t *testing.
 		t.Errorf("%d Zombie Druids, want 3 (two milled and one discarded)", n)
 	}
 }
+
+const cmdrB15GoldlustOracle = "86d76078-9af3-45a7-90d6-72946afdc78b"
+
+func TestCmdrB15GoldlustTriadMyriadAndTreasuresFromEachHit(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp1, opp2, opp3 := g.Seats[0], g.Seats[1], g.Seats[2], g.Seats[3]
+	triad := b12Push(g, me.ID, "Goldlust Triad", "Creature — Dragon", cmdrB15GoldlustOracle, 4, 3)
+	declareAttack(t, g, opp1.ID, triad)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	answerMayChoice(t, g, me.ID, true)
+	copies := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Goldlust Triad" && c.InstanceID != triad && IsToken(c) {
+			copies++
+		}
+	}
+	if copies != 2 {
+		t.Fatalf("%d myriad copies, want 2", copies)
+	}
+	l1, l2, l3 := opp1.Life, opp2.Life, opp3.Life
+	advanceTo(t, g, game.StepEndCombat)
+	passPriorityAroundTable(t, g)
+	if opp1.Life != l1-4 || opp2.Life != l2-4 || opp3.Life != l3-4 {
+		t.Errorf("each opponent takes 4: %d %d %d", l1-opp1.Life, l2-opp2.Life, l3-opp3.Life)
+	}
+	treasures := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Treasure" && c.Controller == me.ID {
+			treasures++
+		}
+	}
+	if treasures != 3 {
+		t.Errorf("%d Treasures, want 3 (the Triad and each copy hit a player)", treasures)
+	}
+}
