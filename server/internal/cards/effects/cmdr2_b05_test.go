@@ -349,3 +349,91 @@ func TestCmdr2B05SurgespannerDecliningBouncesNothing(t *testing.T) {
 		t.Error("declining bounced the permanent")
 	}
 }
+
+// --- Deeproot Elite ------------------------------------------------
+
+func TestCmdr2B05DeeprootEliteCountersATargetMerfolkWhenAnotherEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	elite := cmdr2B05Card(g, me.ID, "Deeproot Elite", "Creature — Merfolk Warrior", cmdr2B05DeeprootOracle, 1, 1)
+	other := b12Creature(g, me.ID, "Other Merfolk", "Creature — Merfolk", 1, 1)
+
+	entered := castCatalogSpell(t, g, "Newcomer", "Creature — Merfolk", "", nil)
+	passPriorityAroundTable(t, g)
+	b40PickCard(t, g, me.ID, other)
+	passPriorityAroundTable(t, g)
+	if got := counterOn(g, other, game.CounterPlusOne); got != 1 {
+		t.Errorf("the chosen Merfolk has %d counters, want 1", got)
+	}
+	for name, id := range map[string]uuid.UUID{"elite": elite, "newcomer": entered} {
+		if got := counterOn(g, id, game.CounterPlusOne); got != 0 {
+			t.Errorf("%s got %d counters", name, got)
+		}
+	}
+	// A non-Merfolk entering does not trigger it.
+	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	if p := latestPickTarget(g, me.ID); p != nil {
+		t.Error("a Bear triggered the Elite")
+	}
+}
+
+// --- Kumena --------------------------------------------------------
+
+func cmdr2B05KumenaTable(t *testing.T, others int) (g *game.Game, me *game.Player, kumena uuid.UUID, fish []uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[0]
+	kumena = cmdr2B05Card(g, me.ID, "Kumena, Tyrant of Orazca", "Legendary Creature — Merfolk Shaman", cmdr2B05KumenaOracle, 2, 4)
+	for i := 0; i < others; i++ {
+		fish = append(fish, b12Creature(g, me.ID, "Fish", "Creature — Merfolk", 1, 1))
+	}
+	advanceToMain(t, g)
+	return
+}
+
+func TestCmdr2B05KumenaTapAnotherMerfolkMakesItUnblockable(t *testing.T) {
+	g, me, kumena, fish := cmdr2B05KumenaTable(t, 1)
+	bear := seedBear(g, me.ID)
+	if err := g.ActivateCatalogAbility(me.ID, kumena, 0, game.ActivateAbilityParams{TapIDs: []uuid.UUID{kumena}, Strict: true}); err == nil {
+		t.Fatal("Kumena paid for 'another' Merfolk by tapping itself")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, kumena, 0, game.ActivateAbilityParams{TapIDs: []uuid.UUID{bear}, Strict: true}); err == nil {
+		t.Fatal("a non-Merfolk paid the cost")
+	}
+	b16Activate(t, g, me.ID, kumena, 0, game.ActivateAbilityParams{TapIDs: fish})
+	passPriorityAroundTable(t, g)
+	assertRestrictions(t, g, kumena, game.CantBeBlocked)
+	if c, _ := g.LookupCardForEffect(fish[0]); !c.Tapped {
+		t.Error("the Merfolk was not tapped to pay")
+	}
+}
+
+func TestCmdr2B05KumenaThreeMerfolkDrawACard(t *testing.T) {
+	g, me, kumena, fish := cmdr2B05KumenaTable(t, 2)
+	before := me.Hand.Size()
+	if err := g.ActivateCatalogAbility(me.ID, kumena, 1, game.ActivateAbilityParams{TapIDs: fish, Strict: true}); err == nil {
+		t.Fatal("two Merfolk paid a cost of three")
+	}
+	b16Activate(t, g, me.ID, kumena, 1, game.ActivateAbilityParams{TapIDs: append(append([]uuid.UUID{}, fish...), kumena)})
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before; got != 1 {
+		t.Errorf("drew %d, want 1", got)
+	}
+}
+
+func TestCmdr2B05KumenaFiveMerfolkCounterEachMerfolk(t *testing.T) {
+	g, me, kumena, fish := cmdr2B05KumenaTable(t, 4)
+	bear := seedBear(g, me.ID)
+	opp := b12Creature(g, g.Seats[1].ID, "Their Fish", "Creature — Merfolk", 1, 1)
+	b16Activate(t, g, me.ID, kumena, 2, game.ActivateAbilityParams{TapIDs: append(append([]uuid.UUID{}, fish...), kumena)})
+	passPriorityAroundTable(t, g)
+	for _, id := range append(append([]uuid.UUID{}, fish...), kumena) {
+		if got := counterOn(g, id, game.CounterPlusOne); got != 1 {
+			t.Errorf("a Merfolk has %d counters, want 1", got)
+		}
+	}
+	if counterOn(g, bear, game.CounterPlusOne) != 0 || counterOn(g, opp, game.CounterPlusOne) != 0 {
+		t.Error("a non-Merfolk or an opponent's Merfolk got a counter")
+	}
+}

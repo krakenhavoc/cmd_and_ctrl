@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // cmdr2_b05_helpers.go — shared bodies for the Merfolk batch (#5368).
 
@@ -71,5 +75,44 @@ func cmdr2B05SpellOfAnyType(subtypes ...string) CostPredicate {
 			}
 		}
 		return false
+	}
+}
+
+// cmdr2B05TapMerfolk is the "tap N untapped Merfolk you control" cost
+// component (CR 602.2, game/tap_others_cost.go). `another` is the printed
+// word "another": the source may not pay itself. Merfolk is an effective
+// subtype, so a changeling pays.
+func cmdr2B05TapMerfolk(n int, another bool, label string) game.AbilityCost {
+	return game.AbilityCost{TapOthers: &game.TapOthersCost{
+		Count:         n,
+		ExcludeSource: another,
+		Filter:        TargetCreature(label, HasSubtype("Merfolk")),
+		Label:         label,
+	}}
+}
+
+// cmdr2B05CountersOnEachMerfolk puts n +1/+1 counters on each Merfolk
+// creature the item's controller controls, one placement per creature.
+func cmdr2B05CountersOnEachMerfolk(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		f := cmdr2B05MerfolkFilter(false, true)
+		src := game.Card{Controller: item.Controller}
+		var ids []uuid.UUID
+		for _, c := range g.BattlefieldCardsForEffect() {
+			c := c
+			if f.Matches(&c, g, &src) {
+				ids = append(ids, c.InstanceID)
+			}
+		}
+		for _, id := range ids {
+			if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
+				continue
+			}
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}).Apply(ctx.asGroupMember()); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
