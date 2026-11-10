@@ -608,3 +608,43 @@ func TestCmdrB14TipTheScalesShrinksEveryCreatureByTheSacrificedToughness(t *test
 		t.Errorf("their 6/6 has power %d, want 3", p)
 	}
 }
+
+const cmdrB14WithinRangeOracle = "cc8c1e21-4540-4e74-a513-eb6c17372de1"
+
+func TestCmdrB14WithinRangeMakesWarriorsAndDrainsByAttackers(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	castCatalogSpell(t, g, "Within Range", "Enchantment", cmdrB14WithinRangeOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := b16CountNamed(g, "Warrior"); n != 2 {
+		t.Fatalf("%d Warriors, want 2", n)
+	}
+	a := pushVanillaCreature(g, me.ID, "A", 1, 1)
+	b := pushVanillaCreature(g, me.ID, "B", 1, 1)
+	c := pushVanillaCreature(g, me.ID, "C", 1, 1)
+	lifeOpp, lifeThird := opp.Life, third.Life
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{a, b} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	if err := g.DeclareAttacker(c, third.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	// Settle the combat damage too: the trigger drains 2 from the first
+	// opponent and 1 from the third, then the unblocked 1/1s deal 2 and 1.
+	advanceTo(t, g, game.StepEndCombat)
+	passPriorityAroundTable(t, g)
+	if got := lifeOpp - opp.Life; got != 4 {
+		t.Errorf("first opponent lost %d, want 4 (2 drained, 2 combat)", got)
+	}
+	if got := lifeThird - third.Life; got != 2 {
+		t.Errorf("third opponent lost %d, want 2 (1 drained, 1 combat)", got)
+	}
+	if g.Seats[3].Life != 40 || me.Life != 40 {
+		t.Errorf("controller life %d, fourth player %d; want 40 and 40", me.Life, g.Seats[3].Life)
+	}
+}
