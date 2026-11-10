@@ -57,10 +57,17 @@ const graywatersFixerEncore = "graywaters-fixer/encore"
 // graywatersFixerRecipient is "each outlaw creature card in your
 // graveyard": a creature card its controller owns with an outlaw creature
 // type. "Outlaw" is a word of the Fixer's text only as a batching term, so
-// there is no type word for a text-changing effect to rewrite.
+// there is no type word for a text-changing effect to rewrite. A card whose
+// mana cost the engine cannot read into a mana value is given nothing
+// rather than an encore priced at {0}; no creature card prints such a cost.
 func graywatersFixerRecipient(card *game.Card, g *game.Game, source *game.Card) bool {
-	return source != nil && card.Owner == source.Controller && card.IsCreature() &&
-		outlaw()(g, source.Controller, *card)
+	if source == nil || card.Owner != source.Controller || !card.IsCreature() {
+		return false
+	}
+	if _, ok := card.ParsedManaValue(); !ok {
+		return false
+	}
+	return outlaw()(g, source.Controller, *card)
 }
 
 // ItsManaValue is "{X}, where X is its mana value" as the mana component of
