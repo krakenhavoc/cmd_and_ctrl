@@ -310,6 +310,7 @@ body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shriek-treblemaker/cant-block
+body slumbering-walker/return-from-graveyard
 body snaremaster-sprite/tap-and-stun
 body sorin-imperious-bloodlord/strike
 body speed-young-avenger/unblockable
@@ -890,6 +891,7 @@ condition combat/each-attacker-not-blocked
 condition combat/hunters-insight-creature-hit-player-or-planeswalker
 condition combat/that-creature-hit-a-player
 condition combat/the-wrath-of-khan-next-beginning-of-combat
+condition combat/your-creature-hit-a-player-or-planeswalker
 condition combat/your-creature-hit-the-player
 condition damage/a-creature-combat-to-you
 condition damage/each-creature-dealt-damage
@@ -979,6 +981,8 @@ confirm confirm/floral-spuzzem-destroy
 confirm confirm/foot-chopper-sacrifice
 confirm confirm/gain-life
 confirm confirm/galadriel-reveal
+confirm confirm/gathering-stone-take
+confirm confirm/gathering-stone-to-graveyard
 confirm confirm/gaze-of-pain-damage
 confirm confirm/geier-reach-bandit-transform
 confirm confirm/gogo-copy
@@ -1278,6 +1282,7 @@ option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
+option option-pick/slumbering-walker-remove-a-counter
 option option-pick/sorcerous-spyglass-look
 option option-pick/starseer-mentor-punisher
 option option-pick/tap-or-untap-that-permanent
@@ -1519,6 +1524,7 @@ resume replacement-resume/move-tokens
 run blight/blighted-blackthorn-draw
 run blight/boggart-mischief-tokens
 run blight/dream-seizer-discard
+run blight/grub-notorious-auntie-copy
 run blight/gutsplitter-gang-lose-life
 run blight/nothing-after
 run blight/scuzzback-scrounger-treasure
@@ -1826,6 +1832,7 @@ tail blight/place-next
 tail blighted/blight/blighted-blackthorn-draw
 tail blighted/blight/boggart-mischief-tokens
 tail blighted/blight/dream-seizer-discard
+tail blighted/blight/grub-notorious-auntie-copy
 tail blighted/blight/gutsplitter-gang-lose-life
 tail blighted/blight/nothing-after
 tail blighted/blight/scuzzback-scrounger-treasure
@@ -1955,6 +1962,7 @@ tail engine/become-renowned
 tail engine/cleanup-discarded
 tail engine/counter-exiled-instead
 tail engine/countered-to-library
+tail engine/countered-told
 tail engine/discard-leg-settled
 tail engine/discard-order-placed
 tail engine/discard-then-done
@@ -2482,6 +2490,7 @@ tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
+tail then/glen-elendras-answer-counter-next
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
@@ -2526,6 +2535,7 @@ tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again
 tail then/protection-from-chosen-color-until-eot
+tail then/pucas-eye-color-chosen
 tail then/put-found-artifacts-with-mana-value-2-or-less-onto-battlefield
 tail then/put-found-lands-onto-battlefield-tapped
 tail then/pygmy-hippo-schedule-lost-mana
