@@ -204,29 +204,42 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 		}
 		entries = append(entries, handSizeEntry{at: s.HandSize.At, s: HandSizeStatic{Kind: s.HandSize.Kind, N: s.HandSize.N}})
 	}
-	if CatalogHandSize != nil && g.Battlefield != nil {
-		for i := range g.Battlefield.Cards {
-			c := &g.Battlefield.Cards[i]
-			// CatalogAbilityKey: a maximum-hand-size clause is a static
-			// ability, and a permanent that has lost its abilities
-			// gives nothing (CR 613.1f). The empty key is the skip, so
-			// a token is walked too (ADR 0083 decision 3).
-			key := catalogAbilityKeyOf(c)
-			if key == "" {
-				continue
-			}
-			for _, s := range CatalogHandSize(key) {
-				if !s.Reaches(c.Controller, c.ChosenPlayer, p.ID) || !s.When.Active(*c) {
+	if CatalogHandSize != nil {
+		// A face-up plane's statics function from the command zone (ADR
+		// 0216 §6, CR 901.7), so its zone is walked after the battlefield
+		// (The Lux Foundation Library's "Players have no maximum hand
+		// size"); its Controller is the planar controller (CR 901.6).
+		var zones []*Zone
+		if g.Battlefield != nil {
+			zones = append(zones, g.Battlefield)
+		}
+		if g.Planechase != nil && g.PlanarFaceUp != nil {
+			zones = append(zones, g.PlanarFaceUp)
+		}
+		for _, z := range zones {
+			for i := range z.Cards {
+				c := &z.Cards[i]
+				// CatalogAbilityKey: a maximum-hand-size clause is a static
+				// ability, and a permanent that has lost its abilities
+				// gives nothing (CR 613.1f). The empty key is the skip, so
+				// a token is walked too (ADR 0083 decision 3).
+				key := catalogAbilityKeyOf(c)
+				if key == "" {
 					continue
 				}
-				if s.Dynamic != nil {
-					n, ok := s.Dynamic(g, c)
-					if !ok {
+				for _, s := range CatalogHandSize(key) {
+					if !s.Reaches(c.Controller, c.ChosenPlayer, p.ID) || !s.When.Active(*c) {
 						continue
 					}
-					s.N = n
+					if s.Dynamic != nil {
+						n, ok := s.Dynamic(g, c)
+						if !ok {
+							continue
+						}
+						s.N = n
+					}
+					entries = append(entries, handSizeEntry{at: c.layerTimestamp(), s: s})
 				}
-				entries = append(entries, handSizeEntry{at: c.layerTimestamp(), s: s})
 			}
 		}
 	}

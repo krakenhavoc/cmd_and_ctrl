@@ -161,3 +161,175 @@ func TestPyramidOfMarsSurveilsAndChaosReanimates(t *testing.T) {
 		t.Error("the creature card did not return to the battlefield")
 	}
 }
+
+// planesB2Keyword reports whether the battlefield card has the keyword now,
+// after the layer pass.
+func planesB2Keyword(t *testing.T, g *game.Game, id uuid.UUID, kw string) bool {
+	t.Helper()
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	c := layeredCard(t, g, id)
+	return game.HasKeyword(&c, kw)
+}
+
+// --- Gavony ------------------------------------------------------------------
+
+func TestGavonyGivesEveryCreatureVigilanceAndChaosGuardsYours(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeGavony)
+	g, plane := newPlaneGame(t, planeGavony)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	other := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, other.ID, "Wolf", "Creature — Wolf", 2, 2)
+	if !planesB2Keyword(t, g, mine, "vigilance") || !planesB2Keyword(t, g, theirs, "vigilance") {
+		t.Error("not every creature has vigilance")
+	}
+	rollBlank(t, g, me.ID)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Fatal("a blank triggered the chaos ability")
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if !planesB2Keyword(t, g, mine, "indestructible") {
+		t.Error("my creature is not indestructible")
+	}
+	if planesB2Keyword(t, g, theirs, "indestructible") {
+		t.Error("an opponent's creature is indestructible")
+	}
+	late := b12Creature(g, me.ID, "Late Bear", "Creature — Bear", 2, 2)
+	if planesB2Keyword(t, g, late, "indestructible") {
+		t.Error("a creature that arrived after the ability resolved is indestructible")
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if planesB2Keyword(t, g, theirs, "vigilance") {
+		t.Error("vigilance outlived the plane")
+	}
+}
+
+// --- Bloodhill Bastion -------------------------------------------------------
+
+func TestBloodhillBastionGivesEnteringCreaturesDoubleStrikeAndHaste(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeBloodhillBastion)
+	g, _ := newPlaneGame(t, planeBloodhillBastion)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, "Test Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	var bear game.Card
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Test Bear" && c.Controller == me.ID {
+			bear = c
+		}
+	}
+	if bear.InstanceID == uuid.Nil {
+		t.Fatal("the creature spell did not resolve")
+	}
+	if !planesB2Keyword(t, g, bear.InstanceID, "double strike") || !planesB2Keyword(t, g, bear.InstanceID, "haste") {
+		t.Error("the entering creature lacks double strike or haste")
+	}
+}
+
+func TestBloodhillBastionChaosBlinksANontokenCreature(t *testing.T) {
+	g, _ := newPlaneGame(t, planeBloodhillBastion)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	token := TokenCard("1/1 white Soldier")
+	token.InstanceID = uuid.New()
+	token.Owner, token.Controller = me.ID, me.ID
+	token.Name = "Soldier"
+	g.WithWriteLock(func() { g.Battlefield.PushTop(token) })
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(token.InstanceID)); err == nil {
+		t.Fatal("a token was accepted as the target")
+	}
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	if n := planesB2Count(g, "Bear", me.ID); n != 1 {
+		t.Fatalf("%d Bears after the blink, want 1", n)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Bear" && c.InstanceID == bear {
+			t.Error("the Bear is the same object: it was not exiled and returned")
+		}
+	}
+}
+
+// --- The Lux Foundation Library ----------------------------------------------
+
+func TestLuxFoundationLibraryChaosPutsAShadowCounterOnAnyCreature(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeLuxLibrary)
+	g, _ := newPlaneGame(t, planeLuxLibrary)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	other := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	theirs := b12Creature(g, other.ID, "Wolf", "Creature — Wolf", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, theirs)
+	passPriorityAroundTable(t, g)
+	if n := tmtB1Card(t, g, theirs).Counters[game.CounterShadow]; n != 1 {
+		t.Errorf("%d shadow counters, want 1", n)
+	}
+	if !planesB2Keyword(t, g, theirs, "shadow") {
+		t.Error("the creature does not have shadow")
+	}
+}
+
+func TestLuxFoundationLibraryHasNoMaximumHandSize(t *testing.T) {
+	g, _ := newPlaneGame(t, planeLuxLibrary)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	var max int
+	g.WithWriteLock(func() { max = g.EffectiveMaxHandSizeLocked(me) })
+	if max != game.NoMaxHandSize {
+		t.Errorf("maximum hand size %d under the plane, want none", max)
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	g.WithWriteLock(func() { max = g.EffectiveMaxHandSizeLocked(me) })
+	if max == game.NoMaxHandSize {
+		t.Error("no maximum hand size after planeswalking away")
+	}
+}
+
+// --- Stormcage Containment Facility ------------------------------------------
+
+func TestStormcageGivesCreatureCardsEscapeAndChaosDetains(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeStormcage)
+	g, _ := newPlaneGame(t, planeStormcage)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	other := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	bear := pushGraveyardCardWithTypeLineID(me, "Bear", "Creature — Bear")
+	bolt := pushGraveyardCardWithTypeLineID(me, "Bolt", "Instant")
+	if p := grantedPermissionOn(g, me.ID, bear, game.ZoneGraveyard); !p.Granted() || p.AltCostKey != "escape" || p.ExileOtherFromGraveyard != 3 {
+		t.Errorf("a creature card has no escape: %+v", p)
+	}
+	if p := grantedPermissionOn(g, me.ID, bolt, game.ZoneGraveyard); p.Granted() {
+		t.Error("an instant card has escape")
+	}
+	if p := grantedPermissionOn(g, other.ID, bear, game.ZoneGraveyard); p.Granted() {
+		t.Error("another player's cast of my card has escape")
+	}
+	theirs := b12Creature(g, other.ID, "Wolf", "Creature — Wolf", 2, 2)
+	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(mine)); err == nil {
+		t.Fatal("my own creature was accepted as the target")
+	}
+	answerPickTarget(t, g, theirs)
+	passPriorityAroundTable(t, g)
+	if r := avB13Restrictions(g, theirs); r&game.CantAttack == 0 || r&game.CantBlock == 0 {
+		t.Errorf("the target is not detained: %v", r)
+	}
+	g.WithWriteLock(func() { _ = g.PlaneswalkForEffect(me.ID) })
+	if p := grantedPermissionOn(g, me.ID, bear, game.ZoneGraveyard); p.Granted() {
+		t.Error("escape outlived the plane")
+	}
+}

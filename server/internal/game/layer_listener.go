@@ -233,6 +233,12 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	case EventTokenCreated:
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)
+	case EventPlaneswalkFrom, EventPlaneswalkTo:
+		// ADR 0216 §6: a face-up plane's static abilities are layer inputs
+		// from the command zone (CR 901.7), and turning a plane face up or
+		// down moves no permanent to announce it. Gavony's vigilance ends
+		// with the plane.
+		g.layerVersion.Add(1)
 	case EventDayNightChanged:
 		// ADR 0132: "as long as it's night" is a layer input the board
 		// does not move to announce, exactly as the monarchy is. The
