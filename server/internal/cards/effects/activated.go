@@ -387,6 +387,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.RevealHand {
 			out.RevealHand = true
 		}
+		// "Reveal the creature type you chose" likewise: dropped, A Killer
+		// Among Us would show nothing and need no choice.
+		if c.RevealSecretChoice {
+			out.RevealSecretChoice = true
+		}
 		// #1213: the same reasoning again — a composed "{1}, Return a
 		// land you control to its owner's hand" that dropped the
 		// return would be a free token every turn, which is Meloku

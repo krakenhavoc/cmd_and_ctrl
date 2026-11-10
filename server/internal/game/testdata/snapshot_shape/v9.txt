@@ -402,6 +402,8 @@ battlefield.cards[].saddledBy[]	object
 battlefield.cards[].saddledBy[].epoch	number:int
 battlefield.cards[].saddledBy[].id	custom(uuid.UUID)
 battlefield.cards[].scryfallId	string
+battlefield.cards[].secretChoice	string
+battlefield.cards[].secretChoiceBy	custom(uuid.UUID)
 battlefield.cards[].solved	bool
 battlefield.cards[].startingDefense	number:int
 battlefield.cards[].startingLoyalty	number:int
@@ -950,6 +952,8 @@ enteringTokens[].saddledBy[]	object
 enteringTokens[].saddledBy[].epoch	number:int
 enteringTokens[].saddledBy[].id	custom(uuid.UUID)
 enteringTokens[].scryfallId	string
+enteringTokens[].secretChoice	string
+enteringTokens[].secretChoiceBy	custom(uuid.UUID)
 enteringTokens[].solved	bool
 enteringTokens[].startingDefense	number:int
 enteringTokens[].startingLoyalty	number:int
@@ -1455,6 +1459,8 @@ exile.cards[].saddledBy[]	object
 exile.cards[].saddledBy[].epoch	number:int
 exile.cards[].saddledBy[].id	custom(uuid.UUID)
 exile.cards[].scryfallId	string
+exile.cards[].secretChoice	string
+exile.cards[].secretChoiceBy	custom(uuid.UUID)
 exile.cards[].solved	bool
 exile.cards[].startingDefense	number:int
 exile.cards[].startingLoyalty	number:int
@@ -8456,6 +8462,8 @@ frozenEntries[].event.keywordActionTail.armyToken.saddledBy[]	object
 frozenEntries[].event.keywordActionTail.armyToken.saddledBy[].epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.scryfallId	string
+frozenEntries[].event.keywordActionTail.armyToken.secretChoice	string
+frozenEntries[].event.keywordActionTail.armyToken.secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.solved	bool
 frozenEntries[].event.keywordActionTail.armyToken.startingDefense	number:int
 frozenEntries[].event.keywordActionTail.armyToken.startingLoyalty	number:int
@@ -10656,6 +10664,8 @@ frozenEntries[].event.millTail.run.planned[].saddledBy[]	object
 frozenEntries[].event.millTail.run.planned[].saddledBy[].epoch	number:int
 frozenEntries[].event.millTail.run.planned[].saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].scryfallId	string
+frozenEntries[].event.millTail.run.planned[].secretChoice	string
+frozenEntries[].event.millTail.run.planned[].secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].solved	bool
 frozenEntries[].event.millTail.run.planned[].startingDefense	number:int
 frozenEntries[].event.millTail.run.planned[].startingLoyalty	number:int
@@ -11056,6 +11066,8 @@ frozenEntries[].event.millTail.run.seen[].saddledBy[]	object
 frozenEntries[].event.millTail.run.seen[].saddledBy[].epoch	number:int
 frozenEntries[].event.millTail.run.seen[].saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].scryfallId	string
+frozenEntries[].event.millTail.run.seen[].secretChoice	string
+frozenEntries[].event.millTail.run.seen[].secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].solved	bool
 frozenEntries[].event.millTail.run.seen[].startingDefense	number:int
 frozenEntries[].event.millTail.run.seen[].startingLoyalty	number:int
@@ -13165,6 +13177,8 @@ frozenEntries[].event.tokenGroups[].template.saddledBy[]	object
 frozenEntries[].event.tokenGroups[].template.saddledBy[].epoch	number:int
 frozenEntries[].event.tokenGroups[].template.saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.scryfallId	string
+frozenEntries[].event.tokenGroups[].template.secretChoice	string
+frozenEntries[].event.tokenGroups[].template.secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.solved	bool
 frozenEntries[].event.tokenGroups[].template.startingDefense	number:int
 frozenEntries[].event.tokenGroups[].template.startingLoyalty	number:int
@@ -14173,6 +14187,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.saddledBy[]	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.saddledBy[].epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.scryfallId	string
+frozenEntries[].event.tokensAfterMove[].groups[].template.secretChoice	string
+frozenEntries[].event.tokensAfterMove[].groups[].template.secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.solved	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.startingDefense	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.startingLoyalty	number:int
@@ -14586,6 +14602,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].saddledBy[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].saddledBy[].epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].scryfallId	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].secretChoice	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].solved	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].startingDefense	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].startingLoyalty	number:int
@@ -14986,6 +15004,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].saddledBy[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].saddledBy[].epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].scryfallId	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].secretChoice	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].solved	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].startingDefense	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].startingLoyalty	number:int
@@ -18457,6 +18477,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].saddledBy[]	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].saddledBy[].epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].saddledBy[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].scryfallId	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].secretChoice	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].secretChoiceBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].solved	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].startingDefense	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].startingLoyalty	number:int
@@ -19094,6 +19116,7 @@ lastKnownPermanents{}[].namedTribe	string
 lastKnownPermanents{}[].power	number:int
 lastKnownPermanents{}[].renowned	bool
 lastKnownPermanents{}[].ringBearer	bool
+lastKnownPermanents{}[].secretChoice	string
 lastKnownPermanents{}[].suspected	bool
 lastKnownPermanents{}[].tapped	bool
 lastKnownPermanents{}[].textWords	array
@@ -19471,6 +19494,8 @@ lastKnownStack[].card.saddledBy[]	object
 lastKnownStack[].card.saddledBy[].epoch	number:int
 lastKnownStack[].card.saddledBy[].id	custom(uuid.UUID)
 lastKnownStack[].card.scryfallId	string
+lastKnownStack[].card.secretChoice	string
+lastKnownStack[].card.secretChoiceBy	custom(uuid.UUID)
 lastKnownStack[].card.solved	bool
 lastKnownStack[].card.startingDefense	number:int
 lastKnownStack[].card.startingLoyalty	number:int
@@ -26073,6 +26098,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.saddledBy[]	object
 movesAwaitingTokens[].keywordActionTail.armyToken.saddledBy[].epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.scryfallId	string
+movesAwaitingTokens[].keywordActionTail.armyToken.secretChoice	string
+movesAwaitingTokens[].keywordActionTail.armyToken.secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.solved	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.startingDefense	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.startingLoyalty	number:int
@@ -28273,6 +28300,8 @@ movesAwaitingTokens[].millTail.run.planned[].saddledBy[]	object
 movesAwaitingTokens[].millTail.run.planned[].saddledBy[].epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].scryfallId	string
+movesAwaitingTokens[].millTail.run.planned[].secretChoice	string
+movesAwaitingTokens[].millTail.run.planned[].secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].solved	bool
 movesAwaitingTokens[].millTail.run.planned[].startingDefense	number:int
 movesAwaitingTokens[].millTail.run.planned[].startingLoyalty	number:int
@@ -28673,6 +28702,8 @@ movesAwaitingTokens[].millTail.run.seen[].saddledBy[]	object
 movesAwaitingTokens[].millTail.run.seen[].saddledBy[].epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].scryfallId	string
+movesAwaitingTokens[].millTail.run.seen[].secretChoice	string
+movesAwaitingTokens[].millTail.run.seen[].secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].solved	bool
 movesAwaitingTokens[].millTail.run.seen[].startingDefense	number:int
 movesAwaitingTokens[].millTail.run.seen[].startingLoyalty	number:int
@@ -30782,6 +30813,8 @@ movesAwaitingTokens[].tokenGroups[].template.saddledBy[]	object
 movesAwaitingTokens[].tokenGroups[].template.saddledBy[].epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.scryfallId	string
+movesAwaitingTokens[].tokenGroups[].template.secretChoice	string
+movesAwaitingTokens[].tokenGroups[].template.secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.solved	bool
 movesAwaitingTokens[].tokenGroups[].template.startingDefense	number:int
 movesAwaitingTokens[].tokenGroups[].template.startingLoyalty	number:int
@@ -31790,6 +31823,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.saddledBy[]	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.saddledBy[].epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.scryfallId	string
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.secretChoice	string
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.solved	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.startingDefense	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.startingLoyalty	number:int
@@ -32203,6 +32238,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].saddledBy[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].saddledBy[].epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].scryfallId	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].secretChoice	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].solved	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].startingDefense	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].startingLoyalty	number:int
@@ -32603,6 +32640,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].saddledBy[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].saddledBy[].epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].scryfallId	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].secretChoice	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].solved	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].startingDefense	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].startingLoyalty	number:int
@@ -36074,6 +36113,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].saddledBy[]	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].saddledBy[].epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].saddledBy[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].scryfallId	string
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].secretChoice	string
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].secretChoiceBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].solved	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].startingDefense	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].startingLoyalty	number:int
@@ -37860,6 +37901,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.saddledBy[]	object
 pendingChoices[].attackSplit.settled.chosen[].template.saddledBy[].epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.scryfallId	string
+pendingChoices[].attackSplit.settled.chosen[].template.secretChoice	string
+pendingChoices[].attackSplit.settled.chosen[].template.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.solved	bool
 pendingChoices[].attackSplit.settled.chosen[].template.startingDefense	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.startingLoyalty	number:int
@@ -38280,6 +38323,8 @@ pendingChoices[].attackSplit.settled.groups[].template.saddledBy[]	object
 pendingChoices[].attackSplit.settled.groups[].template.saddledBy[].epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.scryfallId	string
+pendingChoices[].attackSplit.settled.groups[].template.secretChoice	string
+pendingChoices[].attackSplit.settled.groups[].template.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.solved	bool
 pendingChoices[].attackSplit.settled.groups[].template.startingDefense	number:int
 pendingChoices[].attackSplit.settled.groups[].template.startingLoyalty	number:int
@@ -39268,6 +39313,8 @@ pendingChoices[].attackSplit.template.saddledBy[]	object
 pendingChoices[].attackSplit.template.saddledBy[].epoch	number:int
 pendingChoices[].attackSplit.template.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.scryfallId	string
+pendingChoices[].attackSplit.template.secretChoice	string
+pendingChoices[].attackSplit.template.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.solved	bool
 pendingChoices[].attackSplit.template.startingDefense	number:int
 pendingChoices[].attackSplit.template.startingLoyalty	number:int
@@ -40036,6 +40083,8 @@ pendingChoices[].copyWalk.src.saddledBy[]	object
 pendingChoices[].copyWalk.src.saddledBy[].epoch	number:int
 pendingChoices[].copyWalk.src.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.scryfallId	string
+pendingChoices[].copyWalk.src.secretChoice	string
+pendingChoices[].copyWalk.src.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.solved	bool
 pendingChoices[].copyWalk.src.startingDefense	number:int
 pendingChoices[].copyWalk.src.startingLoyalty	number:int
@@ -50898,6 +50947,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.saddledBy[]
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.scryfallId	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.secretChoice	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.solved	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.startingDefense	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.startingLoyalty	number:int
@@ -53098,6 +53149,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].saddledBy[]	obje
 pendingChoices[].replacementResume.event.millTail.run.planned[].saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].scryfallId	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].secretChoice	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].solved	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].startingDefense	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].startingLoyalty	number:int
@@ -53498,6 +53551,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].saddledBy[]	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].scryfallId	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].secretChoice	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].solved	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].startingDefense	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].startingLoyalty	number:int
@@ -55607,6 +55662,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.saddledBy[]	obje
 pendingChoices[].replacementResume.event.tokenGroups[].template.saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.scryfallId	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.secretChoice	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.solved	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.startingDefense	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.startingLoyalty	number:int
@@ -56615,6 +56672,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.sad
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.scryfallId	string
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.secretChoice	string
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.solved	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.startingDefense	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.startingLoyalty	number:int
@@ -57028,6 +57087,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].sadd
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].scryfallId	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].secretChoice	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].solved	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].startingDefense	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].startingLoyalty	number:int
@@ -57428,6 +57489,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].saddled
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].scryfallId	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].secretChoice	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].solved	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].startingDefense	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].startingLoyalty	number:int
@@ -60899,6 +60962,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].saddledBy[
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].saddledBy[].epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].scryfallId	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].secretChoice	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].solved	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].startingDefense	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].startingLoyalty	number:int
@@ -62998,6 +63063,8 @@ pendingChoices[].targetWalk.frame.source.saddledBy[]	object
 pendingChoices[].targetWalk.frame.source.saddledBy[].epoch	number:int
 pendingChoices[].targetWalk.frame.source.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.scryfallId	string
+pendingChoices[].targetWalk.frame.source.secretChoice	string
+pendingChoices[].targetWalk.frame.source.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.solved	bool
 pendingChoices[].targetWalk.frame.source.startingDefense	number:int
 pendingChoices[].targetWalk.frame.source.startingLoyalty	number:int
@@ -63738,6 +63805,8 @@ pendingChoices[].triggerFrame.source.saddledBy[]	object
 pendingChoices[].triggerFrame.source.saddledBy[].epoch	number:int
 pendingChoices[].triggerFrame.source.saddledBy[].id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.scryfallId	string
+pendingChoices[].triggerFrame.source.secretChoice	string
+pendingChoices[].triggerFrame.source.secretChoiceBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.solved	bool
 pendingChoices[].triggerFrame.source.startingDefense	number:int
 pendingChoices[].triggerFrame.source.startingLoyalty	number:int
@@ -64827,6 +64896,8 @@ phasedOut.cards[].saddledBy[]	object
 phasedOut.cards[].saddledBy[].epoch	number:int
 phasedOut.cards[].saddledBy[].id	custom(uuid.UUID)
 phasedOut.cards[].scryfallId	string
+phasedOut.cards[].secretChoice	string
+phasedOut.cards[].secretChoiceBy	custom(uuid.UUID)
 phasedOut.cards[].solved	bool
 phasedOut.cards[].startingDefense	number:int
 phasedOut.cards[].startingLoyalty	number:int
@@ -65230,6 +65301,8 @@ planechase.deck.cards[].saddledBy[]	object
 planechase.deck.cards[].saddledBy[].epoch	number:int
 planechase.deck.cards[].saddledBy[].id	custom(uuid.UUID)
 planechase.deck.cards[].scryfallId	string
+planechase.deck.cards[].secretChoice	string
+planechase.deck.cards[].secretChoiceBy	custom(uuid.UUID)
 planechase.deck.cards[].solved	bool
 planechase.deck.cards[].startingDefense	number:int
 planechase.deck.cards[].startingLoyalty	number:int
@@ -65633,6 +65706,8 @@ planechase.faceUp.cards[].saddledBy[]	object
 planechase.faceUp.cards[].saddledBy[].epoch	number:int
 planechase.faceUp.cards[].saddledBy[].id	custom(uuid.UUID)
 planechase.faceUp.cards[].scryfallId	string
+planechase.faceUp.cards[].secretChoice	string
+planechase.faceUp.cards[].secretChoiceBy	custom(uuid.UUID)
 planechase.faceUp.cards[].solved	bool
 planechase.faceUp.cards[].startingDefense	number:int
 planechase.faceUp.cards[].startingLoyalty	number:int
@@ -66266,6 +66341,8 @@ resolving.card.saddledBy[]	object
 resolving.card.saddledBy[].epoch	number:int
 resolving.card.saddledBy[].id	custom(uuid.UUID)
 resolving.card.scryfallId	string
+resolving.card.secretChoice	string
+resolving.card.secretChoiceBy	custom(uuid.UUID)
 resolving.card.solved	bool
 resolving.card.startingDefense	number:int
 resolving.card.startingLoyalty	number:int
@@ -67239,6 +67316,8 @@ seats[].attractionDeck.cards[].saddledBy[]	object
 seats[].attractionDeck.cards[].saddledBy[].epoch	number:int
 seats[].attractionDeck.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].scryfallId	string
+seats[].attractionDeck.cards[].secretChoice	string
+seats[].attractionDeck.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].solved	bool
 seats[].attractionDeck.cards[].startingDefense	number:int
 seats[].attractionDeck.cards[].startingLoyalty	number:int
@@ -67776,6 +67855,8 @@ seats[].command.cards[].saddledBy[]	object
 seats[].command.cards[].saddledBy[].epoch	number:int
 seats[].command.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].command.cards[].scryfallId	string
+seats[].command.cards[].secretChoice	string
+seats[].command.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].command.cards[].solved	bool
 seats[].command.cards[].startingDefense	number:int
 seats[].command.cards[].startingLoyalty	number:int
@@ -68181,6 +68262,8 @@ seats[].companion.cards[].saddledBy[]	object
 seats[].companion.cards[].saddledBy[].epoch	number:int
 seats[].companion.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].companion.cards[].scryfallId	string
+seats[].companion.cards[].secretChoice	string
+seats[].companion.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].companion.cards[].solved	bool
 seats[].companion.cards[].startingDefense	number:int
 seats[].companion.cards[].startingLoyalty	number:int
@@ -68595,6 +68678,8 @@ seats[].emblems.cards[].saddledBy[]	object
 seats[].emblems.cards[].saddledBy[].epoch	number:int
 seats[].emblems.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].emblems.cards[].scryfallId	string
+seats[].emblems.cards[].secretChoice	string
+seats[].emblems.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].emblems.cards[].solved	bool
 seats[].emblems.cards[].startingDefense	number:int
 seats[].emblems.cards[].startingLoyalty	number:int
@@ -69096,6 +69181,8 @@ seats[].graveyard.cards[].saddledBy[]	object
 seats[].graveyard.cards[].saddledBy[].epoch	number:int
 seats[].graveyard.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].graveyard.cards[].scryfallId	string
+seats[].graveyard.cards[].secretChoice	string
+seats[].graveyard.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].graveyard.cards[].solved	bool
 seats[].graveyard.cards[].startingDefense	number:int
 seats[].graveyard.cards[].startingLoyalty	number:int
@@ -69497,6 +69584,8 @@ seats[].hand.cards[].saddledBy[]	object
 seats[].hand.cards[].saddledBy[].epoch	number:int
 seats[].hand.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].hand.cards[].scryfallId	string
+seats[].hand.cards[].secretChoice	string
+seats[].hand.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].hand.cards[].solved	bool
 seats[].hand.cards[].startingDefense	number:int
 seats[].hand.cards[].startingLoyalty	number:int
@@ -69903,6 +69992,8 @@ seats[].junkyard.cards[].saddledBy[]	object
 seats[].junkyard.cards[].saddledBy[].epoch	number:int
 seats[].junkyard.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].junkyard.cards[].scryfallId	string
+seats[].junkyard.cards[].secretChoice	string
+seats[].junkyard.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].junkyard.cards[].solved	bool
 seats[].junkyard.cards[].startingDefense	number:int
 seats[].junkyard.cards[].startingLoyalty	number:int
@@ -70313,6 +70404,8 @@ seats[].library.cards[].saddledBy[]	object
 seats[].library.cards[].saddledBy[].epoch	number:int
 seats[].library.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].library.cards[].scryfallId	string
+seats[].library.cards[].secretChoice	string
+seats[].library.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].library.cards[].solved	bool
 seats[].library.cards[].startingDefense	number:int
 seats[].library.cards[].startingLoyalty	number:int
@@ -70755,6 +70848,8 @@ seats[].sideboard.cards[].saddledBy[]	object
 seats[].sideboard.cards[].saddledBy[].epoch	number:int
 seats[].sideboard.cards[].saddledBy[].id	custom(uuid.UUID)
 seats[].sideboard.cards[].scryfallId	string
+seats[].sideboard.cards[].secretChoice	string
+seats[].sideboard.cards[].secretChoiceBy	custom(uuid.UUID)
 seats[].sideboard.cards[].solved	bool
 seats[].sideboard.cards[].startingDefense	number:int
 seats[].sideboard.cards[].startingLoyalty	number:int
@@ -71471,6 +71566,8 @@ stack.cards[].saddledBy[]	object
 stack.cards[].saddledBy[].epoch	number:int
 stack.cards[].saddledBy[].id	custom(uuid.UUID)
 stack.cards[].scryfallId	string
+stack.cards[].secretChoice	string
+stack.cards[].secretChoiceBy	custom(uuid.UUID)
 stack.cards[].solved	bool
 stack.cards[].startingDefense	number:int
 stack.cards[].startingLoyalty	number:int
@@ -71891,6 +71988,12 @@ turnTally.damageDealers[].combat	bool
 turnTally.damageDealers[].epoch	number:int
 turnTally.damageDealers[].source	custom(uuid.UUID)
 turnTally.damageDealers[].victim	custom(uuid.UUID)
+turnTally.damageSources	array
+turnTally.damageSources[]	object
+turnTally.damageSources[].controller	custom(uuid.UUID)
+turnTally.damageSources[].source	object
+turnTally.damageSources[].source.epoch	number:int
+turnTally.damageSources[].source.id	custom(uuid.UUID)
 turnTally.damagedObjects	array
 turnTally.damagedObjects[]	object
 turnTally.damagedObjects[].combat	bool

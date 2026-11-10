@@ -85,6 +85,11 @@ const (
 // top card of your library" is not one.
 var CatalogLibraryTopVisible func(oracleID string) LibraryTopVisibility
 
+// CatalogLibraryTopVisibleWhen returns the designation that gates a
+// permanent's LibraryTopVisible clause (CardDef.LibraryTopVisibleWhen):
+// the zero Designation is no gate. Populated at init.
+var CatalogLibraryTopVisibleWhen func(oracleID string) Designation
+
 // LibraryTopVisibilityLocked returns how far playerID's top library
 // card is currently visible: the most permissive clause among the
 // permanents they control.
@@ -109,6 +114,11 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 			continue
 		}
 		v := CatalogLibraryTopVisible(key)
+		if CatalogLibraryTopVisibleWhen != nil && !CatalogLibraryTopVisibleWhen(key).Active(*c) {
+			// "Solved — you may look at the top card" and its kin: the
+			// clause is off until the permanent's designation holds.
+			continue
+		}
 		switch {
 		case v == LibraryTopRevealedEachPlayer:
 			// #1997: every player's library, whoever controls it.

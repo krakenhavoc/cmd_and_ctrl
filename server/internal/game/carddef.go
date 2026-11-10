@@ -636,6 +636,14 @@ type CardDef struct {
 	// through CatalogLibraryTopVisible; see library_top.go.
 	LibraryTopVisible LibraryTopVisibility
 
+	// LibraryTopVisibleWhen gates LibraryTopVisible by a designation:
+	// "Solved — You may look at the top card of your library any time"
+	// (Case of the Locked Hothouse). The zero Designation is no gate. The
+	// clause counts only while the permanent's own designation is active
+	// (LibraryTopVisibilityLocked). Read through
+	// CatalogLibraryTopVisibleWhen.
+	LibraryTopVisibleWhen Designation
+
 	// HandsRevealed is whose hands this permanent's static reveals:
 	// "your opponents play with their hands revealed" (Telepathy) is
 	// HandRevealOpponents, "players play with their hands revealed"
@@ -1310,6 +1318,12 @@ func init() {
 			return d.DiscardByOpponent, d.DiscardByOpponentForHand
 		}
 		return DiscardByOpponentNone, DiscardByOpponentNone
+	}
+	CatalogLibraryTopVisibleWhen = func(key string) Designation {
+		if d := catalogDef(key); d != nil {
+			return d.LibraryTopVisibleWhen
+		}
+		return Designation{}
 	}
 	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
 		if d := catalogDef(key); d != nil {

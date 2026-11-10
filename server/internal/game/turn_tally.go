@@ -439,6 +439,13 @@ type TurnTally struct {
 	// NoncombatDamageThisTurnForEffect. Additive: omitted when empty,
 	// so an older snapshot reads back as no damage.
 	NoncombatDamage []NoncombatDamageRecord `json:"noncombatDamage,omitempty"`
+	// DamageSources lists the distinct source OBJECTS that dealt damage
+	// this turn, each with the controller it had as it dealt it (CR 400.7,
+	// 608.2h): "three or more sources you controlled dealt damage this
+	// turn" (Case of the Burning Masks). Read through
+	// DamageSourcesDealtThisTurnForEffect; see damage_sources_tally.go.
+	// Additive: omitted when empty.
+	DamageSources []DamageSourceRecord `json:"damageSources,omitempty"`
 	// DamagedObjects records which permanent OBJECTS each source dealt
 	// damage to this turn (#1946): one entry per damage event to a
 	// permanent, in the order the damage was dealt, each side named by
@@ -1824,6 +1831,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 			out.NoncombatDamage[i] = r
 		}
 	}
+	if len(t.DamageSources) > 0 {
+		out.DamageSources = append([]DamageSourceRecord(nil), t.DamageSources...)
+	}
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
@@ -1893,6 +1903,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Amount <= 0 {
 			return
 		}
+		g.recordDamageSourceLocked(ev)
 		if g.playerByIDLocked(ev.Target) == nil {
 			// #1946: damage to a permanent, for "creatures dealt damage
 			// by this creature this turn".

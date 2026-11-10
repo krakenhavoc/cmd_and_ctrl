@@ -368,6 +368,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
+	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
+	// "When this creature dies, it deals 2 damage to each opponent."
+	printedImpDamageToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

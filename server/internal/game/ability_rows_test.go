@@ -15,6 +15,7 @@ import (
 // so a slot added to CardDef is placed rather than silently dropped.
 var abilityRowFieldsNotRows = map[string]string{
 	"Resolve":                    "the spell's effect as it resolves, not an ability of the object",
+	"LibraryTopVisibleWhen":      "the designation gating the look-at-the-top-card permission, a condition and not an ability of the object",
 	"ResumeResolve":              "the rest of that effect after a prompt (#4019), not an ability of the object",
 	"DiscardByOpponent":          "a declaration the bot reads about a hand card, not an ability of the object (ADR 0153 §5)",
 	"DiscardByOpponentForHand":   "a declaration the bot reads about the hand, not an ability of the object (ADR 0153 §5)",

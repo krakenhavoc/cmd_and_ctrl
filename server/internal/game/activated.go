@@ -421,6 +421,12 @@ type AbilityCost struct {
 	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
 	RevealHand bool
 
+	// RevealSecretChoice is "Reveal the creature type you chose" as a
+	// cost (A Killer Among Us, secret_choice.go): the word the source's
+	// controller secretly chose for it is shown to the table as the cost
+	// is paid. Payable only by the player who chose it.
+	RevealSecretChoice bool
+
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
 	// "Return a Forest you control to its owner's hand", Master
@@ -1925,6 +1931,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := g.validateRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs, params.XValue); err != nil {
 		return err
 	}
+	// "Reveal the creature type you chose" (A Killer Among Us).
+	if err := g.validateRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost); err != nil {
+		return err
+	}
 	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
 	// and "Exile a card from your hand" (Holistic Wisdom). The SAME
 	// validator the mana ability's owner uses (#1283), against the
@@ -2365,6 +2375,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// And "Reveal the creature type you chose", while the source is still
+	// on the battlefield to be read.
+	g.payRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost)
 	// #4799: the unattach component, at the same point: the Equipment
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)

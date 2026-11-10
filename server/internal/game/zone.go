@@ -332,6 +332,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.
 		c.ChosenOption = ""
+		c.SecretChoice, c.SecretChoiceBy = "", uuid.Nil
 		// #1941 / CR 614.12a: and so does the number chosen as it
 		// entered. A Phyrexian Processor that is bounced and recast
 		// pays life again.

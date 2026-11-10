@@ -285,6 +285,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
+		LibraryTopVisibleWhen:               spec.LibraryTopVisibleWhen,
 		HandsRevealed:                       spec.HandsRevealed,
 		AttackOnlyNearestOpponentInChosenDirection: spec.AttackOnlyNearestOpponentInChosenDirection,
 		LooksAtFaceDownCreatures:                   spec.LooksAtFaceDownCreatures,
