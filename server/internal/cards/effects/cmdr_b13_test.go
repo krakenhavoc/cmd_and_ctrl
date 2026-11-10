@@ -153,3 +153,44 @@ func TestCmdrB13KotisIgnoresCreaturesCastFromHand(t *testing.T) {
 		t.Errorf("Kotis grew to %d from a creature cast from hand", got)
 	}
 }
+
+const cmdrB13ShikoOracle = "40ed32a6-ad56-48c7-aecf-b4238c34c212"
+
+func TestCmdrB13ShikoCopiesATargetedSecondSpellAndDrawsOtherwise(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	b12Push(g, me.ID, "Shiko and Narset, Unified", "Legendary Creature — Human Spirit Dragon", cmdrB13ShikoOracle, 4, 4)
+	advanceTo(t, g, game.StepPrecombatMain)
+	// The first spell is not a second spell: nothing happens.
+	hand := me.Hand.Size()
+	cmdrB13CastCreature(t, g, me, 1)
+	if me.Hand.Size() != hand {
+		t.Fatalf("the first spell drew: hand %d -> %d", hand, me.Hand.Size())
+	}
+	// The second spell targets a player: copied, so the opponent takes 6.
+	life := opp.Life
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
+	passPriorityAroundTable(t, g)
+	b16PickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life > life-3 {
+		t.Fatalf("opponent at %d, want at most %d", opp.Life, life-3)
+	}
+	if opp.Life != life-6 {
+		t.Errorf("opponent at %d, want %d (the bolt and its copy)", opp.Life, life-6)
+	}
+}
+
+func TestCmdrB13ShikoDrawsWhenTheSecondSpellHasNoTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	b12Push(g, me.ID, "Shiko and Narset, Unified", "Legendary Creature — Human Spirit Dragon", cmdrB13ShikoOracle, 4, 4)
+	advanceTo(t, g, game.StepPrecombatMain)
+	cmdrB13CastCreature(t, g, me, 1)
+	hand := me.Hand.Size()
+	cmdrB13CastCreature(t, g, me, 1)
+	// One card left the hand for the cast, one was drawn.
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d, want %d (the cast is net zero, one card drawn)", me.Hand.Size(), hand+1)
+	}
+}
