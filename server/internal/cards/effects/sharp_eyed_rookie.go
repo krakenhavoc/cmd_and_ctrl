@@ -36,7 +36,7 @@ func init() {
 					return ok && c.IsCreature() &&
 						(c.PowerForComparison() > source.PowerForComparison() || c.CurrentToughness() > source.CurrentToughness())
 				}, label,
-				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}, CreateToken{Template: ClueToken(), N: 1}))),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}, Investigate{N: 1}))),
 		},
 	})
 }

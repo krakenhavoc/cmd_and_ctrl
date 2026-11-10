@@ -37,7 +37,7 @@ func init() {
 				TargetPermanent("up to one target nontoken artifact or creature", Or(Artifact(), Creature()), Not(IsTokenPredicate())).WithCount(0, 1),
 				measureOfAManExile),
 			ChapterTrigger(2, SagaChapterLabel("The Measure of a Man", 2, "investigate"),
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 			ChapterTrigger(3, SagaChapterLabel("The Measure of a Man", 3, "return the exiled card to the battlefield under its owner's control; you gain 2 life"),
 				Do(Instruction(measureOfAManReturn), GainLife{Amount: 2})),
 		},

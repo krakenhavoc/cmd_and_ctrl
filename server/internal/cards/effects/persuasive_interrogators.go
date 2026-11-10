@@ -27,7 +27,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Persuasive Interrogators — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisEnters("Persuasive Interrogators — investigate", Do(Investigate{N: 1})),
 			Targeting(
 				On(game.EventSacrifice, lonisYouSacrificedAClue,
 					"Persuasive Interrogators — target opponent gets two poison counters",

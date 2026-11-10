@@ -1578,6 +1578,13 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		// to look the key up in; the warp clause is the same one.
 		alt = &AlternativeCost{Key: GrantedAltCostWarp, Label: "Warp", WarpExile: true}
 	}
+	if alt == nil && item.AltCost == GrantedAltCostEvoke {
+		// #5428, Ashling, the Limitless: "Elemental permanent spells you
+		// cast from your hand gain evoke {4} as you cast them". The spell
+		// keeps the ability whatever becomes of its source (CR 610.5), so
+		// the sacrifice is read off the key, as granted warp's exile is.
+		alt = &AlternativeCost{Key: GrantedAltCostEvoke, Label: "Evoke", SacrificeOnEntry: true}
+	}
 	if alt == nil {
 		return
 	}

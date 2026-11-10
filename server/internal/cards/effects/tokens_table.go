@@ -122,6 +122,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 blue and red Elemental":                                       {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 1, Toughness: 1, Colors: []string{"U", "R"}},
 	"1/1 blue and red Insect with flying and haste":                    {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"U", "R"}, Keywords: []string{"flying", "haste"}},
 	"1/1 black and green Insect with flying":                           {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B", "G"}, Keywords: []string{"flying"}},
+	"1/1 black and green Insect":                                       {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B", "G"}},
 	"1/1 white Sheep":                                                  {Name: "Sheep", TypeLine: "Token Creature — Sheep", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Mouse":                                                  {Name: "Mouse", TypeLine: "Token Creature — Mouse", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Ally":                                                   {Name: "Ally", TypeLine: "Token Creature — Ally", Power: 1, Toughness: 1, Colors: []string{"W"}},

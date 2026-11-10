@@ -46,6 +46,7 @@ body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
 body ascend/exile-listed-unless-citys-blessing
+body ashling-the-limitless/pay-wubrg-or-sacrifice
 body attach/sacrifice-the-returned-creature
 body augusta-order-returned/counters
 body auron-venerated-guardian/exile
@@ -185,6 +186,7 @@ body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
 body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
+body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
 body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
@@ -249,6 +251,7 @@ body nine-lives/incarnation-counter
 body noctis/warp-strike-return
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
+body offspring/granted-token
 body ondu-rising/attacker-gains-lifelink
 body overcharged-amalgam/counter
 body overlook/brokers-hideout-fetch
@@ -688,6 +691,7 @@ choose choose-cards/make-your-own-luck-plot
 choose choose-cards/malcolm-free-cast-offer
 choose choose-cards/manhole-missile-bottom
 choose choose-cards/marina-vendrells-grimoire-lose-if-empty
+choose choose-cards/marvo-deep-operative-cast
 choose choose-cards/masterminds-acquisition-take
 choose choose-cards/meanders-guide-tap
 choose choose-cards/memories-returning-bottom
@@ -1241,7 +1245,9 @@ drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
 drawthen enter-the-infinite-put-back
 drawthen glacial-dragonhunt/may-discard
+drawthen hoarders-greed/clash
 drawthen malcolm-discard
+drawthen marvo-deep-operative/free-cast
 drawthen messenger-jays-discard
 drawthen narset-of-the-ancient-way/may-discard
 drawthen occult-epiphany-discard
@@ -1339,6 +1345,8 @@ option option-pick/emergent-ultimatum-opponent
 option option-pick/emeria-shepherd-return
 option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
+option option-pick/engine-clash
+option option-pick/engine-clash-opponent
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
@@ -1472,6 +1480,7 @@ payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/anthropede-destroy-room
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
+payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
@@ -1682,6 +1691,7 @@ run blight/scuzzback-scrounger-treasure
 run blight/sourbread-auntie-tokens
 run blight/warren-torchmaster-when-you-do
 run dalek-intensive-care/exile
+run engine/explore-each-pick
 run prompt-run/acererak-the-archlich-sacrificed
 run prompt-run/aclazotz-draw
 run prompt-run/altar-of-the-wretched-payout
@@ -1747,6 +1757,7 @@ run prompt-run/gideons-sacrifice-redirect
 run prompt-run/glorifier-of-suffering-sacrifice
 run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/grab-the-reins-damage
+run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
 run prompt-run/hollow-marauder-draws
@@ -1958,6 +1969,7 @@ tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
 tail artistic-process/token-haste
 tail ascent-of-the-worthy/angel-warrior
+tail ashling-the-limitless/haste-and-pay-or-sacrifice
 tail assemble-the-legion/muster
 tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
@@ -2167,6 +2179,7 @@ tail engine/face-down-permitted-granted
 tail engine/foretold-exiled
 tail engine/gain-suspend-exiled
 tail engine/impulse-exile-granted
+tail engine/investigated
 tail engine/library-order-leg-landed
 tail engine/manifest-dread-entered
 tail engine/manifest-dread-finished
@@ -2290,6 +2303,8 @@ tail herald-of-amity/after-exile
 tail herigast-erupting-nullkite/draw-three
 tail heroic-sacrifice/put-counters
 tail hex-magic/permit-and-draw
+tail hoarders-greed/draw-two
+tail hoarders-greed/repeat-if-won
 tail hoarding-broodlord/cast-permission
 tail hofri-ghostforge/copy
 tail hotel-of-fears/praise-him
@@ -2531,6 +2546,7 @@ tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
+tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
@@ -2742,6 +2758,8 @@ tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
 tail then/glen-elendras-answer-counter-next
 tail then/grasp-of-fate-exiled-one
+tail then/grist-the-hunger-tide-mill
+tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen

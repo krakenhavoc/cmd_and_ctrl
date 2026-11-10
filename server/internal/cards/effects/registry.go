@@ -1001,6 +1001,10 @@ func Register(spec Spec) {
 	// zone layer step finds a Mycosynth Lattice by one map read per
 	// permanent.
 	game.IndexZoneLayers(spec.OracleID, spec.Static)
+	// #5427: and the card's own "as long as this card isn't on the
+	// battlefield, it's a ..." (game/off_battlefield_self.go).
+	checkOffBattlefieldSelf(spec.Name, spec.OffBattlefield)
+	game.IndexOffBattlefieldSelf(spec.OracleID, spec.OffBattlefield)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -1135,6 +1139,26 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 					card, what, i, zone, why))
 			}
 		}
+	}
+}
+
+// checkOffBattlefieldSelf is the registration check for
+// Spec.OffBattlefield (#5427): the sentence adds at least one card type
+// and, since every printed one makes the card a creature, it is read
+// as setting power and toughness, so a declaration that is not a
+// creature's would silently give a noncreature card a 0/0 (CR 208.3).
+func checkOffBattlefieldSelf(card string, self *game.OffBattlefieldSelf) {
+	if self == nil {
+		return
+	}
+	creature := false
+	for _, t := range self.Types {
+		if strings.EqualFold(t, "creature") {
+			creature = true
+		}
+	}
+	if !creature {
+		panic(fmt.Sprintf("effects.Register: %q declares OffBattlefield without the Creature type: the seam sets power and toughness, which only a creature card has (CR 208.3)", card))
 	}
 }
 

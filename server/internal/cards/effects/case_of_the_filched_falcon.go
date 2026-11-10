@@ -37,7 +37,7 @@ func init() {
 		Name:         "Case of the Filched Falcon",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Case of the Filched Falcon — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisEnters("Case of the Filched Falcon — investigate", Do(Investigate{N: 1})),
 			ToSolve("Case of the Filched Falcon — to solve: you control three or more artifacts", youControlThreeOrMoreArtifacts),
 		},
 		Activated: []ActivatedAbility{{

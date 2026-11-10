@@ -354,6 +354,11 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 			if a.Cost.ManaFromSource && a.Cost.Mana == "" {
 				a.Cost.Mana = c.ManaCost
 			}
+			// "{X}, where X is its mana value" (Graywater's Fixer's encore):
+			// the same, read off the card's mana value (CR 202.3).
+			if a.Cost.ManaValueFromSource && a.Cost.Mana == "" {
+				a.Cost.Mana = "{" + strconv.Itoa(c.ManaValue()) + "}"
+			}
 			out = append(out, a)
 			if wantOrigins {
 				origins = append(origins, AbilityOrigin{

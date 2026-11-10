@@ -301,6 +301,12 @@ func printedShared(c *Card) Characteristic {
 	// The layer-0 baseline for control (CR 613.1b): who controls this
 	// object absent any control-changing continuous effect.
 	ch.Controller = c.baseController()
+	// #5427, CR 113.6c: the card's own "as long as this card isn't on
+	// the battlefield, it's a ..." (off_battlefield_self.go). Never
+	// written into the entry: a grown list is a new slice.
+	if self := offBattlefieldSelfOf(c); self != nil {
+		self.applyTo(&ch)
+	}
 	return ch
 }
 

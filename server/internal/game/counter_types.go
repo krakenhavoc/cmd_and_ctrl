@@ -81,6 +81,12 @@ const (
 	// (finality_counters.go), so a counter that any card puts on any
 	// permanent works, not only the ones on the cards that print it.
 	CounterFinality = "finality"
+	// CounterLevel is the level counter (CR 702.87a: "Level up [cost]"
+	// means "[Cost]: Put a level counter on this permanent. Activate
+	// only as a sorcery."). No SBA: a leveler card's level symbols count
+	// them (CR 711.2), in cards/effects/leveler.go. A Class's level is a
+	// designation, not this counter (CR 702.87c).
+	CounterLevel = "level"
 )
 
 // Player-level counter type identifiers.
@@ -139,6 +145,7 @@ var KnownCardCounters = []string{
 	CounterDream,
 	CounterHone,
 	CounterFinality,
+	CounterLevel,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

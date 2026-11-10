@@ -38,6 +38,11 @@ import (
 // for any other. A bound offer (blitz from the graveyard, "blitz-graveyard")
 // is the same keyword.
 func temporaryBodyKind(key string) string {
+	// #5428: evoke a permanent gave the spell (Ashling, the Limitless) is
+	// evoke, under the granted key.
+	if key == "granted-evoke" {
+		return "evoke"
+	}
 	for _, k := range [...]string{"evoke", "warp", "dash", "blitz"} {
 		if key == k || strings.HasPrefix(key, k+"-") {
 			return k

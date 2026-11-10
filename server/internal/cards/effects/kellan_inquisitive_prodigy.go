@@ -52,7 +52,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 1, ExtraLandDrops: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (CreateToken{Template: ClueToken(), N: 1}).Apply(ctx); err != nil {
+			if err := (Investigate{N: 1}).Apply(ctx); err != nil {
 				return err
 			}
 			ctx.Game.GrantAdditionalLandPlayForEffect(item.Controller, 1)

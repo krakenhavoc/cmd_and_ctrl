@@ -36,6 +36,15 @@ type GrantedOptionalCost struct {
 	Cost AdditionalCost
 	// Label is the static's own text, for the ability rows.
 	Label string
+	// EachSource gives the spell one instance of the cost per permanent
+	// granting it, instead of one per key (#5428). Offspring is the
+	// keyword that needs it: CR 702.175b, "If a spell has multiple
+	// instances of offspring, each is paid separately and triggers based
+	// on the payments made for it, not any other instances of
+	// offspring." Each instance is its own entry of the announcement's
+	// index space and is recorded under the same Key, so the record
+	// counts the payments.
+	EachSource bool
 }
 
 // CatalogGrantedOptionalCosts is the catalog hook for a permanent's
@@ -69,7 +78,7 @@ func (g *Game) OptionalCostsForCastLocked(caster uuid.UUID, card Card) []Additio
 			continue
 		}
 		for _, gr := range CatalogGrantedOptionalCosts(key) {
-			if gr.Cost.Key == "" || seen[gr.Cost.Key] {
+			if gr.Cost.Key == "" || (seen[gr.Cost.Key] && !gr.EachSource) {
 				continue
 			}
 			if gr.Spells != nil && !gr.Spells(g, caster, card) {

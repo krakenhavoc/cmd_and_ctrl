@@ -22,7 +22,7 @@ func init() {
 		Purpose:      ForTargets(BenefitUntilEOT(1, 1, 0, "flying")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if who, ok := ctx.ClauseTarget(0); ok {
-				if err := (CreateToken{Controller: who.ID, Template: ClueToken(), N: 1}).Apply(ctx); err != nil {
+				if err := (Investigate{Player: who.ID, N: 1}).Apply(ctx); err != nil {
 					return err
 				}
 			}

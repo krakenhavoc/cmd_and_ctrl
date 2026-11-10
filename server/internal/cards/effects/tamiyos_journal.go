@@ -23,7 +23,7 @@ func init() {
 		Name:         "Tamiyo's Journal",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Tamiyo's Journal — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			AtYourUpkeep("Tamiyo's Journal — investigate", Do(Investigate{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Sacrifice three Clues: Search your library for a card, put that card into your hand, then shuffle.",

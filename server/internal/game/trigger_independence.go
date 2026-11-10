@@ -65,6 +65,10 @@ const (
 	FootprintEnergy FootprintKind = "energy"
 	// FootprintCreateToken: the controller creates N copies of Token.
 	FootprintCreateToken FootprintKind = "create_token"
+	// FootprintInvestigate: the controller investigates N times
+	// (CR 701.16a, #5425): a FootprintCreateToken of the Clue in Token,
+	// and an EventInvestigate each time.
+	FootprintInvestigate FootprintKind = "investigate"
 	// FootprintMonarch: the controller becomes the monarch.
 	FootprintMonarch FootprintKind = "monarch"
 	// FootprintPumpSource: the item's source gets +N/+N until end of
@@ -1190,7 +1194,7 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		a.emit(EventSurveil, EventZoneMove)
 	case FootprintEnergy:
 		a.emit(EventPlayerCounterPlaced)
-	case FootprintCreateToken:
+	case FootprintCreateToken, FootprintInvestigate:
 		if !tokenTemplateInert(s.TokenKey, s.TokenManual) {
 			return false
 		}
@@ -1198,6 +1202,9 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 			a.tokenWatches[k] = true
 		}
 		a.emit(EventTokenCreated, EventETB, EventZoneMove)
+		if s.Kind == FootprintInvestigate {
+			a.emit(EventInvestigate)
+		}
 	case FootprintMonarch:
 		a.monarch = true
 		a.emit(EventMonarchChanged)

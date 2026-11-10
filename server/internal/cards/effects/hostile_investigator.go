@@ -26,7 +26,7 @@ func init() {
 			TriggersOnlyOnceEachTurn(OncePerBatch(On(game.EventDiscardCard,
 				func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Kind == game.EventDiscardCard
-				}, "Hostile Investigator — investigate", Do(CreateToken{Template: ClueToken(), N: 1})))),
+				}, "Hostile Investigator — investigate", Do(Investigate{N: 1})))),
 		},
 	})
 }

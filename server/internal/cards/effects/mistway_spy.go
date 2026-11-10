@@ -48,5 +48,5 @@ func init() {
 // key: never renamed, never reused.
 var investigateForTheControllerBody = game.SimpleDelayedBody("investigate/controller",
 	func(g *game.Game, item *game.StackItem) error {
-		return CreateToken{Controller: item.Controller, Template: ClueToken(), N: 1}.Apply(NewContext(g, item))
+		return Investigate{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 	})

@@ -34,7 +34,7 @@ func init() {
 			if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
 				return err
 			}
-			return CreateToken{Controller: controller, Template: ClueToken(), N: 1}.Apply(ctx)
+			return Investigate{Player: controller, N: 1}.Apply(ctx)
 		},
 	})
 }
