@@ -405,6 +405,9 @@ var tokenTable = map[string]game.Card{
 
 	// #5075 batch 34: Avatar Eternal's plain Soldier (Fire Nation Archers, TTLE).
 
+	// #5368: Lost Caverns of Ixalan Commander's white and black Vampire (Glass-Cast Heart).
+	"1/1 white and black Vampire with lifelink": {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"lifelink"}},
+
 	// #4470: The Lost Caverns of Ixalan's Vampire Demon (Vito, Fanatic of Aclazotz).
 	"4/3 white and black Vampire Demon with flying": {Name: "Vampire Demon", TypeLine: "Token Creature — Vampire Demon", Power: 4, Toughness: 3, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
 

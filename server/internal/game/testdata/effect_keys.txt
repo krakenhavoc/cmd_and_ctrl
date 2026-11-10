@@ -480,6 +480,7 @@ choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
+choose choose-cards/cmdr2-b09-florian-exile
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -1486,6 +1487,7 @@ payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/chaos-spewer-blight
+payunless pay-unless/cmdr2-b09-timothar-exile
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
@@ -2048,6 +2050,8 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail cmdr2-b09-timothar/after-exile
+tail cmdr2-b09-timothar/bat
 tail coalstoke-gearhulk/entered
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
