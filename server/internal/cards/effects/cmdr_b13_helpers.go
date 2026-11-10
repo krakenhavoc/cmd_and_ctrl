@@ -108,3 +108,20 @@ func cmdrB13GreatestManaValueYouControl(g *game.Game, player uuid.UUID) int {
 	}
 	return best
 }
+
+// cmdrB13PowerAndToughness is a creature's power and toughness as it is on
+// the battlefield (the raw power, so a negative one is not clamped), or as it
+// last existed there once it has left (CR 608.2h). ok is false when nothing
+// is known of it.
+func cmdrB13PowerAndToughness(g *game.Game, id uuid.UUID) (power, toughness int, ok bool) {
+	if onBattlefield(g, id) {
+		g.RecomputeLayersIfStaleLocked()
+		if c, found := g.LookupCardForEffect(id); found {
+			return c.PowerForComparison(), c.CurrentToughness(), true
+		}
+	}
+	if info, found := g.LastKnownPermanentForEffect(id); found {
+		return info.Power, info.Toughness, true
+	}
+	return 0, 0, false
+}

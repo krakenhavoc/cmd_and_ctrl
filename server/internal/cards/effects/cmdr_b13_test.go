@@ -1091,3 +1091,37 @@ func TestCmdrB15WillOfTheTemurDrawsGreatestManaValueAndBothWithACommander(t *tes
 		t.Errorf("%d permanents named Five, want the original and the token copy", n)
 	}
 }
+
+const cmdrB15JawsOracle = "46327e52-b04a-4155-bda6-9559e46fb9ed"
+
+func TestCmdrB15JawsOfDefeatDrainsByThePowerToughnessDifference(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Jaws of Defeat", "Enchantment", cmdrB15JawsOracle, false)
+	advanceTo(t, g, game.StepPrecombatMain)
+	cast := func(power, toughness int) {
+		id := uuid.New()
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Body", TypeLine: "Creature — Wall", Power: power, Toughness: toughness, Owner: me.ID, Controller: me.ID})
+		if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+			t.Fatal(err)
+		}
+		passPriorityAroundTable(t, g)
+		for i := 0; i < 3 && latestPickTarget(g, me.ID) != nil; i++ {
+			b16PickPlayer(t, g, me.ID, opp.ID)
+			passPriorityAroundTable(t, g)
+		}
+	}
+	life := opp.Life
+	cast(1, 4) // 3
+	if opp.Life != life-3 {
+		t.Fatalf("a 1/4 drained %d, want 3", life-opp.Life)
+	}
+	cast(5, 2) // 3
+	if opp.Life != life-6 {
+		t.Fatalf("a 5/2 drained %d in total, want 6", life-opp.Life)
+	}
+	cast(3, 3) // 0
+	if opp.Life != life-6 {
+		t.Errorf("a 3/3 changed the life total: %d", life-opp.Life)
+	}
+}
