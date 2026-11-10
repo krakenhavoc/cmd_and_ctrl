@@ -22,8 +22,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}{B}, {T}, Discard a card: Create a 2/2 black Zombie creature token.",
-				Cost:  Plus(ManaCost("{1}{B}"), TapCost(), DiscardACard()),
+				Label:   "{1}{B}, {T}, Discard a card: Create a 2/2 black Zombie creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(ManaCost("{1}{B}"), TapCost(), DiscardACard()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Template: TokenCard("2/2 black Zombie"), N: 1}.Apply(NewContext(g, item))
 				},

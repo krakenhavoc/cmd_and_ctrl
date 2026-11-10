@@ -27,15 +27,17 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{2}{R}: This creature deals 1 damage to each creature without flying.",
-				Cost:  ManaCost("{2}{R}"),
+				Label:   "{2}{R}: This creature deals 1 damage to each creature without flying.",
+				Purpose: game.Purpose{Answers: game.AnswerRemove},
+				Cost:    ManaCost("{2}{R}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return damageEachMatching(NewContext(g, item), And(Creature(), WithoutKeyword("flying")), 1)
 				},
 			},
 			{
-				Label: "{2}{G}: This creature deals 1 damage to each other creature with flying.",
-				Cost:  ManaCost("{2}{G}"),
+				Label:   "{2}{G}: This creature deals 1 damage to each other creature with flying.",
+				Purpose: game.Purpose{Answers: game.AnswerRemove},
+				Cost:    ManaCost("{2}{G}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					source := item.SourceCardID
 					return damageEachMatching(NewContext(g, item), And(Creature(), HasKeyword("flying"),

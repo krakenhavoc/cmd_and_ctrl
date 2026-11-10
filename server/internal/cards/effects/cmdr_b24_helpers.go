@@ -11,12 +11,13 @@ import (
 // condition: "a player was dealt combat damage by a Zombie this turn", read
 // off this turn's damage events. The source is the card as it sits now, so a
 // Zombie that died after dealing the damage counts by its printed subtypes.
-func cmdrB24ZombieDealtCombatDamageToAPlayerThisTurn(g *game.Game) bool {
+func cmdrB24ZombieDealtCombatDamageToAPlayerThisTurn(g *game.Game, source *game.Card) bool {
+	zombie := source.TextSubtype("Zombie")
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || g.PlayerByIDForEffect(ev.Target) == nil {
 			continue
 		}
-		if src, ok := g.LookupCardForEffect(ev.Source); ok && src.HasSubtype("Zombie") {
+		if src, ok := g.LookupCardForEffect(ev.Source); ok && src.HasSubtype(zombie) {
 			return true
 		}
 	}

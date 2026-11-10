@@ -4270,6 +4270,7 @@ frozenEntries[].event.damageTail.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughness	bool
 frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughnessIfGreater	bool
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Uses	number:uint8
+frozenEntries[].event.damageTail.sourceLki.DamageAlwaysByToughness	bool
 frozenEntries[].event.damageTail.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.damageTail.sourceLki.DamageByToughness	bool
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers	array
@@ -12449,6 +12450,7 @@ frozenEntries[].event.sourceLki.CostPower[].Multiplier	number:int
 frozenEntries[].event.sourceLki.CostPower[].UseToughness	bool
 frozenEntries[].event.sourceLki.CostPower[].UseToughnessIfGreater	bool
 frozenEntries[].event.sourceLki.CostPower[].Uses	number:uint8
+frozenEntries[].event.sourceLki.DamageAlwaysByToughness	bool
 frozenEntries[].event.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.sourceLki.DamageByToughness	bool
 frozenEntries[].event.sourceLki.DefenderWaivers	array
@@ -18677,6 +18679,7 @@ heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Multiplier	number:int
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughness	bool
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughnessIfGreater	bool
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Uses	number:uint8
+heldCombatDamage.answers[].frame.SourceLKI.DamageAlwaysByToughness	bool
 heldCombatDamage.answers[].frame.SourceLKI.DamageAsPositivePower	bool
 heldCombatDamage.answers[].frame.SourceLKI.DamageByToughness	bool
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers	array
@@ -18855,6 +18858,7 @@ lastKnownBattlefield{}.CostPower[].Multiplier	number:int
 lastKnownBattlefield{}.CostPower[].UseToughness	bool
 lastKnownBattlefield{}.CostPower[].UseToughnessIfGreater	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
+lastKnownBattlefield{}.DamageAlwaysByToughness	bool
 lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
 lastKnownBattlefield{}.DefenderWaivers	array
@@ -19037,6 +19041,7 @@ lastKnownPermanents{}[].characteristic.CostPower[].Multiplier	number:int
 lastKnownPermanents{}[].characteristic.CostPower[].UseToughness	bool
 lastKnownPermanents{}[].characteristic.CostPower[].UseToughnessIfGreater	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
+lastKnownPermanents{}[].characteristic.DamageAlwaysByToughness	bool
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
 lastKnownPermanents{}[].characteristic.DefenderWaivers	array
@@ -21927,6 +21932,7 @@ movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Multiplier	number:int
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].UseToughness	bool
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].UseToughnessIfGreater	bool
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Uses	number:uint8
+movesAwaitingTokens[].damageTail.sourceLki.DamageAlwaysByToughness	bool
 movesAwaitingTokens[].damageTail.sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].damageTail.sourceLki.DamageByToughness	bool
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers	array
@@ -30106,6 +30112,7 @@ movesAwaitingTokens[].sourceLki.CostPower[].Multiplier	number:int
 movesAwaitingTokens[].sourceLki.CostPower[].UseToughness	bool
 movesAwaitingTokens[].sourceLki.CostPower[].UseToughnessIfGreater	bool
 movesAwaitingTokens[].sourceLki.CostPower[].Uses	number:uint8
+movesAwaitingTokens[].sourceLki.DamageAlwaysByToughness	bool
 movesAwaitingTokens[].sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].sourceLki.DamageByToughness	bool
 movesAwaitingTokens[].sourceLki.DefenderWaivers	array
@@ -40336,6 +40343,7 @@ pendingChoices[].damageAssignment.SourceLKI.CostPower[].Multiplier	number:int
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
+pendingChoices[].damageAssignment.SourceLKI.DamageAlwaysByToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers	array
@@ -41156,6 +41164,7 @@ pendingChoices[].divideShield.staged[].lki.CostPower[].Multiplier	number:int
 pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughness	bool
 pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].divideShield.staged[].lki.CostPower[].Uses	number:uint8
+pendingChoices[].divideShield.staged[].lki.DamageAlwaysByToughness	bool
 pendingChoices[].divideShield.staged[].lki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].lki.DamageByToughness	bool
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers	array
@@ -41323,6 +41332,7 @@ pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Multiplier	number:i
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Uses	number:uint8
+pendingChoices[].divideShield.staged[].sourceLki.DamageAlwaysByToughness	bool
 pendingChoices[].divideShield.staged[].sourceLki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].sourceLki.DamageByToughness	bool
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers	array
@@ -46806,6 +46816,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Multip
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Uses	number:uint8
+pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAlwaysByToughness	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageByToughness	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers	array
@@ -54985,6 +54996,7 @@ pendingChoices[].replacementResume.event.sourceLki.CostPower[].Multiplier	number
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughness	bool
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Uses	number:uint8
+pendingChoices[].replacementResume.event.sourceLki.DamageAlwaysByToughness	bool
 pendingChoices[].replacementResume.event.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.sourceLki.DamageByToughness	bool
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers	array
@@ -62700,6 +62712,7 @@ pendingChoices[].targetWalk.frame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughness	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].Uses	number:uint8
+pendingChoices[].targetWalk.frame.lki.DamageAlwaysByToughness	bool
 pendingChoices[].targetWalk.frame.lki.DamageAsPositivePower	bool
 pendingChoices[].targetWalk.frame.lki.DamageByToughness	bool
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers	array
@@ -63440,6 +63453,7 @@ pendingChoices[].triggerFrame.lki.CostPower[].Multiplier	number:int
 pendingChoices[].triggerFrame.lki.CostPower[].UseToughness	bool
 pendingChoices[].triggerFrame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].triggerFrame.lki.CostPower[].Uses	number:uint8
+pendingChoices[].triggerFrame.lki.DamageAlwaysByToughness	bool
 pendingChoices[].triggerFrame.lki.DamageAsPositivePower	bool
 pendingChoices[].triggerFrame.lki.DamageByToughness	bool
 pendingChoices[].triggerFrame.lki.DefenderWaivers	array

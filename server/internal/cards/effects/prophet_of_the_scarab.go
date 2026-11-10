@@ -23,8 +23,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Prophet of the Scarab — draw cards equal to the number of Zombies you control or Zombie cards in your graveyard, whichever is greater",
 				func(g *game.Game, item *game.StackItem) error {
-					n := cmdrB23ZombiesYouControl(g, item.Controller)
-					if yard := len(graveyardIDs(g, item.Controller, func(c game.Card) bool { return c.HasSubtype("Zombie") })); yard > n {
+					src, ok := g.LookupCardForEffect(item.SourceCardID)
+					if !ok {
+						return nil
+					}
+					zombie := src.TextSubtype("Zombie")
+					n := cmdrB23ZombiesYouControl(g, &src, item.Controller)
+					if yard := len(graveyardIDs(g, item.Controller, func(c game.Card) bool { return c.HasSubtype(zombie) })); yard > n {
 						n = yard
 					}
 					return DrawCards{N: n}.Apply(NewContext(g, item))

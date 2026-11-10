@@ -372,10 +372,8 @@ func TestCmdrB22ColfenorsUrnExilesBigCreaturesAndReturnsThreeAtEndStep(t *testin
 	if latestTriggerPrompt(g, me.ID) != nil {
 		t.Fatal("a toughness 3 creature triggered the Urn")
 	}
-	var bigs []uuid.UUID
 	for i := 0; i < 3; i++ {
 		id := b12Creature(g, me.ID, "Big", "Creature — Wall", 0, 4)
-		bigs = append(bigs, id)
 		killCreature(t, g, me.ID, id)
 		passPriorityAroundTable(t, g)
 		answerLatestTriggerPrompt(t, g, me.ID, true)

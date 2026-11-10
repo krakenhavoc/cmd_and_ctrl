@@ -118,3 +118,19 @@ var cmdrB21RagavanHaste = CardTail("baral-and-kari-zev/ragavan-haste", func(ctx 
 	}
 	return nil
 })
+
+// cmdrB21CopyTheTargetSpell is "Copy target instant or sorcery spell. You may
+// choose new targets for the copy." for a card with one spell target: the
+// first target is copied under the resolving spell's controller (CR 707.10),
+// with the CR 707.10c re-target prompt. Twincast, Reverberate and Expansion
+// share it.
+func cmdrB21CopyTheTargetSpell(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 {
+		return nil
+	}
+	return CopySpell{
+		StackID:          item.Targets[0].ID,
+		Controller:       ctx.Controller(),
+		ChooseNewTargets: true,
+	}.Apply(ctx)
+}

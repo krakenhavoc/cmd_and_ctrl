@@ -34,9 +34,13 @@ func init() {
 			},
 			{
 				Cost: ManaAbilityCost{Tap: true, Mana: "{2}"},
-				ProducedAmount: func(g *game.Game, controller, _ uuid.UUID) game.ManaAmount {
+				ProducedAmount: func(g *game.Game, controller, source uuid.UUID) game.ManaAmount {
+					black := "B"
+					if src, ok := g.LookupCardForEffect(source); ok {
+						black = src.TextColor("B")
+					}
 					n := len(graveyardIDs(g, controller, func(c game.Card) bool {
-						return c.IsCreature() && c.HasColor("B")
+						return c.IsCreature() && c.HasColor(black)
 					}))
 					return game.ManaAmount{Options: []string{"B"}, N: n}
 				},

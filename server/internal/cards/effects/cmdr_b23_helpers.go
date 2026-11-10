@@ -39,10 +39,11 @@ func cmdrB23WithCardTypesInAddition(printed string, add ...string) string {
 
 // cmdrB23ZombiesYouControl counts the Zombies controller controls, read
 // through the layered view.
-func cmdrB23ZombiesYouControl(g *game.Game, controller uuid.UUID) int {
+func cmdrB23ZombiesYouControl(g *game.Game, source *game.Card, controller uuid.UUID) int {
 	n := 0
+	zombie := source.TextSubtype("Zombie")
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.HasSubtype("Zombie") {
+		if c.Controller == controller && c.HasSubtype(zombie) {
 			n++
 		}
 	}

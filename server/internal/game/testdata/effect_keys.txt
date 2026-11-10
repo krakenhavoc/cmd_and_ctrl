@@ -298,6 +298,7 @@ body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
 body sacrifice/listed-cards
 body sacrifice/listed-objects-you-control
+body saheeli-radiant-creator/copy
 body sakashima/return-listed-to-hand
 body sample-collector/counter
 body sandbender-scavengers/return-to-battlefield
@@ -615,6 +616,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
 choose choose-cards/living-wish-take
 choose choose-cards/london-mulligan-bottom
+choose choose-cards/lost-monarch-of-ifnir-return-creature
 choose choose-cards/mad-wizards-lair-cast
 choose choose-cards/mairsil-cage
 choose choose-cards/make-your-own-luck-plot
@@ -810,6 +812,7 @@ choose choose-cards/unification-put-spacecraft
 choose choose-cards/untap-choice
 choose choose-cards/untap-up-to-lands
 choose choose-cards/valakut-awakening-put-back
+choose choose-cards/velomachus-lorehold-cast
 choose choose-cards/vengeful-villagers-sacrifice
 choose choose-cards/victor-valgavoths-seneschal-reanimate
 choose choose-cards/vivien-champion-of-the-wilds-exile
@@ -843,6 +846,7 @@ choose grasping-tentacles/take-pick
 choose hama/exile-pick
 choose manifest-dread/pick
 choose resolution-cast/abstract-performance-rest-to-hand
+choose resolution-cast/baral-and-kari-zev-ragavan
 choose resolution-cast/cmdr-troi-copy-or-draw
 choose resolution-cast/commander-spock-after-cast
 choose resolution-cast/glorious-purpose-rest-to-hand
@@ -1115,6 +1119,7 @@ drawthen discard:
 drawthen discard:Anvil of Bogardan — discard a card
 drawthen discard:Arni, Humble Scribe — discard a card
 drawthen discard:Depth Defiler — discard a card
+drawthen discard:Temmet, Naktamun's Will — discard a card
 drawthen discard:Whirlwind Technique — discard a card
 drawthen draw-then/quintorius-history-chaser-mill
 drawthen dungeon/mad-wizards-lair
@@ -1156,6 +1161,7 @@ number number/incinerator-of-the-guilty-collect-evidence-x
 number number/localized-destruction-destroy-all
 number number/master-of-the-wild-hunt-divide-return-damage
 number number/necrodominance-draw-that-many
+number number/pia-nalaar-create-nalaar-aetherjet
 number number/plunge-into-darkness-look-at-that-many
 number number/rampaging-aetherhood-plus-one-counters-on-this
 number number/resourceful-defense-move-counters
@@ -1435,6 +1441,7 @@ payunless pay-unless/riparian-tiger-pump
 payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
 payunless pay-unless/rush-of-inspiration-discard
+payunless pay-unless/saheeli-radiant-creator-copy
 payunless pay-unless/sentry-bot-counters
 payunless pay-unless/seymour-flux-draw-and-counter
 payunless pay-unless/shriek-treblemaker-cant-block
@@ -1556,6 +1563,7 @@ run prompt-run/disciple-of-freyalise-payout
 run prompt-run/doomgape-gain
 run prompt-run/dreadfeast-demon-copy
 run prompt-run/dromokas-command-sacrifice
+run prompt-run/druid-of-purification-destroy
 run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/entish-restoration-search
@@ -1806,6 +1814,7 @@ tail axgard-armory/equipment-search
 tail azog/amass-goblins-and-draw
 tail azula-cunning-usurper/graveyard
 tail bad-wolf-bay/return-at-next-end-step
+tail baral-and-kari-zev/ragavan-haste
 tail barrowgoyf/after-mill
 tail batch18/exiled-creatures-controllers-fetch
 tail batch21-helpers/after-mill
@@ -1857,6 +1866,7 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
 tail connive/each
@@ -2112,6 +2122,7 @@ tail jhoira-weatherlight-corsair/lose-life-then-bottom
 tail kaervek-the-punisher/copy-exiled
 tail kang-prime/time-counters
 tail kav-landseeker/sacrifice-the-lander-next-turn
+tail kaya-geist-hunter/spirits
 tail kaya-orzhov-usurper/gain-2-if-creature
 tail kindred-charge/haste-and-exile-copies
 tail kishla-trawlers/after-exile

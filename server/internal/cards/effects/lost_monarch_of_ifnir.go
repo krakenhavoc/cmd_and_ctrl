@@ -47,14 +47,15 @@ func init() {
 func cmdrB24LostMonarchSecondMain() game.TriggeredAbility {
 	t := AtYourPostcombatMain("Lost Monarch of Ifnir — mill three cards, then you may return a creature card from your graveyard to your hand",
 		func(g *game.Game, item *game.StackItem) error {
-			if !cmdrB24ZombieDealtCombatDamageToAPlayerThisTurn(g) {
+			src, ok := g.LookupCardForEffect(item.SourceCardID)
+			if !ok || !cmdrB24ZombieDealtCombatDamageToAPlayerThisTurn(g, &src) {
 				return nil
 			}
 			return cmdrB24MillThenMayReturnCreature(g, item)
 		})
 	when := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-		return (when == nil || when(ev, source, lki, g)) && cmdrB24ZombieDealtCombatDamageToAPlayerThisTurn(g)
+		return (when == nil || when(ev, source, lki, g)) && cmdrB24ZombieDealtCombatDamageToAPlayerThisTurn(g, source)
 	}
 	return t
 }

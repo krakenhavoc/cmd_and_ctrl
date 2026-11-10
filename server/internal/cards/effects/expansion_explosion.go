@@ -24,16 +24,7 @@ func init() {
 		Name:         "Expansion",
 		Completeness: CompletenessFull,
 		Targets:      instantOrSorcerySpell("target instant or sorcery spell with mana value 4 or less", ManaValueLE(4)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return CopySpell{
-				StackID:          item.Targets[0].ID,
-				Controller:       ctx.Controller(),
-				ChooseNewTargets: true,
-			}.Apply(ctx)
-		},
+		OnResolve:    cmdrB21CopyTheTargetSpell,
 	})
 	Register(Spec{
 		OracleID:     oracle + "#1",

@@ -26,8 +26,9 @@ func init() {
 				"Towering Titan: enters with X +1/+1 counters, X the total toughness of other creatures you control"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice a creature with defender: All creatures gain trample until end of turn.",
-			Cost:  SacrificeN(1, "a creature with defender", Creature(), HasKeyword("defender")),
+			Label:   "Sacrifice a creature with defender: All creatures gain trample until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerCombatGrant},
+			Cost:    SacrificeN(1, "a creature with defender", Creature(), HasKeyword("defender")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{Match: Creature(), Keywords: []string{"trample"}, Label: "Towering Titan — trample"}.Apply(NewContext(g, item))
 			},

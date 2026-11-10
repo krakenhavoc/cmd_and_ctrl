@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Reverberate — Instant {R}{R}:
 //
 //	"Copy target instant or sorcery spell. You may choose new
@@ -22,15 +20,6 @@ func init() {
 		Name:         "Reverberate",
 		Completeness: CompletenessFull,
 		Targets:      instantOrSorcerySpell("target instant or sorcery spell"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			return CopySpell{
-				StackID:          item.Targets[0].ID,
-				Controller:       ctx.Controller(),
-				ChooseNewTargets: true,
-			}.Apply(ctx)
-		},
+		OnResolve:    cmdrB21CopyTheTargetSpell,
 	})
 }

@@ -120,7 +120,6 @@ func TestBatch23CardsAreRegistered(t *testing.T) {
 	// this list with #1210, and Sphinx of the Second Sun (an
 	// additional phase) with ADR 0059 sub-PR 2b (#753).
 	for oracle, name := range map[string]string{
-		"5bb32efd-9e58-4021-bbda-4ffccfa1d601": "Druid of Purification",
 		"8d571129-9030-47e0-9624-a49fb63e5a1b": "Ilharg, the Raze-Boar",
 		"95b53836-18aa-451a-992d-2a111deeeab2": "Yarok, the Desecrated",
 	} {
