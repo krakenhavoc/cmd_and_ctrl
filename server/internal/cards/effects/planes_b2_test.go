@@ -850,3 +850,60 @@ func TestCheetahPlanetChaosGivesEveryCatProvokeUntilEndOfTurn(t *testing.T) {
 		t.Error("provoke outlived the turn")
 	}
 }
+
+// --- Prime Minister's Cabinet Room -------------------------------------------
+
+func TestCabinetRoomCopiesAnOpponentsCreatureAtCombat(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeCabinetRoom)
+	g, _ := newPlaneGame(t, planeCabinetRoom)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	giant := b12Creature(g, opp.ID, "Giant", "Creature — Giant", 5, 5)
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(giant)); err == nil {
+		t.Fatal("an opponent's creature was accepted for the first clause")
+	}
+	answerPickTarget(t, g, bear)
+	answerPickTarget(t, g, giant)
+	passPriorityAroundTable(t, g)
+	c := layeredCard(t, g, bear)
+	if c.Name != "Giant" || c.CurrentPower() != 5 || !c.HasSubtypeWord("Giant") {
+		t.Errorf("the creature is %q %d/%d, want a copy of the Giant", c.Name, c.CurrentPower(), c.CurrentToughness())
+	}
+	endTurn(t, g)
+	if layeredCard(t, g, bear).Name != "Giant" {
+		t.Error("the copy ended with the turn; it has no duration")
+	}
+}
+
+func TestCabinetRoomChaosVotesAndExilesTheMostVotedCreatures(t *testing.T) {
+	g, _ := newPlaneGame(t, planeCabinetRoom)
+	advanceToMain(t, g)
+	order := voteOrder(g)
+	me := order[0]
+	mine := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	a := b12Creature(g, order[1].ID, "Voted Wolf", "Creature — Wolf", 2, 2)
+	b := b12Creature(g, order[2].ID, "Other Wolf", "Creature — Wolf", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if ballotFor(g, me.ID) == nil {
+		t.Fatal("no ballot for the planar controller")
+	}
+	if c := ballotFor(g, me.ID); len(c.PickOptions) != 2 {
+		t.Errorf("the ballot offers %d creatures, want the 2 the planar controller doesn't control", len(c.PickOptions))
+	}
+	for _, p := range order {
+		voteFor(t, g, p.ID, "Voted Wolf")
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(a) {
+		t.Error("the creature with the most votes was not exiled")
+	}
+	if !g.Battlefield.Contains(b) || !g.Battlefield.Contains(mine) {
+		t.Error("a creature with no votes was exiled")
+	}
+}
