@@ -4807,7 +4807,7 @@ var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web
   one-sentence payoff with `Do` (Surveillance Monitor's Thopter).
 
 ```go
-WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(CreateToken{Template: ClueToken(), N: 1}))
+WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(Investigate{N: 1}))
 var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", "Incinerator of the Guilty",
 	func(ctx *Context, x int, _ []uuid.UUID) error { … })             // "you may collect evidence X. When you do, …"
 ```
@@ -12453,8 +12453,48 @@ CreateToken{Controller: p, Template: MapToken(), N: 2}.Apply(ctx)               
   `game.EventExplored`: `CardID` is the explorer and `Actor` its
   controller. It fires once the process is complete, including when the
   library was empty (CR 701.44b).
-- Not built: simultaneous explores in APNAP order (CR 701.44d), and a
-  replacement window on the action (Topography Tracker).
+- "Each <kind of> creature you control explores" is
+  `Game.ExploreEachForEffect(source, explorers []ObjectRef, controller)`
+  (`game/explore_each.go`, #5425, CR 701.44d). Read the permanents and
+  their epochs as the effect resolves and hand them over; the player
+  chooses which explores next before each explore, and one left asks
+  nothing (Hakbal of the Surging Soul).
+- "If a creature you control would explore, instead it explores, then it
+  explores again" is `game.RegisterExploreAgainKey(oracleID)` in the
+  card's `init` (Topography Tracker, #5425). "Instead you scry 1, then
+  that creature explores" is `game.RegisterExploreScryKey` (Twists and
+  Turns). Both are read through the permanent's catalog key, so a copy
+  that lost its abilities replaces nothing, and several copies each
+  apply once (CR 614.5).
+- Not built: one instruction that tells several players' permanents to
+  explore. It would be one `ExploreEachForEffect` per player in APNAP
+  order, each behind the last.
+
+### Investigate (CR 701.16, #5425)
+
+"Investigate" is `Investigate{N: 1}` (`cards/effects/investigate.go`),
+never `CreateToken{Template: ClueToken()}`: the engine half
+(`Game.InvestigateForEffect`, `game/investigate.go`) creates the Clue and
+then emits `game.EventInvestigate`, which is what "whenever you
+investigate" watches. A card that prints "create a Clue token" without the
+word keeps `CreateToken` and does not investigate.
+
+```go
+Do(Investigate{N: 1})                                // "investigate"
+Do(Investigate{N: 2})                                // "investigate twice": two investigates
+Investigate{Player: p, N: 1}.Apply(ctx)              // "target player investigates"
+Do(InvestigateForEach{Name: "…", Count: countFn})    // "investigate once for each …" (Wojek Investigator)
+WheneverYouInvestigateForTheFirstTimeEachTurn(label, Do(Investigate{N: 1})) // Erdwal Illuminator
+```
+
+- `Investigate` declares a footprint (`game.FootprintInvestigate`), so a
+  one-sentence "…, investigate" trigger written with `Do` passes
+  `TestOneSentenceTriggersDeclareFootprints`.
+- "Whenever you investigate" without "for the first time each turn" is
+  `On(game.EventInvestigate, ByYou, label, effect)`. The event's `Actor`
+  is the player and there is one event per investigate.
+  `Game.InvestigatedThisTurn(player)` already counts the investigate a
+  trigger is being asked about, so the turn's first reads 1.
 
 ### Reconfigure (CR 702.151, #2639)
 
@@ -13955,7 +13995,7 @@ The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
 // "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
 WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
 // "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
-WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(Investigate{N: 1})),
 // "When you planeswalk to ~" / "… away from ~" alone
 WhenYouPlaneswalkToThis(label, effect), WhenYouPlaneswalkAwayFromThis(label, effect),
 // "At the beginning of your upkeep / end step / combat on your turn": the ordinary shapes

@@ -42,14 +42,15 @@ func init() {
 // hakbalEachMerfolkExplores is the combat trigger.
 func hakbalEachMerfolkExplores(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	var merfolk []game.ObjectRef
+	merfolk := ctx.TextSubtype("Merfolk")
+	var explorers []game.ObjectRef
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller == ctx.Controller() && c.IsCreature() && c.HasSubtype("Merfolk") {
-			merfolk = append(merfolk, game.ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch})
+		if c.Controller == ctx.Controller() && c.IsCreature() && c.HasSubtype(merfolk) {
+			explorers = append(explorers, game.ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch})
 		}
 	}
-	return g.ExploreEachForEffect(ctx.Source(), merfolk, ctx.Controller())
+	return g.ExploreEachForEffect(ctx.Source(), explorers, ctx.Controller())
 }
 
 // hakbalLandOrDraw is the attack trigger: the optional put, then the draw
