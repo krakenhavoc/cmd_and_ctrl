@@ -182,6 +182,7 @@ body head-of-the-hunt/wolf
 body heroic-sacrifice/its-counters-and-draw
 body hostility/elemental-shamans
 body hunters-insight/draw-that-much
+body ill-timed-explosion/damage
 body immortal-coil/exile-per-prevented
 body incinerator-of-the-guilty/damage
 body initiative/take
@@ -359,6 +360,7 @@ body treasure/create-tapped
 body ty-lee-artful-acrobat/cant-block
 body ugins-binding/bounce-all
 body undead-butler/return-to-hand
+body undercity-eliminator/exile
 body undying/return
 body unscrupulous-contractor/draw-and-lose
 body until/return-to-battlefield
@@ -395,6 +397,7 @@ choose choose-cards/abdel-adrian-exile
 choose choose-cards/aegis-sculptor-exile-two
 choose choose-cards/aerith-rescue-mission-stun
 choose choose-cards/aetherworks-marvel-cast
+choose choose-cards/agency-outfitter-search
 choose choose-cards/ainok-wayfarer-land-or-counter
 choose choose-cards/all-good-things-exile-from-hand
 choose choose-cards/alpharael-discard-two-unless-artifact
@@ -433,6 +436,7 @@ choose choose-cards/calamity-galloping-inferno-copy
 choose choose-cards/call-the-spirit-dragons-pick
 choose choose-cards/caparocti-sunborn-tap-two
 choose choose-cards/captain-james-t-kirk-draw
+choose choose-cards/case-of-the-burning-masks-play
 choose choose-cards/cecily-haunted-mage-cast
 choose choose-cards/celestus-sanctifier-put
 choose choose-cards/cemetery-prowler-exile
@@ -502,6 +506,7 @@ choose choose-cards/ethereal-forager-return
 choose choose-cards/evidence-examiner-collect-evidence
 choose choose-cards/exile-top-face-down-linked
 choose choose-cards/explore-the-vastlands-take
+choose choose-cards/expose-the-culprit-exile
 choose choose-cards/expressive-iteration-bottom
 choose choose-cards/expressive-iteration-take
 choose choose-cards/extract-from-darkness-reanimate
@@ -531,6 +536,7 @@ choose choose-cards/heated-argument-exile
 choose choose-cards/heroes-hangout-play
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand
+choose choose-cards/ill-timed-explosion-discard
 choose choose-cards/immortal-coil-exile
 choose choose-cards/imprint-exile-from-hand
 choose choose-cards/in-the-presence-of-ages-take
@@ -549,6 +555,7 @@ choose choose-cards/karn-the-great-creator-take
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
+choose choose-cards/lamplight-phoenix-collect-evidence
 choose choose-cards/last-chosen-exiled-card
 choose choose-cards/last-march-of-the-ents-put
 choose choose-cards/last-rites-reveal
@@ -767,6 +774,8 @@ choose choose-cards/spirit-of-resilience-copy
 choose choose-cards/spm-black-cat-exile
 choose choose-cards/ss-botany-bay-you-exile
 choose choose-cards/starseer-mentor-punisher-discarded
+choose choose-cards/std-b40-exile-from-hand
+choose choose-cards/steamcore-scholar-discard
 choose choose-cards/stillness-in-motion-restack
 choose choose-cards/strategic-betrayal-exile
 choose choose-cards/summon-esper-valigarmanda-exile-each
@@ -936,6 +945,7 @@ confirm avatar-b30/bison-whistle-to-graveyard
 confirm brazen-bluff/exile-or-free-cast
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
+confirm confirm/agency-outfitter-library
 confirm confirm/ajanis-chosen-attach
 confirm confirm/ajanis-last-stand-sacrifice
 confirm confirm/altar-of-the-wretched-sacrifice
@@ -1001,6 +1011,7 @@ confirm confirm/hauntwoods-shrieker-face-up
 confirm confirm/heralds-horn-take
 confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
+confirm confirm/ill-timed-explosion-discard
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
@@ -1054,6 +1065,7 @@ confirm confirm/ruin-grinder-may-wheel
 confirm confirm/ruin-grinder-wheel
 confirm confirm/rysorian-badger-exile
 confirm confirm/sail-into-the-west-embark
+confirm confirm/sanctuary-wall-stun
 confirm confirm/sauron-the-dark-lord-wheel
 confirm confirm/search-named-library-or-graveyard
 confirm confirm/selfcraft-mechan-sacrifice
@@ -1144,6 +1156,7 @@ drawthen occult-epiphany-discard
 drawthen seasoned-cryomancer/discard-two
 drawthen seven-of-nine-tertiary-adjunct/discard
 drawthen silvan-reveler/discard
+drawthen steamcore-scholar-discard
 drawthen teferi-akosa-discard
 drawthen teo-spirited-glider/discard
 drawthen the-ancient-one/discard
@@ -1292,6 +1305,7 @@ option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
 option option-pick/saurons-ransom-splitter
+option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
 option option-pick/skullwinder-opponent
@@ -1450,6 +1464,7 @@ payunless pay-unless/passenger-ferry-unblockable
 payunless pay-unless/pillar-tombs-of-aku-decline
 payunless pay-unless/proft-consulting-detective-counter-and-draw
 payunless pay-unless/quantum-entanglement-blink
+payunless pay-unless/reckless-detective-draw-pump
 payunless pay-unless/rhystic-study-may-draw
 payunless pay-unless/riddle-gate-gargoyle-lifelink
 payunless pay-unless/rings-of-brighthearth-copy-ability
@@ -1561,6 +1576,7 @@ run prompt-run/berserkers-frenzy-block
 run prompt-run/bolg-of-the-north-sacrifice
 run prompt-run/bound-sacrificed
 run prompt-run/breena-the-demagogue-counters
+run prompt-run/bristlebud-farmer-sacrifice
 run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
@@ -1618,6 +1634,7 @@ run prompt-run/killmonger-sacrificed
 run prompt-run/kishla-trawlers-exile
 run prompt-run/kor-cause-of-vengeance-sacrifice
 run prompt-run/kozilek-the-broken-reality-draw
+run prompt-run/kylox-sacrifice
 run prompt-run/larval-scoutlander-search
 run prompt-run/lich-knights-conquest-sacrifice
 run prompt-run/light-of-judgment-destroy
@@ -1687,6 +1704,7 @@ run prompt-run/tomb-of-annihilation-oubliette-land
 run prompt-run/tomb-of-annihilation-sandfall-sacrificed
 run prompt-run/tovolar-dire-overlord-transform
 run prompt-run/tragic-arrogance-sacrifice-the-rest
+run prompt-run/undercity-eliminator-sacrificed
 run prompt-run/unexpected-request-attach
 run prompt-run/unscrupulous-contractor-sacrifice
 run prompt-run/unstable-glyphbridge-destroy
@@ -1708,6 +1726,7 @@ run prompt-run/yunas-decision-sacrificed
 run prompt-run/ziatora-the-incinerator-sacrifice
 run prompt-run/zimone-mystery-unraveler-turn-face-up
 run prompt-run/zimones-hypothesis-counter
+run run/krenkos-buzzcrusher-destroy
 run the-city-on-the-edge-of-forever/gain-five
 searchrule search/aangs-journey-basic-land-and-shrine
 searchrule search/basics-share-a-land-type
@@ -1864,6 +1883,7 @@ tail brass-tunnel-grinder/transform
 tail breach-the-multiverse/phyrexians
 tail breaching-dragonstorm/after-exile
 tail bring-to-light/cast
+tail bristlebud-farmer/after-mill
 tail brudiclad/choose-a-token
 tail bruse-tarl/ox-if-land
 tail budding-insurgent/draw-if-legendary-enchantment
@@ -2188,6 +2208,7 @@ tail mass/gain-two-life-for-each
 tail mass/genesis-of-the-daleks-drain
 tail mass/join-the-collective-borg
 tail mass/kayas-wrath-life
+tail mass/krenkos-buzzcrusher-search
 tail mass/mass-polymorph-reveal
 tail mass/oversimplify-exiled
 tail mass/overwrite-the-multiverse-empower
@@ -2215,6 +2236,7 @@ tail mirkwood-nurturer/counter
 tail mister-negative/draw
 tail model-of-unity/ask-next
 tail mole-module/after-mill
+tail molten-duplication/haste-and-sacrifice-copy
 tail morningtides-light/schedule-return-prevent-exile-self
 tail msc6/daredevil-fearless-fighter-exiled
 tail msh-a3/black-widow-after-exile
@@ -2322,6 +2344,7 @@ tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
+tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/comet-crawler-pump
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
@@ -2353,6 +2376,7 @@ tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/undercity-eliminator-sacrificed
 tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
@@ -2463,6 +2487,7 @@ tail then/breeches-the-blastmaker-flip
 tail then/bringer-of-the-last-gift-return
 tail then/cait-sith-fortune-teller-boost
 tail then/calamitous-tide-loot
+tail then/case-of-the-burning-masks-choose
 tail then/caustic-bronco-life
 tail then/cecil-dark-knight-darkness
 tail then/celebrate-the-mountain-king-exiled-one
@@ -2502,6 +2527,7 @@ tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elesh-norn-argent-etchings-flicker
+tail then/expose-the-culprit-cloak
 tail then/expressive-iteration-exile
 tail then/face-down-piles-to-hand
 tail then/fact-or-fiction-take

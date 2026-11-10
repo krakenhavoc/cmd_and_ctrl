@@ -85,6 +85,11 @@ const (
 // top card of your library" is not one.
 var CatalogLibraryTopVisible func(oracleID string) LibraryTopVisibility
 
+// CatalogLibraryTopVisibleWhen returns the designation that gates a
+// permanent's LibraryTopVisible clause (CardDef.LibraryTopVisibleWhen):
+// the zero Designation is no gate. Populated at init.
+var CatalogLibraryTopVisibleWhen func(oracleID string) Designation
+
 // LibraryTopVisibilityLocked returns how far playerID's top library
 // card is currently visible: the most permissive clause among the
 // permanents they control.
@@ -107,6 +112,11 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 		v := LibraryTopHidden
 		if key := catalogAbilityKeyOf(c); key != "" {
 			v = CatalogLibraryTopVisible(key)
+			if CatalogLibraryTopVisibleWhen != nil && !CatalogLibraryTopVisibleWhen(key).Active(*c) {
+				// "Solved — you may look at the top card" and its kin: the
+				// clause is off until the permanent's designation holds.
+				v = LibraryTopHidden
+			}
 		}
 		// A bundle a layer-6 effect gave the permanent says it too: Glowcap
 		// Lantern's equipped creature has "You may look at the top card of

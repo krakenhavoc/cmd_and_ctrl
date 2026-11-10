@@ -1737,6 +1737,11 @@ type Spec struct {
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
 
+	// LibraryTopVisibleWhen gates LibraryTopVisible by a designation:
+	// "Solved — You may look at the top card of your library any time"
+	// (Case of the Locked Hothouse). The zero value is no gate.
+	LibraryTopVisibleWhen game.Designation
+
 	// HandsRevealed declares "your opponents play with their hands
 	// revealed" (game.HandRevealOpponents, Telepathy) or "players play
 	// with their hands revealed" (game.HandRevealEachPlayer,

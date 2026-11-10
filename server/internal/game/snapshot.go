@@ -1212,6 +1212,12 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// SecretChoice and SecretChoiceBy are the word chosen in secret for
+	// this permanent and the player who chose it (secret_choice.go, A
+	// Killer Among Us). Carried for ChosenPlayer's reason: a player chose
+	// it and nothing can rebuild it. Additive within the version.
+	SecretChoice   string    `json:"secretChoice,omitempty"`
+	SecretChoiceBy uuid.UUID `json:"secretChoiceBy,omitempty"`
 	// ChosenNumber is the number chosen as this permanent entered
 	// (#1941, CR 614.12a) — the life Phyrexian Processor's controller
 	// paid. Carried for ChosenPlayer's reason: a player chose it and
@@ -3097,6 +3103,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
+		SecretChoice:             c.SecretChoice,
+		SecretChoiceBy:           c.SecretChoiceBy,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
@@ -4230,6 +4238,8 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
+		SecretChoice:             c.SecretChoice,
+		SecretChoiceBy:           c.SecretChoiceBy,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
