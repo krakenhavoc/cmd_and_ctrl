@@ -537,12 +537,6 @@ func OrCost(branches ...game.AbilityCostBranch) game.AbilityCost {
 	return game.AbilityCost{Either: append([]game.AbilityCostBranch(nil), branches...)}
 }
 
-// ManaBranch is "Pay <mana>" as a branch of an OrCost (Gavel of the
-// Righteous's "Equip—Pay {3} or remove a counter from this Equipment").
-func ManaBranch(mana string) game.AbilityCostBranch {
-	return game.AbilityCostBranch{Kind: game.AbilityCostBranchMana, Mana: mana}
-}
-
 // RemoveCountersBranch is "Remove <n> <kind> counter(s) from this
 // permanent" as a branch of an OrCost: `label` is the printed object
 // ("a counter from this Equipment").
@@ -557,7 +551,8 @@ func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCo
 }
 
 // ManaBranch is "Pay <cost>" as a branch of an OrCost (Bloodthorn Flail's
-// "Equip—Pay {3} or discard a card"): the branch folds into the ability's
+// "Equip—Pay {3} or discard a card", Gavel of the Righteous's "Equip—Pay
+// {3} or remove a counter from this Equipment"): the branch folds into the ability's
 // mana cost, so the cost it is composed with must have none.
 func ManaBranch(cost string) game.AbilityCostBranch {
 	return game.AbilityCostBranch{Kind: game.AbilityCostBranchMana, Mana: cost}
