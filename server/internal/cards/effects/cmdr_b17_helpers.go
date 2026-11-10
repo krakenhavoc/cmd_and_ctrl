@@ -21,3 +21,22 @@ func cmdrB17DefendersControlled(g *game.Game, controller uuid.UUID) int {
 	}
 	return n
 }
+
+// cmdrB17InstantSorceryCardsInGraveyard is the number of instant and
+// sorcery cards in `player`'s graveyard (Haughty Djinn). A split card
+// counts once. It walks the seats directly because it runs inside the
+// layer pass, where the lock is already held.
+func cmdrB17InstantSorceryCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+	n := 0
+	for _, p := range g.Seats {
+		if p == nil || p.ID != player || p.Graveyard == nil {
+			continue
+		}
+		for _, c := range p.Graveyard.Cards {
+			if c.IsInstant() || c.IsSorcery() {
+				n++
+			}
+		}
+	}
+	return n
+}

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -16,6 +17,10 @@ const (
 	cmdrB17GargoyleOracle   = "11284767-7095-4e0e-bc60-c69d58098348"
 	cmdrB17ChaplainOracle   = "99e24041-910e-4ae2-a55b-b938d752eeff"
 	cmdrB17MutineerOracle   = "8910f79a-66c9-41b3-b55a-e3e651ae6f26"
+	cmdrB17BaralsOracle     = "a1cdcb8c-1e12-4d39-aa4a-db678a80df9c"
+	cmdrB17LoreOracle       = "440881ad-48cf-4b82-8bb5-f506d1a51755"
+	cmdrB17AlchemyOracle    = "66d65cda-e3d1-4a00-8ff3-c6d5ef0ab0c1"
+	cmdrB17DjinnOracle      = "44036bb5-f300-40bd-9180-6b246315d886"
 	cmdrB17BlightPileOracle = "1c0fc9b4-177e-4529-827f-a1e17ff7a752"
 )
 
@@ -261,4 +266,150 @@ func TestCmdrB17AmphinMutineerEncoreMakesATokenCopyPerOpponent(t *testing.T) {
 	if n != 3 {
 		t.Fatalf("%d token copies, want one per opponent (3)", n)
 	}
+}
+
+func TestCmdrB17BaralsExpertiseBouncesThreeAndOffersAFreeCastIncludingTheBounced(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := pushTestPermanent(g, me.ID, game.Card{Name: "Cheap Bear", TypeLine: "Creature — Bear", ManaCost: "{2}", Power: 2, Toughness: 2})
+	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	rock := pushTestPermanent(g, opp.ID, game.Card{Name: "Rock", TypeLine: "Artifact", ManaCost: "{1}"})
+	land := pushTestPermanent(g, opp.ID, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	big := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: big, Name: "Big Spell", TypeLine: "Sorcery", ManaCost: "{4}{R}", Owner: me.ID, Controller: me.ID})
+	castCatalogSpell(t, g, "Baral's Expertise", "Sorcery", cmdrB17BaralsOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: mine}, {Kind: game.TargetCard, ID: theirs}, {Kind: game.TargetCard, ID: rock}})
+	if err := castCatalogSpellErr(t, g, "Baral's Expertise", "Sorcery", cmdrB17BaralsOracle, []game.TargetRef{
+		{Kind: game.TargetCard, ID: land}}); err == nil {
+		t.Error("a land is not an artifact or creature")
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(mine) || !opp.Hand.Contains(theirs) || !opp.Hand.Contains(rock) {
+		t.Fatal("the three targets did not return to their owners' hands")
+	}
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, mine)
+	if slices.Contains(offer.DiscardOptions, big) {
+		t.Error("a spell with mana value 5 was offered")
+	}
+	if err := castThroughResolutionCast(t, g, me.ID, mine, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the free cast of the returned creature: %v", err)
+	}
+}
+
+func TestCmdrB17DraconicLoreCostsTwoLessWithADragon(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushTestPermanent(g, me.ID, game.Card{Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2})
+	if got := cmdrB17Price(t, g, me.ID, cmdrB17LoreOracle, "Draconic Lore", "Instant", "{5}{U}"); got != 6 {
+		t.Fatalf("without a Dragon the price is %d, want 6", got)
+	}
+	pushTestPermanent(g, me.ID, game.Card{Name: "Whelp", TypeLine: "Creature — Dragon", Power: 2, Toughness: 2})
+	if got := cmdrB17Price(t, g, me.ID, cmdrB17LoreOracle, "Draconic Lore", "Instant", "{5}{U}"); got != 4 {
+		t.Fatalf("with a Dragon the price is %d, want 4", got)
+	}
+	handBefore := me.Hand.Size()
+	castCatalogSpell(t, g, "Draconic Lore", "Instant", cmdrB17LoreOracle, nil)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != handBefore+3 {
+		t.Errorf("hand %d, want %d (drew three)", got, handBefore+3)
+	}
+}
+
+func TestCmdrB17ForbiddenAlchemyTakesOneOfFourAndFlashesBack(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	ids := seedLibrary(me, "One", "Two", "Three", "Four", "Fifth")
+	alch := castCatalogSpell(t, g, "Forbidden Alchemy", "Instant", cmdrB17AlchemyOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil || len(pick.ChooseCards) != 4 || pick.ChooseMin != 1 || pick.ChooseMax != 1 {
+		t.Fatalf("want exactly one of the top four, got %+v", pick)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{ids[1]}); err != nil {
+		t.Fatal(err)
+	}
+	if !me.Hand.Contains(ids[1]) {
+		t.Error("the chosen card is not in hand")
+	}
+	for _, id := range []uuid.UUID{ids[0], ids[2], ids[3]} {
+		if !me.Graveyard.Contains(id) {
+			t.Error("a card not chosen is not in the graveyard")
+		}
+	}
+	if !me.Library.Contains(ids[4]) {
+		t.Error("the fifth card left the library")
+	}
+	if !me.Graveyard.Contains(alch) {
+		t.Fatal("Forbidden Alchemy is not in the graveyard")
+	}
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{B}{C}{C}{C}{C}{C}{C}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.CastSpell(me.ID, alch, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: "flashback"}); err != nil {
+		t.Fatalf("flashback: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	again := latestChooseCardsFor(g, me.ID)
+	if again == nil {
+		t.Fatal("the flashback should look at four more cards")
+	}
+	if err := g.ResolveChooseCards(again.ID, me.ID, []uuid.UUID{again.ChooseCards[0]}); err != nil {
+		t.Fatal(err)
+	}
+	if !g.Exile.Contains(alch) {
+		t.Error("the flashed-back spell is exiled")
+	}
+}
+
+func TestCmdrB17HaughtyDjinnPowerCountsInstantsAndSorceriesAndDiscounts(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	djinn := pushTestPermanent(g, me.ID, game.Card{Name: "Haughty Djinn", OracleID: cmdrB17DjinnOracle,
+		TypeLine: "Creature — Djinn", Power: 0, Toughness: 4})
+	if p := effectivePower(t, g, djinn); p != 0 {
+		t.Fatalf("empty graveyard: power %d, want 0", p)
+	}
+	cmdrB17ToGraveyard(t, g, me, game.Card{Name: "Bolt", TypeLine: "Instant"})
+	cmdrB17ToGraveyard(t, g, me, game.Card{Name: "Wrath", TypeLine: "Sorcery"})
+	cmdrB17ToGraveyard(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear"})
+	cmdrB17ToGraveyard(t, g, opp, game.Card{Name: "Opp Bolt", TypeLine: "Instant"})
+	if p := effectivePower(t, g, djinn); p != 2 {
+		t.Errorf("power %d, want 2 (only your instants and sorceries)", p)
+	}
+	if got := b40PricedFor(t, g, me.ID, "Divination", "Sorcery", "{2}{U}"); got != 2 {
+		t.Errorf("sorcery costs %d, want 2", got)
+	}
+	if got := b40PricedFor(t, g, me.ID, "Bear", "Creature — Bear", "{2}{U}"); got != 3 {
+		t.Errorf("creature costs %d, want 3", got)
+	}
+}
+
+// cmdrB17ToGraveyard moves a card from a hand to its owner's graveyard
+// through the engine, so the layer cache hears about it.
+func cmdrB17ToGraveyard(t *testing.T, g *game.Game, p *game.Player, c game.Card) {
+	t.Helper()
+	c.InstanceID, c.Owner, c.Controller = uuid.New(), p.ID, p.ID
+	p.Hand.PushTop(c)
+	if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneHand, Owner: p.ID}, game.ZoneRef{Kind: game.ZoneGraveyard, Owner: p.ID}, c.InstanceID); err != nil {
+		t.Fatalf("to graveyard %s: %v", c.Name, err)
+	}
+}
+
+// cmdrB17Price is the mana value a card's controller owes through the
+// cost pipeline, with the card's oracle id so self modifiers apply.
+func cmdrB17Price(t *testing.T, g *game.Game, caster uuid.UUID, oracle, name, typeLine, manaCost string) int {
+	t.Helper()
+	base, err := game.ParseCost(manaCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := g.ApplyCostModifiers(base, game.CostQuery{
+		Card: game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, ManaCost: manaCost,
+			OracleID: oracle, Owner: caster, Controller: caster},
+		Controller: caster, FromZone: game.ZoneHand,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out.ManaValue()
 }

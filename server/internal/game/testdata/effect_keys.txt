@@ -410,6 +410,7 @@ choose choose-cards/azula-cunning-usurper-creature
 choose choose-cards/azula-cunning-usurper-graveyard
 choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
+choose choose-cards/barals-expertise-cast
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/beatrix-loyal-general-attach
 choose choose-cards/become-copy-of-exiled-with
@@ -501,6 +502,7 @@ choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take
 choose choose-cards/finale-of-revelation-untap-lands
+choose choose-cards/forbidden-alchemy-take
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
@@ -2419,6 +2421,7 @@ tail then/aven-interrupter-plot
 tail then/balduvian-shaman-gains
 tail then/ballista-wielder-cant-block
 tail then/banner-of-kinship-type-chosen
+tail then/barals-expertise-free-cast
 tail then/blastoneuron-copy
 tail then/blastoneuron-haste-and-sacrifice
 tail then/bonehoard-dracosaur-exiled
