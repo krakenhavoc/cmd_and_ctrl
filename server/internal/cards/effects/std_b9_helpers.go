@@ -79,24 +79,6 @@ func stdB9LibraryEmpty(g *game.Game, player uuid.UUID) bool {
 	return p == nil || p.Library == nil || len(p.Library.Cards) == 0
 }
 
-// stdB9PutLeftCountersOnTarget is "put its counters on" the first legal
-// target card, every kind in full, read from the triggering permanent's
-// last-known counters (Host of the Hereafter).
-func stdB9PutLeftCountersOnTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	left, ok := ctx.TriggeringPermanent()
-	if !ok || len(left.Counters) == 0 {
-		return nil
-	}
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return b14PutCounters(ctx, t.ID, left.Counters)
-	}
-	return nil
-}
-
 // stdB9ReturnThisToHand returns the ability's source to its owner's hand
 // while it is still the same permanent (Corroding Dragonstorm).
 func stdB9ReturnThisToHand(ctx *Context) error {

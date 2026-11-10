@@ -39,7 +39,7 @@ func init() {
 				TargetPlayer("target player")),
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Amount > 0 && source.AttachedTo.Kind == game.TargetCard && source.AttachedTo.ID == ev.Target
-			}, "Sporogenic Infection — destroy enchanted creature", sporogenicInfectionDestroy),
+			}, "Sporogenic Infection — destroy enchanted creature", crackedSkullDestroy),
 		},
 	})
 }
@@ -62,13 +62,4 @@ func sporogenicInfectionEdict(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	return nil
-}
-
-// sporogenicInfectionDestroy destroys the creature that was dealt damage,
-// named by the triggering event.
-func sporogenicInfectionDestroy(g *game.Game, item *game.StackItem) error {
-	if item.Trigger == nil {
-		return nil
-	}
-	return DestroyTarget{Target: item.Trigger.Event.Target}.Apply(NewContext(g, item))
 }

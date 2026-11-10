@@ -33,7 +33,7 @@ func init() {
 			Targeting(On(game.EventLTB, func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 				return ACreatureYouControlDied(ev, source, ch, g) && len(g.LastKnownCountersForEffect(ev.CardID)) > 0
 			}, "Host of the Hereafter — put its counters on up to one target creature you control",
-				stdB9PutLeftCountersOnTarget),
+				PutItsCountersOnTargetCreature),
 				TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1)),
 		},
 	})
