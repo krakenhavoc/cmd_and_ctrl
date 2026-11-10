@@ -19,3 +19,22 @@ func planesR6APlayerCastsInstantOrSorcery(ev game.Event, _ *game.Card, _ game.Ch
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && (c.IsInstant() || c.IsSorcery())
 }
+
+// planesR6WhenYouPlaneswalkToThisAndAtYourFirstMain is "When you planeswalk
+// to ~ and at the beginning of your first main phase, <effect>": ONE
+// triggered ability with two conditions (see
+// WhenYouPlaneswalkToThisAndAtYourUpkeep), the second the planar
+// controller's precombat main phase (CR 505.1, 901.6).
+func planesR6WhenYouPlaneswalkToThisAndAtYourFirstMain(label string, effect Effect) game.TriggeredAbility {
+	return OnAny([]game.EventKind{game.EventPlaneswalkTo, game.EventBeginPrecombatMain}, planesR6PlaneswalkedToThisOrYourFirstMain, label, effect)
+}
+
+func planesR6PlaneswalkedToThisOrYourFirstMain(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	switch ev.Kind {
+	case game.EventPlaneswalkTo:
+		return ev.CardID == source.InstanceID && ev.Actor == source.Controller
+	case game.EventBeginPrecombatMain:
+		return ByYou(ev, source, lki, g)
+	}
+	return false
+}
