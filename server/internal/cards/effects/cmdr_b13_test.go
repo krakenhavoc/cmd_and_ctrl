@@ -332,3 +332,82 @@ func TestCmdrB13TempestTechniqueStormCopiesEnchantTheirOwnCreatures(t *testing.T
 		}
 	}
 }
+
+const cmdrB13FrostkiteOracle = "96d7b761-b0b2-4ba3-98bd-3a9191ba544e"
+
+func cmdrB13CastFrostkite(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+	t.Helper()
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Deceptive Frostkite", TypeLine: "Creature — Dragon", ManaCost: "{U}{U}",
+		OracleID: cmdrB13FrostkiteOracle, Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	advanceTo(t, g, game.StepPrecombatMain)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	return id
+}
+
+func TestCmdrB13FrostkiteCopiesAYourBigCreatureAndIsAFlyingDragon(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	ogre := seedCopyableCreature(g, me.ID, "Ogre", "Creature — Ogre", 5, 5)
+	seedCopyableCreature(g, me.ID, "Bear", "Creature — Bear", 3, 3)
+	theirs := seedCopyableCreature(g, opp.ID, "Giant", "Creature — Giant", 6, 6)
+	kite := cmdrB13CastFrostkite(t, g, me)
+	c := copyPrompt(g)
+	if c == nil {
+		t.Fatal("no copy prompt")
+	}
+	_ = theirs
+	if err := g.ResolveCopyTarget(c.ID, c.Chooser, ogre); err != nil {
+		t.Fatalf("copy the Ogre: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if p, tt := effectivePower(t, g, kite), effectiveToughness(t, g, kite); p != 5 || tt != 5 {
+		t.Errorf("copy is %d/%d, want 5/5", p, tt)
+	}
+	subs := effectiveSubtypes(t, g, kite)
+	if !containsString(subs, "Ogre") || !containsString(subs, "Dragon") {
+		t.Errorf("subtypes %v, want Ogre and Dragon", subs)
+	}
+	if !hasEffectiveKeyword(t, g, kite, "flying") {
+		t.Error("the copy lacks flying")
+	}
+}
+
+func TestCmdrB13FrostkiteIsOnlyOfferedBigCreaturesYouControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	seedCopyableCreature(g, me.ID, "Bear", "Creature — Bear", 3, 3)
+	seedCopyableCreature(g, opp.ID, "Giant", "Creature — Giant", 6, 6)
+	kite := cmdrB13CastFrostkite(t, g, me)
+	if c := copyPrompt(g); c != nil {
+		if err := g.ResolveCopyTarget(c.ID, c.Chooser, uuid.Nil); err != nil {
+			t.Fatalf("decline: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if p, tt := effectivePower(t, g, kite), effectiveToughness(t, g, kite); p != 1 || tt != 1 {
+		t.Errorf("declined Frostkite is %d/%d, want 1/1", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, kite, "flying") {
+		t.Error("Frostkite lost its printed flying")
+	}
+}
+
+// An illegal pick is treated as declining: an opponent's creature is not
+// a creature you control.
+func TestCmdrB13FrostkiteCannotCopyAnOpponentsCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	theirs := seedCopyableCreature(g, opp.ID, "Giant", "Creature — Giant", 6, 6)
+	kite := cmdrB13CastFrostkite(t, g, me)
+	if c := copyPrompt(g); c != nil {
+		_ = g.ResolveCopyTarget(c.ID, c.Chooser, theirs)
+		passPriorityAroundTable(t, g)
+	}
+	if p := effectivePower(t, g, kite); p != 1 {
+		t.Errorf("Frostkite has power %d, want 1: it copied an opponent's creature", p)
+	}
+}
