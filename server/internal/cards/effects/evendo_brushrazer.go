@@ -49,6 +49,7 @@ func init() {
 			Cost:     ManaAbilityCost{Tap: true, SacrificeOther: b08SacrificeALand().SacrificeOther},
 			Produced: "{R}{R}",
 			Label:    "{T}, Sacrifice a land: Add {R}{R}.",
+			Answers:  game.AnswerValue,
 		}},
 	})
 }

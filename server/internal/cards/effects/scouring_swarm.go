@@ -36,7 +36,7 @@ func init() {
 // scouringSwarmToken is the trigger's body.
 func scouringSwarmToken(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if cmdrB9LandCardsInGraveyard(g, item.Controller) < 7 {
+	if b17LandCardsInGraveyard(g, item.Controller) < 7 {
 		return CreateTokenAdvanced{Spec: Token(TokenCard("1/1 black Insect with flying")).EntersTapped(), N: 1}.Apply(ctx)
 	}
 	tmpl, ok := TokenCopyTemplate(g, item.SourceCardID)

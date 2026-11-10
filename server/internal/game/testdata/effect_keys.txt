@@ -200,6 +200,7 @@ body leatherhead-swamp-stalker/destroy
 body leyline-tyrant/damage
 body lichs-relic/destroy
 body lithobraking/damage-each-creature
+body loamcrafter-faun/return-to-hand
 body lockjaw/unblockable
 body ltb/sacrifice-the-source
 body madness/graveyard-if-not-cast
@@ -491,8 +492,10 @@ choose choose-cards/emeritus-of-ideation-exile-eight
 choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
+choose choose-cards/eumidian-wastewaker-discard
 choose choose-cards/evidence-examiner-collect-evidence
 choose choose-cards/exile-top-face-down-linked
+choose choose-cards/experimental-augury-take
 choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expressive-iteration-bottom
 choose choose-cards/expressive-iteration-take
@@ -615,6 +618,7 @@ choose choose-cards/liliana-dreadhorde-general-keep-land
 choose choose-cards/liliana-dreadhorde-general-keep-land-planeswalker
 choose choose-cards/liliana-dreadhorde-general-keep-planeswalker
 choose choose-cards/living-wish-take
+choose choose-cards/loamcrafter-faun-discard
 choose choose-cards/london-mulligan-bottom
 choose choose-cards/mad-wizards-lair-cast
 choose choose-cards/mairsil-cage
@@ -747,6 +751,7 @@ choose choose-cards/soldier-military-program-counters
 choose choose-cards/sorin-the-mirthless-take
 choose choose-cards/sothera-exile-creature
 choose choose-cards/sothera-put-exiled-creature
+choose choose-cards/soul-of-windgrace-land
 choose choose-cards/sparring-dummy-milled-land
 choose choose-cards/spawnsire-of-ulamog-cast
 choose choose-cards/spellweaver-volute-reattach
@@ -1209,6 +1214,7 @@ option option-pick/elemental-teachings-opponent
 option option-pick/emergent-ultimatum-opponent
 option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
+option option-pick/eumidian-wastewaker-choice
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
@@ -1226,6 +1232,7 @@ option option-pick/gluntch-the-bestower-third
 option option-pick/hidden-strings-tap-or-untap
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
+option option-pick/inspirit-flagship-vessel-counters
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/land-mana-each
 option option-pick/leatherhead-remove-a-counter
@@ -1341,6 +1348,7 @@ payunless pay-unless/blaster-hulk-damage
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
+payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
@@ -1561,6 +1569,7 @@ run prompt-run/elrond-of-the-white-council-fellowship
 run prompt-run/empower-jace-choose
 run prompt-run/entish-restoration-search
 run prompt-run/entrust-the-spark-search
+run prompt-run/eumidian-wastewaker-sacrifice
 run prompt-run/exploit-overcharged-amalgam
 run prompt-run/explore-the-vastlands-takes
 run prompt-run/expropriate-gain-control
@@ -1609,6 +1618,7 @@ run prompt-run/momentum-breaker-discard
 run prompt-run/namazu-trader-surveil
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
+run prompt-run/planetary-annihilation-keep-lands
 run prompt-run/plunge-into-darkness-sacrifice
 run prompt-run/pox-plague-sacrifice
 run prompt-run/priest-of-forgotten-gods-payout
@@ -1858,6 +1868,8 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail cmdr-b9/gain-haste-until-eot
+tail cmdr-b9/then-proliferate
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
 tail connive/each
@@ -2517,6 +2529,7 @@ tail then/outbreak-type-chosen
 tail then/patriarchs-bidding-type-chosen
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
+tail then/planetary-annihilation-damage
 tail then/polygraph-orb-punisher-sacrificed
 tail then/prevent-damage-from-chosen-color
 tail then/proliferate-again

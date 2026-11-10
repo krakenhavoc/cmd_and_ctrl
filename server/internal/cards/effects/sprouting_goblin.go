@@ -42,7 +42,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}, {T}, Sacrifice a land: Draw a card.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{R}"), TapCost(), b08SacrificeALand()),
 			Effect:  Do(DrawCards{N: 1}),
 		}},

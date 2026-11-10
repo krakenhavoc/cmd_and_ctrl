@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Uurg, Spawn of Turg — Legendary Creature — Frog Beast {B}{B}{G}, */5
 // (Foundations Commander):
@@ -30,7 +26,7 @@ func init() {
 			SubLayer:  game.SubLayer7A_CDA,
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				c.Power = cmdrB9LandCardsInGraveyard(g, source.Controller)
+				c.Power = b17LandCardsInGraveyard(g, source.Controller)
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
@@ -38,24 +34,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{B}{G}, Sacrifice a land: You gain 2 life.",
-			Purpose: game.Purpose{LifeGain: 2},
+			Purpose: game.Purpose{LifeGain: 2, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{B}{G}"), b08SacrificeALand()),
 			Effect:  Do(GainLife{Amount: 2}),
 		}},
 	})
-}
-
-// cmdrB9LandCardsInGraveyard counts the land cards in a player's graveyard.
-func cmdrB9LandCardsInGraveyard(g *game.Game, player uuid.UUID) int {
-	p := g.PlayerByIDForEffect(player)
-	if p == nil || p.Graveyard == nil {
-		return 0
-	}
-	n := 0
-	for _, c := range p.Graveyard.Cards {
-		if c.IsLand() {
-			n++
-		}
-	}
-	return n
 }

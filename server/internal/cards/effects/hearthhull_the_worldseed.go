@@ -36,7 +36,7 @@ func init() {
 			Station(),
 			{
 				Label:      "{1}, {T}, Sacrifice a land: Draw two cards. You may play an additional land this turn.",
-				Purpose:    game.Purpose{Draws: 2},
+				Purpose:    game.Purpose{Draws: 2, Answers: game.AnswerValue},
 				Cost:       Plus(ManaCost("{1}"), TapCost(), b08SacrificeALand()),
 				ActiveWhen: AtChargeCounters(2),
 				Effect: func(g *game.Game, item *game.StackItem) error {

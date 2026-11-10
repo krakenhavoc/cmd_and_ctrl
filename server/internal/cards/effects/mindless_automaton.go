@@ -32,7 +32,7 @@ func init() {
 			},
 			{
 				Label:   "Remove two +1/+1 counters from this creature: Draw a card.",
-				Purpose: game.Purpose{Draws: 1},
+				Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
 				Cost:    RemoveCountersFromThis(game.CounterPlusOne, 2),
 				Effect:  Do(DrawCards{N: 1}),
 			},

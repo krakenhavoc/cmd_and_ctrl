@@ -65,7 +65,7 @@ var centaurVinecrasherPaid = PayUnlessBranches("pay-unless/centaur-vinecrasher-r
 func cmdrB9LandCardsInAllGraveyards(g *game.Game) int {
 	n := 0
 	for _, s := range g.Seats {
-		n += cmdrB9LandCardsInGraveyard(g, s.ID)
+		n += b17LandCardsInGraveyard(g, s.ID)
 	}
 	return n
 }

@@ -50,7 +50,7 @@ func cmdrB9SacrificedNontokenThisTurn(g *game.Game, you uuid.UUID) bool {
 
 // cmdrB9ThenProliferate is "Proliferate." as the tail of a sentence that
 // pauses on a choice: the proliferate waits for the answer. An on-disk key.
-var cmdrB9ThenProliferate = CardTail("then/proliferate", func(ctx *Context, _ game.TailOutcome) error {
+var cmdrB9ThenProliferate = CardTail("cmdr-b9/then-proliferate", func(ctx *Context, _ game.TailOutcome) error {
 	return Proliferate{}.Apply(ctx)
 })
 

@@ -32,13 +32,13 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{G}, Discard a land card: You gain 3 life.",
-				Purpose: game.Purpose{LifeGain: 3},
+				Purpose: game.Purpose{LifeGain: 3, Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{G}"), DiscardCardsMatching(1, "a land card", game.Card.IsLand)),
 				Effect:  Do(GainLife{Amount: 3}),
 			},
 			{
 				Label:   "{1}{R}, Discard a land card: Draw a card.",
-				Purpose: game.Purpose{Draws: 1},
+				Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{1}{R}"), DiscardCardsMatching(1, "a land card", game.Card.IsLand)),
 				Effect:  Do(DrawCards{N: 1}),
 			},

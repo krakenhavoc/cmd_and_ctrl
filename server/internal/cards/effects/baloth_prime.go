@@ -40,7 +40,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, Sacrifice a land: You gain 2 life.",
-			Purpose: game.Purpose{LifeGain: 2},
+			Purpose: game.Purpose{LifeGain: 2, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{4}"), b08SacrificeALand()),
 			Effect:  Do(GainLife{Amount: 2}),
 		}},

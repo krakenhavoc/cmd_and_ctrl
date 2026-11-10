@@ -20,13 +20,7 @@ func init() {
 		Name:         "Golem Foundry",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.IsArtifact()
-			}, "Golem Foundry — you may put a charge counter on this artifact", b33PutChargeCounterOnSelf),
+			Optional(On(game.EventCast, YouCast(Artifact()), "Golem Foundry — you may put a charge counter on this artifact", b33PutChargeCounterOnSelf),
 				"Golem Foundry — put a charge counter on this artifact?"),
 		},
 		Activated: []ActivatedAbility{{
