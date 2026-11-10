@@ -1791,6 +1791,15 @@ type Card struct {
 	// does not hold the game's clock. Carried by the snapshot.
 	PutInGraveyardThisTurn bool
 
+	// Surveilled says the arrival PutInGraveyardFrom records was a
+	// surveil's graveyard leg (CR 701.25a, #5429, surveilled_cards.go): the
+	// card's owner looked at it while surveilling and put it into their
+	// graveyard. With PutInGraveyardThisTurn it is "cards in your graveyard
+	// you've surveilled this turn" (Card.SurveilledThisTurn, Eye of
+	// Duskmantle). Cleared by MoveCard on every move, so a card that leaves
+	// and comes back is a new object (CR 400.7). Carried by the snapshot.
+	Surveilled bool
+
 	// SuspendGranted says an effect gave this exiled card suspend (CR
 	// 702.62a, #4455): Kang Prime's and Doom's Time Platform's "If it
 	// doesn't have suspend, it gains suspend". triggersOf then derives the
