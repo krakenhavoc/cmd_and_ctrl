@@ -21,22 +21,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Pitiless Fists — enchanted creature fights up to one target creature an opponent controls",
-					pitilessFistsFight),
+					enchantedCreatureFightsTargetCreature),
 				TargetCreature("up to one target creature an opponent controls", OpponentControls()).WithCount(0, 1)),
 		},
 	})
-}
-
-func pitilessFistsFight(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	host, ok := enchantedCreatureAsItResolves(ctx)
-	if !ok {
-		return nil
-	}
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return b10Fight(ctx, host, t.ID)
-		}
-	}
-	return nil
 }

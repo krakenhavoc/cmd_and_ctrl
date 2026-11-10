@@ -57,6 +57,6 @@ var hyldaBody = game.ReflexiveModalBody("hylda-of-the-icy-crown/modes", func(_ u
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				return b11PutCounterOnEachCreatureYouControl(ctx.Game, item)
 			}),
-		ModeSteps("Scry 2, then draw a card.", nil, Scry{N: 2}, DrawCards{N: 1}),
+		ModeWithPurpose(ModeSteps("Scry 2, then draw a card.", nil, Scry{N: 2}, DrawCards{N: 1}), game.Purpose{Scry: 2, Draws: 1}),
 	)
 })
