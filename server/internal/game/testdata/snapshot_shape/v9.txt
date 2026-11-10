@@ -2070,6 +2070,7 @@ followUpParks[].then.permission.perType[]	string
 followUpParks[].then.permission.player	custom(uuid.UUID)
 followUpParks[].then.permission.removeCountersInAddition	number:int
 followUpParks[].then.permission.requiresNoSpellsCast	bool
+followUpParks[].then.permission.sacrificeLandInAddition	bool
 followUpParks[].then.permission.scope	string
 followUpParks[].then.permission.seesLibraryTop	bool
 followUpParks[].then.permission.sneakCost	string
@@ -2690,6 +2691,7 @@ frozenEntries[].event.counterTail.then.permission.perType[]	string
 frozenEntries[].event.counterTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.counterTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.counterTail.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.counterTail.then.permission.scope	string
 frozenEntries[].event.counterTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.counterTail.then.permission.sneakCost	string
@@ -3289,6 +3291,7 @@ frozenEntries[].event.damageTail.each.each.permission.perType[]	string
 frozenEntries[].event.damageTail.each.each.permission.player	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.permission.removeCountersInAddition	number:int
 frozenEntries[].event.damageTail.each.each.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.damageTail.each.each.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.damageTail.each.each.permission.scope	string
 frozenEntries[].event.damageTail.each.each.permission.seesLibraryTop	bool
 frozenEntries[].event.damageTail.each.each.permission.sneakCost	string
@@ -3879,6 +3882,7 @@ frozenEntries[].event.damageTail.each.then.permission.perType[]	string
 frozenEntries[].event.damageTail.each.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.damageTail.each.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.damageTail.each.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.damageTail.each.then.permission.scope	string
 frozenEntries[].event.damageTail.each.then.permission.seesLibraryTop	bool
 frozenEntries[].event.damageTail.each.then.permission.sneakCost	string
@@ -4641,6 +4645,7 @@ frozenEntries[].event.damageTail.then.permission.perType[]	string
 frozenEntries[].event.damageTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.damageTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.damageTail.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.damageTail.then.permission.scope	string
 frozenEntries[].event.damageTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.damageTail.then.permission.sneakCost	string
@@ -5351,6 +5356,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.perType[]	str
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.scope	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.sneakCost	string
@@ -6017,6 +6023,7 @@ frozenEntries[].event.entryTail.batch.then.permission.perType[]	string
 frozenEntries[].event.entryTail.batch.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.entryTail.batch.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.batch.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.entryTail.batch.then.permission.scope	string
 frozenEntries[].event.entryTail.batch.then.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.batch.then.permission.sneakCost	string
@@ -6607,6 +6614,7 @@ frozenEntries[].event.entryTail.keyed.permission.perType[]	string
 frozenEntries[].event.entryTail.keyed.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.permission.removeCountersInAddition	number:int
 frozenEntries[].event.entryTail.keyed.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.keyed.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.entryTail.keyed.permission.scope	string
 frozenEntries[].event.entryTail.keyed.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.keyed.permission.sneakCost	string
@@ -7230,6 +7238,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.perType[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.removeCountersInAddition	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.scope	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.sneakCost	string
@@ -7840,6 +7849,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.perType[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.entryTail.tokens.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.entryTail.tokens.then.permission.scope	string
 frozenEntries[].event.entryTail.tokens.then.permission.seesLibraryTop	bool
 frozenEntries[].event.entryTail.tokens.then.permission.sneakCost	string
@@ -8853,6 +8863,7 @@ frozenEntries[].event.keywordActionTail.then.permission.perType[]	string
 frozenEntries[].event.keywordActionTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.keywordActionTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.keywordActionTail.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.keywordActionTail.then.permission.scope	string
 frozenEntries[].event.keywordActionTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.keywordActionTail.then.permission.sneakCost	string
@@ -9465,6 +9476,7 @@ frozenEntries[].event.lifeTail.each.then.permission.perType[]	string
 frozenEntries[].event.lifeTail.each.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.lifeTail.each.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.lifeTail.each.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.lifeTail.each.then.permission.scope	string
 frozenEntries[].event.lifeTail.each.then.permission.seesLibraryTop	bool
 frozenEntries[].event.lifeTail.each.then.permission.sneakCost	string
@@ -10058,6 +10070,7 @@ frozenEntries[].event.lifeTail.then.permission.perType[]	string
 frozenEntries[].event.lifeTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.lifeTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.lifeTail.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.lifeTail.then.permission.scope	string
 frozenEntries[].event.lifeTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.lifeTail.then.permission.sneakCost	string
@@ -11452,6 +11465,7 @@ frozenEntries[].event.millTail.run.then.permission.perType[]	string
 frozenEntries[].event.millTail.run.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.millTail.run.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.millTail.run.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.millTail.run.then.permission.scope	string
 frozenEntries[].event.millTail.run.then.permission.seesLibraryTop	bool
 frozenEntries[].event.millTail.run.then.permission.sneakCost	string
@@ -12040,6 +12054,7 @@ frozenEntries[].event.millTail.then.permission.perType[]	string
 frozenEntries[].event.millTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.millTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.millTail.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.millTail.then.permission.scope	string
 frozenEntries[].event.millTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.millTail.then.permission.sneakCost	string
@@ -13567,6 +13582,7 @@ frozenEntries[].event.tokenTail.then.permission.perType[]	string
 frozenEntries[].event.tokenTail.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.tokenTail.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.tokenTail.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.tokenTail.then.permission.scope	string
 frozenEntries[].event.tokenTail.then.permission.seesLibraryTop	bool
 frozenEntries[].event.tokenTail.then.permission.sneakCost	string
@@ -15389,6 +15405,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.scope	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.sneakCost	string
@@ -16012,6 +16029,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.perType[]	s
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.removeCountersInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.scope	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.sneakCost	string
@@ -16600,6 +16618,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.scope	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.sneakCost	string
@@ -17208,6 +17227,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.scope	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.sneakCost	string
@@ -17882,6 +17902,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.perType[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.removeCountersInAddition	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.requiresNoSpellsCast	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.sacrificeLandInAddition	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.scope	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.seesLibraryTop	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.sneakCost	string
@@ -20351,6 +20372,7 @@ movesAwaitingTokens[].counterTail.then.permission.perType[]	string
 movesAwaitingTokens[].counterTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].counterTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].counterTail.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].counterTail.then.permission.scope	string
 movesAwaitingTokens[].counterTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].counterTail.then.permission.sneakCost	string
@@ -20950,6 +20972,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.perType[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].damageTail.each.each.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].damageTail.each.each.permission.scope	string
 movesAwaitingTokens[].damageTail.each.each.permission.seesLibraryTop	bool
 movesAwaitingTokens[].damageTail.each.each.permission.sneakCost	string
@@ -21540,6 +21563,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.perType[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].damageTail.each.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].damageTail.each.then.permission.scope	string
 movesAwaitingTokens[].damageTail.each.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].damageTail.each.then.permission.sneakCost	string
@@ -22302,6 +22326,7 @@ movesAwaitingTokens[].damageTail.then.permission.perType[]	string
 movesAwaitingTokens[].damageTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].damageTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].damageTail.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].damageTail.then.permission.scope	string
 movesAwaitingTokens[].damageTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].damageTail.then.permission.sneakCost	string
@@ -23012,6 +23037,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.perType[]	str
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.scope	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.sneakCost	string
@@ -23678,6 +23704,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.perType[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.scope	string
 movesAwaitingTokens[].entryTail.batch.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.sneakCost	string
@@ -24268,6 +24295,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.perType[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.keyed.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].entryTail.keyed.permission.scope	string
 movesAwaitingTokens[].entryTail.keyed.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.keyed.permission.sneakCost	string
@@ -24891,6 +24919,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.perType[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.scope	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.sneakCost	string
@@ -25501,6 +25530,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.perType[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.scope	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.sneakCost	string
@@ -26514,6 +26544,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.perType[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.scope	string
 movesAwaitingTokens[].keywordActionTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.sneakCost	string
@@ -27126,6 +27157,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.perType[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.scope	string
 movesAwaitingTokens[].lifeTail.each.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.sneakCost	string
@@ -27719,6 +27751,7 @@ movesAwaitingTokens[].lifeTail.then.permission.perType[]	string
 movesAwaitingTokens[].lifeTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].lifeTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].lifeTail.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].lifeTail.then.permission.scope	string
 movesAwaitingTokens[].lifeTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].lifeTail.then.permission.sneakCost	string
@@ -29113,6 +29146,7 @@ movesAwaitingTokens[].millTail.run.then.permission.perType[]	string
 movesAwaitingTokens[].millTail.run.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].millTail.run.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].millTail.run.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].millTail.run.then.permission.scope	string
 movesAwaitingTokens[].millTail.run.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].millTail.run.then.permission.sneakCost	string
@@ -29701,6 +29735,7 @@ movesAwaitingTokens[].millTail.then.permission.perType[]	string
 movesAwaitingTokens[].millTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].millTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].millTail.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].millTail.then.permission.scope	string
 movesAwaitingTokens[].millTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].millTail.then.permission.sneakCost	string
@@ -31228,6 +31263,7 @@ movesAwaitingTokens[].tokenTail.then.permission.perType[]	string
 movesAwaitingTokens[].tokenTail.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].tokenTail.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].tokenTail.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].tokenTail.then.permission.scope	string
 movesAwaitingTokens[].tokenTail.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].tokenTail.then.permission.sneakCost	string
@@ -33050,6 +33086,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.sneakCost	string
@@ -33673,6 +33710,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.perType[]	s
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.scope	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.sneakCost	string
@@ -34261,6 +34299,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.sneakCost	string
@@ -34869,6 +34908,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.sneakCost	string
@@ -35543,6 +35583,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.perType[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.removeCountersInAddition	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.requiresNoSpellsCast	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.sacrificeLandInAddition	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.scope	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.seesLibraryTop	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.sneakCost	string
@@ -38747,6 +38788,7 @@ pendingChoices[].attackSplit.tail.permission.perType[]	string
 pendingChoices[].attackSplit.tail.permission.player	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.permission.removeCountersInAddition	number:int
 pendingChoices[].attackSplit.tail.permission.requiresNoSpellsCast	bool
+pendingChoices[].attackSplit.tail.permission.sacrificeLandInAddition	bool
 pendingChoices[].attackSplit.tail.permission.scope	string
 pendingChoices[].attackSplit.tail.permission.seesLibraryTop	bool
 pendingChoices[].attackSplit.tail.permission.sneakCost	string
@@ -40742,6 +40784,7 @@ pendingChoices[].diceRoll.then.permission.perType[]	string
 pendingChoices[].diceRoll.then.permission.player	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.permission.removeCountersInAddition	number:int
 pendingChoices[].diceRoll.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].diceRoll.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].diceRoll.then.permission.scope	string
 pendingChoices[].diceRoll.then.permission.seesLibraryTop	bool
 pendingChoices[].diceRoll.then.permission.sneakCost	string
@@ -41711,6 +41754,7 @@ pendingChoices[].divideShield.walk.each.permission.perType[]	string
 pendingChoices[].divideShield.walk.each.permission.player	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.permission.removeCountersInAddition	number:int
 pendingChoices[].divideShield.walk.each.permission.requiresNoSpellsCast	bool
+pendingChoices[].divideShield.walk.each.permission.sacrificeLandInAddition	bool
 pendingChoices[].divideShield.walk.each.permission.scope	string
 pendingChoices[].divideShield.walk.each.permission.seesLibraryTop	bool
 pendingChoices[].divideShield.walk.each.permission.sneakCost	string
@@ -42301,6 +42345,7 @@ pendingChoices[].divideShield.walk.then.permission.perType[]	string
 pendingChoices[].divideShield.walk.then.permission.player	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.permission.removeCountersInAddition	number:int
 pendingChoices[].divideShield.walk.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].divideShield.walk.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].divideShield.walk.then.permission.scope	string
 pendingChoices[].divideShield.walk.then.permission.seesLibraryTop	bool
 pendingChoices[].divideShield.walk.then.permission.sneakCost	string
@@ -42897,6 +42942,7 @@ pendingChoices[].libraryOrder.then.permission.perType[]	string
 pendingChoices[].libraryOrder.then.permission.player	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.permission.removeCountersInAddition	number:int
 pendingChoices[].libraryOrder.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].libraryOrder.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].libraryOrder.then.permission.scope	string
 pendingChoices[].libraryOrder.then.permission.seesLibraryTop	bool
 pendingChoices[].libraryOrder.then.permission.sneakCost	string
@@ -43543,6 +43589,7 @@ pendingChoices[].nameThen.permission.perType[]	string
 pendingChoices[].nameThen.permission.player	custom(uuid.UUID)
 pendingChoices[].nameThen.permission.removeCountersInAddition	number:int
 pendingChoices[].nameThen.permission.requiresNoSpellsCast	bool
+pendingChoices[].nameThen.permission.sacrificeLandInAddition	bool
 pendingChoices[].nameThen.permission.scope	string
 pendingChoices[].nameThen.permission.seesLibraryTop	bool
 pendingChoices[].nameThen.permission.sneakCost	string
@@ -44605,6 +44652,7 @@ pendingChoices[].pickTail.permission.perType[]	string
 pendingChoices[].pickTail.permission.player	custom(uuid.UUID)
 pendingChoices[].pickTail.permission.removeCountersInAddition	number:int
 pendingChoices[].pickTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].pickTail.permission.sacrificeLandInAddition	bool
 pendingChoices[].pickTail.permission.scope	string
 pendingChoices[].pickTail.permission.seesLibraryTop	bool
 pendingChoices[].pickTail.permission.sneakCost	string
@@ -45239,6 +45287,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.perType[]	s
 pendingChoices[].replacementResume.event.counterTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.sneakCost	string
@@ -45838,6 +45887,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.perType
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.scope	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.sneakCost	string
@@ -46428,6 +46478,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.perType
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.scope	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.sneakCost	string
@@ -47190,6 +47241,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.perType[]	st
 pendingChoices[].replacementResume.event.damageTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.sneakCost	string
@@ -47900,6 +47952,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.sneakCost	string
@@ -48566,6 +48619,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.perType
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.sneakCost	string
@@ -49156,6 +49210,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.perType[]	st
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.sneakCost	string
@@ -49779,6 +49834,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.sneakCost	string
@@ -50389,6 +50445,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.perTyp
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.scope	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.sneakCost	string
@@ -51402,6 +51459,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.perTy
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.sneakCost	string
@@ -52014,6 +52072,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.perType[]
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.scope	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.sneakCost	string
@@ -52607,6 +52666,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.perType[]	stri
 pendingChoices[].replacementResume.event.lifeTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.sneakCost	string
@@ -54001,6 +54061,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.perType[]	
 pendingChoices[].replacementResume.event.millTail.run.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.scope	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.sneakCost	string
@@ -54589,6 +54650,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.perType[]	stri
 pendingChoices[].replacementResume.event.millTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.millTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.sneakCost	string
@@ -56116,6 +56178,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.perType[]	str
 pendingChoices[].replacementResume.event.tokenTail.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.scope	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.sneakCost	string
@@ -57938,6 +58001,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.sneakCost	string
@@ -58561,6 +58625,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.sneakCost	string
@@ -59149,6 +59214,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.sneakCost	string
@@ -59757,6 +59823,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.p
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.sneakCost	string
@@ -60431,6 +60498,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.removeCountersInAddition	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.requiresNoSpellsCast	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.sacrificeLandInAddition	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.scope	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.seesLibraryTop	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.sneakCost	string
@@ -61450,6 +61518,7 @@ pendingChoices[].scryThen.permission.perType[]	string
 pendingChoices[].scryThen.permission.player	custom(uuid.UUID)
 pendingChoices[].scryThen.permission.removeCountersInAddition	number:int
 pendingChoices[].scryThen.permission.requiresNoSpellsCast	bool
+pendingChoices[].scryThen.permission.sacrificeLandInAddition	bool
 pendingChoices[].scryThen.permission.scope	string
 pendingChoices[].scryThen.permission.seesLibraryTop	bool
 pendingChoices[].scryThen.permission.sneakCost	string
@@ -62086,6 +62155,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.perType[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.player	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.permission.removeCountersInAddition	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.requiresNoSpellsCast	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.sacrificeLandInAddition	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.scope	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.seesLibraryTop	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.sneakCost	string
@@ -67558,6 +67628,7 @@ seats[].castPermissions[].perType[]	string
 seats[].castPermissions[].player	custom(uuid.UUID)
 seats[].castPermissions[].removeCountersInAddition	number:int
 seats[].castPermissions[].requiresNoSpellsCast	bool
+seats[].castPermissions[].sacrificeLandInAddition	bool
 seats[].castPermissions[].scope	string
 seats[].castPermissions[].seesLibraryTop	bool
 seats[].castPermissions[].sneakCost	string

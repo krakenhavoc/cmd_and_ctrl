@@ -1313,7 +1313,10 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			// #3276 (Jetfire, Ingenious Scientist: "one or more +1/+1
 			// counters from among artifacts you control"). Only the
 			// printed form is: one kind, and a floor of at least one.
-			if rc.Variable && rc.Counter == "" {
+			if rc.OnePermanent && !rc.Among {
+				panic(fmt.Sprintf("effects.Register: %q %s marks a counter removal OnePermanent without Among — build it with RemoveCountersXFromOne", card, where))
+			}
+			if rc.Variable && rc.Counter == "" && !rc.OnePermanent {
 				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters of any kind from among several permanents — no printed card does", card, where))
 			}
 			if rc.Variable && rc.N < 1 {

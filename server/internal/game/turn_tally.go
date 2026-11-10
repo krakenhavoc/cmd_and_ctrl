@@ -1042,6 +1042,11 @@ func (g *Game) SacrificedWithSubtypeThisTurn(playerID uuid.UUID, subtype string)
 	return subtypeTallyCount(g.TurnTally.SacrificedSubtypes, playerID, subtype)
 }
 
+// SacrificedNontokenKey is the pseudo card type under which
+// TurnTally.SacrificedCardTypes counts the nontoken permanents a player
+// sacrificed this turn: SacrificedWithCardTypeThisTurn(p, SacrificedNontokenKey).
+const SacrificedNontokenKey = "nontoken"
+
 // SacrificedWithCardTypeThisTurn reports how many permanents playerID
 // sacrificed this turn having card type `cardType` (any case) as they
 // were sacrificed — SacrificedWithSubtypeThisTurn's reading, for a card
@@ -1956,6 +1961,14 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			if c := g.findCardByIDLocked(ev.CardID); c != nil {
 				g.recordSacrificedSubtypesLocked(ev.Actor, c)
 				recordCardTypeTally(&g.TurnTally.SacrificedCardTypes, ev.Actor, c)
+				// "Sacrificed a nontoken permanent this turn" (Evendo
+				// Brushrazer): the same map, under a key no card type uses.
+				if !c.IsToken() {
+					if g.TurnTally.SacrificedCardTypes == nil {
+						g.TurnTally.SacrificedCardTypes = map[string]int{}
+					}
+					g.TurnTally.SacrificedCardTypes[subtypeTallyKey(ev.Actor, SacrificedNontokenKey)]++
+				}
 				if c.IsArtifact() || c.IsCreature() {
 					g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.ArtifactsOrCreaturesSacrificed++ })
 				}
