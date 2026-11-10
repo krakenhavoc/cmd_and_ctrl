@@ -524,3 +524,135 @@ func TestEsperChaosMakesWhiteBlueBlackCreaturesArtifactsAndGivesThemKeywords(t *
 		t.Error("a non-artifact creature gained lifelink")
 	}
 }
+
+// --- Enigma Ridges -----------------------------------------------------------
+
+func TestEnigmaRidgesFetchesBasicsForThePlayersBehindOnLands(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeEnigmaRidges)
+	g, _ := newPlaneGame(t, planeEnigmaRidges)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	for range 3 {
+		b12Permanent(g, me.ID, "Forest", "Basic Land — Forest")
+	}
+	b12Permanent(g, opp.ID, "Island", "Basic Land — Island")
+	for range 4 {
+		pushLibraryCardForTest(opp, game.Card{Name: "Swamp", TypeLine: "Basic Land — Swamp"})
+	}
+	handBefore := opp.Hand.Size()
+	planeswalkToPlane(t, g, planeEnigmaRidges.Oracle)
+	passPriorityAroundTable(t, g)
+	c := searchChoiceFor(g, opp.ID)
+	if c == nil {
+		t.Fatal("the player behind on lands was not asked to search")
+	}
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Error("the player with the most lands was asked to search")
+	}
+	if len(c.SearchCards) < 2 {
+		t.Fatalf("the search offers %d cards", len(c.SearchCards))
+	}
+	beginSearchIfAsked(t, g, c)
+	if err := g.ResolveSearchLibrary(c.ID, opp.ID, c.SearchCards[:2]); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
+	}
+	if got := opp.Hand.Size(); got != handBefore+2 {
+		t.Errorf("the opponent's hand grew by %d, want 2 (the difference of lands)", got-handBefore)
+	}
+}
+
+func TestEnigmaRidgesChaosDrawsAndMayPutALandOntoTheBattlefield(t *testing.T) {
+	g, _ := newPlaneGame(t, planeEnigmaRidges)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	land := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: land, Name: "Mountain", TypeLine: "Basic Land — Mountain", Owner: me.ID, Controller: me.ID})
+	})
+	before := me.Hand.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != before+1 {
+		t.Errorf("hand %d after chaos, want %d (one card drawn)", got, before+1)
+	}
+	p := latestPutFromHandChoice(g, me.ID)
+	if p == nil {
+		t.Fatal("no prompt for the land from hand")
+	}
+	if err := g.ResolveChooseCards(p.ID, me.ID, []uuid.UUID{land}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if planesB2Count(g, "Mountain", me.ID) != 1 {
+		t.Error("the land did not enter the battlefield")
+	}
+}
+
+// --- Pompeii -----------------------------------------------------------------
+
+func TestPompeiiBuildsEruptionCountersAndBlankRollsScry(t *testing.T) {
+	requirePlaneRegisteredFull(t, planePompeii)
+	g, _ := newPlaneGame(t, planePompeii)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	planeswalkToPlane(t, g, planePompeii.Oracle)
+	passPriorityAroundTable(t, g)
+	plane, _ := faceUpPlane(g, planePompeii.Oracle)
+	if n := plane.Counters["eruption"]; n != 1 {
+		t.Fatalf("%d eruption counters after planeswalking in, want 1", n)
+	}
+	rollBlank(t, g, me.ID)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	sc := latestChoiceOfKindFor(g, game.PendingChoiceScry, me.ID)
+	if sc == nil {
+		t.Fatal("a blank on the planar die did not scry")
+	}
+	if err := g.ResolveScry(sc.ID, me.ID, nil, sc.ScryCards); err != nil {
+		t.Fatalf("ResolveScry: %v", err)
+	}
+	plane, _ = faceUpPlane(g, planePompeii.Oracle)
+	if n := plane.Counters["eruption"]; n != 2 {
+		t.Errorf("%d eruption counters after a blank, want 2", n)
+	}
+	rollBlank(t, g, g.Seats[(g.Turn.ActiveSeat+1)%4].ID)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKindFor(g, game.PendingChoiceScry, me.ID) != nil {
+		t.Error("another player's blank roll triggered the plane")
+	}
+}
+
+func TestPompeiiChaosErupts(t *testing.T) {
+	g, _ := newPlaneGame(t, planePompeii)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	planeswalkToPlane(t, g, planePompeii.Oracle)
+	passPriorityAroundTable(t, g)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 1, 1)
+	giant := b12Creature(g, opp.ID, "Giant", "Creature — Giant", 4, 4)
+	forest := b12Permanent(g, me.ID, "Forest", "Basic Land — Forest")
+	island := b12Permanent(g, opp.ID, "Island", "Basic Land — Island")
+	myLife, oppLife := me.Life, opp.Life
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if me.Life != myLife-1 || opp.Life != oppLife-1 {
+		t.Errorf("life %d and %d, want %d and %d (one eruption counter)", me.Life, opp.Life, myLife-1, oppLife-1)
+	}
+	if g.Battlefield.Contains(bear) {
+		t.Error("the 1/1 survived the eruption")
+	}
+	if !g.Battlefield.Contains(giant) {
+		t.Error("the 4/4 died to one damage")
+	}
+	answerSacrifice(t, g, me.ID, forest)
+	answerSacrifice(t, g, opp.ID, island)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(forest) || g.Battlefield.Contains(island) {
+		t.Error("a player kept their land")
+	}
+	if _, ok := faceUpPlane(g, planePompeii.Oracle); ok {
+		t.Error("the table did not planeswalk after the sacrifices")
+	}
+}
