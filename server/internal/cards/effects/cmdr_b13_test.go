@@ -1622,3 +1622,50 @@ func TestCmdrB16TempleEntersTappedUnlessYouRevealADragonOrControlOne(t *testing.
 		t.Error("controlling a Dragon should let it enter untapped")
 	}
 }
+
+const cmdrB16TreeOracle = "1372dd15-cdb9-470c-b3e8-3423697e46e8"
+
+func TestCmdrB16TreeOfRedemptionExchangesLifeAndToughness(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	tree := b12Push(g, me.ID, "Tree of Redemption", "Creature — Plant", cmdrB16TreeOracle, 0, 13)
+	advanceToMain(t, g)
+	me.Life = 7
+	b16Activate(t, g, me.ID, tree, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if me.Life != 13 {
+		t.Errorf("life %d, want 13 (the Tree's former toughness)", me.Life)
+	}
+	if got := effectiveToughness(t, g, tree); got != 7 {
+		t.Errorf("toughness %d, want 7 (the former life total)", got)
+	}
+	// A second exchange swaps them back, using the toughness as it is now.
+	g.WithWriteLock(func() { findBattlefieldCardByID(g, tree).Tapped = false })
+	b16Activate(t, g, me.ID, tree, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if me.Life != 7 {
+		t.Errorf("life %d, want 7", me.Life)
+	}
+	if got := effectiveToughness(t, g, tree); got != 13 {
+		t.Errorf("toughness %d, want 13", got)
+	}
+}
+
+func TestCmdrB16TreeOfRedemptionModifiersApplyAfterTheExchange(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	tree := b12Push(g, me.ID, "Tree of Redemption", "Creature — Plant", cmdrB16TreeOracle, 0, 13)
+	advanceToMain(t, g)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(tree, game.CounterPlusOne, 2) })
+	me.Life = 7
+	b16Activate(t, g, me.ID, tree, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	// The Tree was 2/15, so life becomes 15; its toughness becomes 7, then
+	// the two +1/+1 counters apply on top of the new base.
+	if me.Life != 15 {
+		t.Errorf("life %d, want 15 (the toughness including its counters)", me.Life)
+	}
+	if got := layeredCard(t, g, tree).CurrentToughness(); got != 9 {
+		t.Errorf("toughness %d, want 9 (7 plus the two counters)", got)
+	}
+}
