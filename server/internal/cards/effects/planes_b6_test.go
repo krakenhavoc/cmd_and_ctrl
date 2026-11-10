@@ -1214,3 +1214,98 @@ func TestGoldmeadowGivesTheLandsControllerThreeGoats(t *testing.T) {
 		t.Errorf("%d Goats after chaos, want 4", got)
 	}
 }
+
+var (
+	planeLlanowar  = planeFixture{"11b3fcb2-0b66-4d8b-8e66-a21a5da1c1f5", "Llanowar", "Plane — Dominaria"}
+	planeLetheLake = planeFixture{"85592710-8637-4726-8b92-552b9be677c0", "Lethe Lake", "Plane — Arkhos"}
+	planeNaarIsle  = planeFixture{"3e0bcf65-1eaf-440f-a59b-0b11e1106135", "Naar Isle", "Plane — Wildfire"}
+)
+
+func TestLlanowarCreaturesTapForGGAndChaosUntaps(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeLlanowar)
+	g, _ := newPlaneGame(t, planeLlanowar)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	mine := pushVanillaCreature(g, me.ID, "Mine", 1, 1)
+	theirs := pushVanillaCreature(g, opp.ID, "Theirs", 1, 1)
+	g.BumpLayerVersionForTest()
+	for _, id := range []uuid.UUID{mine, theirs} {
+		var n int
+		g.WithWriteLock(func() {
+			g.RecomputeLayersIfStaleLocked()
+			c, _ := g.LookupCardForEffect(id)
+			n = len(game.ManaAbilitiesForCard(c))
+		})
+		if n != 1 {
+			t.Errorf("a creature has %d mana abilities, want 1", n)
+		}
+	}
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == mine {
+				g.Battlefield.Cards[i].Tapped = true
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if tmtB1Card(t, g, mine).Tapped {
+		t.Error("chaos did not untap the creature")
+	}
+}
+
+func TestLetheLakeMillsTenAtUpkeepAndOnChaos(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeLetheLake)
+	g, _ := newPlaneGame(t, planeLetheLake)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)] // not the next planar controller
+	lib := opp.Library.Size()
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTargetPlayer(t, g, opp.ID)
+	passPriorityAroundTable(t, g)
+	if got := lib - opp.Library.Size(); got != 10 {
+		t.Errorf("target player milled %d, want 10", got)
+	}
+	next := toNextUpkeep(t, g)
+	before := next.Library.Size()
+	passPriorityAroundTable(t, g)
+	if got := before - next.Library.Size(); got != 10 {
+		t.Errorf("the planar controller milled %d at upkeep, want 10", got)
+	}
+}
+
+func TestNaarIsleBurnsTheUpkeepPlayerMoreEachTime(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeNaarIsle)
+	g, _ := newPlaneGame(t, planeNaarIsle)
+	advanceToMain(t, g)
+	a := toNextUpkeep(t, g)
+	la := a.Life
+	passPriorityAroundTable(t, g)
+	if got := la - a.Life; got != 1 {
+		t.Errorf("first upkeep dealt %d, want 1", got)
+	}
+	b := toNextUpkeep(t, g)
+	lb := b.Life
+	passPriorityAroundTable(t, g)
+	if got := lb - b.Life; got != 2 {
+		t.Errorf("second upkeep dealt %d, want 2 (two flame counters)", got)
+	}
+	me, opp := b, opponentOf(g)
+	if opp == me {
+		opp = g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	}
+	lo := opp.Life
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := lo - opp.Life; got != 3 {
+		t.Errorf("chaos dealt %d, want 3", got)
+	}
+}
