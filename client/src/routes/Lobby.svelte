@@ -1624,11 +1624,11 @@
         <div class="nt-row"><NewTableRow bind:name={newName} {busy} /></div>
         <div class="nt-format" role="radiogroup" aria-label={L.tableFormat}>
           {#each FORMATS as f (f.id)}
-            <label class="use-setup">
+            <label class="format-opt">
               <input type="radio" name="nt-format" value={f.id} bind:group={newFormat} />
               <span>
                 {f.name}
-                <span class="setup-sum">{f.blurb}</span>
+                <span class="format-sum">{f.blurb}</span>
               </span>
             </label>
           {/each}
@@ -2490,7 +2490,8 @@
   .nt-error {
     flex: 1 0 100%;
   }
-  .use-setup {
+  .use-setup,
+  .format-opt {
     display: flex;
     align-items: flex-start;
     gap: 6px;
@@ -2498,7 +2499,8 @@
     color: var(--fg);
     max-width: 420px;
   }
-  .use-setup input {
+  .use-setup input,
+  .format-opt input {
     margin: 2px 0 0;
   }
   /* ADR 0222 §1: the format radios, one row each like the boxes below. */
@@ -2507,7 +2509,8 @@
     flex-direction: column;
     gap: 6px;
   }
-  .setup-sum {
+  .setup-sum,
+  .format-sum {
     display: block;
     font-size: 11.5px;
     color: var(--fg-muted);

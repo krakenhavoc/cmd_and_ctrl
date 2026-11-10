@@ -55,6 +55,7 @@ func Build(idx *cards.Index, id string) (model.DeckProfile, bool) {
 	p := model.DeckProfile{
 		Name:      d.Name,
 		Archetype: plan(d),
+		Format:    formatOf(d),
 		Cards:     make([]model.DeckCard, 0, len(d.Mainboard)+1),
 	}
 	seen := make(map[string]bool, len(d.Mainboard)+1)
@@ -106,4 +107,16 @@ func deckCard(idx *cards.Index, c decks.Card) model.DeckCard {
 	out.Type = found.TypeLine
 	out.Oracle = found.OracleText
 	return out
+}
+
+// formatOf is the deck's format as the prompt names it (ADR 0222 §2):
+// empty for Commander, so a Commander deck's profile and its cached
+// prompt are byte for byte what they were.
+func formatOf(d decks.Deck) string {
+	// Compared as text: no aiseat package imports internal/game
+	// (heuristic/imports_test.go).
+	if f := string(d.FormatOf()); f != "commander" {
+		return f
+	}
+	return ""
 }
