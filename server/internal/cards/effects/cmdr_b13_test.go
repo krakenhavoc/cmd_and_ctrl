@@ -504,3 +504,39 @@ func TestCmdrB13BibliophileDrawsForEachTargetOfASpell(t *testing.T) {
 		t.Errorf("drew %d cards for a one-target spell, want 1", got)
 	}
 }
+
+const cmdrB14AfterlifeOracle = "151c867f-cc77-42de-9ae5-5fd2233ccdab"
+
+func TestCmdrB14AfterlifeTakesOneCreatureFromEachGraveyardAsZombies(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[g.Turn.ActiveSeat], g.Seats[1], g.Seats[2]
+	mine := cmdrB13GraveCreature(g, me, "My Bear", 2)
+	spare := cmdrB13GraveCreature(g, me, "My Spare", 2)
+	theirs := cmdrB13GraveCreature(g, opp, "Their Elk", 3)
+	thirds := cmdrB13GraveCreature(g, third, "Third Wolf", 1)
+	pick := []game.TargetRef{
+		{Kind: game.TargetCard, ID: mine}, {Kind: game.TargetCard, ID: theirs}, {Kind: game.TargetCard, ID: thirds},
+	}
+	// Two cards from one graveyard is more than "up to one" per player.
+	if err := castCatalogSpellErr(t, g, "Afterlife from the Loam", "Sorcery", cmdrB14AfterlifeOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: mine}, {Kind: game.TargetCard, ID: spare}}); err == nil {
+		t.Fatal("two targets from the same graveyard were accepted")
+	}
+	castCatalogSpell(t, g, "Afterlife from the Loam", "Sorcery", cmdrB14AfterlifeOracle, pick)
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{mine, theirs, thirds} {
+		c, ok := battlefieldCard(g, id)
+		if !ok {
+			t.Fatalf("a target did not reach the battlefield")
+		}
+		if c.Controller != me.ID {
+			t.Errorf("%s is controlled by %s, want the caster", c.Name, c.Controller)
+		}
+		if !containsString(effectiveSubtypes(t, g, id), "Zombie") {
+			t.Errorf("%s is not a Zombie: %v", c.Name, effectiveSubtypes(t, g, id))
+		}
+	}
+	if !me.Graveyard.Contains(spare) {
+		t.Error("the untargeted card left the graveyard")
+	}
+}

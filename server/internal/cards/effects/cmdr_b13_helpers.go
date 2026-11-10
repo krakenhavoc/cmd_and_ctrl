@@ -66,3 +66,30 @@ func cmdrB13TotalPowerAtMost(n int) *game.TargetTotal {
 		Max:   n,
 	}
 }
+
+// cmdrB13OwnedByNthOpponent passes for a card owned by the n-th seat
+// (1-based) after the chooser's in turn order: controlledByNthOpponent's
+// twin for a card in a graveyard, which has an owner and no controller to
+// speak of. Eliminated seats keep their place.
+func cmdrB13OwnedByNthOpponent(n int) CardPredicate {
+	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
+		p := g.OpponentSeatAfter(chooser, n)
+		return p != nil && c.Owner == p.ID
+	}
+}
+
+// cmdrB13PerPlayerGraveyardClauses is "for each player, choose up to one
+// target <what> card in that player's graveyard" (Afterlife from the Loam):
+// one "up to one" clause for the caster's own graveyard, then one per
+// possible opponent, each bound to the n-th seat after the caster's. A seat
+// that is not at the table, or is eliminated, offers nothing.
+func cmdrB13PerPlayerGraveyardClauses(noun string, what ...CardPredicate) *game.TargetSpec {
+	own := TargetCardInGraveyard("up to one target "+noun+" card in your graveyard",
+		append([]CardPredicate{YouOwn()}, what...)...).WithCount(0, 1)
+	var rest []*game.TargetSpec
+	for n := 1; n <= game.MaxPlayers-1; n++ {
+		rest = append(rest, TargetCardInGraveyard("up to one target "+noun+" card in the "+nthOpponentWords[n]+" opponent's graveyard",
+			append([]CardPredicate{cmdrB13OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
+	}
+	return Clauses(own, rest...)
+}
