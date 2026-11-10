@@ -185,6 +185,7 @@ body graveyard/return-the-object-under-its-owners-control
 body graveyard/return-the-object-under-your-control
 body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
+body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
 body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
@@ -1747,6 +1748,7 @@ run prompt-run/gideons-sacrifice-redirect
 run prompt-run/glorifier-of-suffering-sacrifice
 run prompt-run/god-eternal-bontu-sacrifice
 run prompt-run/grab-the-reins-damage
+run prompt-run/grist-the-hunger-tide-sacrifice
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
 run prompt-run/hollow-marauder-draws
@@ -2531,6 +2533,7 @@ tail sacrificed-one/prompt-run/gastal-blockbuster-sacrifice
 tail sacrificed-one/prompt-run/gearbane-orangutan-sacrifice
 tail sacrificed-one/prompt-run/general-traag-sacrifice
 tail sacrificed-one/prompt-run/glorifier-of-suffering-sacrifice
+tail sacrificed-one/prompt-run/grist-the-hunger-tide-sacrifice
 tail sacrificed-one/prompt-run/hei-bai-two-counters
 tail sacrificed-one/prompt-run/in-the-pale-moonlight-romulans
 tail sacrificed-one/prompt-run/kor-cause-of-vengeance-sacrifice
@@ -2742,6 +2745,8 @@ tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
 tail then/glen-elendras-answer-counter-next
 tail then/grasp-of-fate-exiled-one
+tail then/grist-the-hunger-tide-mill
+tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen

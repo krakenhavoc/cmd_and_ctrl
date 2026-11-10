@@ -90,3 +90,17 @@ func TestOffBattlefieldSelfNeedsTheCardsOwnText(t *testing.T) {
 		t.Error("a card without the declaration is a creature")
 	}
 }
+
+// CR 612.2: a spell whose text had "Insect" changed to "Elf" is a 1/1
+// Elf creature spell: the sentence's own word is text, read through the
+// change like the type line's.
+func TestOffBattlefieldSelfSubtypeIsReadThroughATextChange(t *testing.T) {
+	c := offBattlefieldSelfTestCard()
+	c.TextWords = (*TextWords)(nil).with(TextWordChange{Kind: TextWordCreatureType, From: "Insect", To: "Elf"})
+	if !c.HasSubtype("Elf") || c.HasSubtype("Insect") || !c.IsCreature() {
+		t.Errorf("Elf %v, Insect %v, creature %v; want an Elf creature spell", c.HasSubtype("Elf"), c.HasSubtype("Insect"), c.IsCreature())
+	}
+	if subs := c.Effective().Subtypes; len(subs) != 2 || subs[1] != "Elf" {
+		t.Errorf("subtypes %v", subs)
+	}
+}

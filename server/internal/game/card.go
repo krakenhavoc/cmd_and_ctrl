@@ -2488,8 +2488,12 @@ func hasSubtype(c *Card, subtype string) bool {
 		}
 		// #5427, CR 113.6c: and a subtype the card's own text gives it
 		// while it isn't on the battlefield (off_battlefield_self.go).
-		if self := offBattlefieldSelfOf(c); self != nil && self.hasSubtype(subtype) {
-			return true
+		// A spell with a changed word has it in the baseline above,
+		// already read through the change (CR 612.2).
+		if c.TextWords == nil {
+			if self := offBattlefieldSelfOf(c); self != nil && self.hasSubtype(subtype) {
+				return true
+			}
 		}
 	} else if typeListHas(c.effective.Subtypes, subtype) {
 		return true

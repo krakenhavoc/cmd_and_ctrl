@@ -114,7 +114,7 @@ var gristMilled game.TailRef
 
 func init() {
 	gristMilled = CardTail("then/grist-the-hunger-tide-milled", func(ctx *Context, o game.TailOutcome) error {
-		if !gristMilledAnInsect(ctx.Game, o.IDs) {
+		if !gristMilledAnInsect(ctx, o.IDs) {
 			return nil
 		}
 		// AddCounter does nothing for a Grist that left the battlefield or
@@ -128,7 +128,10 @@ func init() {
 
 // gristMilledAnInsect reports whether one of the milled cards is an Insect
 // card, read where it went, as long as that is a public zone (CR 701.17c).
-func gristMilledAnInsect(g *game.Game, milled []uuid.UUID) bool {
+func gristMilledAnInsect(ctx *Context, milled []uuid.UUID) bool {
+	g := ctx.Game
+	// The word as Grist's text now says it (CR 612.2).
+	insect := ctx.TextSubtype("Insect")
 	for _, id := range milled {
 		z := g.FindCardZoneForEffect(id)
 		if z == nil {
@@ -139,7 +142,7 @@ func gristMilledAnInsect(g *game.Game, milled []uuid.UUID) bool {
 		default:
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(id); ok && !c.FaceDown && c.HasSubtype("Insect") {
+		if c, ok := g.LookupCardForEffect(id); ok && !c.FaceDown && c.HasSubtype(insect) {
 			return true
 		}
 	}
