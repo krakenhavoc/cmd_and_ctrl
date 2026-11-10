@@ -939,6 +939,7 @@ confirm confirm/breeches-sacrifice
 confirm confirm/bringer-of-the-black-dawn-search
 confirm confirm/byway-barterer-discard-hand
 confirm confirm/chain-sacrifice-a-land
+confirm confirm/champion-of-wits-loot
 confirm confirm/channel-harm-deal
 confirm confirm/charismatic-conqueror-tap
 confirm confirm/clash-of-elements-top-or-bottom
@@ -1406,6 +1407,7 @@ payunless pay-unless/kazuul-ogre
 payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
+payunless pay-unless/lazotep-chancellor-amass
 payunless pay-unless/leyline-tyrant-damage
 payunless pay-unless/lichs-relic-destroy-per-opponent
 payunless pay-unless/lightning-runner-untap-and-extra-combat
@@ -1580,6 +1582,7 @@ run prompt-run/ghouls-night-out-return
 run prompt-run/gideons-sacrifice-redirect
 run prompt-run/glorifier-of-suffering-sacrifice
 run prompt-run/god-eternal-bontu-sacrifice
+run prompt-run/god-pharaohs-gift-exile
 run prompt-run/grab-the-reins-damage
 run prompt-run/guard-dogs-compare
 run prompt-run/hei-bai-two-counters
@@ -2476,6 +2479,8 @@ tail then/full-flowering-populate-again
 tail then/gain-life-equal-to-damage-dealt
 tail then/galadriel-elven-queen-bearer-counter
 tail then/get-energy
+tail then/god-pharaohs-gift-copy
+tail then/god-pharaohs-gift-haste
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen

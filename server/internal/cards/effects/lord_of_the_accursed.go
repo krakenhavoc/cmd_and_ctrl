@@ -22,8 +22,9 @@ func init() {
 			TribalAnthem(TribeFilter{Tribes: []string{"Zombie"}, Others: true, YoursOnly: true}, 1, 1),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}, {T}: All Zombies gain menace until end of turn.",
-			Cost:  Plus(ManaCost("{1}{B}"), TapCost()),
+			Label:   "{1}{B}, {T}: All Zombies gain menace until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{1}{B}"), TapCost()),
 			Effect: Do(GrantKeywordUntilEOT{
 				Match:    And(Creature(), HasSubtype("Zombie")),
 				Keywords: []string{"menace"},
