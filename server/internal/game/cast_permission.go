@@ -415,6 +415,15 @@ type PermissionFilter struct {
 	// or toughness for this clause (CR 208.3).
 	PowerOrToughnessCapped bool `json:"powerOrToughnessCapped,omitempty"`
 	PowerOrToughnessAtMost int  `json:"powerOrToughnessAtMost,omitempty"`
+
+	// PowerCapped and PowerAtMost are "creature spells with power N or
+	// less" (Assemble the Players, #4452): a card qualifies when it is a
+	// creature and its power is N or less. The flag says the clause is
+	// there, because 0 is a legal N. Judged like PowerOrToughnessCapped
+	// (same lent reading, same unknown-is-never-N-or-less rule), on the
+	// face the card shows. Additive, and both write nothing when unset.
+	PowerCapped bool `json:"powerCapped,omitempty"`
+	PowerAtMost int  `json:"powerAtMost,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -493,6 +502,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
+		return false
+	}
+	if f.PowerCapped && !powerAtMost(&c, f.PowerAtMost) {
 		return false
 	}
 	return true
@@ -2007,6 +2019,7 @@ func (p *CastPermission) opensFace(spell Card, player uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string, accept func(*CastPermission) bool) *CastPermission {
 	claim = AltCostKeyword(claim)
+	card = faceDownSpellStandIn(card, claim)
 	if zone == ZoneHand && isMiracleKey(claim) {
 		// A card can hold a printed miracle's grant and a granted one's
 		// (Molecule Man beside a Terminus): the claim names which.

@@ -117,6 +117,13 @@ func powerOrToughnessAtMost(c *Card, n int) bool {
 	return r.known && (r.power <= n || r.toughness <= n)
 }
 
+// powerAtMost is the PowerCapped clause: c is a creature whose power is n
+// or less, judged on the face c shows.
+func powerAtMost(c *Card, n int) bool {
+	r := ptForFilter(c)
+	return r.known && r.power <= n
+}
+
 // ptForFilter is the card's power and toughness for a filter: the layer
 // pass's numbers on the battlefield, the lent reading for the face it
 // shows when it has one, and otherwise its printed numbers, unknown for
@@ -148,7 +155,7 @@ func ptForFilter(c *Card) ptReading {
 //
 // Caller must hold g.mu.
 func (g *Game) lendPTLocked(p *CastPermission, c Card) Card {
-	if p == nil || !p.Filter.PowerOrToughnessCapped {
+	if p == nil || (!p.Filter.PowerOrToughnessCapped && !p.Filter.PowerCapped) {
 		return c
 	}
 	return g.withPTAnywhereLocked(c)

@@ -719,7 +719,14 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	// rule below reads the cast as having no permission, and its own
 	// price claimed anyway is refused — here, in the gate the view's
 	// offer list, the bot enumerator and CastSpell share.
-	if grant != nil && g.permissionForSpellLocked(grant, card) == nil {
+	//
+	// #4452: a spell cast face down (morph, megamorph, disguise) is the
+	// CR 708.2a 2/2 it is cast as, which is what the filter judges.
+	judged := card
+	if alt != nil && alt.FaceDown != nil && !card.FaceDown {
+		judged.SetFaceDown(alt.FaceDown.Kind)
+	}
+	if grant != nil && g.permissionForSpellLocked(grant, judged) == nil {
 		if alt != nil && alt.FromPermission {
 			return ErrCastZoneNotAllowed
 		}

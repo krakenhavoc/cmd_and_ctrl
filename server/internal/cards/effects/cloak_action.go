@@ -17,19 +17,32 @@ import (
 // Cards that cloak cards from elsewhere (Expose the Culprit) call
 // game.CloakCardsKeyedForEffect directly.
 
-// CloakTopOfLibrary cloaks the top card of Player's library (the
-// controller when zero).
+// CloakTopOfLibrary cloaks the top card of a library: Player's, under
+// Player's control (the resolving item's controller when zero). Controller
+// and LibraryOwner split the two for "cloak the top card of that player's
+// library" (Etrata, Deadly Fugitive): Controller is who puts it onto the
+// battlefield and controls it (zero: Player as above), LibraryOwner whose
+// library it comes from (zero: the controller).
 type CloakTopOfLibrary struct {
-	Player uuid.UUID
+	Player       uuid.UUID
+	Controller   uuid.UUID
+	LibraryOwner uuid.UUID
 }
 
 // Do cloaks the card and returns the permanent that entered.
 func (c CloakTopOfLibrary) Do(ctx *Context) (uuid.UUID, error) {
-	player := c.Player
-	if player == uuid.Nil {
-		player = ctx.Controller()
+	controller := c.Controller
+	if controller == uuid.Nil {
+		controller = c.Player
 	}
-	id, err := ctx.Game.CloakForEffect(player)
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	owner := c.LibraryOwner
+	if owner == uuid.Nil {
+		owner = controller
+	}
+	id, err := ctx.Game.CloakTopOfLibraryForEffect(controller, owner)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("cloak: %w", err)
 	}

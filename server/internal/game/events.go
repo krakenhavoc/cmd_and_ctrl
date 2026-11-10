@@ -2252,6 +2252,12 @@ type Event struct {
 	// empty.
 	LastKnownKeywords []string `json:"last_known_keywords,omitempty"`
 
+	// LastKnownFaceDown is whether the same permanent was face down as it
+	// last existed (a CR 708.2 permanent state): Yarus, Roar of the Old Gods'
+	// "whenever a face-down creature you control dies". Engine-internal,
+	// like LastKnownTypes; additive (#4452).
+	LastKnownFaceDown bool `json:"last_known_face_down,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an

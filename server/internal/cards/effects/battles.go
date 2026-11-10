@@ -160,6 +160,6 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 			LapseOnPass: game.LapseStaysInExile,
 			Faces:       []int{SiegeBackFace},
 			Label:       "Cast it transformed, without paying its mana cost",
-		}, "", game.MayCastKeywordFreeCast)
+		}, "")
 	}
 }
