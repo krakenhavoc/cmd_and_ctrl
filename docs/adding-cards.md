@@ -4706,8 +4706,11 @@ WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // 
   (`Register` refuses it, and a forage off the battlefield). The
   auto-tapper never plans the row, so give the card its plain mana row
   too when it prints one.
-- Not yet: "cast … by foraging in addition to paying their other costs"
-  (Osteomancer Adept).
+- "Cast … by foraging in addition to paying their other costs" (Osteomancer
+  Adept) is two granted cast permissions, one per way to forage:
+  `ExileOtherFromGraveyard: game.ForageExileCount` and `SacrificeFood: true`,
+  both with `Forage: true` so paying either emits `EventForage`
+  (`AlternativeCost.Forage`).
 
 ### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
 

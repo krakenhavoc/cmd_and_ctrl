@@ -198,6 +198,14 @@ type PlayerTurnTally struct {
 	// creature left the battlefield under your control this turn" read it
 	// through Game.CreatureLeftThisTurn. Additive.
 	CreaturesLeft int `json:"creaturesLeft,omitempty"`
+	// CreaturesExiled counts the creatures this player controlled that
+	// were exiled from the battlefield this turn, by any route:
+	// CreaturesLeft narrowed to a move to exile (Vren, the Relentless's
+	// "the number of creatures that were exiled under your opponents'
+	// control this turn"). A token counts: it is exiled before it
+	// ceases to exist (CR 111.7). Judged as a creature as it last existed
+	// on the battlefield, under the controller it left from. Additive.
+	CreaturesExiled int `json:"creaturesExiled,omitempty"`
 	// PermanentsEnteredFaceDown counts the permanents that entered the
 	// battlefield face down under this player's control this turn
 	// (Oblivious Bookworm, #5241): a face-down spell resolving, a
@@ -2277,6 +2285,9 @@ func (g *Game) recordPermanentLeftLocked(ev Event) {
 	g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsLeft++ })
 	if g.leftAsACreatureLocked(ev) {
 		g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesLeft++ })
+		if ev.NewZone == ZoneExile {
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesExiled++ })
+		}
 	}
 }
 

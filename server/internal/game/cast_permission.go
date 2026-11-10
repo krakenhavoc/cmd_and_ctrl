@@ -780,6 +780,14 @@ type CastPermission struct {
 	// fewer than N counters in all cannot claim it (CR 118.3). Zero
 	// charges none. Additive within a snapshot version.
 	RemoveCountersInAddition int `json:"removeCountersInAddition,omitempty"`
+	// SacrificeFood is "by sacrificing a Food in addition to paying its
+	// other costs" (forage's second way, Osteomancer Adept): the offer
+	// charges the card's printed mana cost and one Food the holder
+	// controls, sacrificed as a cost. Forage marks it (or an
+	// ExileOtherFromGraveyard of three) as a forage, so paying it emits
+	// EventForage. Additive within a snapshot version.
+	SacrificeFood bool `json:"sacrificeFood,omitempty"`
+	Forage        bool `json:"forage,omitempty"`
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
 	// (CR 702.34a). A REPLACEMENT, so it also catches a granted
@@ -1571,6 +1579,11 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.ExileOtherFromGraveyard > 0 {
 		out.ExileFromGraveyard = escapeExileSpec(p.ExileOtherFromGraveyard)
 	}
+	if p.SacrificeFood {
+		out.Sacrifice = foodSacrificeSpec()
+		out.PayLabel = "a Food"
+	}
+	out.Forage = p.Forage
 	if p.DiscardLandCard {
 		out.DiscardFromHand = RetraceDiscardSpec()
 		out.PayLabel = "a land card"
@@ -3097,6 +3110,19 @@ func cardHasAnyCreatureType(c Card, want [2]string) bool {
 // "Other" needs no clause here: CR 601.2a has already moved the spell
 // to the stack, and validateAlternativeCostPaymentLocked refuses the
 // cast ID outright.
+func foodSacrificeSpec() *TargetSpec {
+	food := FoodQuery()
+	return &TargetSpec{
+		Mode:  "permanent",
+		Label: "a Food",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(g *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return food.matchesLocked(g, &c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
 func escapeExileSpec(n int) *TargetSpec {
 	label := "Exile " + countWord(n) + " other cards from your graveyard"
 	return &TargetSpec{
