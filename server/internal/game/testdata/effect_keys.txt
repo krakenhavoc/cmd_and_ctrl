@@ -209,6 +209,7 @@ body magma-pummeler/remove-counters
 body magma-pummeler/strike
 body mana-drain/refund
 body mana-rider/dispatch
+body mana-rider/dispatch-targeted
 body massacre-girl/sweep
 body matt-murdock-justice-seeker/counter
 body megatron-destructive-force/strike
@@ -412,6 +413,7 @@ choose choose-cards/bandits-talent-discard
 choose choose-cards/banon-the-returners-leader-draw
 choose choose-cards/barrowin-of-clan-undurr-return
 choose choose-cards/beatrix-loyal-general-attach
+choose choose-cards/become-copy-of-exiled-with
 choose choose-cards/binding-negotiation-exiled-to-graveyard
 choose choose-cards/bolster
 choose choose-cards/borg-cube-assimilate
