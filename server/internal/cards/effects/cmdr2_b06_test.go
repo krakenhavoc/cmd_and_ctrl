@@ -25,9 +25,16 @@ const (
 
 func TestCmdr2B06Registered(t *testing.T) {
 	for oracle, name := range map[string]string{
-		cmdr2B06RavagerOracle:  "Dire Fleet Ravager",
-		cmdr2B06SaboteurOracle: "Daring Saboteur",
-		cmdr2B06WarkiteOracle:  "Warkite Marauder",
+		cmdr2B06BeckettOracle:   "Admiral Beckett Brass",
+		cmdr2B06RavagerOracle:   "Dire Fleet Ravager",
+		cmdr2B06RamirezOracle:   "Ramirez DePietro, Pillager",
+		cmdr2B06BrassOracle:     "Admiral Brass, Unsinkable",
+		cmdr2B06FranciscoOracle: "Francisco, Fowl Marauder",
+		cmdr2B06SaboteurOracle:  "Daring Saboteur",
+		cmdr2B06CaptainOracle:   "Fathom Fleet Captain",
+		cmdr2B06WarkiteOracle:   "Warkite Marauder",
+		cmdr2B06SkeletonOracle:  "Skeleton Crew",
+		cmdr2B06RaidersOracle:   "Merchant Raiders",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 || spec.Name != name {
@@ -461,5 +468,81 @@ func TestCmdr2B06AdmiralBrassMayDecline(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if _, ok := battlefieldCardByID(g, pirate); ok {
 		t.Error("declining still returned the Pirate")
+	}
+}
+
+// --- Admiral Beckett Brass ----------------------------------------------
+
+func TestCmdr2B06BeckettPumpsOtherPiratesYouControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	beckett := cmdr2B05Card(g, me.ID, "Admiral Beckett Brass", "Legendary Creature — Human Pirate", cmdr2B06BeckettOracle, 3, 3)
+	mine := b12Creature(g, me.ID, "Mine", "Creature — Human Pirate", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Human Pirate", 2, 2)
+	bear := seedBear(g, me.ID)
+	for name, c := range map[string]struct {
+		id   uuid.UUID
+		want int
+	}{"other Pirate": {mine, 3}, "itself": {beckett, 3}, "their Pirate": {theirs, 2}, "Bear": {bear, 2}} {
+		if got := effectivePower(t, g, c.id); got != c.want {
+			t.Errorf("%s power %d, want %d", name, got, c.want)
+		}
+	}
+}
+
+func cmdr2B06BeckettEndStep(t *testing.T, hits int) (g *game.Game, me *game.Player, rock, myThing uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[0]
+	opp := g.Seats[1]
+	cmdr2B05Card(g, me.ID, "Admiral Beckett Brass", "Legendary Creature — Human Pirate", cmdr2B06BeckettOracle, 3, 3)
+	rock = b12Permanent(g, opp.ID, "Their Rock", "Artifact")
+	b12Permanent(g, opp.ID, "Their Island", "Basic Land — Island")
+	myThing = b12Permanent(g, me.ID, "My Rock", "Artifact")
+	for i := 0; i < hits; i++ {
+		p := b12Creature(g, me.ID, "Deckhand", "Creature — Human Pirate", 1, 1)
+		dealCombatDamageToPlayer(g, p, opp.ID, 1)
+	}
+	advanceTo(t, g, game.StepEnd)
+	return
+}
+
+func TestCmdr2B06BeckettStealsFromAPlayerHitByThreePirates(t *testing.T) {
+	g, me, rock, mine := cmdr2B06BeckettEndStep(t, 3)
+	opts := pickTargetPrompt(t, g).PickTargetCards
+	for _, id := range opts {
+		if c, ok := g.LookupCardForEffect(id); !ok || c.Controller == me.ID || c.Name == "Their Island" {
+			t.Fatalf("illegal target offered: %v", c.Name)
+		}
+	}
+	if !slicesContainsID(opts, rock) || slicesContainsID(opts, mine) {
+		t.Fatalf("targets %v: want Their Rock and not My Rock", opts)
+	}
+	answerPickTarget(t, g, rock)
+	passPriorityAroundTable(t, g)
+	if c, ok := g.LookupCardForEffect(rock); !ok || c.Controller != me.ID {
+		t.Error("Their Rock is not under my control")
+	}
+}
+
+func slicesContainsID(ids []uuid.UUID, id uuid.UUID) bool {
+	for _, x := range ids {
+		if x == id {
+			return true
+		}
+	}
+	return false
+}
+
+func TestCmdr2B06BeckettNeedsThreePirates(t *testing.T) {
+	g, me, rock, _ := cmdr2B06BeckettEndStep(t, 2)
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoicePickTarget {
+			t.Fatal("two Pirates offered a target")
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if c, _ := g.LookupCardForEffect(rock); c.Controller == me.ID {
+		t.Error("the permanent was taken with only two Pirates")
 	}
 }

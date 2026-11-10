@@ -1487,6 +1487,7 @@ payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/chaos-spewer-blight
 payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
+payunless pay-unless/cmdr2-b05-fathom-fleet-captain-pirate
 payunless pay-unless/cmdr2-b05-surgespanner-bounce
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
@@ -2048,6 +2049,7 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail cmdr2-b05/admiral-brass-entered
 tail coalstoke-gearhulk/entered
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
