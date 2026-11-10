@@ -52,7 +52,7 @@ func init() {
 					ctx := NewContext(g, item)
 					for _, id := range b13PlayersFrom(g, item.Controller) {
 						p := g.PlayerByIDForEffect(id)
-						if b13ControlsTheirCommander(g, id) {
+						if b18ControlsYourCommander(g, id) {
 							if err := (DrawCards{Player: id, N: 1}).Apply(ctx); err != nil {
 								return err
 							}
@@ -83,17 +83,6 @@ func init() {
 				}),
 		},
 	})
-}
-
-// b13ControlsTheirCommander is "controls their commander": a commander the
-// player owns is on the battlefield under their control.
-func b13ControlsTheirCommander(g *game.Game, player uuid.UUID) bool {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.IsCommander && c.Owner == player && c.Controller == player {
-			return true
-		}
-	}
-	return false
 }
 
 // theCommandZonePutCommander is a player putting their commander onto the

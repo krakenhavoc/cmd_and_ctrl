@@ -27,14 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBecomesTarget, aPlayerCommittedACrime,
 				"Tarnation — that player may draw a card", tarnationMayDraw),
-			Targeting(WheneverChaosEnsues("Tarnation — 1 damage to any target",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
-					}
-					return nil
-				}),
+			Targeting(WheneverChaosEnsues("Tarnation — 1 damage to any target", b13DamageToFirstTarget(1)),
 				TargetAny()),
 		},
 	})

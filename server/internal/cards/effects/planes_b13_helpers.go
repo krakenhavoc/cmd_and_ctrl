@@ -83,3 +83,16 @@ func printedPlanesB13HatToken() tokenTemplate {
 		}},
 	}
 }
+
+// b13DamageToFirstTarget is "<the plane> deals N damage to <its one target>":
+// the plane is the source, and the target is the first one still legal.
+func b13DamageToFirstTarget(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		legal := ctx.LegalTargets()
+		if len(legal) == 0 {
+			return nil
+		}
+		return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: n}.Apply(ctx)
+	}
+}
