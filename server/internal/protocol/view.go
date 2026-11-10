@@ -2096,6 +2096,28 @@ type AlternativeCostView struct {
 	// for every other offer. Per viewer, like `tap_options`.
 	TapPrices map[string]AltCostTapPriceView `json:"tap_prices,omitempty"`
 
+	// CounterCost* are the offer's counter-removal component (#5390):
+	// Quilled Greatwurm's "removing six counters from among creatures you
+	// control". The fields an activated ability's counter cost ships
+	// (CounterCostView), with the same wire names, so the client opens the
+	// one counter picker it already has: the count, the printed kind
+	// (absent for any kinds), the "from" clause, among, and the options.
+	// The payment rides cast_spell as `counter_source_ids` /
+	// `counter_counts` / `counter_kind` / `counter_kinds`, never
+	// `alt_cost_ids`. All absent for an offer that removes no counters.
+	//
+	// The count, kind, clause and shape are printed and public with the
+	// offer on a pile; `counter_cost_options` and `counter_cost_max` are
+	// the viewer's own creatures, per viewer like `pay_options` (#1172).
+	CounterCostN        int                     `json:"counter_cost_n,omitempty"`
+	CounterCostKind     string                  `json:"counter_cost_kind,omitempty"`
+	CounterCostSelf     bool                    `json:"counter_cost_self,omitempty"`
+	CounterCostLabel    string                  `json:"counter_cost_label,omitempty"`
+	CounterCostAmong    bool                    `json:"counter_cost_among,omitempty"`
+	CounterCostVariable bool                    `json:"counter_cost_variable,omitempty"`
+	CounterCostMax      int                     `json:"counter_cost_max,omitempty"`
+	CounterCostOptions  []CounterCostOptionView `json:"counter_cost_options,omitempty"`
+
 	// PayLabel is the picker's prompt copy for PayOptions,
 	// SacrificeOptions or TapOptions ("a blue card", "an Island you
 	// control", "three creatures"). Absent when there is nothing to pick.
@@ -5661,6 +5683,15 @@ type ManaAbilityView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// CostBranches are the ways to pay an either/or part of a mana
+	// ability's cost (#5397, game.ManaAbilityShape.Either): forage,
+	// Thornvault Forager's "{T}, Forage: Add two mana in any combination
+	// of colors" — exile three cards from your graveyard, or sacrifice a
+	// Food. The same wire name and shape ActivatedAbilityView carries,
+	// so the client asks which branch first, runs that branch's picker,
+	// and sends its index on activate_mana_ability as `cost_branch`.
+	// Absent for every other mana ability.
+	CostBranches []AbilityCostBranchView `json:"cost_branches,omitempty"`
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -6987,6 +7018,10 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.SacrificeOptions = nil
 		// ADR 0135 §1: "untapped creatures YOU control", likewise.
 		o.TapOptions = nil
+		// #5390: the creatures YOU control holding counters, and the
+		// most YOU could remove.
+		o.CounterCostOptions = nil
+		o.CounterCostMax = 0
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
 		// #3931: and a harmonize price per creature YOU control.
@@ -7171,6 +7206,10 @@ func publicManaAbilityRow(v ManaAbilityView) (out ManaAbilityView, private bool)
 		private = private || len(v.ExileCostOptions) > 0
 		v.ExileCostOptions = nil
 	}
+	// #5397: an either/or cost's branches, cleared as a CR 602 row's are.
+	var branchesPrivate bool
+	v.CostBranches, branchesPrivate = publicCostBranches(v.CostBranches)
+	private = private || branchesPrivate
 	return v, private
 }
 
@@ -8285,7 +8324,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 		return
 	}
 	v.ManaValueAtMostX = spec.ManaValueAtMostX
-	v.ManaValueEqualsX = spec.ManaValueEqualsX
+	v.ManaValueEqualsX = spec.ManaValueEqualsX && spec.ManaValueEqualsXPlus == 0
 	v.PowerAtMostX = spec.PowerAtMostX
 	v.ToughnessAtMostX = spec.ToughnessAtMostX
 	v.XFromCountersRemoved = spec.BoundByCountersRemoved
@@ -8593,6 +8632,17 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.ReducesByPower = true
 				v.TapPrices = harmonizePricesView(g, caster, *live, zone, ac.Key, v.TapOptions)
 			}
+		}
+		if rc := ac.RemoveCounters; rc != nil {
+			// #5390: the activation's counter block, with the spell being
+			// cast as the source the option walk is asked about. Not a
+			// card component, so it sits beside the chain above, which
+			// effects.Register keeps empty for such an offer.
+			castID, _ := uuid.Parse(self)
+			cv := counterCostView(g, caster, castID, rc, nil)
+			v.CounterCostN, v.CounterCostKind, v.CounterCostSelf = cv.CounterCostN, cv.CounterCostKind, cv.CounterCostSelf
+			v.CounterCostLabel, v.CounterCostAmong, v.CounterCostVariable = cv.CounterCostLabel, cv.CounterCostAmong, cv.CounterCostVariable
+			v.CounterCostMax, v.CounterCostOptions = cv.CounterCostMax, cv.CounterCostOptions
 		}
 		out = append(out, v)
 	}
@@ -10080,6 +10130,14 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
+		}
+		// #5397: an either/or cost (forage, Thornvault Forager), each
+		// branch projected through the CR 602 row's projection over the
+		// same fold, so the client runs one branch picker for both
+		// ability kinds and sends the index as `cost_branch`.
+		if raw[i].Branched() {
+			views[i].CostBranches = abilityCostBranchViews(g, controller, card.InstanceID,
+				game.AbilityCost{Either: raw[i].Either, Forage: raw[i].Forage})
 		}
 	}
 }

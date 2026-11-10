@@ -101,6 +101,12 @@ export interface CastChoices {
   // charges one; undefined otherwise, and the server rejects a
   // non-empty list on an offer that charges nothing.
   altCostIDs?: string[];
+  // #5390: the counters the chosen alternative cost removes (Quilled
+  // Greatwurm's six from among creatures you control), already shaped
+  // as the payload's counter_source_ids / counter_counts / counter_kind
+  // / counter_kinds by counterPaymentParams. Undefined for every other
+  // cast.
+  counter?: CounterPayment;
   // ADR 0073 (#664): the optional additional costs being paid, as
   // POSITIONS in the card's `optional_costs`, repeated once per
   // payment for a multikicker. Undefined and [] are the same thing
@@ -261,6 +267,17 @@ export function applyCastChoices(
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
   if (choices.altCostIDs !== undefined && choices.altCostIDs.length > 0)
     params.alt_cost_ids = choices.altCostIDs;
+  // #5390: the offer's counter payment, in activate_ability's words.
+  if (choices.counter !== undefined) {
+    const c = choices.counter;
+    if (c.counter_source_ids !== undefined && c.counter_source_ids.length > 0)
+      params.counter_source_ids = c.counter_source_ids;
+    if (c.counter_counts !== undefined && c.counter_counts.length > 0)
+      params.counter_counts = c.counter_counts;
+    if (c.counter_kind !== undefined && c.counter_kind !== "") params.counter_kind = c.counter_kind;
+    if (c.counter_kinds !== undefined && c.counter_kinds.length > 0)
+      params.counter_kinds = c.counter_kinds;
+  }
   // ADR 0073: omitted when empty, which is the server default and
   // what every client that predates the kicker toggles sends.
   if (choices.optionalCosts !== undefined && choices.optionalCosts.length > 0)

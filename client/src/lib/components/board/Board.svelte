@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     AdditionalCostView,
     AltCostPriceView,
+    AlternativeCostView,
     AltCostTapPriceView,
     CardView,
     GameView,
@@ -250,6 +251,7 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaCostBranchPayment,
     manaExilePermanentPayment,
     manaTapPayment,
   } from "../../manaAbilityCost";
@@ -1327,6 +1329,25 @@
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
+  // #5390: an offer that removes counters (Quilled Greatwurm's "removing
+  // six counters from among creatures you control") opens the counter
+  // picker an ability's counter cost uses — the offer carries the same
+  // counter block — and the payment rides the cast as counter_source_ids
+  // / counter_counts / counter_kind(s). Always asked: which creatures
+  // shrink is the player's choice even when only one split exists.
+  let castCounterPrompt = $state<{
+    card: CardView;
+    offer: AlternativeCostView;
+    choices: CastChoices;
+  } | null>(null);
+
+  function confirmCastCounterCost(picks: CounterChoice[]): void {
+    const p = castCounterPrompt;
+    castCounterPrompt = null;
+    if (!p) return;
+    afterAltCostPayment(p.card, { ...p.choices, counter: counterPaymentParams(p.offer, picks) });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -1340,6 +1361,10 @@
     // mana. Ask for it before anything else, matching the order the
     // server validates the cast in.
     const offer = alternativeCostByKey(card, choices.altCost);
+    if (offer && hasCounterCost(offer)) {
+      castCounterPrompt = { card, offer, choices };
+      return;
+    }
     const sacClause = altCostSacrificeClause(offer);
     if (sacClause !== undefined) {
       altSacPromptClause = sacClause;
@@ -3040,6 +3065,57 @@
     // one action at the end of the chain. Set at the chain's start, so
     // a chain that was cancelled cannot leak its colour into the next.
     manaColors = colors;
+    manaCostBranch = undefined;
+    // #5397: an either/or cost (forage, Thornvault Forager) asks which
+    // way to pay first, through the branch picker the CR 602 chain uses.
+    // One payable branch is the answer and is taken without a question;
+    // none means the row can't be paid (CR 118.3) and nothing is sent.
+    if (abilityCostBranches(ability).length > 0) {
+      const payable = payableCostBranches(ability);
+      if (payable.length === 0) return;
+      if (payable.length === 1) {
+        afterManaBranch(card, ability, payable[0]);
+        return;
+      }
+      manaBranchPrompt = { card, ability };
+      return;
+    }
+    startManaCardCosts(card, ability);
+  }
+
+  // #5397: the branch of a mana ability's either/or cost, carried on the
+  // side like the discard picks until the one activate_mana_ability goes
+  // out as `cost_branch`. undefined means the row has no branches.
+  let manaBranchPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaCostBranch: number | undefined = undefined;
+  const manaBranchCard = $derived(
+    manaBranchPrompt
+      ? ({
+          ...manaBranchPrompt.card,
+          modes: costBranchModeSpec(manaBranchPrompt.ability),
+        } as CardView)
+      : null,
+  );
+  function confirmManaBranch(modes: number[]): void {
+    const p = manaBranchPrompt;
+    manaBranchPrompt = null;
+    if (!p || modes.length !== 1) return;
+    afterManaBranch(p.card, p.ability, modes[0]);
+  }
+  // afterManaBranch folds the chosen branch into the row and runs the
+  // ordinary mana cost chain on it: the graveyard branch's exile picker or
+  // the Food branch's sacrifice picker.
+  function afterManaBranch(card: CardView, ability: ManaAbilityView, k: number): void {
+    manaCostBranch = k;
+    startManaCardCosts(card, withCostBranch(ability, k));
+  }
+
+  // startManaCardCosts is the head of the mana cost chain once any
+  // either/or branch is folded in (#5397).
+  function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -3233,6 +3309,8 @@
         ...counter,
         // #1443: absent unless the picker named a colour.
         ...manaColorParams(manaColors),
+        // #5397: absent unless the row's cost is an either/or (forage).
+        ...manaCostBranchPayment(manaCostBranch),
       },
       viewerID ?? undefined,
     );
@@ -3245,6 +3323,7 @@
     manaExilePermanentIDs = [];
     manaTapIDs = [];
     manaColors = [];
+    manaCostBranch = undefined;
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -4675,6 +4754,17 @@
       altSacPromptPrices = undefined;
     }}
   />
+  <!-- #5390: an alternative cost's "remove N counters from among
+       creatures you control" is the ability's counter picker; the
+       payment rides cast_spell's counter fields. -->
+  <CounterCostModal
+    card={castCounterPrompt?.card ?? null}
+    ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
+    board={view.battlefield.cards}
+    payFor="cast this spell"
+    onConfirm={confirmCastCounterCost}
+    onCancel={() => (castCounterPrompt = null)}
+  />
   <!-- ADR 0135 §1: an alternative cost's tap ("tap an untapped creature
        you control rather than pay this spell's mana cost") is the tap
        picker; the picks pay the offer, on alt_cost_ids. -->
@@ -5129,6 +5219,17 @@
     onCancel={() => {
       abilityBranchPrompt = null;
       abilityCostBranch = undefined;
+    }}
+  />
+  <!-- #5397: the same question for a mana ability whose cost forages
+       (Thornvault Forager): exile three cards from your graveyard, or
+       sacrifice a Food. -->
+  <ModePickerModal
+    card={manaBranchCard}
+    onConfirm={confirmManaBranch}
+    onCancel={() => {
+      manaBranchPrompt = null;
+      manaCostBranch = undefined;
     }}
   />
   {#if $zoneBrowser}

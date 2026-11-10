@@ -623,6 +623,12 @@ type ScheduleDelayedTrigger struct {
 	// ends at cleanup whether or not it fired (CR 603.7b, a stated
 	// duration).
 	EachThisTurn bool
+
+	// AfterThisTurn is "on your next turn" read strictly (Kav Landseeker):
+	// the trigger skips the turn it was scheduled in, even when that is the
+	// controller's own and the step has not begun yet. Pair with
+	// ControllerTurnOnly.
+	AfterThisTurn bool
 }
 
 func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
@@ -646,6 +652,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		Params:             s.Params,
 		OnExtraTurn:        s.OnExtraTurn,
 		OnPhaseID:          s.OnPhase,
+		AfterThisTurn:      s.AfterThisTurn,
 	}
 	if s.EachThisTurn {
 		d := ctx.Game.UntilEndOfTurnDuration()

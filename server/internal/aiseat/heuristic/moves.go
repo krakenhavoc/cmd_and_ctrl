@@ -697,6 +697,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			// it is priced below a free float and never taken.
 			return p.cfg.ManaFloat - 1, "pay life to float mana"
 		}
+		if mp := decode[manaCostBranchParams](m.Params); mp.CostBranch != nil {
+			// #5397: a mana ability whose cost forages (Thornvault
+			// Forager) exiles three graveyard cards or sacrifices a Food
+			// to float mana the bot's auto-tapped casts cannot use. The
+			// auto-tapper never forages, and nothing here makes spending
+			// a Food or a graveyard on a float worth it.
+			return p.cfg.ManaFloat - 1, "forage to float mana"
+		}
 		return p.cfg.ManaFloat, "float mana"
 
 	case legal.KindAttack, legal.KindBlock:

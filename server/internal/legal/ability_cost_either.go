@@ -49,3 +49,35 @@ func expandCostBranches(abilities []game.ActivatedAbilityShape) []costBranchRow 
 	}
 	return out
 }
+
+// manaCostBranchRow is one row the mana walk visits: the mana ability at
+// `row`, with — for an either/or cost (#5397, forage) — the branch
+// `branch` folded in. `branch` is nil for every other mana ability.
+type manaCostBranchRow struct {
+	row    int
+	ab     game.ManaAbilityShape
+	branch *int
+}
+
+// expandManaCostBranches is expandCostBranches for mana abilities: each
+// ability once, and one whose cost has an either/or part once per
+// branch, folded by game.ChosenManaAbilityShape — the fold
+// ActivateManaAbility pays (#544).
+func expandManaCostBranches(abilities []game.ManaAbilityShape) []manaCostBranchRow {
+	out := make([]manaCostBranchRow, 0, len(abilities))
+	for row, ab := range abilities {
+		if !ab.Branched() {
+			out = append(out, manaCostBranchRow{row: row, ab: ab})
+			continue
+		}
+		for i := range ab.Either {
+			branch := i
+			folded, err := game.ChosenManaAbilityShape(ab, &branch)
+			if err != nil {
+				continue
+			}
+			out = append(out, manaCostBranchRow{row: row, ab: folded, branch: &branch})
+		}
+	}
+	return out
+}

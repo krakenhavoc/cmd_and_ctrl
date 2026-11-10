@@ -224,6 +224,7 @@ func Register(spec Spec) {
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
+		checkAltCostRemoveCounters(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
 		checkHarmonize(spec.Name, ac)
 		checkAwaken(spec, ac)
@@ -902,6 +903,7 @@ func Register(spec Spec) {
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
+		checkManaForage(spec.Name, i, ma)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
 		// ability exiles graveyard cards through this component.
 		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0) {
@@ -1769,6 +1771,33 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 	checkTapOthersClause(card, where, tc, false)
 }
 
+// checkAltCostRemoveCounters holds an alternative cost's counter removal
+// (#5390) to the shape the cast path reads: the activation's own checks
+// (checkCounterCost), and the one form a spell can pay — "from among
+// <permanents> you control", a fixed count. The spell being cast is not
+// on the battlefield, so the self form ("from this") and "other" have
+// nothing to name, and no printed alternative cost removes X counters.
+// Not beside a card component either: the cast has one cost picker
+// chain, and no printed offer charges both.
+func checkAltCostRemoveCounters(card string, ac game.AlternativeCost) {
+	rc := ac.RemoveCounters
+	if rc == nil {
+		return
+	}
+	where := fmt.Sprintf("alternative cost %q", ac.Key)
+	checkCounterCost(card, where, rc, nil)
+	switch {
+	case rc.From == nil:
+		panic(fmt.Sprintf("effects.Register: %q %s removes counters from itself — a spell being cast is not on the battlefield; give it a \"from among …\" clause", card, where))
+	case rc.From.ExcludeSource:
+		panic(fmt.Sprintf("effects.Register: %q %s removes counters from \"other\" permanents — a spell being cast is not on the battlefield, so ExcludeSource names nothing", card, where))
+	case !rc.Among || rc.Variable:
+		panic(fmt.Sprintf("effects.Register: %q %s is not a fixed \"remove N counters from among …\" — the only counter removal a cast pays; build it with CastFromGraveyardByRemovingCounters", card, where))
+	case altCostCardComponents(ac) > 0:
+		panic(fmt.Sprintf("effects.Register: %q %s removes counters beside a card-shaped payment — no printed alternative cost does", card, where))
+	}
+}
+
 // checkHarmonize holds ReducedByTappedPower (#3931, CR 702.180a) and
 // TapOthersCost.UpTo to the one shape harmonize prints: the two
 // together, over up to ONE creature. The pricer reads the one permanent
@@ -2583,6 +2612,10 @@ func checkEnergyCost(name string, i int, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
 			name, i))
 	}
+	if cost.LifeX && (cost.EnergyX || game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d pays X life AND claims X another way — one announced X cannot pay both",
+			name, i))
+	}
 }
 
 // checkLoyaltyX is the boot-time refusal for a −X loyalty cost (#1944):
@@ -2683,6 +2716,19 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards and also prints a count of %d",
 				name, where, ec.N))
 		}
+		// "Exile X <kind> cards from your graveyard" on an ability
+		// (Winter, Cursed Rider): the number named IS X, so there is no
+		// floor to state and nothing is free about it (#4464).
+		if ec.CountIsX {
+			if ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 || ec.CountFromX || ec.Zone() != game.ZoneGraveyard {
+				panic(fmt.Sprintf("effects.Register: %q %s exiles X cards with a floor, with CountFromX or from the %s — X is the number named, from the graveyard",
+					name, where, ec.Zone()))
+			}
+			if !game.ExileCostZoneSupported(ec.Zone()) {
+				panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s", name, where, ec.Zone()))
+			}
+			return
+		}
 		// #5193: or collect evidence N, a floor on the total mana value
 		// (CR 701.59a), from the graveyard only. One floor, never both.
 		symbols := ec.SymbolTotal != nil
@@ -2697,6 +2743,8 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		if !symbols && !ec.IsCollectEvidence() {
 			panic(fmt.Sprintf("effects.Register: %q %s has a mana value floor that is not collect evidence — build it with CollectEvidenceN (#5193)", name, where))
 		}
+	} else if ec.CountIsX {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards as the number named without AnyNumber (ExileXFromGraveyardAsCost)", name, where))
 	} else if ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s names a symbol or mana value floor without AnyNumber", name, where))
 	} else if ec.N <= 0 {
