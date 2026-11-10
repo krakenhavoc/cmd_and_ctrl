@@ -378,6 +378,16 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 // never reused.
 const GrantedAltCostWarp = "granted-warp"
 
+// GrantedAltCostEvoke is the key of "<spells> you cast gain evoke {cost}
+// as you cast them" (Ashling, the Limitless; CR 702.74a, #5428): a
+// granted offer that carries evoke's "When this permanent enters, if its
+// evoke cost was paid, its controller sacrifices it". Like granted warp,
+// the entry hook (queueAltCostEntryTriggerLocked) reads the clause off
+// the key, because the card prints no row for it and the permanent that
+// granted it may be gone by the time the spell resolves (CR 610.5). An
+// on-disk identity: never renamed, never reused.
+const GrantedAltCostEvoke = "granted-evoke"
+
 // GrantedAltCostNextFree is the key of the free offer a live
 // NextSpellPromise.WithoutPayingManaCost makes (#2709). An on-disk
 // identity, like every granted key: never renamed, never reused.

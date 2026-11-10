@@ -487,6 +487,12 @@ func ownTriggersOf(c *Card) []TriggeredAbility {
 	if c.SuspendGranted {
 		keyword = append(keyword, SuspendUpkeepTrigger(), SuspendLastCounterTrigger())
 	}
+	// #5428, CR 702.175a: the enters trigger of a keyword a permanent
+	// gave this object's spell as it was cast (offspring from Zinnia,
+	// Valley's Voice), one per payment, read off its cast record.
+	if len(c.Provenance.GrantedOptional) > 0 {
+		keyword = append(keyword, grantedEntryTriggersFor(c)...)
+	}
 	printed := catalogTriggerRowsOf(c)
 	if len(keyword) == 0 {
 		return printed

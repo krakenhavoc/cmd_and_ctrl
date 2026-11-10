@@ -135,6 +135,15 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 		}
 		return "Nonland cards in your hand have miracle " + o.ManaCost + "."
 	}
+	if o.Key == GrantedAltCostEvoke {
+		// #5428, Ashling, the Limitless: the granted keyword, in the
+		// printed words.
+		from := ""
+		if len(gr.Zones) == 1 && gr.Zones[0] == ZoneHand {
+			from = " from your hand"
+		}
+		return upperFirst(subject) + " you cast" + from + " gain evoke " + o.ManaCost + " as you cast them."
+	}
 	if o.ReturnToHand != nil && o.Sacrifice == nil {
 		// Peter Parker // Amazing Spider-Man: web-slinging, granted.
 		// SpellsText is the singular noun phrase ("legendary spell that's
