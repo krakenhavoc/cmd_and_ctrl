@@ -2038,6 +2038,8 @@ followUpParks[].then.permission.filter.notOwnedByHolder	bool
 followUpParks[].then.permission.filter.notSubtype	string
 followUpParks[].then.permission.filter.ownedByHolder	bool
 followUpParks[].then.permission.filter.permanentOnly	bool
+followUpParks[].then.permission.filter.powerAtLeast	number:int
+followUpParks[].then.permission.filter.powerAtLeastCapped	bool
 followUpParks[].then.permission.filter.powerOrToughnessAtMost	number:int
 followUpParks[].then.permission.filter.powerOrToughnessCapped	bool
 followUpParks[].then.permission.filter.putInGraveyardThisTurn	bool
@@ -2052,6 +2054,7 @@ followUpParks[].then.permission.gainsAbilities	array
 followUpParks[].then.permission.gainsAbilities[]	string
 followUpParks[].then.permission.gainsKeywords	array
 followUpParks[].then.permission.gainsKeywords[]	string
+followUpParks[].then.permission.gainsUntilEndOfTurn	bool
 followUpParks[].then.permission.grantsHaste	bool
 followUpParks[].then.permission.graveyardsAreYours	bool
 followUpParks[].then.permission.ifNotCast	string
@@ -2659,6 +2662,8 @@ frozenEntries[].event.counterTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.counterTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.counterTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.counterTail.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.counterTail.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -2673,6 +2678,7 @@ frozenEntries[].event.counterTail.then.permission.gainsAbilities	array
 frozenEntries[].event.counterTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.counterTail.then.permission.gainsKeywords	array
 frozenEntries[].event.counterTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.counterTail.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.counterTail.then.permission.grantsHaste	bool
 frozenEntries[].event.counterTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.counterTail.then.permission.ifNotCast	string
@@ -3259,6 +3265,8 @@ frozenEntries[].event.damageTail.each.each.permission.filter.notOwnedByHolder	bo
 frozenEntries[].event.damageTail.each.each.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.each.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.permanentOnly	bool
+frozenEntries[].event.damageTail.each.each.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.damageTail.each.each.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
@@ -3273,6 +3281,7 @@ frozenEntries[].event.damageTail.each.each.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.each.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.each.each.permission.gainsKeywords[]	string
+frozenEntries[].event.damageTail.each.each.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.grantsHaste	bool
 frozenEntries[].event.damageTail.each.each.permission.graveyardsAreYours	bool
 frozenEntries[].event.damageTail.each.each.permission.ifNotCast	string
@@ -3850,6 +3859,8 @@ frozenEntries[].event.damageTail.each.then.permission.filter.notOwnedByHolder	bo
 frozenEntries[].event.damageTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.damageTail.each.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.damageTail.each.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -3864,6 +3875,7 @@ frozenEntries[].event.damageTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.each.then.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.each.then.permission.gainsKeywords[]	string
+frozenEntries[].event.damageTail.each.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.grantsHaste	bool
 frozenEntries[].event.damageTail.each.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.damageTail.each.then.permission.ifNotCast	string
@@ -4276,6 +4288,7 @@ frozenEntries[].event.damageTail.sourceLki.CostPower[].UseToughnessIfGreater	boo
 frozenEntries[].event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.damageTail.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.damageTail.sourceLki.DamageByToughness	bool
+frozenEntries[].event.damageTail.sourceLki.DamageByToughnessAlways	bool
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers	array
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[]	object
 frozenEntries[].event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -4613,6 +4626,8 @@ frozenEntries[].event.damageTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.damageTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.damageTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.damageTail.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.damageTail.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -4627,6 +4642,7 @@ frozenEntries[].event.damageTail.then.permission.gainsAbilities	array
 frozenEntries[].event.damageTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.damageTail.then.permission.gainsKeywords	array
 frozenEntries[].event.damageTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.damageTail.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.damageTail.then.permission.grantsHaste	bool
 frozenEntries[].event.damageTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.damageTail.then.permission.ifNotCast	string
@@ -5324,6 +5340,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notOwn
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -5338,6 +5356,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilitie
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.ifNotCast	string
@@ -5991,6 +6010,8 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.notOwnedByHolder	bo
 frozenEntries[].event.entryTail.batch.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.batch.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.entryTail.batch.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
@@ -6005,6 +6026,7 @@ frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.batch.then.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.batch.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.batch.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.batch.then.permission.ifNotCast	string
@@ -6582,6 +6604,8 @@ frozenEntries[].event.entryTail.keyed.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.keyed.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.keyed.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.entryTail.keyed.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
@@ -6596,6 +6620,7 @@ frozenEntries[].event.entryTail.keyed.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.keyed.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.keyed.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.keyed.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.keyed.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.keyed.permission.ifNotCast	string
@@ -7206,6 +7231,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notOwnedB
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -7220,6 +7247,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities	a
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.ifNotCast	string
@@ -7817,6 +7845,8 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.notOwnedByHolder	b
 frozenEntries[].event.entryTail.tokens.then.permission.filter.notSubtype	string
 frozenEntries[].event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.entryTail.tokens.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.entryTail.tokens.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
@@ -7831,6 +7861,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsAbilities[]	string
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords	array
 frozenEntries[].event.entryTail.tokens.then.permission.gainsKeywords[]	string
+frozenEntries[].event.entryTail.tokens.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.grantsHaste	bool
 frozenEntries[].event.entryTail.tokens.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.entryTail.tokens.then.permission.ifNotCast	string
@@ -8831,6 +8862,8 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.notOwnedByHolder	
 frozenEntries[].event.keywordActionTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.keywordActionTail.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.keywordActionTail.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -8845,6 +8878,7 @@ frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords	array
 frozenEntries[].event.keywordActionTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.keywordActionTail.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.grantsHaste	bool
 frozenEntries[].event.keywordActionTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.keywordActionTail.then.permission.ifNotCast	string
@@ -9444,6 +9478,8 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.lifeTail.each.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.lifeTail.each.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -9458,6 +9494,7 @@ frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsAbilities[]	string
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords	array
 frozenEntries[].event.lifeTail.each.then.permission.gainsKeywords[]	string
+frozenEntries[].event.lifeTail.each.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.grantsHaste	bool
 frozenEntries[].event.lifeTail.each.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.lifeTail.each.then.permission.ifNotCast	string
@@ -10038,6 +10075,8 @@ frozenEntries[].event.lifeTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.lifeTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.lifeTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.lifeTail.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.lifeTail.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -10052,6 +10091,7 @@ frozenEntries[].event.lifeTail.then.permission.gainsAbilities	array
 frozenEntries[].event.lifeTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords	array
 frozenEntries[].event.lifeTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.lifeTail.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.lifeTail.then.permission.grantsHaste	bool
 frozenEntries[].event.lifeTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.lifeTail.then.permission.ifNotCast	string
@@ -11433,6 +11473,8 @@ frozenEntries[].event.millTail.run.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.run.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.run.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.millTail.run.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.millTail.run.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
@@ -11447,6 +11489,7 @@ frozenEntries[].event.millTail.run.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.run.then.permission.gainsAbilities[]	string
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords	array
 frozenEntries[].event.millTail.run.then.permission.gainsKeywords[]	string
+frozenEntries[].event.millTail.run.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.millTail.run.then.permission.grantsHaste	bool
 frozenEntries[].event.millTail.run.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.millTail.run.then.permission.ifNotCast	string
@@ -12022,6 +12065,8 @@ frozenEntries[].event.millTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.millTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.millTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.millTail.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.millTail.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -12036,6 +12081,7 @@ frozenEntries[].event.millTail.then.permission.gainsAbilities	array
 frozenEntries[].event.millTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.millTail.then.permission.gainsKeywords	array
 frozenEntries[].event.millTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.millTail.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.millTail.then.permission.grantsHaste	bool
 frozenEntries[].event.millTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.millTail.then.permission.ifNotCast	string
@@ -12467,6 +12513,7 @@ frozenEntries[].event.sourceLki.CostPower[].UseToughnessIfGreater	bool
 frozenEntries[].event.sourceLki.CostPower[].Uses	number:uint8
 frozenEntries[].event.sourceLki.DamageAsPositivePower	bool
 frozenEntries[].event.sourceLki.DamageByToughness	bool
+frozenEntries[].event.sourceLki.DamageByToughnessAlways	bool
 frozenEntries[].event.sourceLki.DefenderWaivers	array
 frozenEntries[].event.sourceLki.DefenderWaivers[]	object
 frozenEntries[].event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -13550,6 +13597,8 @@ frozenEntries[].event.tokenTail.then.permission.filter.notOwnedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.notSubtype	string
 frozenEntries[].event.tokenTail.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.tokenTail.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.tokenTail.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.tokenTail.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -13564,6 +13613,7 @@ frozenEntries[].event.tokenTail.then.permission.gainsAbilities	array
 frozenEntries[].event.tokenTail.then.permission.gainsAbilities[]	string
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords	array
 frozenEntries[].event.tokenTail.then.permission.gainsKeywords[]	string
+frozenEntries[].event.tokenTail.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.tokenTail.then.permission.grantsHaste	bool
 frozenEntries[].event.tokenTail.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.tokenTail.then.permission.ifNotCast	string
@@ -15373,6 +15423,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notOwnedBy
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
@@ -15387,6 +15439,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities	ar
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
@@ -15997,6 +16050,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notO
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -16011,6 +16066,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilit
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	string
@@ -16586,6 +16642,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notOwnedByHolde
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -16600,6 +16658,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.ifNotCast	string
@@ -17195,6 +17254,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notOwnedByHol
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -17209,6 +17270,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.ifNotCast	string
@@ -17870,6 +17932,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHo
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerAtLeast	number:int
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerAtLeastCapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -17884,6 +17948,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities	arra
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.gainsUntilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.grantsHaste	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.graveyardsAreYours	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.ifNotCast	string
@@ -18703,6 +18768,7 @@ heldCombatDamage.answers[].frame.SourceLKI.CostPower[].UseToughnessIfGreater	boo
 heldCombatDamage.answers[].frame.SourceLKI.CostPower[].Uses	number:uint8
 heldCombatDamage.answers[].frame.SourceLKI.DamageAsPositivePower	bool
 heldCombatDamage.answers[].frame.SourceLKI.DamageByToughness	bool
+heldCombatDamage.answers[].frame.SourceLKI.DamageByToughnessAlways	bool
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers	array
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[]	object
 heldCombatDamage.answers[].frame.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -18881,6 +18947,7 @@ lastKnownBattlefield{}.CostPower[].UseToughnessIfGreater	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
+lastKnownBattlefield{}.DamageByToughnessAlways	bool
 lastKnownBattlefield{}.DefenderWaivers	array
 lastKnownBattlefield{}.DefenderWaivers[]	object
 lastKnownBattlefield{}.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -19063,6 +19130,7 @@ lastKnownPermanents{}[].characteristic.CostPower[].UseToughnessIfGreater	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
+lastKnownPermanents{}[].characteristic.DamageByToughnessAlways	bool
 lastKnownPermanents{}[].characteristic.DefenderWaivers	array
 lastKnownPermanents{}[].characteristic.DefenderWaivers[]	object
 lastKnownPermanents{}[].characteristic.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -20340,6 +20408,8 @@ movesAwaitingTokens[].counterTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].counterTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].counterTail.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].counterTail.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -20354,6 +20424,7 @@ movesAwaitingTokens[].counterTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].counterTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].counterTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].counterTail.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].counterTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].counterTail.then.permission.ifNotCast	string
@@ -20940,6 +21011,8 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.notOwnedByHolder	bo
 movesAwaitingTokens[].damageTail.each.each.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.each.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].damageTail.each.each.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].damageTail.each.each.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
@@ -20954,6 +21027,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.each.each.permission.gainsKeywords[]	string
+movesAwaitingTokens[].damageTail.each.each.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.grantsHaste	bool
 movesAwaitingTokens[].damageTail.each.each.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].damageTail.each.each.permission.ifNotCast	string
@@ -21531,6 +21605,8 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.notOwnedByHolder	bo
 movesAwaitingTokens[].damageTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].damageTail.each.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].damageTail.each.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -21545,6 +21621,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.each.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].damageTail.each.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.grantsHaste	bool
 movesAwaitingTokens[].damageTail.each.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].damageTail.each.then.permission.ifNotCast	string
@@ -21957,6 +22034,7 @@ movesAwaitingTokens[].damageTail.sourceLki.CostPower[].UseToughnessIfGreater	boo
 movesAwaitingTokens[].damageTail.sourceLki.CostPower[].Uses	number:uint8
 movesAwaitingTokens[].damageTail.sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].damageTail.sourceLki.DamageByToughness	bool
+movesAwaitingTokens[].damageTail.sourceLki.DamageByToughnessAlways	bool
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers	array
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[]	object
 movesAwaitingTokens[].damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -22294,6 +22372,8 @@ movesAwaitingTokens[].damageTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].damageTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].damageTail.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].damageTail.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -22308,6 +22388,7 @@ movesAwaitingTokens[].damageTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].damageTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].damageTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].damageTail.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].damageTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].damageTail.then.permission.ifNotCast	string
@@ -23005,6 +23086,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notOwn
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -23019,6 +23102,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilitie
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.ifNotCast	string
@@ -23672,6 +23756,8 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.notOwnedByHolder	bo
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
@@ -23686,6 +23772,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.batch.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.batch.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.ifNotCast	string
@@ -24263,6 +24350,8 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.keyed.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.keyed.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].entryTail.keyed.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
@@ -24277,6 +24366,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.keyed.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.keyed.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.keyed.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.keyed.permission.ifNotCast	string
@@ -24887,6 +24977,8 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notOwnedB
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -24901,6 +24993,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities	a
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.ifNotCast	string
@@ -25498,6 +25591,8 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notOwnedByHolder	b
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
@@ -25512,6 +25607,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.grantsHaste	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.ifNotCast	string
@@ -26512,6 +26608,8 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.notOwnedByHolder	
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -26526,6 +26624,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].keywordActionTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].keywordActionTail.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.ifNotCast	string
@@ -27125,6 +27224,8 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -27139,6 +27240,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords	array
 movesAwaitingTokens[].lifeTail.each.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].lifeTail.each.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.grantsHaste	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.ifNotCast	string
@@ -27719,6 +27821,8 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].lifeTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].lifeTail.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].lifeTail.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -27733,6 +27837,7 @@ movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].lifeTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].lifeTail.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].lifeTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].lifeTail.then.permission.ifNotCast	string
@@ -29114,6 +29219,8 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.run.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].millTail.run.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].millTail.run.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
@@ -29128,6 +29235,7 @@ movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords	array
 movesAwaitingTokens[].millTail.run.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].millTail.run.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.grantsHaste	bool
 movesAwaitingTokens[].millTail.run.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].millTail.run.then.permission.ifNotCast	string
@@ -29703,6 +29811,8 @@ movesAwaitingTokens[].millTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].millTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].millTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].millTail.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].millTail.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].millTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -29717,6 +29827,7 @@ movesAwaitingTokens[].millTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].millTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].millTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].millTail.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].millTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].millTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].millTail.then.permission.ifNotCast	string
@@ -30148,6 +30259,7 @@ movesAwaitingTokens[].sourceLki.CostPower[].UseToughnessIfGreater	bool
 movesAwaitingTokens[].sourceLki.CostPower[].Uses	number:uint8
 movesAwaitingTokens[].sourceLki.DamageAsPositivePower	bool
 movesAwaitingTokens[].sourceLki.DamageByToughness	bool
+movesAwaitingTokens[].sourceLki.DamageByToughnessAlways	bool
 movesAwaitingTokens[].sourceLki.DefenderWaivers	array
 movesAwaitingTokens[].sourceLki.DefenderWaivers[]	object
 movesAwaitingTokens[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -31231,6 +31343,8 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.notOwnedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].tokenTail.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].tokenTail.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].tokenTail.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -31245,6 +31359,7 @@ movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords	array
 movesAwaitingTokens[].tokenTail.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].tokenTail.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.grantsHaste	bool
 movesAwaitingTokens[].tokenTail.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].tokenTail.then.permission.ifNotCast	string
@@ -33054,6 +33169,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notOwnedBy
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
@@ -33068,6 +33185,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities	ar
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
@@ -33678,6 +33796,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notO
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -33692,6 +33812,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilit
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	string
@@ -34267,6 +34388,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notOwnedByHolde
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -34281,6 +34404,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.ifNotCast	string
@@ -34876,6 +35000,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notOwnedByHol
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -34890,6 +35016,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.ifNotCast	string
@@ -35551,6 +35678,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notOwnedByHo
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerAtLeast	number:int
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerAtLeastCapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -35565,6 +35694,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities	arra
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.gainsUntilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.grantsHaste	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.graveyardsAreYours	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.ifNotCast	string
@@ -38756,6 +38886,8 @@ pendingChoices[].attackSplit.tail.permission.filter.notOwnedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.notSubtype	string
 pendingChoices[].attackSplit.tail.permission.filter.ownedByHolder	bool
 pendingChoices[].attackSplit.tail.permission.filter.permanentOnly	bool
+pendingChoices[].attackSplit.tail.permission.filter.powerAtLeast	number:int
+pendingChoices[].attackSplit.tail.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.putInGraveyardThisTurn	bool
@@ -38770,6 +38902,7 @@ pendingChoices[].attackSplit.tail.permission.gainsAbilities	array
 pendingChoices[].attackSplit.tail.permission.gainsAbilities[]	string
 pendingChoices[].attackSplit.tail.permission.gainsKeywords	array
 pendingChoices[].attackSplit.tail.permission.gainsKeywords[]	string
+pendingChoices[].attackSplit.tail.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].attackSplit.tail.permission.grantsHaste	bool
 pendingChoices[].attackSplit.tail.permission.graveyardsAreYours	bool
 pendingChoices[].attackSplit.tail.permission.ifNotCast	string
@@ -40392,6 +40525,7 @@ pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughnessIfGreater	bo
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
+pendingChoices[].damageAssignment.SourceLKI.DamageByToughnessAlways	bool
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers	array
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[]	object
 pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -40752,6 +40886,8 @@ pendingChoices[].diceRoll.then.permission.filter.notOwnedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.notSubtype	string
 pendingChoices[].diceRoll.then.permission.filter.ownedByHolder	bool
 pendingChoices[].diceRoll.then.permission.filter.permanentOnly	bool
+pendingChoices[].diceRoll.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].diceRoll.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.putInGraveyardThisTurn	bool
@@ -40766,6 +40902,7 @@ pendingChoices[].diceRoll.then.permission.gainsAbilities	array
 pendingChoices[].diceRoll.then.permission.gainsAbilities[]	string
 pendingChoices[].diceRoll.then.permission.gainsKeywords	array
 pendingChoices[].diceRoll.then.permission.gainsKeywords[]	string
+pendingChoices[].diceRoll.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].diceRoll.then.permission.grantsHaste	bool
 pendingChoices[].diceRoll.then.permission.graveyardsAreYours	bool
 pendingChoices[].diceRoll.then.permission.ifNotCast	string
@@ -41213,6 +41350,7 @@ pendingChoices[].divideShield.staged[].lki.CostPower[].UseToughnessIfGreater	boo
 pendingChoices[].divideShield.staged[].lki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].lki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].lki.DamageByToughness	bool
+pendingChoices[].divideShield.staged[].lki.DamageByToughnessAlways	bool
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers	array
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[]	object
 pendingChoices[].divideShield.staged[].lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -41380,6 +41518,7 @@ pendingChoices[].divideShield.staged[].sourceLki.CostPower[].UseToughnessIfGreat
 pendingChoices[].divideShield.staged[].sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].divideShield.staged[].sourceLki.DamageAsPositivePower	bool
 pendingChoices[].divideShield.staged[].sourceLki.DamageByToughness	bool
+pendingChoices[].divideShield.staged[].sourceLki.DamageByToughnessAlways	bool
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers	array
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[]	object
 pendingChoices[].divideShield.staged[].sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -41722,6 +41861,8 @@ pendingChoices[].divideShield.walk.each.permission.filter.notOwnedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.each.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.each.permission.filter.permanentOnly	bool
+pendingChoices[].divideShield.walk.each.permission.filter.powerAtLeast	number:int
+pendingChoices[].divideShield.walk.each.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].divideShield.walk.each.permission.filter.putInGraveyardThisTurn	bool
@@ -41736,6 +41877,7 @@ pendingChoices[].divideShield.walk.each.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.each.permission.gainsAbilities[]	string
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords	array
 pendingChoices[].divideShield.walk.each.permission.gainsKeywords[]	string
+pendingChoices[].divideShield.walk.each.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].divideShield.walk.each.permission.grantsHaste	bool
 pendingChoices[].divideShield.walk.each.permission.graveyardsAreYours	bool
 pendingChoices[].divideShield.walk.each.permission.ifNotCast	string
@@ -42313,6 +42455,8 @@ pendingChoices[].divideShield.walk.then.permission.filter.notOwnedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.notSubtype	string
 pendingChoices[].divideShield.walk.then.permission.filter.ownedByHolder	bool
 pendingChoices[].divideShield.walk.then.permission.filter.permanentOnly	bool
+pendingChoices[].divideShield.walk.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].divideShield.walk.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].divideShield.walk.then.permission.filter.putInGraveyardThisTurn	bool
@@ -42327,6 +42471,7 @@ pendingChoices[].divideShield.walk.then.permission.gainsAbilities	array
 pendingChoices[].divideShield.walk.then.permission.gainsAbilities[]	string
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords	array
 pendingChoices[].divideShield.walk.then.permission.gainsKeywords[]	string
+pendingChoices[].divideShield.walk.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].divideShield.walk.then.permission.grantsHaste	bool
 pendingChoices[].divideShield.walk.then.permission.graveyardsAreYours	bool
 pendingChoices[].divideShield.walk.then.permission.ifNotCast	string
@@ -42910,6 +43055,8 @@ pendingChoices[].libraryOrder.then.permission.filter.notOwnedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.notSubtype	string
 pendingChoices[].libraryOrder.then.permission.filter.ownedByHolder	bool
 pendingChoices[].libraryOrder.then.permission.filter.permanentOnly	bool
+pendingChoices[].libraryOrder.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].libraryOrder.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.putInGraveyardThisTurn	bool
@@ -42924,6 +43071,7 @@ pendingChoices[].libraryOrder.then.permission.gainsAbilities	array
 pendingChoices[].libraryOrder.then.permission.gainsAbilities[]	string
 pendingChoices[].libraryOrder.then.permission.gainsKeywords	array
 pendingChoices[].libraryOrder.then.permission.gainsKeywords[]	string
+pendingChoices[].libraryOrder.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].libraryOrder.then.permission.grantsHaste	bool
 pendingChoices[].libraryOrder.then.permission.graveyardsAreYours	bool
 pendingChoices[].libraryOrder.then.permission.ifNotCast	string
@@ -43557,6 +43705,8 @@ pendingChoices[].nameThen.permission.filter.notOwnedByHolder	bool
 pendingChoices[].nameThen.permission.filter.notSubtype	string
 pendingChoices[].nameThen.permission.filter.ownedByHolder	bool
 pendingChoices[].nameThen.permission.filter.permanentOnly	bool
+pendingChoices[].nameThen.permission.filter.powerAtLeast	number:int
+pendingChoices[].nameThen.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].nameThen.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].nameThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].nameThen.permission.filter.putInGraveyardThisTurn	bool
@@ -43571,6 +43721,7 @@ pendingChoices[].nameThen.permission.gainsAbilities	array
 pendingChoices[].nameThen.permission.gainsAbilities[]	string
 pendingChoices[].nameThen.permission.gainsKeywords	array
 pendingChoices[].nameThen.permission.gainsKeywords[]	string
+pendingChoices[].nameThen.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].nameThen.permission.grantsHaste	bool
 pendingChoices[].nameThen.permission.graveyardsAreYours	bool
 pendingChoices[].nameThen.permission.ifNotCast	string
@@ -44620,6 +44771,8 @@ pendingChoices[].pickTail.permission.filter.notOwnedByHolder	bool
 pendingChoices[].pickTail.permission.filter.notSubtype	string
 pendingChoices[].pickTail.permission.filter.ownedByHolder	bool
 pendingChoices[].pickTail.permission.filter.permanentOnly	bool
+pendingChoices[].pickTail.permission.filter.powerAtLeast	number:int
+pendingChoices[].pickTail.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].pickTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].pickTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].pickTail.permission.filter.putInGraveyardThisTurn	bool
@@ -44634,6 +44787,7 @@ pendingChoices[].pickTail.permission.gainsAbilities	array
 pendingChoices[].pickTail.permission.gainsAbilities[]	string
 pendingChoices[].pickTail.permission.gainsKeywords	array
 pendingChoices[].pickTail.permission.gainsKeywords[]	string
+pendingChoices[].pickTail.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].pickTail.permission.grantsHaste	bool
 pendingChoices[].pickTail.permission.graveyardsAreYours	bool
 pendingChoices[].pickTail.permission.ifNotCast	string
@@ -45255,6 +45409,8 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notO
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -45269,6 +45425,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilit
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.ifNotCast	string
@@ -45855,6 +46012,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
@@ -45869,6 +46028,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAb
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.ifNotCast	string
@@ -46446,6 +46606,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -46460,6 +46622,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAb
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.ifNotCast	string
@@ -46872,6 +47035,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].UseTou
 pendingChoices[].replacementResume.event.damageTail.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageByToughness	bool
+pendingChoices[].replacementResume.event.damageTail.sourceLki.DamageByToughnessAlways	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -47209,6 +47373,8 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notOw
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -47223,6 +47389,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbiliti
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.ifNotCast	string
@@ -47920,6 +48087,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -47934,6 +48103,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.ifNotCast	string
@@ -48587,6 +48757,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
@@ -48601,6 +48773,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAb
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.ifNotCast	string
@@ -49178,6 +49351,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notOw
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
@@ -49192,6 +49367,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbiliti
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.ifNotCast	string
@@ -49802,6 +49978,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -49816,6 +49994,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.ifNotCast	string
@@ -50413,6 +50592,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
@@ -50427,6 +50608,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsA
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.ifNotCast	string
@@ -51427,6 +51609,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -51441,6 +51625,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gains
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.ifNotCast	string
@@ -52040,6 +52225,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.no
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
@@ -52054,6 +52241,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbil
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.ifNotCast	string
@@ -52634,6 +52822,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notOwne
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -52648,6 +52838,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.ifNotCast	string
@@ -54029,6 +54220,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.not
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
@@ -54043,6 +54236,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbili
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.ifNotCast	string
@@ -54618,6 +54812,8 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.notOwne
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -54632,6 +54828,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.millTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.millTail.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.ifNotCast	string
@@ -55063,6 +55260,7 @@ pendingChoices[].replacementResume.event.sourceLki.CostPower[].UseToughnessIfGre
 pendingChoices[].replacementResume.event.sourceLki.CostPower[].Uses	number:uint8
 pendingChoices[].replacementResume.event.sourceLki.DamageAsPositivePower	bool
 pendingChoices[].replacementResume.event.sourceLki.DamageByToughness	bool
+pendingChoices[].replacementResume.event.sourceLki.DamageByToughnessAlways	bool
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers	array
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[]	object
 pendingChoices[].replacementResume.event.sourceLki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -56146,6 +56344,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notOwn
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
@@ -56160,6 +56360,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilitie
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.ifNotCast	string
@@ -57969,6 +58170,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
@@ -57983,6 +58186,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.ifNotCast	string
@@ -58593,6 +58797,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -58607,6 +58813,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.ifNotCast	string
@@ -59182,6 +59389,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -59196,6 +59405,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gai
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.ifNotCast	string
@@ -59791,6 +60001,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -59805,6 +60017,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.g
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.ifNotCast	string
@@ -60466,6 +60679,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.notSubtype	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.ownedByHolder	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.permanentOnly	bool
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerAtLeast	number:int
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
@@ -60480,6 +60695,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsAbilities[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsKeywords[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.grantsHaste	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.graveyardsAreYours	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.ifNotCast	string
@@ -61486,6 +61702,8 @@ pendingChoices[].scryThen.permission.filter.notOwnedByHolder	bool
 pendingChoices[].scryThen.permission.filter.notSubtype	string
 pendingChoices[].scryThen.permission.filter.ownedByHolder	bool
 pendingChoices[].scryThen.permission.filter.permanentOnly	bool
+pendingChoices[].scryThen.permission.filter.powerAtLeast	number:int
+pendingChoices[].scryThen.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].scryThen.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].scryThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].scryThen.permission.filter.putInGraveyardThisTurn	bool
@@ -61500,6 +61718,7 @@ pendingChoices[].scryThen.permission.gainsAbilities	array
 pendingChoices[].scryThen.permission.gainsAbilities[]	string
 pendingChoices[].scryThen.permission.gainsKeywords	array
 pendingChoices[].scryThen.permission.gainsKeywords[]	string
+pendingChoices[].scryThen.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].scryThen.permission.grantsHaste	bool
 pendingChoices[].scryThen.permission.graveyardsAreYours	bool
 pendingChoices[].scryThen.permission.ifNotCast	string
@@ -62123,6 +62342,8 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notOwnedByHolder	b
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.notSubtype	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.ownedByHolder	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.permanentOnly	bool
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerAtLeast	number:int
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerAtLeastCapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessAtMost	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
@@ -62137,6 +62358,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsAbilities[]	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.gainsKeywords[]	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.gainsUntilEndOfTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.grantsHaste	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.graveyardsAreYours	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.ifNotCast	string
@@ -62789,6 +63011,7 @@ pendingChoices[].targetWalk.frame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].targetWalk.frame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].targetWalk.frame.lki.DamageAsPositivePower	bool
 pendingChoices[].targetWalk.frame.lki.DamageByToughness	bool
+pendingChoices[].targetWalk.frame.lki.DamageByToughnessAlways	bool
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers	array
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[]	object
 pendingChoices[].targetWalk.frame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -63529,6 +63752,7 @@ pendingChoices[].triggerFrame.lki.CostPower[].UseToughnessIfGreater	bool
 pendingChoices[].triggerFrame.lki.CostPower[].Uses	number:uint8
 pendingChoices[].triggerFrame.lki.DamageAsPositivePower	bool
 pendingChoices[].triggerFrame.lki.DamageByToughness	bool
+pendingChoices[].triggerFrame.lki.DamageByToughnessAlways	bool
 pendingChoices[].triggerFrame.lki.DefenderWaivers	array
 pendingChoices[].triggerFrame.lki.DefenderWaivers[]	object
 pendingChoices[].triggerFrame.lki.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
@@ -67596,6 +67820,8 @@ seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.notSubtype	string
 seats[].castPermissions[].filter.ownedByHolder	bool
 seats[].castPermissions[].filter.permanentOnly	bool
+seats[].castPermissions[].filter.powerAtLeast	number:int
+seats[].castPermissions[].filter.powerAtLeastCapped	bool
 seats[].castPermissions[].filter.powerOrToughnessAtMost	number:int
 seats[].castPermissions[].filter.powerOrToughnessCapped	bool
 seats[].castPermissions[].filter.putInGraveyardThisTurn	bool
@@ -67610,6 +67836,7 @@ seats[].castPermissions[].gainsAbilities	array
 seats[].castPermissions[].gainsAbilities[]	string
 seats[].castPermissions[].gainsKeywords	array
 seats[].castPermissions[].gainsKeywords[]	string
+seats[].castPermissions[].gainsUntilEndOfTurn	bool
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].graveyardsAreYours	bool
 seats[].castPermissions[].ifNotCast	string
@@ -71070,6 +71297,8 @@ seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
 seats[].statics[].cantBeCountered.filter.notSubtype	string
 seats[].statics[].cantBeCountered.filter.ownedByHolder	bool
 seats[].statics[].cantBeCountered.filter.permanentOnly	bool
+seats[].statics[].cantBeCountered.filter.powerAtLeast	number:int
+seats[].statics[].cantBeCountered.filter.powerAtLeastCapped	bool
 seats[].statics[].cantBeCountered.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].cantBeCountered.filter.powerOrToughnessCapped	bool
 seats[].statics[].cantBeCountered.filter.putInGraveyardThisTurn	bool
@@ -71110,6 +71339,8 @@ seats[].statics[].castBan.filter.notOwnedByHolder	bool
 seats[].statics[].castBan.filter.notSubtype	string
 seats[].statics[].castBan.filter.ownedByHolder	bool
 seats[].statics[].castBan.filter.permanentOnly	bool
+seats[].statics[].castBan.filter.powerAtLeast	number:int
+seats[].statics[].castBan.filter.powerAtLeastCapped	bool
 seats[].statics[].castBan.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].castBan.filter.powerOrToughnessCapped	bool
 seats[].statics[].castBan.filter.putInGraveyardThisTurn	bool
@@ -71200,6 +71431,8 @@ seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
 seats[].statics[].nextSpell.filter.notSubtype	string
 seats[].statics[].nextSpell.filter.ownedByHolder	bool
 seats[].statics[].nextSpell.filter.permanentOnly	bool
+seats[].statics[].nextSpell.filter.powerAtLeast	number:int
+seats[].statics[].nextSpell.filter.powerAtLeastCapped	bool
 seats[].statics[].nextSpell.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].nextSpell.filter.powerOrToughnessCapped	bool
 seats[].statics[].nextSpell.filter.putInGraveyardThisTurn	bool
@@ -71245,6 +71478,8 @@ seats[].statics[].timing.filter.notOwnedByHolder	bool
 seats[].statics[].timing.filter.notSubtype	string
 seats[].statics[].timing.filter.ownedByHolder	bool
 seats[].statics[].timing.filter.permanentOnly	bool
+seats[].statics[].timing.filter.powerAtLeast	number:int
+seats[].statics[].timing.filter.powerAtLeastCapped	bool
 seats[].statics[].timing.filter.powerOrToughnessAtMost	number:int
 seats[].statics[].timing.filter.powerOrToughnessCapped	bool
 seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
@@ -72198,6 +72433,7 @@ turnTally.players{}.artifactsOrCreaturesSacrificed	number:int
 turnTally.players{}.attacksDeclared	number:int
 turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
+turnTally.players{}.cardsToGraveyardFromHandOrLibrary	number:int
 turnTally.players{}.combatDamageTaken	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
 turnTally.players{}.commandersAttacked	number:int

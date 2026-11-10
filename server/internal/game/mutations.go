@@ -2553,6 +2553,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			p.CommanderCasts = make(map[uuid.UUID]int)
 		}
 		p.CommanderCasts[cardID]++
+		// Commander's Insignia counts these; a cached layer pass would keep the
+		// old number until something else moved.
+		g.layerVersion.Add(1)
 	}
 	// #4973: the first spell this player has cast this game, as the
 	// object it is on the stack (First Contact).
@@ -2700,6 +2703,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Unpaid:        paper.Free,
 		PaperPaid:     paperLogSymbols(params, paper),
 		PaperDeclared: paper.Declared && !paper.Free,
+	}
+	// Amount is the spell's mana value as it was cast (CR 202.3, with the X
+	// chosen: CR 202.3e), for "whenever you cast a spell, ... target permanent
+	// with mana value less than or equal to that spell's mana value" (Hammerhead
+	// Tyrant), read through Target.ManaValueAtMostEventAmount. Zero when the
+	// cost can't be read or the spell is face down.
+	if sc, _, ok := g.stackSpellLocked(cardID); ok {
+		if mv, ok := g.castManaValueLocked(&sc); ok {
+			castEv.Amount = mv
+		}
 	}
 	if src.Kind == ZoneExile {
 		// #2651: the CR 607.2a link the card had in exile, read off the
@@ -10714,6 +10727,9 @@ func (c *Card) combatDamagePower() int {
 		if raw := c.PowerForComparison(); raw < 0 {
 			p = -raw
 		}
+	}
+	if c.effective != nil && c.effective.DamageByToughnessAlways {
+		return c.CurrentToughness()
 	}
 	if c.effective != nil && c.effective.DamageByToughness {
 		if t := c.CurrentToughness(); t > p {

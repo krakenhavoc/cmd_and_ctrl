@@ -42,6 +42,8 @@ type permissionCastGains struct {
 	// permanent spell (Noctis, Prince of Lucis: "that artifact enters with
 	// a finality counter on it").
 	anyPermanent bool
+	// untilEndOfTurn limits the keyword and ability gains to this turn.
+	untilEndOfTurn bool
 }
 
 // permissionCastGainsOf copies the riders out of the permission the
@@ -60,7 +62,8 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 		counters:     p.EntersWithCounters,
 		source:       p.Source,
 
-		anyPermanent: p.EntersWithCountersPermanent,
+		anyPermanent:   p.EntersWithCountersPermanent,
+		untilEndOfTurn: p.GainsUntilEndOfTurn,
 	}
 }
 
@@ -129,6 +132,9 @@ func (g *Game) grantGainsForCastLocked(cardID uuid.UUID, gains permissionCastGai
 	if gains.label != "" {
 		label = gains.label + " — cast this way, gains"
 	}
-	g.RegisterScopedEffectForEffect(cardID, []AffectedObject{{ID: cardID}}, mods,
-		ForThePermanentThisSpellBecomesDuration(cardID), label)
+	duration := ForThePermanentThisSpellBecomesDuration(cardID)
+	if gains.untilEndOfTurn {
+		duration = g.UntilEndOfTurnDuration()
+	}
+	g.RegisterScopedEffectForEffect(cardID, []AffectedObject{{ID: cardID}}, mods, duration, label)
 }

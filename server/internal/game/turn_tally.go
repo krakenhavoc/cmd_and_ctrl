@@ -131,6 +131,16 @@ type PlayerTurnTally struct {
 	// land that dies counts. The Lady of Otaria's end-step "if" reads it
 	// through Game.LandToGraveyardThisTurn. Additive within schema v7.
 	LandsToGraveyard int `json:"landsToGraveyard,omitempty"`
+	// CardsToGraveyardFromHandOrLibrary counts the cards put into this
+	// player's graveyard from their hand or their library this turn:
+	// discarded, milled, or put there by any other route (Welcome the
+	// Dead's "cards that were put into your graveyard from your hand or
+	// library this turn"). Keyed on the card's OWNER, whose graveyard it
+	// lands in (CR 400.3). A card that goes somewhere else instead, or
+	// that comes from the battlefield, the stack or another zone, does
+	// not count. Read through Game.CardsToGraveyardFromHandOrLibraryThisTurn.
+	// Additive within the schema version.
+	CardsToGraveyardFromHandOrLibrary int `json:"cardsToGraveyardFromHandOrLibrary,omitempty"`
 	// LifeLow / LifeLowSet are this player's lowest life total this
 	// turn, and PoisonHigh their highest poison count: the CR 732 loop
 	// breaker's progress marks (#2450, ADR 0055's 2026-10-07 amendment,
@@ -1938,6 +1948,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 	case EventDrawCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
 	case EventDiscardCard:
+		g.noteHandOrLibraryToGraveyardLocked(ev)
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDiscarded++ })
 		// #4628, CR 702.187b: mayhem's "you discarded this card this
 		// turn". Written for the card that landed in a graveyard, under
@@ -1948,6 +1959,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.NewZone == ZoneGraveyard && ev.CardID != uuid.Nil {
 			g.NoteDoneThisTurn(ev.CardID, discardedThisTurnLabel)
 		}
+	case EventZoneMove, EventMill:
+		// Welcome the Dead: a card put into its owner's graveyard from a
+		// hand or a library, whatever moved it. A routed move emits one of
+		// EventZoneMove, EventMill or EventDiscardCard, never two.
+		g.noteHandOrLibraryToGraveyardLocked(ev)
 	case EventTokenCreated:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:
@@ -2366,4 +2382,23 @@ func (g *Game) PermanentReturnedToHandThisTurn(playerID uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) LandToGraveyardThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).LandsToGraveyard > 0
+}
+
+// CardsToGraveyardFromHandOrLibraryThisTurn is how many cards were put into
+// playerID's graveyard from their hand or library this turn (Welcome the
+// Dead). Caller must hold g.mu.
+func (g *Game) CardsToGraveyardFromHandOrLibraryThisTurn(playerID uuid.UUID) int {
+	return g.TurnTallyFor(playerID).CardsToGraveyardFromHandOrLibrary
+}
+
+// noteHandOrLibraryToGraveyardLocked counts one card put into its owner's
+// graveyard from a hand or a library (CardsToGraveyardFromHandOrLibrary).
+// Caller must hold g.mu.
+func (g *Game) noteHandOrLibraryToGraveyardLocked(ev Event) {
+	if ev.NewZone != ZoneGraveyard || ev.CardID == uuid.Nil || (ev.OldZone != ZoneHand && ev.OldZone != ZoneLibrary) {
+		return
+	}
+	if c := g.findCardByIDLocked(ev.CardID); c != nil && c.Owner != uuid.Nil {
+		g.bumpPlayerTally(c.Owner, func(p *PlayerTurnTally) { p.CardsToGraveyardFromHandOrLibrary++ })
+	}
 }
