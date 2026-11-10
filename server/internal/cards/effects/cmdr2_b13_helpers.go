@@ -55,3 +55,23 @@ func cmdr2B13Animate(ctx *Context, target uuid.UUID, label string, power, toughn
 		Label:    label,
 	}.Apply(ctx)
 }
+
+// cmdr2B13LandCardToYourGraveyard is "a land card is put into your
+// graveyard from anywhere": any move into a graveyard, from any zone (a
+// battlefield exit, a discard, a mill), of a land card its controller
+// owns. The watcher listens to both zone-motion event kinds the engine
+// emits for a graveyard landing (EventLTB for the battlefield,
+// EventZoneMove for every other zone) and reads the card after it lands.
+func cmdr2B13LandCardToYourGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.NewZone != game.ZoneGraveyard {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsLand() && c.Owner == source.Controller
+}
+
+// cmdr2B13OneOrMoreLandCardsToYourGraveyard is the "one or more land
+// cards" form of the same trigger: one batch fires it once (CR 603.2c).
+func cmdr2B13OneOrMoreLandCardsToYourGraveyard(label string, effect Effect) game.TriggeredAbility {
+	return OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, cmdr2B13LandCardToYourGraveyard, label, effect))
+}

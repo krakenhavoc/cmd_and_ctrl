@@ -351,3 +351,84 @@ func TestCmdr2B13LoamspeakerAnimatesATargetLandAtSorcerySpeed(t *testing.T) {
 	}
 	assertEffectiveKeyword(t, g, forest, "haste")
 }
+
+const (
+	cmdr2SkolaOracle      = "0e3246ef-e0b4-49bc-a715-b69c4b6be461"
+	cmdr2TurntimberOracle = "23d7d8ba-5237-4ffc-bd5f-b07ff9ec73af"
+	cmdr2BehemothOracle   = "ee4b7aca-31dd-4369-8e85-b300892b9b41"
+)
+
+func cmdr2B13Mill(t *testing.T, g *game.Game, me *game.Player, name, typeLine string) {
+	t.Helper()
+	g.WithWriteLock(func() {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, Owner: me.ID, Controller: me.ID})
+	})
+	if err := g.MillNForEffect(me.ID, 1); err != nil {
+		t.Fatalf("mill: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+}
+
+func TestCmdr2B13SkolaGrovedancerGainsLifeForEachLandCardMilledAndNotOthers(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Skola Grovedancer", "Creature — Merfolk Druid", cmdr2SkolaOracle, 0, 3)
+	before := me.Life
+	cmdr2B13Mill(t, g, me, "Shock", "Instant")
+	if me.Life != before {
+		t.Errorf("life %d → %d for a nonland card", before, me.Life)
+	}
+	cmdr2B13Mill(t, g, me, "Forest", "Basic Land — Forest")
+	if me.Life != before+1 {
+		t.Errorf("life %d → %d, want +1 for a land card", before, me.Life)
+	}
+}
+
+func TestCmdr2B13TurntimberSowerMakesAPlantForLandCardsAndReturnsALand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	sower := b12Creature(g, me.ID, "Turntimber Sower", "Creature — Elf Druid", 2, 1)
+	g.WithWriteLock(func() { findBattlefieldCardByID(g, sower).OracleID = cmdr2TurntimberOracle })
+	cmdr2B13Mill(t, g, me, "Forest", "Basic Land — Forest")
+	if findBattlefieldByName(g, "Plant") == uuid.Nil {
+		t.Fatal("no Plant token for a land card in the graveyard")
+	}
+	land := uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: land, Name: "Island", TypeLine: "Basic Land — Island", Owner: me.ID, Controller: me.ID})
+	})
+	a := b12Creature(g, me.ID, "A", "Creature — Bear", 1, 1)
+	b := b12Creature(g, me.ID, "B", "Creature — Bear", 1, 1)
+	c := b12Creature(g, me.ID, "C", "Creature — Bear", 1, 1)
+	advanceTo(t, g, game.StepPrecombatMain)
+	params := game.ActivateAbilityParams{
+		SacrificeIDs: []uuid.UUID{a, b, c},
+		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: land}},
+	}
+	if err := cmdr2B13Activate(t, g, me, sower, params, "G"); err != nil {
+		t.Fatal(err)
+	}
+	if !me.Hand.Contains(land) {
+		t.Error("the land card should be back in hand")
+	}
+	if g.Battlefield.Contains(a) || g.Battlefield.Contains(b) || g.Battlefield.Contains(c) {
+		t.Error("three creatures should have been sacrificed")
+	}
+}
+
+func TestCmdr2B13PerennialBehemothPlaysLandsFromGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	b12Push(g, me.ID, "Perennial Behemoth", "Artifact Creature — Elemental", cmdr2BehemothOracle, 5, 3)
+	land := uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	})
+	advanceTo(t, g, game.StepPrecombatMain)
+	if err := g.CastSpell(me.ID, land, game.CastSpellParams{FromZone: string(game.ZoneGraveyard)}); err != nil {
+		t.Fatalf("PlayLand from graveyard: %v", err)
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Error("the land should be on the battlefield")
+	}
+}
