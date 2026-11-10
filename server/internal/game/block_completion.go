@@ -240,6 +240,9 @@ func (g *Game) FinishBlocksWith(seat uuid.UUID, params DeclareBlockersParams) er
 	// declaration completes, after the requirement checkpoint (a
 	// refused declaration owes nothing) and before the announcement.
 	if !g.blockDeclarationDoneLocked(seat) {
+		// #5396: a lone creature that can't block alone leaves the
+		// declaration before it is priced, so it is never taxed.
+		g.takeOutLoneNotAloneBlockerLocked(seat)
 		if err := g.payBlockTaxLocked(seat, params); err != nil {
 			return err
 		}
@@ -405,6 +408,9 @@ func (g *Game) completeBlockDeclarationLocked(seat uuid.UUID) bool {
 		g.blocksDeclared = map[uuid.UUID]bool{}
 	}
 	g.blocksDeclared[seat] = true
+	// #5396: a creature left as the seat's only blocker that can't
+	// block alone is not part of the declaration it completes.
+	g.takeOutLoneNotAloneBlockerLocked(seat)
 	// The defender's staged blocks announce first, so the blocked
 	// record is written before anything reading EventBlockersDeclared
 	// asks it.

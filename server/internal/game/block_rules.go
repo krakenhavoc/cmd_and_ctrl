@@ -57,8 +57,8 @@ import "github.com/google/uuid"
 // Decisions 11 and 12, and Decisions 43-45.
 
 // BlockRule is one printed block restriction with a parameter, as the
-// engine reads it. Exactly one of Pair, Count and Limit is set; a rule
-// with none of them is inert.
+// engine reads it. Exactly one of Pair, Count, Limit and NotAlone is
+// set; a rule with none of them is inert.
 //
 // The `source` argument is the permanent the rule was read from, so a
 // threshold that compares against its own source (Champion of
@@ -107,6 +107,18 @@ type BlockRule struct {
 	// block it is. False, the zero value, is Silent Arbiter's one
 	// count for the whole table. Ignored without Limit.
 	LimitPerDefender bool
+
+	// NotAlone is "this creature can't block alone" (#5396: the Beast
+	// token Toby, Beastie Befriender makes; CR 506.5, 509.1b). The
+	// rule is about its own SOURCE: a declaration in which the source
+	// is the only creature its controller blocks with is illegal.
+	// Judged on the whole declaration by blockAloneRefusalLocked and,
+	// as the declaration completes, by takeOutLoneNotAloneBlockerLocked
+	// (block_not_alone.go). Plain data, so it adds no route to the
+	// closure census. Read only from the catalog rules a permanent
+	// prints, never from a scoped rule, which has no creature of its
+	// own to be about.
+	NotAlone bool
 
 	// Reason is the BlockReason a refused pair reports. Empty defaults
 	// to BlockReasonCantBeBlockedBy, which is the commonest shape.
