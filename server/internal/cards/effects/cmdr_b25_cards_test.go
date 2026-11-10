@@ -471,3 +471,73 @@ func TestCmdrB25VizierOfManyFacesEmbalmedTokenIsAWhiteZombieCopyWithNoManaCost(t
 		t.Errorf("type line %q, want a Zombie in addition to Bear", tok.TypeLine)
 	}
 }
+
+const cmdrB25NeverReturnOracle = "bf276236-18a6-4a48-b47d-5227832d26e6"
+
+func cmdrB25NeverReturnCard(owner uuid.UUID) game.Card {
+	c := game.Card{
+		InstanceID: uuid.New(),
+		OracleID:   cmdrB25NeverReturnOracle,
+		Layout:     game.LayoutSplit,
+		Owner:      owner,
+		Controller: owner,
+		Faces: []game.Face{
+			{Name: "Never", TypeLine: "Sorcery", ManaCost: "{1}{B}{B}", OracleText: "Destroy target creature or planeswalker."},
+			{Name: "Return", TypeLine: "Sorcery", ManaCost: "{3}{B}",
+				OracleText: "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nExile target card from a graveyard. Create a 2/2 black Zombie creature token."},
+		},
+	}
+	c.SettleImported()
+	return c
+}
+
+func TestCmdrB25NeverDestroysACreatureOrPlaneswalkerOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	bear := b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
+	land := b12Permanent(g, opp.ID, "Forest", "Basic Land — Forest")
+	advanceToMain(t, g)
+	c := cmdrB25NeverReturnCard(me.ID)
+	me.Hand.PushTop(c)
+	if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: land}}}); err == nil {
+		t.Fatal("Never targeted a land")
+	}
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{B}{B}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}}); err != nil {
+		t.Fatalf("cast Never: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(bear) {
+		t.Error("the creature survived Never")
+	}
+}
+
+func TestCmdrB25ReturnExilesACardAndMakesAZombieThenIsExiled(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	advanceToMain(t, g)
+	victim := pushCatalogGraveyardCard(opp, "Their Card", "Creature — Bear", "", 2, 2)
+	c := cmdrB25NeverReturnCard(me.ID)
+	me.Graveyard.PushTop(c)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{B}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{Face: 1, FromZone: "graveyard", Strict: true,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: victim}}}); err != nil {
+		t.Fatalf("cast Return: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(victim) {
+		t.Error("the targeted card is not exiled")
+	}
+	if namedOnBattlefield(g, "Zombie", me.ID) != 1 {
+		t.Error("no 2/2 Zombie token")
+	}
+	if !g.Exile.Contains(c.InstanceID) {
+		t.Error("Never // Return is not exiled after aftermath")
+	}
+}
