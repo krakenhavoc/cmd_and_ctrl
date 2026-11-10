@@ -950,3 +950,109 @@ func TestCmdrB9BroodshipGivesAnExtraLandAtThreeAndRecastsPermanentsFromTheGravey
 		t.Error("a second graveyard cast in one turn")
 	}
 }
+
+func TestCmdrB9Group4CardsAreRegisteredFull(t *testing.T) {
+	want := map[string]string{}
+	for _, n := range []string{"Szarel, Genesis Shepherd", "Evendo Brushrazer"} {
+		want[cmdrB9Oracle(t, n)] = n
+	}
+	cmdrB9Registered(t, want)
+}
+
+func TestCmdrB9SzarelPutsItsPowerInCountersOnAnotherCreatureForEachOtherNontokenSacrifice(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	if opp.ID == me.ID {
+		opp = g.Seats[2]
+	}
+	advanceToMain(t, g)
+	szarel := b12Push(g, me.ID, "Szarel, Genesis Shepherd", "Legendary Creature — Insect Druid", cmdrB9Oracle(t, "Szarel, Genesis Shepherd"), 2, 5)
+	bear := seedCreature(g, "Bear", me.ID)
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	sac := func(actor, card uuid.UUID) {
+		g.WithWriteLock(func() { g.EmitEvent(game.Event{Kind: game.EventSacrifice, Actor: actor, CardID: card}) })
+		answerPickTargetIfOpen(t, g, bear)
+		passPriorityAroundTable(t, g)
+	}
+	sac(me.ID, szarel)
+	if got := counterCount(g, bear, game.CounterPlusOne); got != 0 {
+		t.Errorf("Szarel's own sacrifice put %d counters on the Bear", got)
+	}
+	sac(me.ID, rock)
+	if got := counterCount(g, bear, game.CounterPlusOne); got != 2 {
+		t.Fatalf("%d counters after sacrificing another nontoken permanent, want Szarel's power 2", got)
+	}
+	var token uuid.UUID
+	g.WithWriteLock(func() {
+		ids, _ := g.CreateTokensForEffect(me.ID, TreasureToken(), 1, game.TokenEntryOptions{})
+		if len(ids) > 0 {
+			token = ids[0]
+		}
+	})
+	sac(me.ID, token)
+	if got := counterCount(g, bear, game.CounterPlusOne); got != 2 {
+		t.Errorf("sacrificing a token changed the counters: %d", got)
+	}
+	theirs := b12Permanent(g, opp.ID, "Their Rock", "Artifact")
+	sac(opp.ID, theirs)
+	if got := counterCount(g, bear, game.CounterPlusOne); got != 2 {
+		t.Errorf("an opponent's sacrifice changed the counters: %d", got)
+	}
+}
+
+func TestCmdrB9SzarelPlaysLandsFromTheGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	land := pushToGraveyard(g, me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	if err := g.CastSpell(me.ID, land, game.CastSpellParams{Strict: true, FromZone: "graveyard"}); err == nil {
+		t.Fatal("played a land from the graveyard with no Szarel")
+	}
+	b12Push(g, me.ID, "Szarel, Genesis Shepherd", "Legendary Creature — Insect Druid", cmdrB9Oracle(t, "Szarel, Genesis Shepherd"), 2, 5)
+	if err := g.CastSpell(me.ID, land, game.CastSpellParams{Strict: true, FromZone: "graveyard"}); err != nil {
+		t.Fatalf("play: %v", err)
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Error("the land did not reach the battlefield")
+	}
+}
+
+func TestCmdrB9EvendoBrushrazerExilesOnNontokenSacrificesAndPlaysThemAfterOne(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	evendo := b12Push(g, me.ID, "Evendo Brushrazer", "Creature — Insect Warrior", cmdrB9Oracle(t, "Evendo Brushrazer"), 2, 2)
+	forestA := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	top := frPushTop(me, "Mountain", "Basic Land — Mountain", "")
+	// {T}, Sacrifice a land: Add {R}{R}.
+	if err := g.ActivateManaAbility(me.ID, evendo, 0, game.ManaAbilityParams{SacrificeIDs: []uuid.UUID{forestA}}); err != nil {
+		t.Fatalf("mana ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(forestA) {
+		t.Fatal("the land was not sacrificed")
+	}
+	if !g.Exile.Contains(top) {
+		t.Fatal("the top card of the library was not exiled")
+	}
+	// A land exiled with Evendo is playable this turn, after the sacrifice.
+	if err := g.CastSpell(me.ID, top, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
+		t.Fatalf("play the exiled land: %v", err)
+	}
+	if !g.Battlefield.Contains(top) {
+		t.Error("the exiled land did not reach the battlefield")
+	}
+}
+
+func TestCmdrB9EvendoBrushrazerCardsAreNotPlayableBeforeASacrifice(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	evendo := b12Push(g, me.ID, "Evendo Brushrazer", "Creature — Insect Warrior", cmdrB9Oracle(t, "Evendo Brushrazer"), 2, 2)
+	var epoch int
+	g.WithWriteLock(func() { epoch = g.ObjectEpochForEffect(evendo) })
+	card := elPushExiled(g, me.ID, game.PermissionCardRef{ID: evendo, Epoch: epoch}, "Mountain", "Basic Land — Mountain", "")
+	if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true, FromZone: "exile"}); err == nil {
+		t.Error("played an exiled card before sacrificing a nontoken permanent")
+	}
+}
