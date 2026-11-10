@@ -274,7 +274,7 @@ func b6AnswerSacrifices(t *testing.T, g *game.Game) {
 	for i := 0; i < 8; i++ {
 		var open *game.PendingChoice
 		for _, c := range g.PendingChoices {
-			if isSacrificePrompt(c) {
+			if isSacrificePrompt(c) || (c != nil && c.Kind == game.PendingChoiceChooseCards && len(c.ChooseCards) > 0) {
 				open = c
 				break
 			}
@@ -1307,5 +1307,62 @@ func TestNaarIsleBurnsTheUpkeepPlayerMoreEachTime(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if got := lo - opp.Life; got != 3 {
 		t.Errorf("chaos dealt %d, want 3", got)
+	}
+}
+
+var planeLairAshenIdol = planeFixture{"ac4fe2a2-76ff-49d9-b506-26a17b4bf892", "Lair of the Ashen Idol", "Plane — Azgol"}
+
+func TestLairOfTheAshenIdolSacrificesOrPlaneswalks(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeLairAshenIdol)
+	g, _ := newPlaneGame(t, planeLairAshenIdol)
+	advanceToMain(t, g)
+	// Next player has no creature: they planeswalk.
+	toNextUpkeep(t, g)
+	passPriorityAroundTable(t, g)
+	if _, ok := faceUpPlane(g, planeLairAshenIdol.Oracle); ok {
+		t.Fatal("a planar controller with no creature stayed on the plane")
+	}
+
+	g2, _ := newPlaneGame(t, planeLairAshenIdol)
+	advanceToMain(t, g2)
+	next := g2.Seats[(g2.Turn.ActiveSeat+1)%len(g2.Seats)]
+	bear := pushVanillaCreature(g2, next.ID, "Bear", 2, 2)
+	toNextUpkeep(t, g2)
+	passPriorityAroundTable(t, g2)
+	b6AnswerSacrifices(t, g2)
+	g2.ReadSnapshot(func() {
+		if z := g2.FindCardZoneForEffect(bear); z != nil && z.Kind == game.ZoneBattlefield {
+			t.Error("the creature was not sacrificed")
+		}
+	})
+	if _, ok := faceUpPlane(g2, planeLairAshenIdol.Oracle); !ok {
+		t.Error("they planeswalked though they had a creature to sacrifice")
+	}
+}
+
+func TestLairOfTheAshenIdolChaosMakesZombiesForChosenPlayers(t *testing.T) {
+	g, _ := newPlaneGame(t, planeLairAshenIdol)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTargets(ch.ID, ch.Chooser, []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}, {Kind: game.TargetPlayer, ID: opp.ID}}); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	count := func(p uuid.UUID) int {
+		n := 0
+		g.ReadSnapshot(func() {
+			for _, c := range g.Battlefield.Cards {
+				if c.Name == "Zombie" && c.Controller == p {
+					n++
+				}
+			}
+		})
+		return n
+	}
+	if count(me.ID) != 1 || count(opp.ID) != 1 {
+		t.Errorf("zombies %d and %d, want 1 each", count(me.ID), count(opp.ID))
 	}
 }
