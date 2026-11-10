@@ -2350,6 +2350,17 @@ type SearchLibrarySpec struct {
 	// follows". The closure form (Then) is gone since #4361 S4.
 	ThenTail KeyedTail
 
+	// OntoBattlefieldIfSubtype is "put it into your hand. If <it is the
+	// chosen type>, put that card onto the battlefield instead" (#5406,
+	// Celestial Reunion): with Dest ZoneHand and Limit 1, a found card
+	// that has this subtype goes to the battlefield instead of the hand
+	// (CR 614.1a). Decided as the card is found and revealed, before it
+	// moves, so the card never passes through the hand; an Opposition
+	// Agent's exile still replaces either. Read with Card.HasSubtype, so
+	// a changeling card is every creature type (CR 702.73a). Empty is the
+	// ordinary search. Ignored for any other Dest or Limit.
+	OntoBattlefieldIfSubtype string
+
 	// ToTop puts the found cards on TOP of the library, after the
 	// shuffle, when Dest is ZoneLibrary. It is what the "search your
 	// library for a card, then shuffle and PUT THAT CARD ON TOP"
@@ -2940,6 +2951,14 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 		}
 		ids = append(taken, ids...)
 		spec.graveyardFinds = nil
+	}
+	// #5406: "put it into your hand ... put that card onto the battlefield
+	// instead" — decided as the card is found, before Opposition Agent's
+	// replacement below, which still applies to either destination.
+	if spec.OntoBattlefieldIfSubtype != "" && spec.Dest == ZoneHand && spec.Limit == 1 && len(ids) == 1 {
+		if c, ok := g.LookupCardForEffect(ids[0]); ok && c.HasSubtype(spec.OntoBattlefieldIfSubtype) {
+			spec.Dest = ZoneBattlefield
+		}
 	}
 	// #3998: "While an opponent is searching their library, they exile
 	// each card they find" (Opposition Agent). A replacement of the

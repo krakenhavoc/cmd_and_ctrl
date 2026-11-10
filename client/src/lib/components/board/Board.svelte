@@ -27,6 +27,7 @@
     AltCostPriceView,
     AlternativeCostView,
     AltCostTapPriceView,
+    BeholdTypeOption,
     CardView,
     GameView,
     LegalTargetsView,
@@ -267,6 +268,7 @@
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
   import PermissionTypeModal from "./PermissionTypeModal.svelte";
+  import BeholdTypeModal from "./BeholdTypeModal.svelte";
   import { needsPermissionTypePicker } from "../../permissionTypes";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
@@ -882,10 +884,20 @@
   // permanents), resolved against both zones.
   // #4687: `exile` is the Champions' "behold a Kithkin and exile it", whose
   // pick is exiled, so the sheet's verb is "Exile".
+  // #5406: `count` is a behold N's N ("behold two creatures of that type").
   let revealPrompt = $state<{
     card: CardView;
     label: string;
     exile: boolean;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  // #5406: a behold that chooses its creature type asks the type first,
+  // then the reveal sheet asks for that type's creatures.
+  let beholdTypePrompt = $state<{
+    card: CardView;
+    types: BeholdTypeOption[];
+    count: number;
     choices: CastChoices;
   } | null>(null);
   let revealPromptOptionIDs = $state<string[]>([]);
@@ -1032,6 +1044,13 @@
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
   }
 
+  function confirmBeholdType(type: string): void {
+    const p = beholdTypePrompt;
+    beholdTypePrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, beholdType: type });
+  }
+
   function confirmReveal(ids: string[]): void {
     const p = revealPrompt;
     revealPrompt = null;
@@ -1060,16 +1079,28 @@
       return;
     }
     const rv = castRevealCost(card, choices);
+    // #5406: the creature type first, without asking when there is one.
+    if (rv?.types && rv.types.length > 0 && choices.beholdType === undefined) {
+      if (rv.types.length === 1) {
+        afterSacrificeCost(card, { ...choices, beholdType: rv.types[0].type });
+        return;
+      }
+      beholdTypePrompt = { card, types: rv.types, count: rv.count, choices };
+      return;
+    }
     if (rv && choices.revealIDs === undefined) {
       revealPromptOptionIDs = rv.options;
       revealPrompt = {
         card,
         label: rv.exile
           ? `${rv.label} (one you control or one in your hand)`
-          : rv.behold
-            ? `${rv.label} (choose or reveal)`
-            : rv.label,
+          : choices.beholdType !== undefined
+            ? `${rv.count} ${choices.beholdType} creatures (choose or reveal)`
+            : rv.behold
+              ? `${rv.label} (choose or reveal)`
+              : rv.label,
         exile: rv.exile,
+        count: rv.count,
         choices,
       };
       return;
@@ -4589,10 +4620,18 @@
     source={revealPrompt?.card ?? null}
     label={revealPrompt?.label ?? "a card to show"}
     options={revealOptions}
-    count={1}
+    count={revealPrompt?.count ?? 1}
     verb={revealPrompt?.exile ? "Exile" : "Choose"}
     onConfirm={confirmReveal}
     onCancel={() => (revealPrompt = null)}
+  />
+  <!-- #5406: the creature type a behold that prints none is paid with. -->
+  <BeholdTypeModal
+    card={beholdTypePrompt?.card ?? null}
+    types={beholdTypePrompt?.types ?? []}
+    count={beholdTypePrompt?.count ?? 2}
+    onConfirm={confirmBeholdType}
+    onCancel={() => (beholdTypePrompt = null)}
   />
   <!-- #3536: exile six cards from your graveyard, as a spell's additional
        cost — the discard picker with the verb "Exile", over the graveyard. -->
