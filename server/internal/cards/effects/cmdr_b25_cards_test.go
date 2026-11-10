@@ -541,3 +541,29 @@ func TestCmdrB25ReturnExilesACardAndMakesAZombieThenIsExiled(t *testing.T) {
 		t.Error("Never // Return is not exiled after aftermath")
 	}
 }
+
+const cmdrB25BootleggersOracle = "d1deba03-b26a-4a0d-b242-24bb3a3f9ea6"
+
+func TestCmdrB25BootleggersStashLetsYourLandsMakeTreasure(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Bootleggers' Stash", "Artifact", cmdrB25BootleggersOracle, 0, 0)
+	mine := b12Permanent(g, me.ID, "Forest", "Basic Land — Forest")
+	theirs := b12Permanent(g, opp.ID, "Forest", "Basic Land — Forest")
+	if err := g.ActivateCatalogAbility(opp.ID, theirs, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("an opponent's land made a Treasure")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, mine, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if namedOnBattlefield(g, "Treasure", me.ID) != 1 {
+		t.Error("no Treasure token")
+	}
+	if c := findTestCard(g, mine); c == nil || !c.Tapped {
+		t.Error("the land did not tap")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, mine, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Error("a tapped land made a second Treasure")
+	}
+}
