@@ -481,3 +481,26 @@ func TestCmdrB13TranscendentDragonDeclinedSpellStaysExiled(t *testing.T) {
 		t.Errorf("opponent at %d, want %d", opp.Life, life)
 	}
 }
+
+const cmdrB13BibliophileOracle = "dcc323d6-ddae-4fd9-9c9e-466b07895d73"
+
+func TestCmdrB13BibliophileDrawsForEachTargetOfASpell(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	b12Push(g, me.ID, "Voracious Bibliophile", "Creature — Dragon", cmdrB13BibliophileOracle, 3, 3)
+	advanceTo(t, g, game.StepPrecombatMain)
+	// A creature spell has no target: nothing is drawn.
+	hand := me.Hand.Size()
+	cmdrB13CastCreature(t, g, me, 1)
+	if me.Hand.Size() != hand {
+		t.Fatalf("an untargeted spell drew: hand %d -> %d", hand, me.Hand.Size())
+	}
+	// A Bolt has one target, and the draw happens even though the Bolt
+	// resolves afterwards.
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
+	handBeforeResolve := me.Hand.Size()
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - handBeforeResolve; got != 1 {
+		t.Errorf("drew %d cards for a one-target spell, want 1", got)
+	}
+}
