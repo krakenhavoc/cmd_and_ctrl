@@ -780,6 +780,10 @@ var playerFields = plan(
 	// What the player's creatures attacked during their last turn
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",
+	// #5368: Territorial Hellkite's "didn't attack during your last
+	// combat": the current and the previous combat phase's attacks.
+	"CombatAttacks", carried, "",
+	"LastCombatAttacks", carried, "",
 	// #1997: Arboria's "cast a spell or put a nontoken permanent onto
 	// the battlefield during their last turn".
 	"LastTurnCastOrPut", carried, "",

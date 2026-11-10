@@ -413,6 +413,14 @@ type Characteristic struct {
 	// when it snapshots every combatant's amount.
 	DamageByToughness bool `json:",omitempty"`
 
+	// DamageAlwaysByToughness is the unconditional form: "each creature
+	// assigns combat damage equal to its toughness rather than its power"
+	// (Assault Formation, #5368; CR 510.1c). Unlike DamageByToughness, which
+	// answers with the toughness only when it is the greater, this one
+	// answers with the toughness whatever the power is, so a 4/1 assigns 1.
+	// Only ever set by a static that says so; combatDamagePower reads it.
+	DamageAlwaysByToughness bool `json:",omitempty"`
+
 	// DamageAsPositivePower is "if this creature's power is negative, it
 	// assigns combat damage as though its power were positive" (Loot,
 	// the Anomaly, #3505): combatDamagePower answers with the absolute

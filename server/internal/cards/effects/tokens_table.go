@@ -361,6 +361,9 @@ var tokenTable = map[string]game.Card{
 	// #5368: Amphin Mutineer's Salamander Warrior (Tarkir: Dragonstorm Commander).
 	"4/3 blue Salamander Warrior": {Name: "Salamander Warrior", TypeLine: "Token Creature — Salamander Warrior", Power: 4, Toughness: 3, Colors: []string{"U"}},
 
+	// #5368: Verix Bladewing's Karox Bladewing (Tarkir: Dragonstorm Commander).
+	"4/4 red Legendary Dragon named Karox Bladewing with flying": {Name: "Karox Bladewing", TypeLine: "Token Legendary Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
+
 	// #4457 batch 12: The Last Ronin's Technique's Ninja Turtle Spirit.
 	"1/1 white Ninja Turtle Spirit": {Name: "Ninja Turtle Spirit", TypeLine: "Token Creature — Ninja Turtle Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	// #4457: Lord Dregg, Insect Invader's token.
