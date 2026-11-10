@@ -19,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}: Create a 1/1 blue Faerie creature token with flying. Draw a card.",
-			Purpose: game.Purpose{Draws: 1, CreatureTokens: 1, Answers: game.AnswerValue | game.AnswerMakesBlocker},
+			Purpose: game.Purpose{Draws: 1, Tokens: 1, CreatureTokens: 1, Answers: game.AnswerValue | game.AnswerMakesBlocker},
 			Cost:    ManaCost("{3}{U}"),
 			Effect: Do(
 				CreateToken{Template: TokenCard("1/1 blue Faerie with flying"), N: 1},

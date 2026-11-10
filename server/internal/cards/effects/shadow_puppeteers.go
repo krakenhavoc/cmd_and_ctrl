@@ -25,7 +25,7 @@ func init() {
 		OracleID:     "0a570fdb-2104-4592-b158-5b5d88f1d087",
 		Name:         "Shadow Puppeteers",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{CreatureTokens: 2},
+		Purpose:      game.Purpose{Tokens: 2, CreatureTokens: 2},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{2}"), "Shadow Puppeteers — ward {2}"),
 			WhenThisEnters("Shadow Puppeteers — create two 1/1 black Faerie Rogue creature tokens with flying",

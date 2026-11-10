@@ -22,7 +22,7 @@ func init() {
 		OracleID:     "5bafd0e0-8bf8-4e06-a54a-81cc6cc4bdb7",
 		Name:         "Stolen by the Fae",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{CreatureTokens: 1},
+		Purpose:      game.Purpose{Tokens: 1, CreatureTokens: 1},
 		Targets:      TargetCreature("target creature with mana value X").WithManaValueEqualsX(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
