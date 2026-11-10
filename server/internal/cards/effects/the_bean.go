@@ -67,7 +67,10 @@ func init() {
 
 // b13ReflectionCopy is the exception clause: "it's a Reflection in addition
 // to its other types" (CR 707.9b).
-func b13ReflectionCopy(t *game.Card) { t.TypeLine = addedSubtypeTypeLine(t.TypeLine, "Reflection") }
+func b13ReflectionCopy(ctx *Context) func(t *game.Card) {
+	word := ctx.TextSubtype("Reflection")
+	return func(t *game.Card) { t.TypeLine = addedSubtypeTypeLine(t.TypeLine, word) }
+}
 
 // theBeanEveryoneCopies is each chooser creating their token copy. An on-disk
 // key: never renamed, never reused.
@@ -75,7 +78,7 @@ var theBeanEveryoneCopies = game.RegisterPromptRunThen("prompt-run/the-bean-plan
 	ctx := NewContext(g, r.Item())
 	for _, leg := range r.Picks() {
 		for _, id := range leg.Cards {
-			if err := (CreateTokenCopy{Controller: leg.Seat, Copy: id, N: 1, Except: b13ReflectionCopy}).Apply(ctx); err != nil {
+			if err := (CreateTokenCopy{Controller: leg.Seat, Copy: id, N: 1, Except: b13ReflectionCopy(ctx)}).Apply(ctx); err != nil {
 				return err
 			}
 		}
@@ -88,7 +91,7 @@ var theBeanEveryoneCopies = game.RegisterPromptRunThen("prompt-run/the-bean-plan
 var theBeanChaosCopies = RegisterPermanentsPick("prompt-run/the-bean-chaos-copy", PermanentsDef{
 	Then: func(ctx *Context, picked game.PromptedPicks) error {
 		for _, id := range picked.Cards() {
-			if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: id, N: 1, Except: b13ReflectionCopy}).Apply(ctx); err != nil {
+			if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: id, N: 1, Except: b13ReflectionCopy(ctx)}).Apply(ctx); err != nil {
 				return err
 			}
 		}
