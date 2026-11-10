@@ -884,13 +884,17 @@ type PendingChoiceView struct {
 	// library") asks before it looks: which zones the searcher searches.
 	// options[] is withheld (looking through the library is searching it,
 	// CR 701.23a), and the answer is {choice_id, search_zones: [...]}, any
-	// non-empty subset of "library" and search_other_zone. The same prompt
-	// then reappears with the candidates of the chosen zones, without this
+	// non-empty subset of "library" and search_other_zone; for
+	// "graveyard_and_hand" (#5408, "search your graveyard, hand, and/or
+	// library") any non-empty subset of "library", "graveyard" and "hand".
+	// The same prompt then reappears with the candidates of the chosen zones, without this
 	// flag. The library is shuffled, and the search announced, if and only
 	// if "library" was chosen. Chooser-only.
 	SearchZonesPending bool `json:"search_zones_pending,omitempty"`
 	// SearchOtherZone (#4519) is the zone an and/or search offers beside
-	// the library, "graveyard" or "hand". Present on every such prompt,
+	// the library, "graveyard" or "hand", or "graveyard_and_hand" when it
+	// offers both (#5408, each then named on its own in search_zones).
+	// Present on every such prompt,
 	// asked or answered; absent for any other search. Chooser-only.
 	SearchOtherZone string `json:"search_other_zone,omitempty"`
 	// SearchLibrarySkipped (#4519) marks an and/or search answered with the
@@ -3594,6 +3598,11 @@ type CardView struct {
 	// creature has no text of its own to leak.
 	BlockCapacity   int  `json:"block_capacity,omitempty"`
 	BlocksAnyNumber bool `json:"blocks_any_number,omitempty"`
+	// CantBlockAlone marks a creature that "can't block alone" (#5396,
+	// game.BlockRule.NotAlone; CR 506.5, 509.1b): it may block only
+	// beside another blocker of its controller's. Public, read off its
+	// abilities; cleared on a face-down permanent.
+	CantBlockAlone bool `json:"cant_block_alone,omitempty"`
 	// GoadedBy is the player ID whose goad on this creature is the most
 	// recent, or empty when it is not goaded. Cleared on zone exit.
 	// Added in S10; enforced since #1571 — a goaded creature attacks
@@ -12475,6 +12484,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// face-down permanent; this keeps any other unknown card clear too.
 	out.BlockRefusals = nil
 	out.MinBlockers = 0
+	out.CantBlockAlone = false
 	// ADR 0109 §10: "its haste came from riot" says the card has riot,
 	// which names it as loudly as the ability list does.
 	out.RiotHaste = false
@@ -13080,6 +13090,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		}
 	}
 	if game.IsCreaturePtr(c) {
+		view.CantBlockAlone = game.CantBlockAlone(c)
 		switch n := game.BlockCapacity(c); {
 		case n == 0:
 			view.BlocksAnyNumber = true
