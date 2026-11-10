@@ -1,0 +1,50 @@
+{
+ "id": "s4",
+ "title": "Let Grist be a creature card off the battlefield (and a legal commander)",
+ "clause": "\"As long as Grist isn't on the battlefield, it's a 1/1 Insect creature in addition to its other types.\" (Grist, the Hunger Tide)",
+ "why": "game/zone_layers.go applies off-battlefield type changes only from a BATTLEFIELD static (StaticAbility.AffectsZones) and says 'off the battlefield no catalogued effect makes a card a creature'. Grist's ability is its own, functioning in hand/library/graveyard/exile/command/stack with no battlefield source, and it needs P/T 1/1 there (cda_anywhere.go). deck/validate.go accepts a commander only if the type line is Legendary Creature or the text says 'can be your commander', so Grist is refused as a commander today. The rest of Grist (+1 repeat-mill, reflexive -2) is ordinary.",
+ "checked": "read game/zone_layers.go header (AffectsZones, 'Not covered'); grep \"isn't on the battlefield, it's\" in effects/game: 0; grep 'grist' finds only gristle_glutton.go; git show fix-r2:server/internal/deck/validate.go lines 143, 189, 375-401.",
+ "size": "medium",
+ "cards": [
+  {
+   "name": "Grist, the Hunger Tide",
+   "oracle_id": "0efb0d7e-dea0-4817-a243-15066e9ef333",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Planeswalker — Grist",
+   "oracle_text": "As long as Grist isn't on the battlefield, it's a 1/1 Insect creature in addition to its other types.\n+1: Create a 1/1 black and green Insect creature token, then mill a card. If an Insect card was milled this way, put a loyalty counter on Grist and repeat this process.\n−2: You may sacrifice a creature. When you do, destroy target creature or planeswalker.\n−5: Each opponent loses life equal to the number of creature cards in your graveyard.",
+   "loyalty": "3",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "220",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Insect",
+     "type_line": "Token Creature — Insect",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "B",
+      "G"
+     ],
+     "keywords": [],
+     "set": "tdsc",
+     "collector_number": "22"
+    }
+   ]
+  }
+ ]
+}

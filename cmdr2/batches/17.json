@@ -1,0 +1,361 @@
+{
+ "batch": 17,
+ "theme": "Squirrels, Rats and Saprolings",
+ "reuse": "Squirrel 1/1 token (squirrel_nest.go, tokens_table.go) and Saproling 1/1 shared across the batch; storm: Storm(); vanishing has NO helper — write Vanishing N once (time counters, upkeep removal, sacrifice at zero, CR 702.63) for Deep Forest Hermit, the only vanishing card in the wave; forestwalk/fear: game/landwalk.go, keywords.go; 'Choose three. You may choose the same mode more than once': mystic_confluence.go; token-copy of a token: token_copy.go; Hazel's 'Tap X untapped tokens' mana cost: game/tap_others_cost.go (aryel_knight_of_windgrace.go); granted activated ability to a type: docs 'Granting an ability to another permanent'.",
+ "pair": 18,
+ "cards": [
+  {
+   "name": "Rootcast Apprenticeship",
+   "oracle_id": "ffe13100-99dd-41e3-82ba-eaead6fd0113",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose three. You may choose the same mode more than once.\n• Put two +1/+1 counters on target creature.\n• Create a token that's a copy of target token you control.\n• Target player creates a 1/1 green Squirrel creature token.\n• Target opponent sacrifices a nontoken artifact of their choice.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "32",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Squirrel",
+     "type_line": "Token Creature — Squirrel",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Marrow-Gnawer",
+   "oracle_id": "2b934761-5720-477b-94b7-d1d91dc581a6",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Rat Rogue",
+   "oracle_text": "All Rats have fear.\n{T}, Sacrifice a Rat: Create X 1/1 black Rat creature tokens, where X is the number of Rats you control.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "79",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Rat",
+     "type_line": "Token Creature — Rat",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "B"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "19"
+    }
+   ]
+  },
+  {
+   "name": "Swarmyard Massacre",
+   "oracle_id": "50e7ae38-2a66-4e32-bfb3-fefbae0caa61",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create two 1/1 green Squirrel creature tokens. Then each creature that isn't an Insect, Rat, Spider, or Squirrel gets -1/-1 until end of turn for each creature you control that's an Insect, Rat, Spider, or Squirrel.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "55",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Squirrel",
+     "type_line": "Token Creature — Squirrel",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "The Odd Acorn Gang",
+   "oracle_id": "1d9d8028-d946-4245-ae0c-7508023f619a",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Squirrel Warrior",
+   "oracle_text": "Reach, menace, trample\nSquirrels you control have \"{T}: Target Squirrel gets +2/+2 and gains trample until end of turn. Activate only as a sorcery.\"\nWhenever one or more Squirrels you control deal combat damage to a player, draw a card.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Trample",
+    "Menace"
+   ],
+   "collector_number": "43",
+   "set": "blc"
+  },
+  {
+   "name": "Squirrel Mob",
+   "oracle_id": "451486df-6160-4ff7-b47c-dd3760417a31",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Squirrel",
+   "oracle_text": "This creature gets +1/+1 for each other Squirrel on the battlefield.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "85",
+   "set": "blc"
+  },
+  {
+   "name": "Chatterstorm",
+   "oracle_id": "7e6c7b57-bd6a-4ac8-bcab-c3a879f479c2",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Create a 1/1 green Squirrel creature token.\nStorm (When you cast this spell, copy it for each spell cast before it this turn.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Storm"
+   ],
+   "collector_number": "210",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Squirrel",
+     "type_line": "Token Creature — Squirrel",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Deep Forest Hermit",
+   "oracle_id": "80e9a42e-f4f4-4bfc-91a2-ad124737dca2",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "Vanishing 3 (This creature enters with three time counters on it. At the beginning of your upkeep, remove a time counter from it. When the last is removed, sacrifice it.)\nWhen this creature enters, create four 1/1 green Squirrel creature tokens.\nSquirrels you control get +1/+1.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vanishing"
+   ],
+   "collector_number": "213",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Squirrel",
+     "type_line": "Token Creature — Squirrel",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Hazel of the Rootbloom",
+   "oracle_id": "845b40b1-dc09-44fa-9910-22544c1424ba",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Squirrel Druid",
+   "oracle_text": "{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana in any combination of colors.\nAt the beginning of your end step, create a token that's a copy of target token you control. If that token is a Squirrel, instead create two tokens that are copies of it.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "2",
+   "set": "blc"
+  },
+  {
+   "name": "Brightcap Badger // Fungus Frolic",
+   "oracle_id": "f61c0fc0-7241-455e-bbf5-f1f3862d46e3",
+   "layout": "adventure",
+   "mana_cost": "{3}{G} // {2}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Badger Druid // Instant — Adventure",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "28",
+   "set": "blc",
+   "card_faces": [
+    {
+     "name": "Brightcap Badger",
+     "mana_cost": "{3}{G}",
+     "type_line": "Creature — Badger Druid",
+     "oracle_text": "Each Fungus and Saproling you control has \"{T}: Add {G}.\"\nAt the beginning of your end step, create a 1/1 green Saproling creature token.",
+     "power": "3",
+     "toughness": "4"
+    },
+    {
+     "name": "Fungus Frolic",
+     "mana_cost": "{2}{G}",
+     "type_line": "Instant — Adventure",
+     "oracle_text": "Create two 1/1 green Saproling creature tokens. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "component": "token",
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "30"
+    },
+    {
+     "component": "combo_piece",
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "oracle_text": "After an Adventure resolves, you can place the exiled card here. You may cast the creature from exile.",
+     "colors": [],
+     "keywords": [],
+     "set": "thob",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Ant Queen",
+   "oracle_id": "50de88d4-0beb-45e5-9664-d4f0e280e652",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "{1}{G}: Create a 1/1 green Insect creature token.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "80",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Insect",
+     "type_line": "Token Creature — Insect",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "12"
+    }
+   ]
+  }
+ ]
+}

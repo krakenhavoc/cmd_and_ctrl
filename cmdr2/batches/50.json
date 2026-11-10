@@ -1,0 +1,260 @@
+{
+ "batch": 50,
+ "theme": "Duskmourn enchantments, horrors and hideaway",
+ "reuse": "Hideaway(name, n) + PlayHiddenCard in effects/hideaway.go (docs 'Adding a hideaway card'); Evercoat Ursine prints 'Hideaway 3, hideaway 3' — two linked instances and 'play one of them': watch item, check that two Hideaway triggers on one permanent keep separate hidden cards; granted escape for enchantment cards (The Master of Keys): underworld_breach.go standing permission (same cost shape: mana cost plus exile three others); 'as this enters, choose Believe or Doubt': windcrag_siege.go, struggle_for_project_purity.go (ChosenIs designation); 'mana spent to cast it was less than its mana value': game/mana_spent.go (unravel.go, tokka_and_rahzar_terrible_twos.go); monstrosity: Monstrosity(); 2/2 black Horror enchantment creature, 5/5 Demon with flying tokens.",
+ "pair": 49,
+ "cards": [
+  {
+   "name": "Phenomenon Investigators",
+   "oracle_id": "cc9088c4-6f6b-4a1a-90f1-794eb1e938c6",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "As this creature enters, choose Believe or Doubt.\n• Believe — Whenever a nontoken creature you control dies, create a 2/2 black Horror enchantment creature token.\n• Doubt — At the beginning of your end step, you may return a nonland permanent you own to your hand. If you do, draw a card.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "65",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Horror",
+     "type_line": "Token Enchantment Creature — Horror",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B"
+     ],
+     "keywords": [],
+     "set": "tdsk",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Ancient Cellarspawn",
+   "oracle_id": "b8510b34-0e5f-4639-9db1-1ba40d84b800",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment Creature — Horror",
+   "oracle_text": "Each spell you cast that's a Demon, Horror, or Nightmare costs {1} less to cast.\nWhenever you cast a spell, if the amount of mana spent to cast it was less than its mana value, target opponent loses life equal to the difference.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "16",
+   "set": "dsc"
+  },
+  {
+   "name": "The Master of Keys",
+   "oracle_id": "37dc566e-a91a-448c-9967-b178a93ffb62",
+   "layout": "normal",
+   "mana_cost": "{X}{W}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Enchantment Creature — Horror",
+   "oracle_text": "Flying\nWhen The Master of Keys enters, put X +1/+1 counters on it and mill twice X cards.\nEach enchantment card in your graveyard has escape. The escape cost is equal to the card's mana cost plus exile three other cards from your graveyard. (You may cast cards from your graveyard for their escape cost.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Mill"
+   ],
+   "collector_number": "4",
+   "set": "dsc"
+  },
+  {
+   "name": "Demonic Covenant",
+   "oracle_id": "393b9d9e-9d71-43e7-aede-eac7f85d2365",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Kindred Enchantment — Demon",
+   "oracle_text": "Whenever one or more Demons you control attack a player, you draw a card and lose 1 life.\nAt the beginning of your end step, create a 5/5 black Demon creature token with flying, then mill two cards. If two cards that share all their card types were milled this way, sacrifice this enchantment.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "19",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Demon",
+     "type_line": "Token Creature — Demon",
+     "oracle_text": "Flying",
+     "power": "5",
+     "toughness": "5",
+     "colors": [
+      "B"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tdsc",
+     "collector_number": "6"
+    }
+   ]
+  },
+  {
+   "name": "Giggling Skitterspike",
+   "oracle_id": "ca02cb31-9850-48bf-bc8d-ed86a4d4d4f7",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Toy",
+   "oracle_text": "Indestructible\nWhenever this creature attacks, blocks, or becomes the target of a spell, it deals damage equal to its power to each opponent.\n{5}: Monstrosity 5. (If this creature isn't monstrous, put five +1/+1 counters on it and it becomes monstrous.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Indestructible",
+    "Monstrosity"
+   ],
+   "collector_number": "66",
+   "set": "dsc"
+  },
+  {
+   "name": "Enchanter's Bane",
+   "oracle_id": "1f0548f8-5dec-44b5-b5a9-e55fa4366e08",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your end step, target enchantment deals damage equal to its mana value to its controller unless that player sacrifices it.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "164",
+   "set": "dsc"
+  },
+  {
+   "name": "Jukai Naturalist",
+   "oracle_id": "c4d1a78f-0cca-4042-862c-8f322ee25d50",
+   "layout": "normal",
+   "mana_cost": "{G}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment Creature — Human Monk",
+   "oracle_text": "Lifelink\nEnchantment spells you cast cost {1} less to cast.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "140",
+   "set": "woc"
+  },
+  {
+   "name": "Evercoat Ursine",
+   "oracle_id": "65c32889-3d70-449f-af76-05385c78c5a9",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Bear",
+   "oracle_text": "Trample\nHideaway 3, hideaway 3 (When this creature enters, look at the top three cards of your library, exile one face down, then put the rest on the bottom in a random order. Then do it again.)\nWhenever this creature deals combat damage to a player, if there are cards exiled with it, you may play one of them without paying its mana cost.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Hideaway"
+   ],
+   "collector_number": "30",
+   "set": "blc"
+  },
+  {
+   "name": "Cemetery Tampering",
+   "oracle_id": "9babcd0a-531f-417d-905e-b916a87112bb",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Hideaway 5 (When this enchantment enters, look at the top five cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nAt the beginning of your upkeep, you may mill three cards. Then if there are twenty or more cards in your graveyard, you may play the exiled card without paying its mana cost.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Mill",
+    "Hideaway"
+   ],
+   "collector_number": "135",
+   "set": "dsc"
+  },
+  {
+   "name": "Skyfisher Spider",
+   "oracle_id": "67158085-4807-4f0e-8599-c55ec7ec252e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Spider",
+   "oracle_text": "Reach\nWhen this creature enters, you may sacrifice another creature. When you do, destroy target nonland permanent.\nWhen this creature dies, you may gain 1 life for each creature card in your graveyard. If you do, exile this card from your graveyard.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "261",
+   "set": "blc"
+  }
+ ]
+}

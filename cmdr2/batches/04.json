@@ -1,0 +1,180 @@
+{
+ "batch": 4,
+ "theme": "Choose a creature type",
+ "reuse": "ChooseCreatureTypeAsEnters / ChooseCreatureTypeTail (docs 'Adding a creature-type card'), tribal.go, tribal_lords.go, creature_type_resolution.go; 'reveal until a creature card that shares a creature type' (Descendants' Fury, Heirloom Blade) is one helper, both here; equip: EquipAbility(); foretell: foretell.go Foretell(); finality counters: game/finality_counters.go.",
+ "pair": 3,
+ "cards": [
+  {
+   "name": "Haunting Voyage",
+   "oracle_id": "334c284e-7bc3-4c18-9f8d-4d846f80008e",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose a creature type. Return up to two creature cards of that type from your graveyard to the battlefield. If this spell was foretold, return all creature cards of that type from your graveyard to the battlefield instead.\nForetell {5}{B}{B} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Foretell"
+   ],
+   "collector_number": "75",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Foretell",
+     "type_line": "Card",
+     "oracle_text": "(After you foretell a card, you can place the exiled card here. You may cast it on a later turn for its foretell cost.)",
+     "colors": [],
+     "keywords": [],
+     "set": "tfic",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Kindred Summons",
+   "oracle_id": "b488e75f-af9c-43e2-8aca-f269fa2c720e",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose a creature type. Reveal cards from the top of your library until you reveal X creature cards of the chosen type, where X is the number of creatures you control of that type. Put those cards onto the battlefield, then shuffle the rest of the revealed cards into your library.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "112",
+   "set": "ecc"
+  },
+  {
+   "name": "Pact of the Serpent",
+   "oracle_id": "f275039e-3dba-49b0-92aa-92721b1c7f95",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose a creature type. Target player draws X cards and loses X life, where X is the number of creatures they control of the chosen type.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "206",
+   "set": "lcc"
+  },
+  {
+   "name": "Etchings of the Chosen",
+   "oracle_id": "0114f97f-b196-4af1-90aa-eba164cb8f22",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "As this enchantment enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{1}, Sacrifice a creature of the chosen type: Target creature you control gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "269",
+   "set": "lcc"
+  },
+  {
+   "name": "Descendants' Fury",
+   "oracle_id": "97079964-7a2e-42c5-ad4a-9015c18a1e97",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever one or more creatures you control deal combat damage to a player, you may sacrifice one of them. If you do, reveal cards from the top of your library until you reveal a creature card that shares a creature type with the sacrificed creature. Put that card onto the battlefield and the rest on the bottom of your library in a random order.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "93",
+   "set": "ecc"
+  },
+  {
+   "name": "From the Rubble",
+   "oracle_id": "76d07c99-8c6b-4c2c-a0f6-47541999015b",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Enchantment",
+   "oracle_text": "As this enchantment enters, choose a creature type.\nAt the beginning of your end step, return target creature card of the chosen type from your graveyard to the battlefield with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "40",
+   "set": "lcc"
+  },
+  {
+   "name": "Kindred Boon",
+   "oracle_id": "f04441b0-755c-4e7b-a9e4-4e03b8175ab6",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "As this enchantment enters, choose a creature type.\n{1}{W}: Put a divinity counter on target creature you control of the chosen type.\nEach creature you control with a divinity counter on it has indestructible.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "129",
+   "set": "lcc"
+  },
+  {
+   "name": "Icon of Ancestry",
+   "oracle_id": "2b4973cc-83b0-4986-a19e-b4252706527e",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "As this artifact enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{3}, {T}: Look at the top three cards of your library. You may reveal a creature card of the chosen type from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "305",
+   "set": "lcc"
+  },
+  {
+   "name": "Heirloom Blade",
+   "oracle_id": "7c3a8766-e440-48c5-a561-197490efdba5",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +3/+1.\nWhenever equipped creature dies, you may reveal cards from the top of your library until you reveal a creature card that shares a creature type with it. Put that card into your hand and the rest on the bottom of your library in a random order.\nEquip {1}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "303",
+   "set": "lcc"
+  }
+ ]
+}

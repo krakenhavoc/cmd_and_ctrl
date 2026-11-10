@@ -1,0 +1,279 @@
+{
+ "batch": 38,
+ "theme": "Disguise, cloak and face-up payoffs (Karlov Manor)",
+ "reuse": "Disguise() in morph.go family; cloak: cloak_action.go, std_b43_cloak.go, game/cloak.go (CloakForEffect per controller for Unexplained Absence); flying counters on face-down creatures (Veiled Ascension): game/keyword_counters.go + an entry-counter replacement filtered on face-down (entry_counters.go); 'turned face up this turn' (Kaust): game/turn_tally.go has the face-up tally; Boltbender 'choose new targets for any number of other spells and/or abilities': game/retarget.go handles ONE target spell/ability (RetargetChooseNew) — watch item, likely a loop over stack items with a keyed prompt; 0/0 Ooze with trample token.",
+ "pair": 37,
+ "cards": [
+  {
+   "name": "Boltbender",
+   "oracle_id": "055e1799-8188-48f4-854e-d3e28363084f",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Goblin Wizard",
+   "oracle_text": "Disguise {1}{R} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)\nWhen this creature is turned face up, you may choose new targets for any number of other spells and/or abilities.",
+   "power": "4",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Disguise"
+   ],
+   "collector_number": "340",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    }
+   ]
+  },
+  {
+   "name": "Experiment Twelve",
+   "oracle_id": "67a10da3-76f2-4f4a-90d1-e77abb5842fe",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elf Lizard Warrior",
+   "oracle_text": "Trample\nWhenever this creature or another creature you control is turned face up, put +1/+1 counters on that creature equal to its power.\nDisguise {4}{G} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Disguise"
+   ],
+   "collector_number": "347",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    }
+   ]
+  },
+  {
+   "name": "Printlifter Ooze",
+   "oracle_id": "3cbed112-9f2b-46b4-a9c3-bfd8a6856f79",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Ooze",
+   "oracle_text": "Deathtouch\nWhenever this creature or another creature you control is turned face up, create a 0/0 green Ooze creature token with trample. The token enters with X +1/+1 counters on it, where X is the number of other creatures you control.\nDisguise {3}{G}",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Disguise",
+    "Deathtouch"
+   ],
+   "collector_number": "40",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    },
+    {
+     "component": "token",
+     "name": "Ooze",
+     "type_line": "Token Creature — Ooze",
+     "oracle_text": "Trample",
+     "power": "0",
+     "toughness": "0",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Trample"
+     ],
+     "set": "tmkm",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "True Identity",
+   "oracle_id": "901d3027-4394-481e-9a0e-dec4513d9f88",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever this enchantment or another permanent you control is turned face up, scry 1, then draw a card. This ability triggers only once each turn.\nDisguise {W} (You may cast this card face down for {3} as a 2/2 creature with ward {2}. Turn it face up any time for its disguise cost.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Disguise",
+    "Scry"
+   ],
+   "collector_number": "327",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    }
+   ]
+  },
+  {
+   "name": "Kaust, Eyes of the Glade",
+   "oracle_id": "af78c13f-67f8-42bf-b012-482a48af4f31",
+   "layout": "normal",
+   "mana_cost": "{R/W}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Dryad Detective",
+   "oracle_text": "Whenever a creature you control that was turned face up this turn deals combat damage to a player, draw a card.\n{T}: Turn target face-down attacking creature you control face up.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "49",
+   "set": "mkc"
+  },
+  {
+   "name": "Showstopping Surprise",
+   "oracle_id": "e16cbcbd-b03a-404c-8d1e-0a05848181d9",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose target creature you control. Turn it face up if it's face down. Then it deals damage equal to its power to each other creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "35",
+   "set": "mkc"
+  },
+  {
+   "name": "Unexplained Absence",
+   "oracle_id": "71faaee5-70ff-449c-85c8-560eb189a0a7",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "For each player, exile up to one target nonland permanent that player controls. For each permanent exiled this way, its controller cloaks the top card of their library. (To cloak a card, put it onto the battlefield face down as a 2/2 creature with ward {2}. Turn it face up any time for its mana cost if it's a creature card.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Cloak"
+   ],
+   "collector_number": "328",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    }
+   ]
+  },
+  {
+   "name": "Veiled Ascension",
+   "oracle_id": "cbf0190a-198b-49cc-8c79-4028da07fa77",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, put a flying counter on each face-down creature you control.\nFace-down creatures you control enter with a flying counter on them.\nAt the beginning of your upkeep, you may cloak the top card of your library.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Cloak"
+   ],
+   "collector_number": "18",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,84 @@
+{
+ "id": "s5",
+ "title": "Grant evoke and offspring to spells as they are cast",
+ "clause": "\"Elemental permanent spells you cast from your hand gain evoke {4} as you cast them\" (Ashling, the Limitless); \"Creature spells you cast gain offspring {2} as you cast them\" (Zinnia, Valley's Voice)",
+ "why": "Granted alternative costs (effects/granted_alternative_cost.go keys: WUBRG, Free, Emerge, Miracle, WebSlinging...) have no evoke, and evoke's payoff is a sacrifice trigger on a permanent that does not print it. Granted optional costs (game/granted_optional_cost.go) cover only casualty (Silverquill); offspring's payoff (effects/offspring.go OffspringToken / offspringWasPaid) reads the card's OWN optional-cost index, not PaidCost.GrantedOptional. Both need the grant to carry its enters-trigger onto the resulting permanent. Ashling also needs 'sacrifice a nontoken Elemental -> token copy, sacrifice unless you pay WUBRG' (ordinary).",
+ "checked": "grep 'gain evoke|gains evoke' and 'gains? offspring': 0 in effects and game; listed GrantedAltCost* keys in effects/granted_alternative_cost.go (no evoke); read game/granted_optional_cost.go header (casualty only); read func list of effects/offspring.go. We Ride at Dawn's granted convoke is NOT in this seam (precedent: hoarding_broodlord.go, eirdu_carrier_of_dawn.go, game/granted_tap_cost.go).",
+ "size": "medium",
+ "cards": [
+  {
+   "name": "Ashling, the Limitless",
+   "oracle_id": "77a9e7cf-76e9-4323-8504-a5b831de00be",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elemental Sorcerer",
+   "oracle_text": "Elemental permanent spells you cast from your hand gain evoke {4} as you cast them. (If you cast a spell for its evoke cost, it's sacrificed when it enters.)\nWhenever you sacrifice a nontoken Elemental, create a token that's a copy of it. The token gains haste until end of turn. At the beginning of your next end step, sacrifice it unless you pay {W}{U}{B}{R}{G}.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "1",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Zinnia, Valley's Voice",
+   "oracle_id": "d8c16a3a-dd9d-410c-a5d5-06339a89970f",
+   "layout": "normal",
+   "mana_cost": "{U}{R}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Bird Bard",
+   "oracle_text": "Flying\nZinnia gets +X/+0, where X is the number of other creatures you control with base power 1.\nCreature spells you cast gain offspring {2} as you cast them. (You may pay an additional {2} as you cast a creature spell. If you do, when that creature enters, create a 1/1 token copy of it.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "104",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  }
+ ]
+}

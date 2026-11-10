@@ -1,0 +1,296 @@
+{
+ "batch": 6,
+ "theme": "Pirates",
+ "reuse": "tribal_lords.go; 'one or more Pirates deal combat damage' batch triggers (grep 'one or more .* deal combat damage'); Francisco's single explore: game/explore.go (works today; s2 only adds the replacement window); finality counter reanimation: game/finality_counters.go; 'dealt combat damage by three or more Pirates this turn' reads TurnTally.DamagedObjects-style records (game/dealt_damage_by.go) — check the player-damage tally before writing; 'loses all abilities and has base P/T 0/1': layers 6/7b scoped effect; 2/2 Pirate with menace and 2/2 Skeleton Pirate tokens are both new and both here.",
+ "pair": 5,
+ "cards": [
+  {
+   "name": "Admiral Beckett Brass",
+   "oracle_id": "43b5e462-d860-473d-828f-6c513fc7768a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Pirate",
+   "oracle_text": "Other Pirates you control get +1/+1.\nAt the beginning of your end step, gain control of target nonland permanent controlled by a player who was dealt combat damage by three or more Pirates this turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "264",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Brazen Boarding",
+     "type_line": "Sorcery",
+     "oracle_text": "Brazen Boarding deals 4 damage to target creature or planeswalker. If excess damage is dealt this way, conjure a card with mana value equal to that excess damage from Brazen Boarding's spellbook onto the battlefield. If that excess damage is 4 or greater, instead conjure a card named Admiral Beckett Brass onto the battlefield.",
+     "colors": [
+      "R",
+      "U"
+     ],
+     "keywords": [
+      "Conjure"
+     ],
+     "set": "ylci",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Dire Fleet Ravager",
+   "oracle_id": "b83080af-9616-4dc3-bc47-6ef84b9ccc1b",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Orc Pirate Wizard",
+   "oracle_text": "Menace, deathtouch\nWhen this creature enters, each player loses a third of their life, rounded up.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace",
+    "Deathtouch"
+   ],
+   "collector_number": "132",
+   "set": "otc"
+  },
+  {
+   "name": "Ramirez DePietro, Pillager",
+   "oracle_id": "a3b8690e-ac47-444f-924e-ab2a12a85431",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Pirate",
+   "oracle_text": "When Ramirez DePietro enters, you lose 2 life and create two Treasure tokens.\nWhenever one or more Pirates you control deal combat damage to a player, exile the top card of that player's library. You may cast that card for as long as it remains exiled.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "285",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "tlci",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Admiral Brass, Unsinkable",
+   "oracle_id": "4df179b4-7c6b-4e63-9d7d-62f4df377989",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{B}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Human Pirate",
+   "oracle_text": "When Admiral Brass enters, mill four cards.\nAt the beginning of combat on your turn, you may return target Pirate creature card from your graveyard to the battlefield with a finality counter on it. It has base power and toughness 4/4. It gains haste until end of turn. (If a creature with a finality counter on it would die, exile it instead.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "17",
+   "set": "lcc"
+  },
+  {
+   "name": "Francisco, Fowl Marauder",
+   "oracle_id": "1dbe4eb4-8313-459a-89ce-982442cd0cd0",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Bird Pirate",
+   "oracle_text": "Flying\nFrancisco can't block.\nWhenever one or more Pirates you control deal damage to a player, Francisco explores.\nPartner (You can have two commanders if both have partner.)",
+   "power": "0",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Partner",
+    "Explore"
+   ],
+   "collector_number": "81",
+   "set": "lcc"
+  },
+  {
+   "name": "Daring Saboteur",
+   "oracle_id": "d36f64a0-53f7-4c56-9f40-a7927a5c2608",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Pirate",
+   "oracle_text": "{2}{U}: This creature can't be blocked this turn.\nWhenever this creature deals combat damage to a player, you may draw a card. If you do, discard a card.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "151",
+   "set": "lcc"
+  },
+  {
+   "name": "Fathom Fleet Captain",
+   "oracle_id": "7bcf3090-95c6-4384-a857-9fe571e6da85",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Pirate",
+   "oracle_text": "Menace\nWhenever this creature attacks, if you control another nontoken Pirate, you may pay {2}. If you do, create a 2/2 black Pirate creature token with menace.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "197",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Pirate",
+     "type_line": "Token Creature — Pirate",
+     "oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B"
+     ],
+     "keywords": [
+      "Menace"
+     ],
+     "set": "tlcc",
+     "collector_number": "5"
+    }
+   ]
+  },
+  {
+   "name": "Warkite Marauder",
+   "oracle_id": "8b566757-e5e4-4d47-b5ef-80ed7d853679",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Pirate",
+   "oracle_text": "Flying\nWhenever this creature attacks, target creature defending player controls loses all abilities and has base power and toughness 0/1 until end of turn.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "179",
+   "set": "lcc"
+  },
+  {
+   "name": "Skeleton Crew",
+   "oracle_id": "2536750c-3c4f-4e00-b517-680ad4fd2ecc",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Skeleton Pirate",
+   "oracle_text": "Each other creature you control that's a Skeleton or Pirate gets +1/+1.\nWhenever one or more creature cards leave your graveyard, create a 2/2 black Skeleton Pirate creature token. (This ability triggers only from the battlefield.)\n{5}{B}: Return this card from your graveyard to the battlefield tapped.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "85",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Skeleton Pirate",
+     "type_line": "Token Creature — Skeleton Pirate",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B"
+     ],
+     "keywords": [],
+     "set": "tlci",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Merchant Raiders",
+   "oracle_id": "8b388331-eaa7-41aa-99de-4451e51cb221",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Pirate",
+   "oracle_text": "Whenever this creature or another Pirate you control enters, tap up to one target creature. That creature doesn't untap during its controller's untap step for as long as you control this creature.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "163",
+   "set": "lcc"
+  }
+ ]
+}

@@ -1,0 +1,381 @@
+{
+ "batch": 9,
+ "theme": "Vampires: lords, tokens, Vampire Demon",
+ "reuse": "1/1 white Vampire with lifelink (March of the Canonized, Elenda's Hierophant, Martyr of Dusk) and the 4/3 W/B Vampire Demon with flying (Clavileño, March of the Canonized, Promise of Aclazotz; exists: tokens_table.go, canonized_in_blood.go, vito_fanatic_of_aclazotz.go) are all in this batch; convoke: Convoke(); exalted: game/exalted.go; coven precedents: grep 'Coven'; devotion to two colours: grep 'devotion to'; populate: game populate helpers; adventure (Promise of Aclazotz): game/adventure.go; restricted mana (Master of Dark Rites): spend_only.go.",
+ "pair": 10,
+ "cards": [
+  {
+   "name": "Order of Sacred Dusk",
+   "oracle_id": "0cb41c3f-5e6a-4c63-80b5-c9ab84b4e4bf",
+   "layout": "normal",
+   "mana_cost": "{6}{W}{B}",
+   "cmc": 8.0,
+   "type_line": "Creature — Vampire Knight",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFlying, lifelink, haste\nExalted (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.)\nOther Vampires you control have exalted.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink",
+    "Exalted",
+    "Haste",
+    "Convoke"
+   ],
+   "collector_number": "65",
+   "set": "lcc"
+  },
+  {
+   "name": "Vona, Butcher of Magan",
+   "oracle_id": "b1c56e23-eae6-47a1-a1cd-3a2d01621768",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Vampire Knight",
+   "oracle_text": "Vigilance, lifelink\n{T}, Pay 7 life: Destroy target nonland permanent. Activate only during your turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Vigilance"
+   ],
+   "collector_number": "293",
+   "set": "lcc"
+  },
+  {
+   "name": "Master of Dark Rites",
+   "oracle_id": "a65250f6-55e2-47ed-a355-d690047db6f2",
+   "layout": "normal",
+   "mana_cost": "{B}",
+   "cmc": 1.0,
+   "type_line": "Creature — Vampire Cleric",
+   "oracle_text": "{T}, Sacrifice another creature: Add {B}{B}{B}. Spend this mana only to cast Vampire, Cleric, and/or Demon spells.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B"
+   ],
+   "collector_number": "51",
+   "set": "lcc"
+  },
+  {
+   "name": "Elenda's Hierophant",
+   "oracle_id": "cb99c675-adc5-4dad-8be8-524f5f921213",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Vampire Cleric",
+   "oracle_text": "Flying\nWhenever you gain life, put a +1/+1 counter on this creature.\nWhen this creature dies, create X 1/1 white Vampire creature tokens with lifelink, where X is its power.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "39",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Vampire",
+     "type_line": "Token Creature — Vampire",
+     "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Lifelink"
+     ],
+     "set": "tlci",
+     "collector_number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Martyr of Dusk",
+   "oracle_id": "794aaf8a-6d8e-41fb-acbe-a2b73d65d9d9",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Vampire Soldier",
+   "oracle_text": "When this creature dies, create a 1/1 white Vampire creature token with lifelink.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "132",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Vampire",
+     "type_line": "Token Creature — Vampire",
+     "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Lifelink"
+     ],
+     "set": "tlci",
+     "collector_number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Bloodtracker",
+   "oracle_id": "fcf9ced2-867d-4bc5-b7b6-6153ed2cac97",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Vampire Wizard",
+   "oracle_text": "Flying\n{B}, Pay 2 life: Put a +1/+1 counter on this creature.\nWhen this creature leaves the battlefield, draw a card for each +1/+1 counter on it.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "186",
+   "set": "lcc"
+  },
+  {
+   "name": "Redemption Choir",
+   "oracle_id": "90c62b27-027a-44a3-8d21-3c62701b18a8",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Vampire Cleric",
+   "oracle_text": "Lifelink\nCoven — Whenever this creature enters or attacks, if you control three or more creatures with different powers, return target permanent card with mana value 3 or less from your graveyard to the battlefield.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Coven"
+   ],
+   "collector_number": "74",
+   "set": "lcc"
+  },
+  {
+   "name": "Olivia's Wrath",
+   "oracle_id": "9aebd891-c8c5-4309-a07b-6cab1b204172",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each non-Vampire creature gets -X/-X until end of turn, where X is the number of Vampires you control.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "205",
+   "set": "lcc"
+  },
+  {
+   "name": "March of the Canonized",
+   "oracle_id": "9eb427ab-1483-4c40-8cb2-fd463e1e5fe0",
+   "layout": "normal",
+   "mana_cost": "{X}{W}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create X 1/1 white Vampire creature tokens with lifelink.\nAt the beginning of your upkeep, if your devotion to white and black is seven or greater, create a 4/3 white and black Vampire Demon creature token with flying.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "73",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Vampire Demon",
+     "type_line": "Token Creature — Vampire Demon",
+     "oracle_text": "Flying",
+     "power": "4",
+     "toughness": "3",
+     "colors": [
+      "B",
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tlci",
+     "collector_number": "15"
+    },
+    {
+     "component": "token",
+     "name": "Vampire",
+     "type_line": "Token Creature — Vampire",
+     "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Lifelink"
+     ],
+     "set": "tlci",
+     "collector_number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Promise of Aclazotz // Foul Rebirth",
+   "oracle_id": "4ef4b4f9-47cd-4862-8cbb-b6e624d6e6fc",
+   "layout": "adventure",
+   "mana_cost": "{1}{B} // {2}{B}",
+   "cmc": 2.0,
+   "type_line": "Enchantment // Sorcery — Adventure",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Populate"
+   ],
+   "collector_number": "52",
+   "set": "lcc",
+   "card_faces": [
+    {
+     "name": "Promise of Aclazotz",
+     "mana_cost": "{1}{B}",
+     "type_line": "Enchantment",
+     "oracle_text": "At the beginning of your end step, you may sacrifice a non-Demon creature. If you do, populate. (Create a token that's a copy of a creature token you control.)"
+    },
+    {
+     "name": "Foul Rebirth",
+     "mana_cost": "{2}{B}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Sacrifice a non-Demon creature. If you do, create a 4/3 white and black Vampire Demon creature token with flying."
+    }
+   ],
+   "related": [
+    {
+     "component": "token",
+     "name": "Vampire Demon",
+     "type_line": "Token Creature — Vampire Demon",
+     "oracle_text": "Flying",
+     "power": "4",
+     "toughness": "3",
+     "colors": [
+      "B",
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tlci",
+     "collector_number": "15"
+    },
+    {
+     "component": "combo_piece",
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "oracle_text": "After an Adventure resolves, you can place the exiled card here. You may cast the creature from exile.",
+     "colors": [],
+     "keywords": [],
+     "set": "thob",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Clavileño, First of the Blessed",
+   "oracle_id": "2b62a716-7831-4c76-8f2d-b99b04e33350",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vampire Cleric",
+   "oracle_text": "Whenever you attack, target attacking Vampire that isn't a Demon becomes a Demon in addition to its other types. It gains \"When this creature dies, draw a card and create a tapped 4/3 white and black Vampire Demon creature token with flying.\"",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Vampire Demon",
+     "type_line": "Token Creature — Vampire Demon",
+     "oracle_text": "Flying",
+     "power": "4",
+     "toughness": "3",
+     "colors": [
+      "B",
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tlci",
+     "collector_number": "15"
+    }
+   ]
+  }
+ ]
+}

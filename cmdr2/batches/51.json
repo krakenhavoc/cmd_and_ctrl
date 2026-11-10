@@ -1,0 +1,288 @@
+{
+ "batch": 51,
+ "theme": "Planeswalkers",
+ "reuse": "docs 'Emblems', 'Planeswalker statics, eminence and loyalty timing' (ADR 0140), game/emblem.go, loyalty_limit.go; static on a planeswalker (Tezzeret's 'first activated ability of an artifact you activate each turn costs {2} less': game/activated.go:2698 first-activation record + cost_modifier.go; Nissa's Forest mana trigger: mana_trigger.go; Professor Onyx's magecraft: Magecraft()); 'target opponent gets an emblem': chandra_awakened_inferno.go; emblem alt cost (Tamiyo): GrantedAltCostFree; 'until your next turn, whenever …' (Tamiyo +1): jace_reality_sculptor.go, garruk_curse_breaker.go; land animation with counters (Nissa +1): manland precedents; Wolf tokens with a dies trigger (Garruk) and '*/* Treefolk with reach' (Wrenn and Seven) are new tokens only here; 'repeat this process six more times' (Onyx -8) is a loop of keyed per-opponent choices; Liliana, Death Wielder uses plain -1/-1 counters. Grist is a seam card (s4), not here.",
+ "pair": 52,
+ "cards": [
+  {
+   "name": "Nissa, Who Shakes the World",
+   "oracle_id": "5aa3abf1-d56b-4f42-8c84-7e5a2c15ee0f",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Planeswalker — Nissa",
+   "oracle_text": "Whenever you tap a Forest for mana, add an additional {G}.\n+1: Put three +1/+1 counters on up to one target noncreature land you control. Untap it. It becomes a 0/0 Elemental creature with vigilance and haste that's still a land.\n−8: You get an emblem with \"Lands you control have indestructible.\" Search your library for any number of Forest cards, put them onto the battlefield tapped, then shuffle.",
+   "loyalty": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "84",
+   "set": "blc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Nissa, Who Shakes the World Emblem",
+     "type_line": "Emblem — Nissa",
+     "oracle_text": "Lands you control have indestructible.",
+     "colors": [],
+     "keywords": [],
+     "set": "twar",
+     "collector_number": "19"
+    }
+   ]
+  },
+  {
+   "name": "Wrenn and Seven",
+   "oracle_id": "63a509ea-cedc-40e9-b4e8-0ff4fc356485",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Planeswalker — Wrenn",
+   "oracle_text": "+1: Reveal the top four cards of your library. Put all land cards revealed this way into your hand and the rest into your graveyard.\n0: Put any number of land cards from your hand onto the battlefield tapped.\n−3: Create a green Treefolk creature token with reach and \"This token's power and toughness are each equal to the number of lands you control.\"\n−8: Return all permanent cards from your graveyard to your hand. You get an emblem with \"You have no maximum hand size.\"",
+   "loyalty": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "207",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treefolk",
+     "type_line": "Token Creature — Treefolk",
+     "oracle_text": "Reach\nThis creature's power and toughness are each equal to the number of lands you control.",
+     "power": "*",
+     "toughness": "*",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Reach"
+     ],
+     "set": "tdsc",
+     "collector_number": "17"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Wrenn and Seven Emblem",
+     "type_line": "Emblem",
+     "oracle_text": "You have no maximum hand size.",
+     "colors": [],
+     "keywords": [],
+     "set": "tinr",
+     "collector_number": "27"
+    }
+   ]
+  },
+  {
+   "name": "Tezzeret, Betrayer of Flesh",
+   "oracle_id": "5dedd5a9-bc5d-47bb-9ae1-7d683843d041",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Tezzeret",
+   "oracle_text": "The first activated ability of an artifact you activate each turn costs {2} less to activate.\n+1: Draw two cards. Then discard two cards unless you discard an artifact card.\n−2: Target artifact becomes an artifact creature. If it isn't a Vehicle, it has base power and toughness 4/4.\n−6: You get an emblem with \"Whenever an artifact you control becomes tapped, draw a card.\"",
+   "loyalty": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "120",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Tezzeret, Betrayer of Flesh Emblem",
+     "type_line": "Emblem",
+     "oracle_text": "Whenever an artifact you control becomes tapped, draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tneo",
+     "collector_number": "19"
+    }
+   ]
+  },
+  {
+   "name": "Garruk, Cursed Huntsman",
+   "oracle_id": "e0cef79c-ad47-4cbc-9d73-a913e487ccb7",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Planeswalker — Garruk",
+   "oracle_text": "0: Create two 2/2 black and green Wolf creature tokens with \"When this token dies, put a loyalty counter on each Garruk you control.\"\n−3: Destroy target creature. Draw a card.\n−6: You get an emblem with \"Creatures you control get +3/+3 and have trample.\"",
+   "loyalty": "5",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "99",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Wolf",
+     "type_line": "Token Creature — Wolf",
+     "oracle_text": "When this creature dies, put a loyalty counter on each Garruk you control.",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B",
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "35"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Garruk, Cursed Huntsman Emblem",
+     "type_line": "Emblem",
+     "oracle_text": "Creatures you control get +3/+3 and have trample.",
+     "colors": [],
+     "keywords": [],
+     "set": "teld",
+     "collector_number": "19"
+    }
+   ]
+  },
+  {
+   "name": "Tamiyo, Field Researcher",
+   "oracle_id": "9cf99129-f51a-4418-a8cc-8ca2992b17fa",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Planeswalker — Tamiyo",
+   "oracle_text": "+1: Choose up to two target creatures. Until your next turn, whenever either of those creatures deals combat damage, you draw a card.\n−2: Tap up to two target nonland permanents. They don't untap during their controller's next untap step.\n−7: Draw three cards. You get an emblem with \"You may cast spells from your hand without paying their mana costs.\"",
+   "loyalty": "4",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "100",
+   "set": "blc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Tamiyo, Field Researcher Emblem",
+     "type_line": "Emblem — Tamiyo",
+     "oracle_text": "You may cast nonland cards from your hand without paying their mana costs.",
+     "colors": [],
+     "keywords": [],
+     "set": "tinr",
+     "collector_number": "26"
+    }
+   ]
+  },
+  {
+   "name": "Ob Nixilis Reignited",
+   "oracle_id": "65481ae1-54b2-44d2-91e1-20cd486386da",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Planeswalker — Nixilis",
+   "oracle_text": "+1: You draw a card and you lose 1 life.\n−3: Destroy target creature.\n−8: Target opponent gets an emblem with \"Whenever a player draws a card, you lose 2 life.\"",
+   "loyalty": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "152",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Ob Nixilis Reignited Emblem",
+     "type_line": "Emblem — Nixilis",
+     "oracle_text": "Whenever a player draws a card, you lose 2 life.",
+     "colors": [],
+     "keywords": [],
+     "set": "tc19",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Liliana, Death Wielder",
+   "oracle_id": "e1b6cc44-41b6-43d0-9fe9-722cebb1c47b",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Legendary Planeswalker — Liliana",
+   "oracle_text": "+2: Put a -1/-1 counter on up to one target creature.\n−3: Destroy target creature with a -1/-1 counter on it.\n−10: Return all creature cards from your graveyard to the battlefield.",
+   "loyalty": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "78",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Liliana's Influence",
+     "type_line": "Sorcery",
+     "oracle_text": "Put a -1/-1 counter on each creature you don't control. You may search your library and/or graveyard for a card named Liliana, Death Wielder, reveal it, and put it into your hand. If you search your library this way, shuffle.",
+     "colors": [
+      "B"
+     ],
+     "keywords": [],
+     "set": "akh",
+     "collector_number": "277"
+    }
+   ]
+  },
+  {
+   "name": "Professor Onyx",
+   "oracle_id": "9df2e909-ed13-456a-9636-7398732009a9",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Planeswalker — Liliana",
+   "oracle_text": "Magecraft — Whenever you cast or copy an instant or sorcery spell, each opponent loses 2 life and you gain 2 life.\n+1: You lose 1 life. Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.\n−3: Each opponent sacrifices a creature with the greatest power among creatures that player controls.\n−8: Each opponent may discard a card. If they don't, they lose 3 life. Repeat this process six more times.",
+   "loyalty": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Magecraft"
+   ],
+   "collector_number": "153",
+   "set": "dsc"
+  }
+ ]
+}

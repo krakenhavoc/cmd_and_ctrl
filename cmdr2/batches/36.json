@@ -1,0 +1,336 @@
+{
+ "batch": 36,
+ "theme": "Morph: megamorph payoffs, returns face down, spell theft",
+ "reuse": "Megamorph(); 'As this creature is turned face up, put five +1/+1 counters' is a replacement on the turn-up, not a trigger: crowd_control_warden.go, bubble_smuggler.go; return to the battlefield face down (Ashcloud Phoenix, Deathmist Raptor 'face up or face down'): game/face_down.go, battlefield_put.go; 'whenever a permanent you control is turned face up' shared here; exile a spell and cast it later free (Smirking Spelljacker, Kheru Spellsnatcher's counter-then-exile) is one helper for both: aven_interrupter.go, game/exile_spell_keyed.go, exile_play.go.",
+ "pair": 35,
+ "cards": [
+  {
+   "name": "Ainok Survivalist",
+   "oracle_id": "7a5dae5f-29ab-4996-b236-c754de8769bc",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Dog Shaman",
+   "oracle_text": "Megamorph {1}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its megamorph cost and put a +1/+1 counter on it.)\nWhen this creature is turned face up, destroy target artifact or enchantment an opponent controls.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Megamorph"
+   ],
+   "collector_number": "165",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Hidden Dragonslayer",
+   "oracle_id": "862af5c4-cb34-4bfa-a7ff-209e103defd6",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Warrior",
+   "oracle_text": "Lifelink\nMegamorph {2}{W} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its megamorph cost and put a +1/+1 counter on it.)\nWhen this creature is turned face up, destroy target creature with power 4 or greater an opponent controls.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Megamorph"
+   ],
+   "collector_number": "69",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Den Protector",
+   "oracle_id": "59324efc-65b7-4b31-89c5-17aed5c7eeb1",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Warrior",
+   "oracle_text": "Creatures with power less than this creature's power can't block it.\nMegamorph {1}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its megamorph cost and put a +1/+1 counter on it.)\nWhen this creature is turned face up, return target card from your graveyard to your hand.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Megamorph"
+   ],
+   "collector_number": "169",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Salt Road Ambushers",
+   "oracle_id": "2373e035-25f7-473a-9386-2093f77d3f94",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dog Warrior",
+   "oracle_text": "Whenever another permanent you control is turned face up, if it's a creature, put two +1/+1 counters on it.\nMegamorph {3}{G}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its megamorph cost and put a +1/+1 counter on it.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Megamorph"
+   ],
+   "collector_number": "184",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Deathmist Raptor",
+   "oracle_id": "a7d4f5aa-26d4-4363-aa5a-a26d6f791b82",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dinosaur Beast",
+   "oracle_text": "Deathtouch\nWhenever a permanent you control is turned face up, you may return this card from your graveyard to the battlefield face up or face down.\nMegamorph {4}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its megamorph cost and put a +1/+1 counter on it.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Megamorph",
+    "Deathtouch"
+   ],
+   "collector_number": "168",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Hooded Hydra",
+   "oracle_id": "637ddd65-112d-40f7-9bab-a61724d9165c",
+   "layout": "normal",
+   "mana_cost": "{X}{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Snake Hydra",
+   "oracle_text": "This creature enters with X +1/+1 counters on it.\nWhen this creature dies, create a 1/1 green Snake creature token for each +1/+1 counter on it.\nMorph {3}{G}{G}\nAs this creature is turned face up, put five +1/+1 counters on it.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "171",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    },
+    {
+     "component": "token",
+     "name": "Snake",
+     "type_line": "Token Creature — Snake",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Ashcloud Phoenix",
+   "oracle_id": "fb2d7c3d-b68f-410e-9a73-cfcbfe702ade",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Phoenix",
+   "oracle_text": "Flying\nWhen this creature dies, return it to the battlefield face down under your control.\nMorph {4}{R}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, it deals 2 damage to each player.",
+   "power": "4",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Morph"
+   ],
+   "collector_number": "147",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Kheru Spellsnatcher",
+   "oracle_id": "c01411e0-77b2-4e65-a369-5dbe13745769",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Snake Wizard",
+   "oracle_text": "Morph {4}{U}{U} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard. You may cast that card without paying its mana cost for as long as it remains exiled.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "119",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tc19",
+     "collector_number": "27"
+    }
+   ]
+  },
+  {
+   "name": "Smirking Spelljacker",
+   "oracle_id": "b23c28ec-dc4d-4072-8fd8-6640a104335a",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Djinn Wizard Rogue",
+   "oracle_text": "Flash\nFlying\nWhen this creature enters, exile target spell an opponent controls.\nWhenever this creature attacks, if a card is exiled with it, you may cast the exiled card without paying its mana cost.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "16",
+   "set": "otc"
+  }
+ ]
+}

@@ -1,0 +1,294 @@
+{
+ "batch": 12,
+ "theme": "Elementals, evoke and reveal-a-card lands",
+ "reuse": "Evoke(cost) in effects/alternative_cost.go (37 evoke cards on develop); vivid: precedents wildvine_pummeler.go, squawkroaster.go; '*/* equal to the number of creatures you control' token (Vernal Sovereign) is new and only here; Horde of Notions: free play from graveyard (game/cast_permission.go, exile_play.go); Incandescent Soulstoke: put-from-hand + haste + delayed sacrifice. 'As this land enters, you may reveal a <type> card from your hand. If you don't, it enters tapped' (Primal Beyond, Flamekin Village, Secluded Glen) is one shape, all three here; 'spend this mana only to cast Elemental spells or activate abilities of Elementals' (Primal Beyond, Smokebraider): spend_only.go, one helper, both here. Ashling is a seam card (s5), not here.",
+ "pair": 11,
+ "cards": [
+  {
+   "name": "Elemental Spectacle",
+   "oracle_id": "dd963396-3f81-49ad-a68e-87b9764d7ac5",
+   "layout": "normal",
+   "mana_cost": "{5}{G}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Vivid — Create a number of 5/5 red and green Elemental creature tokens equal to the number of colors among permanents you control. Then you gain life equal to the number of creatures you control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vivid"
+   ],
+   "collector_number": "35",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Elemental",
+     "type_line": "Token Creature — Elemental",
+     "oracle_text": "",
+     "power": "5",
+     "toughness": "5",
+     "colors": [
+      "G",
+      "R"
+     ],
+     "keywords": [],
+     "set": "tecc",
+     "collector_number": "9"
+    }
+   ]
+  },
+  {
+   "name": "Vernal Sovereign",
+   "oracle_id": "bf30b8ae-0125-4a00-bae8-ac1aa7703a08",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental Elk",
+   "oracle_text": "Whenever this creature enters or attacks, create a green and white Elemental creature token with \"This token's power and toughness are each equal to the number of creatures you control.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "135",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Elemental",
+     "type_line": "Token Creature — Elemental",
+     "oracle_text": "This creature's power and toughness are each equal to the number of creatures you control.",
+     "power": "*",
+     "toughness": "*",
+     "colors": [
+      "G",
+      "W"
+     ],
+     "keywords": [],
+     "set": "tecc",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Shriekmaw",
+   "oracle_id": "717bbb9d-0a5b-4979-a24b-9d54aac7657a",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Fear (This creature can't be blocked except by artifact creatures and/or black creatures.)\nWhen this creature enters, destroy target nonartifact, nonblack creature.\nEvoke {1}{B} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Evoke",
+    "Fear"
+   ],
+   "collector_number": "139",
+   "set": "mkc"
+  },
+  {
+   "name": "Incandescent Soulstoke",
+   "oracle_id": "934bd9f9-937b-4c6b-a849-012ae6bd3321",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elemental Shaman",
+   "oracle_text": "Other Elemental creatures you control get +1/+1.\n{1}{R}, {T}: You may put an Elemental creature card from your hand onto the battlefield. That creature gains haste until end of turn. Sacrifice it at the beginning of the next end step.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "94",
+   "set": "ecc"
+  },
+  {
+   "name": "Ingot Chewer",
+   "oracle_id": "127795e6-3f0e-4318-95ad-ccb1912580ac",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "When this creature enters, destroy target artifact.\nEvoke {R} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Evoke"
+   ],
+   "collector_number": "95",
+   "set": "ecc"
+  },
+  {
+   "name": "Horde of Notions",
+   "oracle_id": "a7656948-4d7d-47f7-b8a1-fc9716155e37",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elemental",
+   "oracle_text": "Vigilance, trample, haste\n{W}{U}{B}{R}{G}: You may play target Elemental card from your graveyard without paying its mana cost.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "124",
+   "set": "ecc"
+  },
+  {
+   "name": "End-Raze Forerunners",
+   "oracle_id": "69b52907-8aff-4f2a-a391-7d1ab2669b5c",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}{G}",
+   "cmc": 8.0,
+   "type_line": "Creature — Boar",
+   "oracle_text": "Vigilance, trample, haste\nWhen this creature enters, other creatures you control get +2/+2 and gain vigilance and trample until end of turn.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance",
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "214",
+   "set": "blc"
+  },
+  {
+   "name": "Smokebraider",
+   "oracle_id": "e970f2df-90cb-45b8-8ae5-71b762908925",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elemental Shaman",
+   "oracle_text": "{T}: Add two mana in any combination of colors. Spend this mana only to cast Elemental spells or activate abilities of Elementals.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "96",
+   "set": "ecc"
+  },
+  {
+   "name": "Primal Beyond",
+   "oracle_id": "541744d9-449d-420a-a5a1-2fffba18450f",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "As this land enters, you may reveal an Elemental card from your hand. If you don't, this land enters tapped.\n{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast an Elemental spell or activate an ability of an Elemental.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "159",
+   "set": "ecc"
+  },
+  {
+   "name": "Flamekin Village",
+   "oracle_id": "34a1eb04-08f6-49d8-a1d1-b987a76bd8b1",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "As this land enters, you may reveal an Elemental card from your hand. If you don't, this land enters tapped.\n{T}: Add {R}.\n{R}, {T}: Target creature gains haste until end of turn.",
+   "colors": [],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "R"
+   ],
+   "collector_number": "149",
+   "set": "ecc"
+  },
+  {
+   "name": "Secluded Glen",
+   "oracle_id": "09f52275-99e6-45e0-b2db-cafe26d5fb91",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "As this land enters, you may reveal a Faerie card from your hand. If you don't, this land enters tapped.\n{T}: Add {U} or {B}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "U"
+   ],
+   "collector_number": "166",
+   "set": "woc"
+  }
+ ]
+}

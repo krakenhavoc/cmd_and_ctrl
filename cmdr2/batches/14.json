@@ -1,0 +1,373 @@
+{
+ "batch": 14,
+ "theme": "Desert payoffs and lands in the graveyard",
+ "reuse": "New tokens, both shared only here: 1/1 R/G/W Sand Warrior (Hazezon, Sand Scout) and 4/2 green Plant Warrior with reach (Yuma, Vengeful Regrowth); 'whenever one or more land cards are put into your graveyard from anywhere' (Turntimber Sower, Sand Scout, Skola Grovedancer, Yuma's Desert variant) is ONE helper for the batch; 'costs {1} less for each land card in your graveyard' (Yuma, Rumbleweed): self_cost_modifier.go; 'play lands/Forests/Deserts from your graveyard': game/cast_permission.go standing permission (Crucible shape; grep 'play lands from your graveyard'); Dune Chanter's off-battlefield Desert typing: effects/zone_layer_statics.go + game/zone_layers.go (Maskwood Nexus precedent); 'mana from a Desert spent': game/mana_source.go, mana_spent.go (smaug_wicked_worm.go); desertwalk: game/landwalk.go.",
+ "pair": 13,
+ "cards": [
+  {
+   "name": "Yuma, Proud Protector",
+   "oracle_id": "b8a0b967-3b5b-46f5-830b-5c8f1037784a",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{G}{W}",
+   "cmc": 8.0,
+   "type_line": "Legendary Creature — Human Ranger",
+   "oracle_text": "This spell costs {1} less to cast for each land card in your graveyard.\nWhenever Yuma enters or attacks, you may sacrifice a land. If you do, draw a card.\nWhenever a Desert card is put into your graveyard from anywhere, create a 4/2 green Plant Warrior creature token with reach.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "4",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Plant Warrior",
+     "type_line": "Token Creature — Plant Warrior",
+     "oracle_text": "Reach",
+     "power": "4",
+     "toughness": "2",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Reach"
+     ],
+     "set": "totc",
+     "collector_number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Hazezon, Shaper of Sand",
+   "oracle_id": "66b16cb3-c2b1-447c-a4b0-a67326c99f20",
+   "layout": "normal",
+   "mana_cost": "{R}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Desertwalk (This creature can't be blocked as long as defending player controls a Desert.)\nYou may play Desert lands from your graveyard.\nWhenever a Desert you control enters, create two 1/1 red, green, and white Sand Warrior creature tokens.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Landwalk",
+    "Desertwalk"
+   ],
+   "collector_number": "229",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Sand Warrior",
+     "type_line": "Token Creature — Sand Warrior",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G",
+      "R",
+      "W"
+     ],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Sand Scout",
+   "oracle_id": "ca9f9017-c952-4e89-b284-02396e6be0af",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Scout",
+   "oracle_text": "When this creature enters, if an opponent controls more lands than you, search your library for a Desert card, put it onto the battlefield tapped, then shuffle.\nWhenever one or more land cards are put into your graveyard from anywhere, create a 1/1 red, green, and white Sand Warrior creature token. This ability triggers only once each turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "47",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Sand Warrior",
+     "type_line": "Token Creature — Sand Warrior",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G",
+      "R",
+      "W"
+     ],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Vengeful Regrowth",
+   "oracle_id": "c4d05f64-d1bb-4725-81ba-baf737f3066c",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return up to three target land cards from your graveyard to the battlefield tapped. Create that many 4/2 green Plant Warrior creature tokens with reach.\nFlashback {6}{G}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "71",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Plant Warrior",
+     "type_line": "Token Creature — Plant Warrior",
+     "oracle_text": "Reach",
+     "power": "4",
+     "toughness": "2",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Reach"
+     ],
+     "set": "totc",
+     "collector_number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Dune Chanter",
+   "oracle_id": "7811b50d-af76-43cd-8753-43cf65fbefa3",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Plant Druid",
+   "oracle_text": "Reach\nLands you control and land cards you own that aren't on the battlefield are Deserts in addition to their other types.\nLands you control have \"{T}: Add one mana of any color.\"\n{T}: Mill two cards. You gain 1 life for each land card milled this way.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Mill"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "31",
+   "set": "otc"
+  },
+  {
+   "name": "Cataclysmic Prospecting",
+   "oracle_id": "76dc9452-4e81-4152-bb4d-cdec6db767ed",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Cataclysmic Prospecting deals X damage to each creature. For each mana from a Desert spent to cast this spell, create a tapped Treasure token.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure"
+   ],
+   "collector_number": "24",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Titania, Nature's Force",
+   "oracle_id": "46c3a69a-4984-40b0-905f-4b0762c7ad72",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Elemental",
+   "oracle_text": "You may play Forests from your graveyard.\nWhenever a Forest you control enters, create a 5/3 green Elemental creature token.\nWhenever an Elemental you control dies, you may mill three cards.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "202",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Elemental",
+     "type_line": "Token Creature — Elemental",
+     "oracle_text": "",
+     "power": "5",
+     "toughness": "3",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tdsc",
+     "collector_number": "9"
+    }
+   ]
+  },
+  {
+   "name": "Perennial Behemoth",
+   "oracle_id": "ee4b7aca-31dd-4369-8e85-b300892b9b41",
+   "layout": "normal",
+   "mana_cost": "{5}",
+   "cmc": 5.0,
+   "type_line": "Artifact Creature — Beast",
+   "oracle_text": "You may play lands from your graveyard.\nUnearth {G}{G} ({G}{G}: Return this card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield. Unearth only as a sorcery.)",
+   "power": "2",
+   "toughness": "7",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Unearth"
+   ],
+   "collector_number": "262",
+   "set": "otc"
+  },
+  {
+   "name": "Turntimber Sower",
+   "oracle_id": "23d7d8ba-5237-4ffc-bd5f-b07ff9ec73af",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "Whenever one or more land cards are put into your graveyard from anywhere, create a 0/1 green Plant creature token.\n{G}, Sacrifice three creatures: Return target land card from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "211",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Plant",
+     "type_line": "Token Creature — Plant",
+     "oracle_text": "",
+     "power": "0",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "19"
+    }
+   ]
+  },
+  {
+   "name": "Skola Grovedancer",
+   "oracle_id": "0e3246ef-e0b4-49bc-a715-b69c4b6be461",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment Creature — Satyr Druid",
+   "oracle_text": "Whenever a land card is put into your graveyard from anywhere, you gain 1 life.\n{2}{G}: Mill a card. (Put the top card of your library into your graveyard.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "199",
+   "set": "dsc"
+  },
+  {
+   "name": "Rumbleweed",
+   "oracle_id": "9cfc01a7-e291-4388-bd09-94846d72e291",
+   "layout": "normal",
+   "mana_cost": "{10}{G}",
+   "cmc": 11.0,
+   "type_line": "Creature — Plant Elemental",
+   "oracle_text": "This spell costs {1} less to cast for each land card in your graveyard.\nReach, vigilance, trample\nWhen this creature enters, other creatures you control get +3/+3 and gain trample until end of turn.",
+   "power": "8",
+   "toughness": "8",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Vigilance",
+    "Trample"
+   ],
+   "collector_number": "68",
+   "set": "otc"
+  }
+ ]
+}

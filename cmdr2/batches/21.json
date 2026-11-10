@@ -1,0 +1,248 @@
+{
+ "batch": 21,
+ "theme": "Equipment, artifact creatures, a Vehicle and base-P/T matters",
+ "reuse": "EquipAbility(), EquipAbilitiesYouActivateCostLess-style cost changes (equip costs less with few cards in hand: self cost modifier on the ability); 'draw two, then discard two unless you discard a <type> card' (Arm-Mounted Anchor) — the same sentence is on Thirst for Meaning (batch 27) and Tezzeret (batch 51): grep 'unless you discard' and reuse; 'creature with base power/toughness N' predicates (Sword of the Squeak, Duskana, Rapid Augmenter) are one small helper for this batch; Hamster 1/1 token new and only here; Thopter 1/1 and 3/3 Phyrexian Golem tokens exist (splicers_skill.go); crew: CrewCost().",
+ "pair": 22,
+ "cards": [
+  {
+   "name": "Winged Boots",
+   "oracle_id": "a178a789-1f5f-46ca-a90b-574bd236a671",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature has flying and ward {4}. (Whenever equipped creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {4}.)\nEquip {1}",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "124",
+   "set": "otc"
+  },
+  {
+   "name": "Arm-Mounted Anchor",
+   "oracle_id": "70f3bc78-201f-4c56-b87b-9e8f2db9f7f7",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +2/+2 and has menace.\nWhenever equipped creature deals combat damage to a player, draw two cards. Then discard two cards unless you discard a Pirate card.\nEquip {2}. This ability costs {2} less to activate if you have one or fewer cards in hand.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "99",
+   "set": "lcc"
+  },
+  {
+   "name": "Blade of the Bloodchief",
+   "oracle_id": "8985e545-07c3-45f9-9058-fe3c1f50de04",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Whenever a creature dies, put a +1/+1 counter on equipped creature. If equipped creature is a Vampire, put two +1/+1 counters on it instead.\nEquip {1}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "300",
+   "set": "lcc"
+  },
+  {
+   "name": "Sword of the Squeak",
+   "oracle_id": "6ede28a7-57ea-47d6-a5fb-b0f061da2689",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact — Equipment",
+   "oracle_text": "Equipped creature gets +1/+1 for each creature you control with base power or toughness 1.\nWhenever a Hamster, Mouse, Rat, or Squirrel you control enters, you may attach this Equipment to that creature.\nEquip {2}",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "72",
+   "set": "blc"
+  },
+  {
+   "name": "Mask of Griselbrand",
+   "oracle_id": "b46da6bd-578c-4040-97c3-0005b78e31be",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Artifact — Equipment",
+   "oracle_text": "Equipped creature has flying and lifelink.\nWhenever equipped creature dies, you may pay X life, where X is its power. If you do, draw X cards.\nEquip {3}",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Equip"
+   ],
+   "collector_number": "145",
+   "set": "dsc"
+  },
+  {
+   "name": "Rolling Hamsphere",
+   "oracle_id": "a6c3aa17-8338-4daa-889e-d36dc715e546",
+   "layout": "normal",
+   "mana_cost": "{7}",
+   "cmc": 7.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "This Vehicle gets +1/+1 for each Hamster you control.\nWhenever this Vehicle attacks, create three 1/1 red Hamster creature tokens, then it deals X damage to any target, where X is the number of Hamsters you control.\nCrew 3",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Crew"
+   ],
+   "collector_number": "39",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Hamster",
+     "type_line": "Token Creature — Hamster",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "R"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "22"
+    }
+   ]
+  },
+  {
+   "name": "Duskana, the Rage Mother",
+   "oracle_id": "68d97ebb-63f8-4795-bddb-03582e13b34d",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Bear",
+   "oracle_text": "When Duskana enters, draw a card for each creature you control with base power and toughness 2/2.\nWhenever a creature you control with base power and toughness 2/2 attacks, it gets +3/+3 until end of turn.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "5",
+   "set": "mkc"
+  },
+  {
+   "name": "Rapid Augmenter",
+   "oracle_id": "098a43e3-341d-4b27-8c17-ef5990e21b0a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Otter Artificer",
+   "oracle_text": "Haste\nWhenever another creature you control with base power 1 enters, it gains haste until end of turn.\nWhenever another creature you control enters, if it wasn't cast, put a +1/+1 counter on this creature and this creature can't be blocked this turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "38",
+   "set": "blc"
+  },
+  {
+   "name": "Thopter Engineer",
+   "oracle_id": "4ac53b34-20d2-4a53-bade-4f998fb6ae67",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Artificer",
+   "oracle_text": "When this creature enters, create a 1/1 colorless Thopter artifact creature token with flying.\nArtifact creatures you control have haste. (They can attack and {T} as soon as they come under your control.)",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "204",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Thopter",
+     "type_line": "Token Artifact Creature — Thopter",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tblc",
+     "collector_number": "39"
+    }
+   ]
+  },
+  {
+   "name": "Blade Splicer",
+   "oracle_id": "194166ad-0179-42a3-86b9-ba7f322ec576",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Phyrexian Human Artificer",
+   "oracle_text": "When this creature enters, create a 3/3 colorless Phyrexian Golem artifact creature token.\nGolems you control have first strike.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "136",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Phyrexian Golem",
+     "type_line": "Token Artifact Creature — Phyrexian Golem",
+     "oracle_text": "",
+     "power": "3",
+     "toughness": "3",
+     "colors": [],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "38"
+    }
+   ]
+  }
+ ]
+}

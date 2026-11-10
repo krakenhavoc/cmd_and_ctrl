@@ -1,0 +1,225 @@
+{
+ "batch": 16,
+ "theme": "Land ramp, landfall, untap lands",
+ "reuse": "Landfall(), LandfallPaying(); 'second card each turn' (On the Trail): wolfbat.go and 56 siblings; channel: channel.go; adventure: game/adventure.go; '*/* equal to lands you control' CDA; 'can't attack or block unless you control seven or more lands': restrictions.go; 'play lands from the top of your library' with a condition (Verge Rangers): game/free_play_from_top.go, cast_permission_condition.go; untap up to X lands: game/untap_choice.go.",
+ "pair": 15,
+ "cards": [
+  {
+   "name": "Elvish Rejuvenator",
+   "oracle_id": "71d14755-b81d-4aec-b94d-1637884a5844",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "When this creature enters, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "191",
+   "set": "otc"
+  },
+  {
+   "name": "Greater Tanuki",
+   "oracle_id": "b2d19232-9a80-4ea2-9aa7-c47b4719106c",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Enchantment Creature — Dog",
+   "oracle_text": "Trample\nChannel — {2}{G}, Discard this card: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Channel"
+   ],
+   "collector_number": "181",
+   "set": "dsc"
+  },
+  {
+   "name": "Beanstalk Giant // Fertile Footsteps",
+   "oracle_id": "22c75ad5-237c-4dbd-bbc4-3058a3db408f",
+   "layout": "adventure",
+   "mana_cost": "{6}{G} // {2}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Giant // Sorcery — Adventure",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "172",
+   "set": "dsc",
+   "card_faces": [
+    {
+     "name": "Beanstalk Giant",
+     "mana_cost": "{6}{G}",
+     "type_line": "Creature — Giant",
+     "oracle_text": "Beanstalk Giant's power and toughness are each equal to the number of lands you control.",
+     "power": "*",
+     "toughness": "*"
+    },
+    {
+     "name": "Fertile Footsteps",
+     "mana_cost": "{2}{G}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Search your library for a basic land card, put it onto the battlefield, then shuffle. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "oracle_text": "After an Adventure resolves, you can place the exiled card here. You may cast the creature from exile.",
+     "colors": [],
+     "keywords": [],
+     "set": "thob",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Arboreal Grazer",
+   "oracle_id": "d18a0815-59d3-4667-b52b-9acda741215e",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Sloth Beast",
+   "oracle_text": "Reach\nWhen this creature enters, you may put a land card from your hand onto the battlefield tapped.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "245",
+   "set": "tdc"
+  },
+  {
+   "name": "Retreat to Coralhelm",
+   "oracle_id": "c450f6b7-bb2a-4b8c-aec7-d27555137b63",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Landfall — Whenever a land you control enters, choose one —\n• You may tap or untap target creature.\n• Scry 1. (Look at the top card of your library. You may put that card on the bottom.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Landfall",
+    "Scry"
+   ],
+   "collector_number": "126",
+   "set": "dsc"
+  },
+  {
+   "name": "Topiary Stomper",
+   "oracle_id": "e3fc10d2-2733-4265-8275-112c285fd11a",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Plant Dinosaur",
+   "oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\nWhen this creature enters, search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nThis creature can't attack or block unless you control seven or more lands.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "261",
+   "set": "lcc"
+  },
+  {
+   "name": "Verge Rangers",
+   "oracle_id": "aece819e-3678-48bc-9677-d06ebfa58b4e",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Scout Ranger",
+   "oracle_text": "First strike\nYou may look at the top card of your library any time.\nAs long as an opponent controls more lands than you, you may play lands from the top of your library. (You can play a land this way only if you have an available land play remaining.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "108",
+   "set": "dsc"
+  },
+  {
+   "name": "Shriekwood Devourer",
+   "oracle_id": "56314980-5f18-4b93-a9a0-6002ee8a880c",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Treefolk",
+   "oracle_text": "Trample\nWhenever you attack with one or more creatures, untap up to X lands, where X is the greatest power among those creatures.",
+   "power": "7",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "62",
+   "set": "dsc"
+  },
+  {
+   "name": "On the Trail",
+   "oracle_id": "5a060788-a601-4c01-8341-73398b497a85",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever you draw your second card each turn, you may put a land card from your hand onto the battlefield tapped.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "349",
+   "set": "mkc"
+  }
+ ]
+}

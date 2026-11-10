@@ -1,0 +1,252 @@
+{
+ "batch": 7,
+ "theme": "Dinosaurs: lords, cost reducers, simple triggers",
+ "reuse": "tribal_lords.go, cost_modifier.go ('Dinosaur spells you cast cost {1} less'); 3/3 green Dinosaur with trample token (new, only here); 'gains your choice of reach, trample, or haste': mode/option pick (game/option_pick.go); graveyard exile with split outcomes (Deathgorge Scavenger) is a plain trigger.",
+ "pair": 8,
+ "cards": [
+  {
+   "name": "Otepec Huntmaster",
+   "oracle_id": "41623eab-38b5-4058-8de2-e6b8706de7a2",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Shaman",
+   "oracle_text": "Dinosaur spells you cast cost {1} less to cast.\n{T}: Target Dinosaur gains haste until end of turn.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "229",
+   "set": "lcc"
+  },
+  {
+   "name": "Drover of the Mighty",
+   "oracle_id": "6deba6e8-077b-4602-86af-64db766fbbd9",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "This creature gets +2/+2 as long as you control a Dinosaur.\n{T}: Add one mana of any color.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "239",
+   "set": "lcc"
+  },
+  {
+   "name": "Thundering Spineback",
+   "oracle_id": "c9db31d7-00cf-4200-a11f-74cc2d9e843e",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Other Dinosaurs you control get +1/+1.\n{5}{G}: Create a 3/3 green Dinosaur creature token with trample. (It can deal excess combat damage to the player or planeswalker it's attacking.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "260",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Dinosaur",
+     "type_line": "Token Creature — Dinosaur",
+     "oracle_text": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)",
+     "power": "3",
+     "toughness": "3",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Trample"
+     ],
+     "set": "tlcc",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Raging Regisaur",
+   "oracle_id": "3d563149-7d4e-43e5-b701-28e3212051ec",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Whenever this creature attacks, it deals 1 damage to any target.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "282",
+   "set": "lcc"
+  },
+  {
+   "name": "Majestic Heliopterus",
+   "oracle_id": "d3b49970-46b7-441b-bff8-8403d982b8a7",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Flying\nWhenever this creature attacks, another target Dinosaur you control gains flying until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "131",
+   "set": "lcc"
+  },
+  {
+   "name": "Raging Swordtooth",
+   "oracle_id": "626709bc-6c29-434f-9e3f-b84bb8a5c431",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Trample\nWhen this creature enters, it deals 1 damage to each other creature.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "283",
+   "set": "lcc"
+  },
+  {
+   "name": "Atzocan Seer",
+   "oracle_id": "affced7f-797d-4e50-8a24-2da14de44e43",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "{T}: Add one mana of any color.\nSacrifice this creature: Return target Dinosaur card from your graveyard to your hand.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "265",
+   "set": "lcc"
+  },
+  {
+   "name": "Shifting Ceratops",
+   "oracle_id": "6cac6f76-f3c6-4b00-a468-166b07853401",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "This spell can't be countered.\nProtection from blue (This creature can't be blocked, targeted, dealt damage, enchanted, or equipped by anything blue.)\n{G}: This creature gains your choice of reach, trample, or haste until end of turn.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Protection"
+   ],
+   "collector_number": "258",
+   "set": "lcc"
+  },
+  {
+   "name": "Deathgorge Scavenger",
+   "oracle_id": "17da3654-7517-473b-89e7-0303f6f030cb",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Whenever this creature enters or attacks, you may exile target card from a graveyard. If a creature card is exiled this way, you gain 2 life. If a noncreature card is exiled this way, this creature gets +1/+1 until end of turn.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "236",
+   "set": "lcc"
+  },
+  {
+   "name": "Marauding Raptor",
+   "oracle_id": "b3fe2f61-c58e-4ebc-a5e3-99d6b6f62caf",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Creature spells you cast cost {1} less to cast.\nWhenever another creature you control enters, this creature deals 2 damage to it. If a Dinosaur is dealt damage this way, this creature gets +2/+0 until end of turn.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "228",
+   "set": "lcc"
+  }
+ ]
+}

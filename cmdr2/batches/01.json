@@ -1,0 +1,303 @@
+{
+ "batch": 1,
+ "theme": "Simple lands",
+ "reuse": "Plain Spec + mana abilities (docs 'Adding a mana ability'); cycling Deserts: Cycling(); creature-spell-only mana: game/spend_only.go, game/mana_restriction.go; Saproling/Shapeshifter tokens in tokens_table.go; regenerate target: grep 'Regenerate target'.",
+ "pair": 2,
+ "cards": [
+  {
+   "name": "Ancient Ziggurat",
+   "oracle_id": "0baabe39-72ae-47bd-a095-cbf7eb8a6361",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add one mana of any color. Spend this mana only to cast a creature spell.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "144",
+   "set": "ecc"
+  },
+  {
+   "name": "Sunhome, Fortress of the Legion",
+   "oracle_id": "a9f8344c-1705-4254-81d6-aa05e0c69c29",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{2}{R}{W}, {T}: Target creature gains double strike until end of turn.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "298",
+   "set": "mkc"
+  },
+  {
+   "name": "Abundant Countryside",
+   "oracle_id": "e3eb6f90-ccfc-41e7-bff6-0b378226bc7e",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a creature spell.\n{6}, {T}: Create a 1/1 colorless Shapeshifter creature token with changeling. (It's every creature type.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "22",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Shapeshifter",
+     "type_line": "Token Creature — Shapeshifter",
+     "oracle_text": "Changeling",
+     "power": "1",
+     "toughness": "1",
+     "colors": [],
+     "keywords": [
+      "Changeling"
+     ],
+     "set": "tecl",
+     "collector_number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Labyrinth of Skophos",
+   "oracle_id": "9ec5a487-d8ed-459a-8f58-56f6e9a2dfe8",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{4}, {T}: Remove target attacking or blocking creature from combat.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "272",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Skophos Maze-Warden",
+     "type_line": "Creature — Minotaur Warrior",
+     "oracle_text": "{1}: This creature gets +1/-1 until end of turn.\nWhenever another creature becomes the target of an ability of a land you control named Labyrinth of Skophos, you may have this creature fight that creature. (Each deals damage equal to its power to the other.)",
+     "power": "3",
+     "toughness": "4",
+     "colors": [
+      "R"
+     ],
+     "keywords": [
+      "Fight"
+     ],
+     "set": "thb",
+     "collector_number": "153"
+    }
+   ]
+  },
+  {
+   "name": "Darkmoss Bridge",
+   "oracle_id": "2065cada-4078-41c4-9e06-2460d2a2e8ee",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Artifact Land",
+   "oracle_text": "This land enters tapped.\nIndestructible\n{T}: Add {B} or {G}.",
+   "colors": [],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "produced_mana": [
+    "B",
+    "G"
+   ],
+   "collector_number": "269",
+   "set": "dsc"
+  },
+  {
+   "name": "Vitu-Ghazi, the City-Tree",
+   "oracle_id": "88fb9e82-28b9-4275-a1e2-cb3a9bfda127",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{2}{G}{W}, {T}: Create a 1/1 green Saproling creature token.",
+   "colors": [],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "173",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "twoc",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Halimar Depths",
+   "oracle_id": "42d121a2-5266-483a-ab16-e0a8073cd6a3",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\nWhen this land enters, look at the top three cards of your library, then put them back in any order.\n{T}: Add {U}.",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "U"
+   ],
+   "collector_number": "282",
+   "set": "dsc"
+  },
+  {
+   "name": "Tocasia's Dig Site",
+   "oracle_id": "a91f93fd-e428-4a36-b1b3-604b47a34287",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{3}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Surveil"
+   ],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "308",
+   "set": "mkc"
+  },
+  {
+   "name": "Swarmyard",
+   "oracle_id": "4b508087-99da-4eb1-8b12-29162f2ec85d",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}: Regenerate target Insect, Rat, Spider, or Squirrel. (The next time it would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Heal",
+    "Regenerate"
+   ],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "133",
+   "set": "blc"
+  },
+  {
+   "name": "Desert of the Indomitable",
+   "oracle_id": "852d4dc3-404d-4565-99e9-1eac8f6eca5e",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "This land enters tapped.\n{T}: Add {G}.\nCycling {1}{G} ({1}{G}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "285",
+   "set": "otc"
+  },
+  {
+   "name": "Desert of the Fervent",
+   "oracle_id": "311f38a6-f68f-4d30-bc4e-62339f1e0d88",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "This land enters tapped.\n{T}: Add {R}.\nCycling {1}{R} ({1}{R}, Discard this card: Draw a card.)",
+   "colors": [],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "collector_number": "284",
+   "set": "otc"
+  },
+  {
+   "name": "Painted Bluffs",
+   "oracle_id": "b66deeb5-7371-4f06-b10e-d65165bc07b2",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\n{1}, {T}: Add one mana of any color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "309",
+   "set": "otc"
+  }
+ ]
+}

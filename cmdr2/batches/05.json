@@ -1,0 +1,235 @@
+{
+ "batch": 5,
+ "theme": "Merfolk tribal",
+ "reuse": "tribal_lords.go for anthems; target tax (Kopala): game/target_tax.go + docs 'Targeting costs and bars'; tap-N-untapped-Merfolk costs: game/tap_others_cost.go; cast from top of library (Emperor Mihail): game/free_play_from_top.go / library_top.go; flash grant for a type: vedalken_orrery.go shape; shield counters: game/shield_counters.go; islandwalk: game/landwalk.go. Hakbal and Coralhelm Commander are seam cards (s2, s3), not here.",
+ "pair": 6,
+ "cards": [
+  {
+   "name": "Svyelun of Sea and Sky",
+   "oracle_id": "872bebff-720d-459b-8f86-fb9129a8d1fb",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Merfolk God",
+   "oracle_text": "Svyelun has indestructible as long as you control at least two other Merfolk.\nWhenever Svyelun attacks, draw a card.\nOther Merfolk you control have ward {1}. (Whenever another Merfolk you control becomes the target of a spell or ability an opponent controls, counter it unless that player pays {1}.)",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "175",
+   "set": "lcc"
+  },
+  {
+   "name": "Kopala, Warden of Waves",
+   "oracle_id": "0237cccc-3161-4d91-8e69-e3d315dcb246",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Merfolk Wizard",
+   "oracle_text": "Spells your opponents cast that target a Merfolk you control cost {2} more to cast.\nAbilities your opponents activate that target a Merfolk you control cost {2} more to activate.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "160",
+   "set": "lcc"
+  },
+  {
+   "name": "Stonybrook Banneret",
+   "oracle_id": "0d6202c7-b19c-429a-85c4-332024381dd7",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Wizard",
+   "oracle_text": "Islandwalk (This creature can't be blocked as long as defending player controls an Island.)\nMerfolk spells and Wizard spells you cast cost {1} less to cast.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Landwalk",
+    "Islandwalk"
+   ],
+   "collector_number": "173",
+   "set": "lcc"
+  },
+  {
+   "name": "Surgespanner",
+   "oracle_id": "3f15349a-6ac6-4091-95a3-ae9f593e4650",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Wizard",
+   "oracle_text": "Whenever this creature becomes tapped, you may pay {1}{U}. If you do, return target permanent to its owner's hand.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "174",
+   "set": "lcc"
+  },
+  {
+   "name": "Singer of Swift Rivers",
+   "oracle_id": "7df43670-c948-464d-9bb9-db672e755f0c",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Merfolk Shaman",
+   "oracle_text": "Flash\nWhen this creature enters, put a shield counter on another target creature you control. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nYou may cast Merfolk spells as though they had flash.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "98",
+   "set": "lcc"
+  },
+  {
+   "name": "Emperor Mihail II",
+   "oracle_id": "6c901ff4-15c3-468f-9a1b-4c69a7bbc31a",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Merfolk Noble",
+   "oracle_text": "You may look at the top card of your library any time.\nYou may cast Merfolk spells from the top of your library.\nWhenever you cast a Merfolk spell, you may pay {1}. If you do, create a 1/1 blue Merfolk creature token.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "155",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Merfolk",
+     "type_line": "Token Creature — Merfolk",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "U"
+     ],
+     "keywords": [],
+     "set": "tlcc",
+     "collector_number": "3"
+    }
+   ]
+  },
+  {
+   "name": "Deeproot Elite",
+   "oracle_id": "764e8e6e-0ace-4fc8-8ca5-468a10ae3b73",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Warrior",
+   "oracle_text": "Whenever another Merfolk you control enters, put a +1/+1 counter on target Merfolk you control.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "237",
+   "set": "lcc"
+  },
+  {
+   "name": "Kumena, Tyrant of Orazca",
+   "oracle_id": "e7125493-febc-4e8e-abdc-5fc4f94a281c",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Merfolk Shaman",
+   "oracle_text": "Tap another untapped Merfolk you control: Kumena can't be blocked this turn.\nTap three untapped Merfolk you control: Draw a card.\nTap five untapped Merfolk you control: Put a +1/+1 counter on each Merfolk you control.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "274",
+   "set": "lcc"
+  },
+  {
+   "name": "Merfolk Mistbinder",
+   "oracle_id": "be56dfea-1ece-4f06-b1cc-d7425b5018b4",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Shaman",
+   "oracle_text": "Other Merfolk you control get +1/+1.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "276",
+   "set": "lcc"
+  },
+  {
+   "name": "Triton Shorestalker",
+   "oracle_id": "71a60247-17e5-44bd-9fed-f7d550b09ef3",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Creature — Merfolk Rogue",
+   "oracle_text": "This creature can't be blocked.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "121",
+   "set": "otc"
+  }
+ ]
+}

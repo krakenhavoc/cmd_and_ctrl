@@ -1,0 +1,33 @@
+{
+ "id": "s3",
+ "title": "Build leveler cards (level up, CR 702.87 / CR 711)",
+ "clause": "\"Level up {1}\" with \"LEVEL 2-3 3/3 Flying\" / \"LEVEL 4+ 4/4 Flying, Other Merfolk creatures you control get +1/+1\" (Coralhelm Commander)",
+ "why": "Scryfall layout 'leveler' is unsupported: no level-up activated ability (sorcery speed, puts a level counter), no level-band base P/T and abilities (CR 711.2-711.5), and the client has no banded display. game/card.go:1166 mentions 702.87 only to say Class levels are 'a separate thing'. Expect a Spec field for level bands read by the layer pass (7b base P/T, layer 6 abilities) plus the importer/client layout.",
+ "checked": "grep '702.87|Level up {|leveler' in game/ and effects: only the card.go comment and Cityscape Leveler (a card name); effects/level_up.go is the TMNT Aura named Level Up; 'LevelUp' hits are Class cards (wizard_class.go, *_talent.go); git grep leveler in client/src: 0.",
+ "size": "medium",
+ "cards": [
+  {
+   "name": "Coralhelm Commander",
+   "oracle_id": "0ca0a186-026d-4cec-9c23-15d94e6acca9",
+   "layout": "leveler",
+   "mana_cost": "{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Soldier",
+   "oracle_text": "Level up {1} ({1}: Put a level counter on this. Level up only as a sorcery.)\nLEVEL 2-3\n3/3\nFlying\nLEVEL 4+\n4/4\nFlying\nOther Merfolk creatures you control get +1/+1.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Level Up"
+   ],
+   "collector_number": "148",
+   "set": "lcc"
+  }
+ ]
+}

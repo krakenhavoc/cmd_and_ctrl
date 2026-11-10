@@ -1,0 +1,293 @@
+{
+ "batch": 22,
+ "theme": "Draw-matters, hand size and flash grants",
+ "reuse": "WheneverYouDraw, 'second card each turn' (57 precedent files, e.g. wolfbat.go); no maximum hand size: game/max_hand_size.go; P/T equal to cards in hand CDA (Tishana; Body of Knowledge is in batch 8 — grep before adding a second helper); 'cast spells as though they had flash' with a condition: vedalken_orrery.go, quicksilver_speedster.go, game/cast_timing.go; win the game at upkeep: docs 'Winning, losing'; 'can't attack or block unless': restrictions.go; Cat 2/2, Drake 2/2 flying, 4/4 white Elemental with flying tokens.",
+ "pair": 21,
+ "cards": [
+  {
+   "name": "Triskaidekaphile",
+   "oracle_id": "ef238ba8-acf0-4e62-9abd-5291886a32e8",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Wizard",
+   "oracle_text": "You have no maximum hand size.\nAt the beginning of your upkeep, if you have exactly thirteen cards in your hand, you win the game.\n{3}{U}: Draw a card.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "178",
+   "set": "blc"
+  },
+  {
+   "name": "Tishana, Voice of Thunder",
+   "oracle_id": "479dd04b-0048-446a-9202-a4dc9472e5c3",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{U}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Merfolk Shaman",
+   "oracle_text": "Tishana's power and toughness are each equal to the number of cards in your hand.\nYou have no maximum hand size.\nWhen Tishana enters, draw a card for each creature you control.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "291",
+   "set": "lcc"
+  },
+  {
+   "name": "Kefnet the Mindful",
+   "oracle_id": "caf626a8-7abc-496b-9d3a-23194ce70e01",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — God",
+   "oracle_text": "Flying, indestructible\nKefnet can't attack or block unless you have seven or more cards in hand.\n{3}{U}: Draw a card, then you may return a land you control to its owner's hand.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Indestructible"
+   ],
+   "collector_number": "118",
+   "set": "dsc"
+  },
+  {
+   "name": "Hoofprints of the Stag",
+   "oracle_id": "17739f55-486b-46ea-8785-70cc2bd2d872",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Kindred Enchantment — Elemental",
+   "oracle_text": "Whenever you draw a card, you may put a hoofprint counter on this enchantment.\n{2}{W}, Remove four hoofprint counters from this enchantment: Create a 4/4 white Elemental creature token with flying. Activate only during your turn.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "140",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Elemental",
+     "type_line": "Token Creature — Elemental",
+     "oracle_text": "Flying",
+     "power": "4",
+     "toughness": "4",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tblc",
+     "collector_number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Jolrael, Mwonvuli Recluse",
+   "oracle_id": "f8640899-2458-40f2-98a3-35c402ee9a7a",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Druid",
+   "oracle_text": "Whenever you draw your second card each turn, create a 2/2 green Cat creature token.\n{4}{G}{G}: Until end of turn, creatures you control have base power and toughness X/X, where X is the number of cards in your hand.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "173",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Cat",
+     "type_line": "Token Creature — Cat",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Knowledge Is Power",
+   "oracle_id": "8806ee05-10d5-4492-b672-2f6bcab94be0",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{U}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creatures you control get +X/+X, where X is the number of cards you've drawn this turn.",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "42",
+   "set": "mkc"
+  },
+  {
+   "name": "Alandra, Sky Dreamer",
+   "oracle_id": "97bb1589-2941-4a75-a5f6-916871e51e9e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Merfolk Wizard",
+   "oracle_text": "Whenever you draw your second card each turn, create a 2/2 blue Drake creature token with flying.\nWhenever you draw your fifth card each turn, Alandra and Drakes you control each get +X/+X until end of turn, where X is the number of cards in your hand.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "94",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Drake",
+     "type_line": "Token Creature — Drake",
+     "oracle_text": "Flying",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "U"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tmkc",
+     "collector_number": "6"
+    }
+   ]
+  },
+  {
+   "name": "Kianne, Corrupted Memory",
+   "oracle_id": "7fc9e800-da66-4dda-a56d-79daec9e943e",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Illusion",
+   "oracle_text": "As long as Kianne's power is even, you may cast noncreature spells as though they had flash.\nAs long as Kianne's power is odd, you may cast creature spells as though they had flash.\nWhenever you draw a card, put a +1/+1 counter on Kianne.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "2",
+   "set": "dsc"
+  },
+  {
+   "name": "Final-Word Phantom",
+   "oracle_id": "f07db0f7-7d25-4395-9af3-6b0ca9197b61",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Spirit Detective",
+   "oracle_text": "Flash\nFlying\nDuring each opponent's end step, you may cast spells as though they had flash.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "332",
+   "set": "mkc"
+  },
+  {
+   "name": "Sphinx of Enlightenment",
+   "oracle_id": "e6284fb3-7cf8-4730-b156-10085b70b0e8",
+   "layout": "normal",
+   "mana_cost": "{4}{U}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Sphinx",
+   "oracle_text": "Flying\nWhen this creature enters, target opponent draws a card and you draw three cards.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "175",
+   "set": "blc"
+  },
+  {
+   "name": "Prognostic Sphinx",
+   "oracle_id": "92c470c9-1373-4f3a-9805-5e9613874793",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Sphinx",
+   "oracle_text": "Flying\nDiscard a card: This creature gains hexproof until end of turn. Tap it.\nWhenever this creature attacks, scry 3.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Scry",
+    "Flying"
+   ],
+   "collector_number": "124",
+   "set": "dsc"
+  }
+ ]
+}

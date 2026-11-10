@@ -1,0 +1,344 @@
+{
+ "batch": 33,
+ "theme": "Outlaws, Treasure and Mercenaries",
+ "reuse": "Outlaw predicate (218 outlaw files; triggers_common.go); TreasureToken; 1/1 red Mercenary with the tap-pump ability exists (token_catalog.go, wanted_griffin.go) — We Ride at Dawn and Angelic Sell-Sword both here; granted convoke for legendary creature spells: hoarding_broodlord.go, game/granted_tap_cost.go; extort: Extort(); escape with a counter: EscapeWithCounters(); toxic: game/infect_wither_toxic.go; Treasures become 3/3 Construct Assassin creatures until end of turn (Vihaan; cf. Tangletrove Kelp in batch 32); enchanted land has a restricted-mana ability (Discreet Retreat): spend_only.go + docs 'Granting an ability'. Graywater's Fixer is a seam card (s6), not here.",
+ "pair": 34,
+ "cards": [
+  {
+   "name": "Back in Town",
+   "oracle_id": "ce723db6-2a80-42a5-a176-cd322b4e1e27",
+   "layout": "normal",
+   "mana_cost": "{X}{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return X target outlaw creature cards from your graveyard to the battlefield. (Assassins, Mercenaries, Pirates, Rogues, and Warlocks are outlaws.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "otc"
+  },
+  {
+   "name": "Dead Before Sunrise",
+   "oracle_id": "949a02ad-7530-4b2b-a1e3-0c70324e23d6",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Until end of turn, outlaw creatures you control get +1/+0 and gain \"{T}: This creature deals damage equal to its power to target creature.\" (Assassins, Mercenaries, Pirates, Rogues, and Warlocks are outlaws.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "62",
+   "set": "otc"
+  },
+  {
+   "name": "Life Insurance",
+   "oracle_id": "50779f73-c538-4364-aca4-4ab069a00814",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Extort (Whenever you cast a spell, you may pay {W/B}. If you do, each opponent loses 1 life and you gain that much life.)\nWhenever a nontoken creature dies, you lose 1 life and create a Treasure token.",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Extort",
+    "Treasure"
+   ],
+   "collector_number": "224",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "tdsk",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "We Ride at Dawn",
+   "oracle_id": "5675ac63-b69b-41b9-a7ed-4085a4e431b2",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Legendary creature spells you cast have convoke. (Your creatures can help cast those spells. Each creature you tap while casting a legendary creature spell pays for {1} or one mana of that creature's color.)\nWhenever your commander attacks, create a 1/1 red Mercenary creature token with \"{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.\"",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "48",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Mercenary",
+     "type_line": "Token Creature — Mercenary",
+     "oracle_text": "{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "R"
+     ],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Glittering Stockpile",
+   "oracle_id": "feaf9dcb-d845-4cf9-b35d-cd58175162e7",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Artifact — Treasure",
+   "oracle_text": "{T}: Add {R}. Put a stash counter on this artifact.\n{T}, Sacrifice this artifact: Add X mana of any one color, where X is the number of stash counters on this artifact.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "167",
+   "set": "otc"
+  },
+  {
+   "name": "Angelic Sell-Sword",
+   "oracle_id": "60c77b18-c111-4e16-ad19-2ef32582cd9e",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Angel Mercenary",
+   "oracle_text": "Flying, vigilance\nWhenever this creature or another nontoken creature you control enters, create a 1/1 red Mercenary creature token with \"{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.\"\nWhenever this creature attacks, if its power is 6 or greater, draw a card.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Vigilance"
+   ],
+   "collector_number": "10",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Mercenary",
+     "type_line": "Token Creature — Mercenary",
+     "oracle_text": "{T}: Target creature you control gets +1/+0 until end of turn. Activate only as a sorcery.",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "R"
+     ],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Vihaan, Goldwaker",
+   "oracle_id": "0613a0d8-f6bc-41ca-8070-b2506f756fc8",
+   "layout": "normal",
+   "mana_cost": "{R}{W}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Dwarf Warlock",
+   "oracle_text": "Other outlaws you control have vigilance and haste. (Assassins, Mercenaries, Pirates, Rogues, and Warlocks are outlaws.)\nAt the beginning of combat on your turn, you may have Treasures you control become 3/3 Construct Assassin artifact creatures in addition to their other types until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "44",
+   "set": "otc"
+  },
+  {
+   "name": "Charred Graverobber",
+   "oracle_id": "960cff3b-678c-404e-a643-ac5e91e6b50c",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Skeleton Mercenary",
+   "oracle_text": "When this creature enters, return target outlaw card from your graveyard to your hand.\nEscape—{3}{B}{B}, Exile four other cards from your graveyard. (You may cast this card from your graveyard for its escape cost.)\nThis creature escapes with a +1/+1 counter on it.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Escape"
+   ],
+   "collector_number": "19",
+   "set": "otc"
+  },
+  {
+   "name": "Misfortune Teller",
+   "oracle_id": "bd1ccc6f-d281-413e-889e-1e022c3f2a99",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Warlock",
+   "oracle_text": "Deathtouch\nWhenever this creature enters or deals combat damage to a player, exile target card from a graveyard. If it was a creature card, create a 2/2 black Rogue creature token. If it was a land card, create a Treasure token. Otherwise, you gain 3 life.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Treasure",
+    "Deathtouch"
+   ],
+   "collector_number": "141",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "18"
+    },
+    {
+     "component": "token",
+     "name": "Rogue",
+     "type_line": "Token Creature — Rogue",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B"
+     ],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "9"
+    }
+   ]
+  },
+  {
+   "name": "Discreet Retreat",
+   "oracle_id": "0158634a-08a3-4eb8-8216-bf85161fd168",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant land\nEnchanted land has \"{T}: Add two mana of any one color. Spend this mana only to cast outlaw spells or activate abilities of outlaw sources.\" (Assassins, Mercenaries, Pirates, Rogues, and Warlocks are outlaws.)\nWhenever you cast your first outlaw spell each turn, you draw a card and you lose 1 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "56",
+   "set": "otc"
+  },
+  {
+   "name": "Bloodroot Apothecary",
+   "oracle_id": "09ecb8df-2a17-4e5a-814c-474bce54794d",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Squirrel Druid",
+   "oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters. A player with ten or more poison counters loses the game.)\nWhen this creature enters, you and target opponent each create a Treasure token.\nWhenever an opponent sacrifices a noncreature token, that player gets two poison counters.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Toxic",
+    "Treasure"
+   ],
+   "collector_number": "27",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "29"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Poison Counter",
+     "type_line": "Card",
+     "oracle_text": "(A player with ten or more poison counters loses the game.)",
+     "colors": [],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "41"
+    }
+   ]
+  }
+ ]
+}

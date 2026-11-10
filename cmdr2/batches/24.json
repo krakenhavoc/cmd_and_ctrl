@@ -1,0 +1,292 @@
+{
+ "batch": 24,
+ "theme": "+1/+1 counters: enters-with, moving, alliance",
+ "reuse": "'that creature enters with X additional +1/+1 counters': game/entry_counters.go, cast_gains.go; graft has NO helper — write Graft N once for Llanowar Reborn (CR 702.58; the only graft card); ravenous: precedents trek_b17_helpers.go, ravenous_*.go; 'double the number of each kind of counter': vorel_of_the_hull_clade.go, zimone_paradox_sculptor.go; move counters: the_astonishing_ant_man.go, resourceful_defense.go; 'remove a counter from another permanent you control' cost: game/counter_cost.go; populate; alliance triggers with 'first or second time this ability has resolved' (Rose Room Treasurer): vito_fanatic_of_aclazotz.go; Rabbit 1/1 token exists (hop_to_it.go, warren_warleader.go); Citizen 1/1 G/W token.",
+ "pair": 23,
+ "cards": [
+  {
+   "name": "Ferrafor, Young Yew",
+   "oracle_id": "a46f9136-b904-403e-b263-e99c9a2fe2ec",
+   "layout": "normal",
+   "mana_cost": "{6}{G}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Treefolk Druid",
+   "oracle_text": "When Ferrafor enters, create a number of 1/1 green Saproling creature tokens equal to the number of counters among creatures target player controls.\n{T}: Double the number of each kind of counter on target creature.",
+   "power": "4",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Double"
+   ],
+   "collector_number": "36",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tecc",
+     "collector_number": "7"
+    }
+   ]
+  },
+  {
+   "name": "Communal Brewing",
+   "oracle_id": "99deac41-584b-43f2-804e-c56ae0fef047",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, any number of target opponents each draw a card. Put an ingredient counter on this enchantment, then put an ingredient counter on it for each card drawn this way.\nWhenever you cast a creature spell, that creature enters with X additional +1/+1 counters on it, where X is the number of ingredient counters on this enchantment.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "63",
+   "set": "blc"
+  },
+  {
+   "name": "Llanowar Reborn",
+   "oracle_id": "92acb789-0e42-465c-ac16-40fefec48805",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {G}.\nGraft 1 (This land enters with a +1/+1 counter on it. Whenever a creature enters, you may move a +1/+1 counter from this land onto it.)",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Graft"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "341",
+   "set": "lcc"
+  },
+  {
+   "name": "Aetherborn Marauder",
+   "oracle_id": "ff6427f6-d2b1-4e33-984d-c06bd15d7c2c",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Aetherborn Rogue",
+   "oracle_text": "Flying, lifelink\nWhen this creature enters, move any number of +1/+1 counters from other permanents you control onto this creature.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink"
+   ],
+   "collector_number": "125",
+   "set": "otc"
+  },
+  {
+   "name": "Genesis Hydra",
+   "oracle_id": "4345c359-b9d6-43c8-997f-e00746e6e318",
+   "layout": "normal",
+   "mana_cost": "{X}{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Plant Hydra",
+   "oracle_text": "When you cast this spell, reveal the top X cards of your library. You may put a nonland permanent card with mana value X or less from among them onto the battlefield. Then shuffle the rest into your library.\nThis creature enters with X +1/+1 counters on it.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "193",
+   "set": "otc"
+  },
+  {
+   "name": "Boss's Chauffeur",
+   "oracle_id": "5a6176cc-98bf-43ac-815a-1f19c4e9329c",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elf Citizen",
+   "oracle_text": "This creature enters with a number of +1/+1 counters on it equal to one plus the number of other creatures you control.\nAlliance — Whenever another creature you control enters, put a +1/+1 counter on this creature.\nWhen this creature dies, create a 1/1 green and white Citizen creature token for each +1/+1 counter on it.",
+   "power": "0",
+   "toughness": "0",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Alliance"
+   ],
+   "collector_number": "137",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Citizen",
+     "type_line": "Token Creature — Citizen",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G",
+      "W"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "33"
+    }
+   ]
+  },
+  {
+   "name": "Xavier Sal, Infested Captain",
+   "oracle_id": "50a9c647-47ba-4732-852a-f0ab2b4549c9",
+   "layout": "normal",
+   "mana_cost": "{B}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Fungus Pirate",
+   "oracle_text": "{T}, Remove a counter from another permanent you control: Populate. Activate only as a sorcery. (Create a token that's a copy of a creature token you control.)\n{T}, Sacrifice another creature: Proliferate. Activate only as a sorcery. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Proliferate",
+    "Populate"
+   ],
+   "collector_number": "14",
+   "set": "lcc"
+  },
+  {
+   "name": "Devilish Valet",
+   "oracle_id": "e1e0dc37-20c9-4236-ae01-e0891ce83afb",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Devil Warrior",
+   "oracle_text": "Trample, haste\nAlliance — Whenever another creature you control enters, double this creature's power until end of turn.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Alliance",
+    "Haste",
+    "Trample",
+    "Double"
+   ],
+   "collector_number": "195",
+   "set": "blc"
+  },
+  {
+   "name": "Rose Room Treasurer",
+   "oracle_id": "d73f02e0-53fa-4437-ab3a-89a9a1db27c5",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Ogre Warrior",
+   "oracle_text": "Alliance — Whenever another creature you control enters, create a Treasure token if this is the first or second time this ability has resolved this turn. Otherwise, you may pay {X}. When you do, this creature deals X damage to any target.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Alliance",
+    "Treasure"
+   ],
+   "collector_number": "201",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Jacked Rabbit",
+   "oracle_id": "5a343a5f-3f9b-43c3-8532-8391de7a5443",
+   "layout": "normal",
+   "mana_cost": "{X}{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Rabbit Warrior",
+   "oracle_text": "Ravenous (This creature enters with X +1/+1 counters on it. If X is 5 or more, draw a card when it enters.)\nWhenever this creature attacks, create a number of 1/1 white Rabbit creature tokens equal to this creature's power.",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Ravenous"
+   ],
+   "collector_number": "9",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Rabbit",
+     "type_line": "Token Creature — Rabbit",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "3"
+    }
+   ]
+  }
+ ]
+}

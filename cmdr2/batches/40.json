@@ -1,0 +1,330 @@
+{
+ "batch": 40,
+ "theme": "Suspend, foretell, plot, miracle and casting from outside the hand",
+ "reuse": "Suspend() + 'exile this with three time counters on it' on resolution: rousing_refrain.go, shivan_meteor.go; 'whenever you remove a time counter from this card while it's exiled': dinosaurs_on_a_spaceship.go, triggers_common.go; Foretell(); Plot(); Miracle(); Aminatou's granted miracle at mana cost reduced by {4}: effects/granted_miracle.go (a new constructor beside MiracleForInstantAndSorceryCardsInYourHand — append, never edit); 'spells you cast from anywhere other than your hand cost less' (Savvy Trader, Sage of the Beyond): game/cost_modifier.go, vega_the_watcher.go — one helper for both; lifelink counter: keyword_counters.go.",
+ "pair": 39,
+ "cards": [
+  {
+   "name": "Charnel Serenade",
+   "oracle_id": "54c3d8ba-ee7c-4f15-8ee3-e5daf860b428",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Surveil 3, then return a creature card from your graveyard to the battlefield with a finality counter on it. Exile Charnel Serenade with three time counters on it.\nSuspend 3—{2}{B} (Rather than cast this card from your hand, you may pay {2}{B} and exile it with three time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without paying its mana cost.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil",
+    "Suspend"
+   ],
+   "collector_number": "26",
+   "set": "mkc"
+  },
+  {
+   "name": "Suspended Sentence",
+   "oracle_id": "98641070-93bd-4088-90cb-956c2b21979e",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Destroy target creature an opponent controls. That player loses 3 life. Exile Suspended Sentence with three time counters on it.\nSuspend 3—{1}{B} (Rather than cast this card from your hand, you may pay {1}{B} and exile it with three time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without paying its mana cost.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Suspend"
+   ],
+   "collector_number": "25",
+   "set": "dsc"
+  },
+  {
+   "name": "Watcher of Hours",
+   "oracle_id": "b2354092-7a4c-4e69-9c0a-0a2e146dc00c",
+   "layout": "normal",
+   "mana_cost": "{5}{U}",
+   "cmc": 6.0,
+   "type_line": "Creature — Sphinx",
+   "oracle_text": "Flying, ward {3}\nWhenever you remove a time counter from this card while it's exiled, surveil 1.\nSuspend 6—{1}{U} (Rather than cast this card from your hand, you may pay {1}{U} and exile it with six time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without paying its mana cost. It has haste.)",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil",
+    "Suspend",
+    "Ward"
+   ],
+   "collector_number": "25",
+   "set": "mkc"
+  },
+  {
+   "name": "Sage of the Beyond",
+   "oracle_id": "fc74f6a6-9064-4e1b-8dc1-446192bbc448",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Creature — Spirit Giant",
+   "oracle_text": "Flying\nSpells you cast from anywhere other than your hand cost {2} less to cast.\nForetell {4}{U} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Foretell"
+   ],
+   "collector_number": "111",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Foretell",
+     "type_line": "Card",
+     "oracle_text": "(After you foretell a card, you can place the exiled card here. You may cast it on a later turn for its foretell cost.)",
+     "colors": [],
+     "keywords": [],
+     "set": "tfic",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Ravenform",
+   "oracle_id": "d3d61a6a-7870-44df-92e5-513dac2c2c3e",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile target artifact or creature. Its controller creates a 1/1 blue Bird creature token with flying.\nForetell {U} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Foretell"
+   ],
+   "collector_number": "167",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Bird",
+     "type_line": "Token Creature — Bird",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "U"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tlcc",
+     "collector_number": "2"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Foretell",
+     "type_line": "Card",
+     "oracle_text": "(After you foretell a card, you can place the exiled card here. You may cast it on a later turn for its foretell cost.)",
+     "colors": [],
+     "keywords": [],
+     "set": "tfic",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Lock and Load",
+   "oracle_id": "9355db6e-d8eb-43be-9c1d-04f1806dc366",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Draw a card, then draw a card for each other instant and sorcery spell you've cast this turn.\nPlot {3}{U} (You may pay {3}{U} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "51",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Plot",
+     "type_line": "Card",
+     "oracle_text": "After you plot a card, you may place the exiled card here. You may cast it as a sorcery on a later turn without paying its mana cost.",
+     "colors": [],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Pyretic Charge",
+   "oracle_id": "01766d9b-b2af-4a27-9e65-08c82e7d7637",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Discard your hand, then draw four cards. For each card discarded this way, creatures you control get +1/+0 until end of turn.\nPlot {3}{R} (You may pay {3}{R} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Plot"
+   ],
+   "collector_number": "65",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Plot",
+     "type_line": "Card",
+     "oracle_text": "After you plot a card, you may place the exiled card here. You may cast it as a sorcery on a later turn without paying its mana cost.",
+     "colors": [],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Metamorphosis Fanatic",
+   "oracle_id": "017aa9b3-a8ea-4588-9c50-e914a7d8e4ee",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Human Cleric",
+   "oracle_text": "Lifelink\nWhen this creature enters, return up to one target creature card from your graveyard to the battlefield with a lifelink counter on it.\nMiracle {1}{B} (You may cast this card for its miracle cost when you draw it if it's the first card you drew this turn.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Miracle"
+   ],
+   "collector_number": "21",
+   "set": "dsc"
+  },
+  {
+   "name": "Redress Fate",
+   "oracle_id": "e8ff6780-5f22-42fa-a7c1-7406e8203063",
+   "layout": "normal",
+   "mana_cost": "{6}{W}{W}",
+   "cmc": 8.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return all artifact and enchantment cards from your graveyard to the battlefield.\nMiracle {3}{W} (You may cast this card for its miracle cost when you draw it if it's the first card you drew this turn.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Miracle"
+   ],
+   "collector_number": "9",
+   "set": "dsc"
+  },
+  {
+   "name": "Aminatou, Veil Piercer",
+   "oracle_id": "bf45f5ee-4d5f-4920-b612-b5492c2f035d",
+   "layout": "normal",
+   "mana_cost": "{1}{W}{U}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Wizard",
+   "oracle_text": "At the beginning of your upkeep, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nEach enchantment card in your hand has miracle. Its miracle cost is equal to its mana cost reduced by {4}. (You may cast a card for its miracle cost when you draw it if it's the first card you drew this turn.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "1",
+   "set": "dsc"
+  },
+  {
+   "name": "Savvy Trader",
+   "oracle_id": "c1aba8c7-d940-4d5d-a176-68cc226906de",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Citizen",
+   "oracle_text": "When this creature enters, exile target permanent card from your graveyard. You may play that card for as long as it remains exiled.\nSpells you cast from anywhere other than your hand cost {1} less to cast.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "33",
+   "set": "otc"
+  },
+  {
+   "name": "Ghostly Pilferer",
+   "oracle_id": "fe168bf1-f626-460c-890b-1ce758af01fc",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spirit Rogue",
+   "oracle_text": "Whenever this creature becomes untapped, you may pay {2}. If you do, draw a card.\nWhenever an opponent casts a spell from anywhere other than their hand, draw a card.\nDiscard a card: This creature can't be blocked this turn.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "98",
+   "set": "otc"
+  }
+ ]
+}

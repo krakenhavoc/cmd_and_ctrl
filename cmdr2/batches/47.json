@@ -1,0 +1,390 @@
+{
+ "batch": 47,
+ "theme": "Token copies, token replacement and gifts",
+ "reuse": "Replacement on RepEventCreateTokens: effects/token_replacements.go, xorn.go (additive group — Chatterfang's 'plus that many Squirrels'), moonlit_meditation.go / mirrormind_crown.go (optional 'instead create that many copies' — Esix), ReplaceTokenKinds in game/token_create.go (Fisher's Talent Fish->Shark->Octopus; Class levels: *_talent.go); gift: effects/gift.go has GiftACard/AFood/ATappedFish/ATreasure — add 'Gift an Octopus' (8/8 blue Octopus, same token as Fisher's Talent level 3; kiora_the_rising_tide.go has one) and 'Gift an extra turn' (Perch Protection; extra turns: docs 'Extra turns', game/move_extra_turn.go) here and only here; 'your life total can't change' + player protection from everything: teferis_protection.go; token copy of a dying creature with changes (Brenard, Nightmare Shepherd): token_copy.go; Mimic Vat imprint: copy_of_exiled_with.go; delayed copy-on-entry this turn (Theoretical Duplication): delayed_bodies.go.",
+ "pair": 48,
+ "cards": [
+  {
+   "name": "Chatterfang, Squirrel General",
+   "oracle_id": "f15b3b76-d38a-48db-bb44-3296183c8641",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Squirrel Warrior",
+   "oracle_text": "Forestwalk (This creature can't be blocked as long as defending player controls a Forest.)\nIf one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead.\n{B}, Sacrifice X Squirrels: Target creature gets +X/-X until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Landwalk",
+    "Forestwalk"
+   ],
+   "collector_number": "82",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Squirrel",
+     "type_line": "Token Creature — Squirrel",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "23"
+    }
+   ]
+  },
+  {
+   "name": "Esix, Fractal Bloom",
+   "oracle_id": "9d22960b-babc-4cf3-b228-d32e13bc6014",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{U}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Fractal",
+   "oracle_text": "Flying\nThe first time you would create one or more tokens during each of your turns, you may instead choose a creature other than Esix and create that many tokens that are copies of that creature.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "210",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Fisher's Talent",
+   "oracle_id": "44ba2aa5-2bf5-4267-ae82-f0daf8f5e3e8",
+   "layout": "class",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Class",
+   "oracle_text": "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of your upkeep, look at the top card of your library. You may reveal it if it's a land card. Create a 1/1 blue Fish creature token if you revealed it this way. Then draw a card.\n{G}{U}: Level 2\nIf you would create a Fish token, create a 3/3 blue Shark creature token instead.\n{2}{G}{U}: Level 3\nIf you would create a Shark token, create an 8/8 blue Octopus creature token instead.",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "36",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Octopus",
+     "type_line": "Token Creature — Octopus",
+     "oracle_text": "",
+     "power": "8",
+     "toughness": "8",
+     "colors": [
+      "U"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "14"
+    },
+    {
+     "component": "token",
+     "name": "Shark",
+     "type_line": "Token Creature — Shark",
+     "oracle_text": "",
+     "power": "3",
+     "toughness": "3",
+     "colors": [
+      "U"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "16"
+    },
+    {
+     "component": "token",
+     "name": "Fish",
+     "type_line": "Token Creature — Fish",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "U"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "7"
+    }
+   ]
+  },
+  {
+   "name": "Octomancer",
+   "oracle_id": "1cf7e5a0-cc8f-4bf7-9767-2f3bcae26339",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Frog Druid",
+   "oracle_text": "Gift an Octopus (You may promise an opponent a gift as you cast this spell. If you do, when it enters, they create an 8/8 blue Octopus creature token.)\nAt the beginning of each end step, create a token that's a copy of target creature token that entered the battlefield this turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Gift"
+   ],
+   "collector_number": "69",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Octopus",
+     "type_line": "Token Creature — Octopus",
+     "oracle_text": "",
+     "power": "8",
+     "toughness": "8",
+     "colors": [
+      "U"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "14"
+    }
+   ]
+  },
+  {
+   "name": "Perch Protection",
+   "oracle_id": "295fe873-ecb5-4d5e-a73c-3af6c478afc5",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Instant",
+   "oracle_text": "Gift an extra turn (You may promise an opponent a gift as you cast this spell. If you do, they take an extra turn after this one.)\nCreate four 2/2 blue Bird creature tokens with flying. If the gift was promised, all permanents you control phase out, and until your next turn, your life total can't change and you gain protection from everything.\nExile Perch Protection.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Gift"
+   ],
+   "collector_number": "11",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Bird",
+     "type_line": "Token Creature — Bird",
+     "oracle_text": "Flying",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "U"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tblc",
+     "collector_number": "11"
+    }
+   ]
+  },
+  {
+   "name": "Giant Adephage",
+   "oracle_id": "8e1d261d-b8d3-4fb1-922d-47789854b5b3",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "Trample\nWhenever this creature deals combat damage to a player, create a token that's a copy of this creature.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "179",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Brenard, Ginger Sculptor",
+   "oracle_id": "1a2ab12a-5778-40df-a2ec-2733a7121cb4",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Artificer",
+   "oracle_text": "Each creature you control that's a Food or a Golem gets +2/+2 and has trample.\nWhenever another nontoken creature you control dies, you may exile it. If you do, create a token that's a copy of that creature, except it's a 1/1 Food Golem artifact creature in addition to its other types and it has \"{2}, {T}, Sacrifice this token: You gain 3 life.\"",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "35",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Nightmare Shepherd",
+   "oracle_id": "b8ee0dfc-f588-43b6-ab96-f3a3c58a8a3d",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Enchantment Creature — Demon",
+   "oracle_text": "Flying\nWhenever another nontoken creature you control dies, you may exile it. If you do, create a token that's a copy of that creature, except it's 1/1 and it's a Nightmare in addition to its other types.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "149",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Mimic Vat",
+   "oracle_id": "6ebdc9f3-6b23-4716-8011-48f00d7e30c8",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Imprint — Whenever a nontoken creature dies, you may exile that card. If you do, return each other card exiled with this artifact to its owner's graveyard.\n{3}, {T}: Create a token that's a copy of a card exiled with this artifact. It gains haste. Exile it at the beginning of the next end step.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Imprint"
+   ],
+   "collector_number": "115",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Theoretical Duplication",
+   "oracle_id": "efe7e212-5c91-42f0-9dff-591131b4f6d8",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Whenever a nontoken creature an opponent controls enters this turn, create a token that's a copy of that creature.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "112",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  }
+ ]
+}

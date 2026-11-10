@@ -1,0 +1,300 @@
+{
+ "batch": 11,
+ "theme": "Faeries",
+ "reuse": "tribal_lords.go; 1/1 black Faerie Rogue with flying (tokens_table.go) and 1/1 blue Faerie with flying — both shared inside this batch; flash by an additional cost (Tegwyll's Scouring) is AdditionalCost.AsThoughFlash (game/additional_cost.go, CR 601.3c; precedents mystical_tether.go, harbinger_of_the_tides.go); 'choose any number —' modes (Rankle): game/mode_up_to_count.go; 'first spell during each opponent's turn': turn_tally cast counts; shroud grant; return-a-creature-or-sacrifice (Quickling) is a plain enters trigger.",
+ "pair": 12,
+ "cards": [
+  {
+   "name": "Tegwyll's Scouring",
+   "oracle_id": "58ebaaba-7e35-4588-9679-23b22e39789b",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "You may cast this spell as though it had flash by tapping three untapped creatures you control with flying in addition to paying its other costs.\nDestroy all creatures. Create three 1/1 black Faerie Rogue creature tokens with flying.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "52",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Faerie Rogue",
+     "type_line": "Token Creature — Faerie Rogue",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "B"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "twoc",
+     "collector_number": "11"
+    }
+   ]
+  },
+  {
+   "name": "Shadow Puppeteers",
+   "oracle_id": "0a570fdb-2104-4592-b158-5b5d88f1d087",
+   "layout": "normal",
+   "mana_cost": "{6}{U}",
+   "cmc": 7.0,
+   "type_line": "Creature — Faerie Wizard",
+   "oracle_text": "Flying, ward {2}\nWhen this creature enters, create two 1/1 black Faerie Rogue creature tokens with flying.\nWhenever a creature you control with flying attacks, you may have it become a red Dragon with base power and toughness 4/4 in addition to its other colors and types until end of turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Ward"
+   ],
+   "collector_number": "12",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Faerie Rogue",
+     "type_line": "Token Creature — Faerie Rogue",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "B"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "twoc",
+     "collector_number": "11"
+    }
+   ]
+  },
+  {
+   "name": "Quickling",
+   "oracle_id": "109899e1-abd7-4582-8b67-b0852755bf75",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie Rogue",
+   "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)\nFlying\nWhen this creature enters, sacrifice it unless you return another creature you control to its owner's hand.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "103",
+   "set": "woc"
+  },
+  {
+   "name": "Nymris, Oona's Trickster",
+   "oracle_id": "9ee50bae-47c4-4ae7-a82b-f2a0b366df35",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Faerie Knight",
+   "oracle_text": "Flash\nFlying\nWhenever you cast your first spell during each opponent's turn, look at the top two cards of your library. Put one of those cards into your hand and the other into your graveyard.",
+   "power": "1",
+   "toughness": "6",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "141",
+   "set": "woc"
+  },
+  {
+   "name": "Stolen by the Fae",
+   "oracle_id": "5bafd0e0-8bf8-4e06-a54a-81cc6cc4bdb7",
+   "layout": "normal",
+   "mana_cost": "{X}{U}{U}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return target creature with mana value X to its owner's hand. You create X 1/1 blue Faerie creature tokens with flying.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "176",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "U"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tblc",
+     "collector_number": "12"
+    }
+   ]
+  },
+  {
+   "name": "Rankle, Master of Pranks",
+   "oracle_id": "b8619990-9dc2-4fcc-bc7e-457b77cd2a8e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Faerie Rogue",
+   "oracle_text": "Flying, haste\nWhenever Rankle deals combat damage to a player, choose any number —\n• Each player discards a card.\n• Each player loses 1 life and draws a card.\n• Each player sacrifices a creature of their choice.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Haste"
+   ],
+   "collector_number": "148",
+   "set": "otc"
+  },
+  {
+   "name": "Scion of Oona",
+   "oracle_id": "b34601d2-2aeb-4649-9d73-d0895611bd69",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Faerie Soldier",
+   "oracle_text": "Flash\nFlying\nOther Faerie creatures you control get +1/+1.\nOther Faeries you control have shroud. (They can't be the targets of spells or abilities.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Flash"
+   ],
+   "collector_number": "109",
+   "set": "woc"
+  },
+  {
+   "name": "Cloud of Faeries",
+   "oracle_id": "adc1f3b4-cce7-42c9-a208-dbab1d1924f5",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie",
+   "oracle_text": "Flying\nWhen this creature enters, untap up to two lands.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Cycling"
+   ],
+   "collector_number": "86",
+   "set": "woc"
+  },
+  {
+   "name": "Faerie Formation",
+   "oracle_id": "0366c2f6-6e78-4526-808c-fa7bace6006e",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Faerie",
+   "oracle_text": "Flying\n{3}{U}: Create a 1/1 blue Faerie creature token with flying. Draw a card.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "91",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Faerie",
+     "type_line": "Token Creature — Faerie",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "U"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "twoc",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Faerie Bladecrafter",
+   "oracle_id": "164b064e-de50-468a-b874-b054897a5be9",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Faerie Rogue",
+   "oracle_text": "Flying\nWhenever one or more Faeries you control deal combat damage to a player, put a +1/+1 counter on this creature.\nWhen this creature dies, each opponent loses X life and you gain X life, where X is its power.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "50",
+   "set": "woc"
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "id": "s1",
+ "title": "Build clash (CR 701.30) and the 'win a clash' event",
+ "clause": "\"clash with an opponent. If you win, repeat this process\" (Hoarder's Greed); \"clash with defending player\" / \"Whenever you win a clash\" (Marvo, Deep Operative)",
+ "why": "No clash keyword action exists: both players reveal the top card of their library, compare mana value, each may bottom their card (CR 701.30a-d), and a clash-won event is needed for 'whenever you win a clash'. Expect a new game/clash.go (keyed two-player reveal + may-bottom prompt, like council_vote.go / reveal.go), an EventClashWon in events.go and a card-side Clash helper in effects/. Marvo then needs a free cast from hand (free_cast_hand.go exists).",
+ "checked": "grep -ri 'clash with' and 'Clash(' in game/ and cards/effects: 0 hits; '701.30' 0 hits; the only 'clash' hits are card names (fated_clash.go, clash_of_elements.go, clash_of_the_eikons.go, brigids_command.go) and a local variable in discard_cost.go. docs/adding-cards.md has no clash section.",
+ "size": "medium",
+ "cards": [
+  {
+   "name": "Hoarder's Greed",
+   "oracle_id": "60040023-7bf0-42e0-ab30-46a730675564",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "You lose 2 life and draw two cards, then clash with an opponent. If you win, repeat this process. (Each clashing player reveals the top card of their library, then puts that card on their choice of the top or bottom. A player wins if their card had a greater mana value.)",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Clash"
+   ],
+   "collector_number": "47",
+   "set": "ecc"
+  },
+  {
+   "name": "Marvo, Deep Operative",
+   "oracle_id": "317ab0b3-1163-4893-a881-4c397feb213d",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{B}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Octopus Rogue",
+   "oracle_text": "Whenever Marvo attacks, clash with defending player. (Each clashing player reveals the top card of their library, then puts that card on their choice of the top or bottom. A player wins if their card had a greater mana value.)\nWhenever you win a clash, draw a card. Then you may cast a spell from your hand with mana value 8 or less without paying its mana cost.",
+   "power": "1",
+   "toughness": "8",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Clash"
+   ],
+   "collector_number": "7",
+   "set": "mkc"
+  }
+ ]
+}

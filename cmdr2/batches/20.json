@@ -1,0 +1,272 @@
+{
+ "batch": 20,
+ "theme": "Aura payoffs and Auras entering without being cast",
+ "reuse": "An Aura put onto the battlefield without being cast chooses its host on entry (CR 303.4f; game/aura_host.go, spell_copy.go:899) — Retether, Liberated Livestock and Knickknack Ouphe all need that one path, so they share this batch; Umbra Mystic grants umbra armor to other Auras: effects/umbra_armor.go UmbraArmor() is a replacement declared on the Aura's own Spec, so the Mystic needs its own replacement over Auras attached to permanents you control (watch item — stop and report if it cannot be said); 2/4 white Ox token (Ox Drover, Liberated Livestock) new and shared here; 'whenever an Aura becomes attached': game/attach.go events; Human Soldier 1/1 exists.",
+ "pair": 19,
+ "cards": [
+  {
+   "name": "Knickknack Ouphe",
+   "oracle_id": "55adf2f0-f023-4f41-ae9d-3c002e9e6e8d",
+   "layout": "normal",
+   "mana_cost": "{X}{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Ouphe",
+   "oracle_text": "This creature enters with X +1/+1 counters on it.\nWhen this creature enters, reveal the top X cards of your library. You may put any number of Aura cards with mana value X or less from among them onto the battlefield. Then put all cards revealed this way that weren't put onto the battlefield on the bottom of your library in a random order.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "woc"
+  },
+  {
+   "name": "Timber Paladin",
+   "oracle_id": "0be44c76-9e3f-45c2-9b2c-6a5f00678780",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Artifact Creature — Knight",
+   "oracle_text": "As long as this creature is enchanted by exactly one Aura, it has base power and toughness 3/3.\nAs long as this creature is enchanted by exactly two Auras, it has base power and toughness 5/5 and vigilance.\nAs long as this creature is enchanted by three or more Auras, it has base power and toughness 10/10, vigilance, and trample.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "20",
+   "set": "woc"
+  },
+  {
+   "name": "Aura Gnarlid",
+   "oracle_id": "586aebf2-4653-49fa-8425-13bd1f511bf0",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Creatures with power less than this creature's power can't block it.\nThis creature gets +1/+1 for each Aura on the battlefield.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "120",
+   "set": "woc"
+  },
+  {
+   "name": "Umbra Mystic",
+   "oracle_id": "c0a4f47c-c7f9-4b95-aa1b-30580e4cf030",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Wizard",
+   "oracle_text": "Auras attached to permanents you control have umbra armor. (If an enchanted permanent you control would be destroyed, instead remove all damage from it and destroy an Aura attached to it.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "82",
+   "set": "woc"
+  },
+  {
+   "name": "Retether",
+   "oracle_id": "b693c24f-07d9-40fa-aa4a-8f7ba61f3452",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return each Aura card from your graveyard to the battlefield. Only creatures can be enchanted this way. (Aura cards that can't enchant a creature on the battlefield remain in your graveyard.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "72",
+   "set": "woc"
+  },
+  {
+   "name": "Liberated Livestock",
+   "oracle_id": "d080cb03-b3e5-42e8-b289-2ce2151b4cb8",
+   "layout": "normal",
+   "mana_cost": "{5}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Cat Bird Ox",
+   "oracle_text": "When this creature dies, create a 1/1 white Cat creature token with lifelink, a 1/1 white Bird creature token with flying, and a 2/4 white Ox creature token. For each of those tokens, you may put an Aura card from your hand and/or graveyard onto the battlefield attached to it.",
+   "power": "4",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "41",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Cat",
+     "type_line": "Token Creature — Cat",
+     "oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Lifelink"
+     ],
+     "set": "tdft",
+     "collector_number": "2"
+    },
+    {
+     "component": "token",
+     "name": "Bird",
+     "type_line": "Token Creature — Bird",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "twoe",
+     "collector_number": "1"
+    },
+    {
+     "component": "token",
+     "name": "Ox",
+     "type_line": "Token Creature — Ox",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "4",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "tcmm",
+     "collector_number": "65"
+    }
+   ]
+  },
+  {
+   "name": "Siona, Captain of the Pyleas",
+   "oracle_id": "89e17ccf-cde7-428d-bd64-47e2f79b40d7",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Soldier",
+   "oracle_text": "When Siona enters, look at the top seven cards of your library. You may reveal an Aura card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\nWhenever an Aura you control becomes attached to a creature you control, create a 1/1 white Human Soldier creature token.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "144",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Human Soldier",
+     "type_line": "Token Creature — Human Soldier",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "twoc",
+     "collector_number": "7"
+    }
+   ]
+  },
+  {
+   "name": "Ox Drover",
+   "oracle_id": "70f26726-0373-4e50-a1de-37392ca94890",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Peasant",
+   "oracle_text": "Vigilance\nThis creature can't be blocked by Oxen.\nWhenever this creature enters or attacks, target opponent creates a 2/4 white Ox creature token and you draw a card.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "42",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Ox",
+     "type_line": "Token Creature — Ox",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "4",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "tcmm",
+     "collector_number": "65"
+    }
+   ]
+  },
+  {
+   "name": "Silhana Ledgewalker",
+   "oracle_id": "5b15dcac-38dc-4957-bc01-40153ea07559",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Rogue",
+   "oracle_text": "Hexproof (This creature can't be the target of spells or abilities your opponents control.)\nThis creature can't be blocked except by creatures with flying.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Hexproof"
+   ],
+   "collector_number": "206",
+   "set": "otc"
+  }
+ ]
+}

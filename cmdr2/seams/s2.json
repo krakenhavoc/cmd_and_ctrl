@@ -1,0 +1,105 @@
+{
+ "id": "s2",
+ "title": "Open the keyword-action window on explore and give investigate an event",
+ "clause": "\"If a creature you control would explore, instead it explores, then it explores again\" (Topography Tracker); \"each Merfolk creature you control explores\" (Hakbal); \"Whenever you investigate for the first time each turn, investigate an additional time\" (Erdwal Illuminator)",
+ "why": "game/explore.go says in its header: 'Not built: CR 701.44d's APNAP ordering of simultaneous explores (no catalogued card explores more than one permanent at a time), and a CR 614 window on the action (Topography Tracker)'. game/keyword_action.go has KeywordAction constants for proliferate/scry/surveil/earthbend/amass/learn/connive only and names 'investigate, explore' as the next arms. Investigate has no engine presence at all (card-side Clue creation, e.g. cmdrB1Investigate), so 'whenever you investigate' has nothing to trigger on: add KeywordActionExplore / KeywordActionInvestigate arms + an EventInvestigated, route the ~69 investigating cards' helper through it, and a keyed multi-permanent explore.",
+ "checked": "read game/explore.go header (lines 44-47) and game/keyword_action.go (constants at lines 83-128); grep 'EventInvestigat' in game/: 0; grep -i 'investigat' in game/: only the keyword_action.go comment; grep 'Whenever you investigate' in effects: 0; grep 'explores again|explore.*instead' hits only unrelated cards (twists_and_turns.go, over_the_edge.go, defossilize.go). Single explore (Francisco, batch 6) already works and is not in this seam.",
+ "size": "medium",
+ "cards": [
+  {
+   "name": "Topography Tracker",
+   "oracle_id": "0171861e-98d5-4e58-834f-899d8ad7acea",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Merfolk Scout",
+   "oracle_text": "When this creature enters, create a Map token. (It's an artifact with \"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\")\nIf a creature you control would explore, instead it explores, then it explores again.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "63",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Map",
+     "type_line": "Token Artifact — Map",
+     "oracle_text": "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as a sorcery. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard.)",
+     "colors": [],
+     "keywords": [
+      "Explore"
+     ],
+     "set": "tlci",
+     "collector_number": "17"
+    }
+   ]
+  },
+  {
+   "name": "Hakbal of the Surging Soul",
+   "oracle_id": "687e772a-cdfe-41fd-a066-6cb3aee04193",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Merfolk Scout",
+   "oracle_text": "At the beginning of combat on your turn, each Merfolk creature you control explores. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on the exploring creature, then put the card back or put it into your graveyard.)\nWhenever Hakbal attacks, you may put a land card from your hand onto the battlefield. If you don't, draw a card.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Explore"
+   ],
+   "collector_number": "123",
+   "set": "lcc"
+  },
+  {
+   "name": "Erdwal Illuminator",
+   "oracle_id": "5ff4ef34-acb9-46c3-8530-f4b093807066",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "Flying\nWhenever you investigate for the first time each turn, investigate an additional time.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Investigate"
+   ],
+   "collector_number": "104",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  }
+ ]
+}

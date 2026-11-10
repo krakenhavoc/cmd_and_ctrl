@@ -1,0 +1,209 @@
+{
+ "batch": 15,
+ "theme": "Land recursion and self-mill for lands",
+ "reuse": "'Reveal the top N, lands to hand, rest to graveyard' (Mulch, Winding Way; Wrenn and Seven's +1 in batch 51 uses the same — grep 'Put all land cards revealed this way'); 'put a land card from your hand/graveyard onto the battlefield tapped': game/battlefield_put.go; Saga chapters: game/sagas.go; flashback: Flashback(); 'becomes tapped' trigger (Scaretiller); discard-a-land additional cost: game/additional_cost.go / discard_cost.go.",
+ "pair": 16,
+ "cards": [
+  {
+   "name": "Kirri, Talented Sprout",
+   "oracle_id": "f03bc648-08e4-4ecd-b339-ff72b00367c2",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}{W}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Plant Druid",
+   "oracle_text": "Other Plants and Treefolk you control get +2/+0.\nAt the beginning of each of your postcombat main phases, return target Plant, Treefolk, or land card from your graveyard to your hand.",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "7",
+   "set": "otc"
+  },
+  {
+   "name": "Scaretiller",
+   "oracle_id": "e4b32e47-5484-4ee9-bac3-4ba37558a56a",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact Creature — Scarecrow",
+   "oracle_text": "Whenever this creature becomes tapped, choose one —\n• You may put a land card from your hand onto the battlefield tapped.\n• Return target land card from your graveyard to the battlefield tapped.",
+   "power": "1",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "266",
+   "set": "otc"
+  },
+  {
+   "name": "The Mending of Dominaria",
+   "oracle_id": "9b0b8f00-6367-4dc9-b33e-680470b3a36c",
+   "layout": "saga",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Saga",
+   "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II — Mill two cards, then you may return a creature card from your graveyard to your hand.\nIII — Return all land cards from your graveyard to the battlefield, then shuffle your graveyard into your library.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "197",
+   "set": "otc"
+  },
+  {
+   "name": "Eccentric Farmer",
+   "oracle_id": "b51a852c-ccde-4d23-a3f3-a002f7eacdab",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Human Peasant",
+   "oracle_text": "When this creature enters, mill three cards, then you may return a land card from your graveyard to your hand. (To mill three cards, put the top three cards of your library into your graveyard.)",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "190",
+   "set": "otc"
+  },
+  {
+   "name": "Mulch",
+   "oracle_id": "12c03a03-36bf-487e-b8be-e55399525da5",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Reveal the top four cards of your library. Put all land cards revealed this way into your hand and the rest into your graveyard.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "189",
+   "set": "dsc"
+  },
+  {
+   "name": "Wreck and Rebuild",
+   "oracle_id": "7e10c141-dfb0-409b-b8c9-cdfe93b42a06",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Destroy target artifact or enchantment.\n• Mill five cards, then you may put a land card from your graveyard onto the battlefield tapped.\nFlashback {3}{R}{G}",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Flashback",
+    "Mill"
+   ],
+   "collector_number": "250",
+   "set": "otc"
+  },
+  {
+   "name": "Cavalier of Thorns",
+   "oracle_id": "96b909ab-55f1-4cde-a675-2504de3da772",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Knight",
+   "oracle_text": "Reach\nWhen this creature enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield and the rest into your graveyard.\nWhen this creature dies, you may exile it. If you do, put another target card from your graveyard on top of your library.",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach"
+   ],
+   "collector_number": "100",
+   "set": "ecc"
+  },
+  {
+   "name": "Nantuko Cultivator",
+   "oracle_id": "b8dab16c-681c-4abe-b164-fcfb5dc66678",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect Druid",
+   "oracle_text": "When this creature enters, you may discard any number of land cards. Put that many +1/+1 counters on this creature and draw that many cards.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "198",
+   "set": "otc"
+  },
+  {
+   "name": "Winding Way",
+   "oracle_id": "4e48e76c-8756-4378-a722-2e2929feb74f",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose creature or land. Reveal the top four cards of your library. Put all cards of the chosen type revealed this way into your hand and the rest into your graveyard.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "213",
+   "set": "otc"
+  },
+  {
+   "name": "Magmatic Insight",
+   "oracle_id": "6a9031b6-3f4d-4a36-90e1-ac77b8518cee",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "As an additional cost to cast this spell, discard a land card.\nDraw two cards.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "173",
+   "set": "otc"
+  }
+ ]
+}

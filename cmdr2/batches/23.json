@@ -1,0 +1,222 @@
+{
+ "batch": 23,
+ "theme": "+1/+1 counters: simple and adapt",
+ "reuse": "Adapt precedents: incubation_druid.go, hydra_trainer.go, jetfire_ingenious_scientist.go (grep 'Adapt [0-9X]' — reuse the helper there; Pteramander adds a cost reduction per instant/sorcery in graveyard); mentor: Mentor(); proliferate: game/proliferate.go; 'whenever one or more +1/+1 counters are put on': counter placement events (game/counter_placer.go); win at twenty growth counters: docs 'Winning, losing'; 'remove a +1/+1 counter from a creature you control' cost: game/counter_cost.go.",
+ "pair": 24,
+ "cards": [
+  {
+   "name": "Sage of Fables",
+   "oracle_id": "f53da056-97be-41ad-8cfc-0d92e17dcd7b",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Merfolk Wizard",
+   "oracle_text": "Each other Wizard creature you control enters with an additional +1/+1 counter on it.\n{2}, Remove a +1/+1 counter from a creature you control: Draw a card.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "169",
+   "set": "lcc"
+  },
+  {
+   "name": "Ruinous Intrusion",
+   "oracle_id": "4f945baa-40a9-4494-b2f9-f1926f3fec84",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile target artifact or enchantment. Put X +1/+1 counters on target creature you control, where X is the mana value of the permanent exiled this way.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "255",
+   "set": "lcc"
+  },
+  {
+   "name": "Merfolk Skydiver",
+   "oracle_id": "5d2ccaa4-4815-4987-889f-d08c4d1e7a8e",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Merfolk Mutant",
+   "oracle_text": "Flying\nWhen this creature enters, put a +1/+1 counter on target creature you control.\n{3}{G}{U}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Proliferate"
+   ],
+   "collector_number": "277",
+   "set": "lcc"
+  },
+  {
+   "name": "Tenured Inkcaster",
+   "oracle_id": "780536da-2923-48e7-916a-61c701382d28",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Vampire Warlock",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature.\nWhenever a creature you control with a +1/+1 counter on it attacks, each opponent loses 1 life and you gain 1 life.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "149",
+   "set": "otc"
+  },
+  {
+   "name": "Herald of Secret Streams",
+   "oracle_id": "366a218e-84d3-4cf9-bbc8-f2f8ecce92a3",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Warrior",
+   "oracle_text": "Creatures you control with +1/+1 counters on them can't be blocked.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "158",
+   "set": "lcc"
+  },
+  {
+   "name": "Tributary Instructor",
+   "oracle_id": "1c70b9d8-b04e-48f8-a4e0-12ce077d22f2",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Merfolk Shaman",
+   "oracle_text": "Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)\nWhenever a creature you control with a +1/+1 counter on it dies, draw a card.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mentor"
+   ],
+   "collector_number": "96",
+   "set": "lcc"
+  },
+  {
+   "name": "Simic Ascendancy",
+   "oracle_id": "57c1a98e-c4fb-4144-9e3e-d0fe6789ba26",
+   "layout": "normal",
+   "mana_cost": "{G}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "{1}{G}{U}: Put a +1/+1 counter on target creature you control.\nWhenever one or more +1/+1 counters are put on a creature you control, put that many growth counters on this enchantment.\nAt the beginning of your upkeep, if this enchantment has twenty or more growth counters on it, you win the game.",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "260",
+   "set": "blc"
+  },
+  {
+   "name": "Pteramander",
+   "oracle_id": "00187de2-bc48-4137-97d8-a9a0fafc76c1",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Creature — Salamander Drake",
+   "oracle_text": "Flying\n{7}{U}: Adapt 4. This ability costs {1} less to activate for each instant and sorcery card in your graveyard. (If this creature has no +1/+1 counters on it, put four +1/+1 counters on it.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Adapt"
+   ],
+   "collector_number": "109",
+   "set": "otc"
+  },
+  {
+   "name": "Zegana, Utopian Speaker",
+   "oracle_id": "04260930-ff38-4b35-9ec4-e89196a4f2c7",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Merfolk Wizard",
+   "oracle_text": "When Zegana enters, if you control another creature with a +1/+1 counter on it, draw a card.\n{4}{G}{U}: Adapt 4. (If this creature has no +1/+1 counters on it, put four +1/+1 counters on it.)\nEach creature you control with a +1/+1 counter on it has trample.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Adapt"
+   ],
+   "collector_number": "298",
+   "set": "lcc"
+  },
+  {
+   "name": "Benthic Biomancer",
+   "oracle_id": "b9000917-4f09-42f4-ae85-fc1ac7571d93",
+   "layout": "normal",
+   "mana_cost": "{U}",
+   "cmc": 1.0,
+   "type_line": "Creature — Merfolk Wizard Mutant",
+   "oracle_text": "{1}{U}: Adapt 1. (If this creature has no +1/+1 counters on it, put a +1/+1 counter on it.)\nWhenever one or more +1/+1 counters are put on this creature, draw a card, then discard a card.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Adapt"
+   ],
+   "collector_number": "145",
+   "set": "lcc"
+  }
+ ]
+}

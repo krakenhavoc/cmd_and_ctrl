@@ -1,0 +1,328 @@
+{
+ "batch": 18,
+ "theme": "Bloomburrow legends, offspring and Food",
+ "reuse": "Offspring()/OffspringToken() in offspring.go; FoodToken; Class levels: wizard_class.go, *_talent.go (Gourmand's Talent); 'artifacts are Foods and have …' type+ability grant: granted_equipment.go shape; expend: WheneverYouExpend; 'second time this ability has resolved this turn': vito_fanatic_of_aclazotz.go, zimone_mystery_unraveler.go; 'put onto the battlefield tapped and attacking' + return at end of combat (Arthur): game/put_attacking.go; Bello's during-your-turn animation is a layer 4/6/7b static; Treasure: TreasureToken().",
+ "pair": 17,
+ "cards": [
+  {
+   "name": "Arthur, Marigold Knight",
+   "oracle_id": "8d6ce07f-b21b-42eb-a3d6-df810664e2be",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Mouse Knight",
+   "oracle_text": "Haste\nWhenever Arthur and at least one other creature attack, look at the top six cards of your library. You may put a creature card from among them onto the battlefield tapped and attacking. Put the rest on the bottom of your library in a random order. Return that creature to its owner's hand at end of combat.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Haste"
+   ],
+   "collector_number": "41",
+   "set": "blc"
+  },
+  {
+   "name": "Flubs, the Fool",
+   "oracle_id": "29356966-652d-4456-84c8-7aeab5fc8d05",
+   "layout": "normal",
+   "mana_cost": "{G}{U}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Frog Scout",
+   "oracle_text": "You may play an additional land on each of your turns.\nWhenever you play a land or cast a spell, draw a card if you have no cards in hand. Otherwise, discard a card.",
+   "power": "0",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "356",
+   "set": "blc"
+  },
+  {
+   "name": "Ms. Bumbleflower",
+   "oracle_id": "25636214-c6ea-4655-a5e8-98e735da5b05",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Rabbit Citizen",
+   "oracle_text": "Vigilance\nWhenever you cast a spell, target opponent draws a card. Put a +1/+1 counter on target creature. It gains flying until end of turn. If this is the second time this ability has resolved this turn, you draw two cards.",
+   "power": "1",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "3",
+   "set": "blc"
+  },
+  {
+   "name": "Mr. Foxglove",
+   "oracle_id": "c2008ba9-00df-4607-ba0c-189af52033eb",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{W}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Fox Rogue",
+   "oracle_text": "Lifelink\nWhenever Mr. Foxglove attacks, draw cards equal to the number of cards in defending player's hand minus the number of cards in your hand. If you didn't draw cards this way, you may put a creature card from your hand onto the battlefield.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Lifelink"
+   ],
+   "collector_number": "42",
+   "set": "blc"
+  },
+  {
+   "name": "Bello, Bard of the Brambles",
+   "oracle_id": "fb773114-6161-46a3-ab30-1853958fbcb0",
+   "layout": "normal",
+   "mana_cost": "{1}{R}{G}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Raccoon Bard",
+   "oracle_text": "During your turn, each non-Equipment artifact and non-Aura enchantment you control with mana value 4 or greater is a 4/4 Elemental creature in addition to its other types and has indestructible, haste, and \"Whenever this creature deals combat damage to a player, draw a card.\"",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "1",
+   "set": "blc"
+  },
+  {
+   "name": "Pyreswipe Hawk",
+   "oracle_id": "35a03b0f-9dac-476a-97e9-67767c1e453e",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Bird",
+   "oracle_text": "Flying, haste\nWhenever this creature attacks, it gets +X/+0 until end of turn, where X is the greatest mana value among artifacts you control.\nWhenever you expend 6, gain control of up to one target artifact for as long as you control this creature. (You expend 6 as you spend your sixth total mana to cast spells during a turn.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Haste"
+   ],
+   "collector_number": "26",
+   "set": "blc"
+  },
+  {
+   "name": "Prosperous Bandit",
+   "oracle_id": "2a14670b-2ab6-4e1d-9b33-610a87bdb7ce",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Creature — Raccoon Rogue",
+   "oracle_text": "Offspring {1} (You may pay an additional {1} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\nFirst strike\nWhenever this creature deals combat damage to a player, create that many tapped Treasure tokens.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Offspring",
+    "First strike",
+    "Treasure"
+   ],
+   "collector_number": "59",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Steelburr Champion",
+   "oracle_id": "d1f3d5ca-cb17-400f-8ed9-3b9a4f151b62",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Mouse Soldier",
+   "oracle_text": "Offspring {1}{W} (You may pay an additional {1}{W} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\nVigilance\nWhenever an opponent casts a noncreature spell, put a +1/+1 counter on this creature.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Offspring",
+    "Vigilance"
+   ],
+   "collector_number": "12",
+   "set": "blc"
+  },
+  {
+   "name": "Insatiable Frugivore",
+   "oracle_id": "4f31eea0-61b9-467d-8393-0ab9f1b6e882",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Rat Berserker",
+   "oracle_text": "When this creature enters, create a Food token, then you may exile three cards from your graveyard. If you do, repeat this process.\n{3}{B}, Sacrifice X Foods: Creatures you control get +X/+0 and gain menace until end of turn.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "18",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "oracle_text": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+     "colors": [],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "27"
+    }
+   ]
+  },
+  {
+   "name": "Gourmand's Talent",
+   "oracle_id": "e802bf11-d3c7-4aad-8e85-99b39ff50d70",
+   "layout": "class",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Enchantment — Class",
+   "oracle_text": "(Gain the next level as a sorcery to add its ability.)\nDuring your turn, artifacts you control are Foods in addition to their other types and have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\"\n{2}{G}: Level 2\nWhenever you gain life for the first time each turn, create a 3/3 green Raccoon creature token.\n{3}{G}: Level 3\nWhenever you gain life for the first time each turn, put a +1/+1 counter on each creature you control.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "31",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Raccoon",
+     "type_line": "Token Creature — Raccoon",
+     "oracle_text": "",
+     "power": "3",
+     "toughness": "3",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Killer Service",
+   "oracle_id": "0f30f32f-3c4c-4f73-8b2a-82045a40bda9",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, create a number of Food tokens equal to the number of opponents you have. (They're artifacts with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nAt the beginning of your end step, you may pay {2} and sacrifice a token. If you do, create a 4/4 green Rhino Warrior creature token.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Food"
+   ],
+   "collector_number": "174",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "oracle_text": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "24"
+    },
+    {
+     "component": "token",
+     "name": "Rhino Warrior",
+     "type_line": "Token Creature — Rhino Warrior",
+     "oracle_text": "",
+     "power": "4",
+     "toughness": "4",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "18"
+    }
+   ]
+  }
+ ]
+}

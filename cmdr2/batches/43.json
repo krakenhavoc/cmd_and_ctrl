@@ -1,0 +1,203 @@
+{
+ "batch": 43,
+ "theme": "Impulse play, cast-from-top and life-for-mana costs",
+ "reuse": "effects/impulse.go, impulse_exile.go, reckless_impulse.go; 'exiles cards from the top until they exile a <kind> card. You may cast that card free' (Dazzling Sphinx, Chaos Wand, Stolen Goods): game/exile_until_cast.go — one shape, all three here; 'once during each of your turns, you may cast …' (One with the Multiverse, Demon of Fate's Design): effects/granted_alternative_cost.go GrantedAltCostLifeFromHandOnceYourTurn and siblings; 'rather than pay the mana cost of the next spell you cast this turn, you may pay life equal to its mana value' (Marshland Bloodcaster): game/next_spell_promise.go alternative-cost rider (line 129) + valgavoth_terror_eater.go; cast from top with an additional sacrifice cost (Into the Pit): osteomancer_adept.go, game/cast_permission.go; Epic Experiment: primeval_spawn.go; 'if an opponent lost life this turn' gate: cast_permission_condition.go.",
+ "pair": 44,
+ "cards": [
+  {
+   "name": "Dazzling Sphinx",
+   "oracle_id": "00e8b4c9-3a79-4864-a730-c0081d397c5b",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Sphinx",
+   "oracle_text": "Flying\nWhenever this creature deals combat damage to a player, that player exiles cards from the top of their library until they exile an instant or sorcery card. You may cast that card without paying its mana cost. Then that player puts the exiled cards that weren't cast this way on the bottom of their library in a random order.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "93",
+   "set": "otc"
+  },
+  {
+   "name": "Chaos Wand",
+   "oracle_id": "0b95c115-6745-4ce1-896b-9021e93c161e",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "{4}, {T}: Target opponent exiles cards from the top of their library until they exile an instant or sorcery card. You may cast that card without paying its mana cost. Then put the exiled cards that weren't cast this way on the bottom of that library in a random order.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "254",
+   "set": "otc"
+  },
+  {
+   "name": "Stolen Goods",
+   "oracle_id": "9294d4d3-0df0-4070-9261-06f15b758a0d",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target opponent exiles cards from the top of their library until they exile a nonland card. Until end of turn, you may cast that card without paying its mana cost.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "115",
+   "set": "otc"
+  },
+  {
+   "name": "Epic Experiment",
+   "oracle_id": "08bc10fd-8901-4836-ad4d-a867e1bcba77",
+   "layout": "normal",
+   "mana_cost": "{X}{U}{R}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile the top X cards of your library. You may cast instant and sorcery spells with mana value X or less from among them without paying their mana costs. Then put all cards exiled this way that weren't cast into your graveyard.",
+   "colors": [
+    "R",
+    "U"
+   ],
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "222",
+   "set": "otc"
+  },
+  {
+   "name": "Tectonic Giant",
+   "oracle_id": "0e5e46e3-f9af-47cc-a740-bf808d5cb4b1",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental Giant",
+   "oracle_text": "Whenever this creature attacks or becomes the target of a spell an opponent controls, choose one —\n• This creature deals 3 damage to each opponent.\n• Exile the top two cards of your library. Choose one of them. Until the end of your next turn, you may play that card.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "168",
+   "set": "dsc"
+  },
+  {
+   "name": "Theater of Horrors",
+   "oracle_id": "b391a4ce-52ce-4a8c-bbe5-6053951ee1d4",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your upkeep, exile the top card of your library.\nDuring your turn, if an opponent lost life this turn, you may play lands and cast spells from among cards exiled with this enchantment.\n{3}{R}: This enchantment deals 1 damage to target opponent or planeswalker.",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "236",
+   "set": "dsc"
+  },
+  {
+   "name": "One with the Multiverse",
+   "oracle_id": "06bb4272-25d1-46db-8585-15f919267e1e",
+   "layout": "normal",
+   "mana_cost": "{6}{U}{U}",
+   "cmc": 8.0,
+   "type_line": "Enchantment",
+   "oracle_text": "You may look at the top card of your library any time.\nYou may play lands and cast spells from the top of your library.\nOnce during each of your turns, you may cast a spell from your hand or the top of your library without paying its mana cost.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "121",
+   "set": "dsc"
+  },
+  {
+   "name": "Into the Pit",
+   "oracle_id": "e330412f-46a1-4e7c-8766-f644606049e0",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "You may look at the top card of your library any time.\nYou may cast spells from the top of your library by sacrificing a nonland permanent in addition to paying their other costs.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "50",
+   "set": "dsc"
+  },
+  {
+   "name": "Demon of Fate's Design",
+   "oracle_id": "53716e0b-4d4e-40b0-8370-38e11f73d195",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Enchantment Creature — Demon",
+   "oracle_text": "Flying, trample\nOnce during each of your turns, you may cast an enchantment spell by paying life equal to its mana value rather than paying its mana cost.\n{2}{B}, Sacrifice another enchantment: This creature gets +X/+0 until end of turn, where X is the sacrificed enchantment's mana value.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Trample"
+   ],
+   "collector_number": "137",
+   "set": "dsc"
+  },
+  {
+   "name": "Marshland Bloodcaster",
+   "oracle_id": "5ecf35b1-0bfd-4c60-a791-5a3b918dd630",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Vampire Warlock",
+   "oracle_text": "Flying\n{1}{B}, {T}: Rather than pay the mana cost of the next spell you cast this turn, you may pay life equal to that spell's mana value.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "139",
+   "set": "otc"
+  }
+ ]
+}

@@ -1,0 +1,436 @@
+{
+ "batch": 46,
+ "theme": "Encore, myriad and tokens that enter attacking",
+ "reuse": "Encore(cost) in encore.go; myriad: myriad.go (double myriad on Scurry of Squirrels = two instances; granting myriad until end of turn for Mass of Mysteries: docs 'Granting an ability'); 'whenever you attack a player' (Soaring Lightbringer, Echoing Assault): seifer_balamb_rival.go, long_range_sensor.go, tmc_b1_d_helpers.go ('tapped and attacking that player'); legendary token Ragavan entering tapped and attacking, exiled at end of combat (Kari Zev): game/put_attacking.go + Ragavan precedents; Impulsivity reuses the batch-42 graveyard free-cast sentence; changeling Shapeshifter token exists.",
+ "pair": 45,
+ "cards": [
+  {
+   "name": "Lamentation",
+   "oracle_id": "88e43e62-8bce-41b3-ac2d-47043fcc7077",
+   "layout": "normal",
+   "mana_cost": "{5}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental Incarnation",
+   "oracle_text": "When this creature enters, destroy target creature an opponent controls. You gain 3 life.\nEncore {6}{B}{B} ({6}{B}{B}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "10",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Mist Dancer",
+   "oracle_id": "bf76ba01-e06f-4451-a4b4-cf548b43eafc",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Merfolk Wizard",
+   "oracle_text": "Flying\nOther Merfolk you control get +1/+0 and have flying.\nEncore {5}{U}{U} ({5}{U}{U}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Encore"
+   ],
+   "collector_number": "44",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Jubilation",
+   "oracle_id": "2cf04076-adc4-4831-a3b8-9120d516f204",
+   "layout": "normal",
+   "mana_cost": "{5}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental Incarnation",
+   "oracle_text": "When this creature enters, creatures you control get +2/+2 and gain trample until end of turn.\nEncore {7}{G}{G} ({7}{G}{G}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "37",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Impulsivity",
+   "oracle_id": "02b6900b-219f-4832-8f93-6ef27ee76c0c",
+   "layout": "normal",
+   "mana_cost": "{6}{R}",
+   "cmc": 7.0,
+   "type_line": "Creature — Elemental Incarnation",
+   "oracle_text": "When this creature enters, you may cast target instant or sorcery card from a graveyard without paying its mana cost. If that spell would be put into a graveyard, exile it instead.\nEncore {7}{R}{R} ({7}{R}{R}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "7",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "33",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Belonging",
+   "oracle_id": "0ec88e35-191b-411b-9eb0-2dfef7ae4174",
+   "layout": "normal",
+   "mana_cost": "{5}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental Incarnation",
+   "oracle_text": "When this creature enters, create three 1/1 colorless Shapeshifter creature tokens with changeling. (They're every creature type.)\nEncore {6}{W}{W} ({6}{W}{W}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "5",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Shapeshifter",
+     "type_line": "Token Creature — Shapeshifter",
+     "oracle_text": "Changeling",
+     "power": "1",
+     "toughness": "1",
+     "colors": [],
+     "keywords": [
+      "Changeling"
+     ],
+     "set": "tecl",
+     "collector_number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Subterfuge",
+   "oracle_id": "687cfdf7-8f35-464a-8d6e-9f2d769ed6b4",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Incarnation",
+   "oracle_text": "When this creature enters, target creature gains flying and \"Whenever this creature deals combat damage to a player, draw that many cards\" until end of turn.\nEncore {7}{U}{U} ({7}{U}{U}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Encore"
+   ],
+   "collector_number": "26",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Scion of Calamity",
+   "oracle_id": "75fddffb-68f4-4b65-bf3b-4e2ada62a522",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Myriad (Whenever this creature attacks, for each opponent other than defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at end of combat.)\nWhenever this creature deals combat damage to a player, destroy target artifact or enchantment that player controls.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Myriad"
+   ],
+   "collector_number": "93",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Mass of Mysteries",
+   "oracle_id": "3ceffadd-c32d-4508-b307-e03bf3c8e7b8",
+   "layout": "normal",
+   "mana_cost": "{W}{U}{B}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elemental",
+   "oracle_text": "First strike, vigilance, trample\nAt the beginning of combat on your turn, another target Elemental you control gains myriad until end of turn. (Whenever it attacks, for each opponent other than defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at end of combat.)",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Vigilance",
+    "First strike",
+    "Trample"
+   ],
+   "collector_number": "3",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Scurry of Squirrels",
+   "oracle_id": "3beed054-a099-4887-b1bd-39cf9e514e94",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Squirrel Scout",
+   "oracle_text": "Myriad, myriad (Whenever this creature attacks, for each opponent other than defending player, you may create a token that's a copy of this creature that's tapped and attacking that player or a planeswalker they control. Then do it again. Exile the tokens at end of combat.)\nWhenever this creature deals combat damage to a player, put a +1/+1 counter on target creature you control.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Myriad"
+   ],
+   "collector_number": "33",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Echoing Assault",
+   "oracle_id": "d15dba3a-3b85-43fb-b5f3-c4d8d1e23b1d",
+   "layout": "normal",
+   "mana_cost": "{4}{R}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Creature tokens you control have menace.\nWhenever you attack a player, choose target nontoken creature that's attacking that player. Create a token that's a copy of that creature, except it's 1/1. The token enters tapped and attacking that player. Sacrifice it at the beginning of the next end step.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "24",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "Soaring Lightbringer",
+   "oracle_id": "65ea7eb1-751b-4ecd-83cb-e9b6015ec194",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Enchantment Creature — Bird Glimmer",
+   "oracle_text": "Flying\nOther enchantment creatures you control have flying.\nWhenever you attack a player, create a 1/1 white Glimmer enchantment creature token that's tapped and attacking that player.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "42",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Glimmer",
+     "type_line": "Token Enchantment Creature — Glimmer",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "tdsk",
+     "collector_number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Kari Zev, Skyship Raider",
+   "oracle_id": "786baa29-afd4-40f0-95c8-920a972b9175",
+   "layout": "normal",
+   "mana_cost": "{1}{R}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Pirate",
+   "oracle_text": "First strike, menace\nWhenever Kari Zev attacks, create Ragavan, a legendary 2/1 red Monkey creature token. Ragavan enters tapped and attacking. Exile that token at end of combat.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike",
+    "Menace"
+   ],
+   "collector_number": "227",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Ragavan",
+     "type_line": "Token Legendary Creature — Monkey",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "1",
+     "colors": [
+      "R"
+     ],
+     "keywords": [],
+     "set": "tlcc",
+     "collector_number": "7"
+    }
+   ]
+  }
+ ]
+}

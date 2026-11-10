@@ -1,0 +1,398 @@
+{
+ "batch": 10,
+ "theme": "Vampires: Blood tokens, partner pairs, Athreos",
+ "reuse": "BloodToken (token_catalog.go, tokens_spawn.go) for Moonstone Eulogist, Voldaren Estate, Glass-Cast Heart, Kamber — all here; 'partner with' precedents: rowan_kenrith.go, toothy_imaginary_friend.go (Cazur+Ukkima and Laurine+Kamber kept together); 'isn't a creature' devotion gate (Athreos): xenagos_god_of_revels.go, game/card_type_loss.go; 'dies or is put into exile': god_eternal_oketra.go, kayas_ghostform.go; Ward—Discard: WardDiscard(); Florian reads life lost by opponents this turn (turn_tally.go); goad: goad.go GoadTarget.",
+ "pair": 9,
+ "cards": [
+  {
+   "name": "Moonstone Eulogist",
+   "oracle_id": "cf9190e0-6f53-44fb-8afa-c16f5bf9829e",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Creature — Bat Warlock",
+   "oracle_text": "Flying\nWhenever a creature an opponent controls dies, you create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")\nWhenever you sacrifice an artifact, put a +1/+1 counter on this creature and you gain 1 life.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "19",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Blood",
+     "type_line": "Token Artifact — Blood",
+     "oracle_text": "{1}, {T}, Discard a card, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "36"
+    }
+   ]
+  },
+  {
+   "name": "Voldaren Estate",
+   "oracle_id": "fb0c0426-f1a6-4e52-9242-627786d3119a",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\n{T}, Pay 1 life: Add one mana of any color. Spend this mana only to cast a Vampire spell.\n{5}, {T}: Create a Blood token. This ability costs {1} less to activate for each Vampire you control. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "369",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Blood",
+     "type_line": "Token Artifact — Blood",
+     "oracle_text": "{1}, {T}, Discard a card, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tlcc",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Glass-Cast Heart",
+   "oracle_id": "3edd6272-20fa-4c3a-bf34-2f253cc8ac9e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever one or more Vampires you control attack, create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")\n{B}, {T}, Pay 1 life: Create a 1/1 white and black Vampire creature token with lifelink.\n{B}{B}, {T}, Sacrifice this artifact and thirteen Blood tokens: Each opponent loses 13 life and you gain 13 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "199",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Blood",
+     "type_line": "Token Artifact — Blood",
+     "oracle_text": "{1}, {T}, Discard a card, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tlcc",
+     "collector_number": "15"
+    },
+    {
+     "component": "token",
+     "name": "Vampire",
+     "type_line": "Token Creature — Vampire",
+     "oracle_text": "Lifelink",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "B",
+      "W"
+     ],
+     "keywords": [
+      "Lifelink"
+     ],
+     "set": "tlcc",
+     "collector_number": "14"
+    }
+   ]
+  },
+  {
+   "name": "Kamber, the Plunderer",
+   "oracle_id": "0b620775-70a5-4423-8453-e403a5b79554",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Vampire Rogue",
+   "oracle_text": "Partner with Laurine, the Diversion (When this creature enters, target player may put Laurine into their hand from their library, then shuffle.)\nLifelink\nWhenever a creature an opponent controls dies, you gain 1 life and create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Partner with",
+    "Partner"
+   ],
+   "collector_number": "137",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Blood",
+     "type_line": "Token Artifact — Blood",
+     "oracle_text": "{1}, {T}, Discard a card, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "24"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Laurine, the Diversion",
+     "type_line": "Legendary Creature — Human Rogue",
+     "oracle_text": "Partner with Kamber, the Plunderer (When this creature enters, target player may put Kamber into their hand from their library, then shuffle.)\nFirst strike\n{2}, Sacrifice an artifact or creature: Goad target creature. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)",
+     "power": "3",
+     "toughness": "3",
+     "colors": [
+      "R"
+     ],
+     "keywords": [
+      "Partner with",
+      "Goad",
+      "First strike",
+      "Partner"
+     ],
+     "set": "otc",
+     "collector_number": "172"
+    }
+   ]
+  },
+  {
+   "name": "Laurine, the Diversion",
+   "oracle_id": "f2f8847d-17a8-4c26-8a7a-1bb6c02f2b39",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Rogue",
+   "oracle_text": "Partner with Kamber, the Plunderer (When this creature enters, target player may put Kamber into their hand from their library, then shuffle.)\nFirst strike\n{2}, Sacrifice an artifact or creature: Goad target creature. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Partner with",
+    "Goad",
+    "First strike",
+    "Partner"
+   ],
+   "collector_number": "172",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Kamber, the Plunderer",
+     "type_line": "Legendary Creature — Vampire Rogue",
+     "oracle_text": "Partner with Laurine, the Diversion (When this creature enters, target player may put Laurine into their hand from their library, then shuffle.)\nLifelink\nWhenever a creature an opponent controls dies, you gain 1 life and create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")",
+     "power": "3",
+     "toughness": "4",
+     "colors": [
+      "B"
+     ],
+     "keywords": [
+      "Lifelink",
+      "Partner with",
+      "Partner"
+     ],
+     "set": "otc",
+     "collector_number": "137"
+    }
+   ]
+  },
+  {
+   "name": "Florian, Voldaren Scion",
+   "oracle_id": "d74a2cbf-4d13-401d-9b3f-bfbde4942afd",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vampire Noble",
+   "oracle_text": "First strike\nAt the beginning of each of your postcombat main phases, look at the top X cards of your library, where X is the total amount of life your opponents lost this turn. Exile one of those cards and put the rest on the bottom of your library in a random order. You may play the exiled card this turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "First strike"
+   ],
+   "collector_number": "217",
+   "set": "dsc"
+  },
+  {
+   "name": "Timothar, Baron of Bats",
+   "oracle_id": "82e03151-3990-451c-99cc-c7d386872df2",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Creature — Vampire Noble",
+   "oracle_text": "Ward—Discard a card.\nWhenever another nontoken Vampire you control dies, you may pay {1} and exile it. If you do, create a 1/1 black Bat creature token with flying. It gains \"When this token deals combat damage to a player, sacrifice it and return the exiled card to the battlefield tapped.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "210",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Bat",
+     "type_line": "Token Creature — Bat",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "B"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tlci",
+     "collector_number": "6"
+    }
+   ]
+  },
+  {
+   "name": "Athreos, Shroud-Veiled",
+   "oracle_id": "9aacc1ce-8d0d-4a24-9a15-74635f2f127d",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{B}",
+   "cmc": 6.0,
+   "type_line": "Legendary Enchantment Creature — God",
+   "oracle_text": "Indestructible\nAs long as your devotion to white and black is less than seven, Athreos isn't a creature.\nAt the beginning of your end step, put a coin counter on another target creature.\nWhenever a creature with a coin counter on it dies or is put into exile, return that card to the battlefield under your control.",
+   "power": "4",
+   "toughness": "7",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [
+    "Indestructible"
+   ],
+   "collector_number": "212",
+   "set": "dsc"
+  },
+  {
+   "name": "Cazur, Ruthless Stalker",
+   "oracle_id": "ccfc74f7-bf32-4201-ad8f-f552ed7f96f8",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Partner with Ukkima, Stalking Shadow (When this creature enters, target player may put Ukkima into their hand from their library, then shuffle.)\nWhenever a creature you control deals combat damage to a player, put a +1/+1 counter on that creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Partner with",
+    "Partner"
+   ],
+   "collector_number": "188",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Ukkima, Stalking Shadow",
+     "type_line": "Legendary Creature — Whale Wolf",
+     "oracle_text": "Partner with Cazur, Ruthless Stalker (When this creature enters, target player may put Cazur into their hand from their library, then shuffle.)\nUkkima can't be blocked.\nWhen Ukkima leaves the battlefield, it deals X damage to target player and you gain X life, where X is its power.",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B",
+      "U"
+     ],
+     "keywords": [
+      "Partner with",
+      "Partner"
+     ],
+     "set": "otc",
+     "collector_number": "247"
+    }
+   ]
+  },
+  {
+   "name": "Ukkima, Stalking Shadow",
+   "oracle_id": "b8c3cb84-0a30-420d-8fc3-bb85ce69b5e8",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Whale Wolf",
+   "oracle_text": "Partner with Cazur, Ruthless Stalker (When this creature enters, target player may put Cazur into their hand from their library, then shuffle.)\nUkkima can't be blocked.\nWhen Ukkima leaves the battlefield, it deals X damage to target player and you gain X life, where X is its power.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Partner with",
+    "Partner"
+   ],
+   "collector_number": "247",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Cazur, Ruthless Stalker",
+     "type_line": "Legendary Creature — Human Warrior",
+     "oracle_text": "Partner with Ukkima, Stalking Shadow (When this creature enters, target player may put Ukkima into their hand from their library, then shuffle.)\nWhenever a creature you control deals combat damage to a player, put a +1/+1 counter on that creature.",
+     "power": "3",
+     "toughness": "3",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Partner with",
+      "Partner"
+     ],
+     "set": "otc",
+     "collector_number": "188"
+    }
+   ]
+  }
+ ]
+}

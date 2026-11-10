@@ -1,0 +1,350 @@
+{
+ "batch": 39,
+ "theme": "Split, aftermath, flashback, jump-start and board wipes",
+ "reuse": "game/split.go (aftermath precedents: insult_injury.go, dusk_dawn.go); Flashback(); jump-start has NO helper — write it once as a flashback variant with a discard (siblings FlashbackSacrifice / FlashbackTap; CR 702.133) for Radical Idea, the only jump-start card; 'put target spell or nonland permanent into its owner's library second from the top': game/put_spell_in_library.go, oust.go; wipes: wrath_of_god.go ('can't be regenerated'), cycling trigger 'When you cycle this card' (Decree of Pain), convoke, adventure (Realm-Cloaked Giant).",
+ "pair": 40,
+ "cards": [
+  {
+   "name": "Commit // Memory",
+   "oracle_id": "56fd8895-3be2-4591-86fa-87567d9cdc14",
+   "layout": "split",
+   "mana_cost": "{3}{U} // {4}{U}{U}",
+   "cmc": 10.0,
+   "type_line": "Instant // Sorcery",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Aftermath"
+   ],
+   "collector_number": "147",
+   "set": "lcc",
+   "card_faces": [
+    {
+     "name": "Commit",
+     "mana_cost": "{3}{U}",
+     "type_line": "Instant",
+     "oracle_text": "Put target spell or nonland permanent into its owner's library second from the top."
+    },
+    {
+     "name": "Memory",
+     "mana_cost": "{4}{U}{U}",
+     "type_line": "Sorcery",
+     "oracle_text": "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nEach player shuffles their hand and graveyard into their library, then draws seven cards."
+    }
+   ]
+  },
+  {
+   "name": "Heaven // Earth",
+   "oracle_id": "03d3fee8-f7de-4152-8c18-6d279cc6c125",
+   "layout": "split",
+   "mana_cost": "{X}{G} // {X}{R}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant // Sorcery",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Aftermath"
+   ],
+   "collector_number": "230",
+   "set": "otc",
+   "card_faces": [
+    {
+     "name": "Heaven",
+     "mana_cost": "{X}{G}",
+     "type_line": "Instant",
+     "oracle_text": "Heaven deals X damage to each creature with flying."
+    },
+    {
+     "name": "Earth",
+     "mana_cost": "{X}{R}{R}",
+     "type_line": "Sorcery",
+     "oracle_text": "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nEarth deals X damage to each creature without flying."
+    }
+   ]
+  },
+  {
+   "name": "Connive // Concoct",
+   "oracle_id": "6e07e7ae-1bb7-4831-adb9-a5e71b7d79e3",
+   "layout": "split",
+   "mana_cost": "{2}{U/B}{U/B} // {3}{U}{B}",
+   "cmc": 9.0,
+   "type_line": "Sorcery // Sorcery",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "203",
+   "set": "mkc",
+   "card_faces": [
+    {
+     "name": "Connive",
+     "mana_cost": "{2}{U/B}{U/B}",
+     "type_line": "Sorcery",
+     "oracle_text": "Gain control of target creature with power 2 or less."
+    },
+    {
+     "name": "Concoct",
+     "mana_cost": "{3}{U}{B}",
+     "type_line": "Sorcery",
+     "oracle_text": "Surveil 3, then return a creature card from your graveyard to the battlefield."
+    }
+   ]
+  },
+  {
+   "name": "Discovery // Dispersal",
+   "oracle_id": "8f1c1bd6-8420-4de2-81f4-5faa419da301",
+   "layout": "split",
+   "mana_cost": "{1}{U/B} // {3}{U}{B}",
+   "cmc": 7.0,
+   "type_line": "Sorcery // Instant",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "207",
+   "set": "mkc",
+   "card_faces": [
+    {
+     "name": "Discovery",
+     "mana_cost": "{1}{U/B}",
+     "type_line": "Sorcery",
+     "oracle_text": "Surveil 2, then draw a card. (To surveil 2, look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)"
+    },
+    {
+     "name": "Dispersal",
+     "mana_cost": "{3}{U}{B}",
+     "type_line": "Instant",
+     "oracle_text": "Each opponent returns a nonland permanent they control with the greatest mana value among permanents they control to its owner's hand, then discards a card."
+    }
+   ]
+  },
+  {
+   "name": "Radical Idea",
+   "oracle_id": "fd51dce2-8e8a-4686-910e-1bbc2825d190",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Draw a card.\nJump-start (You may cast this card from your graveyard by discarding a card in addition to paying its other costs. Then exile this card.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Jump",
+    "Jump-start"
+   ],
+   "collector_number": "110",
+   "set": "otc"
+  },
+  {
+   "name": "Electric Revelation",
+   "oracle_id": "c92af0f4-e5f1-4731-a781-b2ca360867a7",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "As an additional cost to cast this spell, discard a card.\nDraw two cards.\nFlashback {3}{R} (You may cast this card from your graveyard for its flashback cost and any additional costs. Then exile it.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "163",
+   "set": "otc"
+  },
+  {
+   "name": "Reckless Spite",
+   "oracle_id": "a684df3a-5441-4daa-86d1-c47a91b35e6a",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{B}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Destroy two target nonblack creatures. You lose 5 life.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "117",
+   "set": "woc"
+  },
+  {
+   "name": "Nightmare Unmaking",
+   "oracle_id": "285fecb7-f872-454d-ac2f-bc5615c70cd8",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Choose one —\n• Exile each creature with power greater than the number of cards in your hand.\n• Exile each creature with power less than the number of cards in your hand.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "114",
+   "set": "woc"
+  },
+  {
+   "name": "Realm-Cloaked Giant // Cast Off",
+   "oracle_id": "a1d17244-9c92-4094-9843-d7ee31c85ea4",
+   "layout": "adventure",
+   "mana_cost": "{5}{W}{W} // {3}{W}{W}",
+   "cmc": 7.0,
+   "type_line": "Creature — Giant // Sorcery — Adventure",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Vigilance"
+   ],
+   "collector_number": "149",
+   "set": "blc",
+   "card_faces": [
+    {
+     "name": "Realm-Cloaked Giant",
+     "mana_cost": "{5}{W}{W}",
+     "type_line": "Creature — Giant",
+     "oracle_text": "Vigilance",
+     "power": "7",
+     "toughness": "7"
+    },
+    {
+     "name": "Cast Off",
+     "mana_cost": "{3}{W}{W}",
+     "type_line": "Sorcery — Adventure",
+     "oracle_text": "Destroy all non-Giant creatures. (Then exile this card. You may cast the creature later from exile.)"
+    }
+   ],
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "On an Adventure",
+     "type_line": "Card",
+     "oracle_text": "After an Adventure resolves, you can place the exiled card here. You may cast the creature from exile.",
+     "colors": [],
+     "keywords": [],
+     "set": "thob",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Calamity of Cinders",
+   "oracle_id": "fbcf0c1c-29a7-4e83-8b06-869f83be49cd",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nCalamity of Cinders deals 6 damage to each untapped creature.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Convoke"
+   ],
+   "collector_number": "23",
+   "set": "blc"
+  },
+  {
+   "name": "Starstorm",
+   "oracle_id": "34d112c3-cc2d-4428-bd7f-568bda61bd30",
+   "layout": "normal",
+   "mana_cost": "{X}{R}{R}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Starstorm deals X damage to each creature.\nCycling {3} ({3}, Discard this card: Draw a card.)",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "203",
+   "set": "blc"
+  },
+  {
+   "name": "Decree of Pain",
+   "oracle_id": "932668fa-d6e3-41c0-ad0c-8e0a00e68d11",
+   "layout": "normal",
+   "mana_cost": "{6}{B}{B}",
+   "cmc": 8.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way.\nCycling {3}{B}{B} ({3}{B}{B}, Discard this card: Draw a card.)\nWhen you cycle this card, all creatures get -2/-2 until end of turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Cycling"
+   ],
+   "collector_number": "136",
+   "set": "dsc"
+  },
+  {
+   "name": "Shatter the Sky",
+   "oracle_id": "2ffc7509-c7ce-44c4-a8cf-90ed161b5d10",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each player who controls a creature with power 4 or greater draws a card. Then destroy all creatures.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "66",
+   "set": "ecc"
+  }
+ ]
+}

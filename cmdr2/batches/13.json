@@ -1,0 +1,206 @@
+{
+ "batch": 13,
+ "theme": "Deserts and creature lands",
+ "reuse": "Deserts with a sacrifice-a-Desert ability (pay-1-life coloured mana: game/life_for_mana.go; 'Sacrifice a Desert' cost: sacrifice_cost.go) and lands that become creatures until end of turn (docs 'It's still a land' — grep manland precedents such as 'becomes a .* creature .* still a land'); Cactus Preserve reads game/commander_mana_value.go and 'any type that a land you control could produce' (game/producible_mana.go, Reflecting Pool shape); 2/2 Zombie token.",
+ "pair": 14,
+ "cards": [
+  {
+   "name": "Ramunap Ruins",
+   "oracle_id": "d0d35864-1edc-4af1-9b89-3d7e94908011",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\n{T}, Pay 1 life: Add {R}.\n{2}{R}{R}, {T}, Sacrifice a Desert: This land deals 2 damage to each opponent.",
+   "colors": [],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "C",
+    "R"
+   ],
+   "collector_number": "311",
+   "set": "otc"
+  },
+  {
+   "name": "Shefet Dunes",
+   "oracle_id": "8305715e-f711-47d6-8efe-d0efe4ced418",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\n{T}, Pay 1 life: Add {W}.\n{2}{W}{W}, {T}, Sacrifice a Desert: Creatures you control get +1/+1 until end of turn. Activate only as a sorcery.",
+   "colors": [],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "C",
+    "W"
+   ],
+   "collector_number": "318",
+   "set": "otc"
+  },
+  {
+   "name": "Hashep Oasis",
+   "oracle_id": "eab70fff-6a9f-4f9f-89a2-b6910c199e46",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\n{T}, Pay 1 life: Add {G}.\n{1}{G}{G}, {T}, Sacrifice a Desert: Target creature gets +3/+3 until end of turn. Activate only as a sorcery.",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "C",
+    "G"
+   ],
+   "collector_number": "299",
+   "set": "otc"
+  },
+  {
+   "name": "Dunes of the Dead",
+   "oracle_id": "c761f71c-785c-4533-a2b7-2da3667688b8",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\nWhen this land is put into a graveyard from the battlefield, create a 2/2 black Zombie creature token.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "291",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Zombie",
+     "type_line": "Token Creature — Zombie",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "B"
+     ],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Hostile Desert",
+   "oracle_id": "41459587-7509-404e-bd7d-fb8831dee789",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "{T}: Add {C}.\n{2}, Exile a land card from your graveyard: This land becomes a 3/4 Elemental creature until end of turn. It's still a land.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "266",
+   "set": "mkc"
+  },
+  {
+   "name": "Cactus Preserve",
+   "oracle_id": "8da29533-f389-4bc2-ab9b-b469f893a362",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land — Desert",
+   "oracle_text": "This land enters tapped.\n{T}: Add one mana of any type that a land you control could produce.\n{3}: Until end of turn, this land becomes an X/X green Plant creature with reach, where X is the greatest mana value among your commanders. It's still a land.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "40",
+   "set": "otc"
+  },
+  {
+   "name": "Needle Spires",
+   "oracle_id": "e7bb8160-0a4b-4e46-b196-7a19fb388d8e",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {R} or {W}.\n{2}{R}{W}: Until end of turn, this land becomes a 2/1 red and white Elemental creature with double strike. It's still a land.",
+   "colors": [],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "R",
+    "W"
+   ],
+   "collector_number": "278",
+   "set": "mkc"
+  },
+  {
+   "name": "Faerie Conclave",
+   "oracle_id": "0c25f6b1-8fb3-4406-9605-0282d2dbbcec",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "This land enters tapped.\n{T}: Add {U}.\n{1}{U}: This land becomes a 2/1 blue Faerie creature with flying until end of turn. It's still a land.",
+   "colors": [],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "U"
+   ],
+   "collector_number": "160",
+   "set": "woc"
+  },
+  {
+   "name": "Llanowar Loamspeaker",
+   "oracle_id": "08377424-619e-48ae-bc3c-fb199cd77cf9",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Elf Druid",
+   "oracle_text": "{T}: Add one mana of any color.\n{T}: Target land you control becomes a 3/3 Elemental creature with haste until end of turn. It's still a land. Activate only as a sorcery.",
+   "power": "1",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "228",
+   "set": "blc"
+  }
+ ]
+}

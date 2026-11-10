@@ -1,0 +1,246 @@
+{
+ "batch": 2,
+ "theme": "Mana rocks, mana creatures and mana triggers",
+ "reuse": "Mana abilities per docs/adding-cards.md 'Adding a mana ability' and 'Adding a triggered MANA ability'; 'adds one mana of any type that land produced' precedents: zendikar_resurgent.go, vorinclex_voice_of_hunger.go (game/mana_trigger.go); restricted mana (Séance Board): spend_only.go; Wolf 2/2 token in tokens_table.go; Chalice of the Void is a plain cast trigger with X charge counters.",
+ "pair": 1,
+ "cards": [
+  {
+   "name": "Darksteel Ingot",
+   "oracle_id": "a2529491-7389-4cfa-92d2-145eda779603",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Indestructible (Effects that say \"destroy\" don't destroy this artifact.)\n{T}: Add one mana of any color.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Indestructible"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "256",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Darksteel Hydra",
+     "type_line": "Artifact Creature — Phyrexian Hydra",
+     "oracle_text": "Indestructible\nDarksteel Hydra enters with X oil counters on it.\nDarksteel Hydra's power and toughness are each equal to twice the number of oil counters on it.\nWhen Darksteel Hydra enters, conjure a card named Darksteel Ingot and a card named Darksteel Plate into your hand.",
+     "power": "*",
+     "toughness": "*",
+     "colors": [
+      "B",
+      "G",
+      "W"
+     ],
+     "keywords": [
+      "Indestructible",
+      "Conjure"
+     ],
+     "set": "yone",
+     "collector_number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Séance Board",
+   "oracle_id": "8331d2ff-3729-4014-8dcb-278644d2632a",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "Morbid — At the beginning of each end step, if a creature died this turn, put a soul counter on this artifact.\n{T}: Add X mana of any one color, where X is the number of soul counters on this artifact. Spend this mana only to cast instant, sorcery, Demon, and Spirit spells.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Morbid"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "40",
+   "set": "dsc"
+  },
+  {
+   "name": "Leyline Dowser",
+   "oracle_id": "2ea2ac09-690d-4cd2-8e3a-fc01ecd7c132",
+   "layout": "normal",
+   "mana_cost": "{2}",
+   "cmc": 2.0,
+   "type_line": "Artifact",
+   "oracle_text": "{1}, {T}: Mill a card. You may put an instant or sorcery card milled this way into your hand.\nTap an untapped legendary creature you control: Untap this artifact.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "75",
+   "set": "otc"
+  },
+  {
+   "name": "Bounty Board",
+   "oracle_id": "e40c66cf-0a4a-4833-98bf-c685d35b9309",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}: Add one mana of any color.\n{1}, {T}: Put a bounty counter on target creature. Activate only as a sorcery.\nWhenever a creature with a bounty counter on it dies, each of its controller's opponents draws a card and gains 2 life.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "37",
+   "set": "otc"
+  },
+  {
+   "name": "Citanul Hierophants",
+   "oracle_id": "f67df84f-667e-41cf-80f9-911abafe70ac",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "Creatures you control have \"{T}: Add {G}.\"",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "81",
+   "set": "dsc"
+  },
+  {
+   "name": "Brainstone",
+   "oracle_id": "ffac1923-99d0-48e6-b1e7-168e5c324a80",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact",
+   "oracle_text": "{2}, {T}, Sacrifice this artifact: Draw three cards, then put two cards from your hand on top of your library in any order.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "242",
+   "set": "dsc"
+  },
+  {
+   "name": "Barbflare Gremlin",
+   "oracle_id": "bd7accec-ca8a-49c7-9ae4-fe97d99b4a34",
+   "layout": "normal",
+   "mana_cost": "{3}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Gremlin",
+   "oracle_text": "First strike, haste\nWhenever a player taps a land for mana, if this creature is tapped, that player adds one mana of any type that land produced. Then that land deals 1 damage to that player.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "First strike",
+    "Haste"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "55",
+   "set": "dsc"
+  },
+  {
+   "name": "Wolfwillow Haven",
+   "oracle_id": "7579f57d-c76e-4703-a030-34fb7160cb23",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}.\n{4}{G}, Sacrifice this Aura: Create a 2/2 green Wolf creature token. Activate only during your turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "246",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Wolf",
+     "type_line": "Token Creature — Wolf",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tblc",
+     "collector_number": "32"
+    }
+   ]
+  },
+  {
+   "name": "Ghirapur Orrery",
+   "oracle_id": "c6bb3a58-131a-4d7b-8c07-173a7de23b06",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact",
+   "oracle_text": "Each player may play an additional land on each of their turns.\nAt the beginning of each player's upkeep, if that player has no cards in hand, that player draws three cards.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "270",
+   "set": "blc"
+  },
+  {
+   "name": "Chalice of the Void",
+   "oracle_id": "74027ba4-a6ba-4696-baf1-60ef0b27ee0a",
+   "layout": "normal",
+   "mana_cost": "{X}{X}",
+   "cmc": 0.0,
+   "type_line": "Artifact",
+   "oracle_text": "This artifact enters with X charge counters on it.\nWhenever a player casts a spell with mana value equal to the number of charge counters on this artifact, counter that spell.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "105",
+   "set": "lcc"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "id": "s6",
+ "title": "Grant a graveyard ability whose cost is the card's own mana value",
+ "clause": "\"Each outlaw creature card in your graveyard has encore {X}, where X is its mana value.\" (Graywater's Fixer)",
+ "why": "game/zone_grants.go grants a fixed catalog bundle to cards in a zone (Satoru Umezawa's ninjutsu {2}{U}{B}); ActivatedAbility.Cost is a fixed value (effects/encore.go Encore(cost string) builds ManaCost(cost)+ExileThis). There is no per-card cost on a granted bundle, and the granted row must work from the graveyard for a card that does not print encore.",
+ "checked": "grep 'has encore|have encore': 0; read game/zone_grants.go header and effects/encore.go; grep for a cost func on ActivatedAbility (CostFor|ManaCostFunc|Generic(Func|For)) in game/activated.go and mana_cost.go: 0; 'where X is its mana value' hits are effects, not ability costs. Underworld Breach's granted escape (cast_permission.go:3111) is a cast permission priced at the mana cost, a different door.",
+ "size": "small",
+ "cards": [
+  {
+   "name": "Graywater's Fixer",
+   "oracle_id": "93438939-3909-4e59-bfe4-760ec73eb57d",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{R}",
+   "cmc": 4.0,
+   "type_line": "Creature — Lizard Mercenary",
+   "oracle_text": "Each outlaw creature card in your graveyard has encore {X}, where X is its mana value. (Exile it and pay its encore cost: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "36",
+   "set": "otc"
+  }
+ ]
+}

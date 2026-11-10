@@ -1,0 +1,368 @@
+{
+ "batch": 31,
+ "theme": "Investigate: making Clues",
+ "reuse": "Investigate is card-side (ClueToken, cmdrB1Investigate in cmdr_b1_helpers.go; 69 investigating cards) — reuse, do not write another investigate helper; if seam s2 has merged, call its investigate entry point instead; gravestorm: Gravestorm() (ominous_harvest.go); evoke: Evoke(); 'whenever you sacrifice a Clue': tireless_tracker.go, thorough_investigation.go; exile-and-return at next end step (Disorder in the Court): game/until_return.go / delayed.go; Human Soldier 1/1, Spirit 1/1 flying tokens.",
+ "pair": 32,
+ "cards": [
+  {
+   "name": "Confirm Suspicions",
+   "oracle_id": "a30d076b-c942-45e4-b943-3749ce955291",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Counter target spell.\nInvestigate three times. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "97",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Follow the Bodies",
+   "oracle_id": "2d6a0d89-7ebd-420e-9892-be1506ab3714",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the battlefield this turn.)\nInvestigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Gravestorm",
+    "Investigate"
+   ],
+   "collector_number": "333",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Wavesifter",
+   "oracle_id": "d1ec1e4e-faa6-4afc-9e00-a3327105c11b",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Flying\nWhen this creature enters, investigate twice. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nEvoke {G}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Investigate",
+    "Evoke"
+   ],
+   "collector_number": "220",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Ethereal Investigator",
+   "oracle_id": "24038629-7c12-45ef-8ec4-0d2bb3e2265c",
+   "layout": "normal",
+   "mana_cost": "{3}{U}",
+   "cmc": 4.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "Flying\nWhen this creature enters, investigate X times, where X is the number of opponents you have. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you draw your second card each turn, create a 1/1 white Spirit creature token with flying.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Investigate"
+   ],
+   "collector_number": "105",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    },
+    {
+     "component": "token",
+     "name": "Spirit",
+     "type_line": "Token Creature — Spirit",
+     "oracle_text": "Flying",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "tmkc",
+     "collector_number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Ulvenwald Mysteries",
+   "oracle_id": "6588ea9a-658f-40d9-a64b-3a418ab81183",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a nontoken creature you control dies, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you sacrifice a Clue, create a 1/1 white Human Soldier creature token.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "193",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    },
+    {
+     "component": "token",
+     "name": "Human Soldier",
+     "type_line": "Token Creature — Human Soldier",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "2"
+    }
+   ]
+  },
+  {
+   "name": "Ongoing Investigation",
+   "oracle_id": "68227832-2916-49b9-92bb-c09b8a0c13f5",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever one or more creatures you control deal combat damage to a player, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\n{1}{G}, Exile a creature card from your graveyard: Investigate. You gain 2 life.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "114",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Graf Mole",
+   "oracle_id": "5b2c6b44-99b3-496d-93ca-d5211222038f",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Mole Beast",
+   "oracle_text": "Whenever you sacrifice a Clue, you gain 3 life.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "170",
+   "set": "mkc"
+  },
+  {
+   "name": "Morska, Undersea Sleuth",
+   "oracle_id": "80ea3e65-946d-42c3-a26f-3d74e81d70b4",
+   "layout": "normal",
+   "mana_cost": "{G}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Vedalken Fish Detective",
+   "oracle_text": "You have no maximum hand size.\nAt the beginning of your upkeep, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nWhenever you draw your second card each turn, put two +1/+1 counters on Morska.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "317",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Disorder in the Court",
+   "oracle_id": "5e7586dd-d42e-4ac6-adb8-d46b6cdef923",
+   "layout": "normal",
+   "mana_cost": "{X}{W}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Exile X target creatures, then investigate X times. Return the exiled cards to the battlefield tapped under their owners' control at the beginning of the next end step. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+   "colors": [
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "209",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Unshakable Tail",
+   "oracle_id": "3d28e89d-d5e2-46b1-8dd2-d808b78f08fe",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Zombie Detective",
+   "oracle_text": "When this creature enters and at the beginning of your upkeep, surveil 1.\nWhenever one or more creature cards are put into your graveyard from your library, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\n{2}, Sacrifice a Clue: Return this card from your graveyard to your hand.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil",
+    "Investigate"
+   ],
+   "collector_number": "29",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  }
+ ]
+}

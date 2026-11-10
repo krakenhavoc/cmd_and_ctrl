@@ -1,0 +1,229 @@
+{
+ "batch": 37,
+ "theme": "Manifest and face-up payoffs (Commander 2015/Khans)",
+ "reuse": "effects/manifest.go (ManifestForEffect, own library only — the opponent-library version is seam s7); 'turn this enchantment face down' / turn a face-down creature up: game/face_down.go (yedora_grave_gardener.go, mondassian_colony_ship.go); face-down spell cost reduction: game/face_up_cost_less.go, permission_face_down_spell.go; Panoptic Projektor's doubler is a TriggerDoubler on the turned-face-up event (trigger_doubling.go); Primordial Mist's cost 'Exile a face-down permanent you control face up: you may play that card this turn' — game/exile_permanent_cost.go + exile_play.go; basic-land search on face-down entry.",
+ "pair": 38,
+ "cards": [
+  {
+   "name": "Whisperwood Elemental",
+   "oracle_id": "8ec7c7ce-23a5-4ba7-8cfd-4caf8601a9c8",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "At the beginning of your end step, manifest the top card of your library. (Put it onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)\nSacrifice this creature: Until end of turn, face-up nontoken creatures you control gain \"When this creature dies, manifest the top card of your library.\"",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Manifest"
+   ],
+   "collector_number": "194",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Temur War Shaman",
+   "oracle_id": "fb683e18-50b8-4821-9a1a-86c6dea63ac9",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Human Shaman",
+   "oracle_text": "When this creature enters, manifest the top card of your library. (Put that card onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)\nWhenever a permanent you control is turned face up, if it's a creature, you may have it fight target creature you don't control.",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Manifest",
+    "Fight"
+   ],
+   "collector_number": "200",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tdsk",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Mastery of the Unseen",
+   "oracle_id": "ae0701c1-7a99-46fe-bcb1-ea33ad2a0fc9",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a permanent you control is turned face up, you gain 1 life for each creature you control.\n{3}{W}: Manifest the top card of your library. (Put it onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Manifest"
+   ],
+   "collector_number": "74",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Ugin's Mastery",
+   "oracle_id": "d6158860-ada8-4e39-8156-23dee2f68f79",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever you cast a colorless creature spell, manifest the top card of your library. (Put it onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)\nWhenever you attack with creatures with total power 6 or greater, you may turn a face-down creature you control face up.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Manifest"
+   ],
+   "collector_number": "53",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Primordial Mist",
+   "oracle_id": "afc9e1d3-b012-49e9-8d22-89abbee03c22",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your end step, you may manifest the top card of your library. (Put it onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)\nExile a face-down permanent you control face up: You may play that card this turn. (You still pay its costs. Timing rules still apply.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Manifest"
+   ],
+   "collector_number": "123",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tdsk",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Trail of Mystery",
+   "oracle_id": "0e09aaba-5c32-4a45-8a07-b69e873510ef",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a face-down creature you control enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.\nWhenever a permanent you control is turned face up, if it's a creature, it gets +2/+2 until end of turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "203",
+   "set": "dsc"
+  },
+  {
+   "name": "Obscuring Aether",
+   "oracle_id": "70bfb805-2009-44c8-b5bd-2ca281637566",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Face-down creature spells you cast cost {1} less to cast.\n{1}{G}: Turn this enchantment face down. (It becomes a 2/2 creature.)",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "179",
+   "set": "mkc"
+  },
+  {
+   "name": "Panoptic Projektor",
+   "oracle_id": "1e1a787a-2294-472d-908d-d4d72821a7cc",
+   "layout": "normal",
+   "mana_cost": "{4}",
+   "cmc": 4.0,
+   "type_line": "Artifact",
+   "oracle_text": "{T}: The next face-down creature spell you cast this turn costs {3} less to cast.\nIf turning a face-down permanent face up causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "44",
+   "set": "mkc"
+  }
+ ]
+}

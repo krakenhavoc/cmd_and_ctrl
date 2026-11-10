@@ -1,0 +1,335 @@
+{
+ "batch": 29,
+ "theme": "Delirium",
+ "reuse": "effects/delirium.go for the four-card-types condition (31 delirium cards on develop); 'opponent at random + attacks that player this combat if able' (Ursine Monstrosity): knight_rampager.go; Winter's 'exile any number of cards with four or more card types among them' is a chosen-set predicate (game/target_set.go / choose_cards_keyed.go) — local to this batch; Ooze X/X, Spider 1/2 reach, Angel 4/4 tokens.",
+ "pair": 30,
+ "cards": [
+  {
+   "name": "Convert to Slime",
+   "oracle_id": "b4429e71-434e-480c-a8d1-2ad11de8b2d9",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{G}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Destroy up to one target artifact, up to one target creature, and up to one target enchantment.\nDelirium — Then if there are four or more card types among cards in your graveyard, create an X/X green Ooze creature token, where X is the total mana value of permanents destroyed this way.",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "64",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Ooze",
+     "type_line": "Token Creature — Ooze",
+     "oracle_text": "",
+     "power": "*",
+     "toughness": "*",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tdsc",
+     "collector_number": "14"
+    }
+   ]
+  },
+  {
+   "name": "Demolisher Spawn",
+   "oracle_id": "17bdd827-2e89-4559-939a-fc5c153189ed",
+   "layout": "normal",
+   "mana_cost": "{5}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Enchantment Creature — Horror",
+   "oracle_text": "Trample, haste\nDelirium — Whenever this creature attacks, if there are four or more card types among cards in your graveyard, other attacking creatures get +4/+4 until end of turn.",
+   "power": "7",
+   "toughness": "7",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Delirium",
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "31",
+   "set": "dsc"
+  },
+  {
+   "name": "Deathcap Cultivator",
+   "oracle_id": "26e555f1-e0ed-4b84-8783-1c0c968f462d",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "{T}: Add {B} or {G}.\nDelirium — This creature has deathtouch as long as there are four or more card types among cards in your graveyard.",
+   "power": "2",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "produced_mana": [
+    "B",
+    "G"
+   ],
+   "collector_number": "175",
+   "set": "dsc"
+  },
+  {
+   "name": "Ishkanah, Grafwidow",
+   "oracle_id": "6f4861f4-1b3b-4dbc-b55b-196075d0a693",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Spider",
+   "oracle_text": "Reach\nDelirium — When Ishkanah enters, if there are four or more card types among cards in your graveyard, create three 1/2 green Spider creature tokens with reach.\n{6}{B}: Target opponent loses 1 life for each Spider you control.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Delirium",
+    "Reach"
+   ],
+   "collector_number": "187",
+   "set": "dsc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Spider",
+     "type_line": "Token Creature — Spider",
+     "oracle_text": "Reach",
+     "power": "1",
+     "toughness": "2",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Reach"
+     ],
+     "set": "tdsc",
+     "collector_number": "16"
+    }
+   ]
+  },
+  {
+   "name": "Unholy Heat",
+   "oracle_id": "b23cba46-6ed2-442d-bc39-7c4933f6b083",
+   "layout": "normal",
+   "mana_cost": "{R}",
+   "cmc": 1.0,
+   "type_line": "Instant",
+   "oracle_text": "Unholy Heat deals 2 damage to target creature or planeswalker.\nDelirium — Unholy Heat deals 6 damage instead if there are four or more card types among cards in your graveyard.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "182",
+   "set": "otc"
+  },
+  {
+   "name": "Ursine Monstrosity",
+   "oracle_id": "647feda9-2876-4430-902f-10dc1f4f99a9",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Bear Mutant",
+   "oracle_text": "Trample\nAt the beginning of combat on your turn, mill a card and choose an opponent at random. This creature attacks that player this combat if able. Until end of turn, this creature gains indestructible and gets +1/+1 for each card type among cards in your graveyard.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample",
+    "Mill"
+   ],
+   "collector_number": "63",
+   "set": "dsc"
+  },
+  {
+   "name": "Descend upon the Sinful",
+   "oracle_id": "9cbf95f4-3510-420b-9355-645450f4493d",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Exile all creatures.\nDelirium — Create a 4/4 white Angel creature token with flying if there are four or more card types among cards in your graveyard.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "80",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Angel",
+     "type_line": "Token Creature — Angel",
+     "oracle_text": "Flying",
+     "power": "4",
+     "toughness": "4",
+     "colors": [
+      "W"
+     ],
+     "keywords": [
+      "Flying"
+     ],
+     "set": "totc",
+     "collector_number": "3"
+    }
+   ]
+  },
+  {
+   "name": "Gnarlwood Dryad",
+   "oracle_id": "e823639f-1308-47f6-9b51-8fd9a682489a",
+   "layout": "normal",
+   "mana_cost": "{G}",
+   "cmc": 1.0,
+   "type_line": "Creature — Dryad Horror",
+   "oracle_text": "Deathtouch\nDelirium — This creature gets +2/+2 as long as there are four or more card types among cards in your graveyard.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Deathtouch",
+    "Delirium"
+   ],
+   "collector_number": "180",
+   "set": "dsc"
+  },
+  {
+   "name": "Deluge of Doom",
+   "oracle_id": "a81fcdf8-59e7-471d-96ce-f87e656572b1",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "All creatures get -X/-X until end of turn, where X is the number of card types among cards in your graveyard.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "18",
+   "set": "dsc"
+  },
+  {
+   "name": "Winter, Cynical Opportunist",
+   "oracle_id": "e70a01dd-4dbe-4811-ac93-1c6d0142e06e",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Warlock",
+   "oracle_text": "Deathtouch\nWhenever Winter attacks, mill three cards.\nDelirium — At the beginning of your end step, you may exile any number of cards from your graveyard with four or more card types among them. If you do, put a permanent card from among them onto the battlefield with a finality counter on it.",
+   "power": "2",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Deathtouch",
+    "Delirium",
+    "Mill"
+   ],
+   "collector_number": "7",
+   "set": "dsc"
+  },
+  {
+   "name": "Obsessive Skinner",
+   "oracle_id": "e7e59437-cdd0-476a-b1ec-231be4139d31",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Rogue",
+   "oracle_text": "When this creature enters, put a +1/+1 counter on target creature.\nDelirium — At the beginning of each opponent's upkeep, if there are four or more card types among cards in your graveyard, put a +1/+1 counter on target creature.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Delirium"
+   ],
+   "collector_number": "191",
+   "set": "dsc"
+  },
+  {
+   "name": "Grim Flayer",
+   "oracle_id": "21254bdb-7b1f-4ac6-8fdd-f0ac2c35f47d",
+   "layout": "normal",
+   "mana_cost": "{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Warrior",
+   "oracle_text": "Trample\nWhenever this creature deals combat damage to a player, surveil 3. (Look at the top three cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nDelirium — This creature gets +2/+2 as long as there are four or more card types among cards in your graveyard.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [
+    "Delirium",
+    "Surveil",
+    "Trample"
+   ],
+   "collector_number": "218",
+   "set": "dsc"
+  }
+ ]
+}

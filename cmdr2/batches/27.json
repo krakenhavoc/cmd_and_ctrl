@@ -1,0 +1,213 @@
+{
+ "batch": 27,
+ "theme": "Surveil basics and simple card selection",
+ "reuse": "Surveil: game SurveilKeyedForEffect (222 surveil cards on develop — copy a sibling); 'costs {2} less if it targets an attacking creature': cost_modifier.go target-conditional; return from graveyard at upkeep (Master of Death); 'draw three, then discard two unless you discard an enchantment card' — same sentence as Arm-Mounted Anchor (batch 21): grep 'unless you discard'.",
+ "pair": 28,
+ "cards": [
+  {
+   "name": "Sinister Starfish",
+   "oracle_id": "58321467-41d6-4419-bcb2-cd3e60f677b3",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Starfish",
+   "oracle_text": "{T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "0",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "140",
+   "set": "mkc"
+  },
+  {
+   "name": "Notion Rain",
+   "oracle_id": "f93dbe17-71d1-4542-96ff-81ac6da9513f",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Surveil 2, then draw two cards. Notion Rain deals 2 damage to you. (To surveil 2, look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "217",
+   "set": "mkc"
+  },
+  {
+   "name": "Curate",
+   "oracle_id": "75e8907d-f726-4a63-ba8b-c0fd4936734e",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nDraw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "99",
+   "set": "mkc"
+  },
+  {
+   "name": "Nightveil Sprite",
+   "oracle_id": "8ac23863-0aa7-41bc-b9b7-c5f0566172cf",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Creature — Faerie Rogue",
+   "oracle_text": "Flying\nWhenever this creature attacks, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+   "power": "1",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Surveil"
+   ],
+   "collector_number": "113",
+   "set": "mkc"
+  },
+  {
+   "name": "Ephara's Dispersal",
+   "oracle_id": "1e0bb57a-f5c7-45e9-b5b9-5bb3ec930108",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "This spell costs {2} less to cast if it targets an attacking creature.\nReturn target creature to its owner's hand. Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "103",
+   "set": "mkc"
+  },
+  {
+   "name": "Master of Death",
+   "oracle_id": "3a16bdda-8499-47e4-b870-b9576f4c1a83",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Zombie Wizard",
+   "oracle_text": "When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nAt the beginning of your upkeep, if this card is in your graveyard, you may pay 1 life. If you do, return it to your hand.",
+   "power": "3",
+   "toughness": "1",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Surveil"
+   ],
+   "collector_number": "216",
+   "set": "mkc"
+  },
+  {
+   "name": "Telling Time",
+   "oracle_id": "192f3c8a-1120-4f7f-ae0f-fe9bde59cd08",
+   "layout": "normal",
+   "mana_cost": "{1}{U}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Look at the top three cards of your library. Put one of those cards into your hand, one on top of your library, and one on the bottom of your library.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "75",
+   "set": "dsc"
+  },
+  {
+   "name": "Diabolic Vision",
+   "oracle_id": "6b7b1a71-812d-4ff5-b38b-94d1cf634143",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Look at the top five cards of your library. Put one of them into your hand and the rest on top of your library in any order.",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "87",
+   "set": "dsc"
+  },
+  {
+   "name": "Thirst for Meaning",
+   "oracle_id": "70e58068-90d2-4720-a11c-5d243046b4a3",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Draw three cards. Then discard two cards unless you discard an enchantment card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "129",
+   "set": "dsc"
+  },
+  {
+   "name": "Keep Watch",
+   "oracle_id": "847b5be5-cb0c-4857-bcd9-c5cfe55fdaeb",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Draw a card for each attacking creature.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "98",
+   "set": "woc"
+  }
+ ]
+}

@@ -1,0 +1,291 @@
+{
+ "batch": 26,
+ "theme": "-1/-1 counter payoffs and blight",
+ "reuse": "'Whenever one or more -1/-1 counters are put on a creature' (Wickersmith's Tools, Auntie Ool, Hapatra) and 'whenever a creature with a -1/-1 counter on it dies' (Scorpion God, Dread Tiller, The Reaper, Village Pillagers' counter variant, Puca's Covenant) are two helpers shared only inside this batch; blight: BlightN(), BlightCost() (game/blight_effect.go); Ward—Blight 2: red_ghost_intangible_genius.go; only-opponents-may-activate (Oft-Nabbed Goat): Spec OpponentsOnly (spec.go:2095, clergy_of_the_holy_nimbus.go, docs 'Abilities any player may activate'); 'remove any number of counters from among permanents': rhys_the_evermore.go; 2/2 Scarecrow artifact token and Snake 1/1 deathtouch tokens new/only here.",
+ "pair": 25,
+ "cards": [
+  {
+   "name": "Puca's Covenant",
+   "oracle_id": "9b832f87-0bd5-47bd-ab9c-718bd9a6c441",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Whenever a creature you control with a counter on it dies, you may return another target permanent card with mana value less than or equal to the number of counters on that creature from your graveyard to your hand. Do this only once each turn.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "38",
+   "set": "ecc"
+  },
+  {
+   "name": "Wickersmith's Tools",
+   "oracle_id": "c89cd328-b4cc-4760-8b6c-59e82eed8dac",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever one or more -1/-1 counters are put on a creature, put a charge counter on this artifact.\n{T}: Add one mana of any color.\n{5}, {T}, Sacrifice this artifact: Create X tapped 2/2 colorless Scarecrow artifact creature tokens, where X is the number of charge counters on this artifact.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "21",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Scarecrow",
+     "type_line": "Token Artifact Creature — Scarecrow",
+     "oracle_text": "",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tecc",
+     "collector_number": "11"
+    }
+   ]
+  },
+  {
+   "name": "Oft-Nabbed Goat",
+   "oracle_id": "63193ad4-bbd2-4cc3-98e2-9f6b985e8ae7",
+   "layout": "normal",
+   "mana_cost": "{1}{B}",
+   "cmc": 2.0,
+   "type_line": "Creature — Goat",
+   "oracle_text": "{1}: Draw a card. Gain control of this creature and put a -1/-1 counter on it. Only your opponents may activate this ability and only as a sorcery.\nWhen this creature dies, if it had one or more -1/-1 counters on it, its owner draws that many cards and each other player loses that much life.",
+   "power": "0",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "11",
+   "set": "ecc"
+  },
+  {
+   "name": "Sinister Gnarlbark",
+   "oracle_id": "fcd2142e-ba84-4693-9b29-ecc43feba2b8",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Treefolk Warlock",
+   "oracle_text": "At the beginning of your end step, draw a card and blight 1. (Put a -1/-1 counter on a creature you control.)",
+   "power": "0",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Blight"
+   ],
+   "collector_number": "32",
+   "set": "ecc"
+  },
+  {
+   "name": "Dread Tiller",
+   "oracle_id": "ffcffad7-6c33-4265-82c9-04045fdf371b",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{G}",
+   "cmc": 3.0,
+   "type_line": "Artifact Creature — Scarecrow",
+   "oracle_text": "When this creature enters, put a -1/-1 counter on target creature.\nWhenever a creature with a -1/-1 counter on it dies, you may put a land card from your hand or graveyard onto the battlefield tapped.",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "20",
+   "set": "ecc"
+  },
+  {
+   "name": "Village Pillagers",
+   "oracle_id": "54b44499-398b-47ad-b790-bd5b5994d1a6",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Goblin Warrior",
+   "oracle_text": "Wither (This deals damage to creatures in the form of -1/-1 counters.)\nWhen this creature enters, it deals 1 damage to each creature your opponents control.\nWhenever a creature an opponent controls with a counter on it dies, you create a tapped Treasure token.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Treasure",
+    "Wither"
+   ],
+   "collector_number": "34",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "tecl",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "The Scorpion God",
+   "oracle_id": "aff223d4-6338-460d-a4d5-d45f522864dc",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{R}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — God",
+   "oracle_text": "Whenever a creature with a -1/-1 counter on it dies, draw a card.\n{1}{B}{R}: Put a -1/-1 counter on another target creature.\nWhen The Scorpion God dies, return it to its owner's hand at the beginning of the next end step.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "133",
+   "set": "ecc"
+  },
+  {
+   "name": "Auntie Ool, Cursewretch",
+   "oracle_id": "e3cd53c1-86bd-4177-adb0-a1fa693b44c6",
+   "layout": "normal",
+   "mana_cost": "{1}{B}{R}{G}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Goblin Warlock",
+   "oracle_text": "Ward—Blight 2. (To blight 2, a player puts two -1/-1 counters on a creature they control.)\nWhenever one or more -1/-1 counters are put on a creature, draw a card if you control that creature. If you don't control it, its controller loses 1 life.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Blight",
+    "Ward"
+   ],
+   "collector_number": "2",
+   "set": "ecc"
+  },
+  {
+   "name": "Eventide's Shadow",
+   "oracle_id": "92ac8aa4-e23c-4ed9-8317-c249a17ce3d2",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Remove any number of counters from among permanents on the battlefield. You draw cards and lose life equal to the number of counters removed this way.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "8",
+   "set": "ecc"
+  },
+  {
+   "name": "Hapatra, Vizier of Poisons",
+   "oracle_id": "a8ddea1c-8d80-49c1-a5b4-630d5e51d66e",
+   "layout": "normal",
+   "mana_cost": "{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Human Cleric",
+   "oracle_text": "Whenever Hapatra deals combat damage to a player, you may put a -1/-1 counter on target creature.\nWhenever you put one or more -1/-1 counters on a creature, create a 1/1 green Snake creature token with deathtouch.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "123",
+   "set": "ecc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Snake",
+     "type_line": "Token Creature — Snake",
+     "oracle_text": "Deathtouch",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Deathtouch"
+     ],
+     "set": "tecc",
+     "collector_number": "8"
+    }
+   ]
+  },
+  {
+   "name": "The Reaper, King No More",
+   "oracle_id": "39b67a4d-6a87-41f0-a86f-b66671ccc20d",
+   "layout": "normal",
+   "mana_cost": "{2/B}{2/R}{2/G}",
+   "cmc": 6.0,
+   "type_line": "Legendary Artifact Creature — Scarecrow",
+   "oracle_text": "When The Reaper enters, put a -1/-1 counter on each of up to two target creatures.\nWhenever a creature an opponent controls with a -1/-1 counter on it dies, you may put that card onto the battlefield under your control. Do this only once each turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "4",
+   "set": "ecc"
+  }
+ ]
+}

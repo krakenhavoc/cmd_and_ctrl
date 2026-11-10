@@ -1,0 +1,239 @@
+{
+ "batch": 52,
+ "theme": "Complex legends and one-offs",
+ "reuse": "Trigger doublers: effects/trigger_doubling.go, panharmonicon.go (Yarok is Panharmonicon for all permanents; Felix Five-Boots keys on combat damage to a player) — docs 'Adding a trigger doubler'; Derevi's command-zone ability: ActivatedAbility.Zones with game.ZoneCommand (ninjutsu.go:147 commander ninjutsu is the precedent) and it must not count as a cast (no commander tax); Korvold: TurnTally.SacrificedCardTypes (turn_tally.go:356); Anya: 'less than half their starting life total'; Junk Winder: AffinityFor(); Grothama: granted 'may fight Grothama' + 'damage dealt to Grothama this turn by sources they controlled' — game/dealt_damage_by.go records source/target objects per damage event; check it carries amount and source controller (watch item); Illusionist's Gambit: RemoveFromCombatForEffect over all attackers + an extra combat after this phase (docs 'Extra combats') + a per-combat attack requirement/restriction (attack_requirements.go, cant_attack_player.go) — watch item; Void Attendant: cost 'put a card an opponent owns from exile into that player's graveyard' (memory_theft.go has it as an effect), Eldrazi Scion token exists.",
+ "pair": 51,
+ "cards": [
+  {
+   "name": "Yarok, the Desecrated",
+   "oracle_id": "95b53836-18aa-451a-992d-2a111deeeab2",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Elemental Horror",
+   "oracle_text": "Deathtouch, lifelink\nIf a permanent entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Lifelink",
+    "Deathtouch"
+   ],
+   "collector_number": "136",
+   "set": "ecc"
+  },
+  {
+   "name": "Felix Five-Boots",
+   "oracle_id": "95175d35-c815-47bd-8e69-427972b567b6",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{G}{U}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Ooze Rogue",
+   "oracle_text": "Menace, ward {2}\nIf a creature you control dealing combat damage to a player causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Menace",
+    "Ward"
+   ],
+   "collector_number": "42",
+   "set": "otc"
+  },
+  {
+   "name": "Grothama, All-Devouring",
+   "oracle_id": "34fd52c1-3d81-4005-b826-eeefbd7fd874",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Wurm",
+   "oracle_text": "Other creatures have \"Whenever this creature attacks, you may have it fight Grothama, All-Devouring.\"\nWhen Grothama leaves the battlefield, each player draws cards equal to the amount of damage dealt to Grothama this turn by sources they controlled.",
+   "power": "10",
+   "toughness": "8",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight"
+   ],
+   "collector_number": "224",
+   "set": "blc"
+  },
+  {
+   "name": "Korvold, Gleeful Glutton",
+   "oracle_id": "99e89098-bc55-4297-9407-ab9256b609da",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{R}{G}",
+   "cmc": 8.0,
+   "type_line": "Legendary Creature — Dragon Noble",
+   "oracle_text": "This spell costs {1} less to cast for each card type among permanents you've sacrificed this turn.\nFlying, trample, haste\nWhenever Korvold deals combat damage to a player, put X +1/+1 counters on Korvold and draw X cards, where X is the number of permanent types among cards in your graveyard.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "B",
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Haste",
+    "Trample"
+   ],
+   "collector_number": "38",
+   "set": "woc"
+  },
+  {
+   "name": "Derevi, Empyrial Tactician",
+   "oracle_id": "afa49a09-146f-4439-850e-dd1938c93cef",
+   "layout": "normal",
+   "mana_cost": "{G}{W}{U}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Bird Wizard",
+   "oracle_text": "Flying\nWhen Derevi enters and whenever a creature you control deals combat damage to a player, you may tap or untap target permanent.\n{1}{G}{W}{U}: Put Derevi onto the battlefield from the command zone.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "87",
+   "set": "blc"
+  },
+  {
+   "name": "Anya, Merciless Angel",
+   "oracle_id": "0665daf5-e12a-4b59-81fc-63fec2807571",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{W}",
+   "cmc": 5.0,
+   "type_line": "Legendary Creature — Angel",
+   "oracle_text": "Flying\nAnya gets +3/+3 for each opponent whose life total is less than half their starting life total.\nAs long as an opponent's life total is less than half their starting life total, Anya has indestructible.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "199",
+   "set": "mkc"
+  },
+  {
+   "name": "Illusionist's Gambit",
+   "oracle_id": "333745d9-e930-439b-94d6-3aeea2877f69",
+   "layout": "normal",
+   "mana_cost": "{2}{U}{U}",
+   "cmc": 4.0,
+   "type_line": "Instant",
+   "oracle_text": "Cast this spell only during the declare blockers step on an opponent's turn.\nRemove all attacking creatures from combat and untap them. After this phase, there is an additional combat phase. Each of those creatures attacks that combat if able. They can't attack you or planeswalkers you control that combat.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "97",
+   "set": "woc"
+  },
+  {
+   "name": "Void Attendant",
+   "oracle_id": "34f3ec68-871f-4b94-b497-04f71aea88c9",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Eldrazi Processor",
+   "oracle_text": "Devoid (This card has no color.)\n{1}{G}, Put a card an opponent owns from exile into that player's graveyard: Create a 1/1 colorless Eldrazi Scion creature token. It has \"Sacrifice this token: Add {C}.\"",
+   "power": "2",
+   "toughness": "3",
+   "colors": [],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Devoid"
+   ],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "212",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Eldrazi Scion",
+     "type_line": "Token Creature — Eldrazi Scion",
+     "oracle_text": "Sacrifice this creature: Add {C}.",
+     "power": "1",
+     "toughness": "1",
+     "colors": [],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "2"
+    }
+   ]
+  },
+  {
+   "name": "Junk Winder",
+   "oracle_id": "5b677e88-bcc9-4a55-9c89-8bbd0e2344dc",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Creature — Serpent",
+   "oracle_text": "Affinity for tokens (This spell costs {1} less to cast for each token you control.)\nWhenever a token you control enters, tap target nonland permanent an opponent controls. It doesn't untap during its controller's next untap step.",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Affinity"
+   ],
+   "collector_number": "169",
+   "set": "blc"
+  }
+ ]
+}

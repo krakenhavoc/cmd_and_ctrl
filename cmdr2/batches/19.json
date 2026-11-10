@@ -1,0 +1,264 @@
+{
+ "batch": 19,
+ "theme": "Auras: simple",
+ "reuse": "Enchant variants via aura targets (game/aura_host.go, attach.go); enchant player/opponent: grievous_wound.go, maddening_hex.go; 'can't attack you or planeswalkers you control': game/cant_attack_player.go; channel: channel.go; 'assign combat damage as though it weren't blocked': game/damage_as_though.go, characteristic.go; fight on enter: fight_triggers.go; graveyard-activated ability: ActivatedAbility.Zones; Daybreak Coronet's 'creature with another Aura attached' is an enchant predicate that must also fall off by SBA when the other Aura leaves — test that.",
+ "pair": 20,
+ "cards": [
+  {
+   "name": "Vow of Duty",
+   "oracle_id": "1e7bddbd-e448-4aea-9d18-b44bd45837c5",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "89",
+   "set": "mkc"
+  },
+  {
+   "name": "Vow of Lightning",
+   "oracle_id": "bfed67f3-70d2-49c2-8f25-16e4d10fa5be",
+   "layout": "normal",
+   "mana_cost": "{2}{R}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets +2/+2, has first strike, and can't attack you or planeswalkers you control.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "164",
+   "set": "mkc"
+  },
+  {
+   "name": "Verdant Embrace",
+   "oracle_id": "f0bbd988-50b7-476c-9183-dfabd4a95079",
+   "layout": "normal",
+   "mana_cost": "{3}{G}{G}",
+   "cmc": 5.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets +3/+3 and has \"At the beginning of each upkeep, create a 1/1 green Saproling creature token.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "136",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "twoc",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Pollenbright Wings",
+   "oracle_id": "582c8030-1d41-4c63-8ed6-06aad398a96c",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{W}",
+   "cmc": 6.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature has flying.\nWhenever enchanted creature deals combat damage to a player, create that many 1/1 green Saproling creature tokens.",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "143",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "twoc",
+     "collector_number": "15"
+    }
+   ]
+  },
+  {
+   "name": "Warbriar Blessing",
+   "oracle_id": "4a58954a-1d20-48b8-847c-3615de67e122",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature you control\nWhen this Aura enters, enchanted creature fights up to one target creature you don't control. (Each deals damage equal to its power to the other.)\nEnchanted creature gets +0/+2.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Fight",
+    "Enchant"
+   ],
+   "collector_number": "137",
+   "set": "woc"
+  },
+  {
+   "name": "Spectral Steel",
+   "oracle_id": "95f74c0d-3f89-4944-997e-1bdc408bae71",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature gets +2/+2.\n{1}{W}, Exile this card from your graveyard: Return another target Aura or Equipment card from your graveyard to your hand.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "75",
+   "set": "woc"
+  },
+  {
+   "name": "Careful Cultivation",
+   "oracle_id": "83959c3d-053c-4d95-a1b0-fe92f2b906db",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant artifact or creature\nAs long as enchanted permanent is a creature, it gets +1/+3 and has reach and \"{T}: Add {G}{G}.\"\nChannel — {1}{G}, Discard this card: Create a 1/1 green Human Monk creature token with \"{T}: Add {G}.\"",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant",
+    "Channel"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "122",
+   "set": "woc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Human Monk",
+     "type_line": "Token Creature — Human Monk",
+     "oracle_text": "{T}: Add {G}.",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tneo",
+     "collector_number": "10"
+    }
+   ]
+  },
+  {
+   "name": "Indomitable Might",
+   "oracle_id": "069c3c87-81a8-4d2a-ad2f-8d3243d0e3db",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Flash\nEnchant creature\nEnchanted creature gets +3/+3.\nEnchanted creature's controller may have it assign its combat damage as though it weren't blocked.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enchant",
+    "Flash"
+   ],
+   "collector_number": "127",
+   "set": "woc"
+  },
+  {
+   "name": "Daybreak Coronet",
+   "oracle_id": "0f5ac364-447b-4c43-9aed-6098dc0bab82",
+   "layout": "normal",
+   "mana_cost": "{W}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant creature with another Aura attached to it\nEnchanted creature gets +3/+3 and has first strike, vigilance, and lifelink. (Damage dealt by the creature also causes its controller to gain that much life.)",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "65",
+   "set": "woc"
+  },
+  {
+   "name": "Tenuous Truce",
+   "oracle_id": "f0bf2923-aea2-4bac-b061-64bc84437ef1",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Enchantment — Aura",
+   "oracle_text": "Enchant opponent\nAt the beginning of enchanted opponent's end step, you and that player each draw a card.\nWhen you attack enchanted opponent or a planeswalker they control or when they attack you or a planeswalker you control, sacrifice this Aura.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enchant"
+   ],
+   "collector_number": "159",
+   "set": "blc"
+  }
+ ]
+}

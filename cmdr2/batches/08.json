@@ -1,0 +1,254 @@
+{
+ "batch": 8,
+ "theme": "Enrage, damage triggers and damage modifiers",
+ "reuse": "'Whenever this creature is dealt damage' (enrage) precedents: wrathful_raptors.go, ripjaw_raptor.go; fight: fight_triggers.go / fight_spells.go; damage doubling / 'prevent half, rounded up': game/multiply_damage.go, prevent_next_from_source.go, dark_sphere.go; 'prevent all but 1': hyperion_supreme_hero.go; Wayta's doubler ('being dealt damage causes a triggered ability ... to trigger') is a TriggerDoubler with Applies on the damage event (trigger_doubling.go, panharmonicon.go; docs 'Adding a trigger doubler') — no new engine; 'draw that many cards' when dealt damage is shared by Body of Knowledge and Illusory Ambusher (one helper, both here).",
+ "pair": 7,
+ "cards": [
+  {
+   "name": "Apex Altisaur",
+   "oracle_id": "fc467fe5-85ab-4c95-8d21-49096778b107",
+   "layout": "normal",
+   "mana_cost": "{7}{G}{G}",
+   "cmc": 9.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "When this creature enters, it fights up to one target creature you don't control.\nEnrage — Whenever this creature is dealt damage, it fights up to one target creature you don't control.",
+   "power": "10",
+   "toughness": "10",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enrage",
+    "Fight"
+   ],
+   "collector_number": "232",
+   "set": "lcc"
+  },
+  {
+   "name": "Ranging Raptors",
+   "oracle_id": "2a86b70b-34ca-45df-8aa1-c3fb2da72dc3",
+   "layout": "normal",
+   "mana_cost": "{2}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Enrage — Whenever this creature is dealt damage, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+   "power": "2",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Enrage"
+   ],
+   "collector_number": "249",
+   "set": "lcc"
+  },
+  {
+   "name": "Bellowing Aegisaur",
+   "oracle_id": "7063abe1-87dd-4526-9867-f7ce255b2cf0",
+   "layout": "normal",
+   "mana_cost": "{5}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "Enrage — Whenever this creature is dealt damage, put a +1/+1 counter on each other creature you control.",
+   "power": "3",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Enrage"
+   ],
+   "collector_number": "127",
+   "set": "lcc"
+  },
+  {
+   "name": "Temple Altisaur",
+   "oracle_id": "1f499d39-b963-45c0-9604-d3cab98c9e05",
+   "layout": "normal",
+   "mana_cost": "{4}{W}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "If a source would deal damage to another Dinosaur you control, prevent all but 1 of that damage.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "138",
+   "set": "lcc"
+  },
+  {
+   "name": "Quartzwood Crasher",
+   "oracle_id": "178a79e2-64fd-4777-95fe-98b7834a642a",
+   "layout": "normal",
+   "mana_cost": "{2}{R}{R}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Dinosaur Beast",
+   "oracle_text": "Trample\nWhenever one or more creatures you control with trample deal combat damage to a player, create an X/X green Dinosaur Beast creature token with trample, where X is the amount of damage those creatures dealt to that player.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "G",
+    "R"
+   ],
+   "color_identity": [
+    "G",
+    "R"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "281",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Dinosaur Beast",
+     "type_line": "Token Creature — Dinosaur Beast",
+     "oracle_text": "Trample",
+     "power": "*",
+     "toughness": "*",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Trample"
+     ],
+     "set": "tlcc",
+     "collector_number": "11"
+    }
+   ]
+  },
+  {
+   "name": "Boros Reckoner",
+   "oracle_id": "5f079a75-899e-467d-b443-3b87ce2fb548",
+   "layout": "normal",
+   "mana_cost": "{R/W}{R/W}{R/W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Minotaur Wizard",
+   "oracle_text": "Whenever this creature is dealt damage, it deals that much damage to any target.\n{R/W}: This creature gains first strike until end of turn.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "201",
+   "set": "mkc"
+  },
+  {
+   "name": "Illusory Ambusher",
+   "oracle_id": "ad3add32-cb87-4cd4-8c36-a737a897a8c8",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Cat Illusion",
+   "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)\nWhenever this creature is dealt damage, draw that many cards.",
+   "power": "4",
+   "toughness": "1",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "167",
+   "set": "blc"
+  },
+  {
+   "name": "Body of Knowledge",
+   "oracle_id": "7fc6a5c1-f0da-42f6-93d0-6d94467e2ac0",
+   "layout": "normal",
+   "mana_cost": "{3}{U}{U}",
+   "cmc": 5.0,
+   "type_line": "Creature — Avatar",
+   "oracle_text": "Body of Knowledge's power and toughness are each equal to the number of cards in your hand.\nYou have no maximum hand size.\nWhenever this creature is dealt damage, draw that many cards.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "112",
+   "set": "dsc"
+  },
+  {
+   "name": "Wayta, Trainer Prodigy",
+   "oracle_id": "e507df33-d150-4b21-8ddb-90799f412dd8",
+   "layout": "normal",
+   "mana_cost": "{R}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Human Warrior",
+   "oracle_text": "Haste\n{2}{G}, {T}: Target creature you control fights another target creature. This ability costs {2} less to activate if it targets two creatures you control.\nIf a creature you control being dealt damage causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+   "power": "1",
+   "toughness": "5",
+   "colors": [
+    "G",
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Haste",
+    "Fight"
+   ],
+   "collector_number": "7",
+   "set": "lcc"
+  },
+  {
+   "name": "Gisela, Blade of Goldnight",
+   "oracle_id": "66f9f325-5e8e-4ebf-b5b3-c6410d80f2c5",
+   "layout": "normal",
+   "mana_cost": "{4}{R}{W}{W}",
+   "cmc": 7.0,
+   "type_line": "Legendary Creature — Angel",
+   "oracle_text": "Flying, first strike\nIf a source would deal damage to an opponent or a permanent an opponent controls, that source deals double that damage to that player or permanent instead.\nIf a source would deal damage to you or a permanent you control, prevent half that damage, rounded up.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "R",
+    "W"
+   ],
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "First strike",
+    "Double"
+   ],
+   "collector_number": "211",
+   "set": "mkc"
+  }
+ ]
+}

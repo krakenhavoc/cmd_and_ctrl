@@ -1,0 +1,262 @@
+{
+ "batch": 30,
+ "theme": "Reanimation and graveyard creatures",
+ "reuse": "Mass return precedents (grep 'Return all creature cards from your graveyard to the battlefield'); 'put there from the battlefield this turn' (Thrilling Encore): twilight_shepherd.go + zone.go stampGraveyardArrival; multikicker: Multikicker(); descend 8 cast trigger + copy twice (Bygone Marvels): spell_copy.go; 'return two creature cards at random': effect_api_random.go; granted 'if this permanent would leave the battlefield, exile it instead': whip_of_erebos.go; 'search your graveyard, hand, and/or library for a card named': say_its_name.go; additional cost 'exile three creature cards from your graveyard' + cast from graveyard (Skaab Ruinator): exile_card_additional_cost.go, cast_zones.go.",
+ "pair": 29,
+ "cards": [
+  {
+   "name": "Old Stickfingers",
+   "oracle_id": "1d85eec2-80db-466c-bd48-d2a12866e8bd",
+   "layout": "normal",
+   "mana_cost": "{X}{B}{G}",
+   "cmc": 2.0,
+   "type_line": "Legendary Creature — Horror",
+   "oracle_text": "When you cast this spell, reveal cards from the top of your library until you reveal X creature cards. Put all creature cards revealed this way into your graveyard, then put the rest on the bottom of your library in a random order.\nOld Stickfingers's power and toughness are each equal to the number of creature cards in your graveyard.",
+   "power": "*",
+   "toughness": "*",
+   "colors": [
+    "B",
+    "G"
+   ],
+   "color_identity": [
+    "B",
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "227",
+   "set": "dsc"
+  },
+  {
+   "name": "Skaab Ruinator",
+   "oracle_id": "83734824-1cad-4649-87ae-a5c338771c4c",
+   "layout": "normal",
+   "mana_cost": "{1}{U}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Zombie Horror",
+   "oracle_text": "As an additional cost to cast this spell, exile three creature cards from your graveyard.\nFlying\nYou may cast this card from your graveyard.",
+   "power": "5",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "128",
+   "set": "dsc"
+  },
+  {
+   "name": "Carrion Grub",
+   "oracle_id": "c54b375d-a456-4886-96f2-8dc7a0024a5b",
+   "layout": "normal",
+   "mana_cost": "{3}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "This creature gets +X/+0, where X is the greatest power among creature cards in your graveyard.\nWhen this creature enters, mill four cards. (Put the top four cards of your library into your graveyard.)",
+   "power": "0",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "134",
+   "set": "dsc"
+  },
+  {
+   "name": "Moldgraf Millipede",
+   "oracle_id": "48edac92-0dd8-4274-bf1b-122243770540",
+   "layout": "normal",
+   "mana_cost": "{4}{G}",
+   "cmc": 5.0,
+   "type_line": "Creature — Insect Horror",
+   "oracle_text": "When this creature enters, mill three cards, then put a +1/+1 counter on this creature for each creature card in your graveyard. (To mill three cards, put the top three cards of your library into your graveyard.)",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Mill"
+   ],
+   "collector_number": "188",
+   "set": "dsc"
+  },
+  {
+   "name": "Moldgraf Monstrosity",
+   "oracle_id": "3c4d5392-27cf-492e-9ae1-dee330b82223",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}{G}",
+   "cmc": 7.0,
+   "type_line": "Creature — Insect",
+   "oracle_text": "Trample\nWhen this creature dies, exile it, then return two creature cards at random from your graveyard to the battlefield.",
+   "power": "8",
+   "toughness": "8",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Trample"
+   ],
+   "collector_number": "83",
+   "set": "dsc"
+  },
+  {
+   "name": "Bygone Marvels",
+   "oracle_id": "494dc919-e429-491b-b19b-5037499e2dd6",
+   "layout": "normal",
+   "mana_cost": "{G}{G}",
+   "cmc": 2.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Descend 8 — When you cast this spell, if there are eight or more permanent cards in your graveyard, copy this spell twice. You may choose new targets for the copies.\nReturn target permanent card from your graveyard to your hand. Exile Bygone Marvels.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Descend"
+   ],
+   "collector_number": "57",
+   "set": "lcc"
+  },
+  {
+   "name": "Thrilling Encore",
+   "oracle_id": "2a114ff8-fa7d-41b8-b412-6232fbb68efc",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Put onto the battlefield under your control all creature cards in all graveyards that were put there from the battlefield this turn.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "118",
+   "set": "woc"
+  },
+  {
+   "name": "Storm of Souls",
+   "oracle_id": "7022ae9a-2589-493b-a050-a230fd02f80b",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Return all creature cards from your graveyard to the battlefield. Each of them is a 1/1 Spirit with flying in addition to its other types. Exile Storm of Souls.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "156",
+   "set": "blc"
+  },
+  {
+   "name": "Marshal's Anthem",
+   "oracle_id": "41fb2b0e-d0a0-4e47-a6f3-fc9860ade65a",
+   "layout": "normal",
+   "mana_cost": "{2}{W}{W}",
+   "cmc": 4.0,
+   "type_line": "Enchantment",
+   "oracle_text": "Multikicker {1}{W} (You may pay an additional {1}{W} any number of times as you cast this spell.)\nCreatures you control get +1/+1.\nWhen this enchantment enters, return up to X target creature cards from your graveyard to the battlefield, where X is the number of times this enchantment was kicked.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Multikicker"
+   ],
+   "collector_number": "82",
+   "set": "otc"
+  },
+  {
+   "name": "Rot Hulk",
+   "oracle_id": "36117e99-a2bc-46f9-8e17-bd2e2a9c31f4",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Creature — Zombie",
+   "oracle_text": "Menace\nWhen this creature enters, return up to X target Zombie cards from your graveyard to the battlefield, where X is the number of opponents you have.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Menace"
+   ],
+   "collector_number": "98",
+   "set": "drc"
+  },
+  {
+   "name": "Spirit-Sister's Call",
+   "oracle_id": "83914a83-4de2-4d64-9770-f68a12014167",
+   "layout": "normal",
+   "mana_cost": "{3}{W}{B}",
+   "cmc": 5.0,
+   "type_line": "Enchantment",
+   "oracle_text": "At the beginning of your end step, choose target permanent card in your graveyard. You may sacrifice a permanent that shares a card type with the chosen card. If you do, return the chosen card from your graveyard to the battlefield and it gains \"If this permanent would leave the battlefield, exile it instead of putting it anywhere else.\"",
+   "colors": [
+    "B",
+    "W"
+   ],
+   "color_identity": [
+    "B",
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "232",
+   "set": "dsc"
+  },
+  {
+   "name": "Gate to the Afterlife",
+   "oracle_id": "5a682ec5-78e6-4238-b5c2-e94b7a8f8066",
+   "layout": "normal",
+   "mana_cost": "{3}",
+   "cmc": 3.0,
+   "type_line": "Artifact",
+   "oracle_text": "Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card.\n{2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "130",
+   "set": "drc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "God-Pharaoh's Gift",
+     "type_line": "Artifact",
+     "oracle_text": "At the beginning of combat on your turn, you may exile a creature card from your graveyard. If you do, create a token that's a copy of that card, except it's a 4/4 black Zombie. It gains haste until end of turn.",
+     "colors": [],
+     "keywords": [],
+     "set": "drc",
+     "collector_number": "131"
+    }
+   ]
+  }
+ ]
+}

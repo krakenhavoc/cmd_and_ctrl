@@ -1,0 +1,395 @@
+{
+ "batch": 35,
+ "theme": "Morph and megamorph: straightforward",
+ "reuse": "effects/morph.go Morph(), Megamorph(); turned-face-up triggers (TurnedFaceUp events; 55 morph cards on develop, e.g. willbender.go); land with morph (Zoetic Cavern) still plays as a face-down CAST, not a land drop; Saproling and Insect tokens exist.",
+ "pair": 36,
+ "cards": [
+  {
+   "name": "Krosan Colossus",
+   "oracle_id": "703ab192-7e0a-4f02-8381-568ad2d999ca",
+   "layout": "normal",
+   "mana_cost": "{6}{G}{G}{G}",
+   "cmc": 9.0,
+   "type_line": "Creature — Beast",
+   "oracle_text": "Morph {6}{G}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+   "power": "9",
+   "toughness": "9",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "176",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Krosan Cloudscraper",
+   "oracle_id": "a0ff742b-f709-43ac-84d2-dc00c723bad6",
+   "layout": "normal",
+   "mana_cost": "{7}{G}{G}{G}",
+   "cmc": 10.0,
+   "type_line": "Creature — Beast Mutant",
+   "oracle_text": "At the beginning of your upkeep, sacrifice this creature unless you pay {G}{G}.\nMorph {7}{G}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+   "power": "13",
+   "toughness": "13",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "175",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Zoetic Cavern",
+   "oracle_id": "3763de30-28e1-4689-a71c-07d2fea3a466",
+   "layout": "normal",
+   "mana_cost": "",
+   "cmc": 0.0,
+   "type_line": "Land",
+   "oracle_text": "{T}: Add {C}.\nMorph {2} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Morph"
+   ],
+   "produced_mana": [
+    "C"
+   ],
+   "collector_number": "311",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Master of Pearls",
+   "oracle_id": "aca9df28-2df6-477c-b5b8-8e1863c84356",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Monk",
+   "oracle_text": "Morph {3}{W}{W} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, creatures you control get +2/+2 until end of turn.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "73",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Exalted Angel",
+   "oracle_id": "2f6e9ab8-6951-4c5f-bcde-0e96e0fe87f2",
+   "layout": "normal",
+   "mana_cost": "{4}{W}{W}",
+   "cmc": 6.0,
+   "type_line": "Creature — Angel",
+   "oracle_text": "Flying\nWhenever this creature deals damage, you gain that much life.\nMorph {2}{W}{W} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+   "power": "4",
+   "toughness": "5",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flying",
+    "Morph"
+   ],
+   "collector_number": "63",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Thelonite Hermit",
+   "oracle_id": "69d2e5f3-2f4d-4a36-bcd5-181164ecd894",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elf Shaman",
+   "oracle_text": "All Saprolings get +1/+1.\nMorph {3}{G}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, create four 1/1 green Saproling creature tokens.",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "188",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Saproling",
+     "type_line": "Token Creature — Saproling",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "19"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Broodhatch Nantuko",
+   "oracle_id": "b0a54050-3493-4ff6-8eca-e43b92c1f3d3",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Insect Druid",
+   "oracle_text": "Whenever this creature is dealt damage, you may create that many 1/1 green Insect creature tokens.\nMorph {2}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+   "power": "1",
+   "toughness": "1",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "167",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    },
+    {
+     "component": "token",
+     "name": "Insect",
+     "type_line": "Token Creature — Insect",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "G"
+     ],
+     "keywords": [],
+     "set": "ttrc",
+     "collector_number": "12"
+    }
+   ]
+  },
+  {
+   "name": "Imperial Hellkite",
+   "oracle_id": "99642419-ab24-4770-9f1c-84d2806441b5",
+   "layout": "normal",
+   "mana_cost": "{5}{R}{R}",
+   "cmc": 7.0,
+   "type_line": "Creature — Dragon",
+   "oracle_text": "Flying\nMorph {6}{R}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, you may search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Morph"
+   ],
+   "collector_number": "155",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Root Elemental",
+   "oracle_id": "182d38b4-48bb-4050-a19a-c0a6bb241bbd",
+   "layout": "normal",
+   "mana_cost": "{4}{G}{G}",
+   "cmc": 6.0,
+   "type_line": "Creature — Elemental",
+   "oracle_text": "Morph {5}{G}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, you may put a creature card from your hand onto the battlefield.",
+   "power": "6",
+   "toughness": "5",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "182",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  },
+  {
+   "name": "Nantuko Vigilante",
+   "oracle_id": "28ea78dc-7ad6-4006-aaf8-4b25057ec019",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Insect Druid Mutant",
+   "oracle_text": "Morph {1}{G} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, destroy target artifact or enchantment.",
+   "power": "3",
+   "toughness": "2",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Morph"
+   ],
+   "collector_number": "177",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Morph",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down creature with this reminder card.\nA card with morph can be turned face up any time for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "30"
+    }
+   ]
+  }
+ ]
+}

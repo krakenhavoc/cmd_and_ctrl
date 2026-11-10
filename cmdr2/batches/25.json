@@ -1,0 +1,236 @@
+{
+ "batch": 25,
+ "theme": "-1/-1 counters: placing them",
+ "reuse": "Plain -1/-1 counter placement and removal costs (game/counter_cost.go); wither: game/infect_wither_toxic.go; 'creatures with counters on them can't attack or block' (Kulrath Knight): restrictions.go / scoped_block_rules.go; reanimate with a -1/-1 counter (Aberrant Return): entry_counters.go.",
+ "pair": 26,
+ "cards": [
+  {
+   "name": "Skinrender",
+   "oracle_id": "c5c225a6-6a5e-4905-9412-dad15ba645b4",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Phyrexian Zombie",
+   "oracle_text": "When this creature enters, put three -1/-1 counters on target creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "86",
+   "set": "ecc"
+  },
+  {
+   "name": "Incremental Blight",
+   "oracle_id": "159cd205-6afc-4d8c-a4b9-501911a9c345",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Put a -1/-1 counter on target creature, two -1/-1 counters on another target creature, and three -1/-1 counters on a third target creature.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "76",
+   "set": "ecc"
+  },
+  {
+   "name": "Grim Poppet",
+   "oracle_id": "43e0dbaf-3c81-47e2-b0c2-364f7ac7295f",
+   "layout": "normal",
+   "mana_cost": "{7}",
+   "cmc": 7.0,
+   "type_line": "Artifact Creature — Scarecrow",
+   "oracle_text": "This creature enters with three -1/-1 counters on it.\nRemove a -1/-1 counter from this creature: Put a -1/-1 counter on another target creature.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [],
+   "collector_number": "142",
+   "set": "ecc"
+  },
+  {
+   "name": "Carnifex Demon",
+   "oracle_id": "527e4eec-0983-46a9-a4f7-451080200aea",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Phyrexian Demon",
+   "oracle_text": "Flying\nThis creature enters with two -1/-1 counters on it.\n{B}, Remove a -1/-1 counter from this creature: Put a -1/-1 counter on each other creature.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying"
+   ],
+   "collector_number": "72",
+   "set": "ecc"
+  },
+  {
+   "name": "Wickerbough Elder",
+   "oracle_id": "3d794629-9014-460a-8d3b-785eadc1cdb5",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Treefolk Shaman",
+   "oracle_text": "This creature enters with a -1/-1 counter on it.\n{G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "118",
+   "set": "ecc"
+  },
+  {
+   "name": "Channeler Initiate",
+   "oracle_id": "a98ea782-1c49-4207-a130-41329087fdf6",
+   "layout": "normal",
+   "mana_cost": "{1}{G}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Druid",
+   "oracle_text": "When this creature enters, put three -1/-1 counters on target creature you control.\n{T}, Remove a -1/-1 counter from this creature: Add one mana of any color.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "collector_number": "101",
+   "set": "ecc"
+  },
+  {
+   "name": "Soul Snuffers",
+   "oracle_id": "cdd227fc-0809-45d6-bed0-e85c0c0b6c94",
+   "layout": "normal",
+   "mana_cost": "{2}{B}{B}",
+   "cmc": 4.0,
+   "type_line": "Creature — Elemental Shaman",
+   "oracle_text": "When this creature enters, put a -1/-1 counter on each creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "87",
+   "set": "ecc"
+  },
+  {
+   "name": "Midnight Banshee",
+   "oracle_id": "dd8b6067-a97f-402f-bba1-70ebc6ee1599",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Spirit",
+   "oracle_text": "Wither (This deals damage to creatures in the form of -1/-1 counters.)\nAt the beginning of your upkeep, put a -1/-1 counter on each nonblack creature.",
+   "power": "5",
+   "toughness": "5",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Wither"
+   ],
+   "collector_number": "80",
+   "set": "ecc"
+  },
+  {
+   "name": "Dusk Urchins",
+   "oracle_id": "1c2cc166-dc59-44ce-86d5-ed6013b0bf67",
+   "layout": "normal",
+   "mana_cost": "{2}{B}",
+   "cmc": 3.0,
+   "type_line": "Creature — Ouphe",
+   "oracle_text": "Whenever this creature attacks or blocks, put a -1/-1 counter on it.\nWhen this creature dies, draw a card for each -1/-1 counter on it.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "73",
+   "set": "ecc"
+  },
+  {
+   "name": "Kulrath Knight",
+   "oracle_id": "f3d1b2e9-6ede-416d-937b-2063ea278d2f",
+   "layout": "normal",
+   "mana_cost": "{3}{B/R}{B/R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Elemental Knight",
+   "oracle_text": "Flying\nWither (This deals damage to creatures in the form of -1/-1 counters.)\nCreatures your opponents control with counters on them can't attack or block.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "B",
+    "R"
+   ],
+   "color_identity": [
+    "B",
+    "R"
+   ],
+   "keywords": [
+    "Flying",
+    "Wither"
+   ],
+   "collector_number": "126",
+   "set": "ecc"
+  },
+  {
+   "name": "Aberrant Return",
+   "oracle_id": "3a92b235-196b-4f46-9d20-06f4d3653d36",
+   "layout": "normal",
+   "mana_cost": "{4}{B}{B}",
+   "cmc": 6.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Put one, two, or three target creature cards from graveyards onto the battlefield under your control. Each of them enters with an additional -1/-1 counter on it.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "27",
+   "set": "ecc"
+  }
+ ]
+}

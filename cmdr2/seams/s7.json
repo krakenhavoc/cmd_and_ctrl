@@ -1,0 +1,94 @@
+{
+ "id": "s7",
+ "title": "Manifest the top card of another player's library",
+ "clause": "\"you manifest the top card of that player's library\" (Thieving Amalgam); \"manifest the top card of that player's library\" (Orochi Soul-Reaver)",
+ "why": "game/battlefield_put.go ManifestForEffect(playerID) takes one player who is both the library's owner and the controller. Cloak already has the split door (game/cloak.go CloakTopOfLibraryForEffect(controller, libraryOwner)); manifest needs the same, with owner != controller for the face-down permanent and its CR 708 look permission.",
+ "checked": "grep 'func .*Manifest[A-Za-z]*(' in game/: ManifestForEffect(playerID), ManifestFromHandsKeyedForEffect, ManifestDread* only; grep \"manifest the top card of (that player|target opponent|their)\" in effects: 0; every effects caller passes the controller.",
+ "size": "small",
+ "cards": [
+  {
+   "name": "Thieving Amalgam",
+   "oracle_id": "f60cd1d8-eeb6-41a3-af32-3e2a54937ca2",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Creature — Ape Snake",
+   "oracle_text": "At the beginning of each opponent's upkeep, you manifest the top card of that player's library. (Put it onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)\nWhenever a creature you control but don't own dies, its owner loses 2 life and you gain 2 life.",
+   "power": "6",
+   "toughness": "7",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Manifest"
+   ],
+   "collector_number": "150",
+   "set": "otc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "28"
+    }
+   ]
+  },
+  {
+   "name": "Orochi Soul-Reaver",
+   "oracle_id": "6d9ab641-ba99-4b27-a84e-8c2ae57a2fc1",
+   "layout": "normal",
+   "mana_cost": "{5}{B}",
+   "cmc": 6.0,
+   "type_line": "Creature — Snake Ninja Rogue",
+   "oracle_text": "Ninjutsu {3}{B} ({3}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever one or more creatures you control deal combat damage to a player, create a Treasure token and manifest the top card of that player's library. (Put it onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)",
+   "power": "5",
+   "toughness": "4",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Manifest",
+    "Treasure",
+    "Ninjutsu"
+   ],
+   "collector_number": "58",
+   "set": "otc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Treasure",
+     "type_line": "Token Artifact — Treasure",
+     "oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+     "colors": [],
+     "keywords": [],
+     "set": "totj",
+     "collector_number": "18"
+    },
+    {
+     "component": "combo_piece",
+     "name": "Manifest",
+     "type_line": "Creature",
+     "oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "totc",
+     "collector_number": "28"
+    }
+   ]
+  }
+ ]
+}

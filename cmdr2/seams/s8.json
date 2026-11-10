@@ -1,0 +1,33 @@
+{
+ "id": "s8",
+ "title": "Mark the cards a player surveilled into their graveyard this turn",
+ "clause": "\"You may play lands and cast spells from among cards in your graveyard you've surveilled this turn. If you cast a spell this way, you pay life equal to its mana value rather than paying its mana cost.\" (Eye of Duskmantle)",
+ "why": "The engine knows only that a PLAYER surveilled this turn (game/layers.go:411) and stamps where a graveyard card came FROM (zone.go stampGraveyardArrival), not that it arrived by this turn's surveil. Needs an additive per-card mark written on the surveil graveyard leg (zone_route.go:216 already names it) and cleared at the turn boundary, read by a standing cast/play permission. The life-for-mana-value alternative cost has precedents (valgavoth_terror_eater.go, gwenom_remorseless.go).",
+ "checked": "grep -i 'surveilled' in game/: layers.go:411 (player-level), pending_choice.go:5826, events.go:470, zone_route.go:216; 'surveilled this turn' in effects: surveillance_phantasm.go, proctor_of_potential.go, desperate_futurescribe.go, all player-level conditions.",
+ "size": "small",
+ "cards": [
+  {
+   "name": "Eye of Duskmantle",
+   "oracle_id": "04e7f739-fe50-440d-aa3d-e547295044a8",
+   "layout": "normal",
+   "mana_cost": "{5}{B}{B}",
+   "cmc": 7.0,
+   "type_line": "Creature — Eye",
+   "oracle_text": "Flying, lifelink\nYou may play lands and cast spells from among cards in your graveyard you've surveilled this turn. If you cast a spell this way, you pay life equal to its mana value rather than paying its mana cost.",
+   "power": "3",
+   "toughness": "8",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Flying",
+    "Lifelink"
+   ],
+   "collector_number": "337",
+   "set": "mkc"
+  }
+ ]
+}

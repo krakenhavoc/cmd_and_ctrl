@@ -1,0 +1,276 @@
+{
+ "batch": 49,
+ "theme": "Parley, tempting offer, secret and group choices",
+ "reuse": "Parley has one inline precedent (ambassador_kehleyr.go) — lift it into ONE helper for Selvala, Storm Fleet Negotiator and Innocuous Researcher; Selvala's parley is a MANA ability with reveals and draws (docs 'Adding a mana ability' — watch item: confirm a mana ability may run a multi-player reveal; if not, stop and report); tempting offer: tempt_with_discovery.go, batch07_helpers.go; secret choices: game/secret_choice.go, a_killer_among_us.go ('Reveal the player you chose' cost — Stalking Leonin; each opponent secretly choosing — Prisoner's Dilemma, queue one secret choice per opponent); 'starting with the next opponent in turn order, each player chooses': rejoin_the_fight.go; 'can't cast spells until your next turn': game/cast_ban.go; Map token: MapToken; investigate: batch 31's helper.",
+ "pair": 50,
+ "cards": [
+  {
+   "name": "Selvala, Explorer Returned",
+   "oracle_id": "b628a39b-c923-473d-900a-1617f47ecb76",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}",
+   "cmc": 3.0,
+   "type_line": "Legendary Creature — Elf Scout",
+   "oracle_text": "Parley — {T}: Each player reveals the top card of their library. For each nonland card revealed this way, add {G} and you gain 1 life. Then each player draws a card. (Activate only as an instant.)",
+   "power": "2",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "W"
+   ],
+   "keywords": [
+    "Parley"
+   ],
+   "produced_mana": [
+    "G"
+   ],
+   "collector_number": "218",
+   "set": "mkc"
+  },
+  {
+   "name": "Storm Fleet Negotiator",
+   "oracle_id": "60cb885c-5cd3-4963-8a6a-cebf07cc61b5",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Creature — Siren Pirate",
+   "oracle_text": "Flying\nParley — Whenever this creature attacks, each player reveals the top card of their library. For each nonland card revealed this way, you create a Map token. Then each player draws a card. (A Map token is an artifact with \"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\")",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Flying",
+    "Explore",
+    "Parley"
+   ],
+   "collector_number": "46",
+   "set": "lcc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Map",
+     "type_line": "Token Artifact — Map",
+     "oracle_text": "{1}, {T}, Sacrifice this artifact: Target creature you control explores. Activate only as a sorcery. (Reveal the top card of your library. Put that card into your hand if it's a land. Otherwise, put a +1/+1 counter on that creature, then put the card back or put it into your graveyard.)",
+     "colors": [],
+     "keywords": [
+      "Explore"
+     ],
+     "set": "tlci",
+     "collector_number": "17"
+    }
+   ]
+  },
+  {
+   "name": "Innocuous Researcher",
+   "oracle_id": "ef764497-800e-4cbd-805e-7635919a983c",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Creature — Centaur Detective",
+   "oracle_text": "Parley — Whenever this creature attacks, each player reveals the top card of their library. For each nonland card revealed this way, you investigate. Then each player draws a card.\nAt the beginning of your end step, you may untap all lands you control. If you do, you can't cast spells until your next turn.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Investigate",
+    "Parley"
+   ],
+   "collector_number": "348",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Tempt with Vengeance",
+   "oracle_id": "8e356df5-ca92-4be2-871e-8965c2510fbe",
+   "layout": "normal",
+   "mana_cost": "{X}{R}",
+   "cmc": 1.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Tempting offer — Create X 1/1 red Elemental creature tokens with haste. Each opponent may create X 1/1 red Elemental creature tokens with haste. For each opponent who does, create X 1/1 red Elemental creature tokens with haste.",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Tempting offer"
+   ],
+   "collector_number": "239",
+   "set": "tdc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Elemental",
+     "type_line": "Token Creature — Elemental",
+     "oracle_text": "Haste",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "R"
+     ],
+     "keywords": [
+      "Haste"
+     ],
+     "set": "ttdc",
+     "collector_number": "17"
+    }
+   ]
+  },
+  {
+   "name": "Tempt with Bunnies",
+   "oracle_id": "6874be51-623d-4eaf-a67a-2fcbb9a8ceca",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Tempting Offer — Draw a card and create a 1/1 white Rabbit creature token. Then each opponent may draw a card and create a 1/1 white Rabbit creature token. For each opponent who does, you draw a card and you create a 1/1 white Rabbit creature token.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Tempting offer"
+   ],
+   "collector_number": "13",
+   "set": "blc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Rabbit",
+     "type_line": "Token Creature — Rabbit",
+     "oracle_text": "",
+     "power": "1",
+     "toughness": "1",
+     "colors": [
+      "W"
+     ],
+     "keywords": [],
+     "set": "tblb",
+     "collector_number": "3"
+    }
+   ]
+  },
+  {
+   "name": "Sadistic Shell Game",
+   "oracle_id": "88c3fc46-f2f5-440c-80a6-fed5b42cd340",
+   "layout": "normal",
+   "mana_cost": "{4}{B}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Starting with the next opponent in turn order, each player chooses a creature you don't control. Destroy the chosen creatures.",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [],
+   "collector_number": "24",
+   "set": "dsc"
+  },
+  {
+   "name": "Disorienting Choice",
+   "oracle_id": "7aa34ef4-5e11-491b-8dbe-6ef80e0ad26c",
+   "layout": "normal",
+   "mana_cost": "{3}{G}",
+   "cmc": 4.0,
+   "type_line": "Sorcery",
+   "oracle_text": "For each opponent, choose up to one target artifact or enchantment that player controls. For each permanent chosen this way, its controller may exile it. Then if one or more of the chosen permanents are still on the battlefield, you search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle.",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [],
+   "collector_number": "60",
+   "set": "dsc"
+  },
+  {
+   "name": "Intellectual Offering",
+   "oracle_id": "73ec7a0b-274a-4a10-a173-ff1625d62fce",
+   "layout": "normal",
+   "mana_cost": "{4}{U}",
+   "cmc": 5.0,
+   "type_line": "Instant",
+   "oracle_text": "Choose an opponent. You and that player each draw three cards.\nChoose an opponent. Untap all nonland permanents you control and all nonland permanents that player controls.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "168",
+   "set": "blc"
+  },
+  {
+   "name": "Stalking Leonin",
+   "oracle_id": "6ec98a34-5c04-423c-98e5-8cf3047135c1",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Creature — Cat Archer",
+   "oracle_text": "When this creature enters, secretly choose an opponent.\nReveal the player you chose: Exile target creature that's attacking you if it's controlled by the chosen player. Activate only once.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "86",
+   "set": "mkc"
+  },
+  {
+   "name": "Prisoner's Dilemma",
+   "oracle_id": "fecbbc79-2f74-46b3-a049-45736f904f58",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Each opponent secretly chooses silence or snitch, then the choices are revealed. If each opponent chose silence, Prisoner's Dilemma deals 4 damage to each of them. If each opponent chose snitch, Prisoner's Dilemma deals 8 damage to each of them. Otherwise, Prisoner's Dilemma deals 12 damage to each opponent who chose silence.\nFlashback {5}{R}{R}",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "344",
+   "set": "mkc"
+  }
+ ]
+}

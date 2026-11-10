@@ -1,0 +1,270 @@
+{
+ "batch": 32,
+ "theme": "Clues as objects, detectives and exile-until-leaves",
+ "reuse": "Clues that are also something else: 'Clues you control are Equipment … and have equip {2}': granted_equipment.go, gemcutter_buccaneer.go; 'other Clues become 6/6 Plant creatures until end of turn' (same layer-4 animation Vihaan uses for Treasures in batch 33 — grep before duplicating); cloak: cloak_action.go; goad: GoadTarget; legendary token Tiny (Sophia) new; 'put a card exiled with this into its owner's graveyard' is shared by Foreboding Steamboat and Bronzebeak Foragers (game/exiled_with.go, until_return.go; memory_theft.go for exile->graveyard) — one helper, both here; Otherworldly Escort returns as a Spirit Detective with charge counters and reads 'dealt damage to you this turn'.",
+ "pair": 31,
+ "cards": [
+  {
+   "name": "Ransom Note",
+   "oracle_id": "49c0aac5-d650-4ada-a194-3bf77f104bc1",
+   "layout": "normal",
+   "mana_cost": "{1}",
+   "cmc": 1.0,
+   "type_line": "Artifact — Clue",
+   "oracle_text": "When this artifact enters, surveil 1.\n{2}, Sacrifice this artifact: Choose one —\n• Cloak the top card of your library.\n• Goad target creature.\n• Draw a card.",
+   "colors": [],
+   "color_identity": [],
+   "keywords": [
+    "Surveil",
+    "Goad",
+    "Cloak"
+   ],
+   "collector_number": "358",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "combo_piece",
+     "name": "A Mysterious Creature",
+     "type_line": "Creature",
+     "oracle_text": "You can cover a face-down creature with this reminder card. A face-down creature that was cloaked or cast with disguise has ward {2}. (Whenever that creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+     "power": "2",
+     "toughness": "2",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "21"
+    }
+   ]
+  },
+  {
+   "name": "Tangletrove Kelp",
+   "oracle_id": "1d7d9404-cad6-4c1a-bd47-7a31ebb2791c",
+   "layout": "normal",
+   "mana_cost": "{5}{U}{U}",
+   "cmc": 7.0,
+   "type_line": "Artifact Creature — Clue Plant",
+   "oracle_text": "Ward {2}\nAt the beginning of each combat, other Clues you control become 6/6 Plant creatures in addition to their other types until end of turn.\n{2}, Sacrifice this creature: Draw a card.",
+   "power": "6",
+   "toughness": "6",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "334",
+   "set": "mkc"
+  },
+  {
+   "name": "Armed with Proof",
+   "oracle_id": "b401a490-d25f-4029-bb91-8999e140c6a1",
+   "layout": "normal",
+   "mana_cost": "{2}{W}",
+   "cmc": 3.0,
+   "type_line": "Enchantment",
+   "oracle_text": "When this enchantment enters, investigate twice. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nClues you control are Equipment in addition to their other types and have \"Equipped creature gets +2/+0\" and equip {2}.",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "9",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Sophia, Dogged Detective",
+   "oracle_id": "eaf8027a-017a-4471-ae7b-a372fd8e0ff3",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{W}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Human Detective",
+   "oracle_text": "When Sophia enters, create Tiny, a legendary 2/2 green Dog Detective creature token with trample.\n{1}, Sacrifice an artifact token: Put a +1/+1 counter on each Dog you control.\nWhenever a Dog you control deals combat damage to a player, create a Food token, then investigate.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G",
+    "U",
+    "W"
+   ],
+   "color_identity": [
+    "G",
+    "U",
+    "W"
+   ],
+   "keywords": [
+    "Investigate",
+    "Food"
+   ],
+   "collector_number": "319",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Tiny",
+     "type_line": "Token Legendary Creature — Dog Detective",
+     "oracle_text": "Trample",
+     "power": "2",
+     "toughness": "2",
+     "colors": [
+      "G"
+     ],
+     "keywords": [
+      "Trample"
+     ],
+     "set": "tmkc",
+     "collector_number": "21"
+    },
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    },
+    {
+     "component": "token",
+     "name": "Food",
+     "type_line": "Token Artifact — Food",
+     "oracle_text": "{2}, {T}, Sacrifice this token: You gain 3 life.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkc",
+     "collector_number": "24"
+    }
+   ]
+  },
+  {
+   "name": "Serene Sleuth",
+   "oracle_id": "b0d639cb-71d4-454f-9dd6-89cd7a59b702",
+   "layout": "normal",
+   "mana_cost": "{1}{W}",
+   "cmc": 2.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "When this creature enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\nAt the beginning of combat on your turn, investigate for each goaded creature you control. Then each creature you control is no longer goaded.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Investigate"
+   ],
+   "collector_number": "14",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Foreboding Steamboat",
+   "oracle_id": "d97a0e41-9dd7-4466-afb7-3d8bd6cd0eed",
+   "layout": "normal",
+   "mana_cost": "{3}{B}{B}",
+   "cmc": 5.0,
+   "type_line": "Artifact — Vehicle",
+   "oracle_text": "When this Vehicle enters, each player chooses two nontoken, non-Vehicle creatures they control. Exile them until this Vehicle leaves the battlefield.\nWhenever this Vehicle attacks, put a card exiled with it into its owner's graveyard. If you do, investigate.\nCrew 2",
+   "power": "5",
+   "toughness": "7",
+   "colors": [
+    "B"
+   ],
+   "color_identity": [
+    "B"
+   ],
+   "keywords": [
+    "Investigate",
+    "Crew"
+   ],
+   "collector_number": "28",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Clue",
+     "type_line": "Token Artifact — Clue",
+     "oracle_text": "{2}, Sacrifice this token: Draw a card.",
+     "colors": [],
+     "keywords": [],
+     "set": "tmkm",
+     "collector_number": "18"
+    }
+   ]
+  },
+  {
+   "name": "Otherworldly Escort",
+   "oracle_id": "c0ebc1df-51ea-413b-bb88-7666a53ad783",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Human Detective",
+   "oracle_text": "Flash\nWhen this creature dies, if it's not a Spirit, return it to the battlefield under its owner's control with four charge counters on it. It's a Spirit Detective. (It's no longer a Human.)\n{1}{W}, {T}, Remove a charge counter from this creature: Destroy target creature that dealt damage to you this turn.",
+   "power": "4",
+   "toughness": "3",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [
+    "Flash"
+   ],
+   "collector_number": "323",
+   "set": "mkc"
+  },
+  {
+   "name": "Bronzebeak Foragers",
+   "oracle_id": "0f5f6f3e-1b3c-43e2-b11d-bd454366845c",
+   "layout": "normal",
+   "mana_cost": "{3}{W}",
+   "cmc": 4.0,
+   "type_line": "Creature — Dinosaur",
+   "oracle_text": "When this creature enters, for each opponent, exile up to one target nonland permanent that player controls until this creature leaves the battlefield.\n{X}{W}: Put target card with mana value X exiled with this creature into its owner's graveyard. You gain X life.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "W"
+   ],
+   "color_identity": [
+    "W"
+   ],
+   "keywords": [],
+   "collector_number": "37",
+   "set": "lcc"
+  }
+ ]
+}
