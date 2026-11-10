@@ -348,6 +348,7 @@ body the-wrath-of-khan/gain-control-of-that-creature
 body thorin-mountain-king/damage
 body thousand-moons-crackshot/tap
 body time-to-feed/gain-three-life
+body tip-the-scales/minus
 body tolarian-kraken/tap-or-untap
 body transformers/convert-this
 body treasure/create-tapped
@@ -1086,6 +1087,7 @@ confirm confirm/ward-sacrifice-three-nonland-permanents
 confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
+confirm confirm/will-of-the-jeskai-may-wheel
 confirm confirm/willie-lumpkin-postman-draw
 confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
@@ -1656,6 +1658,7 @@ run prompt-run/the-promise-of-kahless-sacrifice-return
 run prompt-run/the-sackville-bagginses-sacrifice
 run prompt-run/throne-of-the-grim-captain-put
 run prompt-run/time-wipe-return-and-destroy
+run prompt-run/tip-the-scales-sacrifice
 run prompt-run/titan-of-industry-shield
 run prompt-run/tomb-of-annihilation-oubliette-artifact
 run prompt-run/tomb-of-annihilation-oubliette-creature
@@ -1753,6 +1756,7 @@ steps then-steps/trap-the-trespassers-stun
 steps then-steps/travel-through-caradhras-votes
 steps then-steps/truth-or-consequences-votes
 steps then-steps/twilight-prophet-drain
+steps then-steps/will-of-the-jeskai-may-wheel
 steps then-steps/will-of-the-sultai-bullet
 steps then-steps/zealot-il-vec-yes
 tail abstract-performance/after-face-down
@@ -2170,6 +2174,7 @@ tail mass/starfall-invocation-return
 tail mass/sunfall-incubate
 tail mass/synthetic-destiny-schedule
 tail mass/the-battle-of-bywater-food
+tail mass/transforming-flourish-destroyed
 tail mass/worlds-within-worlds-exiled
 tail mass/zero-point-ballad-return
 tail mazes-end/win-the-game
@@ -2321,6 +2326,7 @@ tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-promise-of-kahless-sacrifice-return
 tail sacrificed-one/prompt-run/the-sackville-bagginses-sacrifice
+tail sacrificed-one/prompt-run/tip-the-scales-sacrifice
 tail sacrificed-one/prompt-run/unscrupulous-contractor-sacrifice
 tail sacrificed-one/prompt-run/vampire-gourmand-draw-unblockable
 tail sacrificed-one/prompt-run/venom-lethal-protector-sacrificed
@@ -2578,6 +2584,7 @@ tail then/thornplate-intimidator-punisher-sacrificed
 tail then/tibalts-trickery-exile-until
 tail then/tinybones-joins-up-lose-life
 tail then/torment-of-hailfire-punisher-sacrificed
+tail then/transforming-flourish-cast
 tail then/tribal-unity-type-chosen
 tail then/twisted-fates-counters
 tail then/unwind-history-surveil
