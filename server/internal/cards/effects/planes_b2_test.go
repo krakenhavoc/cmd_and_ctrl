@@ -16,20 +16,17 @@ import (
 var (
 	planeNewNewYork       = planeFixture{"4f8cf1ab-1359-44af-a989-dd254fa6c7b5", "New New York", "Plane — New Earth"}
 	planeNorthPole        = planeFixture{"a2dfbb3e-3d5f-4b6a-b910-4c7b0c9dc17a", "North Pole Research Base", "Plane — Earth"}
-	planeOodSphere        = planeFixture{"8bf638e5-8325-48ca-9039-37a19761ef56", "Ood Sphere", "Plane — Horsehead Nebula"}
 	planePompeii          = planeFixture{"5dc1deab-ce04-45c0-a4ff-c526a948e500", "Pompeii", "Plane — Earth"}
 	planeCabinetRoom      = planeFixture{"b3acbacd-7e97-4bcf-9281-fffa5ea3e70b", "Prime Minister's Cabinet Room", "Plane — Earth"}
 	planeSpectroxMines    = planeFixture{"4f387b4c-3e4a-419d-9dbe-95c5f797747e", "Spectrox Mines", "Plane — Androzani Minor"}
 	planeStormcage        = planeFixture{"204ee01c-74ca-4c4c-92db-aebeebb89406", "Stormcage Containment Facility", "Plane — Unknown Planet"}
 	planeTardisBay        = planeFixture{"424b2702-e7c6-4056-8466-a43782d7df2b", "TARDIS Bay", "Plane — Gallifrey"}
-	planeCaveOfSkulls     = planeFixture{"6ad7027a-5f13-4833-bb88-879ba8830720", "The Cave of Skulls", "Plane — Earth"}
 	planeCheetahPlanet    = planeFixture{"0c4679a1-f92f-44a9-9a44-066a137c8cd7", "The Cheetah Planet", "Plane — Outside Mutter's Spiral"}
 	planeDiningCar        = planeFixture{"7099883d-0a4b-47ae-bff8-a96efa7a3a9a", "The Dining Car", "Plane — Spacecraft"}
 	planeChildhoodBarn    = planeFixture{"2a21b90a-7ea7-4090-82ec-359ba8ba1aad", "The Doctor's Childhood Barn", "Plane — Gallifrey"}
 	planeDoctorsTomb      = planeFixture{"fc621e94-e7c7-49ea-9547-4ab041ea39f3", "The Doctor's Tomb", "Plane — Trenzalore"}
 	planeTheDrum          = planeFixture{"9f7e1607-34b5-4332-81e3-391fb49cd6ad", "The Drum, Mining Facility", "Plane — Earth"}
 	planeLuxLibrary       = planeFixture{"68750b81-1309-4362-84b3-8835b3d71d28", "The Lux Foundation Library", "Plane — The Library"}
-	planeMatrixOfTime     = planeFixture{"ed44d47b-2eea-4cb2-a091-07583bdf390f", "The Matrix of Time", "Plane — Gallifrey"}
 	planeMoonbase         = planeFixture{"381f510b-8696-4af1-a6c9-d1175e9f36d0", "The Moonbase", "Plane — Moon"}
 	planePyramidOfMars    = planeFixture{"5910ae7e-7a74-4296-9ae1-7fa093b4e640", "The Pyramid of Mars", "Plane — Mars"}
 	planeTwoStreams       = planeFixture{"d8aa7f2d-2280-42d4-b082-1b5d45df77c5", "Two Streams Facility", "Plane — Apalapucia"}
@@ -39,7 +36,6 @@ var (
 	planeEsper            = planeFixture{"4eebfaf3-18da-4661-b6a5-d874585e170a", "Esper", "Plane — Alara"}
 	planeGavony           = planeFixture{"2387edac-765b-4502-bd3d-88be8ba7d0a4", "Gavony", "Plane — Innistrad"}
 	planeGhirapur         = planeFixture{"a7c6b72c-f9ec-4048-8e4c-99210e4e7b85", "Ghirapur", "Plane — Avishkar"}
-	planeGlimmervoidBasin = planeFixture{"43a23de7-0738-4b03-b87d-5a7d1144825c", "Glimmervoid Basin", "Plane — Mirrodin"}
 )
 
 // planesB2Count counts the permanents named `name` that `owner` controls.
@@ -387,9 +383,8 @@ func TestNewNewYorkMakesNoncreatureArtifactsVehiclesAtCombat(t *testing.T) {
 	theirs := b12Permanent(g, g.Seats[(g.Turn.ActiveSeat+1)%4].ID, "Their Rock", "Artifact")
 	advanceTo(t, g, game.StepBeginCombat)
 	passPriorityAroundTable(t, g)
-	c := tmtB1Card(t, g, rock)
 	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
-	c = layeredCard(t, g, rock)
+	c := layeredCard(t, g, rock)
 	if !c.HasSubtypeWord("Vehicle") || c.CurrentPower() != 3 || c.CurrentToughness() != 3 {
 		t.Errorf("the Rock is %d/%d with subtypes %q, want a 3/3 Vehicle", c.CurrentPower(), c.CurrentToughness(), c.Effective().Subtypes)
 	}
