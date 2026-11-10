@@ -140,3 +140,15 @@ func cmdr2B05EachPlayerLosesAThirdOfTheirLife(g *game.Game, item *game.StackItem
 	}
 	return nil
 }
+
+// cmdr2B05ControlsAnotherNontokenPirate is "you control another nontoken
+// Pirate" (Fathom Fleet Captain): a Pirate creature other than `self`
+// that is not a token, read through the layers.
+func cmdr2B05ControlsAnotherNontokenPirate(g *game.Game, controller, self uuid.UUID) bool {
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == controller && c.InstanceID != self && !c.IsToken() && c.IsCreature() && c.HasSubtype("Pirate") {
+			return true
+		}
+	}
+	return false
+}

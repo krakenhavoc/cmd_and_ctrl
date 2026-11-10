@@ -247,3 +247,72 @@ func TestCmdr2B06MerchantRaidersHoldsATargetWhenItAndOtherPiratesEnter(t *testin
 		t.Error("the held creatures stayed tapped after the Raiders left")
 	}
 }
+
+// --- Fathom Fleet Captain ----------------------------------------------
+
+func cmdr2B06CaptainAttack(t *testing.T, otherPirate string, token bool) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cap := cmdr2B05Card(g, me.ID, "Fathom Fleet Captain", "Creature — Human Pirate", cmdr2B06CaptainOracle, 2, 1)
+	if otherPirate != "" {
+		if token {
+			otherPirate = "Token " + otherPirate
+		}
+		c := game.Card{InstanceID: uuid.New(), Name: "Deckhand", TypeLine: otherPirate, Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
+		pushBattlefieldCardWithTimestamp(g, c)
+	}
+	declareAttack(t, g, opp.ID, cap)
+	passPriorityAroundTable(t, g)
+	return g, me
+}
+
+func TestCmdr2B06FleetCaptainPaysTwoForAMenacePirate(t *testing.T) {
+	g, me := cmdr2B06CaptainAttack(t, "Creature — Human Pirate", false)
+	b06AddMana(me, "C", "C")
+	ask := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if ask == nil {
+		t.Fatal("no payment prompt with another nontoken Pirate")
+	}
+	if ask.PayCost != "{2}" {
+		t.Errorf("optional cost %s", ask.PayCost)
+	}
+	if err := g.ResolvePayUnless(ask.ID, me.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	ids := battlefieldIDsNamed(g, "Pirate")
+	if len(ids) != 1 {
+		t.Fatalf("%d Pirate tokens, want 1", len(ids))
+	}
+	tok, _ := g.LookupCardForEffect(ids[0])
+	if tok.Power != 2 || tok.Toughness != 2 || !hasKeywordOf(g, ids[0], "menace") {
+		t.Errorf("token %d/%d, menace %v", tok.Power, tok.Toughness, hasKeywordOf(g, ids[0], "menace"))
+	}
+}
+
+func TestCmdr2B06FleetCaptainNeedsAnotherNontokenPirate(t *testing.T) {
+	for name, c := range map[string]struct {
+		typeLine string
+		token    bool
+	}{"alone": {"", false}, "only a token Pirate": {"Creature — Human Pirate", true}, "only a non-Pirate": {"Creature — Bear", false}} {
+		g, _ := cmdr2B06CaptainAttack(t, c.typeLine, c.token)
+		if latestChoiceOfKind(g, game.PendingChoicePayUnless) != nil {
+			t.Errorf("%s: the trigger asked for {2}", name)
+		}
+	}
+}
+
+func TestCmdr2B06FleetCaptainDecliningMakesNothing(t *testing.T) {
+	g, me := cmdr2B06CaptainAttack(t, "Creature — Human Pirate", false)
+	b06AddMana(me, "C", "C")
+	ask := latestChoiceOfKind(g, game.PendingChoicePayUnless)
+	if ask == nil {
+		t.Fatal("no prompt")
+	}
+	if err := g.ResolvePayUnless(ask.ID, me.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(battlefieldIDsNamed(g, "Pirate")); got != 0 {
+		t.Errorf("%d tokens after declining", got)
+	}
+}
