@@ -19,7 +19,6 @@ func init() {
 		OracleID:     "adc1f3b4-cce7-42c9-a208-dbab1d1924f5",
 		Name:         "Cloud of Faeries",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{LandsUntapped: 2},
 		Activated:    []ActivatedAbility{Cycling("{2}")},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Cloud of Faeries — untap up to two lands", func(g *game.Game, item *game.StackItem) error {
