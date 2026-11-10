@@ -72,6 +72,9 @@ type AbilityGrant struct {
 	// CR 613.7a's timestamp; a layer-7 one is gathered after layer 6
 	// (game/granted_statics.go). TestEveryGrantKeyResolves and
 	// GrantAbilitiesFor refuse any other (game.GrantedStaticProblem).
+	// The one granted static that may grant is GrantedFixedBundle's
+	// (amendment 2026-11-10, #5402): it names exactly one bundle this
+	// same card declares, and that bundle carries no static.
 	//
 	// Mana is for a LAYER-6 grant (ADR 0093) — no printed copy effect
 	// grants one.
@@ -240,6 +243,24 @@ func GrantAbilities(appliesTo func(target *game.Card, g *game.Game, source *game
 	}
 }
 
+// GrantedFixedBundle is a bundle static that itself grants one fixed
+// bundle — "<permanents> have '<ability>'" inside a quoted ability
+// another effect gives (Roar of the Fifth People's chapter II: 'This
+// Saga gains "Creatures you control have '{T}: Add {R}, {G}, or
+// {W}.'"'). ADR 0093 Decision 10 refuses a granted static that grants;
+// its amendment of 2026-11-10 (#5402) lets this one shape through, by
+// the explicit opt-in this sets (game.StaticAbility.GrantsFixedBundle):
+// `inner` must be a bundle the same card declares in its Grants, with no
+// static of its own, so it can grant, remove or borrow nothing.
+// `appliesTo` is read with the HOST as its source, so "you" is the
+// host's controller.
+func GrantedFixedBundle(label string, appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool, inner string) game.StaticAbility {
+	ab := GrantAbilities(appliesTo, inner)
+	ab.Label = label
+	ab.GrantsFixedBundle = true
+	return ab
+}
+
 // TapForManaGrant is the commonest granted bundle, "{T}: Add <mana>."
 // — Jaheira's "{T}: Add {G}.", and with AnyColorManaGrant below,
 // Cryptolith Rite's and Chromatic Lantern's. `produced` is the
@@ -303,6 +324,41 @@ func checkGrants(name string, grants []AbilityGrant) {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + ", which is already registered — grant keys are catalog-wide")
 		}
 		checkGrantAbilities(name, gr)
+		checkFixedBundleGrants(name, gr, grants)
+	}
+}
+
+// checkFixedBundleGrants is the registration half of ADR 0093's
+// amendment of 2026-11-10 (#5402): a bundle static that grants must opt
+// in with GrantsFixedBundle, and name exactly one bundle the SAME card
+// declares, with no static of its own — so the inner grant is fixed,
+// catalog-registered, and can grant, remove or borrow nothing.
+// game.GrantedStaticProblem makes the same refusal against the live
+// catalog wherever a grant is applied; this one fails the boot.
+func checkFixedBundleGrants(name string, gr AbilityGrant, siblings []AbilityGrant) {
+	for i, s := range gr.Static {
+		if !s.GrantsFixedBundle {
+			continue
+		}
+		where := fmt.Sprintf("effects.Register: %q ability grant %s static %d", name, gr.Key, i)
+		if s.Layer != game.Layer6Ability || len(s.GrantAbilities) != 1 {
+			panic(where + " declares GrantsFixedBundle, which needs a layer-6 static naming exactly one bundle (ADR 0093 amendment 2026-11-10)")
+		}
+		inner := game.GrantKey(s.GrantAbilities[0])
+		var found *AbilityGrant
+		for j := range siblings {
+			if game.GrantKey(siblings[j].Key) == inner {
+				found = &siblings[j]
+			}
+		}
+		switch {
+		case found == nil:
+			panic(where + " grants " + s.GrantAbilities[0] + ", which this card does not declare in its Grants — a fixed bundle is the granting card's own (ADR 0093 amendment 2026-11-10)")
+		case found.Key == gr.Key:
+			panic(where + " grants its own bundle (ADR 0093 amendment 2026-11-10)")
+		case len(found.Static) > 0:
+			panic(where + " grants " + found.Key + ", a bundle with a static — the inner bundle may not grant, remove or borrow (ADR 0093 amendment 2026-11-10)")
+		}
 	}
 }
 
@@ -356,8 +412,8 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		if s.ActiveWhen.IsGate() {
 			panic(where("static", i) + " declares ActiveWhen — a designation is the host's; gate the grantor's static instead")
 		}
-		if len(s.GrantAbilities) > 0 {
-			panic(where("static", i) + " grants abilities itself — a granted ability that grants another is not modelled")
+		if len(s.GrantAbilities) > 0 && !s.GrantsFixedBundle {
+			panic(where("static", i) + " grants abilities itself — a granted ability that grants another is modelled only as a fixed bundle (GrantsFixedBundle, ADR 0093 amendment 2026-11-10)")
 		}
 		// ADR 0155 Decision 1: a bundle that lends abilities would put a
 		// borrow inside a borrow.
