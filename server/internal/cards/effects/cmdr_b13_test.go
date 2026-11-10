@@ -1443,3 +1443,52 @@ func TestCmdrB16BecomeTheAvalancheDrawsPerBigCreatureThenPumpsByHandSize(t *test
 	}
 	_ = big2
 }
+
+const cmdrB16RampartOracle = "b0edba6f-8f54-4dc4-b952-20b57a797d60"
+
+func TestCmdrB16RampartArchitectMakesWallsAndFetchesWhenADefenderDies(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	ids := seedSearchLibrary(me,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Hallowed Fountain", TypeLine: "Land — Plains Island"},
+	)
+	castCatalogSpell(t, g, "Rampart Architect", "Creature — Elephant Advisor", cmdrB16RampartOracle, nil)
+	passPriorityAroundTable(t, g)
+	var wall uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Wall" && c.Controller == me.ID {
+			wall = c.InstanceID
+		}
+	}
+	if wall == uuid.Nil {
+		t.Fatal("no Wall token on entering")
+	}
+	if p, tt := effectivePower(t, g, wall), effectiveToughness(t, g, wall); p != 1 || tt != 3 {
+		t.Errorf("the Wall is %d/%d, want 1/3", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, wall, "defender") {
+		t.Error("the Wall has no defender")
+	}
+	// A creature without defender dying does not fetch.
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(bear) })
+	passPriorityAroundTable(t, g)
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Fatal("a creature without defender dying prompted a search")
+	}
+	// The Wall dying does.
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(wall) })
+	passPriorityAroundTable(t, g)
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the Wall dying did not offer a search")
+	}
+	if searchOptionNamed(g, c, "Hallowed Fountain") != uuid.Nil {
+		t.Error("a nonbasic land was offered")
+	}
+	answerSearchNamed(t, g, me.ID, "Forest")
+	if !g.Battlefield.Contains(ids[0]) || !b16Tapped(t, g, ids[0]) {
+		t.Error("the Forest did not enter tapped")
+	}
+}
