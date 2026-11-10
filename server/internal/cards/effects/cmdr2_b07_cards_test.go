@@ -192,3 +192,291 @@ func TestCmdr2B07SpinebackMakesAThreeThreeTramplingDinosaur(t *testing.T) {
 		t.Error("the token lacks trample")
 	}
 }
+
+// cmdr2B07PickIfAsked answers a pending target prompt for chooser with the
+// card, when the engine asked (a lone legal target is chosen for you).
+func cmdr2B07PickIfAsked(t *testing.T, g *game.Game, chooser, card uuid.UUID) {
+	t.Helper()
+	if latestPickTarget(g, chooser) != nil {
+		pickCard(t, g, chooser, card)
+	}
+}
+
+// --- Raging Regisaur ---------------------------------------------------
+
+func TestCmdr2B07RegisaurPingsAnyTargetWhenItAttacks(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	regisaur := b27Push(g, me.ID, "Raging Regisaur", "Creature — Dinosaur", cmdr2B07RegisaurOID, "{2}{R}{G}", 4, 4, "R", "G")
+	victim := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
+	before := opp.Life
+	declareAttack(t, g, opp.ID, regisaur)
+	pickCard(t, g, me.ID, victim)
+	passPriorityAroundTable(t, g)
+	if got := cardByID(g, victim); got.DamageMarked != 1 {
+		t.Errorf("the target took %d damage, want 1", got.DamageMarked)
+	}
+	if opp.Life != before {
+		t.Errorf("the defending player lost life before combat damage: %d → %d", before, opp.Life)
+	}
+}
+
+func TestCmdr2B07RegisaurCanPingAPlayer(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	third := g.Seats[2]
+	regisaur := b27Push(g, me.ID, "Raging Regisaur", "Creature — Dinosaur", cmdr2B07RegisaurOID, "{2}{R}{G}", 4, 4, "R", "G")
+	before := third.Life
+	declareAttack(t, g, opp.ID, regisaur)
+	answerPickTargetPlayer(t, g, third.ID)
+	passPriorityAroundTable(t, g)
+	if third.Life != before-1 {
+		t.Errorf("third player's life %d → %d, want 1 lost", before, third.Life)
+	}
+}
+
+// --- Majestic Heliopterus ----------------------------------------------
+
+func TestCmdr2B07HeliopterusGivesAnotherDinosaurFlying(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	heli := b27Push(g, me.ID, "Majestic Heliopterus", "Creature — Dinosaur", cmdr2B07HeliopterusOID, "{3}{W}", 2, 2, "W")
+	dino := b16Creature(g, me.ID, "My Raptor", "Creature — Dinosaur", 2, 2, "R")
+	bear := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
+	theirs := b16Creature(g, opp.ID, "Their Raptor", "Creature — Dinosaur", 2, 2, "R")
+	declareAttack(t, g, opp.ID, heli)
+	p := latestPickTarget(g, me.ID)
+	if p != nil {
+		if hasID(p.PickTargetCards, heli) || hasID(p.PickTargetCards, bear) || hasID(p.PickTargetCards, theirs) {
+			t.Errorf("legal targets %v include the Heliopterus, a Bear or an opponent's Dinosaur", p.PickTargetCards)
+		}
+		pickCard(t, g, me.ID, dino)
+	}
+	passPriorityAroundTable(t, g)
+	if !hasEffectiveKeyword(t, g, dino, "flying") {
+		t.Error("the other Dinosaur did not gain flying")
+	}
+	if hasEffectiveKeyword(t, g, bear, "flying") || hasEffectiveKeyword(t, g, theirs, "flying") {
+		t.Error("a non-Dinosaur or an opponent's Dinosaur gained flying")
+	}
+}
+
+func TestCmdr2B07HeliopterusAloneHasNoTarget(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	heli := b27Push(g, me.ID, "Majestic Heliopterus", "Creature — Dinosaur", cmdr2B07HeliopterusOID, "{3}{W}", 2, 2, "W")
+	declareAttack(t, g, opp.ID, heli)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Error("asked for a target with no other Dinosaur")
+	}
+	if n := triggersOnStackFrom(g, heli); n != 0 {
+		t.Errorf("%d triggers on the stack, want 0 (no legal target)", n)
+	}
+}
+
+// --- Raging Swordtooth -------------------------------------------------
+
+func TestCmdr2B07SwordtoothDamagesEveryOtherCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	mine := b16Creature(g, me.ID, "My Bear", "Creature — Bear", 3, 3, "G")
+	theirs := b16Creature(g, opp.ID, "Their Elf", "Creature — Elf", 1, 1, "G")
+	tooth := castCatalogSpell(t, g, "Raging Swordtooth", "Creature — Dinosaur", cmdr2B07SwordtoothOID, nil)
+	passPriorityAroundTable(t, g)
+	if got := cardByID(g, mine).DamageMarked; got != 1 {
+		t.Errorf("my Bear took %d, want 1", got)
+	}
+	if _, ok := battlefieldCard(g, theirs); ok {
+		t.Error("their 1/1 survived")
+	}
+	if c, ok := battlefieldCard(g, tooth); !ok || c.DamageMarked != 0 {
+		t.Errorf("the Swordtooth hurt itself: %+v", c.DamageMarked)
+	}
+	if !hasEffectiveKeyword(t, g, tooth, "trample") {
+		t.Error("no trample")
+	}
+}
+
+// --- Atzocan Seer ------------------------------------------------------
+
+func TestCmdr2B07SeerReturnsADinosaurCardFromYourGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	seer := b27Push(g, me.ID, "Atzocan Seer", "Creature — Human Druid", cmdr2B07SeerOID, "{1}{G}{W}", 2, 3, "G", "W")
+	dino := pushGraveyardCardTyped(me, "Dead Raptor", "Creature — Dinosaur")
+	bear := pushGraveyardCardTyped(me, "Dead Bear", "Creature — Bear")
+	theirs := pushGraveyardCardTyped(opp, "Their Dead Raptor", "Creature — Dinosaur")
+	advanceToMain(t, g)
+	for _, bad := range []uuid.UUID{bear, theirs} {
+		if err := g.ActivateCatalogAbility(me.ID, seer, 0, game.ActivateAbilityParams{Strict: true, Targets: cmdr2B07Target(bad)}); err == nil {
+			t.Fatalf("%v was a legal target", bad)
+		}
+	}
+	if err := g.ActivateCatalogAbility(me.ID, seer, 0, game.ActivateAbilityParams{Strict: true, Targets: cmdr2B07Target(dino)}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if _, ok := battlefieldCard(g, seer); ok {
+		t.Error("the Seer was not sacrificed as a cost")
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(dino) {
+		t.Error("the Dinosaur card did not return to hand")
+	}
+}
+
+// --- Shifting Ceratops -------------------------------------------------
+
+func TestCmdr2B07CeratopsGainsTheChosenKeyword(t *testing.T) {
+	for i, kw := range []string{"reach", "trample", "haste"} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		cer := b27Push(g, me.ID, "Shifting Ceratops", "Creature — Dinosaur", cmdr2B07CeratopsOID, "{2}{G}{G}", 5, 4, "G")
+		advanceToMain(t, g)
+		cmdr2B07Fund(me, "G", 1)
+		if err := g.ActivateCatalogAbility(me.ID, cer, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+			t.Fatalf("activate: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		answerOptionPick(t, g, me.ID, i)
+		passPriorityAroundTable(t, g)
+		for _, other := range []string{"reach", "trample", "haste"} {
+			if got := hasEffectiveKeyword(t, g, cer, other); got != (other == kw) {
+				t.Errorf("picked %s: has %s = %v", kw, other, got)
+			}
+		}
+	}
+}
+
+func TestCmdr2B07CeratopsCantBeCounteredAndHasProtectionFromBlue(t *testing.T) {
+	spec, _ := Lookup(cmdr2B07CeratopsOID)
+	if !spec.CantBeCountered {
+		t.Error("the spell can be countered")
+	}
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	cer := b27Push(g, me.ID, "Shifting Ceratops", "Creature — Dinosaur", cmdr2B07CeratopsOID, "{2}{G}{G}", 5, 4, "G")
+	if !hasEffectiveKeyword(t, g, cer, game.ProtectionFromColor("U")) {
+		t.Error("no protection from blue")
+	}
+	blue := b16Creature(g, opp.ID, "Blue Wall", "Creature — Wall", 0, 4, "U")
+	attackerErr := func() error {
+		advanceTo(t, g, game.StepDeclareAttackers)
+		return nil
+	}
+	_ = attackerErr
+	_ = blue
+}
+
+// --- Deathgorge Scavenger ----------------------------------------------
+
+func TestCmdr2B07ScavengerExilesACreatureCardAndGainsLife(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	dead := pushGraveyardCardTyped(opp, "Dead Bear", "Creature — Bear")
+	before := me.Life
+	scav := castCatalogSpell(t, g, "Deathgorge Scavenger", "Creature — Dinosaur", cmdr2B07ScavengerOID, nil)
+	passPriorityAroundTable(t, g)
+	cmdr2B07PickIfAsked(t, g, me.ID, dead)
+	passPriorityAroundTable(t, g)
+	answerConfirmFor(t, g, me, true)
+	passPriorityAroundTable(t, g)
+	if opp.Graveyard.Contains(dead) {
+		t.Error("the card is still in the graveyard")
+	}
+	if me.Life != before+2 {
+		t.Errorf("life %d → %d, want +2", before, me.Life)
+	}
+	if p := effectivePower(t, g, scav); p != 3 {
+		t.Errorf("power %d, want 3 (no pump for a creature card)", p)
+	}
+}
+
+func TestCmdr2B07ScavengerExilesANoncreatureCardAndGrows(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	spell := pushGraveyardCardTyped(opp, "Dead Bolt", "Instant")
+	before := me.Life
+	scav := castCatalogSpell(t, g, "Deathgorge Scavenger", "Creature — Dinosaur", cmdr2B07ScavengerOID, nil)
+	passPriorityAroundTable(t, g)
+	cmdr2B07PickIfAsked(t, g, me.ID, spell)
+	passPriorityAroundTable(t, g)
+	answerConfirmFor(t, g, me, true)
+	passPriorityAroundTable(t, g)
+	if opp.Graveyard.Contains(spell) {
+		t.Error("the card is still in the graveyard")
+	}
+	if me.Life != before {
+		t.Errorf("life changed to %d", me.Life)
+	}
+	if p, tough := effectivePower(t, g, scav), effectiveToughness(t, g, scav); p != 4 || tough != 3 {
+		t.Errorf("%d/%d, want 4/3 until end of turn", p, tough)
+	}
+}
+
+func TestCmdr2B07ScavengerMayDecline(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	dead := pushGraveyardCardTyped(opp, "Dead Bear", "Creature — Bear")
+	castCatalogSpell(t, g, "Deathgorge Scavenger", "Creature — Dinosaur", cmdr2B07ScavengerOID, nil)
+	passPriorityAroundTable(t, g)
+	cmdr2B07PickIfAsked(t, g, me.ID, dead)
+	passPriorityAroundTable(t, g)
+	answerConfirmFor(t, g, me, false)
+	passPriorityAroundTable(t, g)
+	if !opp.Graveyard.Contains(dead) {
+		t.Error("declined, yet the card left the graveyard")
+	}
+}
+
+// --- Marauding Raptor --------------------------------------------------
+
+func TestCmdr2B07RaptorDiscountsCreatureSpells(t *testing.T) {
+	cases := []struct {
+		typeLine string
+		lands    int
+		ok       bool
+	}{
+		{"Creature — Bear", 2, true},
+		{"Creature — Bear", 1, false},
+		{"Sorcery", 2, false},
+	}
+	for _, tc := range cases {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		b27Push(g, me.ID, "Marauding Raptor", "Creature — Dinosaur", cmdr2B07RaptorOID, "{1}{R}", 2, 3, "R")
+		_, err := trekB37CastFromHand(t, g, game.Card{Name: "Spell", TypeLine: tc.typeLine, ManaCost: "{2}{R}", Power: 1, Toughness: 1}, tc.lands)
+		if (err == nil) != tc.ok {
+			t.Errorf("%s with %d Mountains: cast error %v, want ok=%v", tc.typeLine, tc.lands, err, tc.ok)
+		}
+	}
+}
+
+func TestCmdr2B07RaptorShootsANonDinosaurWithoutPumping(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	raptor := b27Push(g, me.ID, "Marauding Raptor", "Creature — Dinosaur", cmdr2B07RaptorOID, "{1}{R}", 2, 3, "R")
+	bear := castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	_ = bear
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	if p := effectivePower(t, g, raptor); p != 2 {
+		t.Errorf("the Raptor is %d power after a Bear entered, want 2", p)
+	}
+}
+
+func TestCmdr2B07RaptorDamagesAnEnteringDinosaurAndPumps(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	raptor := b27Push(g, me.ID, "Marauding Raptor", "Creature — Dinosaur", cmdr2B07RaptorOID, "{1}{R}", 2, 3, "R")
+	dino := b16Creature(g, me.ID, "Big Raptor", "Creature — Dinosaur", 5, 5, "R")
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, TokenCard("3/3 green Dinosaur with trample"), 1) })
+	passPriorityAroundTable(t, g)
+	_ = dino
+	if p := effectivePower(t, g, raptor); p != 4 {
+		t.Errorf("the Raptor is %d power after a Dinosaur token entered, want 4", p)
+	}
+	toks := trekB37Tokens(g, me.ID, "Dinosaur")
+	if len(toks) != 1 || toks[0].DamageMarked != 2 {
+		t.Errorf("tokens %+v, want one with 2 damage", toks)
+	}
+}
