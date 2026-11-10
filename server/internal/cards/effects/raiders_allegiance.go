@@ -85,8 +85,9 @@ func init() {
 			WheneverChaosEnsues("Raiders' Allegiance — proliferate for each Pirate you control",
 				func(g *game.Game, item *game.StackItem) error {
 					n := 0
+					pirate := NewContext(g, item).TextSubtype("Pirate")
 					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.HasSubtype("Pirate") {
+						if c.Controller == item.Controller && c.HasSubtype(pirate) {
 							n++
 						}
 					}

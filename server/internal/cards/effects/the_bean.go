@@ -35,8 +35,8 @@ func init() {
 		Static: []game.StaticAbility{{
 			Label: "All Reflections have shadow.",
 			Layer: game.Layer6Ability,
-			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
-				return target.IsCreature() && target.HasSubtype("Reflection")
+			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+				return target.IsCreature() && target.HasSubtype(source.TextSubtype("Reflection"))
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Abilities = append(c.Abilities, "shadow")

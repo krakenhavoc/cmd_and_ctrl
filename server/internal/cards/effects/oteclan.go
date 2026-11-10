@@ -27,6 +27,7 @@ func init() {
 		OracleID:     "24b2ba5b-c1cb-4c73-89bf-94d47f468622",
 		Name:         "Oteclán",
 		Completeness: CompletenessFull,
+		Discovers:    true,
 		Triggered: []game.TriggeredAbility{
 			WhenYouPlaneswalkToThisAndAtYourUpkeep("Oteclán — chaos ensues",
 				func(g *game.Game, item *game.StackItem) error {
