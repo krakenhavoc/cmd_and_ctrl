@@ -27,7 +27,7 @@ func init() {
 		OracleID:     "6e3b3a3f-e32f-4c72-a9fb-dd1e877876b6",
 		Name:         "Ill-Timed Explosion",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Draws: 2, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Partial: true}},
+		Purpose:      game.Purpose{Draws: 2},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := (DrawCards{N: 2}).Apply(ctx); err != nil {
 				return err
