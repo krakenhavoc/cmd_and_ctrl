@@ -110,23 +110,6 @@ func scionDiscountAbility(label, source, colors string, gained bool) ActivatedAb
 	}
 }
 
-// YouTappedAnOpponentsCreature is the When for "whenever you tap an untapped
-// creature an opponent controls" (Sharae of Numbing Depths, Hylda of the
-// Icy Crown): the EventTapCard of a spell or ability YOU control telling a
-// creature of an opponent's to tap (Event.TappedBy, stamped by
-// game.TapTargetForEffectBy, emitted only when the creature was untapped,
-// CR 701.26a). A tap you cause by cost, attack or mana ability names no
-// TappedBy, and a tap an opponent's effect tells them to make of their own
-// creature names them, so neither counts, as the printed rulings say.
-// Watch game.EventTapCard.
-func YouTappedAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventTapCard || ev.TappedBy == uuid.Nil || ev.TappedBy != source.Controller {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Controller != source.Controller
-}
-
 // Enchanted is the card predicate for "enchanted creature": a permanent with
 // an Aura attached to it, a Role included (CR 303.4). Read off the live
 // battlefield at announce and again when the target is re-judged.

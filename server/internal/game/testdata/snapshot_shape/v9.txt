@@ -163,6 +163,7 @@ battlefield.cards[].exileGrants[]	object
 battlefield.cards[].exileGrants[].activator	custom(uuid.UUID)
 battlefield.cards[].exileGrants[].key	string
 battlefield.cards[].exileGrants[].source	custom(uuid.UUID)
+battlefield.cards[].exileGrants[].untilEndOfTurn	bool
 battlefield.cards[].exiledWith	object
 battlefield.cards[].exiledWith.epoch	number:int
 battlefield.cards[].exiledWith.id	custom(uuid.UUID)
@@ -714,6 +715,7 @@ enteringTokens[].exileGrants[]	object
 enteringTokens[].exileGrants[].activator	custom(uuid.UUID)
 enteringTokens[].exileGrants[].key	string
 enteringTokens[].exileGrants[].source	custom(uuid.UUID)
+enteringTokens[].exileGrants[].untilEndOfTurn	bool
 enteringTokens[].exiledWith	object
 enteringTokens[].exiledWith.epoch	number:int
 enteringTokens[].exiledWith.id	custom(uuid.UUID)
@@ -1225,6 +1227,7 @@ exile.cards[].exileGrants[]	object
 exile.cards[].exileGrants[].activator	custom(uuid.UUID)
 exile.cards[].exileGrants[].key	string
 exile.cards[].exileGrants[].source	custom(uuid.UUID)
+exile.cards[].exileGrants[].untilEndOfTurn	bool
 exile.cards[].exiledWith	object
 exile.cards[].exiledWith.epoch	number:int
 exile.cards[].exiledWith.id	custom(uuid.UUID)
@@ -1904,6 +1907,7 @@ followUpParks[].then.asked.trigger.Object.Supertypes[]	string
 followUpParks[].then.asked.trigger.Object.Token	bool
 followUpParks[].then.asked.trigger.Object.Types	array
 followUpParks[].then.asked.trigger.Object.Types[]	string
+followUpParks[].then.asked.trigger.colorsAmongYours	number:int
 followUpParks[].then.asked.xValue	number:int
 followUpParks[].then.carry	array
 followUpParks[].then.carry[]	custom(uuid.UUID)
@@ -2086,6 +2090,7 @@ followUpParks[].then.permission.manaValueBudget	number:int
 followUpParks[].then.permission.maxSpellManaValue	number:int
 followUpParks[].then.permission.maxSpellManaValueCountOf	array
 followUpParks[].then.permission.maxSpellManaValueCountOf[]	string
+followUpParks[].then.permission.minSpellManaValue	number:int
 followUpParks[].then.permission.notBeforeSeq	number:int
 followUpParks[].then.permission.notBeforeTurn	number:int
 followUpParks[].then.permission.perType	array
@@ -2538,6 +2543,7 @@ frozenEntries[].event.counterTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.counterTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.counterTail.then.asked.xValue	number:int
 frozenEntries[].event.counterTail.then.carry	array
 frozenEntries[].event.counterTail.then.carry[]	custom(uuid.UUID)
@@ -2720,6 +2726,7 @@ frozenEntries[].event.counterTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.counterTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.counterTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.counterTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.counterTail.then.permission.perType	array
@@ -3151,6 +3158,7 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Supertypes[]	str
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Token	bool
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Types	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Types[]	string
+frozenEntries[].event.damageTail.each.each.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.damageTail.each.each.asked.xValue	number:int
 frozenEntries[].event.damageTail.each.each.carry	array
 frozenEntries[].event.damageTail.each.each.carry[]	custom(uuid.UUID)
@@ -3333,6 +3341,7 @@ frozenEntries[].event.damageTail.each.each.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.damageTail.each.each.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.damageTail.each.each.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.each.each.permission.notBeforeTurn	number:int
 frozenEntries[].event.damageTail.each.each.permission.perType	array
@@ -3755,6 +3764,7 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Supertypes[]	str
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Types	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.damageTail.each.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.damageTail.each.then.asked.xValue	number:int
 frozenEntries[].event.damageTail.each.then.carry	array
 frozenEntries[].event.damageTail.each.then.carry[]	custom(uuid.UUID)
@@ -3937,6 +3947,7 @@ frozenEntries[].event.damageTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.damageTail.each.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.damageTail.each.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.each.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.damageTail.each.then.permission.perType	array
@@ -4350,6 +4361,7 @@ frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Key	string
 frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+frozenEntries[].event.damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 frozenEntries[].event.damageTail.sourceLki.Name	string
 frozenEntries[].event.damageTail.sourceLki.PTDefined	bool
 frozenEntries[].event.damageTail.sourceLki.PTSwitched	bool
@@ -4531,6 +4543,7 @@ frozenEntries[].event.damageTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.damageTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.damageTail.then.asked.xValue	number:int
 frozenEntries[].event.damageTail.then.carry	array
 frozenEntries[].event.damageTail.then.carry[]	custom(uuid.UUID)
@@ -4713,6 +4726,7 @@ frozenEntries[].event.damageTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.damageTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.damageTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.damageTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.damageTail.then.permission.perType	array
@@ -5255,6 +5269,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Sup
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.xValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.carry	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.carry[]	custom(uuid.UUID)
@@ -5437,6 +5452,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.manaValueBudg
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.perType	array
@@ -5935,6 +5951,7 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Supertypes[]	str
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.batch.then.asked.xValue	number:int
 frozenEntries[].event.entryTail.batch.then.carry	array
 frozenEntries[].event.entryTail.batch.then.carry[]	custom(uuid.UUID)
@@ -6117,6 +6134,7 @@ frozenEntries[].event.entryTail.batch.then.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.batch.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.batch.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.batch.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.batch.then.permission.perType	array
@@ -6539,6 +6557,7 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.keyed.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.keyed.asked.xValue	number:int
 frozenEntries[].event.entryTail.keyed.carry	array
 frozenEntries[].event.entryTail.keyed.carry[]	custom(uuid.UUID)
@@ -6721,6 +6740,7 @@ frozenEntries[].event.entryTail.keyed.permission.manaValueBudget	number:int
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.keyed.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.keyed.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.keyed.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.keyed.permission.perType	array
@@ -7176,6 +7196,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Supert
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.xValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.carry	array
 frozenEntries[].event.entryTail.search.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -7358,6 +7379,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.manaValueBudget	
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.perType	array
@@ -7800,6 +7822,7 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Supertypes[]	st
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Types	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.xValue	number:int
 frozenEntries[].event.entryTail.tokens.then.carry	array
 frozenEntries[].event.entryTail.tokens.then.carry[]	custom(uuid.UUID)
@@ -7982,6 +8005,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.manaValueBudget	number:in
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.entryTail.tokens.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.entryTail.tokens.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.entryTail.tokens.then.permission.perType	array
@@ -8391,6 +8415,7 @@ frozenEntries[].event.keywordActionTail.armyToken.exileGrants[]	object
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].key	string
 frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith	object
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -8830,6 +8855,7 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Supertypes[]	s
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.keywordActionTail.then.asked.xValue	number:int
 frozenEntries[].event.keywordActionTail.then.carry	array
 frozenEntries[].event.keywordActionTail.then.carry[]	custom(uuid.UUID)
@@ -9012,6 +9038,7 @@ frozenEntries[].event.keywordActionTail.then.permission.manaValueBudget	number:i
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.keywordActionTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.keywordActionTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.keywordActionTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.keywordActionTail.then.permission.perType	array
@@ -9457,6 +9484,7 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Supertypes[]	strin
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Types	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.lifeTail.each.then.asked.xValue	number:int
 frozenEntries[].event.lifeTail.each.then.carry	array
 frozenEntries[].event.lifeTail.each.then.carry[]	custom(uuid.UUID)
@@ -9639,6 +9667,7 @@ frozenEntries[].event.lifeTail.each.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.lifeTail.each.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.lifeTail.each.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.lifeTail.each.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.lifeTail.each.then.permission.perType	array
@@ -10064,6 +10093,7 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.lifeTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.lifeTail.then.asked.xValue	number:int
 frozenEntries[].event.lifeTail.then.carry	array
 frozenEntries[].event.lifeTail.then.carry[]	custom(uuid.UUID)
@@ -10246,6 +10276,7 @@ frozenEntries[].event.lifeTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.lifeTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.lifeTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.lifeTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.lifeTail.then.permission.perType	array
@@ -10643,6 +10674,7 @@ frozenEntries[].event.millTail.run.planned[].exileGrants[]	object
 frozenEntries[].event.millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].exileGrants[].key	string
 frozenEntries[].event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.millTail.run.planned[].exiledWith	object
 frozenEntries[].event.millTail.run.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -11046,6 +11078,7 @@ frozenEntries[].event.millTail.run.seen[].exileGrants[]	object
 frozenEntries[].event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].exileGrants[].key	string
 frozenEntries[].event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.millTail.run.seen[].exiledWith	object
 frozenEntries[].event.millTail.run.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -11478,6 +11511,7 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Types	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.millTail.run.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.millTail.run.then.asked.xValue	number:int
 frozenEntries[].event.millTail.run.then.carry	array
 frozenEntries[].event.millTail.run.then.carry[]	custom(uuid.UUID)
@@ -11660,6 +11694,7 @@ frozenEntries[].event.millTail.run.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.millTail.run.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.millTail.run.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.millTail.run.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.millTail.run.then.permission.perType	array
@@ -12080,6 +12115,7 @@ frozenEntries[].event.millTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.millTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.millTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.millTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.millTail.then.asked.xValue	number:int
 frozenEntries[].event.millTail.then.carry	array
 frozenEntries[].event.millTail.then.carry[]	custom(uuid.UUID)
@@ -12262,6 +12298,7 @@ frozenEntries[].event.millTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.millTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.millTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.millTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.millTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.millTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.millTail.then.permission.perType	array
@@ -12694,6 +12731,7 @@ frozenEntries[].event.sourceLki.GrantedAbilities[]	object
 frozenEntries[].event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.GrantedAbilities[].Key	string
 frozenEntries[].event.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+frozenEntries[].event.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 frozenEntries[].event.sourceLki.Name	string
 frozenEntries[].event.sourceLki.PTDefined	bool
 frozenEntries[].event.sourceLki.PTSwitched	bool
@@ -12735,6 +12773,7 @@ frozenEntries[].event.stackItem.distribution{}	number:int
 frozenEntries[].event.stackItem.doubledBy	custom(uuid.UUID)
 frozenEntries[].event.stackItem.doubledByName	string
 frozenEntries[].event.stackItem.entersTapped	bool
+frozenEntries[].event.stackItem.exileAndPlot	bool
 frozenEntries[].event.stackItem.exileInsteadOfGraveyard	bool
 frozenEntries[].event.stackItem.exileWithCounter	string
 frozenEntries[].event.stackItem.faceDown	string
@@ -13044,6 +13083,7 @@ frozenEntries[].event.stackItem.trigger.Object.Supertypes[]	string
 frozenEntries[].event.stackItem.trigger.Object.Token	bool
 frozenEntries[].event.stackItem.trigger.Object.Types	array
 frozenEntries[].event.stackItem.trigger.Object.Types[]	string
+frozenEntries[].event.stackItem.trigger.colorsAmongYours	number:int
 frozenEntries[].event.stackItem.uncopyable	bool
 frozenEntries[].event.stackItem.xValue	number:int
 frozenEntries[].event.startingLoyalty	bool
@@ -13202,6 +13242,7 @@ frozenEntries[].event.tokenGroups[].template.exileGrants[]	object
 frozenEntries[].event.tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.exileGrants[].key	string
 frozenEntries[].event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.tokenGroups[].template.exiledWith	object
 frozenEntries[].event.tokenGroups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -13635,6 +13676,7 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Object.Supertypes[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Types	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.tokenTail.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.tokenTail.then.asked.xValue	number:int
 frozenEntries[].event.tokenTail.then.carry	array
 frozenEntries[].event.tokenTail.then.carry[]	custom(uuid.UUID)
@@ -13817,6 +13859,7 @@ frozenEntries[].event.tokenTail.then.permission.manaValueBudget	number:int
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.tokenTail.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.tokenTail.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.tokenTail.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.tokenTail.then.permission.perType	array
@@ -14229,6 +14272,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[]	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].key	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -14645,6 +14689,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -15048,6 +15093,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[]	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -15480,6 +15526,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Superty
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.carry	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.carry[]	custom(uuid.UUID)
@@ -15662,6 +15709,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.manaValueBudget	n
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.perType	array
@@ -16117,6 +16165,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.S
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.carry	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.carry[]	custom(uuid.UUID)
@@ -16299,6 +16348,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.manaValueBu
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.perType	array
@@ -16719,6 +16769,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Supertypes[]
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.carry	array
 frozenEntries[].event.zoneRoute.batchLegs.then.carry[]	custom(uuid.UUID)
@@ -16901,6 +16952,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.manaValueBudget	number
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.perType	array
@@ -17341,6 +17393,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Supertypes
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.carry	array
 frozenEntries[].event.zoneRoute.discardLegs.then.carry[]	custom(uuid.UUID)
@@ -17523,6 +17576,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.manaValueBudget	numb
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.perType	array
@@ -18029,6 +18083,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Supertype
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Token	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.colorsAmongYours	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.xValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.carry	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.carry[]	custom(uuid.UUID)
@@ -18211,6 +18266,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.manaValueBudget	num
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf[]	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.perType	array
@@ -18603,6 +18659,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[]	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].key	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -19034,6 +19091,7 @@ heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[]	object
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Key	string
 heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
+heldCombatDamage.answers[].frame.SourceLKI.GrantedAbilities[].UntilEndOfTurn	bool
 heldCombatDamage.answers[].frame.SourceLKI.Name	string
 heldCombatDamage.answers[].frame.SourceLKI.PTDefined	bool
 heldCombatDamage.answers[].frame.SourceLKI.PTSwitched	bool
@@ -19212,6 +19270,7 @@ lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
 lastKnownBattlefield{}.GrantedAbilities[].Key	string
 lastKnownBattlefield{}.GrantedAbilities[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.GrantedAbilities[].UntilEndOfTurn	bool
 lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
 lastKnownBattlefield{}.PTSwitched	bool
@@ -19394,6 +19453,7 @@ lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Key	string
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.GrantedAbilities[].UntilEndOfTurn	bool
 lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
 lastKnownPermanents{}[].characteristic.PTSwitched	bool
@@ -19467,6 +19527,7 @@ lastKnownPermanents{}[].craftedWith	array
 lastKnownPermanents{}[].craftedWith[]	object
 lastKnownPermanents{}[].craftedWith[].epoch	number:int
 lastKnownPermanents{}[].craftedWith[].id	custom(uuid.UUID)
+lastKnownPermanents{}[].damageMarked	number:int
 lastKnownPermanents{}[].delved	array
 lastKnownPermanents{}[].delved[]	object
 lastKnownPermanents{}[].delved[].epoch	number:int
@@ -19621,6 +19682,7 @@ lastKnownStack[].card.exileGrants[]	object
 lastKnownStack[].card.exileGrants[].activator	custom(uuid.UUID)
 lastKnownStack[].card.exileGrants[].key	string
 lastKnownStack[].card.exileGrants[].source	custom(uuid.UUID)
+lastKnownStack[].card.exileGrants[].untilEndOfTurn	bool
 lastKnownStack[].card.exiledWith	object
 lastKnownStack[].card.exiledWith.epoch	number:int
 lastKnownStack[].card.exiledWith.id	custom(uuid.UUID)
@@ -19914,6 +19976,7 @@ lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.entersTapped	bool
+lastKnownStack[].item.exileAndPlot	bool
 lastKnownStack[].item.exileInsteadOfGraveyard	bool
 lastKnownStack[].item.exileWithCounter	string
 lastKnownStack[].item.faceDown	string
@@ -20223,6 +20286,7 @@ lastKnownStack[].item.trigger.Object.Supertypes[]	string
 lastKnownStack[].item.trigger.Object.Token	bool
 lastKnownStack[].item.trigger.Object.Types	array
 lastKnownStack[].item.trigger.Object.Types[]	string
+lastKnownStack[].item.trigger.colorsAmongYours	number:int
 lastKnownStack[].item.uncopyable	bool
 lastKnownStack[].item.xValue	number:int
 lastKnownTriggerIdentity	map:array
@@ -20530,6 +20594,7 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].counterTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].counterTail.then.asked.xValue	number:int
 movesAwaitingTokens[].counterTail.then.carry	array
 movesAwaitingTokens[].counterTail.then.carry[]	custom(uuid.UUID)
@@ -20712,6 +20777,7 @@ movesAwaitingTokens[].counterTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].counterTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].counterTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].counterTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].counterTail.then.permission.perType	array
@@ -21143,6 +21209,7 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Supertypes[]	str
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Types	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.xValue	number:int
 movesAwaitingTokens[].damageTail.each.each.carry	array
 movesAwaitingTokens[].damageTail.each.each.carry[]	custom(uuid.UUID)
@@ -21325,6 +21392,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].damageTail.each.each.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].damageTail.each.each.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].damageTail.each.each.permission.perType	array
@@ -21747,6 +21815,7 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Supertypes[]	str
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.xValue	number:int
 movesAwaitingTokens[].damageTail.each.then.carry	array
 movesAwaitingTokens[].damageTail.each.then.carry[]	custom(uuid.UUID)
@@ -21929,6 +21998,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].damageTail.each.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].damageTail.each.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].damageTail.each.then.permission.perType	array
@@ -22342,6 +22412,7 @@ movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Key	string
 movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 movesAwaitingTokens[].damageTail.sourceLki.Name	string
 movesAwaitingTokens[].damageTail.sourceLki.PTDefined	bool
 movesAwaitingTokens[].damageTail.sourceLki.PTSwitched	bool
@@ -22523,6 +22594,7 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].damageTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].damageTail.then.asked.xValue	number:int
 movesAwaitingTokens[].damageTail.then.carry	array
 movesAwaitingTokens[].damageTail.then.carry[]	custom(uuid.UUID)
@@ -22705,6 +22777,7 @@ movesAwaitingTokens[].damageTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].damageTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].damageTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].damageTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].damageTail.then.permission.perType	array
@@ -23247,6 +23320,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Sup
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.carry	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.carry[]	custom(uuid.UUID)
@@ -23429,6 +23503,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.manaValueBudg
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.perType	array
@@ -23927,6 +24002,7 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Supertypes[]	str
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.carry	array
 movesAwaitingTokens[].entryTail.batch.then.carry[]	custom(uuid.UUID)
@@ -24109,6 +24185,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.batch.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.batch.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.batch.then.permission.perType	array
@@ -24531,6 +24608,7 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.keyed.carry	array
 movesAwaitingTokens[].entryTail.keyed.carry[]	custom(uuid.UUID)
@@ -24713,6 +24791,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.manaValueBudget	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.keyed.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.keyed.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.keyed.permission.perType	array
@@ -25168,6 +25247,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Supert
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.carry	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -25350,6 +25430,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.manaValueBudget	
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.perType	array
@@ -25792,6 +25873,7 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Supertypes[]	st
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.xValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.carry	array
 movesAwaitingTokens[].entryTail.tokens.then.carry[]	custom(uuid.UUID)
@@ -25974,6 +26056,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.manaValueBudget	number:in
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].entryTail.tokens.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].entryTail.tokens.then.permission.perType	array
@@ -26383,6 +26466,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[]	object
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].key	string
 movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith	object
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -26822,6 +26906,7 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Supertypes[]	s
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.xValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.carry	array
 movesAwaitingTokens[].keywordActionTail.then.carry[]	custom(uuid.UUID)
@@ -27004,6 +27089,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.manaValueBudget	number:i
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].keywordActionTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].keywordActionTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].keywordActionTail.then.permission.perType	array
@@ -27449,6 +27535,7 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Supertypes[]	strin
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.xValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.carry	array
 movesAwaitingTokens[].lifeTail.each.then.carry[]	custom(uuid.UUID)
@@ -27631,6 +27718,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].lifeTail.each.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].lifeTail.each.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].lifeTail.each.then.permission.perType	array
@@ -28056,6 +28144,7 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].lifeTail.then.asked.xValue	number:int
 movesAwaitingTokens[].lifeTail.then.carry	array
 movesAwaitingTokens[].lifeTail.then.carry[]	custom(uuid.UUID)
@@ -28238,6 +28327,7 @@ movesAwaitingTokens[].lifeTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].lifeTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].lifeTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].lifeTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].lifeTail.then.permission.perType	array
@@ -28635,6 +28725,7 @@ movesAwaitingTokens[].millTail.run.planned[].exileGrants[]	object
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].key	string
 movesAwaitingTokens[].millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].millTail.run.planned[].exiledWith	object
 movesAwaitingTokens[].millTail.run.planned[].exiledWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -29038,6 +29129,7 @@ movesAwaitingTokens[].millTail.run.seen[].exileGrants[]	object
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].key	string
 movesAwaitingTokens[].millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].millTail.run.seen[].exiledWith	object
 movesAwaitingTokens[].millTail.run.seen[].exiledWith.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -29470,6 +29562,7 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].millTail.run.then.asked.xValue	number:int
 movesAwaitingTokens[].millTail.run.then.carry	array
 movesAwaitingTokens[].millTail.run.then.carry[]	custom(uuid.UUID)
@@ -29652,6 +29745,7 @@ movesAwaitingTokens[].millTail.run.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].millTail.run.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].millTail.run.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].millTail.run.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].millTail.run.then.permission.perType	array
@@ -30072,6 +30166,7 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].millTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].millTail.then.asked.xValue	number:int
 movesAwaitingTokens[].millTail.then.carry	array
 movesAwaitingTokens[].millTail.then.carry[]	custom(uuid.UUID)
@@ -30254,6 +30349,7 @@ movesAwaitingTokens[].millTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].millTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].millTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].millTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].millTail.then.permission.perType	array
@@ -30686,6 +30782,7 @@ movesAwaitingTokens[].sourceLki.GrantedAbilities[]	object
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Key	string
 movesAwaitingTokens[].sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+movesAwaitingTokens[].sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 movesAwaitingTokens[].sourceLki.Name	string
 movesAwaitingTokens[].sourceLki.PTDefined	bool
 movesAwaitingTokens[].sourceLki.PTSwitched	bool
@@ -30727,6 +30824,7 @@ movesAwaitingTokens[].stackItem.distribution{}	number:int
 movesAwaitingTokens[].stackItem.doubledBy	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.doubledByName	string
 movesAwaitingTokens[].stackItem.entersTapped	bool
+movesAwaitingTokens[].stackItem.exileAndPlot	bool
 movesAwaitingTokens[].stackItem.exileInsteadOfGraveyard	bool
 movesAwaitingTokens[].stackItem.exileWithCounter	string
 movesAwaitingTokens[].stackItem.faceDown	string
@@ -31036,6 +31134,7 @@ movesAwaitingTokens[].stackItem.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].stackItem.trigger.Object.Token	bool
 movesAwaitingTokens[].stackItem.trigger.Object.Types	array
 movesAwaitingTokens[].stackItem.trigger.Object.Types[]	string
+movesAwaitingTokens[].stackItem.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].stackItem.uncopyable	bool
 movesAwaitingTokens[].stackItem.xValue	number:int
 movesAwaitingTokens[].startingLoyalty	bool
@@ -31194,6 +31293,7 @@ movesAwaitingTokens[].tokenGroups[].template.exileGrants[]	object
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].key	string
 movesAwaitingTokens[].tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].tokenGroups[].template.exiledWith	object
 movesAwaitingTokens[].tokenGroups[].template.exiledWith.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -31627,6 +31727,7 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Supertypes[]	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].tokenTail.then.asked.xValue	number:int
 movesAwaitingTokens[].tokenTail.then.carry	array
 movesAwaitingTokens[].tokenTail.then.carry[]	custom(uuid.UUID)
@@ -31809,6 +31910,7 @@ movesAwaitingTokens[].tokenTail.then.permission.manaValueBudget	number:int
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].tokenTail.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].tokenTail.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].tokenTail.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].tokenTail.then.permission.perType	array
@@ -32221,6 +32323,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[]	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].key	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -32637,6 +32740,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -33040,6 +33144,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[]	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -33472,6 +33577,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Superty
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.carry	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.carry[]	custom(uuid.UUID)
@@ -33654,6 +33760,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.manaValueBudget	n
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.perType	array
@@ -34109,6 +34216,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.S
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.carry	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.carry[]	custom(uuid.UUID)
@@ -34291,6 +34399,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.manaValueBu
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.perType	array
@@ -34711,6 +34820,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Supertypes[]
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.carry	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.carry[]	custom(uuid.UUID)
@@ -34893,6 +35003,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.manaValueBudget	number
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.perType	array
@@ -35333,6 +35444,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Supertypes
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.carry	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.carry[]	custom(uuid.UUID)
@@ -35515,6 +35627,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.manaValueBudget	numb
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.perType	array
@@ -36021,6 +36134,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Supertype
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Token	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Types	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Types[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.colorsAmongYours	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.xValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.carry	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.carry[]	custom(uuid.UUID)
@@ -36203,6 +36317,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.manaValueBudget	num
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf[]	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.perType	array
@@ -36595,6 +36710,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[]	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].key	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -36935,6 +37051,7 @@ pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
 pausedModeWalk.item.entersTapped	bool
+pausedModeWalk.item.exileAndPlot	bool
 pausedModeWalk.item.exileInsteadOfGraveyard	bool
 pausedModeWalk.item.exileWithCounter	string
 pausedModeWalk.item.faceDown	string
@@ -37244,6 +37361,7 @@ pausedModeWalk.item.trigger.Object.Supertypes[]	string
 pausedModeWalk.item.trigger.Object.Token	bool
 pausedModeWalk.item.trigger.Object.Types	array
 pausedModeWalk.item.trigger.Object.Types[]	string
+pausedModeWalk.item.trigger.colorsAmongYours	number:int
 pausedModeWalk.item.uncopyable	bool
 pausedModeWalk.item.xValue	number:int
 pausedModeWalk.key	string
@@ -37274,6 +37392,7 @@ pausedResolutionTail.item.distribution{}	number:int
 pausedResolutionTail.item.doubledBy	custom(uuid.UUID)
 pausedResolutionTail.item.doubledByName	string
 pausedResolutionTail.item.entersTapped	bool
+pausedResolutionTail.item.exileAndPlot	bool
 pausedResolutionTail.item.exileInsteadOfGraveyard	bool
 pausedResolutionTail.item.exileWithCounter	string
 pausedResolutionTail.item.faceDown	string
@@ -37583,6 +37702,7 @@ pausedResolutionTail.item.trigger.Object.Supertypes[]	string
 pausedResolutionTail.item.trigger.Object.Token	bool
 pausedResolutionTail.item.trigger.Object.Types	array
 pausedResolutionTail.item.trigger.Object.Types[]	string
+pausedResolutionTail.item.trigger.colorsAmongYours	number:int
 pausedResolutionTail.item.uncopyable	bool
 pausedResolutionTail.item.xValue	number:int
 pausedStepWalk	object
@@ -37607,6 +37727,7 @@ pausedStepWalk.item.distribution{}	number:int
 pausedStepWalk.item.doubledBy	custom(uuid.UUID)
 pausedStepWalk.item.doubledByName	string
 pausedStepWalk.item.entersTapped	bool
+pausedStepWalk.item.exileAndPlot	bool
 pausedStepWalk.item.exileInsteadOfGraveyard	bool
 pausedStepWalk.item.exileWithCounter	string
 pausedStepWalk.item.faceDown	string
@@ -37916,6 +38037,7 @@ pausedStepWalk.item.trigger.Object.Supertypes[]	string
 pausedStepWalk.item.trigger.Object.Token	bool
 pausedStepWalk.item.trigger.Object.Types	array
 pausedStepWalk.item.trigger.Object.Types[]	string
+pausedStepWalk.item.trigger.colorsAmongYours	number:int
 pausedStepWalk.item.uncopyable	bool
 pausedStepWalk.item.xValue	number:int
 pausedStepWalk.key	string
@@ -38105,6 +38227,7 @@ pendingChoices[].asked.trigger.Object.Supertypes[]	string
 pendingChoices[].asked.trigger.Object.Token	bool
 pendingChoices[].asked.trigger.Object.Types	array
 pendingChoices[].asked.trigger.Object.Types[]	string
+pendingChoices[].asked.trigger.colorsAmongYours	number:int
 pendingChoices[].asked.xValue	number:int
 pendingChoices[].askedByHand	string
 pendingChoices[].assist	object
@@ -38425,6 +38548,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[]	object
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].key	string
 pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.exiledWith.id	custom(uuid.UUID)
@@ -38848,6 +38972,7 @@ pendingChoices[].attackSplit.settled.groups[].template.exileGrants[]	object
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].key	string
 pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith	object
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -39285,6 +39410,7 @@ pendingChoices[].attackSplit.tail.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Token	bool
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Types	array
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Types[]	string
+pendingChoices[].attackSplit.tail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].attackSplit.tail.asked.xValue	number:int
 pendingChoices[].attackSplit.tail.carry	array
 pendingChoices[].attackSplit.tail.carry[]	custom(uuid.UUID)
@@ -39467,6 +39593,7 @@ pendingChoices[].attackSplit.tail.permission.manaValueBudget	number:int
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValue	number:int
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].attackSplit.tail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].attackSplit.tail.permission.minSpellManaValue	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeSeq	number:int
 pendingChoices[].attackSplit.tail.permission.notBeforeTurn	number:int
 pendingChoices[].attackSplit.tail.permission.perType	array
@@ -39855,6 +39982,7 @@ pendingChoices[].attackSplit.template.exileGrants[]	object
 pendingChoices[].attackSplit.template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.exileGrants[].key	string
 pendingChoices[].attackSplit.template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].attackSplit.template.exiledWith	object
 pendingChoices[].attackSplit.template.exiledWith.epoch	number:int
 pendingChoices[].attackSplit.template.exiledWith.id	custom(uuid.UUID)
@@ -40183,6 +40311,7 @@ pendingChoices[].copyWalk.item.distribution{}	number:int
 pendingChoices[].copyWalk.item.doubledBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.doubledByName	string
 pendingChoices[].copyWalk.item.entersTapped	bool
+pendingChoices[].copyWalk.item.exileAndPlot	bool
 pendingChoices[].copyWalk.item.exileInsteadOfGraveyard	bool
 pendingChoices[].copyWalk.item.exileWithCounter	string
 pendingChoices[].copyWalk.item.faceDown	string
@@ -40492,6 +40621,7 @@ pendingChoices[].copyWalk.item.trigger.Object.Supertypes[]	string
 pendingChoices[].copyWalk.item.trigger.Object.Token	bool
 pendingChoices[].copyWalk.item.trigger.Object.Types	array
 pendingChoices[].copyWalk.item.trigger.Object.Types[]	string
+pendingChoices[].copyWalk.item.trigger.colorsAmongYours	number:int
 pendingChoices[].copyWalk.item.uncopyable	bool
 pendingChoices[].copyWalk.item.xValue	number:int
 pendingChoices[].copyWalk.next	array
@@ -40638,6 +40768,7 @@ pendingChoices[].copyWalk.src.exileGrants[]	object
 pendingChoices[].copyWalk.src.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.exileGrants[].key	string
 pendingChoices[].copyWalk.src.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].copyWalk.src.exiledWith	object
 pendingChoices[].copyWalk.src.exiledWith.epoch	number:int
 pendingChoices[].copyWalk.src.exiledWith.id	custom(uuid.UUID)
@@ -41107,6 +41238,7 @@ pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Key	string
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
 pendingChoices[].damageAssignment.SourceLKI.PTSwitched	bool
@@ -41311,6 +41443,7 @@ pendingChoices[].diceRoll.then.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Object.Token	bool
 pendingChoices[].diceRoll.then.asked.trigger.Object.Types	array
 pendingChoices[].diceRoll.then.asked.trigger.Object.Types[]	string
+pendingChoices[].diceRoll.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].diceRoll.then.asked.xValue	number:int
 pendingChoices[].diceRoll.then.carry	array
 pendingChoices[].diceRoll.then.carry[]	custom(uuid.UUID)
@@ -41493,6 +41626,7 @@ pendingChoices[].diceRoll.then.permission.manaValueBudget	number:int
 pendingChoices[].diceRoll.then.permission.maxSpellManaValue	number:int
 pendingChoices[].diceRoll.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].diceRoll.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].diceRoll.then.permission.minSpellManaValue	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeSeq	number:int
 pendingChoices[].diceRoll.then.permission.notBeforeTurn	number:int
 pendingChoices[].diceRoll.then.permission.perType	array
@@ -41941,6 +42075,7 @@ pendingChoices[].divideShield.staged[].lki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Key	string
 pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].lki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].divideShield.staged[].lki.Name	string
 pendingChoices[].divideShield.staged[].lki.PTDefined	bool
 pendingChoices[].divideShield.staged[].lki.PTSwitched	bool
@@ -42108,6 +42243,7 @@ pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[]	object
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].divideShield.staged[].sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].divideShield.staged[].sourceLki.Name	string
 pendingChoices[].divideShield.staged[].sourceLki.PTDefined	bool
 pendingChoices[].divideShield.staged[].sourceLki.PTSwitched	bool
@@ -42294,6 +42430,7 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Token	bool
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Types	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Types[]	string
+pendingChoices[].divideShield.walk.each.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].divideShield.walk.each.asked.xValue	number:int
 pendingChoices[].divideShield.walk.each.carry	array
 pendingChoices[].divideShield.walk.each.carry[]	custom(uuid.UUID)
@@ -42476,6 +42613,7 @@ pendingChoices[].divideShield.walk.each.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValue	number:int
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValueCountOf	array
 pendingChoices[].divideShield.walk.each.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].divideShield.walk.each.permission.minSpellManaValue	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeSeq	number:int
 pendingChoices[].divideShield.walk.each.permission.notBeforeTurn	number:int
 pendingChoices[].divideShield.walk.each.permission.perType	array
@@ -42898,6 +43036,7 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Token	bool
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Types	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Types[]	string
+pendingChoices[].divideShield.walk.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].divideShield.walk.then.asked.xValue	number:int
 pendingChoices[].divideShield.walk.then.carry	array
 pendingChoices[].divideShield.walk.then.carry[]	custom(uuid.UUID)
@@ -43080,6 +43219,7 @@ pendingChoices[].divideShield.walk.then.permission.manaValueBudget	number:int
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValue	number:int
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].divideShield.walk.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].divideShield.walk.then.permission.minSpellManaValue	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeSeq	number:int
 pendingChoices[].divideShield.walk.then.permission.notBeforeTurn	number:int
 pendingChoices[].divideShield.walk.then.permission.perType	array
@@ -43508,6 +43648,7 @@ pendingChoices[].libraryOrder.then.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Token	bool
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Types	array
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Types[]	string
+pendingChoices[].libraryOrder.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].libraryOrder.then.asked.xValue	number:int
 pendingChoices[].libraryOrder.then.carry	array
 pendingChoices[].libraryOrder.then.carry[]	custom(uuid.UUID)
@@ -43690,6 +43831,7 @@ pendingChoices[].libraryOrder.then.permission.manaValueBudget	number:int
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValue	number:int
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].libraryOrder.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].libraryOrder.then.permission.minSpellManaValue	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeSeq	number:int
 pendingChoices[].libraryOrder.then.permission.notBeforeTurn	number:int
 pendingChoices[].libraryOrder.then.permission.perType	array
@@ -44169,6 +44311,7 @@ pendingChoices[].nameThen.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].nameThen.asked.trigger.Object.Token	bool
 pendingChoices[].nameThen.asked.trigger.Object.Types	array
 pendingChoices[].nameThen.asked.trigger.Object.Types[]	string
+pendingChoices[].nameThen.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].nameThen.asked.xValue	number:int
 pendingChoices[].nameThen.carry	array
 pendingChoices[].nameThen.carry[]	custom(uuid.UUID)
@@ -44351,6 +44494,7 @@ pendingChoices[].nameThen.permission.manaValueBudget	number:int
 pendingChoices[].nameThen.permission.maxSpellManaValue	number:int
 pendingChoices[].nameThen.permission.maxSpellManaValueCountOf	array
 pendingChoices[].nameThen.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].nameThen.permission.minSpellManaValue	number:int
 pendingChoices[].nameThen.permission.notBeforeSeq	number:int
 pendingChoices[].nameThen.permission.notBeforeTurn	number:int
 pendingChoices[].nameThen.permission.perType	array
@@ -44780,6 +44924,7 @@ pendingChoices[].ordered.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].ordered.asked.trigger.Object.Token	bool
 pendingChoices[].ordered.asked.trigger.Object.Types	array
 pendingChoices[].ordered.asked.trigger.Object.Types[]	string
+pendingChoices[].ordered.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].ordered.asked.xValue	number:int
 pendingChoices[].ordered.carry	array
 pendingChoices[].ordered.carry[]	custom(uuid.UUID)
@@ -45249,6 +45394,7 @@ pendingChoices[].pickTail.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].pickTail.asked.trigger.Object.Token	bool
 pendingChoices[].pickTail.asked.trigger.Object.Types	array
 pendingChoices[].pickTail.asked.trigger.Object.Types[]	string
+pendingChoices[].pickTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].pickTail.asked.xValue	number:int
 pendingChoices[].pickTail.carry	array
 pendingChoices[].pickTail.carry[]	custom(uuid.UUID)
@@ -45431,6 +45577,7 @@ pendingChoices[].pickTail.permission.manaValueBudget	number:int
 pendingChoices[].pickTail.permission.maxSpellManaValue	number:int
 pendingChoices[].pickTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].pickTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].pickTail.permission.minSpellManaValue	number:int
 pendingChoices[].pickTail.permission.notBeforeSeq	number:int
 pendingChoices[].pickTail.permission.notBeforeTurn	number:int
 pendingChoices[].pickTail.permission.perType	array
@@ -45897,6 +46044,7 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.S
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.carry	array
 pendingChoices[].replacementResume.event.counterTail.then.carry[]	custom(uuid.UUID)
@@ -46079,6 +46227,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.manaValueBu
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.counterTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.counterTail.then.permission.perType	array
@@ -46510,6 +46659,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Obje
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.xValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.carry	array
 pendingChoices[].replacementResume.event.damageTail.each.each.carry[]	custom(uuid.UUID)
@@ -46692,6 +46842,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.manaVal
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.perType	array
@@ -47114,6 +47265,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Obje
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.carry	array
 pendingChoices[].replacementResume.event.damageTail.each.then.carry[]	custom(uuid.UUID)
@@ -47296,6 +47448,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.manaVal
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.perType	array
@@ -47709,6 +47862,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[]
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.Name	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTDefined	bool
 pendingChoices[].replacementResume.event.damageTail.sourceLki.PTSwitched	bool
@@ -47890,6 +48044,7 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Su
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.carry	array
 pendingChoices[].replacementResume.event.damageTail.then.carry[]	custom(uuid.UUID)
@@ -48072,6 +48227,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.manaValueBud
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.damageTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.damageTail.then.permission.perType	array
@@ -48614,6 +48770,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.carry	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.carry[]	custom(uuid.UUID)
@@ -48796,6 +48953,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.perType	array
@@ -49294,6 +49452,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Obje
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.carry	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.carry[]	custom(uuid.UUID)
@@ -49476,6 +49635,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.manaVal
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.perType	array
@@ -49898,6 +50058,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Su
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.carry	array
 pendingChoices[].replacementResume.event.entryTail.keyed.carry[]	custom(uuid.UUID)
@@ -50080,6 +50241,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.manaValueBud
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.perType	array
@@ -50535,6 +50697,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.carry	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -50717,6 +50880,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.perType	array
@@ -51159,6 +51323,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Obj
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.carry	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.carry[]	custom(uuid.UUID)
@@ -51341,6 +51506,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.manaVa
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.perType	array
@@ -51750,6 +51916,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].key	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exiledWith.id	custom(uuid.UUID)
@@ -52189,6 +52356,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ob
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.carry	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.carry[]	custom(uuid.UUID)
@@ -52371,6 +52539,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.manaV
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.perType	array
@@ -52816,6 +52985,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.carry	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.carry[]	custom(uuid.UUID)
@@ -52998,6 +53168,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.manaValue
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.perType	array
@@ -53423,6 +53594,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Supe
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.carry	array
 pendingChoices[].replacementResume.event.lifeTail.then.carry[]	custom(uuid.UUID)
@@ -53605,6 +53777,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.manaValueBudge
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.lifeTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.permission.perType	array
@@ -54002,6 +54175,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[]	ob
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].exiledWith.id	custom(uuid.UUID)
@@ -54405,6 +54579,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[]	objec
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].exiledWith.id	custom(uuid.UUID)
@@ -54837,6 +55012,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.carry	array
 pendingChoices[].replacementResume.event.millTail.run.then.carry[]	custom(uuid.UUID)
@@ -55019,6 +55195,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.manaValueB
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.millTail.run.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.permission.perType	array
@@ -55439,6 +55616,7 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Supe
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.carry	array
 pendingChoices[].replacementResume.event.millTail.then.carry[]	custom(uuid.UUID)
@@ -55621,6 +55799,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.manaValueBudge
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.millTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.millTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.millTail.then.permission.perType	array
@@ -56053,6 +56232,7 @@ pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[]	object
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Key	string
 pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.sourceLki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].replacementResume.event.sourceLki.Name	string
 pendingChoices[].replacementResume.event.sourceLki.PTDefined	bool
 pendingChoices[].replacementResume.event.sourceLki.PTSwitched	bool
@@ -56094,6 +56274,7 @@ pendingChoices[].replacementResume.event.stackItem.distribution{}	number:int
 pendingChoices[].replacementResume.event.stackItem.doubledBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.doubledByName	string
 pendingChoices[].replacementResume.event.stackItem.entersTapped	bool
+pendingChoices[].replacementResume.event.stackItem.exileAndPlot	bool
 pendingChoices[].replacementResume.event.stackItem.exileInsteadOfGraveyard	bool
 pendingChoices[].replacementResume.event.stackItem.exileWithCounter	string
 pendingChoices[].replacementResume.event.stackItem.faceDown	string
@@ -56403,6 +56584,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Object.Supertypes[]	s
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.stackItem.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.stackItem.uncopyable	bool
 pendingChoices[].replacementResume.event.stackItem.xValue	number:int
 pendingChoices[].replacementResume.event.startingLoyalty	bool
@@ -56561,6 +56743,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[]	ob
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].key	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.exiledWith.id	custom(uuid.UUID)
@@ -56994,6 +57177,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Sup
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.carry	array
 pendingChoices[].replacementResume.event.tokenTail.then.carry[]	custom(uuid.UUID)
@@ -57176,6 +57360,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.manaValueBudg
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.tokenTail.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.permission.perType	array
@@ -57588,6 +57773,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exi
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].key	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exiledWith.id	custom(uuid.UUID)
@@ -58004,6 +58190,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exiledWith.id	custom(uuid.UUID)
@@ -58407,6 +58594,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGr
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exiledWith.id	custom(uuid.UUID)
@@ -58839,6 +59027,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.carry[]	custom(uuid.UUID)
@@ -59021,6 +59210,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.perType	array
@@ -59476,6 +59666,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.carry[]	custom(uuid.UUID)
@@ -59658,6 +59849,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.perType	array
@@ -60078,6 +60270,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.carry[]	custom(uuid.UUID)
@@ -60260,6 +60453,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.man
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.perType	array
@@ -60700,6 +60894,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.carry[]	custom(uuid.UUID)
@@ -60882,6 +61077,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.m
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.perType	array
@@ -61388,6 +61584,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Token	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Types[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.xValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.carry	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.carry[]	custom(uuid.UUID)
@@ -61570,6 +61767,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.minSpellManaValue	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeSeq	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.notBeforeTurn	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.perType	array
@@ -61962,6 +62160,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrant
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].key	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exileGrants[].untilEndOfTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exiledWith.id	custom(uuid.UUID)
@@ -62424,6 +62623,7 @@ pendingChoices[].scryThen.asked.trigger.Object.Supertypes[]	string
 pendingChoices[].scryThen.asked.trigger.Object.Token	bool
 pendingChoices[].scryThen.asked.trigger.Object.Types	array
 pendingChoices[].scryThen.asked.trigger.Object.Types[]	string
+pendingChoices[].scryThen.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].scryThen.asked.xValue	number:int
 pendingChoices[].scryThen.carry	array
 pendingChoices[].scryThen.carry[]	custom(uuid.UUID)
@@ -62606,6 +62806,7 @@ pendingChoices[].scryThen.permission.manaValueBudget	number:int
 pendingChoices[].scryThen.permission.maxSpellManaValue	number:int
 pendingChoices[].scryThen.permission.maxSpellManaValueCountOf	array
 pendingChoices[].scryThen.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].scryThen.permission.minSpellManaValue	number:int
 pendingChoices[].scryThen.permission.notBeforeSeq	number:int
 pendingChoices[].scryThen.permission.notBeforeTurn	number:int
 pendingChoices[].scryThen.permission.perType	array
@@ -63074,6 +63275,7 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Supertypes[]	st
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Token	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Types	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Types[]	string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.colorsAmongYours	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.xValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.carry	array
 pendingChoices[].searchPrompt.spec.thenTail.carry[]	custom(uuid.UUID)
@@ -63256,6 +63458,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.manaValueBudget	number:in
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValueCountOf	array
 pendingChoices[].searchPrompt.spec.thenTail.permission.maxSpellManaValueCountOf[]	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.minSpellManaValue	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeSeq	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.notBeforeTurn	number:int
 pendingChoices[].searchPrompt.spec.thenTail.permission.perType	array
@@ -63909,6 +64112,7 @@ pendingChoices[].targetWalk.frame.lki.GrantedAbilities[]	object
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Key	string
 pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.lki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].targetWalk.frame.lki.Name	string
 pendingChoices[].targetWalk.frame.lki.PTDefined	bool
 pendingChoices[].targetWalk.frame.lki.PTSwitched	bool
@@ -64097,6 +64301,7 @@ pendingChoices[].targetWalk.frame.source.exileGrants[]	object
 pendingChoices[].targetWalk.frame.source.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.exileGrants[].key	string
 pendingChoices[].targetWalk.frame.source.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].targetWalk.frame.source.exiledWith	object
 pendingChoices[].targetWalk.frame.source.exiledWith.epoch	number:int
 pendingChoices[].targetWalk.frame.source.exiledWith.id	custom(uuid.UUID)
@@ -64498,6 +64703,7 @@ pendingChoices[].targetWalk.frame.trigger.Object.Supertypes[]	string
 pendingChoices[].targetWalk.frame.trigger.Object.Token	bool
 pendingChoices[].targetWalk.frame.trigger.Object.Types	array
 pendingChoices[].targetWalk.frame.trigger.Object.Types[]	string
+pendingChoices[].targetWalk.frame.trigger.colorsAmongYours	number:int
 pendingChoices[].targetWalk.modes	array
 pendingChoices[].targetWalk.modes[]	number:int
 pendingChoices[].targetWalk.picked	array
@@ -64655,6 +64861,7 @@ pendingChoices[].triggerFrame.lki.GrantedAbilities[]	object
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Activator	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Key	string
 pendingChoices[].triggerFrame.lki.GrantedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].triggerFrame.lki.GrantedAbilities[].UntilEndOfTurn	bool
 pendingChoices[].triggerFrame.lki.Name	string
 pendingChoices[].triggerFrame.lki.PTDefined	bool
 pendingChoices[].triggerFrame.lki.PTSwitched	bool
@@ -64843,6 +65050,7 @@ pendingChoices[].triggerFrame.source.exileGrants[]	object
 pendingChoices[].triggerFrame.source.exileGrants[].activator	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.exileGrants[].key	string
 pendingChoices[].triggerFrame.source.exileGrants[].source	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.exileGrants[].untilEndOfTurn	bool
 pendingChoices[].triggerFrame.source.exiledWith	object
 pendingChoices[].triggerFrame.source.exiledWith.epoch	number:int
 pendingChoices[].triggerFrame.source.exiledWith.id	custom(uuid.UUID)
@@ -65244,6 +65452,7 @@ pendingChoices[].triggerFrame.trigger.Object.Supertypes[]	string
 pendingChoices[].triggerFrame.trigger.Object.Token	bool
 pendingChoices[].triggerFrame.trigger.Object.Types	array
 pendingChoices[].triggerFrame.trigger.Object.Types[]	string
+pendingChoices[].triggerFrame.trigger.colorsAmongYours	number:int
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)
 pendingChoices[].triggerOrderWhy	string
@@ -65276,6 +65485,7 @@ pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
 pendingTriggers[].entersTapped	bool
+pendingTriggers[].exileAndPlot	bool
 pendingTriggers[].exileInsteadOfGraveyard	bool
 pendingTriggers[].exileWithCounter	string
 pendingTriggers[].faceDown	string
@@ -65585,6 +65795,7 @@ pendingTriggers[].trigger.Object.Supertypes[]	string
 pendingTriggers[].trigger.Object.Token	bool
 pendingTriggers[].trigger.Object.Types	array
 pendingTriggers[].trigger.Object.Types[]	string
+pendingTriggers[].trigger.colorsAmongYours	number:int
 pendingTriggers[].uncopyable	bool
 pendingTriggers[].xValue	number:int
 phaseEffects	array
@@ -65951,6 +66162,7 @@ phasedOut.cards[].exileGrants[]	object
 phasedOut.cards[].exileGrants[].activator	custom(uuid.UUID)
 phasedOut.cards[].exileGrants[].key	string
 phasedOut.cards[].exileGrants[].source	custom(uuid.UUID)
+phasedOut.cards[].exileGrants[].untilEndOfTurn	bool
 phasedOut.cards[].exiledWith	object
 phasedOut.cards[].exiledWith.epoch	number:int
 phasedOut.cards[].exiledWith.id	custom(uuid.UUID)
@@ -66357,6 +66569,7 @@ planechase.deck.cards[].exileGrants[]	object
 planechase.deck.cards[].exileGrants[].activator	custom(uuid.UUID)
 planechase.deck.cards[].exileGrants[].key	string
 planechase.deck.cards[].exileGrants[].source	custom(uuid.UUID)
+planechase.deck.cards[].exileGrants[].untilEndOfTurn	bool
 planechase.deck.cards[].exiledWith	object
 planechase.deck.cards[].exiledWith.epoch	number:int
 planechase.deck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -66763,6 +66976,7 @@ planechase.faceUp.cards[].exileGrants[]	object
 planechase.faceUp.cards[].exileGrants[].activator	custom(uuid.UUID)
 planechase.faceUp.cards[].exileGrants[].key	string
 planechase.faceUp.cards[].exileGrants[].source	custom(uuid.UUID)
+planechase.faceUp.cards[].exileGrants[].untilEndOfTurn	bool
 planechase.faceUp.cards[].exiledWith	object
 planechase.faceUp.cards[].exiledWith.epoch	number:int
 planechase.faceUp.cards[].exiledWith.id	custom(uuid.UUID)
@@ -67244,6 +67458,7 @@ promptRuns[].asked.trigger.Object.Supertypes[]	string
 promptRuns[].asked.trigger.Object.Token	bool
 promptRuns[].asked.trigger.Object.Types	array
 promptRuns[].asked.trigger.Object.Types[]	string
+promptRuns[].asked.trigger.colorsAmongYours	number:int
 promptRuns[].asked.xValue	number:int
 promptRuns[].carry	array
 promptRuns[].carry[]	custom(uuid.UUID)
@@ -67402,6 +67617,7 @@ resolving.card.exileGrants[]	object
 resolving.card.exileGrants[].activator	custom(uuid.UUID)
 resolving.card.exileGrants[].key	string
 resolving.card.exileGrants[].source	custom(uuid.UUID)
+resolving.card.exileGrants[].untilEndOfTurn	bool
 resolving.card.exiledWith	object
 resolving.card.exiledWith.epoch	number:int
 resolving.card.exiledWith.id	custom(uuid.UUID)
@@ -67695,6 +67911,7 @@ resolving.item.distribution{}	number:int
 resolving.item.doubledBy	custom(uuid.UUID)
 resolving.item.doubledByName	string
 resolving.item.entersTapped	bool
+resolving.item.exileAndPlot	bool
 resolving.item.exileInsteadOfGraveyard	bool
 resolving.item.exileWithCounter	string
 resolving.item.faceDown	string
@@ -68004,6 +68221,7 @@ resolving.item.trigger.Object.Supertypes[]	string
 resolving.item.trigger.Object.Token	bool
 resolving.item.trigger.Object.Types	array
 resolving.item.trigger.Object.Types[]	string
+resolving.item.trigger.colorsAmongYours	number:int
 resolving.item.uncopyable	bool
 resolving.item.xValue	number:int
 resolving.sourceEpoch	number:int
@@ -68391,6 +68609,7 @@ seats[].attractionDeck.cards[].exileGrants[]	object
 seats[].attractionDeck.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].attractionDeck.cards[].exileGrants[].key	string
 seats[].attractionDeck.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].attractionDeck.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].attractionDeck.cards[].exiledWith	object
 seats[].attractionDeck.cards[].exiledWith.epoch	number:int
 seats[].attractionDeck.cards[].exiledWith.id	custom(uuid.UUID)
@@ -68790,6 +69009,7 @@ seats[].castPermissions[].manaValueBudget	number:int
 seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].maxSpellManaValueCountOf	array
 seats[].castPermissions[].maxSpellManaValueCountOf[]	string
+seats[].castPermissions[].minSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
 seats[].castPermissions[].perType	array
@@ -68942,6 +69162,7 @@ seats[].command.cards[].exileGrants[]	object
 seats[].command.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].command.cards[].exileGrants[].key	string
 seats[].command.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].command.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].command.cards[].exiledWith	object
 seats[].command.cards[].exiledWith.epoch	number:int
 seats[].command.cards[].exiledWith.id	custom(uuid.UUID)
@@ -69350,6 +69571,7 @@ seats[].companion.cards[].exileGrants[]	object
 seats[].companion.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].companion.cards[].exileGrants[].key	string
 seats[].companion.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].companion.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].companion.cards[].exiledWith	object
 seats[].companion.cards[].exiledWith.epoch	number:int
 seats[].companion.cards[].exiledWith.id	custom(uuid.UUID)
@@ -69767,6 +69989,7 @@ seats[].emblems.cards[].exileGrants[]	object
 seats[].emblems.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].emblems.cards[].exileGrants[].key	string
 seats[].emblems.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].emblems.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].emblems.cards[].exiledWith	object
 seats[].emblems.cards[].exiledWith.epoch	number:int
 seats[].emblems.cards[].exiledWith.id	custom(uuid.UUID)
@@ -70271,6 +70494,7 @@ seats[].graveyard.cards[].exileGrants[]	object
 seats[].graveyard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].graveyard.cards[].exileGrants[].key	string
 seats[].graveyard.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].graveyard.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].graveyard.cards[].exiledWith	object
 seats[].graveyard.cards[].exiledWith.epoch	number:int
 seats[].graveyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -70675,6 +70899,7 @@ seats[].hand.cards[].exileGrants[]	object
 seats[].hand.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].hand.cards[].exileGrants[].key	string
 seats[].hand.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].hand.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].hand.cards[].exiledWith	object
 seats[].hand.cards[].exiledWith.epoch	number:int
 seats[].hand.cards[].exiledWith.id	custom(uuid.UUID)
@@ -71084,6 +71309,7 @@ seats[].junkyard.cards[].exileGrants[]	object
 seats[].junkyard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].junkyard.cards[].exileGrants[].key	string
 seats[].junkyard.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].junkyard.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].junkyard.cards[].exiledWith	object
 seats[].junkyard.cards[].exiledWith.epoch	number:int
 seats[].junkyard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -71497,6 +71723,7 @@ seats[].library.cards[].exileGrants[]	object
 seats[].library.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].library.cards[].exileGrants[].key	string
 seats[].library.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].library.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].library.cards[].exiledWith	object
 seats[].library.cards[].exiledWith.epoch	number:int
 seats[].library.cards[].exiledWith.id	custom(uuid.UUID)
@@ -71942,6 +72169,7 @@ seats[].sideboard.cards[].exileGrants[]	object
 seats[].sideboard.cards[].exileGrants[].activator	custom(uuid.UUID)
 seats[].sideboard.cards[].exileGrants[].key	string
 seats[].sideboard.cards[].exileGrants[].source	custom(uuid.UUID)
+seats[].sideboard.cards[].exileGrants[].untilEndOfTurn	bool
 seats[].sideboard.cards[].exiledWith	object
 seats[].sideboard.cards[].exiledWith.epoch	number:int
 seats[].sideboard.cards[].exiledWith.id	custom(uuid.UUID)
@@ -72539,12 +72767,15 @@ spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.instantSorceryMaxManaValue	number:int
 spellsCastThisTurn{}.instantSorceryVillain	number:int
+spellsCastThisTurn{}.instants	number:int
 spellsCastThisTurn{}.legendaryCreature	number:int
 spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 spellsCastThisTurn{}.maxManaValue	number:int
 spellsCastThisTurn{}.notFromHand	number:int
+spellsCastThisTurn{}.otterSpellsExceptAlania	number:int
+spellsCastThisTurn{}.sorceries	number:int
 spellsCastThisTurn{}.xSpells	number:int
 splitSecondActive	bool
 stack	object
@@ -72677,6 +72908,7 @@ stack.cards[].exileGrants[]	object
 stack.cards[].exileGrants[].activator	custom(uuid.UUID)
 stack.cards[].exileGrants[].key	string
 stack.cards[].exileGrants[].source	custom(uuid.UUID)
+stack.cards[].exileGrants[].untilEndOfTurn	bool
 stack.cards[].exiledWith	object
 stack.cards[].exiledWith.epoch	number:int
 stack.cards[].exiledWith.id	custom(uuid.UUID)
@@ -72973,6 +73205,7 @@ stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
 stackMeta[].entersTapped	bool
+stackMeta[].exileAndPlot	bool
 stackMeta[].exileInsteadOfGraveyard	bool
 stackMeta[].exileWithCounter	string
 stackMeta[].faceDown	string
@@ -73282,6 +73515,7 @@ stackMeta[].trigger.Object.Supertypes[]	string
 stackMeta[].trigger.Object.Token	bool
 stackMeta[].trigger.Object.Types	array
 stackMeta[].trigger.Object.Types[]	string
+stackMeta[].trigger.colorsAmongYours	number:int
 stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int

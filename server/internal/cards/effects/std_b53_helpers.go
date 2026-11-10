@@ -20,21 +20,6 @@ func std53FaerieControlledBy(g *game.Game, controller uuid.UUID) int {
 	return 0
 }
 
-// std53YouTappedOpponentCreature is the When of "whenever you tap an untapped
-// creature an opponent controls" (Icewrought Sentry): a tap the source's
-// controller's own spell or ability instructed (Event.TappedBy, stamped by
-// TapTarget), of a creature another player controls. A tap that an attack,
-// a cost or the untap rules made, and a tap an opponent was told to make,
-// name no TappedBy and never match (the ruling). EventTapCard is emitted
-// only for an untapped permanent becoming tapped (CR 701.26a).
-func std53YouTappedOpponentCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventTapCard || ev.TappedBy == uuid.Nil || ev.TappedBy != source.Controller {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Controller != source.Controller
-}
-
 // takeOneFromAmongThem is "put a <match> card from among them into your
 // hand" with no "may" (Free the Fae): mayTakeOneFromAmongThem's candidates
 // (cards the mill actually put in the graveyard that match) with the pick's

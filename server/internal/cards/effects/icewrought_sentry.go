@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The attack trigger is Itzquinth's "you may pay. When you do" shape:
 // MayPay asks as the trigger resolves and only a payment queues the
 // reflexive trigger (CR 603.12), which then picks its target. The last
-// ability is the "you tap" seam (Event.TappedBy, std53YouTappedOpponentCreature):
+// ability is the "you tap" seam (Event.TappedBy, YouTappedAnOpponentsCreature):
 // it counts a tap the controller's own effect instructed, including this
 // Sentry's own reflexive tap, and never a tap an attack, a cost or an
 // opponent's instruction made (the ruling). It is a trigger of its own, so
@@ -36,7 +36,7 @@ func init() {
 					Then:     icewroughtSentryPaid,
 				}.Apply(NewContext(g, item))
 			}),
-			On(game.EventTapCard, std53YouTappedOpponentCreature,
+			On(game.EventTapCard, YouTappedAnOpponentsCreature,
 				"Icewrought Sentry — this creature gets +2/+1 until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
 					if !b15OnBattlefield(g, item.SourceCardID) {
