@@ -100,3 +100,56 @@ func TestCmdrB13FelotharSacrificeDrawsToughnessDiscardsPower(t *testing.T) {
 		t.Error("the sacrificed creature is not in the graveyard")
 	}
 }
+
+const cmdrB13KotisOracle = "0177b410-b559-491f-b393-ac3ed774653c"
+
+func cmdrB13GraveyardCast(g *game.Game, me *game.Player, id uuid.UUID, pay []uuid.UUID) error {
+	return g.CastSpell(me.ID, id, game.CastSpellParams{
+		FromZone: "graveyard", AlternativeCost: game.AltCostKeyGraveyardExile, AltCostIDs: pay,
+	})
+}
+
+func TestCmdrB13KotisCastsFromGraveyardOncePerTurnAndGrows(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	kotis := b12Push(g, me.ID, "Kotis, Sibsig Champion", "Legendary Creature — Zombie Warrior", cmdrB13KotisOracle, 3, 3)
+	toMain(t, g)
+	first := seedGraveyardCard(t, g, "Dead Bear", "Creature — Bear", "")
+	second := seedGraveyardCard(t, g, "Dead Elk", "Creature — Elk", "")
+	fodder := seedGraveyardFodder(t, g, 6)
+
+	// Two other cards are not enough.
+	if err := cmdrB13GraveyardCast(g, me, first, fodder[:2]); err == nil {
+		t.Fatal("cast with only two other cards exiled was accepted")
+	}
+	if err := cmdrB13GraveyardCast(g, me, first, fodder[:3]); err != nil {
+		t.Fatalf("cast from graveyard: %v", err)
+	}
+	for _, id := range fodder[:3] {
+		if me.Graveyard.Contains(id) {
+			t.Error("a paid card is still in the graveyard")
+		}
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(first) {
+		t.Fatal("the creature did not resolve")
+	}
+	if got := plusOneCounters(g, kotis); got != 2 {
+		t.Errorf("Kotis has %d counters, want 2", got)
+	}
+	// Once during each of your turns.
+	if err := cmdrB13GraveyardCast(g, me, second, fodder[3:]); err == nil {
+		t.Error("a second graveyard cast in one turn was accepted")
+	}
+}
+
+func TestCmdrB13KotisIgnoresCreaturesCastFromHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	kotis := b12Push(g, me.ID, "Kotis, Sibsig Champion", "Legendary Creature — Zombie Warrior", cmdrB13KotisOracle, 3, 3)
+	advanceTo(t, g, game.StepPrecombatMain)
+	cmdrB13CastCreature(t, g, me, 2)
+	if got := plusOneCounters(g, kotis); got != 0 {
+		t.Errorf("Kotis grew to %d from a creature cast from hand", got)
+	}
+}
