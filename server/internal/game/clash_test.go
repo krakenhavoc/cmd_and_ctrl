@@ -156,3 +156,35 @@ func TestClashFinishesWhenAClasherLeaves(t *testing.T) {
 		t.Errorf("the tail was told %d, want 1", clashTestToldAmount)
 	}
 }
+
+// TestClashAgainstAnEmptyLibraryIsWonWithAnyCard — CR 701.30d read as
+// written: the only card revealed is higher than "all other cards
+// revealed", a land's mana value of 0 included.
+func TestClashAgainstAnEmptyLibraryIsWonWithAnyCard(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	land := NewCard("Island", me.ID)
+	land.TypeLine = "Basic Land — Island"
+	me.Library.PushTop(land)
+	clashTestToldAmount = -1
+
+	g.WithWriteLock(func() {
+		opp.Library.Cards = nil
+		if err := g.ClashForEffect(uuid.Nil, me.ID, opp.ID, KeyedTail{Ref: clashTestTold, Player: me.ID}); err != nil {
+			t.Fatalf("ClashForEffect: %v", err)
+		}
+	})
+	open := clashTestPrompts(g)
+	if len(open) != 1 || open[0].Chooser != me.ID {
+		t.Fatalf("only the player who revealed a card has a decision (%d open)", len(open))
+	}
+	if err := g.ResolveOptionPick(open[0].ID, me.ID, 0); err != nil {
+		t.Fatalf("ResolveOptionPick: %v", err)
+	}
+	if w := clashTestWinners(g); len(w) != 1 || w[0] != me.ID {
+		t.Errorf("winners = %v, want the only player who revealed a card", w)
+	}
+	if clashTestToldAmount != 1 {
+		t.Errorf("the tail was told %d, want 1", clashTestToldAmount)
+	}
+}
