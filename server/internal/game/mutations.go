@@ -2701,6 +2701,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		PaperPaid:     paperLogSymbols(params, paper),
 		PaperDeclared: paper.Declared && !paper.Free,
 	}
+	// Amount is the spell's mana value as it was cast (CR 202.3, with the X
+	// chosen: CR 202.3e), for "whenever you cast a spell, ... target permanent
+	// with mana value less than or equal to that spell's mana value" (Hammerhead
+	// Tyrant), read through Target.ManaValueAtMostEventAmount. Zero when the
+	// cost can't be read or the spell is face down.
+	if sc, _, ok := g.stackSpellLocked(cardID); ok {
+		if mv, ok := g.castManaValueLocked(&sc); ok {
+			castEv.Amount = mv
+		}
+	}
 	if src.Kind == ZoneExile {
 		// #2651: the CR 607.2a link the card had in exile, read off the
 		// copy taken before MoveCard cleared it, for "whenever a player

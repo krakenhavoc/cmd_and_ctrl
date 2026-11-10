@@ -988,3 +988,40 @@ func TestCmdrB15DivinerMillsFourCards(t *testing.T) {
 		t.Error("an offer was made with no instant or sorcery in the graveyard")
 	}
 }
+
+const cmdrB15HammerheadOracle = "7830f600-c7c7-48f8-8020-3493c5745eed"
+
+func TestCmdrB15HammerheadTyrantBouncesOnlyWhatTheSpellCanMatch(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	b12Push(g, me.ID, "Hammerhead Tyrant", "Creature — Dragon", cmdrB15HammerheadOracle, 6, 6)
+	cheap := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Cheap", TypeLine: "Creature — Elf", ManaCost: "{1}", Power: 1, Toughness: 1, Owner: opp.ID, Controller: opp.ID})
+	dear := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Dear", TypeLine: "Creature — Ogre", ManaCost: "{3}{R}", Power: 4, Toughness: 4, Owner: opp.ID, Controller: opp.ID})
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Opp Island", TypeLine: "Basic Land — Island", Owner: opp.ID, Controller: opp.ID})
+	advanceTo(t, g, game.StepPrecombatMain)
+	// A mana value 1 spell: the 1-drop may be returned, the 4-drop and the
+	// land may not be.
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "One Drop", TypeLine: "Instant", ManaCost: "{R}", Owner: me.ID, Controller: me.ID})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatalf("CastSpell: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt")
+	}
+	if !slices.Contains(p.PickTargetCards, cheap) || slices.Contains(p.PickTargetCards, dear) || slices.Contains(p.PickTargetCards, land) {
+		t.Fatalf("candidates %v: want only the 1-drop", p.PickTargetCards)
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: cheap}}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(cheap) || !opp.Hand.Contains(cheap) {
+		t.Error("the 1-drop was not returned to its owner's hand")
+	}
+	if !g.Battlefield.Contains(dear) {
+		t.Error("the 4-drop was returned")
+	}
+}
