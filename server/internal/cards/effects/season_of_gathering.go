@@ -38,14 +38,16 @@ func init() {
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return seasonOfGatheringCounter(ctx)
 				})),
-			Pawprint(2, ModeDoing("Choose artifact or enchantment. Destroy all permanents of the chosen type.", nil,
+			// A sweep of artifacts or of enchantments, one chosen type: the
+			// combined class, partial (ADR 0126).
+			Pawprint(2, ModeWithPurpose(ModeDoing("Choose artifact or enchantment. Destroy all permanents of the chosen type.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return PickOption{
 						Question: "Season of Gathering — choose artifact or enchantment",
 						Options:  []game.ChoiceOption{{Label: "Artifact"}, {Label: "Enchantment"}},
 						ThenKey:  seasonOfGatheringTypeChosen,
 					}.Apply(ctx)
-				})),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepArtifactsAndEnchantments, How: game.SweepDestroy, Partial: true}})),
 			Pawprint(3, ModeDoing("Draw cards equal to the greatest power among creatures you control.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					best := 0
