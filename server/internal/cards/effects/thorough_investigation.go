@@ -21,7 +21,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller)
-			}, "Thorough Investigation — investigate", Do(CreateToken{Template: ClueToken(), N: 1}))),
+			}, "Thorough Investigation — investigate", Do(Investigate{N: 1}))),
 			On(game.EventSacrifice, lonisYouSacrificedAClue, ventureLabel("Thorough Investigation"), Venture),
 		},
 	})

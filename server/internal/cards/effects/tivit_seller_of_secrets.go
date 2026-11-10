@@ -64,7 +64,7 @@ const tivitVotesRecord = "tivit-seller-of-secrets/votes"
 var tivitTokens = RegisterThenSteps("then-steps/tivit-seller-of-secrets-tokens",
 	Instruction(func(ctx *Context) error {
 		if n := ctx.StepRecord(tivitVotesRecord).Ns[0]; n > 0 {
-			return CreateToken{Controller: ctx.Controller(), Template: ClueToken(), N: n}.Apply(ctx)
+			return Investigate{Player: ctx.Controller(), N: n}.Apply(ctx)
 		}
 		return nil
 	}),

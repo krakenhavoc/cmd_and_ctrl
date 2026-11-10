@@ -689,6 +689,11 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.OptionalCosts) > 0 {
 		meta.Paid.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
+	// #5428, CR 707.10: and the granted optional costs whose payoff is an
+	// ability of the permanent the spell becomes (offspring from Zinnia,
+	// Valley's Voice). The others (casualty, conspire, replicate) pay off
+	// as the spell is CAST, which a copy is not, so they stay behind.
+	meta.Paid.GrantedOptional = grantedOptionalWithEntryTrigger(item.Paid.GrantedOptional)
 	// ADR 0089 §2: and so is "was the gift promised, and to whom" —
 	// the gift cost is paid by that choice (CR 702.174a), and a copy
 	// of a promised spell gives its gift to the same opponent.
@@ -889,6 +894,9 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 		tmpl.Provenance.OptionalCosts = append([]int(nil), item.Paid.OptionalCosts...)
 	}
 	tmpl.Provenance.GiftOpponent = item.Paid.GiftOpponent
+	// #5428: and the granted costs whose payoff is the permanent's own
+	// enters trigger (grantedEntryTriggersFor reads them off the token).
+	tmpl.Provenance.GrantedOptional = grantedOptionalWithEntryTrigger(item.Paid.GrantedOptional)
 	// #4673, CR 707.10, CR 107.3m: and so does X. The copy copied the
 	// X chosen for the spell (createSpellCopyLocked), so the token is a
 	// permanent whose spell had that X: an enters trigger that reads it
@@ -987,6 +995,11 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 func altCostHasEntryRider(card Card, item *StackItem) bool {
 	if item == nil || item.AltCost == "" {
 		return false
+	}
+	// #5428: a granted evoke has no row on the card; its sacrifice is read
+	// off the key (queueAltCostEntryTriggerLocked).
+	if item.AltCost == GrantedAltCostEvoke {
+		return true
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
 	return alt != nil && (alt.SacrificeOnEntry || alt.Dash || alt.Blitz || alt.WarpExile)

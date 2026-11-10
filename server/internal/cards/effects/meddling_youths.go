@@ -27,7 +27,7 @@ func init() {
 			withAtBatchEnd(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source != nil && attackDeclaredByYou(ev, source.Controller)
 			}, "Meddling Youths — investigate (you attacked with three or more creatures)",
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 				ThatManyEventsAtLeast(3)),
 		},
 	})

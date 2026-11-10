@@ -27,7 +27,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Purpose:         game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Gleaming Geardrake — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisEnters("Gleaming Geardrake — investigate", Do(Investigate{N: 1})),
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12YouSacrificedAnArtifact(ev, source, g)
 			}, "Gleaming Geardrake — put a +1/+1 counter on this creature",

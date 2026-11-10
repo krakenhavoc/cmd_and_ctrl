@@ -67,7 +67,7 @@ func init() {
 					return creatureCardPutIntoAGraveyard(ev, g) &&
 						!b11TriggeredThisTurn(g, source.InstanceID, dennickInvestigateLabel)
 				},
-				dennickInvestigateLabel, Do(CreateToken{Template: ClueToken(), N: 1}))),
+				dennickInvestigateLabel, Do(Investigate{N: 1}))),
 		},
 		Replacements: []game.ReplacementEffect{DisturbedExile("Dennick, Pious Apparition")},
 	})

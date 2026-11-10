@@ -5664,6 +5664,7 @@ func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, keyed KeyedTail, ke
 // on-disk key: never renamed, never reused.
 var surveilRouted = RegisterTail("engine/surveil-routed", func(g *Game, o TailOutcome) error {
 	t := o.Tail
+	g.markSurveilledLocked(t.Player, o.IDs)
 	g.EmitEvent(Event{
 		Kind:     EventSurveil,
 		Actor:    t.Player,

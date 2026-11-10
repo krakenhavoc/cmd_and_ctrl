@@ -1155,6 +1155,10 @@ type cardSnapshot struct {
 	// nowhere", the state before the record existed.
 	PutInGraveyardFrom     ZoneKind `json:"putInGraveyardFrom,omitempty"`
 	PutInGraveyardThisTurn bool     `json:"putInGraveyardThisTurn,omitempty"`
+	// Surveilled is Card.Surveilled (#5429, Eye of Duskmantle): the
+	// arrival was a surveil's graveyard leg. Absent from every earlier
+	// file, which restores as "not surveilled".
+	Surveilled bool `json:"surveilled,omitempty"`
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
@@ -3098,6 +3102,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		Surveilled:               c.Surveilled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -4238,6 +4243,7 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		Surveilled:               c.Surveilled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,

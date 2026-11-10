@@ -380,7 +380,7 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 			checkGrantedCollectEvidence(name, o)
 		}
 		if o.Life != 0 || (o.PaysCards() && !emerge && !webSlinging && !evidence) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
-			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || (o.WarpExile && o.Key != game.GrantedAltCostWarp) || o.Dash || o.Blitz || o.Sneak ||
+			(o.SacrificeOnEntry && o.Key != GrantedAltCostEvoke) || o.FromZone != "" || o.ExileOnLeavingStack || (o.WarpExile && o.Key != game.GrantedAltCostWarp) || o.Dash || o.Blitz || o.Sneak ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || (o.RequiresGrant && o.Key != GrantedAltCostMiracle) || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))
 		}

@@ -1213,6 +1213,13 @@ export type LogKind =
   // `seat` is the vote's controller, `card_id` the card, and `seats` and
   // `votes` are parallel: each voter and what they voted for.
   | "votes_revealed"
+  // #5424, CR 701.30: `seat` clashed with `target_seat`. `cause` is where
+  // their revealed card went ("bottom" or "top"; absent when their
+  // library was empty) and `card_id` the card whose effect said to clash.
+  | "clash"
+  // #5424, CR 701.30d: `seat` won a clash with `target_seat`. `card_id` is
+  // the card whose effect said to clash.
+  | "clash_won"
   // ADR 0150 §5: `seat` paid, or didn't pay, an "unless any player pays"
   // offer. `label` is the payment ("{2}") and `card_id` the card whose
   // effect it was.

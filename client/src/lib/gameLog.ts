@@ -121,6 +121,10 @@ const LOG_TONE: Record<LogKind, string> = {
   ring_tempted: "tone-cast",
   // ADR 0146: a vote is a play the table watches as it is cast.
   vote: "tone-cast",
+  // #5424: where a clashing player put their card is a quiet fact; who
+  // won the clash is the play the table watches.
+  clash: "tone-quiet",
+  clash_won: "tone-cast",
   // ADR 0180: a secret ballot says only that someone voted, so it is
   // quiet; the reveal is the play the table watches.
   vote_secret: "tone-quiet",

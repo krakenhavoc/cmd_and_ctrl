@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 2},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Detective's Satchel — investigate twice", Do(CreateToken{Template: ClueToken(), N: 2})),
+			WhenThisEnters("Detective's Satchel — investigate twice", Do(Investigate{N: 2})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Create a 1/1 colorless Thopter artifact creature token with flying. Activate only if you've sacrificed an artifact this turn.",

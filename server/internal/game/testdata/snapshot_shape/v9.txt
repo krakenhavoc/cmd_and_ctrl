@@ -362,6 +362,8 @@ battlefield.cards[].provenance.delved[].epoch	number:int
 battlefield.cards[].provenance.delved[].id	custom(uuid.UUID)
 battlefield.cards[].provenance.fromZone	string
 battlefield.cards[].provenance.giftOpponent	custom(uuid.UUID)
+battlefield.cards[].provenance.grantedOptional	array
+battlefield.cards[].provenance.grantedOptional[]	string
 battlefield.cards[].provenance.mana	array
 battlefield.cards[].provenance.manaOnPaper	bool
 battlefield.cards[].provenance.mana[]	object
@@ -424,6 +426,7 @@ battlefield.cards[].stickers[].print.toughness	number:int
 battlefield.cards[].stickers[].sheet	string
 battlefield.cards[].stickers[].sheetName	string
 battlefield.cards[].summonedThisTurn	bool
+battlefield.cards[].surveilled	bool
 battlefield.cards[].suspected	bool
 battlefield.cards[].suspectedAt	number:int64
 battlefield.cards[].suspendGranted	bool
@@ -914,6 +917,8 @@ enteringTokens[].provenance.delved[].epoch	number:int
 enteringTokens[].provenance.delved[].id	custom(uuid.UUID)
 enteringTokens[].provenance.fromZone	string
 enteringTokens[].provenance.giftOpponent	custom(uuid.UUID)
+enteringTokens[].provenance.grantedOptional	array
+enteringTokens[].provenance.grantedOptional[]	string
 enteringTokens[].provenance.mana	array
 enteringTokens[].provenance.manaOnPaper	bool
 enteringTokens[].provenance.mana[]	object
@@ -976,6 +981,7 @@ enteringTokens[].stickers[].print.toughness	number:int
 enteringTokens[].stickers[].sheet	string
 enteringTokens[].stickers[].sheetName	string
 enteringTokens[].summonedThisTurn	bool
+enteringTokens[].surveilled	bool
 enteringTokens[].suspected	bool
 enteringTokens[].suspectedAt	number:int64
 enteringTokens[].suspendGranted	bool
@@ -1426,6 +1432,8 @@ exile.cards[].provenance.delved[].epoch	number:int
 exile.cards[].provenance.delved[].id	custom(uuid.UUID)
 exile.cards[].provenance.fromZone	string
 exile.cards[].provenance.giftOpponent	custom(uuid.UUID)
+exile.cards[].provenance.grantedOptional	array
+exile.cards[].provenance.grantedOptional[]	string
 exile.cards[].provenance.mana	array
 exile.cards[].provenance.manaOnPaper	bool
 exile.cards[].provenance.mana[]	object
@@ -1488,6 +1496,7 @@ exile.cards[].stickers[].print.toughness	number:int
 exile.cards[].stickers[].sheet	string
 exile.cards[].stickers[].sheetName	string
 exile.cards[].summonedThisTurn	bool
+exile.cards[].surveilled	bool
 exile.cards[].suspected	bool
 exile.cards[].suspectedAt	number:int64
 exile.cards[].suspendGranted	bool
@@ -2070,6 +2079,7 @@ followUpParks[].then.permission.filter.powerOrToughnessCapped	bool
 followUpParks[].then.permission.filter.putInGraveyardThisTurn	bool
 followUpParks[].then.permission.filter.sorceryOnly	bool
 followUpParks[].then.permission.filter.subtype	string
+followUpParks[].then.permission.filter.surveilledThisTurn	bool
 followUpParks[].then.permission.filter.withCounter	string
 followUpParks[].then.permission.followUp	string
 followUpParks[].then.permission.followUpObject	object
@@ -2711,6 +2721,7 @@ frozenEntries[].event.counterTail.then.permission.filter.powerOrToughnessCapped	
 frozenEntries[].event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.counterTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.counterTail.then.permission.filter.subtype	string
+frozenEntries[].event.counterTail.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.counterTail.then.permission.filter.withCounter	string
 frozenEntries[].event.counterTail.then.permission.followUp	string
 frozenEntries[].event.counterTail.then.permission.followUpObject	object
@@ -3331,6 +3342,7 @@ frozenEntries[].event.damageTail.each.each.permission.filter.powerOrToughnessCap
 frozenEntries[].event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.sorceryOnly	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.subtype	string
+frozenEntries[].event.damageTail.each.each.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.damageTail.each.each.permission.filter.withCounter	string
 frozenEntries[].event.damageTail.each.each.permission.followUp	string
 frozenEntries[].event.damageTail.each.each.permission.followUpObject	object
@@ -3942,6 +3954,7 @@ frozenEntries[].event.damageTail.each.then.permission.filter.powerOrToughnessCap
 frozenEntries[].event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.subtype	string
+frozenEntries[].event.damageTail.each.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.damageTail.each.then.permission.filter.withCounter	string
 frozenEntries[].event.damageTail.each.then.permission.followUp	string
 frozenEntries[].event.damageTail.each.then.permission.followUpObject	object
@@ -4727,6 +4740,7 @@ frozenEntries[].event.damageTail.then.permission.filter.powerOrToughnessCapped	b
 frozenEntries[].event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.damageTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.damageTail.then.permission.filter.subtype	string
+frozenEntries[].event.damageTail.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.damageTail.then.permission.filter.withCounter	string
 frozenEntries[].event.damageTail.then.permission.followUp	string
 frozenEntries[].event.damageTail.then.permission.followUpObject	object
@@ -5458,6 +5472,7 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.powerO
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.subtype	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.filter.withCounter	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUp	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.permission.followUpObject	object
@@ -6145,6 +6160,7 @@ frozenEntries[].event.entryTail.batch.then.permission.filter.powerOrToughnessCap
 frozenEntries[].event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.subtype	string
+frozenEntries[].event.entryTail.batch.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.entryTail.batch.then.permission.filter.withCounter	string
 frozenEntries[].event.entryTail.batch.then.permission.followUp	string
 frozenEntries[].event.entryTail.batch.then.permission.followUpObject	object
@@ -6756,6 +6772,7 @@ frozenEntries[].event.entryTail.keyed.permission.filter.powerOrToughnessCapped	b
 frozenEntries[].event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.subtype	string
+frozenEntries[].event.entryTail.keyed.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.entryTail.keyed.permission.filter.withCounter	string
 frozenEntries[].event.entryTail.keyed.permission.followUp	string
 frozenEntries[].event.entryTail.keyed.permission.followUpObject	object
@@ -7400,6 +7417,7 @@ frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.powerOrTo
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.subtype	string
+frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.filter.withCounter	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUp	string
 frozenEntries[].event.entryTail.search.spec.thenTail.permission.followUpObject	object
@@ -8031,6 +8049,7 @@ frozenEntries[].event.entryTail.tokens.then.permission.filter.powerOrToughnessCa
 frozenEntries[].event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.subtype	string
+frozenEntries[].event.entryTail.tokens.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.entryTail.tokens.then.permission.filter.withCounter	string
 frozenEntries[].event.entryTail.tokens.then.permission.followUp	string
 frozenEntries[].event.entryTail.tokens.then.permission.followUpObject	object
@@ -8665,6 +8684,8 @@ frozenEntries[].event.keywordActionTail.armyToken.provenance.delved[].epoch	numb
 frozenEntries[].event.keywordActionTail.armyToken.provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.provenance.fromZone	string
 frozenEntries[].event.keywordActionTail.armyToken.provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.provenance.grantedOptional	array
+frozenEntries[].event.keywordActionTail.armyToken.provenance.grantedOptional[]	string
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana	array
 frozenEntries[].event.keywordActionTail.armyToken.provenance.manaOnPaper	bool
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[]	object
@@ -8727,6 +8748,7 @@ frozenEntries[].event.keywordActionTail.armyToken.stickers[].print.toughness	num
 frozenEntries[].event.keywordActionTail.armyToken.stickers[].sheet	string
 frozenEntries[].event.keywordActionTail.armyToken.stickers[].sheetName	string
 frozenEntries[].event.keywordActionTail.armyToken.summonedThisTurn	bool
+frozenEntries[].event.keywordActionTail.armyToken.surveilled	bool
 frozenEntries[].event.keywordActionTail.armyToken.suspected	bool
 frozenEntries[].event.keywordActionTail.armyToken.suspectedAt	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.suspendGranted	bool
@@ -9069,6 +9091,7 @@ frozenEntries[].event.keywordActionTail.then.permission.filter.powerOrToughnessC
 frozenEntries[].event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.subtype	string
+frozenEntries[].event.keywordActionTail.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.keywordActionTail.then.permission.filter.withCounter	string
 frozenEntries[].event.keywordActionTail.then.permission.followUp	string
 frozenEntries[].event.keywordActionTail.then.permission.followUpObject	object
@@ -9703,6 +9726,7 @@ frozenEntries[].event.lifeTail.each.then.permission.filter.powerOrToughnessCappe
 frozenEntries[].event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.subtype	string
+frozenEntries[].event.lifeTail.each.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.lifeTail.each.then.permission.filter.withCounter	string
 frozenEntries[].event.lifeTail.each.then.permission.followUp	string
 frozenEntries[].event.lifeTail.each.then.permission.followUpObject	object
@@ -10317,6 +10341,7 @@ frozenEntries[].event.lifeTail.then.permission.filter.powerOrToughnessCapped	boo
 frozenEntries[].event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.lifeTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.lifeTail.then.permission.filter.subtype	string
+frozenEntries[].event.lifeTail.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.lifeTail.then.permission.filter.withCounter	string
 frozenEntries[].event.lifeTail.then.permission.followUp	string
 frozenEntries[].event.lifeTail.then.permission.followUpObject	object
@@ -10939,6 +10964,8 @@ frozenEntries[].event.millTail.run.planned[].provenance.delved[].epoch	number:in
 frozenEntries[].event.millTail.run.planned[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].provenance.fromZone	string
 frozenEntries[].event.millTail.run.planned[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].provenance.grantedOptional	array
+frozenEntries[].event.millTail.run.planned[].provenance.grantedOptional[]	string
 frozenEntries[].event.millTail.run.planned[].provenance.mana	array
 frozenEntries[].event.millTail.run.planned[].provenance.manaOnPaper	bool
 frozenEntries[].event.millTail.run.planned[].provenance.mana[]	object
@@ -11001,6 +11028,7 @@ frozenEntries[].event.millTail.run.planned[].stickers[].print.toughness	number:i
 frozenEntries[].event.millTail.run.planned[].stickers[].sheet	string
 frozenEntries[].event.millTail.run.planned[].stickers[].sheetName	string
 frozenEntries[].event.millTail.run.planned[].summonedThisTurn	bool
+frozenEntries[].event.millTail.run.planned[].surveilled	bool
 frozenEntries[].event.millTail.run.planned[].suspected	bool
 frozenEntries[].event.millTail.run.planned[].suspectedAt	number:int64
 frozenEntries[].event.millTail.run.planned[].suspendGranted	bool
@@ -11343,6 +11371,8 @@ frozenEntries[].event.millTail.run.seen[].provenance.delved[].epoch	number:int
 frozenEntries[].event.millTail.run.seen[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].provenance.fromZone	string
 frozenEntries[].event.millTail.run.seen[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].provenance.grantedOptional	array
+frozenEntries[].event.millTail.run.seen[].provenance.grantedOptional[]	string
 frozenEntries[].event.millTail.run.seen[].provenance.mana	array
 frozenEntries[].event.millTail.run.seen[].provenance.manaOnPaper	bool
 frozenEntries[].event.millTail.run.seen[].provenance.mana[]	object
@@ -11405,6 +11435,7 @@ frozenEntries[].event.millTail.run.seen[].stickers[].print.toughness	number:int
 frozenEntries[].event.millTail.run.seen[].stickers[].sheet	string
 frozenEntries[].event.millTail.run.seen[].stickers[].sheetName	string
 frozenEntries[].event.millTail.run.seen[].summonedThisTurn	bool
+frozenEntries[].event.millTail.run.seen[].surveilled	bool
 frozenEntries[].event.millTail.run.seen[].suspected	bool
 frozenEntries[].event.millTail.run.seen[].suspectedAt	number:int64
 frozenEntries[].event.millTail.run.seen[].suspendGranted	bool
@@ -11740,6 +11771,7 @@ frozenEntries[].event.millTail.run.then.permission.filter.powerOrToughnessCapped
 frozenEntries[].event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.millTail.run.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.millTail.run.then.permission.filter.subtype	string
+frozenEntries[].event.millTail.run.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.millTail.run.then.permission.filter.withCounter	string
 frozenEntries[].event.millTail.run.then.permission.followUp	string
 frozenEntries[].event.millTail.run.then.permission.followUpObject	object
@@ -12349,6 +12381,7 @@ frozenEntries[].event.millTail.then.permission.filter.powerOrToughnessCapped	boo
 frozenEntries[].event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.millTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.millTail.then.permission.filter.subtype	string
+frozenEntries[].event.millTail.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.millTail.then.permission.filter.withCounter	string
 frozenEntries[].event.millTail.then.permission.followUp	string
 frozenEntries[].event.millTail.then.permission.followUpObject	object
@@ -13518,6 +13551,8 @@ frozenEntries[].event.tokenGroups[].template.provenance.delved[].epoch	number:in
 frozenEntries[].event.tokenGroups[].template.provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.provenance.fromZone	string
 frozenEntries[].event.tokenGroups[].template.provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.provenance.grantedOptional	array
+frozenEntries[].event.tokenGroups[].template.provenance.grantedOptional[]	string
 frozenEntries[].event.tokenGroups[].template.provenance.mana	array
 frozenEntries[].event.tokenGroups[].template.provenance.manaOnPaper	bool
 frozenEntries[].event.tokenGroups[].template.provenance.mana[]	object
@@ -13580,6 +13615,7 @@ frozenEntries[].event.tokenGroups[].template.stickers[].print.toughness	number:i
 frozenEntries[].event.tokenGroups[].template.stickers[].sheet	string
 frozenEntries[].event.tokenGroups[].template.stickers[].sheetName	string
 frozenEntries[].event.tokenGroups[].template.summonedThisTurn	bool
+frozenEntries[].event.tokenGroups[].template.surveilled	bool
 frozenEntries[].event.tokenGroups[].template.suspected	bool
 frozenEntries[].event.tokenGroups[].template.suspectedAt	number:int64
 frozenEntries[].event.tokenGroups[].template.suspendGranted	bool
@@ -13916,6 +13952,7 @@ frozenEntries[].event.tokenTail.then.permission.filter.powerOrToughnessCapped	bo
 frozenEntries[].event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.tokenTail.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.tokenTail.then.permission.filter.subtype	string
+frozenEntries[].event.tokenTail.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.tokenTail.then.permission.filter.withCounter	string
 frozenEntries[].event.tokenTail.then.permission.followUp	string
 frozenEntries[].event.tokenTail.then.permission.followUpObject	object
@@ -14553,6 +14590,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.delved[].ep
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.fromZone	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.grantedOptional	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.grantedOptional[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.manaOnPaper	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[]	object
@@ -14615,6 +14654,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.stickers[].print.tough
 frozenEntries[].event.tokensAfterMove[].groups[].template.stickers[].sheet	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.stickers[].sheetName	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.summonedThisTurn	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.surveilled	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.suspected	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.suspectedAt	number:int64
 frozenEntries[].event.tokensAfterMove[].groups[].template.suspendGranted	bool
@@ -14970,6 +15010,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.delved[].epo
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.fromZone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.manaOnPaper	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[]	object
@@ -15032,6 +15074,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].stickers[].print.toughn
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].stickers[].sheet	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].stickers[].sheetName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].summonedThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].surveilled	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].suspected	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].suspectedAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].suspendGranted	bool
@@ -15374,6 +15417,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.delved[].epoch	
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.fromZone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.manaOnPaper	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[]	object
@@ -15436,6 +15481,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].stickers[].print.toughness
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].stickers[].sheet	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].stickers[].sheetName	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].summonedThisTurn	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].surveilled	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].suspected	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].suspectedAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].suspendGranted	bool
@@ -15771,6 +15817,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.powerOrTou
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.subtype	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.filter.withCounter	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.permission.followUpObject	object
@@ -16415,6 +16462,7 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.powe
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.subtype	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.filter.withCounter	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
@@ -17024,6 +17072,7 @@ frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.powerOrToughnes
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.subtype	string
+frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.filter.withCounter	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.batchLegs.then.permission.followUpObject	object
@@ -17653,6 +17702,7 @@ frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.powerOrToughn
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.subtype	string
+frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.filter.withCounter	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.discardLegs.then.permission.followUpObject	object
@@ -18348,6 +18398,7 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.powerOrTough
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.sorceryOnly	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.subtype	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.surveilledThisTurn	bool
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.filter.withCounter	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUp	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.permission.followUpObject	object
@@ -18965,6 +19016,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.delved[].epoch	num
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.fromZone	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.grantedOptional	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.grantedOptional[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.manaOnPaper	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[]	object
@@ -19027,6 +19080,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].stickers[].print.toughness	nu
 frozenEntries[].event.zoneRoute.simultaneousExit[].stickers[].sheet	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].stickers[].sheetName	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].summonedThisTurn	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].surveilled	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].suspected	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].suspectedAt	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].suspendGranted	bool
@@ -19991,6 +20045,8 @@ lastKnownStack[].card.provenance.delved[].epoch	number:int
 lastKnownStack[].card.provenance.delved[].id	custom(uuid.UUID)
 lastKnownStack[].card.provenance.fromZone	string
 lastKnownStack[].card.provenance.giftOpponent	custom(uuid.UUID)
+lastKnownStack[].card.provenance.grantedOptional	array
+lastKnownStack[].card.provenance.grantedOptional[]	string
 lastKnownStack[].card.provenance.mana	array
 lastKnownStack[].card.provenance.manaOnPaper	bool
 lastKnownStack[].card.provenance.mana[]	object
@@ -20053,6 +20109,7 @@ lastKnownStack[].card.stickers[].print.toughness	number:int
 lastKnownStack[].card.stickers[].sheet	string
 lastKnownStack[].card.stickers[].sheetName	string
 lastKnownStack[].card.summonedThisTurn	bool
+lastKnownStack[].card.surveilled	bool
 lastKnownStack[].card.suspected	bool
 lastKnownStack[].card.suspectedAt	number:int64
 lastKnownStack[].card.suspendGranted	bool
@@ -20867,6 +20924,7 @@ movesAwaitingTokens[].counterTail.then.permission.filter.powerOrToughnessCapped	
 movesAwaitingTokens[].counterTail.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.subtype	string
+movesAwaitingTokens[].counterTail.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].counterTail.then.permission.filter.withCounter	string
 movesAwaitingTokens[].counterTail.then.permission.followUp	string
 movesAwaitingTokens[].counterTail.then.permission.followUpObject	object
@@ -21487,6 +21545,7 @@ movesAwaitingTokens[].damageTail.each.each.permission.filter.powerOrToughnessCap
 movesAwaitingTokens[].damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.subtype	string
+movesAwaitingTokens[].damageTail.each.each.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].damageTail.each.each.permission.filter.withCounter	string
 movesAwaitingTokens[].damageTail.each.each.permission.followUp	string
 movesAwaitingTokens[].damageTail.each.each.permission.followUpObject	object
@@ -22098,6 +22157,7 @@ movesAwaitingTokens[].damageTail.each.then.permission.filter.powerOrToughnessCap
 movesAwaitingTokens[].damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.subtype	string
+movesAwaitingTokens[].damageTail.each.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].damageTail.each.then.permission.filter.withCounter	string
 movesAwaitingTokens[].damageTail.each.then.permission.followUp	string
 movesAwaitingTokens[].damageTail.each.then.permission.followUpObject	object
@@ -22883,6 +22943,7 @@ movesAwaitingTokens[].damageTail.then.permission.filter.powerOrToughnessCapped	b
 movesAwaitingTokens[].damageTail.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.subtype	string
+movesAwaitingTokens[].damageTail.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].damageTail.then.permission.filter.withCounter	string
 movesAwaitingTokens[].damageTail.then.permission.followUp	string
 movesAwaitingTokens[].damageTail.then.permission.followUpObject	object
@@ -23614,6 +23675,7 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.powerO
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.subtype	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.filter.withCounter	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.permission.followUpObject	object
@@ -24301,6 +24363,7 @@ movesAwaitingTokens[].entryTail.batch.then.permission.filter.powerOrToughnessCap
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.subtype	string
+movesAwaitingTokens[].entryTail.batch.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].entryTail.batch.then.permission.filter.withCounter	string
 movesAwaitingTokens[].entryTail.batch.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.batch.then.permission.followUpObject	object
@@ -24912,6 +24975,7 @@ movesAwaitingTokens[].entryTail.keyed.permission.filter.powerOrToughnessCapped	b
 movesAwaitingTokens[].entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.subtype	string
+movesAwaitingTokens[].entryTail.keyed.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].entryTail.keyed.permission.filter.withCounter	string
 movesAwaitingTokens[].entryTail.keyed.permission.followUp	string
 movesAwaitingTokens[].entryTail.keyed.permission.followUpObject	object
@@ -25556,6 +25620,7 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.powerOrTo
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.subtype	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.filter.withCounter	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUp	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.permission.followUpObject	object
@@ -26187,6 +26252,7 @@ movesAwaitingTokens[].entryTail.tokens.then.permission.filter.powerOrToughnessCa
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.subtype	string
+movesAwaitingTokens[].entryTail.tokens.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].entryTail.tokens.then.permission.filter.withCounter	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUp	string
 movesAwaitingTokens[].entryTail.tokens.then.permission.followUpObject	object
@@ -26821,6 +26887,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.provenance.delved[].epoch	numb
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.fromZone	string
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.provenance.grantedOptional	array
+movesAwaitingTokens[].keywordActionTail.armyToken.provenance.grantedOptional[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana	array
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.manaOnPaper	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[]	object
@@ -26883,6 +26951,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.stickers[].print.toughness	num
 movesAwaitingTokens[].keywordActionTail.armyToken.stickers[].sheet	string
 movesAwaitingTokens[].keywordActionTail.armyToken.stickers[].sheetName	string
 movesAwaitingTokens[].keywordActionTail.armyToken.summonedThisTurn	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.surveilled	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.suspected	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.suspectedAt	number:int64
 movesAwaitingTokens[].keywordActionTail.armyToken.suspendGranted	bool
@@ -27225,6 +27294,7 @@ movesAwaitingTokens[].keywordActionTail.then.permission.filter.powerOrToughnessC
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.subtype	string
+movesAwaitingTokens[].keywordActionTail.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].keywordActionTail.then.permission.filter.withCounter	string
 movesAwaitingTokens[].keywordActionTail.then.permission.followUp	string
 movesAwaitingTokens[].keywordActionTail.then.permission.followUpObject	object
@@ -27859,6 +27929,7 @@ movesAwaitingTokens[].lifeTail.each.then.permission.filter.powerOrToughnessCappe
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.subtype	string
+movesAwaitingTokens[].lifeTail.each.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].lifeTail.each.then.permission.filter.withCounter	string
 movesAwaitingTokens[].lifeTail.each.then.permission.followUp	string
 movesAwaitingTokens[].lifeTail.each.then.permission.followUpObject	object
@@ -28473,6 +28544,7 @@ movesAwaitingTokens[].lifeTail.then.permission.filter.powerOrToughnessCapped	boo
 movesAwaitingTokens[].lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.subtype	string
+movesAwaitingTokens[].lifeTail.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].lifeTail.then.permission.filter.withCounter	string
 movesAwaitingTokens[].lifeTail.then.permission.followUp	string
 movesAwaitingTokens[].lifeTail.then.permission.followUpObject	object
@@ -29095,6 +29167,8 @@ movesAwaitingTokens[].millTail.run.planned[].provenance.delved[].epoch	number:in
 movesAwaitingTokens[].millTail.run.planned[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].provenance.fromZone	string
 movesAwaitingTokens[].millTail.run.planned[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].provenance.grantedOptional	array
+movesAwaitingTokens[].millTail.run.planned[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana	array
 movesAwaitingTokens[].millTail.run.planned[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[]	object
@@ -29157,6 +29231,7 @@ movesAwaitingTokens[].millTail.run.planned[].stickers[].print.toughness	number:i
 movesAwaitingTokens[].millTail.run.planned[].stickers[].sheet	string
 movesAwaitingTokens[].millTail.run.planned[].stickers[].sheetName	string
 movesAwaitingTokens[].millTail.run.planned[].summonedThisTurn	bool
+movesAwaitingTokens[].millTail.run.planned[].surveilled	bool
 movesAwaitingTokens[].millTail.run.planned[].suspected	bool
 movesAwaitingTokens[].millTail.run.planned[].suspectedAt	number:int64
 movesAwaitingTokens[].millTail.run.planned[].suspendGranted	bool
@@ -29499,6 +29574,8 @@ movesAwaitingTokens[].millTail.run.seen[].provenance.delved[].epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].provenance.fromZone	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].provenance.grantedOptional	array
+movesAwaitingTokens[].millTail.run.seen[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana	array
 movesAwaitingTokens[].millTail.run.seen[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[]	object
@@ -29561,6 +29638,7 @@ movesAwaitingTokens[].millTail.run.seen[].stickers[].print.toughness	number:int
 movesAwaitingTokens[].millTail.run.seen[].stickers[].sheet	string
 movesAwaitingTokens[].millTail.run.seen[].stickers[].sheetName	string
 movesAwaitingTokens[].millTail.run.seen[].summonedThisTurn	bool
+movesAwaitingTokens[].millTail.run.seen[].surveilled	bool
 movesAwaitingTokens[].millTail.run.seen[].suspected	bool
 movesAwaitingTokens[].millTail.run.seen[].suspectedAt	number:int64
 movesAwaitingTokens[].millTail.run.seen[].suspendGranted	bool
@@ -29896,6 +29974,7 @@ movesAwaitingTokens[].millTail.run.then.permission.filter.powerOrToughnessCapped
 movesAwaitingTokens[].millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.subtype	string
+movesAwaitingTokens[].millTail.run.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].millTail.run.then.permission.filter.withCounter	string
 movesAwaitingTokens[].millTail.run.then.permission.followUp	string
 movesAwaitingTokens[].millTail.run.then.permission.followUpObject	object
@@ -30505,6 +30584,7 @@ movesAwaitingTokens[].millTail.then.permission.filter.powerOrToughnessCapped	boo
 movesAwaitingTokens[].millTail.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].millTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].millTail.then.permission.filter.subtype	string
+movesAwaitingTokens[].millTail.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].millTail.then.permission.filter.withCounter	string
 movesAwaitingTokens[].millTail.then.permission.followUp	string
 movesAwaitingTokens[].millTail.then.permission.followUpObject	object
@@ -31674,6 +31754,8 @@ movesAwaitingTokens[].tokenGroups[].template.provenance.delved[].epoch	number:in
 movesAwaitingTokens[].tokenGroups[].template.provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.provenance.fromZone	string
 movesAwaitingTokens[].tokenGroups[].template.provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.provenance.grantedOptional	array
+movesAwaitingTokens[].tokenGroups[].template.provenance.grantedOptional[]	string
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana	array
 movesAwaitingTokens[].tokenGroups[].template.provenance.manaOnPaper	bool
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[]	object
@@ -31736,6 +31818,7 @@ movesAwaitingTokens[].tokenGroups[].template.stickers[].print.toughness	number:i
 movesAwaitingTokens[].tokenGroups[].template.stickers[].sheet	string
 movesAwaitingTokens[].tokenGroups[].template.stickers[].sheetName	string
 movesAwaitingTokens[].tokenGroups[].template.summonedThisTurn	bool
+movesAwaitingTokens[].tokenGroups[].template.surveilled	bool
 movesAwaitingTokens[].tokenGroups[].template.suspected	bool
 movesAwaitingTokens[].tokenGroups[].template.suspectedAt	number:int64
 movesAwaitingTokens[].tokenGroups[].template.suspendGranted	bool
@@ -32072,6 +32155,7 @@ movesAwaitingTokens[].tokenTail.then.permission.filter.powerOrToughnessCapped	bo
 movesAwaitingTokens[].tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.subtype	string
+movesAwaitingTokens[].tokenTail.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].tokenTail.then.permission.filter.withCounter	string
 movesAwaitingTokens[].tokenTail.then.permission.followUp	string
 movesAwaitingTokens[].tokenTail.then.permission.followUpObject	object
@@ -32709,6 +32793,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.delved[].ep
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.fromZone	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.grantedOptional	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.grantedOptional[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.manaOnPaper	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[]	object
@@ -32771,6 +32857,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.stickers[].print.tough
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.stickers[].sheet	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.stickers[].sheetName	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.summonedThisTurn	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.surveilled	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.suspected	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.suspectedAt	number:int64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.suspendGranted	bool
@@ -33126,6 +33213,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.delved[].epo
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.fromZone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[]	object
@@ -33188,6 +33277,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].stickers[].print.toughn
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].stickers[].sheet	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].stickers[].sheetName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].summonedThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].surveilled	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].suspected	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].suspectedAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].suspendGranted	bool
@@ -33530,6 +33620,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.delved[].epoch	
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.fromZone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[]	object
@@ -33592,6 +33684,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].stickers[].print.toughness
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].stickers[].sheet	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].stickers[].sheetName	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].summonedThisTurn	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].surveilled	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].suspected	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].suspectedAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].suspendGranted	bool
@@ -33927,6 +34020,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.powerOrTou
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.subtype	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.filter.withCounter	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.permission.followUpObject	object
@@ -34571,6 +34665,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.powe
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.subtype	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.filter.withCounter	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
@@ -35180,6 +35275,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.powerOrToughnes
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.subtype	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.filter.withCounter	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.permission.followUpObject	object
@@ -35809,6 +35905,7 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.powerOrToughn
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.subtype	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.filter.withCounter	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.permission.followUpObject	object
@@ -36504,6 +36601,7 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.powerOrTough
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.sorceryOnly	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.subtype	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.surveilledThisTurn	bool
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.filter.withCounter	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUp	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.permission.followUpObject	object
@@ -37121,6 +37219,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.delved[].epoch	num
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.fromZone	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.grantedOptional	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[]	object
@@ -37183,6 +37283,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].stickers[].print.toughness	nu
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].stickers[].sheet	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].stickers[].sheetName	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].summonedThisTurn	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].surveilled	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].suspected	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].suspectedAt	number:int64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].suspendGranted	bool
@@ -38959,6 +39060,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.provenance.delved[].epoch
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.fromZone	string
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.provenance.grantedOptional	array
+pendingChoices[].attackSplit.settled.chosen[].template.provenance.grantedOptional[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana	array
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.manaOnPaper	bool
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[]	object
@@ -39021,6 +39124,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.stickers[].print.toughnes
 pendingChoices[].attackSplit.settled.chosen[].template.stickers[].sheet	string
 pendingChoices[].attackSplit.settled.chosen[].template.stickers[].sheetName	string
 pendingChoices[].attackSplit.settled.chosen[].template.summonedThisTurn	bool
+pendingChoices[].attackSplit.settled.chosen[].template.surveilled	bool
 pendingChoices[].attackSplit.settled.chosen[].template.suspected	bool
 pendingChoices[].attackSplit.settled.chosen[].template.suspectedAt	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.suspendGranted	bool
@@ -39383,6 +39487,8 @@ pendingChoices[].attackSplit.settled.groups[].template.provenance.delved[].epoch
 pendingChoices[].attackSplit.settled.groups[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.provenance.fromZone	string
 pendingChoices[].attackSplit.settled.groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.provenance.grantedOptional	array
+pendingChoices[].attackSplit.settled.groups[].template.provenance.grantedOptional[]	string
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana	array
 pendingChoices[].attackSplit.settled.groups[].template.provenance.manaOnPaper	bool
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[]	object
@@ -39445,6 +39551,7 @@ pendingChoices[].attackSplit.settled.groups[].template.stickers[].print.toughnes
 pendingChoices[].attackSplit.settled.groups[].template.stickers[].sheet	string
 pendingChoices[].attackSplit.settled.groups[].template.stickers[].sheetName	string
 pendingChoices[].attackSplit.settled.groups[].template.summonedThisTurn	bool
+pendingChoices[].attackSplit.settled.groups[].template.surveilled	bool
 pendingChoices[].attackSplit.settled.groups[].template.suspected	bool
 pendingChoices[].attackSplit.settled.groups[].template.suspectedAt	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.suspendGranted	bool
@@ -39785,6 +39892,7 @@ pendingChoices[].attackSplit.tail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].attackSplit.tail.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].attackSplit.tail.permission.filter.sorceryOnly	bool
 pendingChoices[].attackSplit.tail.permission.filter.subtype	string
+pendingChoices[].attackSplit.tail.permission.filter.surveilledThisTurn	bool
 pendingChoices[].attackSplit.tail.permission.filter.withCounter	string
 pendingChoices[].attackSplit.tail.permission.followUp	string
 pendingChoices[].attackSplit.tail.permission.followUpObject	object
@@ -40398,6 +40506,8 @@ pendingChoices[].attackSplit.template.provenance.delved[].epoch	number:int
 pendingChoices[].attackSplit.template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.provenance.fromZone	string
 pendingChoices[].attackSplit.template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.provenance.grantedOptional	array
+pendingChoices[].attackSplit.template.provenance.grantedOptional[]	string
 pendingChoices[].attackSplit.template.provenance.mana	array
 pendingChoices[].attackSplit.template.provenance.manaOnPaper	bool
 pendingChoices[].attackSplit.template.provenance.mana[]	object
@@ -40460,6 +40570,7 @@ pendingChoices[].attackSplit.template.stickers[].print.toughness	number:int
 pendingChoices[].attackSplit.template.stickers[].sheet	string
 pendingChoices[].attackSplit.template.stickers[].sheetName	string
 pendingChoices[].attackSplit.template.summonedThisTurn	bool
+pendingChoices[].attackSplit.template.surveilled	bool
 pendingChoices[].attackSplit.template.suspected	bool
 pendingChoices[].attackSplit.template.suspectedAt	number:int64
 pendingChoices[].attackSplit.template.suspendGranted	bool
@@ -41184,6 +41295,8 @@ pendingChoices[].copyWalk.src.provenance.delved[].epoch	number:int
 pendingChoices[].copyWalk.src.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.provenance.fromZone	string
 pendingChoices[].copyWalk.src.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.provenance.grantedOptional	array
+pendingChoices[].copyWalk.src.provenance.grantedOptional[]	string
 pendingChoices[].copyWalk.src.provenance.mana	array
 pendingChoices[].copyWalk.src.provenance.manaOnPaper	bool
 pendingChoices[].copyWalk.src.provenance.mana[]	object
@@ -41246,6 +41359,7 @@ pendingChoices[].copyWalk.src.stickers[].print.toughness	number:int
 pendingChoices[].copyWalk.src.stickers[].sheet	string
 pendingChoices[].copyWalk.src.stickers[].sheetName	string
 pendingChoices[].copyWalk.src.summonedThisTurn	bool
+pendingChoices[].copyWalk.src.surveilled	bool
 pendingChoices[].copyWalk.src.suspected	bool
 pendingChoices[].copyWalk.src.suspectedAt	number:int64
 pendingChoices[].copyWalk.src.suspendGranted	bool
@@ -41824,6 +41938,7 @@ pendingChoices[].diceRoll.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].diceRoll.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].diceRoll.then.permission.filter.sorceryOnly	bool
 pendingChoices[].diceRoll.then.permission.filter.subtype	string
+pendingChoices[].diceRoll.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].diceRoll.then.permission.filter.withCounter	string
 pendingChoices[].diceRoll.then.permission.followUp	string
 pendingChoices[].diceRoll.then.permission.followUpObject	object
@@ -42818,6 +42933,7 @@ pendingChoices[].divideShield.walk.each.permission.filter.powerOrToughnessCapped
 pendingChoices[].divideShield.walk.each.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].divideShield.walk.each.permission.filter.sorceryOnly	bool
 pendingChoices[].divideShield.walk.each.permission.filter.subtype	string
+pendingChoices[].divideShield.walk.each.permission.filter.surveilledThisTurn	bool
 pendingChoices[].divideShield.walk.each.permission.filter.withCounter	string
 pendingChoices[].divideShield.walk.each.permission.followUp	string
 pendingChoices[].divideShield.walk.each.permission.followUpObject	object
@@ -43429,6 +43545,7 @@ pendingChoices[].divideShield.walk.then.permission.filter.powerOrToughnessCapped
 pendingChoices[].divideShield.walk.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].divideShield.walk.then.permission.filter.sorceryOnly	bool
 pendingChoices[].divideShield.walk.then.permission.filter.subtype	string
+pendingChoices[].divideShield.walk.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].divideShield.walk.then.permission.filter.withCounter	string
 pendingChoices[].divideShield.walk.then.permission.followUp	string
 pendingChoices[].divideShield.walk.then.permission.followUpObject	object
@@ -44046,6 +44163,7 @@ pendingChoices[].libraryOrder.then.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].libraryOrder.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].libraryOrder.then.permission.filter.sorceryOnly	bool
 pendingChoices[].libraryOrder.then.permission.filter.subtype	string
+pendingChoices[].libraryOrder.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].libraryOrder.then.permission.filter.withCounter	string
 pendingChoices[].libraryOrder.then.permission.followUp	string
 pendingChoices[].libraryOrder.then.permission.followUpObject	object
@@ -44714,6 +44832,7 @@ pendingChoices[].nameThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].nameThen.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].nameThen.permission.filter.sorceryOnly	bool
 pendingChoices[].nameThen.permission.filter.subtype	string
+pendingChoices[].nameThen.permission.filter.surveilledThisTurn	bool
 pendingChoices[].nameThen.permission.filter.withCounter	string
 pendingChoices[].nameThen.permission.followUp	string
 pendingChoices[].nameThen.permission.followUpObject	object
@@ -45802,6 +45921,7 @@ pendingChoices[].pickTail.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].pickTail.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].pickTail.permission.filter.sorceryOnly	bool
 pendingChoices[].pickTail.permission.filter.subtype	string
+pendingChoices[].pickTail.permission.filter.surveilledThisTurn	bool
 pendingChoices[].pickTail.permission.filter.withCounter	string
 pendingChoices[].pickTail.permission.followUp	string
 pendingChoices[].pickTail.permission.followUpObject	object
@@ -46457,6 +46577,7 @@ pendingChoices[].replacementResume.event.counterTail.then.permission.filter.powe
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.counterTail.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.counterTail.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUp	string
 pendingChoices[].replacementResume.event.counterTail.then.permission.followUpObject	object
@@ -47077,6 +47198,7 @@ pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUp	string
 pendingChoices[].replacementResume.event.damageTail.each.each.permission.followUpObject	object
@@ -47688,6 +47810,7 @@ pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUp	string
 pendingChoices[].replacementResume.event.damageTail.each.then.permission.followUpObject	object
@@ -48473,6 +48596,7 @@ pendingChoices[].replacementResume.event.damageTail.then.permission.filter.power
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.damageTail.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.damageTail.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUp	string
 pendingChoices[].replacementResume.event.damageTail.then.permission.followUpObject	object
@@ -49204,6 +49328,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permi
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUp	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.permission.followUpObject	object
@@ -49891,6 +50016,7 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUp	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.permission.followUpObject	object
@@ -50502,6 +50628,7 @@ pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.power
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUp	string
 pendingChoices[].replacementResume.event.entryTail.keyed.permission.followUpObject	object
@@ -51146,6 +51273,7 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permissi
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUp	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.permission.followUpObject	object
@@ -51777,6 +51905,7 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUp	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.permission.followUpObject	object
@@ -52411,6 +52540,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.fromZone	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[]	object
@@ -52473,6 +52604,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.stickers[].
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.stickers[].sheet	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.stickers[].sheetName	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.summonedThisTurn	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.surveilled	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.suspected	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.suspectedAt	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.suspendGranted	bool
@@ -52815,6 +52947,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filte
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUp	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.permission.followUpObject	object
@@ -53449,6 +53582,7 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.po
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUp	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.permission.followUpObject	object
@@ -54063,6 +54197,7 @@ pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.powerOr
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.lifeTail.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUp	string
 pendingChoices[].replacementResume.event.lifeTail.then.permission.followUpObject	object
@@ -54685,6 +54820,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.delve
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[]	object
@@ -54747,6 +54884,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].stickers[].print
 pendingChoices[].replacementResume.event.millTail.run.planned[].stickers[].sheet	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].stickers[].sheetName	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].summonedThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].surveilled	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].suspected	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].suspectedAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].suspendGranted	bool
@@ -55089,6 +55227,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.delved[]
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[]	object
@@ -55151,6 +55291,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].stickers[].print.to
 pendingChoices[].replacementResume.event.millTail.run.seen[].stickers[].sheet	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].stickers[].sheetName	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].summonedThisTurn	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].surveilled	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].suspected	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].suspectedAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].suspendGranted	bool
@@ -55486,6 +55627,7 @@ pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.pow
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.run.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUp	string
 pendingChoices[].replacementResume.event.millTail.run.then.permission.followUpObject	object
@@ -56095,6 +56237,7 @@ pendingChoices[].replacementResume.event.millTail.then.permission.filter.powerOr
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.millTail.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.millTail.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.millTail.then.permission.followUp	string
 pendingChoices[].replacementResume.event.millTail.then.permission.followUpObject	object
@@ -57264,6 +57407,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.delve
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.fromZone	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[]	object
@@ -57326,6 +57471,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.stickers[].print
 pendingChoices[].replacementResume.event.tokenGroups[].template.stickers[].sheet	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.stickers[].sheetName	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.summonedThisTurn	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.surveilled	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.suspected	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.suspectedAt	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.suspendGranted	bool
@@ -57662,6 +57808,7 @@ pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.powerO
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.tokenTail.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUp	string
 pendingChoices[].replacementResume.event.tokenTail.then.permission.followUpObject	object
@@ -58299,6 +58446,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pro
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.fromZone	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[]	object
@@ -58361,6 +58510,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.sti
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.stickers[].sheet	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.stickers[].sheetName	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.summonedThisTurn	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.surveilled	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.suspected	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.suspectedAt	number:int64
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.suspendGranted	bool
@@ -58716,6 +58866,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prov
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[]	object
@@ -58778,6 +58930,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].stic
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].stickers[].sheet	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].stickers[].sheetName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].summonedThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].surveilled	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].suspected	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].suspectedAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].suspendGranted	bool
@@ -59120,6 +59273,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provena
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[]	object
@@ -59182,6 +59337,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].sticker
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].stickers[].sheet	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].stickers[].sheetName	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].summonedThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].surveilled	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].suspected	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].suspectedAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].suspendGranted	bool
@@ -59517,6 +59673,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permissio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUp	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.permission.followUpObject	object
@@ -60161,6 +60318,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.per
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUp	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.permission.followUpObject	object
@@ -60770,6 +60928,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.fil
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUp	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.permission.followUpObject	object
@@ -61399,6 +61558,7 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.f
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUp	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.permission.followUpObject	object
@@ -62094,6 +62254,7 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.sorceryOnly	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.subtype	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.surveilledThisTurn	bool
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.filter.withCounter	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUp	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.permission.followUpObject	object
@@ -62711,6 +62872,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[]	object
@@ -62773,6 +62936,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].stickers[]
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].stickers[].sheet	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].stickers[].sheetName	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].summonedThisTurn	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].surveilled	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].suspected	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].suspectedAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].suspendGranted	bool
@@ -63138,6 +63302,7 @@ pendingChoices[].scryThen.permission.filter.powerOrToughnessCapped	bool
 pendingChoices[].scryThen.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].scryThen.permission.filter.sorceryOnly	bool
 pendingChoices[].scryThen.permission.filter.subtype	string
+pendingChoices[].scryThen.permission.filter.surveilledThisTurn	bool
 pendingChoices[].scryThen.permission.filter.withCounter	string
 pendingChoices[].scryThen.permission.followUp	string
 pendingChoices[].scryThen.permission.followUpObject	object
@@ -63795,6 +63960,7 @@ pendingChoices[].searchPrompt.spec.thenTail.permission.filter.powerOrToughnessCa
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.putInGraveyardThisTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.sorceryOnly	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.subtype	string
+pendingChoices[].searchPrompt.spec.thenTail.permission.filter.surveilledThisTurn	bool
 pendingChoices[].searchPrompt.spec.thenTail.permission.filter.withCounter	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUp	string
 pendingChoices[].searchPrompt.spec.thenTail.permission.followUpObject	object
@@ -64863,6 +65029,8 @@ pendingChoices[].targetWalk.frame.source.provenance.delved[].epoch	number:int
 pendingChoices[].targetWalk.frame.source.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.provenance.fromZone	string
 pendingChoices[].targetWalk.frame.source.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.provenance.grantedOptional	array
+pendingChoices[].targetWalk.frame.source.provenance.grantedOptional[]	string
 pendingChoices[].targetWalk.frame.source.provenance.mana	array
 pendingChoices[].targetWalk.frame.source.provenance.manaOnPaper	bool
 pendingChoices[].targetWalk.frame.source.provenance.mana[]	object
@@ -64925,6 +65093,7 @@ pendingChoices[].targetWalk.frame.source.stickers[].print.toughness	number:int
 pendingChoices[].targetWalk.frame.source.stickers[].sheet	string
 pendingChoices[].targetWalk.frame.source.stickers[].sheetName	string
 pendingChoices[].targetWalk.frame.source.summonedThisTurn	bool
+pendingChoices[].targetWalk.frame.source.surveilled	bool
 pendingChoices[].targetWalk.frame.source.suspected	bool
 pendingChoices[].targetWalk.frame.source.suspectedAt	number:int64
 pendingChoices[].targetWalk.frame.source.suspendGranted	bool
@@ -65613,6 +65782,8 @@ pendingChoices[].triggerFrame.source.provenance.delved[].epoch	number:int
 pendingChoices[].triggerFrame.source.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.provenance.fromZone	string
 pendingChoices[].triggerFrame.source.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.provenance.grantedOptional	array
+pendingChoices[].triggerFrame.source.provenance.grantedOptional[]	string
 pendingChoices[].triggerFrame.source.provenance.mana	array
 pendingChoices[].triggerFrame.source.provenance.manaOnPaper	bool
 pendingChoices[].triggerFrame.source.provenance.mana[]	object
@@ -65675,6 +65846,7 @@ pendingChoices[].triggerFrame.source.stickers[].print.toughness	number:int
 pendingChoices[].triggerFrame.source.stickers[].sheet	string
 pendingChoices[].triggerFrame.source.stickers[].sheetName	string
 pendingChoices[].triggerFrame.source.summonedThisTurn	bool
+pendingChoices[].triggerFrame.source.surveilled	bool
 pendingChoices[].triggerFrame.source.suspected	bool
 pendingChoices[].triggerFrame.source.suspectedAt	number:int64
 pendingChoices[].triggerFrame.source.suspendGranted	bool
@@ -66725,6 +66897,8 @@ phasedOut.cards[].provenance.delved[].epoch	number:int
 phasedOut.cards[].provenance.delved[].id	custom(uuid.UUID)
 phasedOut.cards[].provenance.fromZone	string
 phasedOut.cards[].provenance.giftOpponent	custom(uuid.UUID)
+phasedOut.cards[].provenance.grantedOptional	array
+phasedOut.cards[].provenance.grantedOptional[]	string
 phasedOut.cards[].provenance.mana	array
 phasedOut.cards[].provenance.manaOnPaper	bool
 phasedOut.cards[].provenance.mana[]	object
@@ -66787,6 +66961,7 @@ phasedOut.cards[].stickers[].print.toughness	number:int
 phasedOut.cards[].stickers[].sheet	string
 phasedOut.cards[].stickers[].sheetName	string
 phasedOut.cards[].summonedThisTurn	bool
+phasedOut.cards[].surveilled	bool
 phasedOut.cards[].suspected	bool
 phasedOut.cards[].suspectedAt	number:int64
 phasedOut.cards[].suspendGranted	bool
@@ -67132,6 +67307,8 @@ planechase.deck.cards[].provenance.delved[].epoch	number:int
 planechase.deck.cards[].provenance.delved[].id	custom(uuid.UUID)
 planechase.deck.cards[].provenance.fromZone	string
 planechase.deck.cards[].provenance.giftOpponent	custom(uuid.UUID)
+planechase.deck.cards[].provenance.grantedOptional	array
+planechase.deck.cards[].provenance.grantedOptional[]	string
 planechase.deck.cards[].provenance.mana	array
 planechase.deck.cards[].provenance.manaOnPaper	bool
 planechase.deck.cards[].provenance.mana[]	object
@@ -67194,6 +67371,7 @@ planechase.deck.cards[].stickers[].print.toughness	number:int
 planechase.deck.cards[].stickers[].sheet	string
 planechase.deck.cards[].stickers[].sheetName	string
 planechase.deck.cards[].summonedThisTurn	bool
+planechase.deck.cards[].surveilled	bool
 planechase.deck.cards[].suspected	bool
 planechase.deck.cards[].suspectedAt	number:int64
 planechase.deck.cards[].suspendGranted	bool
@@ -67539,6 +67717,8 @@ planechase.faceUp.cards[].provenance.delved[].epoch	number:int
 planechase.faceUp.cards[].provenance.delved[].id	custom(uuid.UUID)
 planechase.faceUp.cards[].provenance.fromZone	string
 planechase.faceUp.cards[].provenance.giftOpponent	custom(uuid.UUID)
+planechase.faceUp.cards[].provenance.grantedOptional	array
+planechase.faceUp.cards[].provenance.grantedOptional[]	string
 planechase.faceUp.cards[].provenance.mana	array
 planechase.faceUp.cards[].provenance.manaOnPaper	bool
 planechase.faceUp.cards[].provenance.mana[]	object
@@ -67601,6 +67781,7 @@ planechase.faceUp.cards[].stickers[].print.toughness	number:int
 planechase.faceUp.cards[].stickers[].sheet	string
 planechase.faceUp.cards[].stickers[].sheetName	string
 planechase.faceUp.cards[].summonedThisTurn	bool
+planechase.faceUp.cards[].surveilled	bool
 planechase.faceUp.cards[].suspected	bool
 planechase.faceUp.cards[].suspectedAt	number:int64
 planechase.faceUp.cards[].suspendGranted	bool
@@ -68180,6 +68361,8 @@ resolving.card.provenance.delved[].epoch	number:int
 resolving.card.provenance.delved[].id	custom(uuid.UUID)
 resolving.card.provenance.fromZone	string
 resolving.card.provenance.giftOpponent	custom(uuid.UUID)
+resolving.card.provenance.grantedOptional	array
+resolving.card.provenance.grantedOptional[]	string
 resolving.card.provenance.mana	array
 resolving.card.provenance.manaOnPaper	bool
 resolving.card.provenance.mana[]	object
@@ -68242,6 +68425,7 @@ resolving.card.stickers[].print.toughness	number:int
 resolving.card.stickers[].sheet	string
 resolving.card.stickers[].sheetName	string
 resolving.card.summonedThisTurn	bool
+resolving.card.surveilled	bool
 resolving.card.suspected	bool
 resolving.card.suspectedAt	number:int64
 resolving.card.suspendGranted	bool
@@ -69172,6 +69356,8 @@ seats[].attractionDeck.cards[].provenance.delved[].epoch	number:int
 seats[].attractionDeck.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].provenance.fromZone	string
 seats[].attractionDeck.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].attractionDeck.cards[].provenance.grantedOptional	array
+seats[].attractionDeck.cards[].provenance.grantedOptional[]	string
 seats[].attractionDeck.cards[].provenance.mana	array
 seats[].attractionDeck.cards[].provenance.manaOnPaper	bool
 seats[].attractionDeck.cards[].provenance.mana[]	object
@@ -69234,6 +69420,7 @@ seats[].attractionDeck.cards[].stickers[].print.toughness	number:int
 seats[].attractionDeck.cards[].stickers[].sheet	string
 seats[].attractionDeck.cards[].stickers[].sheetName	string
 seats[].attractionDeck.cards[].summonedThisTurn	bool
+seats[].attractionDeck.cards[].surveilled	bool
 seats[].attractionDeck.cards[].suspected	bool
 seats[].attractionDeck.cards[].suspectedAt	number:int64
 seats[].attractionDeck.cards[].suspendGranted	bool
@@ -69353,6 +69540,7 @@ seats[].castPermissions[].filter.powerOrToughnessCapped	bool
 seats[].castPermissions[].filter.putInGraveyardThisTurn	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].filter.subtype	string
+seats[].castPermissions[].filter.surveilledThisTurn	bool
 seats[].castPermissions[].filter.withCounter	string
 seats[].castPermissions[].followUp	string
 seats[].castPermissions[].followUpObject	object
@@ -69737,6 +69925,8 @@ seats[].command.cards[].provenance.delved[].epoch	number:int
 seats[].command.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].command.cards[].provenance.fromZone	string
 seats[].command.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].command.cards[].provenance.grantedOptional	array
+seats[].command.cards[].provenance.grantedOptional[]	string
 seats[].command.cards[].provenance.mana	array
 seats[].command.cards[].provenance.manaOnPaper	bool
 seats[].command.cards[].provenance.mana[]	object
@@ -69799,6 +69989,7 @@ seats[].command.cards[].stickers[].print.toughness	number:int
 seats[].command.cards[].stickers[].sheet	string
 seats[].command.cards[].stickers[].sheetName	string
 seats[].command.cards[].summonedThisTurn	bool
+seats[].command.cards[].surveilled	bool
 seats[].command.cards[].suspected	bool
 seats[].command.cards[].suspectedAt	number:int64
 seats[].command.cards[].suspendGranted	bool
@@ -70146,6 +70337,8 @@ seats[].companion.cards[].provenance.delved[].epoch	number:int
 seats[].companion.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].companion.cards[].provenance.fromZone	string
 seats[].companion.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].companion.cards[].provenance.grantedOptional	array
+seats[].companion.cards[].provenance.grantedOptional[]	string
 seats[].companion.cards[].provenance.mana	array
 seats[].companion.cards[].provenance.manaOnPaper	bool
 seats[].companion.cards[].provenance.mana[]	object
@@ -70208,6 +70401,7 @@ seats[].companion.cards[].stickers[].print.toughness	number:int
 seats[].companion.cards[].stickers[].sheet	string
 seats[].companion.cards[].stickers[].sheetName	string
 seats[].companion.cards[].summonedThisTurn	bool
+seats[].companion.cards[].surveilled	bool
 seats[].companion.cards[].suspected	bool
 seats[].companion.cards[].suspectedAt	number:int64
 seats[].companion.cards[].suspendGranted	bool
@@ -70564,6 +70758,8 @@ seats[].emblems.cards[].provenance.delved[].epoch	number:int
 seats[].emblems.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.fromZone	string
 seats[].emblems.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].emblems.cards[].provenance.grantedOptional	array
+seats[].emblems.cards[].provenance.grantedOptional[]	string
 seats[].emblems.cards[].provenance.mana	array
 seats[].emblems.cards[].provenance.manaOnPaper	bool
 seats[].emblems.cards[].provenance.mana[]	object
@@ -70626,6 +70822,7 @@ seats[].emblems.cards[].stickers[].print.toughness	number:int
 seats[].emblems.cards[].stickers[].sheet	string
 seats[].emblems.cards[].stickers[].sheetName	string
 seats[].emblems.cards[].summonedThisTurn	bool
+seats[].emblems.cards[].surveilled	bool
 seats[].emblems.cards[].suspected	bool
 seats[].emblems.cards[].suspectedAt	number:int64
 seats[].emblems.cards[].suspendGranted	bool
@@ -71069,6 +71266,8 @@ seats[].graveyard.cards[].provenance.delved[].epoch	number:int
 seats[].graveyard.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.fromZone	string
 seats[].graveyard.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].graveyard.cards[].provenance.grantedOptional	array
+seats[].graveyard.cards[].provenance.grantedOptional[]	string
 seats[].graveyard.cards[].provenance.mana	array
 seats[].graveyard.cards[].provenance.manaOnPaper	bool
 seats[].graveyard.cards[].provenance.mana[]	object
@@ -71131,6 +71330,7 @@ seats[].graveyard.cards[].stickers[].print.toughness	number:int
 seats[].graveyard.cards[].stickers[].sheet	string
 seats[].graveyard.cards[].stickers[].sheetName	string
 seats[].graveyard.cards[].summonedThisTurn	bool
+seats[].graveyard.cards[].surveilled	bool
 seats[].graveyard.cards[].suspected	bool
 seats[].graveyard.cards[].suspectedAt	number:int64
 seats[].graveyard.cards[].suspendGranted	bool
@@ -71474,6 +71674,8 @@ seats[].hand.cards[].provenance.delved[].epoch	number:int
 seats[].hand.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].hand.cards[].provenance.fromZone	string
 seats[].hand.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].hand.cards[].provenance.grantedOptional	array
+seats[].hand.cards[].provenance.grantedOptional[]	string
 seats[].hand.cards[].provenance.mana	array
 seats[].hand.cards[].provenance.manaOnPaper	bool
 seats[].hand.cards[].provenance.mana[]	object
@@ -71536,6 +71738,7 @@ seats[].hand.cards[].stickers[].print.toughness	number:int
 seats[].hand.cards[].stickers[].sheet	string
 seats[].hand.cards[].stickers[].sheetName	string
 seats[].hand.cards[].summonedThisTurn	bool
+seats[].hand.cards[].surveilled	bool
 seats[].hand.cards[].suspected	bool
 seats[].hand.cards[].suspectedAt	number:int64
 seats[].hand.cards[].suspendGranted	bool
@@ -71884,6 +72087,8 @@ seats[].junkyard.cards[].provenance.delved[].epoch	number:int
 seats[].junkyard.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].junkyard.cards[].provenance.fromZone	string
 seats[].junkyard.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].junkyard.cards[].provenance.grantedOptional	array
+seats[].junkyard.cards[].provenance.grantedOptional[]	string
 seats[].junkyard.cards[].provenance.mana	array
 seats[].junkyard.cards[].provenance.manaOnPaper	bool
 seats[].junkyard.cards[].provenance.mana[]	object
@@ -71946,6 +72151,7 @@ seats[].junkyard.cards[].stickers[].print.toughness	number:int
 seats[].junkyard.cards[].stickers[].sheet	string
 seats[].junkyard.cards[].stickers[].sheetName	string
 seats[].junkyard.cards[].summonedThisTurn	bool
+seats[].junkyard.cards[].surveilled	bool
 seats[].junkyard.cards[].suspected	bool
 seats[].junkyard.cards[].suspectedAt	number:int64
 seats[].junkyard.cards[].suspendGranted	bool
@@ -72305,6 +72511,8 @@ seats[].library.cards[].provenance.delved[].epoch	number:int
 seats[].library.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].library.cards[].provenance.fromZone	string
 seats[].library.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].library.cards[].provenance.grantedOptional	array
+seats[].library.cards[].provenance.grantedOptional[]	string
 seats[].library.cards[].provenance.mana	array
 seats[].library.cards[].provenance.manaOnPaper	bool
 seats[].library.cards[].provenance.mana[]	object
@@ -72367,6 +72575,7 @@ seats[].library.cards[].stickers[].print.toughness	number:int
 seats[].library.cards[].stickers[].sheet	string
 seats[].library.cards[].stickers[].sheetName	string
 seats[].library.cards[].summonedThisTurn	bool
+seats[].library.cards[].surveilled	bool
 seats[].library.cards[].suspected	bool
 seats[].library.cards[].suspectedAt	number:int64
 seats[].library.cards[].suspendGranted	bool
@@ -72751,6 +72960,8 @@ seats[].sideboard.cards[].provenance.delved[].epoch	number:int
 seats[].sideboard.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].sideboard.cards[].provenance.fromZone	string
 seats[].sideboard.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].sideboard.cards[].provenance.grantedOptional	array
+seats[].sideboard.cards[].provenance.grantedOptional[]	string
 seats[].sideboard.cards[].provenance.mana	array
 seats[].sideboard.cards[].provenance.manaOnPaper	bool
 seats[].sideboard.cards[].provenance.mana[]	object
@@ -72813,6 +73024,7 @@ seats[].sideboard.cards[].stickers[].print.toughness	number:int
 seats[].sideboard.cards[].stickers[].sheet	string
 seats[].sideboard.cards[].stickers[].sheetName	string
 seats[].sideboard.cards[].summonedThisTurn	bool
+seats[].sideboard.cards[].surveilled	bool
 seats[].sideboard.cards[].suspected	bool
 seats[].sideboard.cards[].suspectedAt	number:int64
 seats[].sideboard.cards[].suspendGranted	bool
@@ -72888,6 +73100,7 @@ seats[].statics[].cantBeCountered.filter.powerOrToughnessCapped	bool
 seats[].statics[].cantBeCountered.filter.putInGraveyardThisTurn	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.subtype	string
+seats[].statics[].cantBeCountered.filter.surveilledThisTurn	bool
 seats[].statics[].cantBeCountered.filter.withCounter	string
 seats[].statics[].cantBeCountered.nextOnly	bool
 seats[].statics[].cantBeCountered.text	string
@@ -72935,6 +73148,7 @@ seats[].statics[].castBan.filter.powerOrToughnessCapped	bool
 seats[].statics[].castBan.filter.putInGraveyardThisTurn	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
 seats[].statics[].castBan.filter.subtype	string
+seats[].statics[].castBan.filter.surveilledThisTurn	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
 seats[].statics[].castBan.maxPerTurn	number:int
@@ -73032,6 +73246,7 @@ seats[].statics[].nextSpell.filter.powerOrToughnessCapped	bool
 seats[].statics[].nextSpell.filter.putInGraveyardThisTurn	bool
 seats[].statics[].nextSpell.filter.sorceryOnly	bool
 seats[].statics[].nextSpell.filter.subtype	string
+seats[].statics[].nextSpell.filter.surveilledThisTurn	bool
 seats[].statics[].nextSpell.filter.withCounter	string
 seats[].statics[].nextSpell.flash	bool
 seats[].statics[].nextSpell.followUp	string
@@ -73084,6 +73299,7 @@ seats[].statics[].timing.filter.powerOrToughnessCapped	bool
 seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.filter.subtype	string
+seats[].statics[].timing.filter.surveilledThisTurn	bool
 seats[].statics[].timing.filter.withCounter	string
 seats[].statics[].timing.firstCreatureSpellThisTurn	bool
 seats[].statics[].timing.fromZone	string
@@ -73502,6 +73718,8 @@ stack.cards[].provenance.delved[].epoch	number:int
 stack.cards[].provenance.delved[].id	custom(uuid.UUID)
 stack.cards[].provenance.fromZone	string
 stack.cards[].provenance.giftOpponent	custom(uuid.UUID)
+stack.cards[].provenance.grantedOptional	array
+stack.cards[].provenance.grantedOptional[]	string
 stack.cards[].provenance.mana	array
 stack.cards[].provenance.manaOnPaper	bool
 stack.cards[].provenance.mana[]	object
@@ -73564,6 +73782,7 @@ stack.cards[].stickers[].print.toughness	number:int
 stack.cards[].stickers[].sheet	string
 stack.cards[].stickers[].sheetName	string
 stack.cards[].summonedThisTurn	bool
+stack.cards[].surveilled	bool
 stack.cards[].suspected	bool
 stack.cards[].suspectedAt	number:int64
 stack.cards[].suspendGranted	bool
@@ -74072,6 +74291,7 @@ turnTally.players{}.earthbends	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.equipActivations	number:int
 turnTally.players{}.firebends	number:int
+turnTally.players{}.investigates	number:int
 turnTally.players{}.landsEntered	number:int
 turnTally.players{}.landsToGraveyard	number:int
 turnTally.players{}.lifeGained	number:int

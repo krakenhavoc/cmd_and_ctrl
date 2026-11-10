@@ -241,6 +241,11 @@ type PlayerTurnTally struct {
 	Earthbends int `json:"earthbends,omitempty"`
 	Firebends  int `json:"firebends,omitempty"`
 	Airbends   int `json:"airbends,omitempty"`
+	// Investigates counts the times this player investigated this turn
+	// (CR 701.16a, #5425): one per EventInvestigate whose Actor they are.
+	// Erdwal Illuminator's "for the first time each turn". Read through
+	// Game.InvestigatedThisTurn. Additive within schema v9.
+	Investigates int `json:"investigates,omitempty"`
 }
 
 // EnteredFlierRecord is one entry of TurnTally.EnteredFliers.
@@ -2184,6 +2189,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 	case EventWaterbend, EventEarthbend, EventFirebend, EventAirbend:
 		// #5276: the bending player's count of each action this turn.
 		g.recordBendLocked(ev)
+	case EventInvestigate:
+		// #5425: the investigating player's count this turn.
+		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.Investigates++ })
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

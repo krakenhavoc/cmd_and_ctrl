@@ -301,6 +301,17 @@ const (
 	// the voter's seat and what they voted for ("nothing" for a vote
 	// for nothing).
 	LogVotesRevealed LogKind = "votes_revealed"
+	// LogClash — a player clashed (CR 701.30, #5424). `Seat` clashed,
+	// `TargetSeat` is the player they clashed with, `CardID` the card
+	// whose effect said to, and `Cause` where their revealed card went:
+	// "bottom", "top", or absent when their library was empty and they
+	// revealed none. One line per clashing player, once the cards have
+	// moved; the reveal itself is the `reveal` line before it.
+	LogClash LogKind = "clash"
+	// LogClashWon — a player won a clash (CR 701.30d). `Seat` won,
+	// `TargetSeat` is the player they clashed with and `CardID` the card
+	// whose effect said to clash. No line for a clash nobody won.
+	LogClashWon LogKind = "clash_won"
 	// LogAnyPlayerPaid / LogAnyPlayerDeclined — one player's answer to
 	// an "unless any player pays" offer (ADR 0150 §5). `Seat` answered,
 	// `CardID` is the card whose effect it was and `Label` the payment
@@ -2024,6 +2035,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventClashed, game.EventClashWon:
+		// #5424, CR 701.30. Actor clashed (or won), Target is the other
+		// clasher, Source the card whose effect said to clash. Not
+		// setTarget, for EventPlayerChosen's reason: the other clasher is
+		// always a seat. Label says where the revealed card went.
+		base.Kind = LogClash
+		if ev.Kind == game.EventClashWon {
+			base.Kind = LogClashWon
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Cause = ev.Label
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventVoteCast:
 		// ADR 0146. Actor voted, Source called the vote, Label is the
 		// option. The option's label is public: a word printed on the
@@ -3303,6 +3330,19 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		default:
 			return fmt.Sprintf("%s chose %d cards for %s", actor, e.Amount, target)
 		}
+	case LogClash:
+		// #5424. `target` is the seat name (or "a player"). The revealed
+		// card is not named: the `reveal` line before this one did.
+		switch e.Cause {
+		case game.ClashPutOnBottom:
+			return fmt.Sprintf("%s clashed with %s and put the revealed card on the bottom of their library (%s)", actor, target, card)
+		case game.ClashKeptOnTop:
+			return fmt.Sprintf("%s clashed with %s and left the revealed card on top of their library (%s)", actor, target, card)
+		default:
+			return fmt.Sprintf("%s clashed with %s and had no card to reveal (%s)", actor, target, card)
+		}
+	case LogClashWon:
+		return fmt.Sprintf("%s won the clash with %s (%s)", actor, target, card)
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
 	case LogVoteSecret:

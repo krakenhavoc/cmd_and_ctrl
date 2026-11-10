@@ -481,6 +481,10 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaFromSource {
 			out.ManaFromSource = true
 		}
+		// Graywater's Fixer: and "its mana value" as the mana component.
+		if c.ManaValueFromSource {
+			out.ManaValueFromSource = true
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {

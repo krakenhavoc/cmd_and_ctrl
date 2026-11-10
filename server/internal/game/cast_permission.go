@@ -375,6 +375,14 @@ type PermissionFilter struct {
 	// which MoveCard stamps, so the clause is pure card data.
 	PutInGraveyardThisTurn bool `json:"putInGraveyardThisTurn,omitempty"`
 
+	// SurveilledThisTurn is Eye of Duskmantle's "cards in your graveyard
+	// you've surveilled this turn" (#5429): the card arrived in the
+	// graveyard during the current turn as a surveil's graveyard leg
+	// (CR 701.25a). A card milled, discarded or put there any other way
+	// does not qualify, and neither does one that left the graveyard and
+	// came back. Read off Card.SurveilledThisTurn, pure card data.
+	SurveilledThisTurn bool `json:"surveilledThisTurn,omitempty"`
+
 	// Named is "spells with the same name as that creature" (Reflector
 	// Mage, ADR 0066's 2026-10-19 amendment): a qualifying card's name
 	// is exactly this. Empty constrains nothing. Read by a granted cast
@@ -529,6 +537,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.PutInGraveyardThisTurn && !c.PutInGraveyardNotFromBattlefieldThisTurn() {
 		return false
 	}
+	if f.SurveilledThisTurn && !c.SurveilledThisTurn() {
+		return false
+	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
@@ -559,6 +570,7 @@ func (f PermissionFilter) faceBlind() bool {
 	f.ExiledWithSource, f.ExiledWith = false, PermissionCardRef{}
 	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
+	f.SurveilledThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
 }

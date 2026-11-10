@@ -3725,6 +3725,16 @@ var items = []Item{
 		Examples: []string{"Get Lost", "Lodestone Needle"},
 	},
 	{
+		// #5424: clash and "whenever you win a clash". Closed; history in
+		// Closed seams.
+		Slug: "clash", Name: "Clash", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Clashing: you and an opponent each reveal the top card of your library and choose whether to put it on the bottom, and whoever revealed the card with the higher mana value wins. A card can do more if you win, such as Hoarder's Greed repeating itself, and \"whenever you win a clash\" sees every clash you win.",
+		Rules:       []string{"701.30a", "701.30b", "701.30c", "701.30d"},
+		Issue:       5424,
+		Examples:    []string{"Hoarder's Greed", "Marvo, Deep Operative"},
+		EngineNotes: "**Shipped** (#5424, CR 701.30): `Game.ClashForEffect(source, player, opponent, then)` and `Game.ClashWithAnOpponentForEffect(source, player, then)` (`game/clash.go`). Both clashers reveal their top card at once (`RevealTopOfLibraryForEffect`), the winner is settled by the reveal (CR 701.30d: a higher mana value than every other card revealed, so a player with an empty library cannot win and the other wins with any card; a tie has no winner), each clasher who revealed a card is then asked top or bottom in APNAP order through a keyed `option_pick` (`option-pick/engine-clash`), and the cards move once every answer is in (CR 701.30c). The whole run rides the prompt as plain data (the players, the cards, the winner, the answers so far and the card's `KeyedTail`), so a table waiting on a decision is a restore point, and a clasher who leaves with the question open is the pick's drop default, \"leave it on top\". \"Clash with an opponent\" (CR 701.30b) asks which opponent first (`option-pick/engine-clash-opponent`). `EventClashed` (one per clasher, `Label` bottom, top or empty) and `EventClashWon` (`Actor` the winner) follow the move and are the log's `clash` and `clash_won` lines; the tail's `TailOutcome.Amount` is 1 when the effect's controller won. Card side: `effects.Clash`, `effects.ClashWithAnOpponent`, `wonTheClash` and `youWonAClash` (`cards/effects/clash.go`). Not built: a CR 614 window on the action.",
+	},
+	{
 		Slug: "reconfigure", Name: "Reconfigure", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Equipment creatures that attach to another creature you control, stop being creatures while attached, and can unattach.",
 		Rules:    []string{"702.151", "301.5c"},

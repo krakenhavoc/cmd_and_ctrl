@@ -22,7 +22,7 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Disguise("{3}{G/U}{G/U}")},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Undercover Crocodelf — investigate",
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 		},
 	})
 }
