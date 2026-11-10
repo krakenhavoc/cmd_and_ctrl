@@ -153,3 +153,25 @@ func b6WheneverAPlayerCastsTheyMay(label, question string, effect func(g *game.G
 	}
 	return t
 }
+
+// b6TriggerObjectController is the controller of the object a trigger is
+// about, as it was (CR 603.10a): the entered permanent's snapshot, falling
+// back to the card as it is now. uuid.Nil when neither can be read.
+func b6TriggerObjectController(g *game.Game, ctx *Context) uuid.UUID {
+	if o := ctx.Trigger().Object; o != nil && o.Controller != uuid.Nil {
+		return o.Controller
+	}
+	if c, ok := g.LookupCardForEffect(ctx.Trigger().Event.CardID); ok {
+		return c.Controller
+	}
+	return uuid.Nil
+}
+
+// b6ALandEntered is "whenever a land enters": any player's.
+func b6ALandEntered(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventETB || ev.CardID == uuid.Nil {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsLand()
+}

@@ -1180,3 +1180,37 @@ func TestFurnaceLayerDiscardsAtRandomAndChaosDestroys(t *testing.T) {
 		}
 	})
 }
+
+var planeGoldmeadow = planeFixture{"f12400e5-8288-48e1-b3b7-0cc4f8d9ca67", "Goldmeadow", "Plane — Lorwyn"}
+
+func countGoats(g *game.Game, owner uuid.UUID) int {
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Goat" && c.Controller == owner {
+				n++
+			}
+		}
+	})
+	return n
+}
+
+func TestGoldmeadowGivesTheLandsControllerThreeGoats(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeGoldmeadow)
+	g, _ := newPlaneGame(t, planeGoldmeadow)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	playLandFromHand(t, g, "Plains", "")
+	passPriorityAroundTable(t, g)
+	if got := countGoats(g, me.ID); got != 3 {
+		t.Errorf("%d Goats for the land's controller, want 3", got)
+	}
+	if got := countGoats(g, opp.ID); got != 0 {
+		t.Errorf("%d Goats for an opponent", got)
+	}
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if got := countGoats(g, me.ID); got != 4 {
+		t.Errorf("%d Goats after chaos, want 4", got)
+	}
+}
