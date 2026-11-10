@@ -558,6 +558,8 @@ choose choose-cards/kari-zevs-expertise-cast
 choose choose-cards/karn-liberated-exile-from-hand
 choose choose-cards/karn-the-great-creator-exile
 choose choose-cards/karn-the-great-creator-take
+choose choose-cards/kaya-spirits-justice-copy
+choose choose-cards/kaya-spirits-justice-exile
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
 choose choose-cards/lady-octopus-cast
@@ -2579,6 +2581,7 @@ tail then/intrude-on-the-mind-take
 tail then/iron-man-titan-of-innovation-sacrificed
 tail then/izoni-center-of-the-web-draw-two-gain-two
 tail then/jinx-delayed-draw
+tail then/kaya-spirits-justice-exile-from-a-graveyard
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
 tail then/kindred-judgment-type-chosen

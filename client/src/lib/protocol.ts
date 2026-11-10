@@ -3491,6 +3491,11 @@ export interface AlternativeCostView {
   // is revealed, nothing moves or taps. The picker words its prompt
   // "Behold".
   behold?: boolean;
+  // Collect evidence N as the whole price (Conspiracy Unraveler's granted
+  // "collect evidence 10 rather than pay the mana cost"): `pay_options`
+  // are graveyard cards, any number of them, enough once their total mana
+  // value reaches this N. The picks ride `alt_cost_ids`.
+  collect_evidence?: number;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you
@@ -5754,6 +5759,13 @@ export interface ManaAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Collect evidence N as a mana ability's cost (Cryptex's "{T}, Collect
+  // evidence 3"): `exile_cost_n` is absent, the picker takes any number of
+  // `exile_cost_options`, and the picks are enough once their total mana
+  // value reaches `exile_cost_mana_value_min`. The ActivatedAbilityView
+  // fields of the same names; the engine refuses a pick below the floor.
+  exile_cost_any_number?: boolean;
+  exile_cost_mana_value_min?: number;
   // #5397: an either/or part of the cost — forage, Thornvault Forager's
   // "{T}, Forage: Add two mana in any combination of colors" (exile three
   // cards from your graveyard, or sacrifice a Food). The same entries

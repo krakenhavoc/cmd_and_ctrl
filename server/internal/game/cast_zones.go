@@ -585,6 +585,10 @@ func sameOfferPrice(a, b *AlternativeCost) bool {
 	if (sa == nil) != (sb == nil) || za != zb || na != nb || a.PayLabel != b.PayLabel {
 		return false
 	}
+	if a.CollectsEvidence() != b.CollectsEvidence() ||
+		a.CollectsEvidence() && a.CollectEvidence.ManaValueAtLeast != b.CollectEvidence.ManaValueAtLeast {
+		return false
+	}
 	return sameManaPrice(a.ManaCost, b.ManaCost) && a.Life == b.Life && a.Energy == b.Energy &&
 		sameCounterRemoval(a.RemoveCounters, b.RemoveCounters)
 }

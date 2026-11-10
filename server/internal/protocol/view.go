@@ -2067,6 +2067,16 @@ type AlternativeCostView struct {
 	// printed offer.
 	Behold bool `json:"behold,omitempty"`
 
+	// CollectEvidence is the N of an offer whose price is "collect
+	// evidence N" (CR 701.59a; Conspiracy Unraveler's granted "collect
+	// evidence 10 rather than pay the mana cost"). `pay_options` are the
+	// caster's graveyard cards, the spell excluded, min 1 and max all of
+	// them; the picks ride `alt_cost_ids` and are enough once their total
+	// mana value is N or more. The engine refuses a set that falls short.
+	// The wire name the optional collect evidence offer carries. Absent
+	// for every other offer. Public with the rest of the printed offer.
+	CollectEvidence int `json:"collect_evidence,omitempty"`
+
 	// TapOptions is the cost's card-shaped half when that half TAPS
 	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
 	// creature you control", Battle Screech's three white creatures,
@@ -5708,6 +5718,17 @@ type ManaAbilityView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// ExileCostAnyNumber / ExileCostManaValueMin mark collect evidence N
+	// as a mana ability's cost (CR 701.59a; Cryptex's "{T}, Collect
+	// evidence 3: Add one mana of any color"): ExileCostN is absent, the
+	// picker takes any number of ExileCostOptions, and the picks are
+	// enough once their total mana value is ExileCostManaValueMin or
+	// more. The same wire names ActivatedAbilityView carries for
+	// Forensic Researcher's CR 602 row, so the client's picker is one
+	// component for both ability kinds. The engine refuses a pick below
+	// the floor. Absent for every other mana ability.
+	ExileCostAnyNumber    bool `json:"exile_cost_any_number,omitempty"`
+	ExileCostManaValueMin int  `json:"exile_cost_mana_value_min,omitempty"`
 	// CostBranches are the ways to pay an either/or part of a mana
 	// ability's cost (#5397, game.ManaAbilityShape.Either): forage,
 	// Thornvault Forager's "{T}, Forage: Add two mana in any combination
@@ -8581,7 +8602,14 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// cost's sacrifice picker uses it: a cost does not target, so
 		// the hexproof / shroud gate must not narrow what the client
 		// offers.
-		if paySpec := ac.ExileFromHand; paySpec != nil {
+		if ac.CollectsEvidence() {
+			// Collect evidence N as the price: the engine's own walk of
+			// the caster's graveyard, the spell excluded (CR 601.2a).
+			castID, _ := uuid.Parse(self)
+			cards := cardIDStrings(g.AltCostCandidatesLocked(caster, castID, &ac))
+			v.PayOptions = &LegalTargetsView{Min: 1, Max: len(cards), Cards: cards}
+			v.CollectEvidence = ac.CollectEvidence.ManaValueAtLeast
+		} else if paySpec := ac.ExileFromHand; paySpec != nil {
 			cands := g.SpecCandidatesForEffect(caster, paySpec)
 			opts := viewOfLegalTargets(cands, paySpec)
 			opts.Players = nil
@@ -9686,6 +9714,13 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 				views[i].CantActivate = short.Error()
 			}
 		}
+		// CR 701.59b: a collect evidence cost (Cryptex) whose graveyard
+		// falls short of the floor can't be chosen, so the row greys with
+		// the CR 602 row's words.
+		if ec := raw[r].ExileCards; views[i].CantActivate == "" && ec.IsCollectEvidence() &&
+			!g.ExileCostPayableForEffect(controller, card.InstanceID, ec) {
+			views[i].CantActivate = "Your graveyard does not hold enough to exile for this cost."
+		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
 		// with the same code — and separately from it, because the
@@ -10188,6 +10223,17 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
+		}
+		// Collect evidence N (Cryptex): the any-number form, off the
+		// same walk, with its mana value floor.
+		if ec := raw[i].ExileCards; ec.IsCollectEvidence() {
+			views[i].ExileCostAnyNumber = true
+			views[i].ExileCostManaValueMin = ec.ManaValueAtLeast
+			views[i].ExileCostLabel = ec.Label
+			views[i].ExileCostZone = string(ec.Zone())
+			if g.ExileCostPayableForEffect(controller, card.InstanceID, ec) {
+				views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
+			}
 		}
 		// #5397: an either/or cost (forage, Thornvault Forager), each
 		// branch projected through the CR 602 row's projection over the
