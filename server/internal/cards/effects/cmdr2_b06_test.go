@@ -139,3 +139,111 @@ func TestCmdr2B06WarkiteStripsAbilitiesAndSetsBasePT(t *testing.T) {
 		t.Errorf("the effect outlived the turn: power %d", got)
 	}
 }
+
+// --- Skeleton Crew ----------------------------------------------------
+
+func TestCmdr2B06SkeletonCrewPumpsOtherSkeletonsAndPiratesYouControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	crew := cmdr2B05Card(g, me.ID, "Skeleton Crew", "Creature — Skeleton Pirate", cmdr2B06SkeletonOracle, 3, 3)
+	pirate := b12Creature(g, me.ID, "Pirate", "Creature — Human Pirate", 2, 2)
+	skeleton := b12Creature(g, me.ID, "Skeleton", "Creature — Skeleton", 1, 1)
+	both := b12Creature(g, me.ID, "Both", "Creature — Skeleton Pirate", 2, 2)
+	bear := seedBear(g, me.ID)
+	theirs := b12Creature(g, opp.ID, "Their Pirate", "Creature — Human Pirate", 2, 2)
+	for name, c := range map[string]struct {
+		id   uuid.UUID
+		want int
+	}{
+		"Pirate": {pirate, 3}, "Skeleton": {skeleton, 2}, "Both (once)": {both, 3},
+		"Bear": {bear, 2}, "Their Pirate": {theirs, 2}, "Crew itself": {crew, 3},
+	} {
+		if got := effectivePower(t, g, c.id); got != c.want {
+			t.Errorf("%s power %d, want %d", name, got, c.want)
+		}
+	}
+}
+
+func TestCmdr2B06SkeletonCrewMakesOneTokenPerBatchOfCreatureCardsLeaving(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	cmdr2B05Card(g, me.ID, "Skeleton Crew", "Creature — Skeleton Pirate", cmdr2B06SkeletonOracle, 3, 3)
+	var dead []uuid.UUID
+	for i := 0; i < 2; i++ {
+		id := uuid.New()
+		me.Graveyard.PushTop(game.Card{InstanceID: id, Name: "Dead Thing", TypeLine: "Creature — Zombie", Owner: me.ID, Controller: me.ID})
+		dead = append(dead, id)
+	}
+	sorcery := uuid.New()
+	me.Graveyard.PushTop(game.Card{InstanceID: sorcery, Name: "Old Spell", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(sorcery) })
+	passPriorityAroundTable(t, g)
+	if got := len(battlefieldIDsNamed(g, "Skeleton Pirate")); got != 0 {
+		t.Fatalf("a sorcery card leaving made %d tokens", got)
+	}
+	g.WithWriteLock(func() { _ = g.ExileCardsForEffect(dead) })
+	passPriorityAroundTable(t, g)
+	if got := len(battlefieldIDsNamed(g, "Skeleton Pirate")); got != 1 {
+		t.Errorf("two creature cards leaving at once made %d tokens, want 1", got)
+	}
+}
+
+func TestCmdr2B06SkeletonCrewReturnsTappedFromTheGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	id, _ := activateFromGraveyard(t, g, "Skeleton Crew", "Creature — Skeleton Pirate", cmdr2B06SkeletonOracle, 3, 3, "{C}{C}{C}{C}{C}{B}", game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	c, ok := battlefieldCardByID(g, id)
+	if !ok {
+		t.Fatal("Skeleton Crew did not return")
+	}
+	if !c.Tapped {
+		t.Error("it must enter tapped")
+	}
+}
+
+// --- Merchant Raiders -------------------------------------------------
+
+func TestCmdr2B06MerchantRaidersHoldsATargetWhenItAndOtherPiratesEnter(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	first := pushCreatureToBattlefieldForTest(g, opp.ID, "First")
+	second := pushCreatureToBattlefieldForTest(g, opp.ID, "Second")
+	third := pushCreatureToBattlefieldForTest(g, opp.ID, "Third")
+
+	raiders := castHoldCreature(t, g, "Merchant Raiders", "Creature — Human Pirate", cmdr2B06RaidersOracle, 2, 4)
+	answerPickTarget(t, g, first)
+	passPriorityAroundTable(t, g)
+	if !tappedForTest(t, g, first) || holdCount(t, g, first) != 1 {
+		t.Fatalf("the Raiders' own entry: tapped %v, holds %d", tappedForTest(t, g, first), holdCount(t, g, first))
+	}
+
+	// Another Pirate you control entering triggers it again.
+	castCatalogSpell(t, g, "Deckhand", "Creature — Human Pirate", "", nil)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, second)
+	passPriorityAroundTable(t, g)
+	if !tappedForTest(t, g, second) || holdCount(t, g, second) != 1 {
+		t.Fatalf("another Pirate entering: tapped %v, holds %d", tappedForTest(t, g, second), holdCount(t, g, second))
+	}
+
+	// A non-Pirate does not.
+	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
+	passPriorityAroundTable(t, g)
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoicePickTarget {
+			t.Fatal("a Bear entering triggered the Raiders")
+		}
+	}
+	if tappedForTest(t, g, third) {
+		t.Error("an untargeted creature was tapped")
+	}
+
+	// The hold lasts only while you control the Raiders.
+	if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneBattlefield}, game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID}, raiders); err != nil {
+		t.Fatal(err)
+	}
+	advanceToUpkeepOf(t, g, 1)
+	if tappedForTest(t, g, first) || tappedForTest(t, g, second) {
+		t.Error("the held creatures stayed tapped after the Raiders left")
+	}
+}
