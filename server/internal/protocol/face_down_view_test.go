@@ -426,7 +426,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
 			Discards:       true,
 			// #4689.
-			Behold: true,
+			Behold:          true,
+			CollectEvidence: 10,
 			// #5390: never all set on a real offer, but the redaction
 			// table has to see each one filled.
 			CounterCostN: 6, CounterCostKind: "+1/+1", CounterCostSelf: true, CounterCostLabel: "creatures you control",
@@ -988,7 +989,8 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// ADR 0135 §2: whether the price discards its cards is printed.
 	"Discards": surfacePublicPile,
 	// #4689: whether the price beholds its cards is printed.
-	"Behold": surfacePublicPile,
+	"Behold":          surfacePublicPile,
+	"CollectEvidence": surfacePublicPile,
 	// #5390: a counter-removal price's count, kind, clause and shape are
 	// printed; the options are "the creatures YOU control" and the
 	// ceiling is what YOU could remove.
