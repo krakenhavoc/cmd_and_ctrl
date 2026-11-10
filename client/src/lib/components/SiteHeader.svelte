@@ -239,6 +239,9 @@
   function current(name: string): boolean {
     // A deck's stats page (ADR 0217 §8) is part of Stats.
     if (name === "stats") return $route.name === "stats" || $route.name === "statsDeck";
+    // A pod's page is part of Pods (ADR 0220 §11).
+    if (name === "pods")
+      return $route.name === "pods" || $route.name === "pod" || $route.name === "podStats";
     return $route.name === name;
   }
 
@@ -308,6 +311,7 @@
           {@render navLink("#/lobby", "lobby", L.navTables)}
           {#if hasLinkedUser}
             {@render navLink("#/stats", "stats", "Stats")}
+            {@render navLink("#/pods", "pods", L.navPods)}
           {/if}
         </div>
         <!-- Look things up: decks, the cards the engine plays, what's next. -->

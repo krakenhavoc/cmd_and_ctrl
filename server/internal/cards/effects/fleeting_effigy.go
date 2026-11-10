@@ -23,12 +23,7 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Fleeting Effigy — return this creature to its owner's hand",
-				Do(Instruction(func(ctx *Context) error {
-					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return BounceToHand{Target: ctx.Item.SourceCardID}.Apply(ctx)
-				}))),
+				Do(Instruction(stdB9ReturnThisToHand))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}: This creature gets +2/+0 until end of turn.",

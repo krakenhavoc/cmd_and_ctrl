@@ -152,6 +152,21 @@ type GrantedAlternativeCost struct {
 	// 118.6) has mana value 0, so it costs no life. Offer.ManaCost, Life
 	// and Energy must be empty.
 	LifeEqualToManaValue bool
+
+	// EveryPlayer is a static that makes the offer to EVERY player's
+	// casts, not only to its controller's (Weftwalking: "the first spell
+	// each player casts during each of their turns may be cast without
+	// paying its mana cost"). The source's controller is not "you" in the
+	// text; the caster is whoever is casting.
+	EveryPlayer bool
+
+	// FirstSpellOnOwnTurn is "the first spell [the caster] casts during
+	// each of their turns": the offer is made only while the caster is the
+	// active player and has cast no spell yet this turn
+	// (Game.SpellsCastThisTurn), read live each time the offer is derived.
+	// A spell that is countered still was cast, so it spends the chance;
+	// a copy is not cast and does not.
+	FirstSpellOnOwnTurn bool
 }
 
 // gatedOn reports whether this static is switched on for `src` right
@@ -163,6 +178,9 @@ func (gr GrantedAlternativeCost) gatedOn(g *Game, caster uuid.UUID, src *Card) b
 		return false
 	}
 	if gr.YourTurnOnly && g.activePlayerIDLocked() != caster {
+		return false
+	}
+	if gr.FirstSpellOnOwnTurn && (g.activePlayerIDLocked() != caster || g.SpellsCastThisTurn[caster].Total > 0) {
 		return false
 	}
 	return !gr.OnceEachTurn || g.TurnTally.GrantedAltCostsClaimed[gr.claimKey(src)] == 0
@@ -285,14 +303,16 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 	var seen map[string]bool
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		if src.Controller != playerID {
-			continue
-		}
 		key := catalogAbilityKeyOf(src)
 		if key == "" {
 			continue
 		}
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
+			// A static offers its controller's casts, unless it says it
+			// offers every player's (Weftwalking).
+			if src.Controller != playerID && !gr.EveryPlayer {
+				continue
+			}
 			// Rooftop Storm's "Zombie creature spells" is a word of the
 			// source's text (CR 612.2, #4005).
 			gr.Spells = gr.Spells.ThroughTextOf(src)
@@ -349,6 +369,14 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 	}
 	return out
 }
+
+// GrantedAltCostWarp is the key of "cards in your hand have warp {cost}"
+// (Tannuk, Steadfast Second; CR 702.185a): a granted offer that, unlike
+// every other granted key, carries the warp exile clause, which the entry
+// hook (queueAltCostEntryTriggerLocked) reads off the key because the
+// card prints no row of its own. An on-disk identity: never renamed,
+// never reused.
+const GrantedAltCostWarp = "granted-warp"
 
 // GrantedAltCostNextFree is the key of the free offer a live
 // NextSpellPromise.WithoutPayingManaCost makes (#2709). An on-disk
@@ -487,10 +515,11 @@ func duplicatesListedPrice(card Card, listed []*AlternativeCost, granted *Altern
 
 // onlyMana reports whether this offer's whole price is its mana cost:
 // no condition, no life, no card to pitch, return, exile or sacrifice,
-// and no rider that changes the spell (a target rewrite, a face, an
-// entry clause, an exile on leaving the stack).
+// no counters to remove (#5390), and no rider that changes the spell (a
+// target rewrite, a face, an entry clause, an exile on leaving the
+// stack).
 func (a *AlternativeCost) onlyMana() bool {
-	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && a.XCeiling == 0 && !a.PaysCards() &&
+	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && a.XCeiling == 0 && !a.PaysCards() && a.RemoveCounters == nil &&
 		a.Targets == nil && !a.ClearsTargets && !a.SacrificeOnEntry &&
 		!a.ExileOnLeavingStack && !a.WarpExile && !a.Dash && !a.Blitz && !a.Sneak && a.EntersWithCounterName == "" &&
 		a.FaceDown == nil && !a.RequiresGrant && a.CastsFace == 0

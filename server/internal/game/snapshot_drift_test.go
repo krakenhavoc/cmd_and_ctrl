@@ -410,6 +410,7 @@ var cardFields = plan(
 	"PrintsManaAbility", carried, "",
 	"PrintsTapAbility", carried, "",
 	"ManaAbilityText", carried, "",
+	"NoAbilitiesText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
@@ -582,6 +583,10 @@ var cardFields = plan(
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
 	"ChosenOption", carried, "",
+	// A Killer Among Us (#4469): the word its controller chose in secret
+	// and who chose it. A player's choice, so nothing can rebuild it.
+	"SecretChoice", carried, "",
+	"SecretChoiceBy", carried, "",
 	// #1941, CR 614.12a: the number chosen as the permanent entered
 	// (Phyrexian Processor's life paid). A player's choice, so nothing
 	// can rebuild it — and it is the size of every token it makes.
@@ -637,6 +642,7 @@ var cardFields = plan(
 	// #3172: "has dealt combat damage", the object history behind Ruric
 	// Thar's conditional hexproof, carried for Renowned's reason.
 	"DealtCombatDamage", carried, "",
+	"DealtDamage", carried, "",
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",
@@ -686,6 +692,8 @@ var cardFields = plan(
 	// #2651: the ability half of that link (CR 607.2a). The zero ref is
 	// a legal state too: a replacement's link, or a file before it.
 	"ExiledWithAbility", carried, "",
+	// #4458: the turn that link was made on; zero is "not this turn".
+	"ExiledWithTurn", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
@@ -968,6 +976,7 @@ var stackItemFields = plan(
 	// gave flashback to could then be flashed back again forever.
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
+	"ExileAndPlot", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
 	"BottomInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
@@ -1038,6 +1047,11 @@ var delayedTriggerFields = plan(
 	"OnSeq", carried, "",
 	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
+	// "On your next turn" (Kav Landseeker): AfterThisTurn is the input
+	// half, turned into NotBeforeSeq and cleared as the trigger is
+	// scheduled, so it is never stored; NotBeforeSeq is plain data.
+	"AfterThisTurn", rebuilt, "input only: ScheduleDelayedTriggerForEffect stamps NotBeforeSeq from it and clears it before the trigger is stored",
+	"NotBeforeSeq", carried, "",
 	"Cards", carried, "",
 	// #663's event condition. The data half comes back so a restored
 	// game still knows WHAT was owed and until when.
@@ -1059,6 +1073,7 @@ var delayedTriggerFields = plan(
 	"Due", carried, "",
 	"Repeats", carried, "", // #2169, CR 603.7b
 	"OncePerBatch", carried, "", // #3172, CR 603.2c
+	"ThroughCleanup", carried, "", // #4462, Stolen Uniform: kept past the cleanup sweep
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
 	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
@@ -1104,6 +1119,10 @@ var pendingChoiceFields = plan(
 	// abilities. A restored Birds pick that lost it would put the mana
 	// in the pool and skip Wild Growth's {G}.
 	"ManaTapped", carried, "",
+	// The "becomes that color" rider of the pick's ability (Foraging
+	// Wickermaw): a restored pick that lost it would leave the source
+	// its old colour.
+	"ManaRecolorsSource", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	// #4289: a keyed MayPayX's "choose X" holds no frame, so its bounds are

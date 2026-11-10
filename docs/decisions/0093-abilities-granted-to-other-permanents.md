@@ -11,6 +11,8 @@
 "Amendment 2026-10-15 — a granted static in layer 6".
 2026-10-15 — a bundle can carry game-end gates (#3862); see "Amendment 2026-10-15 — a bundle can
 carry 'you can't lose the game'".
+2026-11-10 — a granted static may grant one fixed bundle that cannot grant again (#5402); see
+"Amendment of 2026-11-10 — a granted static that grants one fixed bundle".
 2026-11-05 — a RESOLVED effect's grant to an exiled card (#4973) is [ADR 0219](0219-an-ability-a-resolved-effect-gives-an-exiled-card.md), which reuses the 2026-10-13 bundle and refs.
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
@@ -429,6 +431,9 @@ names a key no card registered, or if a layer-6 grant names a bundle with a `Sta
   (#2562): the second gather after layer 6. Layers 1-6, 7a and 7b stay refused.*
   *Lifted for layer 6, 7b and 7e by the amendment of 2026-10-15 (#3784): a granted layer-6 static
   joins the layer-6 bucket when its grant applies. Layers 1-5 and 7a stay refused.*
+  *Narrowed by the amendment of 2026-11-10 (#5402): a granted layer-6 static may itself grant ONE
+  fixed, catalog-registered bundle that carries no static, by an explicit opt-in
+  (`StaticAbility.GrantsFixedBundle`). Every other granted grant, removal and borrow stays refused.*
 - **Granted replacement effects and the CR 614.12 look-ahead**, including riot (Rhythm of the Wild).
   Riot is a keyword, so granting it already works once the keyword exists. What is missing is riot
   and "abilities it would have on the battlefield" as it enters. PR 1 moves Rhythm of the Wild off
@@ -1136,3 +1141,71 @@ and taps.
 Tests: `game/exile_grantor_cost_test.go`,
 `cards/effects/the_dominion_bracelet_test.go`,
 `protocol/combat_control_view_test.go`.
+
+## Amendment of 2026-11-10 — a granted static that grants one fixed bundle (#5402)
+
+**Sprint:** S79 — Card coverage: every Standard set, newest first. **Owner decision:** 2026-11-10, on
+[#5402](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5402), approving the narrow amendment proposed
+there.
+
+**The printed need.** Roar of the Fifth People (the back face of Huatli, Poet of Unity, The Lost Caverns
+of Ixalan), chapter II: 'This Saga gains "Creatures you control have '{T}: Add {R}, {G}, or {W}.'"'. The
+Saga gains a static ability, and that static grants an ability. §4 of the amendment of 2026-10-15 refused
+exactly this shape ("this creature has 'creatures you control have "…"'") because no printed card needed
+it. This one does. Its ruling: the chapter has no duration and applies as long as the Saga remains on the
+battlefield (CR 611.2a, pinned to the Saga as Urza's Saga's chapters are).
+
+**1. What is allowed, and only this.** A static in a bundle a layer-6 grant names may declare
+`GrantAbilities` when it opts in with `StaticAbility.GrantsFixedBundle` (`effects.GrantedFixedBundle`).
+`game.GrantedStaticProblem` then accepts it only when:
+
+- it is a layer-6 static;
+- `GrantAbilities` names exactly ONE bundle;
+- the catalog registers that bundle, and it has no `Static` slot. A bundle with no static cannot grant,
+  remove or borrow, so the inner grant can do none of those things in its turn.
+
+It still refuses, beside the opt-in, a removal (`RemovesAbilities`, `ContinuesAfterRemoval`) and a
+borrow. A granted static that grants without the opt-in is refused as before. So is one that names two
+bundles, an unregistered bundle, or a bundle with a static (its own included). `effects.Register` makes
+the same refusal at boot (`checkFixedBundleGrants`): the inner bundle must be one the same card declares
+in its `Grants`, with no static. `checkGrantMods` refuses the outer bundle at resolution, and
+`TestEveryGrantKeyResolves` and `TestEveryDurationGrantKeyResolves` refuse it in the build-time scans,
+all through `GrantedStaticProblem`. Every other refusal of §4 (2026-10-15) and of the 2026-10-10
+amendment stands.
+
+**2. Why it ends.** The cascade stops after two steps by construction. The outer grant (the Saga's
+`ScopedGrant`) writes the outer bundle onto its host. `applyGrantingBucketLocked` inserts the bundle's
+layer-6 static into the bucket, as the 2026-10-15 amendment already does. When that static applies, it
+writes the inner bundle onto each object it applies to (`grantedStaticEffect.Apply`, with the host as the
+grantor). `noteAppendedGrants` finds no static on the inner bundle, so nothing more is inserted. There is
+no fixed point to look for, and no loop.
+
+**3. Order needs no new rule.** CR 613.8a: "applying the other would change … the existence of the first
+effect". The inner grant exists only once the outer static applies, and it is written in that static's own
+slot. That static already waits for its grant and takes CR 613.7a's timestamp: "the same timestamp as the
+object the static ability is on, or the timestamp of the effect that created the ability, whichever is
+later".
+
+**4. Rules-exactness, from the existing machinery.**
+
+- The Saga losing all abilities after chapter II ends the static's existence. `grantedStaticEffect.AppliesTo`
+  sees that the host no longer holds the outer grant, so the inner grant is never written, and the
+  creatures lose the mana ability (CR 613.6, 613.8a).
+- "Creatures you control" is read on every pass with the host as the source, so a creature that enters
+  later has the ability too.
+- When the Saga leaves the battlefield (sacrificed after IV), the pinned scoped grant ends, and so does
+  everything it granted.
+- A creature that loses all abilities after the inner grant loses the mana ability; one that lost them
+  before keeps it. They sort by timestamp, as §2 of the 2026-10-15 amendment says of a recipient.
+
+**5. Wire and persistence.** No new snapshot field and no new wire field. The `ScopedGrant` already
+persists the outer key. The inner grant is rebuilt on every pass, and its mana row's ref is the ordinary
+`grant:` ref of a granted mana ability. `GrantsFixedBundle` is catalog data on a `StaticAbility`, not a
+func, so the closure census does not change.
+
+**Cards.** Huatli, Poet of Unity // Roar of the Fifth People (both faces Full, no caveats).
+
+Pinned by `TestGrantedStaticProblemAcceptsOnlyAFixedBundleGrant`,
+`TestAGrantedStaticGrantsItsFixedBundleThroughItsHost` and the existing
+`TestGrantedStaticProblemNamesWhatAGrantCannotCarry` (`internal/game`), and in `internal/cards/effects`
+`TestCheckFixedBundleGrantsRefusesEveryOtherShape` and the `huatli_poet_of_unity_test.go` tests.

@@ -376,6 +376,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ChosenName = ""
 		c.ChosenSecondName = ""
 		c.ChosenOption = ""
+		c.SecretChoice, c.SecretChoiceBy = "", uuid.Nil
 		c.ChosenNumber = 0
 		c.ChosenPermanent = ObjectRef{}
 		c.LinkedPermanent = ObjectRef{}
@@ -390,6 +391,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Monstrous = false
 		c.Renowned = false
 		c.DealtCombatDamage = false
+		c.DealtDamage = false
 		c.Bestowed = false
 		c.EnchantSwapped = false
 		c.EnchantReturned = ObjectRef{}

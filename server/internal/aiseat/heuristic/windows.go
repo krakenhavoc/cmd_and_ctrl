@@ -135,6 +135,9 @@ var nonManaCastKeys = []string{
 	"alt_cost_ids", "discard_ids", "sacrifice_ids", "delve_ids",
 	"teamwork_ids", "blight_ids", "reveal_ids", "exile_permanent_ids", "return_ids", "exile_from_hand_ids", "exile_ids", "optional_costs", "cost_branch",
 	"phyrexian_life",
+	// #5390: an offer's counter removal (Quilled Greatwurm's graveyard
+	// cast) spends counters, as an activation's does.
+	"counter_source_ids", "counter_counts", "counter_kind", "counter_kinds",
 }
 
 // nonManaCastKeysBesidesSacrifice is nonManaCastKeys without the
@@ -293,7 +296,7 @@ func (p *Policy) tapsACreature(st *state, m legal.Move) bool {
 // printed cost has no component but mana and tapping. A "Mill N cards"
 // component (#3845) is a library cost like LibraryExileCostN's (#3870).
 func rowCostsOnlyManaAndTaps(r *protocol.ActivatedAbilityView) bool {
-	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf && !r.BottomSelf && !r.ExileGrantor &&
+	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf && !r.BottomSelf && !r.ExileGrantor && !r.TapGrantor &&
 		r.SacrificeLabel == "" && r.LifeCost == 0 && r.LoyaltyCost == nil &&
 		r.DiscardCostN == 0 && r.TopCostN == 0 && r.ExileCostN == 0 &&
 		r.LibraryExileCostN == 0 && r.MillCost == 0 && r.ReturnLabel == "" && r.ExilePermanentLabel == ""

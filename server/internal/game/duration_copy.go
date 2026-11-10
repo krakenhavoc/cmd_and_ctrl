@@ -115,6 +115,31 @@ func (g *Game) CopiableValuesForEffect(cardID uuid.UUID) (PrintedValues, bool) {
 	return SingleFacedCopiableValuesOf(c), true
 }
 
+// CopiableValuesOfSpellForEffect returns the copiable values of the
+// SPELL `spellID` names, for "becomes a copy of that spell" (#5403,
+// The Myriad Pools). CR 707.2: "When copying an object, the copy
+// acquires the copiable values of the original object's
+// characteristics and, for an object on the stack, choices made when
+// casting or activating it". The spell is read where it is on the stack
+// (or resolving); once it has left the stack without resolving it is
+// read from its last-known information (CR 608.2h), the record a
+// countered spell leaves (stack_lki.go) — never the card it went back
+// to being in a graveyard. A double-faced spell gives the face it was
+// cast as and no other, as a copy of a double-faced permanent does.
+//
+// False when the spell is neither on the stack, nor resolving, nor
+// recorded this turn. Caller must hold g.mu.
+func (g *Game) CopiableValuesOfSpellForEffect(spellID uuid.UUID) (PrintedValues, bool) {
+	src, _, ok := g.stackSpellLocked(spellID)
+	if !ok {
+		src, _, ok = g.lastKnownSpellLocked(spellID)
+	}
+	if !ok {
+		return PrintedValues{}, false
+	}
+	return SingleFacedCopiableValuesOf(src), true
+}
+
 // BecomeCopyForEffect makes each permanent in `targets` a copy of `v`
 // for duration `d` (CR 707.2, CR 611.2) — the duration copy effect.
 // `copied` names the object the values were taken from, for the event

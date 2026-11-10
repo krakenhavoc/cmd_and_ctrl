@@ -178,6 +178,11 @@ type CardDef struct {
 	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// BlockTaxes are the "creatures can't block unless their controller
+	// pays {N} for each of those creatures" statics this permanent
+	// contributes (CR 509.1d, ADR 0221) — Archangel of Tithes. Read
+	// from the battlefield through BlockTaxesForCard.
+	BlockTaxes []BlockTax
 	// EquipCostAlternatives are the "you may pay {0} rather than pay the
 	// equip cost of the first equip ability you activate each turn"
 	// clauses this permanent contributes to its controller (CR 118.9,
@@ -330,6 +335,10 @@ type CardDef struct {
 	// it at the beginning of the next cleanup step" (#3156). See
 	// flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
+	// FlashIf is "You may cast this spell as though it had flash if
+	// <condition>" (#5207): the card's own conditional timing
+	// permission. See flash_if.go.
+	FlashIf *FlashIf
 	// CastTimeValues are the numbers the spell fixes as it is cast
 	// (#3781): "where X is the greatest power among creatures you
 	// controlled as you cast this spell". See cast_time_values.go.
@@ -473,6 +482,10 @@ type CardDef struct {
 	// through CatalogAbilityKey; see game.CatalogGameEndGates and
 	// ADR 0057 Decision 4 (#749).
 	GameEndGates []GameEndGate
+	// CoinFlipRules are this permanent's printed rules over the coins its
+	// controller flips (Edgar, King of Figaro's Two-Headed Coin), read from
+	// the battlefield through CatalogAbilityKey; see coin_flip_rules.go.
+	CoinFlipRules []CoinFlipRule
 	// Emblem is the presentation half of an EMBLEM's catalog entry
 	// (CR 114) — its board label and its printed ability text. Set
 	// only on an emblem's own def, the one effects.Register files
@@ -622,6 +635,14 @@ type CardDef struct {
 	// LibraryTopRevealedEachPlayer, which reaches every library. Read
 	// through CatalogLibraryTopVisible; see library_top.go.
 	LibraryTopVisible LibraryTopVisibility
+
+	// LibraryTopVisibleWhen gates LibraryTopVisible by a designation:
+	// "Solved — You may look at the top card of your library any time"
+	// (Case of the Locked Hothouse). The zero Designation is no gate. The
+	// clause counts only while the permanent's own designation is active
+	// (LibraryTopVisibilityLocked). Read through
+	// CatalogLibraryTopVisibleWhen.
+	LibraryTopVisibleWhen Designation
 
 	// HandsRevealed is whose hands this permanent's static reveals:
 	// "your opponents play with their hands revealed" (Telepathy) is
@@ -891,6 +912,12 @@ func init() {
 	CatalogAttackTaxes = func(key string) []AttackTax {
 		if d := catalogDef(key); d != nil {
 			return d.AttackTaxes
+		}
+		return nil
+	}
+	CatalogBlockTaxes = func(key string) []BlockTax {
+		if d := catalogDef(key); d != nil {
+			return d.BlockTaxes
 		}
 		return nil
 	}
@@ -1194,6 +1221,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogCoinFlipRules = func(key string) []CoinFlipRule {
+		if d := catalogDef(key); d != nil {
+			return d.CoinFlipRules
+		}
+		return nil
+	}
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.WantsDistinctColors
@@ -1285,6 +1318,12 @@ func init() {
 			return d.DiscardByOpponent, d.DiscardByOpponentForHand
 		}
 		return DiscardByOpponentNone, DiscardByOpponentNone
+	}
+	CatalogLibraryTopVisibleWhen = func(key string) Designation {
+		if d := catalogDef(key); d != nil {
+			return d.LibraryTopVisibleWhen
+		}
+		return Designation{}
 	}
 	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
 		if d := catalogDef(key); d != nil {

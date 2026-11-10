@@ -56,6 +56,7 @@ func DiceTail(key string, body func(ctx *Context, rolls []int) error) game.TailR
 	})
 }
 
+//nolint:unparam // n is the count "choose N at random" prints; every card so far picks one, in-flight batches may not.
 func randomPick(ctx *Context, ids []uuid.UUID, n int) []uuid.UUID {
 	return ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), ids, n)
 }

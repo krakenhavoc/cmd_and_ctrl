@@ -290,10 +290,13 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		BlockingTargets:     []string{"attacker", "attacker-2"},
 		BlockCapacity:       2,
 		BlocksAnyNumber:     true,
-		GoadedBy:            "goader",
-		Goaders:             []string{"goader"},
-		MustAttack:          true,
-		MustBlock:           true,
+		// #5396: deliberately NOT in redactedCardKeys: it is read off
+		// the card's abilities, which an unknown card does not show.
+		CantBlockAlone: true,
+		GoadedBy:       "goader",
+		Goaders:        []string{"goader"},
+		MustAttack:     true,
+		MustBlock:      true,
 		// #3898: deliberately NOT in redactedCardKeys. The sentence
 		// names both creatures, and the server never stamps either on
 		// a face-down permanent.
@@ -426,10 +429,17 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
 			Discards:       true,
 			// #4689.
-			Behold:        true,
-			XLockedAtZero: true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			Behold:          true,
+			CollectEvidence: 10,
+			// #5390: never all set on a real offer, but the redaction
+			// table has to see each one filled.
+			CounterCostN: 6, CounterCostKind: "+1/+1", CounterCostSelf: true, CounterCostLabel: "creatures you control",
+			CounterCostAmong: true, CounterCostVariable: true, CounterCostMax: 6,
+			CounterCostOptions: []CounterCostOptionView{{CardID: "x", Kinds: []CounterKindCount{{Kind: "+1/+1", Count: 6}}}},
+			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
-			TimingClosed: true,
+			TimingClosed:       true,
+			OpensFlashRequired: true,
 			// #3225.
 			XMax: new(3),
 			// ADR 0126 §6.
@@ -444,15 +454,17 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		// (both may be true at once on a real card; this fixture just
 		// needs both non-zero).
 		PrintedCostTimingClosed: true,
-		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
-		Delve:                   &DelveView{Options: lt, Max: 1},
-		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
-		PermissionTypes:         []string{"artifact", "creature"},
-		PhyrexianSymbols:        1,
-		PhyrexianGranted:        1,
-		CastableHere:            true,
-		ClosesOnPass:            true,
-		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
+		// #5363: and the printed claim's "only with an opens_flash cost".
+		OpensFlashRequired: true,
+		TapCost:            &TapCostView{Key: "convoke", Options: lt},
+		Delve:              &DelveView{Options: lt, Max: 1},
+		TargetCostNotes:    []string{"This spell costs {1} more to cast for each target beyond the first."},
+		PermissionTypes:    []string{"artifact", "creature"},
+		PhyrexianSymbols:   1,
+		PhyrexianGranted:   1,
+		CastableHere:       true,
+		ClosesOnPass:       true,
+		OptionalCosts:      []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
 		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
 		// of the cost surface — a legendary-sorcery clause says more
 		// about a face-down card than its mana cost does.
@@ -892,7 +904,10 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// battlefield's own grants — all public, the same reasoning
 	// ActivatedAbilityView.TimingClosed's doc gives.
 	"PrintedCostTimingClosed": surfacePublicPile,
-	"TapCost":                 surfacePublicPile,
+	// #5363: the same public timing read, asked with the opens_flash
+	// optional costs announced.
+	"OpensFlashRequired": surfacePublicPile,
+	"TapCost":            surfacePublicPile,
 	// ADR 0100: delve's options are the caster's graveyard, a public
 	// pile everybody can count, and its budget is printed arithmetic —
 	// placed with TapCost, whose options are the caster's own board.
@@ -977,11 +992,23 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// ADR 0135 §2: whether the price discards its cards is printed.
 	"Discards": surfacePublicPile,
 	// #4689: whether the price beholds its cards is printed.
-	"Behold":           surfacePublicPile,
-	"TargetMode":       surfacePublicPile,
-	"XLockedAtZero":    surfacePublicPile,
-	"PhyrexianSymbols": surfacePublicPile,
-	"PhyrexianGranted": surfacePublicPile,
+	"Behold":          surfacePublicPile,
+	"CollectEvidence": surfacePublicPile,
+	// #5390: a counter-removal price's count, kind, clause and shape are
+	// printed; the options are "the creatures YOU control" and the
+	// ceiling is what YOU could remove.
+	"CounterCostN":        surfacePublicPile,
+	"CounterCostKind":     surfacePublicPile,
+	"CounterCostSelf":     surfacePublicPile,
+	"CounterCostLabel":    surfacePublicPile,
+	"CounterCostAmong":    surfacePublicPile,
+	"CounterCostVariable": surfacePublicPile,
+	"CounterCostMax":      surfacePrivate,
+	"CounterCostOptions":  surfacePrivate,
+	"TargetMode":          surfacePublicPile,
+	"XLockedAtZero":       surfacePublicPile,
+	"PhyrexianSymbols":    surfacePublicPile,
+	"PhyrexianGranted":    surfacePublicPile,
 	// #1172: the two board-derived lists. `legal_targets` is the
 	// clause this offer leaves the spell with, resolved for the asking
 	// seat; `pay_options` is "the blue cards in YOUR hand", "the cards
@@ -1008,6 +1035,8 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,
+	// #5363: same reasoning as TimingClosed.
+	"OpensFlashRequired": surfacePublicPile,
 	// #3225: the offer's X ceiling folded with the card's board-set one,
 	// the same per-seat number the card's own x_max is.
 	"XMax": surfacePrivate,

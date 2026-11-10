@@ -400,6 +400,10 @@ func main() {
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
+	// ADR 0216 owner answer 3: the Planechase table option is a dev
+	// feature until the plane card batches land. One switch, read by
+	// the lobby's settings door and the hub's set_table_settings.
+	mgr.SetPlanechaseOffered(cfg.Features.Planechase)
 	// The capacity caps (ADR 0148): installed on the lobby and the hub
 	// BEFORE RestoreFromDisk, which sizes the boot restore against the
 	// load cap.
@@ -930,6 +934,7 @@ func main() {
 		Social:            socialStore,
 		Pods:              podStore,
 		AdvancedStats:     newAdvancedStatsStore(database),
+		PodStats:          newPodStatsStore(database),
 		Log:               log,
 		Bots:              bots,
 		BotBudget:         botBudget,
@@ -1733,6 +1738,15 @@ func newGameStatsStore(database *db.DB) gamestats.Store {
 // the advanced-stats read routes (ADR 0217 slice 5), or nil with no
 // database.
 func newAdvancedStatsStore(database *db.DB) gamestats.AdvancedStore {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLStore(database)
+}
+
+// newPodStatsStore reads the seats a pod's stats stand on (ADR 0220
+// slice 5), or nil with no database.
+func newPodStatsStore(database *db.DB) gamestats.PodStore {
 	if database == nil {
 		return nil
 	}

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Sinuous Benthisaur — Creature — Dinosaur {5}{U}, 4/4 (The Lost Caverns
 // of Ixalan, #4470):
@@ -11,9 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 the rest on the bottom of your library in a random order."
 //
 // X is counted as the trigger resolves (CR 608.2h): Caves are lands
-// with the Cave subtype you control (b08LandsWithSubtypeControlled), plus
-// Cave cards in your graveyard (b19ZombieCardsInGraveyard's subtype
-// count). The take is mandatory: two cards, or every card looked at if
+// with the Cave subtype you control, plus Cave cards in your graveyard
+// (caveCount). The take is mandatory: two cards, or every card looked at if
 // there are fewer, and no reveal, since nothing says to reveal them. The
 // rest go to the bottom at random (takeRestBottomRandom).
 //
@@ -26,8 +29,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
-				x := b08LandsWithSubtypeControlled(g, item.Controller, "Cave") +
-					b19ZombieCardsInGraveyard(g, item.Controller, "Cave")
+				x := caveCount(g, item.Controller, uuid.Nil)
 				if x <= 0 {
 					return nil
 				}

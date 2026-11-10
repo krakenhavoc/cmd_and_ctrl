@@ -339,6 +339,12 @@ type ReplacementEvent struct {
 	// applied to their parent, so two doublers still produce four cards
 	// while dredge and first-draw exceptions are evaluated per card.
 	DrawCount int
+	// DrawInstruction marks the synthetic event Quantum Riddler's kind of
+	// effect is asked about: the WHOLE "draw N cards" instruction, before
+	// any single draw opens its window (draw_instruction.go, CR 121.2).
+	// An effect with DrawInstructionExtra > 0 applies only to such an
+	// event, and the ordinary replacements never see it.
+	DrawInstruction bool
 	// drawPending holds the individual draws introduced by an amount
 	// replacement. Each inherits the effects already applied to its parent,
 	// but opens its own window before it happens (CR 121.2, 614.5).
@@ -1209,6 +1215,17 @@ type ReplacementEvent struct {
 	// Event.FromRadiation.
 	LifeFromRadiation bool
 
+	// LifePayment marks a life loss that is a PAYMENT (CR 118.3, CR 119.4):
+	// the cost-shaped path payLifeAsCostLocked takes, which every "pay N
+	// life" runs through (a Phyrexian symbol, a ward, a shockland, an
+	// activation cost). A replacement worded about paying life ("if you
+	// would pay life while your library has at least that many cards,
+	// exile that many cards instead", Ashiok, Wicked Manipulator) reads
+	// it; a replacement about losing life ignores it, because a payment IS
+	// a loss. A payment replaced down to a zero delta is still paid (it
+	// is not Canceled): no life moves and no EventChangeLife is emitted.
+	LifePayment bool
+
 	// lifeTail is the life half's answer to damageTail: the rest of
 	// the effect that asked for this change, run with the amount that
 	// actually moved once the pipeline settles. Set by the *Then*
@@ -1747,6 +1764,15 @@ type ReplacementEffect struct {
 	// Leave Replace nil: the engine cancels the draw itself. The zero
 	// value is "not a draw-substituting effect".
 	DrawInstead DrawInsteadRef
+
+	// DrawInstructionExtra, on a RepEventDraw replacement, is "if you
+	// would draw one or more cards, you draw that many cards plus N
+	// instead" (Quantum Riddler): it adds N to the size of a whole draw
+	// instruction, once, before the individual draws are made, so the
+	// replacements on single draws then apply to each of the N+1
+	// (draw_instruction.go). AppliesTo sees the synthetic event
+	// (ReplacementEvent.DrawInstruction) and must refuse every other.
+	DrawInstructionExtra int
 
 	// KeywordInstead, on a RepEventKeywordAction replacement, replaces
 	// the keyword action with an effect (learn_action.go): Retriever

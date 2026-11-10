@@ -1051,7 +1051,10 @@ type cardSnapshot struct {
 	// ManaAbilityText is Card.ManaAbilityText (#3943). Additive; absent
 	// means PrintedUnknown, which is what every older file says, and
 	// HasPrintedManaAbility then asks the catalog as it always did.
-	ManaAbilityText PrintedFact         `json:"manaAbilityText,omitempty"`
+	ManaAbilityText PrintedFact `json:"manaAbilityText,omitempty"`
+	// NoAbilitiesText is Card.NoAbilitiesText (#4464). Additive; absent
+	// means PrintedUnknown, which is what every older file says.
+	NoAbilitiesText PrintedFact         `json:"noAbilitiesText,omitempty"`
 	Owner           uuid.UUID           `json:"owner"`
 	Controller      uuid.UUID           `json:"controller"`
 	Tapped          bool                `json:"tapped"`
@@ -1209,6 +1212,12 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// SecretChoice and SecretChoiceBy are the word chosen in secret for
+	// this permanent and the player who chose it (secret_choice.go, A
+	// Killer Among Us). Carried for ChosenPlayer's reason: a player chose
+	// it and nothing can rebuild it. Additive within the version.
+	SecretChoice   string    `json:"secretChoice,omitempty"`
+	SecretChoiceBy uuid.UUID `json:"secretChoiceBy,omitempty"`
 	// ChosenNumber is the number chosen as this permanent entered
 	// (#1941, CR 614.12a) — the life Phyrexian Processor's controller
 	// paid. Carried for ChosenPlayer's reason: a player chose it and
@@ -1314,6 +1323,10 @@ type cardSnapshot struct {
 	// after it had connected. Additive within v8: an older binary
 	// ignores the key.
 	DealtCombatDamage bool `json:"dealtCombatDamage,omitempty"`
+	// DealtDamage is "has dealt damage", DealtCombatDamage's twin for
+	// damage of any kind (Karakyk Guardian). Additive within the
+	// version: an older binary ignores the key.
+	DealtDamage bool `json:"dealtDamage,omitempty"`
 	// Bestowed is CR 702.103b's bestowed status (ADR 0141, #2862): a
 	// spell cast bestowed, or the Aura it became. Carried because "not
 	// bestowed" is a legal zero value: a restore that dropped it would
@@ -1403,6 +1416,12 @@ type cardSnapshot struct {
 	// have found nothing before. A pointer, so a card no ability linked
 	// writes nothing (the #1492 omitzero rule).
 	ExiledWithAbility *AbilityRef `json:"exiledWithAbility,omitempty"`
+	// ExiledWithTurn is the turn that link was made on (Maralen, Fae
+	// Ascendant's "cards exiled with Maralen this turn", #4458).
+	// Additive within the version: a file without it restores zero,
+	// "not this turn", so a restored game's earlier links grant nothing
+	// this-turn clauses read, which is the safe direction.
+	ExiledWithTurn int `json:"exiledWithTurn,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -1731,6 +1750,9 @@ type stackItemSnapshot struct {
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
+	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
+	// Carried for the reason ExileWithCounter is.
+	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
 	// ExileInsteadOfGraveyard (#3863) is Torrential Gearhulk's and
 	// Emet-Selch's "if that spell would be put into your graveyard,
 	// exile it instead". Carried: a restore that lost it would let the
@@ -1809,7 +1831,8 @@ type delayedTriggerSnapshot struct {
 	Label              string     `json:"label,omitempty"`
 	At                 Step       `json:"at"`
 	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
-	TurnOf             *uuid.UUID `json:"turnOf,omitempty"` // #1538
+	NotBeforeSeq       int        `json:"notBeforeSeq,omitempty"` // Kav Landseeker: "on your next turn"
+	TurnOf             *uuid.UUID `json:"turnOf,omitempty"`       // #1538
 	// OnExtraTurn is ADR 0059 Decision 8's binding to one extra turn.
 	// Additive: an older binary drops it, but every card that binds a
 	// trigger also names a body that binary lacks, so it refuses the
@@ -1859,6 +1882,7 @@ type delayedTriggerSnapshot struct {
 	// stronger) and reads a mana record as a no-op.
 	Repeats        bool   `json:"repeats,omitempty"`
 	OncePerBatch   bool   `json:"oncePerBatch,omitempty"`
+	ThroughCleanup bool   `json:"throughCleanup,omitempty"`
 	ManaTapSubtype string `json:"manaTapSubtype,omitempty"`
 	ManaAdds       string `json:"manaAdds,omitempty"`
 
@@ -1899,6 +1923,7 @@ type pendingChoiceSnapshot struct {
 	ManaSettled          []string               `json:"manaSettled,omitempty"`
 	ManaPicksLeft        []ManaPickSlot         `json:"manaPicksLeft,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
+	ManaRecolorsSource   bool                   `json:"manaRecolorsSource,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
 	NoLegalTarget        bool                   `json:"noLegalTarget"`
@@ -3029,6 +3054,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintsManaAbility:        c.PrintsManaAbility,
 		PrintsTapAbility:         c.PrintsTapAbility,
 		ManaAbilityText:          c.ManaAbilityText,
+		NoAbilitiesText:          c.NoAbilitiesText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -3087,6 +3113,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
+		SecretChoice:             c.SecretChoice,
+		SecretChoiceBy:           c.SecretChoiceBy,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
@@ -3099,6 +3127,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
+		DealtDamage:              c.DealtDamage,
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
@@ -3118,6 +3147,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:           c.ExiledWithTurn,
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -3278,6 +3308,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
+		ExileAndPlot:     s.ExileAndPlot,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
@@ -3397,6 +3428,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		NotBeforeSeq:       d.NotBeforeSeq,
 		OnExtraTurn:        d.OnExtraTurn,
 		OnPhaseID:          d.OnPhaseID,
 		OnSeq:              d.OnSeq,
@@ -3413,6 +3445,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Due:                d.Due,
 		Repeats:            d.Repeats,
 		OncePerBatch:       d.OncePerBatch,
+		ThroughCleanup:     d.ThroughCleanup,
 		ManaTapSubtype:     d.ManaTapSubtype,
 		ManaAdds:           d.ManaAdds,
 
@@ -3473,6 +3506,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		ManaSettled:           copyStrings(c.ManaSettled),
 		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
 		ManaTapped:            c.ManaTapped,
+		ManaRecolorsSource:    c.ManaRecolorsSource,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:         c.NoLegalTarget,
 		PickTargetPlayers:     copyUUIDs(c.PickTargetPlayers),
@@ -3580,14 +3614,14 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 	// decision D5): its frame is counted below, as a closure.
 	tf := snapshotTriggerFrameOf(c, cen)
 	if tf != nil {
-		out.TriggerFrame, out.PickThen = tf, TriggerFrameKey
+		out.TriggerFrame, out.PickThen = tf, tf.marker()
 	}
 	// #4361 S14b: a trigger's target walk, likewise. nil for an ability
 	// that cannot be named (D5) or whose statement reads the board.
 	tw := snapshotTargetWalkOf(c, cen)
 	if tw != nil {
 		out.TargetWalk = tw
-		out.PickThen = targetWalkMarker(c.Kind)
+		out.PickThen = targetWalkMarker(c.Kind, tw.Frame.Reflexive != nil)
 	}
 	// #4361 S13: a parked cast or activation, written as data. A prompt
 	// carries at most one of it and (S15) a copy's new-targets walk; the
@@ -4159,6 +4193,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintsManaAbility:        c.PrintsManaAbility,
 		PrintsTapAbility:         c.PrintsTapAbility,
 		ManaAbilityText:          c.ManaAbilityText,
+		NoAbilitiesText:          c.NoAbilitiesText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -4216,6 +4251,8 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
+		SecretChoice:             c.SecretChoice,
+		SecretChoiceBy:           c.SecretChoiceBy,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
@@ -4228,6 +4265,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
+		DealtDamage:              c.DealtDamage,
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
@@ -4247,6 +4285,7 @@ func restoreCard(c *cardSnapshot) Card {
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:           c.ExiledWithTurn,
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -4454,6 +4493,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		IsCopy:           s.IsCopy,
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
+		ExileAndPlot:     s.ExileAndPlot,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
@@ -4517,6 +4557,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
+		NotBeforeSeq:       d.NotBeforeSeq,
 		OnExtraTurn:        d.OnExtraTurn,
 		OnPhaseID:          d.OnPhaseID,
 		OnSeq:              d.OnSeq,
@@ -4534,6 +4575,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Due:              d.Due,
 		Repeats:          d.Repeats,
 		OncePerBatch:     d.OncePerBatch,
+		ThroughCleanup:   d.ThroughCleanup,
 		ManaTapSubtype:   d.ManaTapSubtype,
 		ManaAdds:         d.ManaAdds,
 
@@ -4578,6 +4620,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ManaSettled:           copyStrings(c.ManaSettled),
 		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
 		ManaTapped:            c.ManaTapped,
+		ManaRecolorsSource:    c.ManaRecolorsSource,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:         c.NoLegalTarget,
 		PickTargetPlayers:     copyUUIDs(c.PickTargetPlayers),

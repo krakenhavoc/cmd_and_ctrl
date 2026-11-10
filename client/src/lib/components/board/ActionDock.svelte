@@ -82,6 +82,8 @@
   import HandoffChip from "./HandoffChip.svelte";
   import type { LoopDockProps } from "../../loopShortcut";
   import type { OutsideDock } from "../../outsideRight";
+  import type { PlanarDieButton } from "../../planarDie";
+  import ManaCost from "./ManaCost.svelte";
 
   interface Props {
     view: GameView;
@@ -142,6 +144,11 @@
     // viewer plays for another seat. Drawn as a small chip over the dock's
     // top edge; absent or null, none. Game.svelte builds it.
     handoff?: { whose: string; onJump: () => void } | null;
+    // ADR 0216 §10: the planar die at a Planechase table, CR 901.9's
+    // special action with its cost. Game.svelte builds it from the
+    // server's legal move (lib/planarDie.ts); absent or null at any
+    // other table. Disabled, not hidden, outside its window.
+    planarDie?: { button: PlanarDieButton; onPress: () => void } | null;
   }
 
   const {
@@ -169,6 +176,7 @@
     outside,
     viewerID = null,
     handoff = null,
+    planarDie = null,
   }: Props = $props();
 
   // ADR 0121 §6: while the opening roll is open there is no turn yet.
@@ -643,6 +651,24 @@
         {chip.label}
       </button>
     {/each}
+    {#if planarDie}
+      <!-- ADR 0216 §10: CR 901.9's planar die. The name is the visible
+           text; the cost is drawn as a pip and read out as the button's
+           description, so the name stays the contract label. -->
+      <button
+        type="button"
+        class="action hold planar-die"
+        data-testid="roll-planar-die"
+        disabled={!planarDie.button.enabled || preGame}
+        title={planarDie.button.title}
+        aria-describedby="planar-die-cost"
+        onclick={() => planarDie?.onPress()}
+        >{L.rollPlanarDie}<span class="die-cost" aria-hidden="true"
+          ><ManaCost cost={planarDie.button.cost} size={13} /></span
+        ></button
+      >
+      <span id="planar-die-cost" class="visually-hidden">costs {planarDie.button.cost}</span>
+    {/if}
     <!-- Undo and ⋯ travel together: when the row has to wrap they drop
          to the second row side by side, not one chip alone (#3894). -->
     <div class="dock-tail">
@@ -1061,6 +1087,23 @@
       background 140ms var(--ease),
       border-color 140ms var(--ease),
       opacity 140ms var(--ease);
+  }
+  .action.planar-die {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .die-cost {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .action:hover:not(:disabled) {
     background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);

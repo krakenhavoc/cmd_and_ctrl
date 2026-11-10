@@ -89,6 +89,11 @@ const (
 	// Forest that Blood Moon-style effects stripped of Basic is not
 	// one.
 	ManaSourceBasicLand
+
+	// ManaSourceCave is the CAVE subtype (CR 205.3i), the kind Bat Colony asks
+	// about ("for each mana from a Cave spent to cast it", #4452). The subtype
+	// at mint time, read through manaSourceKindsOf like every other kind.
+	ManaSourceCave
 )
 
 // Has reports whether every bit in `want` is set. The zero `want` is
@@ -139,6 +144,9 @@ func manaSourceKindsOf(c Card) ManaSourceKinds {
 	}
 	if c.IsEnchantment() {
 		k |= ManaSourceEnchantment
+	}
+	if c.HasSubtype("Cave") {
+		k |= ManaSourceCave
 	}
 	return k
 }

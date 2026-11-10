@@ -26,6 +26,14 @@ type castParams struct {
 	// Daze's Island, escape's N other cards from the graveyard.
 	// Exactly CardPaymentCount entries, or none.
 	AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+	// CounterSourceIDs / CounterCounts / CounterKind / CounterKinds pay
+	// the claimed offer's "remove N counters from among creatures you
+	// control" (#5390) — CastSpellParams' fields of the same names, in
+	// activateParams' wire words.
+	CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+	CounterCounts    []int    `json:"counter_counts,omitempty"`
+	CounterKind      string   `json:"counter_kind,omitempty"`
+	CounterKinds     []string `json:"counter_kinds,omitempty"`
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
 	// cast pays with 2 life each instead of mana (CR 107.4f, CR
 	// 601.2b, #1677) — CastSpellParams.PhyrexianLife. See
@@ -51,6 +59,9 @@ type castParams struct {
 	// RevealIDs is the one card a reveal / behold branch shows —
 	// CastSpellParams.RevealIDs.
 	RevealIDs []string `json:"reveal_ids,omitempty"`
+	// BeholdType is the creature type a behold that prints none chooses
+	// (#5406) — CastSpellParams.BeholdType.
+	BeholdType string `json:"behold_type,omitempty"`
 	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
 	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
@@ -487,6 +498,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 		if !timingOpen && !game.OptionalCostsOpenCastWindow(optional, chosen) {
 			continue
 		}
+		// #5207, CR 601.3b: a set whose cast is open only because of the
+		// card's own "as though it had flash if X is N or less / if it
+		// targets <what>" is offered only with the choices that make it
+		// apply — CastSpell's own read (FlashIfReliedOnLocked).
+		flashIf := e.g.FlashIfReliedOnLocked(e.seat, card, kind, perm, offer, game.OptionalCostsOpenCastWindow(optional, chosen))
 		// ADR 0129 §5, CR 118.3: a replicate paid more times than the
 		// seat has energy for (with the offer's own, Nissa's eight) is
 		// a cast the engine refuses, so it is never offered.
@@ -514,7 +530,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 						// #3961: and a "tap any number of untapped
 						// creatures" cost is one per count offered.
 						for _, tapAny := range e.tapAnyPayments(card) {
-							e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile, tapAny)
+							e.castMovesPayingOptional(card, from, perm, offer, flashIf, chosen, to, branch, extra, handExile, tapAny)
 						}
 					}
 				}
@@ -722,6 +738,10 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // of optional additional costs — the unkicked cast, or the kicked
 // one. `chosen` is nil for every card that offers none.
 //
+// `flashIf` is the card's own "as though it had flash if …" when this
+// cast is open only because of it (#5207, game.FlashIfReliedOnLocked),
+// else nil: its X ceiling and target clause bind the moves built here.
+//
 // `giftTo` is the opponent a gift is promised to when `chosen` names a
 // gift cost, and uuid.Nil otherwise (ADR 0089).
 //
@@ -733,7 +753,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, flashIf *game.FlashIf, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -763,6 +783,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// promised gift's "instead … target …" (CR 702.174m). The same
 	// function, in the same order, the engine applies at announce.
 	cardSpec = game.TargetSpecUnderOptionalCosts(cardSpec, e.g.OptionalCostsForCastLocked(e.seat, card), chosen)
+	// #5207: and a cast that needs the card's own "as though it had flash
+	// if it targets <what>" names only targets that make it apply.
+	cardSpec = flashIf.TargetSpecUnder(cardSpec)
 
 	// A card the catalog marks as targeted the S13.1 way (free-form
 	// target_mode, no structured spec) cannot be enumerated: the
@@ -936,6 +959,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// with no {X} slot as the PRICE of X, which this is not.
 	if cost.XSlots > 0 {
 		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), offer, xLifeCeiling)
+		// #5207: and "as though it had flash if X is N or less", when the
+		// cast needs that permission (CR 601.3b).
+		if c, ok := flashIf.XCeilingUnder(0, false); ok && (xLifeCeiling == noXCeiling || c < xLifeCeiling) {
+			xLifeCeiling = c
+		}
 	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
@@ -1025,7 +1053,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// #3175: the X each payment in altCostSets announces, for an offer
 	// whose card is bound to X (Shining Shoal); nil for every other offer.
 	var altXs []int
-	if want := offer.CardPaymentCount(); want > 0 {
+	if offer.CollectsEvidence() {
+		// Conspiracy Unraveler's "collect evidence 10 rather than pay the
+		// mana cost": the cheapest fuel first until the floor is reached,
+		// the one payment the ability cost's collect evidence enumerates
+		// (exileCardsPayment). Unreachable short, since
+		// CastOffersForLocked drops an offer the graveyard can't pay.
+		pay, ok := e.exileCardsPayment(offer.CollectEvidence, card.InstanceID, nil)
+		if !ok || len(pay) == 0 {
+			return
+		}
+		altCostSets = [][]uuid.UUID{pay}
+	} else if want := offer.CardPaymentCount(); want > 0 {
 		// #1013: the candidates come back in ZONE order, which is an
 		// arbitrary answer to "which three cards does this Uro eat".
 		// cheapestFuelFirst asks the seat's own policy what each one is
@@ -1169,7 +1208,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	// ADR 0100 amendment 2026-10-07: a reveal / behold branch names one
 	// card. A seat with none is not offered the branch.
-	revealIDs, ok := e.revealPayment(card.InstanceID, addCost, optional, chosen)
+	revealIDs, beholdType, ok := e.revealPayment(card.InstanceID, addCost, optional, chosen)
 	if !ok {
 		return
 	}
@@ -1181,7 +1220,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 	// #5247: and a return-a-permanent cost names its permanent the same
 	// way. A seat with nothing to return is not offered the cast (CR 118.3).
-	returnIDs, ok := e.returnCastPayment(card.InstanceID, addCost)
+	// #5358: the clause may be an announced kicker's.
+	returnIDs, ok := e.returnCastPayment(card.InstanceID, addCost, optional, chosen)
 	if !ok {
 		return
 	}
@@ -1224,7 +1264,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, beholdType, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1739,7 +1779,9 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs, exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
+	teamIDs, blightIDs, revealIDs []uuid.UUID,
+	beholdType string,
+	exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1752,6 +1794,20 @@ func (e *enumerator) castMoveEmitter(
 	ownAnswers := game.CardPurposeOfPtr(&card).Answers
 	permType := e.permType
 	exilePool := exileCardIDs
+	// #5390: the offer's counter removal, ONE payment by the activation's
+	// own rule (counterPaymentChoices: drain the creatures holding the
+	// most first), from the walk the engine validates against. An offer
+	// the board cannot pay was dropped by CastOffersForLocked; the check
+	// is kept because this is the function that writes the payment.
+	var counters counterChoice
+	if offer != nil && offer.RemoveCounters != nil {
+		choices := counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, card.InstanceID, offer.RemoveCounters), offer.RemoveCounters)
+		if len(choices) == 0 {
+			return func([]uuid.UUID, []int, []game.TargetRef, int, int, game.ParsedCost, map[uuid.UUID]int, []uuid.UUID, []uuid.UUID, []uuid.UUID, *MoveValue) {
+			}
+		}
+		counters = choices[0]
+	}
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
 		exileCardIDs := exileCardsForX(paying, exilePool, setX)
@@ -1843,6 +1899,8 @@ func (e *enumerator) castMoveEmitter(
 		}
 		// The same for a discard paid as an additional cost.
 		label += discardLabel(g, discards)
+		// #5390: and for the counters the offer removes.
+		label += castCounterLabel(g, counters)
 		// #2681: the modes, so two moves with the same targets and
 		// different modes are told apart (Prismari Command's [0,1] and
 		// [0,2] at the same two targets).
@@ -1867,8 +1925,10 @@ func (e *enumerator) castMoveEmitter(
 			// ADR 0136 §2: and the mana it charges in all, which the
 			// printed cost on the CardView is not (castManaCost), so a
 			// cast always carries a Cost.
-			Cost: withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
-				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax),
+			// #5390: and the counters the offer removes, priced against
+			// the creatures they come off as an activation's are.
+			Cost: withCounterPrices(withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax), counters.prices()),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that
@@ -1887,6 +1947,10 @@ func (e *enumerator) castMoveEmitter(
 				FromZone:          from,
 				AlternativeCost:   offerKey(offer),
 				AltCostIDs:        idStrings(altPaid),
+				CounterSourceIDs:  counters.wireIDs(),
+				CounterCounts:     counters.wireCounts(),
+				CounterKind:       counters.wireKind(),
+				CounterKinds:      counters.wireKinds(),
 				PhyrexianLife:     phyLife,
 				Targets:           wireTargets(targets),
 				Modes:             modes,
@@ -1898,6 +1962,7 @@ func (e *enumerator) castMoveEmitter(
 				TeamworkIDs:       idStrings(teamIDs),
 				BlightIDs:         idStrings(blightIDs),
 				RevealIDs:         idStrings(revealIDs),
+				BeholdType:        beholdType,
 				ExilePermanentIDs: idStrings(exileIDs),
 				ReturnIDs:         idStrings(returnIDs),
 				ExileFromHandIDs:  idStrings(handExile),
@@ -1916,6 +1981,38 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// castCounterLabel names the counters a cast's counter removal takes
+// (#5390): " (removing 4 +1/+1 counters from Grizzly Bears, 2 oil
+// counters from Steel Golem)". Empty for a cast that removes none, so
+// every other move's label is unchanged.
+func castCounterLabel(g *game.Game, cc counterChoice) string {
+	if len(cc.parts) == 0 {
+		return ""
+	}
+	parts := make([]string, len(cc.parts))
+	for i, p := range cc.parts {
+		kind := ""
+		if p.kind != "" {
+			kind = p.kind + " "
+		}
+		word := "counters"
+		if p.n == 1 {
+			word = "counter"
+		}
+		parts[i] = fmt.Sprintf("%d %s%s from %s", p.n, kind, word, cardName(g, p.cardID))
+	}
+	return " (removing " + strings.Join(parts, ", ") + ")"
+}
+
+// withCounterPrices adds every part of a counter payment to a
+// (possibly nil) MoveCost, as an activation's are (#5390).
+func withCounterPrices(c *MoveCost, prices []CounterPrice) *MoveCost {
+	for _, p := range prices {
+		c = withCounterPrice(c, p)
+	}
+	return c
 }
 
 // idleCastHint is Move.IdleHint for a cast under `offer` (#1918): the

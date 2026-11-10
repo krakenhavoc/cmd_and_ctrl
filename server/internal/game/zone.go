@@ -332,6 +332,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.
 		c.ChosenOption = ""
+		c.SecretChoice, c.SecretChoiceBy = "", uuid.Nil
 		// #1941 / CR 614.12a: and so does the number chosen as it
 		// entered. A Phyrexian Processor that is bounced and recast
 		// pays life again.
@@ -374,6 +375,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// a new object whose renown can trigger again.
 		c.Renowned = false
 		c.DealtCombatDamage = false
+		c.DealtDamage = false
 		c.Saddled = false
 		c.SaddledBy = nil
 		// ADR 0071 amendment (#2698) / CR 400.7 + CR 701.60: and so is
@@ -494,6 +496,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// as it sat in exile, and any move ends that object.
 	c.ExiledWith = PermissionCardRef{}
 	c.ExiledWithAbility = AbilityRef{}
+	c.ExiledWithTurn = 0
 	// CR 702.99c / 400.7 (#3867): the card is encoded only while it
 	// stays in exile.
 	c.EncodedOn = PermissionCardRef{}

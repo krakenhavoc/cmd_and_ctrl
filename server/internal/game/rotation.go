@@ -109,6 +109,9 @@ func (g *Game) sweepTurnEndLocked() {
 	g.clearRegenerationShieldsLocked()
 	// #2695 / CR 702.171: "becomes saddled until end of turn" ends here.
 	g.clearSaddledLocked()
+	// CR 514.2: "until end of turn" abilities an effect gave cards in
+	// graveyards end here (Cursecloth Wrappings' embalm).
+	g.clearTurnGraveyardGrantsLocked()
 	// S17 sub-PR 5's "until end of turn" REPLACEMENT effects (Fog's
 	// prevent-all-combat-damage, a prevention shield) and #750's
 	// until-end-of-turn BLOCK rules ("this creature can't block this

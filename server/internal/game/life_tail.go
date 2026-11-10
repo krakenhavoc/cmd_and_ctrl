@@ -161,6 +161,12 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 		}
 		return gone
 	}
+	if ev.LifePayment && ev.LifeDelta == 0 {
+		// A payment a replacement turned into something else (exiling
+		// cards from the library instead, Ashiok, Wicked Manipulator) is
+		// still paid, but no life moved: no change, no event.
+		return g.runLifeTailLocked(ev, 0)
+	}
 	p.ChangeLife(ev.LifeDelta)
 	if ev.LifeDelta < 0 {
 		g.noteLifeLostLocked(p.ID, -ev.LifeDelta)
@@ -314,6 +320,7 @@ func (g *Game) payLifeAsCostLocked(source, playerID uuid.UUID, amount int) error
 		Source:        source,
 		LifePlayer:    playerID,
 		LifeDelta:     -amount,
+		LifePayment:   true,
 		mustSettleNow: true,
 	}
 	if _, err := g.changeLifeThroughReplacementsLocked(ev); err != nil {

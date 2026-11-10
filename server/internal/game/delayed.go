@@ -153,6 +153,18 @@ type DelayedTrigger struct {
 	// trigger is dropped.
 	TurnOf uuid.UUID
 
+	// AfterThisTurn is the input half of "at the beginning of the end step
+	// on YOUR NEXT turn" (Kav Landseeker): the trigger may not fire in the
+	// turn it was scheduled in, even when that turn is the controller's and
+	// the step has not begun yet. ScheduleDelayedTriggerForEffect turns it
+	// into NotBeforeSeq and clears it.
+	AfterThisTurn bool
+
+	// NotBeforeSeq is the first Turn.Seq the trigger may fire in; zero is
+	// no bar. Stamped from AfterThisTurn, so it survives a restore (which
+	// CreatedSeq does not).
+	NotBeforeSeq int
+
 	// CreatedSeq identifies the turn the trigger was scheduled on.
 	// Not used for firing (see the "next is free" note above) —
 	// it's there for the wire view and for debugging a queue that
@@ -303,6 +315,15 @@ type DelayedTrigger struct {
 	// it. See objectsNotYetFiredInBatchLocked.
 	OncePerBatch bool
 
+	// ThroughCleanup keeps an event-conditioned trigger past the cleanup
+	// step's own duration sweep: it is dropped as the NEXT turn begins
+	// instead. "When you lose control of that Equipment this turn" (Stolen
+	// Uniform) must still be listening when the "until end of turn" theft
+	// it answers ends in that same cleanup step, whose control change is
+	// only seen once the layers settle after the sweep (CR 514.2: both
+	// end at once, so the loss happens while "this turn" still holds).
+	ThroughCleanup bool
+
 	// ManaTapSubtype and ManaAdds are the CR 605.1b twin: a triggered
 	// MANA ability a spell sets up for the turn. "Until end of turn,
 	// whenever a player taps a Swamp for mana, that player adds an
@@ -381,6 +402,10 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 		dt.ID = uuid.New()
 	}
 	dt.CreatedSeq = g.Turn.Seq
+	if dt.AfterThisTurn {
+		dt.NotBeforeSeq = g.Turn.Seq + 1
+		dt.AfterThisTurn = false
+	}
 	if dt.SourceObject.ID == uuid.Nil {
 		dt.SourceObject = g.delayedSourceObjectLocked(dt.SourceCardID)
 	}
@@ -477,7 +502,7 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 			dropped = true
 			continue
 		}
-		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
+		if dt.At == step && g.Turn.Seq >= dt.NotBeforeSeq && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
 			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) &&
 			(dt.OnPhaseID == 0 || (dt.OnSeq == g.Turn.Seq && dt.OnPhaseID == g.Turn.PhaseID)) {
@@ -558,6 +583,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		OnPhaseID:          dt.OnPhaseID,
 		OnSeq:              dt.OnSeq,
 		TurnOf:             dt.TurnOf,
+		NotBeforeSeq:       dt.NotBeforeSeq,
 		CreatedSeq:         dt.CreatedSeq,
 		Body:               dt.Body,
 		Params:             cloneEffectParams(dt.Params),
@@ -897,7 +923,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 //
 // Caller must hold g.mu.
 func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
-	g.clearDelayedTriggersWhereLocked(func(d Duration) bool { return g.durationExpiredLocked(d, endOfTurn) })
+	g.clearDelayedTriggersWhereLocked(endOfTurn, func(d Duration) bool { return g.durationExpiredLocked(d, endOfTurn) })
 }
 
 // clearEndOfCombatDelayedTriggersLocked drops every delayed trigger whose
@@ -907,7 +933,7 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) clearEndOfCombatDelayedTriggersLocked() {
-	g.clearDelayedTriggersWhereLocked(func(d Duration) bool {
+	g.clearDelayedTriggersWhereLocked(false, func(d Duration) bool {
 		return d.Kind == UntilEndOfCombat && g.durationExpiredLocked(d, false)
 	})
 }
@@ -916,13 +942,13 @@ func (g *Game) clearEndOfCombatDelayedTriggersLocked() {
 // every delayed trigger with a Duration that expired says is over.
 //
 // Caller must hold g.mu.
-func (g *Game) clearDelayedTriggersWhereLocked(expired func(Duration) bool) {
+func (g *Game) clearDelayedTriggersWhereLocked(atCleanup bool, expired func(Duration) bool) {
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
-		if dt != nil && dt.Duration != nil && expired(*dt.Duration) {
+		if dt != nil && dt.Duration != nil && expired(*dt.Duration) && !(atCleanup && dt.ThroughCleanup) {
 			continue
 		}
 		kept = append(kept, dt)

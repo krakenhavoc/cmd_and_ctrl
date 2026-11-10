@@ -105,7 +105,9 @@ const maxCostedChain = 4
 //
 // Caller must hold g.mu.
 func (g *Game) autoTapCostedCost(asker uuid.UUID, source Card, a ManaAbilityShape) (ParsedCost, bool) {
-	if a.ManaCost == "" || !g.autoTapAcceptsBesidesManaCost(asker, source, a, nil) {
+	// #5382: a tap-only ability an activation cost increase taxes owes
+	// mana as surely as a Signet does.
+	if !g.ManaAbilityChargesManaForEffect(asker, source, a) || !g.autoTapAcceptsBesidesManaCost(asker, source, a, nil) {
 		return ParsedCost{}, false
 	}
 	// The planner books a static output. A computed one may read what

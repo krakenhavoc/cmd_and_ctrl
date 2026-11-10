@@ -78,16 +78,24 @@ func dorotheasRetributionSpirit(g *game.Game, item *game.StackItem) error {
 // end of combat trigger that sacrifices it.
 var dorotheasRetributionSacrifice = AttackingTokensThen("attacking-tokens/dorotheas-retribution-sacrifice-the-spirit",
 	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
-		if len(created) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			At:    game.StepEndCombat,
-			Label: "Dorothea's Retribution — sacrifice the Spirit",
-			Cards: created,
-			Body:  sacrificeListedCardsBody,
-		}.Apply(ctx)
+		return sacrificeAtEndOfCombat(ctx, created, "Dorothea's Retribution — sacrifice the Spirit")
 	})
+
+// sacrificeAtEndOfCombat is "sacrifice that token at end of combat" for
+// tokens put onto the battlefield attacking: a delayed trigger at the
+// beginning of this combat's end of combat step (CR 511.2) naming exactly
+// the tokens that landed. Dorothea's Retribution and Kavaron Harrier.
+func sacrificeAtEndOfCombat(ctx *Context, created []uuid.UUID, label string) error {
+	if len(created) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:    game.StepEndCombat,
+		Label: label,
+		Cards: created,
+		Body:  sacrificeListedCardsBody,
+	}.Apply(ctx)
+}
 
 // withSubtypeInAddition is "except it's a <subtype> in addition to its
 // other types" on a type line (CR 707.9a): the subtype is added, and

@@ -28,20 +28,7 @@ const (
 	tdmPoisedPractitionerOracle = "e08debdc-2db5-4562-8a02-4158bfc0db88"
 )
 
-// Molten Exhale is the one card with a caveat: its flash cast can't also
-// take another alternative cost.
-func TestTdmMPMoltenExhaleDeclaresItsCaveat(t *testing.T) {
-	spec, ok := Lookup(tdmMoltenExhaleOracle)
-	if !ok {
-		t.Fatal("Molten Exhale is not registered")
-	}
-	if spec.Name != "Molten Exhale" || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Molten Exhale: name %q, completeness %s, caveats %v, want Caveats with one caveat",
-			spec.Name, spec.Completeness, spec.Caveats)
-	}
-}
-
-func TestTdmMPEveryOtherCardIsRegisteredFull(t *testing.T) {
+func TestTdmMPEveryCardIsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		tdmMarduDevoteeOracle:       "Mardu Devotee",
 		tdmMarduMonumentOracle:      "Mardu Monument",
@@ -55,6 +42,7 @@ func TestTdmMPEveryOtherCardIsRegisteredFull(t *testing.T) {
 		tdmOverwhelmingSurgeOracle:  "Overwhelming Surge",
 		tdmPiercingExhaleOracle:     "Piercing Exhale",
 		tdmPoisedPractitionerOracle: "Poised Practitioner",
+		tdmMoltenExhaleOracle:       "Molten Exhale", // #5207: its behold opens the window
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -286,7 +274,7 @@ func TestTdmMoltenExhaleFlashesOnlyByBeholdingADragon(t *testing.T) {
 		t.Fatalf("printed cost in combat: err = %v, want ErrSorcerySpeedRequired", err)
 	}
 	if err := g.CastSpell(me.ID, card, game.CastSpellParams{
-		Strict: true, AlternativeCost: "flash-behold", AltCostIDs: []uuid.UUID{bear}, Targets: cardRefs(wall),
+		Strict: true, OptionalCosts: []int{0}, RevealIDs: []uuid.UUID{bear}, Targets: cardRefs(wall),
 	}); err == nil {
 		t.Fatal("a Bear was beheld as a Dragon")
 	}
@@ -295,7 +283,7 @@ func TestTdmMoltenExhaleFlashesOnlyByBeholdingADragon(t *testing.T) {
 	}
 	fund()
 	if err := g.CastSpell(me.ID, card, game.CastSpellParams{
-		Strict: true, AlternativeCost: "flash-behold", AltCostIDs: []uuid.UUID{dragon}, Targets: cardRefs(wall),
+		Strict: true, OptionalCosts: []int{0}, RevealIDs: []uuid.UUID{dragon}, Targets: cardRefs(wall),
 	}); err != nil {
 		t.Fatalf("flash cast beholding a Dragon: %v", err)
 	}
@@ -319,7 +307,7 @@ func TestTdmMoltenExhaleBeholdsADragonCardFromHand(t *testing.T) {
 	dragonCard := handCard(me, "Dragon Friend", "Creature — Dragon")
 	fillPoolColored(me, "R", 2)
 	card, err := tdmMPHandCast(g, me, "Molten Exhale", "Sorcery", "{1}{R}", tdmMoltenExhaleOracle, game.CastSpellParams{
-		Strict: true, AlternativeCost: "flash-behold", AltCostIDs: []uuid.UUID{dragonCard}, Targets: cardRefs(wall),
+		Strict: true, OptionalCosts: []int{0}, RevealIDs: []uuid.UUID{dragonCard}, Targets: cardRefs(wall),
 	})
 	if err != nil {
 		t.Fatalf("flash cast revealing a Dragon card: %v", err)

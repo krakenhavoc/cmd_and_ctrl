@@ -513,6 +513,15 @@ const (
 	// because the state-based action that completes it (CR 704.5t) has
 	// no spell or ability behind it.
 	LogDungeonCompleted LogKind = "dungeon_completed"
+	// LogMonarch — a player became the monarch (CR 725.1). `Actor` is
+	// the new monarch. Narrated (#4450, ADR 0209 §3) so the client's
+	// crown cue has a moment to play on; GameView.monarch still carries
+	// the holder. Clearing the crown has no line.
+	LogMonarch LogKind = "monarch"
+	// LogInitiative — a player took the initiative (CR 726.2). `Actor`
+	// is the new holder; `CardID` is the object whose effect gave it,
+	// when there is one (#4450). Clearing the marker has no line.
+	LogInitiative LogKind = "initiative"
 	// LogSpeed — a player's speed changed (CR 702.179, ADR 0138).
 	// `Actor` is the player and `Amount` the new speed. Narrated
 	// because the start-your-engines state-based action gives a
@@ -623,7 +632,8 @@ const (
 	// active player, whose turn gets them, and `card_id` the card whose
 	// effect added them. `label` is what was added: the phase kinds in
 	// the order they will occur, comma-separated ("combat,main"), or
-	// "step:<step>" for a single step ("step:end"). `amount` is how
+	// "step:<step>" for a step ("step:end"; "step:upkeep" with an
+	// `amount` of 3 is three upkeep steps, #5405). `amount` is how
 	// many. Narrated for LogExtraTurn's reason: it changes the turn's
 	// structure, and a player about to pass priority out of a main phase
 	// has to know another combat is coming.
@@ -2443,6 +2453,23 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ventureRoomName(ev.Label)
 		return base, true
 
+	case game.EventMonarchChanged:
+		// #4450. A cleared crown (no new monarch) is a correction, not
+		// a moment.
+		if ev.Actor == uuid.Nil {
+			return LogEvent{}, false
+		}
+		base.Kind = LogMonarch
+		return base, true
+
+	case game.EventInitiativeTaken:
+		if ev.Actor == uuid.Nil {
+			return LogEvent{}, false
+		}
+		base.Kind = LogInitiative
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
 	case game.EventDungeonCompleted:
 		base.Kind = LogDungeonCompleted
 		base.Label = dungeonName(ev.Label)
@@ -3494,7 +3521,7 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("%s (%s)", line, card)
 	case LogExtraPhase:
-		what := describeAddedPhases(e.Label)
+		what := describeAddedPhases(e.Label, e.Amount)
 		if e.CardID == "" {
 			return fmt.Sprintf("%s's turn gets %s", actor, what)
 		}
@@ -3513,6 +3540,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s ventures into %s", actor, e.Label)
 	case LogDungeonCompleted:
 		return fmt.Sprintf("%s completes %s", actor, e.Label)
+	case LogMonarch:
+		return fmt.Sprintf("%s becomes the monarch", actor)
+	case LogInitiative:
+		return fmt.Sprintf("%s takes the initiative", actor)
 	case LogSpeed:
 		if e.Amount >= game.MaxSpeed {
 			return fmt.Sprintf("%s has max speed", actor)
@@ -4128,10 +4159,18 @@ func (r *logRing) drain() []LogEvent {
 // thing the turn gets: "step:end" is "an additional end step",
 // "combat,main" is "an additional combat phase and an additional main
 // phase", and a run of the same kind is counted ("combat,combat" is
-// "two additional combat phases").
-func describeAddedPhases(label string) string {
+// "two additional combat phases"). A step label with an amount above
+// one is counted too: "step:upkeep" for 3 is "three additional upkeep
+// steps".
+func describeAddedPhases(label string, amount int) string {
 	if step, ok := strings.CutPrefix(label, "step:"); ok {
-		return "an additional " + strings.ReplaceAll(step, "_", " ") + " step"
+		name := strings.ReplaceAll(step, "_", " ")
+		if amount > 1 {
+			// #5405: "you get that many additional upkeep steps after
+			// this phase" (Obeka, Splitter of Seconds) adds several.
+			return countWord(amount) + " additional " + name + " steps"
+		}
+		return "an additional " + name + " step"
 	}
 	if label == "" {
 		return "an additional phase"

@@ -64,6 +64,9 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // chose to share.
   "statsShared",
   "statsSharedDeck",
+  // A pod's invite link (ADR 0220 §3b): a signed-out visitor sees one
+  // sign-in line and nothing about the pod.
+  "podJoin",
 ]);
 
 // isPublicRoute reports whether a signed-out visitor may open r.

@@ -36,20 +36,7 @@ func init() {
 		AlternativeCosts:           []game.AlternativeCost{Warp("{X}{G}")},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisLeaves("Broodguard Elite — put its counters on target creature you control",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					left, ok := ctx.TriggeringPermanent()
-					if !ok || len(left.Counters) == 0 {
-						return nil
-					}
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						return b14PutCounters(ctx, t.ID, left.Counters)
-					}
-					return nil
-				}),
+				PutItsCountersOnTargetCreature),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})

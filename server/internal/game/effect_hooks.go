@@ -468,6 +468,27 @@ type ManaAbilityShape struct {
 	// planner makes none.
 	ExileCards *ExileCost
 
+	// Either is an either/or part of the activation cost (#5397): the
+	// mana-ability half of AbilityCost.Either, the same plain-data
+	// branches (AbilityCostBranch). The activator announces the branch
+	// with ManaAbilityParams.CostBranch, and ChosenManaAbilityShape
+	// folds it into the ordinary SacrificeOther or ExileCards clause
+	// before anything is validated, so the validators and payers below
+	// never learn that branches exist. Nil for every other mana ability.
+	//
+	// The only printed one is forage (Forage below): Thornvault
+	// Forager's "{T}, Forage: Add two mana in any combination of
+	// colors." The AUTO-TAPPER never plans an ability that has one:
+	// which way to pay is the player's decision, and the planner makes
+	// none.
+	Either []AbilityCostBranch
+
+	// Forage marks Either as the forage keyword action (CR 701.61a,
+	// #5397), as AbilityCost.Forage marks a CR 602 cost: Either is then
+	// ForageAbilityBranches, and the activation, once it has paid the
+	// branch, records PaidCost.Foraged and emits EventForage.
+	Forage bool
+
 	// ExilePermanents is an "Exile a creature you control" component of
 	// the activation cost (#1600) — Food Chain's "Exile a creature you
 	// control: Add X mana of any one color, where X is 1 plus the exiled
@@ -743,6 +764,17 @@ type ManaAbilityShape struct {
 	// Keyed by the LABEL (activation_tally.go), like Exhaust, so
 	// effects.Register refuses a blank one.
 	OncePerTurn bool
+
+	// SourceBecomesProducedColor is the rider "This creature becomes
+	// that color until end of turn" after an "Add one mana of any
+	// color" clause (Foraging Wickermaw). It is DATA rather than a
+	// Rider because the colour is often not known when the Rider runs:
+	// a pick answered later (ResolveManaChoice) is the moment it is.
+	// The engine applies it wherever the activation's colours become
+	// known (sourceBecomesManaColorLocked, mana_source_color.go): a
+	// layer 5 colour-setting effect (CR 613.1e) on the source, pinned
+	// to the object it is now, for the turn.
+	SourceBecomesProducedColor bool
 
 	// AnyPlayer is the mana ability's printed "Any player may activate
 	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment

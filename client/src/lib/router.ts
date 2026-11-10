@@ -81,6 +81,14 @@ export type Route =
   // Friends (ADR 0213 §9, slice 3): requests sent, blocks and the two
   // social settings, beyond what the header's drawer shows. Signed-in only.
   | { name: "friends" }
+  // Pods (ADR 0220 §11, slice 3): #/pods, a pod at #/pods/<id>, and the
+  // invite link at #/pods/join/<token>. The list and a pod are signed-in
+  // only; the link page is public, because a signed-out visitor is told
+  // to sign in there and nothing about the pod is shown (§3b).
+  | { name: "pods" }
+  | { name: "pod"; id: string }
+  | { name: "podStats"; id: string }
+  | { name: "podJoin"; token: string }
   // A person's shared stats (ADR 0217 §6): #/stats/shared/<token>, a
   // read-only copy of their stats pages. Public: the link is the
   // credential, and it is made to be posted in Discord.
@@ -200,6 +208,12 @@ export function parseHash(hash: string): Route {
       return { name: "stats" };
     case "friends":
       return { name: "friends" };
+    case "pods":
+      if (parts[1] === "join")
+        return parts[2] ? { name: "podJoin", token: parts[2] } : { name: "pods" };
+      if (parts[1] && parts[2] === "stats") return { name: "podStats", id: parts[1] };
+      if (parts[1]) return { name: "pod", id: parts[1] };
+      return { name: "pods" };
     case "practice":
       return { name: "practice" };
     case "catalog": {

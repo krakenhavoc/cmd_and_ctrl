@@ -72,6 +72,13 @@ type PlayerTurnTally struct {
 	// CombatDamageToPlayers is the combat damage this player's
 	// creatures dealt to players.
 	CombatDamageToPlayers int `json:"combatDamageToPlayers,omitempty"`
+	// CombatDamageTaken is the combat damage dealt TO this player this
+	// turn, from any source (the recipient's side of CombatDamageToPlayers):
+	// damage actually dealt, so prevented damage is not counted, and infect
+	// damage still is (it is dealt, it just loses no life). Sidequest: Play
+	// Blitzball's "if a player was dealt 6 or more combat damage this turn"
+	// reads it through Game.CombatDamageTakenThisTurn. Additive.
+	CombatDamageTaken int `json:"combatDamageTaken,omitempty"`
 	// CardsDiscarded counts cards this player discarded (one event
 	// per card, CR 701.9a), whatever the discard's cause or eventual
 	// destination — a madness card exiled instead of binned, or one
@@ -191,6 +198,14 @@ type PlayerTurnTally struct {
 	// creature left the battlefield under your control this turn" read it
 	// through Game.CreatureLeftThisTurn. Additive.
 	CreaturesLeft int `json:"creaturesLeft,omitempty"`
+	// CreaturesExiled counts the creatures this player controlled that
+	// were exiled from the battlefield this turn, by any route:
+	// CreaturesLeft narrowed to a move to exile (Vren, the Relentless's
+	// "the number of creatures that were exiled under your opponents'
+	// control this turn"). A token counts: it is exiled before it
+	// ceases to exist (CR 111.7). Judged as a creature as it last existed
+	// on the battlefield, under the controller it left from. Additive.
+	CreaturesExiled int `json:"creaturesExiled,omitempty"`
 	// PermanentsEnteredFaceDown counts the permanents that entered the
 	// battlefield face down under this player's control this turn
 	// (Oblivious Bookworm, #5241): a face-down spell resolving, a
@@ -432,6 +447,13 @@ type TurnTally struct {
 	// NoncombatDamageThisTurnForEffect. Additive: omitted when empty,
 	// so an older snapshot reads back as no damage.
 	NoncombatDamage []NoncombatDamageRecord `json:"noncombatDamage,omitempty"`
+	// DamageSources lists the distinct source OBJECTS that dealt damage
+	// this turn, each with the controller it had as it dealt it (CR 400.7,
+	// 608.2h): "three or more sources you controlled dealt damage this
+	// turn" (Case of the Burning Masks). Read through
+	// DamageSourcesDealtThisTurnForEffect; see damage_sources_tally.go.
+	// Additive: omitted when empty.
+	DamageSources []DamageSourceRecord `json:"damageSources,omitempty"`
 	// DamagedObjects records which permanent OBJECTS each source dealt
 	// damage to this turn (#1946): one entry per damage event to a
 	// permanent, in the order the damage was dealt, each side named by
@@ -588,6 +610,16 @@ type TurnTally struct {
 	// omitted when empty, flushed with the rest of the tally when the
 	// turn begins.
 	BecameTapped map[string]int `json:"becameTapped,omitempty"`
+	// CountersPut counts, per OBJECT, how many times counters were put on
+	// each permanent this turn (Stalwart Successor's "if it's the first
+	// time counters have been put on that creature this turn"): one per
+	// EventCounterPlaced that raised a kind's count, so two kinds placed at
+	// once count twice, and a removal counts nothing. Keyed by
+	// ObjectTallyKey(id, epoch, "counters"), so a permanent that left and
+	// came back is a new object (CR 400.7). Read through
+	// TimesCountersPutThisTurn. Additive within the snapshot schema:
+	// omitted when empty, flushed with the rest of the tally.
+	CountersPut map[string]int `json:"countersPut,omitempty"`
 	// Exerts is every exert this turn, in order (ADR 0130 §1, CR
 	// 701.43): one record per exert, so a creature exerted in two
 	// combats has two. Written only by exertLocked; read through
@@ -723,6 +755,29 @@ func (g *Game) noteBecameTappedLocked(cardID uuid.UUID) {
 	maps.Copy(next, g.TurnTally.BecameTapped)
 	next[key]++
 	g.TurnTally.BecameTapped = next
+}
+
+// noteCountersPutLocked counts one placement of counters on the object
+// `cardID` names. Caller must hold g.mu.
+func (g *Game) noteCountersPutLocked(cardID uuid.UUID) {
+	key := g.objectTallyKeyLocked(cardID, "counters")
+	next := make(map[string]int, len(g.TurnTally.CountersPut)+1)
+	maps.Copy(next, g.TurnTally.CountersPut)
+	next[key]++
+	g.TurnTally.CountersPut = next
+}
+
+// TimesCountersPutThisTurn is how many times counters have been put on
+// the OBJECT `cardID` names this turn. "If it's the first time counters
+// have been put on that creature this turn" is this reading 1 as the
+// trigger fires (the tally listener runs ahead of the trigger harvester).
+//
+// Caller must hold g.mu.
+func (g *Game) TimesCountersPutThisTurn(cardID uuid.UUID) int {
+	if cardID == uuid.Nil || len(g.TurnTally.CountersPut) == 0 {
+		return 0
+	}
+	return g.TurnTally.CountersPut[g.objectTallyKeyLocked(cardID, "counters")]
 }
 
 // TimesBecameTappedThisTurn is how many times the OBJECT `cardID`
@@ -893,6 +948,12 @@ func (g *Game) objectEpochLocked(source uuid.UUID) int {
 // Caller must hold g.mu.
 func (g *Game) EnergyPaidOrLostThisTurn(playerID uuid.UUID) int {
 	return g.TurnTally.Players[playerID].EnergyPaidOrLost
+}
+
+// CombatDamageTakenThisTurn is the combat damage dealt to playerID this turn
+// by any source (PlayerTurnTally.CombatDamageTaken). Caller must hold g.mu.
+func (g *Game) CombatDamageTakenThisTurn(playerID uuid.UUID) int {
+	return g.TurnTally.Players[playerID].CombatDamageTaken
 }
 
 // TurnTallyFor returns playerID's tally for the current turn (the
@@ -1811,6 +1872,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 			out.NoncombatDamage[i] = r
 		}
 	}
+	if len(t.DamageSources) > 0 {
+		out.DamageSources = append([]DamageSourceRecord(nil), t.DamageSources...)
+	}
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
@@ -1821,6 +1885,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
 	out.ReplacementsApplied = copyStringIntMap(t.ReplacementsApplied)
 	out.BecameTapped = copyStringIntMap(t.BecameTapped)
+	out.CountersPut = copyStringIntMap(t.CountersPut)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}
@@ -1880,6 +1945,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.Amount <= 0 {
 			return
 		}
+		g.recordDamageSourceLocked(ev)
 		if g.playerByIDLocked(ev.Target) == nil {
 			// #1946: damage to a permanent, for "creatures dealt damage
 			// by this creature this turn".
@@ -1890,6 +1956,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// damage and damage to a locked life total lose no life.
 		if lost := ev.DamageLifeLoss(); lost > 0 {
 			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.LifeLost += lost })
+		}
+		if ev.Combat {
+			g.bumpPlayerTally(ev.Target, func(p *PlayerTurnTally) { p.CombatDamageTaken += ev.Amount })
 		}
 		// #2149: which creature OBJECT it was, for "a creature that
 		// dealt (combat) damage to you this turn".
@@ -1944,6 +2013,10 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 					g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.ArtifactsOrCreaturesSacrificed++ })
 				}
 			}
+		}
+	case EventCounterPlaced:
+		if ev.Target != uuid.Nil && ev.Amount > g.counterCountBeforeLocked(ev) {
+			g.noteCountersPutLocked(ev.Target)
 		}
 	case EventTapCard:
 		// #4576: a permanent became tapped. Every EventTapCard emitter
@@ -2212,6 +2285,9 @@ func (g *Game) recordPermanentLeftLocked(ev Event) {
 	g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsLeft++ })
 	if g.leftAsACreatureLocked(ev) {
 		g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesLeft++ })
+		if ev.NewZone == ZoneExile {
+			g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesExiled++ })
+		}
 	}
 }
 

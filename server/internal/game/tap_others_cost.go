@@ -414,7 +414,7 @@ func paidTapsFrom(cards []Card) []PaidTap {
 	}
 	out := make([]PaidTap, 0, len(cards))
 	for _, c := range cards {
-		out = append(out, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch, Power: c.PowerForComparison(), StationPower: c.CountedPower(CostPowerStation)})
+		out = append(out, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch, Power: c.PowerForComparison(), StationPower: c.CountedPower(CostPowerStation), StationAnyPower: c.CountedPower(CostPowerStationAny)})
 	}
 	return out
 }
@@ -456,6 +456,16 @@ func (g *Game) freezePaidTapsOnExitLocked(cardID uuid.UUID) {
 			}
 			t.Power = c.PowerForComparison()
 			t.StationPower = c.CountedPower(CostPowerStation)
+			t.StationAnyPower = c.CountedPower(CostPowerStationAny)
+			t.Left = true
+		}
+		// A Chosen behold's permanent (chosen_cost.go) is frozen the same way.
+		for i := range item.Paid.Chosen {
+			t := &item.Paid.Chosen[i]
+			if t.ID != cardID || t.Left || t.Epoch != c.ObjectEpoch {
+				continue
+			}
+			t.Power = c.PowerForComparison()
 			t.Left = true
 		}
 	}
@@ -509,6 +519,28 @@ func (g *Game) PaidTapStationPowerForEffect(t PaidTap) int {
 	}
 	if t.StationPower != 0 {
 		return t.StationPower
+	}
+	return t.Power
+}
+
+// PaidTapStationAnyPowerForEffect is PaidTapStationPowerForEffect for the
+// station ability of any permanent that is not a Spacecraft (a Planet,
+// CR 702.184c): the power the tapped creature counts for when it stations
+// one, which a CostPowerStationAny rule changes (Tapestry Warden's
+// toughness). Live while the object is still on the battlefield, its
+// last-known count once it has left (CR 608.2h), and the plain power
+// without such a rule.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) PaidTapStationAnyPowerForEffect(t PaidTap) int {
+	if !t.Left {
+		g.RecomputeLayersIfStaleLocked()
+		if c := findBattlefieldCard(g, t.ID); c != nil && c.ObjectEpoch == t.Epoch {
+			return c.CountedPower(CostPowerStationAny)
+		}
+	}
+	if t.StationAnyPower != 0 {
+		return t.StationAnyPower
 	}
 	return t.Power
 }

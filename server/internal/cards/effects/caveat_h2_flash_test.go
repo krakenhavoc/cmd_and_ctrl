@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -51,15 +50,12 @@ func TestTimelyWardFlashesOntoACommanderOnly(t *testing.T) {
 	ssToBeginCombat(t, g)
 	timelyWardFund(g, me)
 	target := func(id uuid.UUID) game.CastSpellParams {
-		return game.CastSpellParams{Strict: true, AlternativeCost: "flash-if-targets",
+		return game.CastSpellParams{Strict: true,
 			Targets: []game.TargetRef{{Kind: game.TargetCard, ID: id}}}
 	}
-	// The printed cast is sorcery speed whatever it targets.
-	if err := g.CastSpell(me.ID, ward, game.CastSpellParams{
-		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: commander}}}); !errors.Is(err, game.ErrSorcerySpeedRequired) {
-		t.Fatalf("printed cost at instant speed: err = %v, want ErrSorcerySpeedRequired", err)
-	}
-	// Claiming the flash offer on a creature that is not a commander is refused.
+	// #5207: the flash is the card's own timing permission, so the
+	// instant-speed cast pays the printed cost. On a creature that is not
+	// a commander it is refused.
 	if err := g.CastSpell(me.ID, ward, target(bear)); err == nil {
 		t.Fatal("flash-cast onto a creature that is not a commander")
 	}

@@ -744,6 +744,12 @@ func dispatch(g *game.Game, a Action) error {
 			// card from your hand or pay {3}"). Absent unless the
 			// chosen cost_branch reveals.
 			RevealIDs []string `json:"reveal_ids,omitempty"`
+			// #5406 — the creature type a behold that prints none
+			// chooses (Celestial Reunion's "choose a creature type and
+			// behold two creatures of that type", CR 601.2b). reveal_ids
+			// then names the objects of that type. Absent unless the
+			// announced optional behold chooses its type.
+			BeholdType string `json:"behold_type,omitempty"`
 			// #3402 — the permanents a mandatory exile-a-permanent
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
@@ -777,6 +783,16 @@ func dispatch(g *game.Game, a Action) error {
 			// one entry when the claimed cost charges one, absent
 			// otherwise.
 			AltCostIDs []string `json:"alt_cost_ids,omitempty"`
+			// #5390 — the claimed alternative cost's "remove N
+			// counters from among creatures you control" (Quilled
+			// Greatwurm's graveyard cast), in activate_ability's own
+			// words: the permanents, the count off each, and the kind
+			// (counter_kind for one, counter_kinds per part when they
+			// differ). Absent on every other cast.
+			CounterSourceIDs []string `json:"counter_source_ids,omitempty"`
+			CounterCounts    []int    `json:"counter_counts,omitempty"`
+			CounterKind      string   `json:"counter_kind,omitempty"`
+			CounterKinds     []string `json:"counter_kinds,omitempty"`
 			// ADR 0100 — delve_ids names the cards in the caster's
 			// graveyard exiled to delve the spell (CR 702.66a), each
 			// paying for {1} of the generic mana. Absent pays the
@@ -934,6 +950,7 @@ func dispatch(g *game.Game, a Action) error {
 			{"exile_from_hand_ids", p.ExileFromHandIDs, &params.ExileFromHandIDs},
 			{"exile_ids", p.ExileIDs, &params.ExileIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
+			{"counter_source_ids", p.CounterSourceIDs, &params.CounterSourceIDs},
 		} {
 			for i, raw := range l.raw {
 				id, err := uuid.Parse(raw)
@@ -943,6 +960,10 @@ func dispatch(g *game.Game, a Action) error {
 				*l.dst = append(*l.dst, id)
 			}
 		}
+		params.CounterCounts = p.CounterCounts
+		params.CounterKind = p.CounterKind
+		params.CounterKinds = p.CounterKinds
+		params.BeholdType = p.BeholdType
 		if len(p.LockedSources) > 0 {
 			params.LockedSources = make([]uuid.UUID, 0, len(p.LockedSources))
 			for i, raw := range p.LockedSources {
@@ -1436,7 +1457,23 @@ func dispatch(g *game.Game, a Action) error {
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
 		}
-		return g.FinishBlocks(a.Player)
+		// ADR 0221: the CR 509.1d block tax is paid as the declaration
+		// completes, with the attack declaration's payment trio. Absent
+		// params (every payload before the tax existed) are the strict
+		// zero posture, and inert at a table with no block tax.
+		var p struct {
+			attackTaxParams
+		}
+		if len(a.Params) > 0 {
+			if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+				return err
+			}
+		}
+		ap, err := p.decode("finish_blocks")
+		if err != nil {
+			return err
+		}
+		return g.FinishBlocksWith(a.Player, game.DeclareBlockersParams(ap))
 
 	case TypeClearCombat:
 		// #4131: the "combat is wedged" escape hatch, no longer open to
@@ -2743,6 +2780,13 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #5397 — cost_branch is the branch of an either/or cost
+			// the activation pays: forage on a mana ability (Thornvault
+			// Forager), 0 exiles three graveyard cards (exile_ids), 1
+			// sacrifices a Food (sacrifice_ids). The wire name
+			// activate_ability uses; a pointer, because 0 is a branch.
+			// See game.ManaAbilityParams.CostBranch.
+			CostBranch *int `json:"cost_branch,omitempty"`
 			// #4885 — player_ability names a mana ability the PLAYER
 			// has, bound to no card (Channel's "pay 1 life: add {C}"),
 			// by the object that granted it
@@ -2836,6 +2880,7 @@ func dispatch(g *game.Game, a Action) error {
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
 			PhyrexianLife:     p.PhyrexianLife,
+			CostBranch:        p.CostBranch,
 		})
 
 	case TypeSetMaxHandSize:

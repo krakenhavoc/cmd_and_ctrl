@@ -108,3 +108,85 @@ func TestManaTokenCloneDoesNotAliasRiders(t *testing.T) {
 		t.Error("an undo snapshot shares its pool's riders with the live game")
 	}
 }
+
+// #5403: a rider whose trigger has its own target clause announces it
+// as the trigger is put on the stack (CR 603.3d), through the reflexive
+// dispatch. The item is keyed under the targeted dispatch body, carries
+// the chosen target and the spell as its payload, and a restore
+// re-derives the clause from the rider's key. With no legal target for
+// a required clause the trigger is removed and nothing is asked.
+func TestRiderTriggerWithTargetsAnnouncesThemOnTheStack(t *testing.T) {
+	const key = "test-5403-targeted-rider"
+	if _, ok := ManaSpendTriggerFor(key); !ok {
+		RegisterManaSpendTrigger(key, ManaSpendTrigger{
+			Label: "test targeted rider",
+			Targets: func() *TargetSpec {
+				return &TargetSpec{
+					Mode: "permanent", Label: "target creature", Zones: []ZoneKind{ZoneBattlefield},
+					CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool { return c.IsCreature() },
+					Min:    1, Max: 1,
+				}
+			},
+			Effect: func(*Game, *StackItem) error { return nil },
+		})
+	}
+	if spec := reflexiveTargetSpecFor(manaRiderTargetedDispatchBody.Key(), uuid.Nil, EffectParams{Name: key}); spec == nil || spec.Label != "target creature" {
+		t.Fatalf("the clause is not re-derived from the rider's key: %+v", spec)
+	}
+	rider := ManaSpendRider{Kind: ManaRiderTrigger, Trigger: key, When: []string{ManaRestrictCast}, Production: uuid.New()}
+
+	for _, withCreature := range []bool{true, false} {
+		g := newFourPlayerActiveGame(t)
+		me := g.Seats[0].ID
+		bear := uuid.New()
+		if withCreature {
+			g.Battlefield.PushTop(Card{InstanceID: bear, Name: "Bear", TypeLine: "Creature — Bear", Owner: me, Controller: me})
+		}
+		item := &StackItem{ID: uuid.New(), Kind: StackItemSpell, Controller: me,
+			Paid: PaidCost{Mana: []ManaToken{{Color: "U", Riders: []ManaSpendRider{rider}}}}}
+		g.WithWriteLock(func() {
+			g.applyManaSpendRidersLocked(item, ManaSpendForCast(Card{TypeLine: "Artifact", ManaCost: "{U}"}), Card{})
+		})
+		var pick *PendingChoice
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == PendingChoicePickTarget {
+				pick = c
+			}
+		}
+		if !withCreature {
+			if pick != nil || len(g.PendingTriggers) != 0 {
+				t.Fatal("a required clause with nothing to choose is removed (CR 603.3d)")
+			}
+			continue
+		}
+		if pick == nil {
+			t.Fatal("the target clause is not announced")
+		}
+		if err := g.ResolvePickTarget(pick.ID, me, TargetRef{Kind: TargetCard, ID: bear}); err != nil {
+			t.Fatalf("ResolvePickTarget: %v", err)
+		}
+		var built *StackItem
+		for _, it := range g.PendingTriggers {
+			if it.Body == manaRiderTargetedDispatchBody.Key() {
+				built = it
+			}
+		}
+		for _, it := range g.StackMeta {
+			if it != nil && it.Body == manaRiderTargetedDispatchBody.Key() {
+				built = it
+			}
+		}
+		if built == nil {
+			t.Fatal("no item keyed under the targeted dispatch body")
+		}
+		if len(built.Targets) != 1 || built.Targets[0].ID != bear {
+			t.Errorf("targets %+v, want the Bear", built.Targets)
+		}
+		if len(built.Payload) != 1 || built.Payload[0].ID != item.ID {
+			t.Errorf("payload %+v, want the spell", built.Payload)
+		}
+		if built.Params.Name != key {
+			t.Errorf("params %+v, want the rider's key", built.Params)
+		}
+	}
+}

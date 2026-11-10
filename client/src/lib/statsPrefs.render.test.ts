@@ -44,7 +44,13 @@ beforeEach(() => {
   session.set(person());
   statsPrefs.set(STATS_PREFS_OFF);
   server = {
-    prefs: { available: true, advanced: false, choice: "default", default: false },
+    prefs: {
+      available: true,
+      advanced: false,
+      choice: "default",
+      default: false,
+      share_pods: false,
+    },
     calls: [],
   };
   vi.stubGlobal(
@@ -109,6 +115,7 @@ describe("Settings → Stats", () => {
       choice: "on",
       set_by: "admin",
       default: false,
+      share_pods: false,
     };
     await loadStatsPrefs();
     const r = render(StatsSettings, {});

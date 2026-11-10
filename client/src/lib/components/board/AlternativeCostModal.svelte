@@ -73,6 +73,15 @@
   // default. The pick rides the cast as `assist_player`, and the cast
   // waits for that player's answer. A bot always answers 0, and its row
   // says so (owner decision 8).
+  //
+  // #5363 (CR 601.3c): an optional cost marked `opens_flash` ("you may
+  // cast this spell as though it had flash if you pay {2} more") is the
+  // only way some claims can be cast right now — the server says which
+  // (`opens_flash_required`, on the card for the printed cost and on each
+  // offer). Choosing such a claim ticks that cost, its row says it is
+  // needed now, and while it is unticked a sentence says why and Cast
+  // waits, because the server would refuse the cast for timing.
+  import { L } from "../../labels";
   import {
     assistOf,
     assistPlayerLabel,
@@ -85,6 +94,8 @@
     optionalCostPayOptions,
     optionalCostSelection,
     optionalCostsOf,
+    opensFlashCostToPreselect,
+    opensFlashRequired,
     printedCostCastableNow,
     spliceOffersOf,
   } from "../../targeting";
@@ -239,8 +250,23 @@
   const branchOK = $derived(
     branches.length === 0 || (branch !== undefined && branches[branch]?.payable === true),
   );
+  // undefined = the printed mana cost; see the reset below.
+  let chosen = $state<string | undefined>(undefined);
+  // #5363: the chosen claim is castable now only with an `opens_flash`
+  // cost, and none is being paid.
+  const flashNeeded = $derived(card ? opensFlashRequired(card, chosen) : false);
+  const flashCosts = $derived(addOns.filter((o) => o.opens_flash === true));
+  const flashMissing = $derived(flashNeeded && !flashCosts.some((o) => timesPaid(o.index) > 0));
+  const flashSentence = $derived.by(() => {
+    const names = flashCosts.map((o) => `“${o.label ?? o.key}”`);
+    const which = names.length === 1 ? names[0] : `one of ${names.join(" or ")}`;
+    return `You can cast this now only by also paying ${which}. Without it, wait until you could cast a sorcery.`;
+  });
   const canConfirm = $derived(
-    (giftOffer === undefined || giftOpponent !== undefined) && branchOK && !spliceOpponentsMissing,
+    (giftOffer === undefined || giftOpponent !== undefined) &&
+      branchOK &&
+      !spliceOpponentsMissing &&
+      !flashMissing,
   );
 
   // ordinal names a spliced text's place in the order: "first".
@@ -271,6 +297,20 @@
     setTimes(index, timesPaid(index) > 0 ? 0 : 1);
   }
 
+  // #5363: tick the `opens_flash` cost the chosen claim needs right now,
+  // unless one is already being paid or none can be.
+  function preselectFlashCost(key: string | undefined): void {
+    if (!card) return;
+    const index = opensFlashCostToPreselect(card, key, paying, (o) => !unpayable(o.index));
+    if (index !== undefined) setTimes(index, 1);
+  }
+
+  // choose selects a claim, and ticks the cost it needs to be cast now.
+  function choose(key: string | undefined): void {
+    chosen = key;
+    preselectFlashCost(key);
+  }
+
   // undefined = the printed mana cost. Reset whenever a different
   // cast opens the prompt, so last turn's overload isn't preselected.
   //
@@ -278,7 +318,6 @@
   // default is the FIRST offer instead, because `undefined` there is
   // an announcement the server refuses and the confirm button must
   // never start on one.
-  let chosen = $state<string | undefined>(undefined);
   let lastCardID: string | null = null;
   $effect(() => {
     const id = card?.instance_id ?? null;
@@ -291,6 +330,7 @@
             ? undefined
             : offers[0]?.key;
       paying = new Map();
+      preselectFlashCost(chosen);
       giftTo = undefined;
       assistTo = undefined;
       splicing = [];
@@ -325,9 +365,11 @@
         ? undefined
         : !branchOK
           ? "Choose an additional cost you can pay"
-          : spliceOpponentsMissing && (giftOffer === undefined || giftOpponent !== undefined)
-            ? "Choose which opponent gains the life"
-            : "Choose an opponent to promise the gift to",
+          : flashMissing
+            ? flashSentence
+            : spliceOpponentsMissing && (giftOffer === undefined || giftOpponent !== undefined)
+              ? "Choose which opponent gains the life"
+              : "Choose an opponent to promise the gift to",
     })}
     secondary={[cancelAction(onCancel)]}
   >
@@ -355,7 +397,7 @@
               class="prompt-opt"
               class:on={chosen === undefined}
               aria-pressed={chosen === undefined}
-              onclick={() => (chosen = undefined)}
+              onclick={() => choose(undefined)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name">Its mana cost</span>
@@ -372,7 +414,7 @@
               class="prompt-opt"
               class:on={chosen === offer.key}
               aria-pressed={chosen === offer.key}
-              onclick={() => (chosen = offer.key)}
+              onclick={() => choose(offer.key)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
               <span class="name"
@@ -464,7 +506,10 @@
                 onclick={() => toggle(offer.index)}
               >
                 <span class="prompt-radio" aria-hidden="true"></span>
-                <span class="name">{offer.label ?? offer.key}</span>
+                <span class="name"
+                  >{offer.label ?? offer.key}{#if flashNeeded && offer.opens_flash}
+                    <span class="casts-face">{L.opensFlashNeededNow}</span>{/if}</span
+                >
                 {#if offer.mana_cost}
                   <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
                 {/if}
@@ -499,6 +544,11 @@
           </li>
         {/each}
       </ul>
+    {/if}
+    {#if flashMissing}
+      <p class="prompt-hint flash-hint" role="status">
+        {flashSentence} <span class="prompt-src" aria-hidden="true">CR 601.3c</span>
+      </p>
     {/if}
     {#if spliceOffers.length > 0}
       <p class="prompt-hint add-on-hint">
@@ -610,6 +660,10 @@
   }
   .add-on-hint {
     margin-top: 12px;
+  }
+  .flash-hint {
+    margin-top: 8px;
+    color: var(--fg);
   }
   .gift-picker {
     margin: 6px 0 0 24px;

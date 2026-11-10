@@ -212,6 +212,25 @@ const (
 	// refuses a file carrying it through Known.
 	UntilPlaneswalkAway
 
+	// UntilNextEndStep is "until the next end step" (Niko, Light of Hope):
+	// the effect lasts until the next end step of ANY turn begins, which
+	// is this turn's when its end step has not begun, and the following
+	// turn's otherwise. It ends as that step BEGINS (CR 611.2b), so the
+	// delayed trigger that fires at the same moment sees it over.
+	//
+	// The twelfth kind, appended after UntilPlaneswalkAway so every
+	// persisted int keeps its meaning; a binary from before it refuses a
+	// file carrying it through Known.
+	//
+	// The stamp is ExpiresAtTurnsBegun, here the number of end steps that
+	// had begun when the effect was made (endStepsBegunLocked). Each end
+	// step that begins raises that number, so the effect is over when it
+	// has grown: a pure read, like UntilEndOfCombat's, with no flag to set
+	// and nothing to forget. A turn that is ended (CR 724.1) skips its end
+	// step, which never begins, so the effect carries to the next one that
+	// does, as the delayed trigger it is paired with does.
+	UntilNextEndStep
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -336,6 +355,16 @@ const (
 	// enum's integer values are written into snapshot files.
 	WhileSourceOnceItLands
 
+	// WhilePlayerIsMonarch — "for as long as they're the monarch"
+	// (Garland, Royal Kidnapper): holds while Duration.Player holds the
+	// monarch designation (CR 725). It reads no object, so it needs no
+	// source or pin; the layer listener bumps the layer version on
+	// EventMonarchChanged, so the next sweep sees the crown move. Once the
+	// crown has left that player the effect is over for good (CR 611.2b),
+	// even if they take it back later. Appended, never inserted: the
+	// enum's integer values are written into snapshot files.
+	WhilePlayerIsMonarch
+
 	// durationConditionEnd is a sentinel, not a condition. Keep it
 	// LAST, for the reason durationKindEnd gives: an unknown condition
 	// would otherwise fall through to a bare "source on battlefield".
@@ -418,12 +447,15 @@ func (d Duration) Problem() string {
 		}
 		return ""
 	}
-	counter, pin := false, false
+	counter, pin, monarch := false, false, false
 	for _, c := range d.conditions() {
+		monarch = monarch || c == WhilePlayerIsMonarch
 		counter = counter || c == WhilePinnedHasCounter
 		pin = pin || c.readsPin()
 	}
 	switch {
+	case monarch && d.Player == uuid.Nil:
+		return "a monarch-held duration names no player"
 	case counter && d.CounterKind == "":
 		return "a counter-held duration names no counter kind"
 	case !counter && d.CounterKind != "":
@@ -711,6 +743,28 @@ func (g *Game) UntilYourNextEndStepDuration(player uuid.UUID) Duration {
 	}
 }
 
+// UntilNextEndStepDuration is "until the next end step" (any player's),
+// stamped with the end steps that have begun so far. Caller must hold
+// g.mu.
+func (g *Game) UntilNextEndStepDuration() Duration {
+	return Duration{Kind: UntilNextEndStep, ExpiresAtTurnsBegun: g.endStepsBegunLocked()}
+}
+
+// endStepsBegunLocked is how many end steps have begun in this game,
+// counted as the sum over the seats of the turn each one's latest end
+// step began in (Player.EndStepTurn). An end step raises one seat's
+// number by at least one, so the sum only ever grows, and seats are
+// permanent once a game has started. Caller must hold g.mu.
+func (g *Game) endStepsBegunLocked() int {
+	n := 0
+	for _, p := range g.Seats {
+		if p != nil {
+			n += p.EndStepTurn
+		}
+	}
+	return n
+}
+
 // UntilEndOfItsControllersNextTurnDuration is "during its controller's
 // next turn" for the creature `creature` (#2567), pinned to it as the
 // object it is now and stamped with the current turn. The second return
@@ -857,6 +911,23 @@ func (g *Game) ForAsLongAsPinnedHasCounterDuration(object uuid.UUID, kind string
 		return Duration{}, false
 	}
 	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedHasCounter, CounterKind: kind}, object), true
+}
+
+// ForAsLongAsPlayerIsMonarchDuration is "for as long as <player> is the
+// monarch" (Garland, Royal Kidnapper's steal), pinned to `object` so the
+// effect is swept as soon as the stolen permanent is gone. False, so
+// nothing is registered, when `player` does not hold the crown now or
+// `object` is not on the battlefield.
+//
+// Caller must hold g.mu.
+func (g *Game) ForAsLongAsPlayerIsMonarchDuration(player, object uuid.UUID) (Duration, bool) {
+	if player == uuid.Nil || g.Monarch != player {
+		return Duration{}, false
+	}
+	if _, ok := g.battlefieldCardLocked(object); !ok {
+		return Duration{}, false
+	}
+	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePlayerIsMonarch, Player: player}, object), true
 }
 
 // ForAsLongAsPinnedTappedDuration is "for as long as that creature
@@ -1137,6 +1208,10 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// not.
 		p := g.playerByIDLocked(d.Player)
 		return p != nil && p.EndStepTurn >= d.ExpiresAtTurnsBegun
+	case UntilNextEndStep:
+		// Over once an end step has begun since the effect was made
+		// (UntilNextEndStep): the count has grown past its stamp.
+		return g.endStepsBegunLocked() > d.ExpiresAtTurnsBegun
 	case UntilEndOfCombat:
 		// Over the moment the cursor is outside the combat phase it
 		// names (CR 511.3, 724.2d): the next step after end of combat,
@@ -1223,6 +1298,8 @@ func (g *Game) conditionHoldsLocked(d Duration, cond DurationCondition) bool {
 			return false
 		}
 		return src.IsAttachedTo(c.InstanceID)
+	case WhilePlayerIsMonarch:
+		return d.Player != uuid.Nil && g.Monarch == d.Player
 	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhileSourceOnceItLands:
 		return g.sourceConditionHoldsLocked(d, cond)
 	}
@@ -1386,6 +1463,8 @@ func (k DurationKind) String() string {
 		return "until the end of its controller's next turn"
 	case UntilPlaneswalkAway:
 		return "until you planeswalk away"
+	case UntilNextEndStep:
+		return "until the next end step"
 	}
 	return "unknown duration"
 }

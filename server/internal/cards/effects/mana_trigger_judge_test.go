@@ -86,6 +86,10 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 		// (Badgermole Cub).
 		elf := game.Card{InstanceID: uuid.New(), Name: "Llanowar Elves", TypeLine: "Creature — Elf Druid", Power: 1, Toughness: 1, Owner: p.ID, Controller: p.ID}
 		pushBattlefieldCardWithTimestamp(g, elf)
+		// An artifact token, for "whenever you tap an artifact token for
+		// mana" (Roxanne, Starfall Savant).
+		treasure := game.Card{InstanceID: uuid.New(), Name: "Treasure", TypeLine: "Token Artifact — Treasure", Owner: p.ID, Controller: p.ID}
+		pushBattlefieldCardWithTimestamp(g, treasure)
 
 		probes = append(probes,
 			judgeProbe{"Forest {G}", forest, p.ID, []string{"G"}},
@@ -101,6 +105,7 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 			judgeProbe{"filter land {U}{R}", filter, p.ID, []string{"U", "R"}},
 			judgeProbe{"Sol Ring {C}{C}", ring, p.ID, []string{"C", "C"}},
 			judgeProbe{"Llanowar Elves {G}", elf, p.ID, []string{"G"}},
+			judgeProbe{"Treasure token {R}", treasure, p.ID, []string{"R"}},
 		)
 
 		// The card under test, on this seat: an Aura on this seat's Forest.

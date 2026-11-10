@@ -90,6 +90,7 @@
     type TableSettingsPatch,
   } from "../lib/tableSettings";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
+  import { planarDieButton } from "../lib/planarDie";
   import VoiceRoom from "../lib/components/VoiceRoom.svelte";
   import NotificationsNudge from "../lib/components/NotificationsNudge.svelte";
   import {
@@ -259,6 +260,7 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { blockTaxFor, blockTaxNote, finishBlocksParams } from "../lib/blockTax";
   import { attackDefaultStep, attackStepKey } from "../lib/attackDefault";
   import { shouldSignal, showTurnSignal } from "../lib/turnSignal";
   import {
@@ -1352,6 +1354,18 @@
   // you own outside the game puts a shortcut in the dock. The sideboard is
   // no pile on the table (its tab is in the zone browser); Wish's "name a
   // card to play" lives here.
+  // ADR 0216 §10: the planar die button, at a Planechase table only. The
+  // press sends the server's own move (lib/planarDie.ts).
+  const planarDie = $derived.by(() => {
+    const button = planarDieButton(view, viewerID);
+    if (!button) return null;
+    return {
+      button,
+      onPress: () => {
+        if (button.params) sendAction("special_action", button.params, viewerID ?? undefined);
+      },
+    };
+  });
   const outsideDockProps = $derived(
     outsideDock(view, viewerID, {
       name: () => sendAction("outside_play", undefined, viewerID ?? undefined),
@@ -2428,6 +2442,9 @@
   // player and never blocks, so this is the viewer's own declaration,
   // offered while they are on their own board.
   const viewerBlocksPending = $derived(blockDeclarationPending(view, actingID));
+  // #5375 (ADR 0221): the CR 509.1d block tax on the acting seat's
+  // blocks, server-priced.
+  const viewerBlockTax = $derived(blockTaxFor(view, actingID));
   const viewerStagedBlocks = $derived(
     actingID && view
       ? view.battlefield.cards.filter((c) => c.controller === actingID && !!c.blocking_target)
@@ -2461,7 +2478,9 @@
     blockListOpen = false;
     const declining = viewerStagedBlocks === 0;
     const holding = actingHasPriority;
-    const frame = client.sendAction("finish_blocks", actingID);
+    // #5375 (ADR 0221): staged blocks under a block tax pay it as the
+    // declaration completes; auto_tap lets the server tap for it.
+    const frame = client.sendAction("finish_blocks", actingID, finishBlocksParams(viewerBlockTax));
     noBlocksPass = declining && holding && frame ? { frame, seq: $lastSeq } : null;
   }
   $effect(() => {
@@ -2740,6 +2759,7 @@
           viewerStagedBlocks,
           finishBlocks,
           blockCtx ? () => (blockListOpen = true) : undefined,
+          blockTaxNote(viewerBlockTax),
         )
       : null,
   );
@@ -3708,6 +3728,7 @@
             ctx={blockCtx}
             pick={blockPick}
             staged={viewerStagedBlocks}
+            taxNote={blockTaxNote(viewerBlockTax)}
             onPair={pairFromList}
             onClear={clearFromList}
             onFinish={finishBlocks}
@@ -3782,6 +3803,7 @@
           outside={outsideDockProps}
           {viewerID}
           handoff={handoffOffer}
+          {planarDie}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />

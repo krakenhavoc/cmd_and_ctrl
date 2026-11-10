@@ -305,8 +305,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// scoped_block_rules_test.go here and in cards/effects.
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
 		ModCantBeBlockedByPlayer: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
-		ModCantBeBlockedBySubtypes: true, // #4100
-		ModCantBeBlockedByObject:   true, // #4307, cases in scoped_block_rules_object_test.go
+		ModCantBeBlockedBySubtypes:     true, // #4100
+		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
+		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go
+		ModCantBeBlockedByMoreThan:     true, // cases in scoped_block_rules_max_test.go
 		// #1651: cantHaveKeywords has a case above; waiveHexproof is read
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.
@@ -366,6 +368,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §3: the damage multiplier is a replacement. Its cases
 		// are in multiply_damage_test.go.
 		ModMultiplyDamage: true,
+		// #4468: the additive sibling. Its cases are in
+		// add_damage_test.go.
+		ModAddDamage: true,
 		// ADR 0108 §9: the redirection is a replacement. Its cases are in
 		// redirect_damage_test.go.
 		ModRedirectDamage: true,
@@ -391,6 +396,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0032 amendment (#3515): the turn-limited legend-rule
 		// exemption. Its cases are in legend_rule_this_turn_test.go.
 		ModLegendRuleDoesntApply: true,
+		// ADR 0216 slice 4 (#4870): the entry gate. Its cases are in
+		// cards_cant_enter_from_exile_test.go and the effects package's
+		// Bad Wolf Bay tests.
+		ModCardsCantEnterFromExile: true,
 		// ADR 0146 amendment (#2928): who casts each player's ballot.
 		// Its cases are in council_vote_zone_chooser_test.go and
 		// illusion_of_choice_test.go.
@@ -688,7 +697,7 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
 		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
 		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource, WhileSourceAttachedToPinned,
-		WhileSourceOnceItLands} {
+		WhileSourceOnceItLands, WhilePlayerIsMonarch} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}

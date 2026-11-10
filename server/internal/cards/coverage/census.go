@@ -98,6 +98,13 @@ type Census struct {
 	Full       int
 	Caveats    int
 	Unreviewed int
+
+	// PlanarCatalogued and PlanarCards are the planar line (ADR 0216 §6):
+	// how many of the card database's planes and phenomena (PlanarCards,
+	// planar_cards.txt) have a catalog row. A planar card with no row
+	// still plays, its abilities settled by hand (PLAN.md §5.1).
+	PlanarCatalogued int
+	PlanarCards      int
 }
 
 // TakeCensus measures the live registry.
@@ -125,6 +132,12 @@ func TakeCensus() Census {
 			c.Caveats++
 		default:
 			c.Unreviewed++
+		}
+	}
+	for _, p := range PlanarCards() {
+		c.PlanarCards++
+		if _, ok := effects.Lookup(p.OracleID); ok {
+			c.PlanarCatalogued++
 		}
 	}
 	return c
@@ -180,6 +193,7 @@ func (c Census) Block() string {
 	fmt.Fprintf(&b, "| Declared `full` | %d |\n", c.Full)
 	fmt.Fprintf(&b, "| Declared `caveats` | %d |\n", c.Caveats)
 	fmt.Fprintf(&b, "| Declared `unreviewed` | %d |\n", c.Unreviewed)
+	fmt.Fprintf(&b, "| Planes and phenomena in the card database with a catalog row | %d of %d |\n", c.PlanarCatalogued, c.PlanarCards)
 	b.WriteString("\n")
 	b.WriteString("A back face is usually half a card: the modal-DFC land cycle registers\n")
 	b.WriteString("only its sixty land backs, and those cards are still gap cards on their\n")
@@ -187,6 +201,10 @@ func (c Census) Block() string {
 	b.WriteString("too — a Siege is one whole card spread over two keys. Whole cards is\n")
 	b.WriteString("still the number to quote when someone asks how many cards the engine\n")
 	b.WriteString("automates; it undercounts by the number of Sieges.\n")
+	b.WriteString("\n")
+	b.WriteString("The planar line counts Planechase's plane and phenomenon cards (ADR 0216):\n")
+	b.WriteString("they are catalog keys like any card and are inside the counts above, but no\n")
+	b.WriteString("deck list holds one, so the Commander coverage is the whole cards less them.\n")
 	b.WriteString("\n")
 	b.WriteString(EndMarker)
 	return b.String()

@@ -1299,6 +1299,13 @@ func (c *Client) handleAction(frame protocol.Frame) {
 				"only the table host or the server admin may change table settings")
 			return
 		}
+		// ADR 0216 owner answer 3: Planechase is turned on only where
+		// the deployment offers it, the same switch the lobby's
+		// settings door reads.
+		if refusesPlanechase(c.hub.loadManager(), action) {
+			c.sendError(frame.ID, protocol.CodeBadRequest, "Planechase is not offered on this server yet")
+			return
+		}
 		// …and NOT through Apply: a settings change is not a play, so
 		// it mints no undo entry. Otherwise lowering the undo limit
 		// could be taken back with the undo it was meant to stop, and
@@ -1374,6 +1381,12 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// ADR 0221: an unpaid block tax wraps the payer's error the
+		// same way, so it is recognised here for the same reason.
+		if body, ok := blockTaxPayload(err); ok {
+			c.sendErrorPayload(frame.ID, body)
+			return
+		}
 		// #3855: a waived payment something reads asks what was paid
 		// on paper, with the shortfall, before anything was paid.
 		var pp *game.PaperPaymentRequiredError
@@ -1443,6 +1456,20 @@ func (c *Client) actionTag(t actions.Type) ActionTag {
 // differently would leave the old verb as the way around the new gate.
 func isTableSettingsAction(t actions.Type) bool {
 	return t == actions.TypeSetTableSettings || t == actions.TypeSetUndoLimit
+}
+
+// refusesPlanechase reports whether a table-settings action turns
+// Planechase on where mgr does not offer it (ADR 0216, owner answer 3).
+// A patch that does not parse is left to Dispatch to refuse.
+func refusesPlanechase(mgr *RoomManager, action actions.Action) bool {
+	if action.Type != actions.TypeSetTableSettings || mgr.PlanechaseOffered() {
+		return false
+	}
+	var p game.SettingsPatch
+	if err := json.Unmarshal(action.Params, &p); err != nil {
+		return false
+	}
+	return p.TurnsOnPlanechase()
 }
 
 // classifyActionError maps a dispatch-time error from the game or
@@ -1545,6 +1572,10 @@ func classifyActionError(err error) (code, message string) {
 		// (attackTaxPayload) before reaching this classifier; this arm
 		// is the same code and the same sentence for any other caller.
 		body, _ := attackTaxPayload(err)
+		return body.Code, body.Message
+	case errors.Is(err, game.ErrBlockTaxUnpaid):
+		// ADR 0221, attackTaxPayload's arm one step over.
+		body, _ := blockTaxPayload(err)
 		return body.Code, body.Message
 	case errors.Is(err, game.ErrLandDropUnavailable):
 		// #500: the player is out of land plays for the turn. The
@@ -1735,6 +1766,30 @@ func attackTaxPayload(err error) (protocol.ErrorPayload, bool) {
 	if errors.As(err, &te) && te.Cost != "" {
 		body.Reason = te.Cost
 		body.Message = "attacking costs " + te.Cost + " and you can't pay it"
+	}
+	var im *game.InsufficientManaError
+	if errors.As(err, &im) {
+		body.Missing = im.Missing
+	}
+	return body, true
+}
+
+// blockTaxPayload builds the `block_tax_unpaid` error frame for a
+// finish_blocks (or pending defender's pass) refused for want of the
+// CR 509.1d cost (ADR 0221, #5375): the whole price in Reason, the
+// uncovered symbols in Missing. ok is false for any other error.
+func blockTaxPayload(err error) (protocol.ErrorPayload, bool) {
+	if !errors.Is(err, game.ErrBlockTaxUnpaid) {
+		return protocol.ErrorPayload{}, false
+	}
+	body := protocol.ErrorPayload{
+		Code:    protocol.CodeBlockTaxUnpaid,
+		Message: "you can't pay what it costs to block",
+	}
+	var te *game.BlockTaxUnpaidError
+	if errors.As(err, &te) && te.Cost != "" {
+		body.Reason = te.Cost
+		body.Message = "blocking costs " + te.Cost + " and you can't pay it — take a block back or make more mana"
 	}
 	var im *game.InsufficientManaError
 	if errors.As(err, &im) {

@@ -1,6 +1,12 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/google/uuid"
+)
 
 // explore.go — the CR 701.44 keyword action "<permanent> explores"
 // (#2720).
@@ -53,7 +59,141 @@ const EventExplored EventKind = "explored"
 //
 // Caller must hold g.mu.
 func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller uuid.UUID) error {
-	done := func(g *Game) error { return g.finishExploreLocked(source, explorer.ID, controller) }
+	return g.exploreLocked(source, explorer, controller, exploreRest{})
+}
+
+// ExploreTimesForEffect has the permanent explore n times in a row (CR 701.44a,
+// "explores X times"): each explore finishes, its question answered, before
+// the next reveals, so a nonland card left on top is revealed again. n of 0 or
+// less does nothing. The count rides the keyed tails and the prompt as data.
+//
+// Caller must hold g.mu.
+func (g *Game) ExploreTimesForEffect(source uuid.UUID, explorer ObjectRef, controller uuid.UUID, n int) error {
+	return g.ExploreTimesThenForEffect(source, explorer, controller, n, TailRef{})
+}
+
+// ExploreTimesThenForEffect is ExploreTimesForEffect and then the registered
+// tail `then`, run once the last explore has finished (CR 701.44b) with the
+// explorer as its Carry[0], the explore's controller as its Player and the
+// source as its Source: "explores. Then you may ..." (Deepfathom Echo).
+// The tail rides the explore's own prompts as data, so a table waiting on the
+// graveyard question is still a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) ExploreTimesThenForEffect(source uuid.UUID, explorer ObjectRef, controller uuid.UUID, n int, then TailRef) error {
+	if n <= 0 {
+		return nil
+	}
+	return g.exploreLocked(source, explorer, controller, exploreRest{More: n - 1, Then: then.Key()})
+}
+
+// exploreRest is what follows one explore: more explores of the same
+// permanent, then an optional registered tail. Plain data, carried through
+// the explore's tails and prompts as numbers and words.
+type exploreRest struct {
+	More int
+	Then string
+}
+
+// word is the rest as a prompt's one word: "" when nothing follows.
+func (r exploreRest) word() string {
+	if r.More <= 0 && r.Then == "" {
+		return ""
+	}
+	return strconv.Itoa(r.More) + "|" + r.Then
+}
+
+func exploreRestFromWord(w string) exploreRest {
+	n, then, _ := strings.Cut(w, "|")
+	more, _ := strconv.Atoi(n)
+	return exploreRest{More: more, Then: then}
+}
+
+// exploreLocked is one explore with `rest` still to follow it, through the
+// explore replacements first.
+//
+// Caller must hold g.mu.
+func (g *Game) exploreLocked(source uuid.UUID, explorer ObjectRef, controller uuid.UUID, rest exploreRest) error {
+	// CR 614: "If a creature you control would explore, instead you scry 1,
+	// then that creature explores" (Twists and Turns). One replacement per
+	// copy, each applying once to what the one before it made (CR 614.5), so
+	// N copies are N scries and then the explore.
+	if n := g.exploreScryCountLocked(controller); n > 0 {
+		tail := KeyedTail{
+			Ref: exploreAfterScryTail, Player: controller, Source: source,
+			Carry: []uuid.UUID{explorer.ID}, Nums: []int{explorer.Epoch}, N: n - 1, Word: rest.word(),
+		}
+		g.ScryKeyedForEffect(controller, source, 1, tail)
+		return nil
+	}
+	return g.exploreNowLocked(source, explorer, controller, rest)
+}
+
+// exploreScryKeys are the catalog keys of the permanents that print "If a
+// creature you control would explore, instead you scry 1, then that
+// creature explores" (RegisterExploreScryKey). Written at init only.
+var exploreScryKeys = struct {
+	sync.RWMutex
+	keys map[string]bool
+}{keys: map[string]bool{}}
+
+// RegisterExploreScryKey registers a card's catalog key as the explore
+// replacement above. Call it once from the card's init.
+func RegisterExploreScryKey(key string) {
+	exploreScryKeys.Lock()
+	defer exploreScryKeys.Unlock()
+	exploreScryKeys.keys[key] = true
+}
+
+// exploreScryCountLocked is how many of those replacements `controller`'s
+// permanents carry: through the catalog key that says the ability is still
+// there, so a Twists and Turns that lost its abilities replaces nothing.
+// Caller must hold g.mu.
+func (g *Game) exploreScryCountLocked(controller uuid.UUID) int {
+	if g.Battlefield == nil {
+		return 0
+	}
+	exploreScryKeys.RLock()
+	defer exploreScryKeys.RUnlock()
+	if len(exploreScryKeys.keys) == 0 {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != controller {
+			continue
+		}
+		if key := catalogAbilityKeyOf(c); key != "" && exploreScryKeys.keys[key] {
+			n++
+		}
+	}
+	return n
+}
+
+// exploreAfterScryTail is the explore once the replacement's scries are
+// done: the next scry while any are owed (the tail's N), then the explore
+// itself, of the object the ability named (Carry and Nums). An on-disk key:
+// never renamed, never reused.
+var exploreAfterScryTail = RegisterTail("engine/explore-after-scry", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 || len(o.Tail.Nums) == 0 {
+		return nil
+	}
+	if o.Tail.N > 0 {
+		next := o.Tail
+		next.N--
+		g.ScryKeyedForEffect(next.Player, next.Source, 1, next)
+		return nil
+	}
+	return g.exploreNowLocked(o.Tail.Source, ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.Nums[0]}, o.Tail.Player, exploreRestFromWord(o.Tail.Word))
+})
+
+// exploreNowLocked is the explore itself (CR 701.44a), with no replacement
+// left to apply, and `rest` to follow it.
+//
+// Caller must hold g.mu.
+func (g *Game) exploreNowLocked(source uuid.UUID, explorer ObjectRef, controller uuid.UUID, rest exploreRest) error {
+	done := func(g *Game) error { return g.finishExploreLocked(source, explorer.ID, controller, uuid.Nil, rest) }
 	p := g.playerByIDLocked(controller)
 	if p == nil || p.Eliminated {
 		return done(g)
@@ -75,12 +215,12 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 			DstOwner: controller,
 			Actor:    controller,
 			Source:   source,
-		}, exploreDone(source, explorer.ID, controller))
+		}, exploreDone(source, explorer.ID, controller, top.InstanceID, rest))
 	}
 	// #4253 slice 7: the question is the counter's keyed tail (the explorer
 	// and the revealed card ride it as data), so a CR 616 ordering prompt over
 	// the +1/+1 counter is a restore point.
-	ask := KeyedTail{Ref: exploreAskTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer.ID, top.InstanceID}}
+	ask := KeyedTail{Ref: exploreAskTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer.ID, top.InstanceID}, N: rest.More, Word: rest.Then}
 	if perm := findBattlefieldCard(g, explorer.ID); perm != nil && perm.ObjectEpoch == explorer.Epoch {
 		return g.AddCounterByKeyedForEffect(controller, explorer.ID, CounterPlusOne, 1, ask)
 	}
@@ -100,7 +240,7 @@ var exploreAskTail = RegisterTail("engine/explore-ask", func(g *Game, o TailOutc
 			revealed = c
 		}
 	}
-	return g.queueExploreGraveyardQuestionLocked(o.Tail.Source, o.Tail.Player, o.Tail.Carry[0], revealed)
+	return g.queueExploreGraveyardQuestionLocked(o.Tail.Source, o.Tail.Player, o.Tail.Carry[0], revealed, exploreRest{More: o.Tail.N, Then: o.Tail.Word})
 })
 
 // exploreDoneTail is CR 701.44b's "has explored" after a move of the
@@ -113,25 +253,51 @@ var exploreDoneTail = RegisterTail("engine/explore-done", func(g *Game, o TailOu
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	return g.finishExploreLocked(o.Tail.Source, o.Tail.Carry[0], o.Tail.Player)
+	revealed := uuid.Nil
+	if len(o.Tail.Carry) > 1 {
+		revealed = o.Tail.Carry[1]
+	}
+	return g.finishExploreLocked(o.Tail.Source, o.Tail.Carry[0], o.Tail.Player, revealed, exploreRest{More: o.Tail.N, Then: o.Tail.Word})
 })
 
 // exploreDone is exploreDoneTail for one explore.
-func exploreDone(source, explorer, controller uuid.UUID) KeyedTail {
-	return KeyedTail{Ref: exploreDoneTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer}}
+func exploreDone(source, explorer, controller, revealed uuid.UUID, rest exploreRest) KeyedTail {
+	return KeyedTail{Ref: exploreDoneTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer, revealed}, N: rest.More, Word: rest.Then}
 }
 
 // finishExploreLocked is CR 701.44b: the permanent has explored.
 //
 // Caller must hold g.mu.
-func (g *Game) finishExploreLocked(source, explorer, controller uuid.UUID) error {
+func (g *Game) finishExploreLocked(source, explorer, controller, revealed uuid.UUID, rest exploreRest) error {
 	g.EmitEvent(Event{
-		Kind:   EventExplored,
-		Actor:  controller,
-		CardID: explorer,
-		Source: source,
+		Kind:            EventExplored,
+		Actor:           controller,
+		CardID:          explorer,
+		Source:          source,
+		ExploreRevealed: revealed,
 	})
-	return nil
+	if rest.More <= 0 {
+		if ref, ok := TailRefByKey(rest.Then); ok {
+			return KeyedTail{Ref: ref, Source: source, Player: controller, Carry: []uuid.UUID{explorer}}.Run(g, nil)
+		}
+		return nil
+	}
+	// "Explores X times": the next explore, the same permanent again.
+	ref := ObjectRef{ID: explorer}
+	if c := findBattlefieldCard(g, explorer); c != nil {
+		ref.Epoch = c.ObjectEpoch
+	}
+	return exploreAgain(g, source, ref, controller, exploreRest{More: rest.More - 1, Then: rest.Then})
+}
+
+// exploreAgain is exploreLocked, reached through a variable so the package's
+// initialisation order has no cycle (an explore's tails finish an explore).
+var exploreAgain func(g *Game, source uuid.UUID, explorer ObjectRef, controller uuid.UUID, rest exploreRest) error
+
+func init() {
+	exploreAgain = func(g *Game, source uuid.UUID, explorer ObjectRef, controller uuid.UUID, rest exploreRest) error {
+		return g.exploreLocked(source, explorer, controller, rest)
+	}
 }
 
 // queueExploreGraveyardQuestionLocked asks CR 701.44a's last clause:
@@ -144,13 +310,14 @@ func (g *Game) finishExploreLocked(source, explorer, controller uuid.UUID) error
 // its carried IDs.
 //
 // Caller must hold g.mu.
-func (g *Game) queueExploreGraveyardQuestionLocked(source, controller, explorer uuid.UUID, revealed Card) error {
+func (g *Game) queueExploreGraveyardQuestionLocked(source, controller, explorer uuid.UUID, revealed Card, rest exploreRest) error {
 	_, err := g.QueueConfirmKeyedForEffect(ConfirmPrompt{
 		Chooser:      controller,
 		Source:       source,
 		Question:     "Explore — put " + nameOr(revealed.Name, "the revealed card") + " into your graveyard?",
 		AcceptLabel:  "Put it into your graveyard",
 		DeclineLabel: "Leave it on top",
+		Word:         rest.word(),
 	}, exploreGraveyardAnswer, []uuid.UUID{revealed.InstanceID, explorer})
 	return err
 }
@@ -162,7 +329,8 @@ var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", fu
 		return nil
 	}
 	revealed, explorer, controller, source := r.Carry[0], r.Carry[1], r.Chooser, r.Source
-	done := func(g *Game) error { return g.finishExploreLocked(source, explorer, controller) }
+	rest := exploreRestFromWord(r.Word)
+	done := func(g *Game) error { return g.finishExploreLocked(source, explorer, controller, revealed, rest) }
 	if !r.Accepted {
 		return done(g)
 	}
@@ -176,7 +344,7 @@ var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", fu
 		DstOwner: controller,
 		Actor:    controller,
 		Source:   source,
-	}, exploreDone(source, explorer, controller))
+	}, exploreDone(source, explorer, controller, revealed, rest))
 })
 
 // exploreReason is the reveal banner: "<name> explores".

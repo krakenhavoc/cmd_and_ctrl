@@ -1746,7 +1746,10 @@ func (g *Game) autoTapAbilityAcceptsFor(asker uuid.UUID, source Card, a ManaAbil
 	if !g.autoTapAcceptsBesidesManaCost(asker, source, a, spend) {
 		return false
 	}
-	if a.ManaCost != "" {
+	// #5382: asked of a tap-only ability too — an activation cost
+	// increase (Skyseer's Chariot) can make one owe mana, and then it is
+	// the costed planner's source, not a free one.
+	if g.ManaAbilityChargesManaForEffect(asker, source, a) {
 		// #1191: priced rather than read off the printed string —
 		// see the file header's MANA-cost bullet. Anything left to
 		// pay after the CR 601.2f pass drops the source from the
@@ -1889,6 +1892,14 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if !a.ExilePermanents.Empty() {
 		return false
 	}
+	// #5397: an either/or cost (forage, Thornvault Forager) asks which
+	// way to pay — three cards from the graveyard or a Food — and
+	// spending either is a decision the planner makes none of. A
+	// hand-clicked forage row is a mana source; an auto-tapped one is
+	// never.
+	if a.Branched() {
+		return false
+	}
 	return true
 }
 
@@ -1989,10 +2000,10 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
 		return false
 	}
-	if !a.ExilePermanents.Empty() {
+	if !a.ExilePermanents.Empty() || a.Branched() {
 		return false
 	}
-	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil {
+	if a.Rider != nil || a.PreRider != nil || a.ProducedForPaid != nil || a.SourceBecomesProducedColor {
 		return false
 	}
 	return true
@@ -2082,7 +2093,8 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
 			continue
 		}
-		if a.ManaCost != "" {
+		// #5382: a taxed exile-only ability owes mana too.
+		if g.ManaAbilityChargesManaForEffect(asker, source, a) {
 			priced, err := g.ManaAbilityManaCostForEffect(asker, source, a)
 			if err != nil || !priced.Empty() {
 				continue
@@ -2091,7 +2103,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if a.AddCounter != nil || a.RemoveCounters != nil {
 			continue
 		}
-		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() {
+		if !a.TapOthers.Empty() || a.DiscardCards != nil || a.ExileCards != nil || !a.ExilePermanents.Empty() || a.Branched() {
 			continue
 		}
 		return &a

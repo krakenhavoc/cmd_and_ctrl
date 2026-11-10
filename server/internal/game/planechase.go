@@ -142,7 +142,20 @@ var (
 	// ErrPlanarDeckIllegal refuses Start for a communal planar deck
 	// with too many phenomena or a repeated name (CR 901.15a).
 	ErrPlanarDeckIllegal = errors.New("game: the communal planar deck breaks CR 901.15a")
+	// ErrPlanechaseNotOffered is the server's refusal to turn
+	// Planechase on where this deployment does not offer it (ADR 0216,
+	// owner answer 3: cmd-dev only until the plane card batches land).
+	// The engine never returns it; the lobby and the WebSocket edge do,
+	// from the one switch ws.RoomManager.PlanechaseOffered.
+	ErrPlanechaseNotOffered = errors.New("game: planechase is not offered on this server yet")
 )
+
+// TurnsOnPlanechase reports whether the patch asks for Planechase on.
+// Turning it off is always allowed, so a table restored on a server
+// that no longer offers the option can still drop it in the lobby.
+func (p SettingsPatch) TurnsOnPlanechase() bool {
+	return p.Planechase != nil && *p.Planechase
+}
 
 // PlanechaseState is a Planechase game's planar designation and die
 // count (CR 901, ADR 0216 §3). Nil on Game when the option is off.

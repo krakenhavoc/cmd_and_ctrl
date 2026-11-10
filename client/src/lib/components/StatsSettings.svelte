@@ -6,6 +6,7 @@
   // a switch that cannot work. Guests get no stats.
 
   import { L } from "../labels";
+  import PodShareSwitch from "./PodShareSwitch.svelte";
   import { setAdvancedStats, statsPrefs, statsPrefsNote } from "../statsPrefs";
 
   let busy = $state(false);
@@ -46,6 +47,8 @@
 {#if error}
   <p class="error" role="alert">{error}</p>
 {/if}
+
+<PodShareSwitch />
 
 <style>
   .help {

@@ -41,6 +41,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/ratelimit"
@@ -382,6 +383,11 @@ func postScheduled(limit *ratelimit.Limiter) lobbyHandler {
 		if body.StartsAt == 0 {
 			return httpError(http.StatusBadRequest, errStartsAtRequired)
 		}
+		// ADR 0216 owner answer 3: a plan cannot ask for an option the
+		// server does not offer.
+		if body.Planechase && !c.Lobby.PlanechaseOffered() {
+			return game.ErrPlanechaseNotOffered
+		}
 		if strings.TrimSpace(body.Name) == "" {
 			// A blank name is a surprise, as on POST /games (#2630).
 			body.Name = SuggestTableName(p.Name)
@@ -433,6 +439,9 @@ func patchScheduled(limit *ratelimit.Limiter) lobbyHandler {
 		var body schedulePatchBody
 		if err := decodeJSON(w, r, &body); err != nil {
 			return err
+		}
+		if body.Planechase != nil && *body.Planechase && !c.Lobby.PlanechaseOffered() {
+			return game.ErrPlanechaseNotOffered
 		}
 		id := r.PathValue("id")
 		patch := schedule.Patch{Name: body.Name, LengthMinutes: body.LengthMinutes, Zone: body.Zone, Players: body.Players}

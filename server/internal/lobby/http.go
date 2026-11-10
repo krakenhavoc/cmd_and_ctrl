@@ -296,6 +296,11 @@ type Config struct {
 	// a person whose advanced stats are on.
 	AdvancedStats gamestats.AdvancedStore
 
+	// PodStats reads the seats a pod's stats and leaderboard stand on
+	// (ADR 0220 slice 5): GET /pods/{id}/stats and /leaderboard. Nil (no
+	// database): both answer 503.
+	PodStats gamestats.PodStore
+
 	// ModelKeys is a signed-in person's own model key for the AI seats
 	// they add (ADR 0182, migration 0025), behind /me/model-key and the
 	// own_key option of POST /games/{id}/seats/bot. Nil means the
@@ -926,6 +931,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("DELETE /pods/{id}/members/{user_id}", podWriteRoute(deletePodMember))
 	mux.Handle("POST /me/pod-invites/{pod_id}/accept", podWriteRoute(acceptPodInvite))
 	mux.Handle("POST /me/pod-invites/{pod_id}/decline", podWriteRoute(declinePodInvite))
+	mux.Handle("POST /me/pod-suggestions/{group_key}/dismiss", podWriteRoute(dismissPodSuggestion))
 	mux.Handle("PUT /admin/pods/{id}/name", requireAdmin(c, handlerFunc(c, adminRenamePod)))
 	mux.Handle("DELETE /admin/pods/{id}", requireAdmin(c, handlerFunc(c, adminDeletePod)))
 	// Scheduled tables (ADR 0215 slice 2, scheduled_http.go). A new plan
@@ -1466,6 +1472,12 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		from := strings.TrimSpace(body.Setup)
 		if from != "" && from != setupFromLast {
 			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown setup %q (want %q)", body.Setup, setupFromLast))
+		}
+		// ADR 0216 owner answer 3: refused before a table exists, so a
+		// server that does not offer Planechase never makes a table
+		// the creator did not ask for.
+		if body.Planechase && !c.Lobby.PlanechaseOffered() {
+			return game.ErrPlanechaseNotOffered
 		}
 
 		if strings.TrimSpace(body.Name) == "" && !server {
@@ -4911,7 +4923,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// game's state cannot satisfy (422), which is the documented
 	// rejection and the one a client is expected to pre-empt by
 	// disabling the control.
-	case errors.Is(err, game.ErrInvalidSetting):
+	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered):
 		status = http.StatusBadRequest
 	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked),
 		errors.Is(err, game.ErrPlanechaseLocked):

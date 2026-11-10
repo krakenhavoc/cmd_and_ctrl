@@ -82,6 +82,8 @@ func TestPrivacyNoticeNumbersMatchTheServer(t *testing.T) {
 	check("podDismissDays", int(pods.DismissTTL/day), "pods.DismissTTL")
 	check("podMemberCap", pods.MaxMembers, "pods.MaxMembers")
 	check("podsPerPerson", pods.MaxPodsPerPerson, "pods.MaxPodsPerPerson")
+	check("podSuggestGames", pods.SuggestGames, "pods.SuggestGames")
+	check("podSuggestDays", int(pods.SuggestWindow/day), "pods.SuggestWindow")
 	check("scheduledKeepHours", int(schedule.Keep/time.Hour), "schedule.Keep")
 
 	// Backups: scripts/backup-offsite.sh is the source.

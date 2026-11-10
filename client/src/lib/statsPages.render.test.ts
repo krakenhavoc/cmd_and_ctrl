@@ -57,7 +57,13 @@ async function settle(): Promise<void> {
 
 beforeEach(() => {
   session.set(person());
-  prefs = { available: true, advanced: false, choice: "default", default: false };
+  prefs = {
+    available: true,
+    advanced: false,
+    choice: "default",
+    default: false,
+    share_pods: false,
+  };
   calls = [];
   vi.stubGlobal(
     "fetch",

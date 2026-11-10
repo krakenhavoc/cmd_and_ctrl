@@ -1039,6 +1039,9 @@ func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLife
 	} else {
 		g.markDealtCombatDamageLocked(ev.DamageSource)
 	}
+	if ev.DamageAmount > 0 {
+		g.markDealtDamageLocked(ev.DamageSource)
+	}
 	g.EmitEvent(Event{
 		Kind:              EventDealDamage,
 		Actor:             t.actor,

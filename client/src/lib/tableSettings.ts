@@ -206,6 +206,7 @@ export function settingsSummary(s: TableSettingsView): string {
   else if (free > 0) rest.push(`${free} free mulligan${free === 1 ? "" : "s"}`);
   if (s.bot_pace !== d.bot_pace) rest.push(`${s.bot_pace} pace`);
   if (s.allow_spawn) rest.push("spawning on");
+  if (s.planechase) rest.push("Planechase");
   return [`${s.starting_life} life`, undos, ...(rest.length > 0 ? rest : ["standard rules"])].join(
     " · ",
   );
@@ -322,6 +323,11 @@ export function settingsPatchError(
     if (startingLifeLocked(state)) {
       return "The game has already started, so free mulligans are fixed.";
     }
+  }
+  // ADR 0216 §1: the planar deck is built at Start, so Planechase is
+  // fixed from then on, like free mulligans.
+  if (patch.planechase !== undefined && startingLifeLocked(state)) {
+    return "The game has already started, so Planechase is fixed.";
   }
   if (patch.away_after !== undefined) {
     const n = patch.away_after;

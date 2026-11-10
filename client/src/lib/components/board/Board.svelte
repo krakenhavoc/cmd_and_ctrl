@@ -25,7 +25,9 @@
     ActivatedAbilityView,
     AdditionalCostView,
     AltCostPriceView,
+    AlternativeCostView,
     AltCostTapPriceView,
+    BeholdTypeOption,
     CardView,
     GameView,
     LegalTargetsView,
@@ -84,6 +86,7 @@
   import EliminationFx from "./EliminationFx.svelte";
   import ExtortScales from "./ExtortScales.svelte";
   import DiceLayer from "./DiceLayer.svelte";
+  import PlanarZone from "./PlanarZone.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
@@ -249,11 +252,13 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaCostBranchPayment,
     manaExilePermanentPayment,
     manaTapPayment,
   } from "../../manaAbilityCost";
   import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
   import { discardedManaValue } from "../../discardCostX";
+  import { exiledTotalManaValue } from "../../exileTotalX";
   import {
     costConfirmLines,
     costConfirmNote,
@@ -264,6 +269,7 @@
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
   import PermissionTypeModal from "./PermissionTypeModal.svelte";
+  import BeholdTypeModal from "./BeholdTypeModal.svelte";
   import { needsPermissionTypePicker } from "../../permissionTypes";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
@@ -879,10 +885,20 @@
   // permanents), resolved against both zones.
   // #4687: `exile` is the Champions' "behold a Kithkin and exile it", whose
   // pick is exiled, so the sheet's verb is "Exile".
+  // #5406: `count` is a behold N's N ("behold two creatures of that type").
   let revealPrompt = $state<{
     card: CardView;
     label: string;
     exile: boolean;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  // #5406: a behold that chooses its creature type asks the type first,
+  // then the reveal sheet asks for that type's creatures.
+  let beholdTypePrompt = $state<{
+    card: CardView;
+    types: BeholdTypeOption[];
+    count: number;
     choices: CastChoices;
   } | null>(null);
   let revealPromptOptionIDs = $state<string[]>([]);
@@ -1029,6 +1045,13 @@
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
   }
 
+  function confirmBeholdType(type: string): void {
+    const p = beholdTypePrompt;
+    beholdTypePrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, beholdType: type });
+  }
+
   function confirmReveal(ids: string[]): void {
     const p = revealPrompt;
     revealPrompt = null;
@@ -1057,16 +1080,28 @@
       return;
     }
     const rv = castRevealCost(card, choices);
+    // #5406: the creature type first, without asking when there is one.
+    if (rv?.types && rv.types.length > 0 && choices.beholdType === undefined) {
+      if (rv.types.length === 1) {
+        afterSacrificeCost(card, { ...choices, beholdType: rv.types[0].type });
+        return;
+      }
+      beholdTypePrompt = { card, types: rv.types, count: rv.count, choices };
+      return;
+    }
     if (rv && choices.revealIDs === undefined) {
       revealPromptOptionIDs = rv.options;
       revealPrompt = {
         card,
         label: rv.exile
           ? `${rv.label} (one you control or one in your hand)`
-          : rv.behold
-            ? `${rv.label} (choose or reveal)`
-            : rv.label,
+          : choices.beholdType !== undefined
+            ? `${rv.count} ${choices.beholdType} creatures (choose or reveal)`
+            : rv.behold
+              ? `${rv.label} (choose or reveal)`
+              : rv.label,
         exile: rv.exile,
+        count: rv.count,
         choices,
       };
       return;
@@ -1326,6 +1361,25 @@
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
 
+  // #5390: an offer that removes counters (Quilled Greatwurm's "removing
+  // six counters from among creatures you control") opens the counter
+  // picker an ability's counter cost uses — the offer carries the same
+  // counter block — and the payment rides the cast as counter_source_ids
+  // / counter_counts / counter_kind(s). Always asked: which creatures
+  // shrink is the player's choice even when only one split exists.
+  let castCounterPrompt = $state<{
+    card: CardView;
+    offer: AlternativeCostView;
+    choices: CastChoices;
+  } | null>(null);
+
+  function confirmCastCounterCost(picks: CounterChoice[]): void {
+    const p = castCounterPrompt;
+    castCounterPrompt = null;
+    if (!p) return;
+    afterAltCostPayment(p.card, { ...p.choices, counter: counterPaymentParams(p.offer, picks) });
+  }
+
   // afterAltCost / afterDiscardCost / afterCastCosts are the seams
   // between the cost prompts and the rest of the cast flow, so adding
   // a cost kind doesn't mean editing every earlier prompt's confirm.
@@ -1339,6 +1393,10 @@
     // mana. Ask for it before anything else, matching the order the
     // server validates the cast in.
     const offer = alternativeCostByKey(card, choices.altCost);
+    if (offer && hasCounterCost(offer)) {
+      castCounterPrompt = { card, offer, choices };
+      return;
+    }
     const sacClause = altCostSacrificeClause(offer);
     if (sacClause !== undefined) {
       altSacPromptClause = sacClause;
@@ -2163,6 +2221,7 @@
       abilityTapIDs = [];
       abilitySacrificeX = undefined;
       abilityDiscardX = undefined;
+      abilityExileX = undefined;
       abilityTapX = undefined;
       abilityCostBranch = undefined;
       guardedSendAction("activate_ability", params, viewerID ?? undefined);
@@ -2265,6 +2324,9 @@
     ability: ActivatedAbilityView;
   } | null>(null);
   let abilityExilePermanentIDs: string[] = [];
+  // #5401: the X a "with total mana value X" exile announces — the
+  // picked permanents' total mana value.
+  let abilityExileX: number | undefined;
 
   const abilityExilePermanentOptions = $derived.by(() => {
     const p = abilityExilePermanentPrompt;
@@ -2610,6 +2672,7 @@
     abilityWaterbendIDs = undefined;
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
+    abilityExileX = undefined;
     abilityTapX = undefined;
     abilityRevealIDs = [];
     abilityRevealX = undefined;
@@ -2850,7 +2913,16 @@
       return;
     }
     abilityExilePermanentIDs = auto;
+    abilityExileX = exileTotalX(ability, auto);
     askAbilityUnattachCost(card, ability);
+  }
+
+  // exileTotalX is the X a "with total mana value X" exile cost (#5401,
+  // Fabrication Foundry) announces with these picks, or undefined for
+  // any other exile cost.
+  function exileTotalX(ability: ActivatedAbilityView, ids: string[]): number | undefined {
+    if (!ability.exile_permanent_total_mana_value_x) return undefined;
+    return exiledTotalManaValue(view.battlefield.cards, ids);
   }
 
   function confirmAbilityExilePermanentCost(ids: string[]): void {
@@ -2858,6 +2930,7 @@
     abilityExilePermanentPrompt = null;
     if (!p) return;
     abilityExilePermanentIDs = ids;
+    abilityExileX = exileTotalX(p.ability, ids);
     askAbilityUnattachCost(p.card, p.ability);
   }
 
@@ -3039,6 +3112,57 @@
     // one action at the end of the chain. Set at the chain's start, so
     // a chain that was cancelled cannot leak its colour into the next.
     manaColors = colors;
+    manaCostBranch = undefined;
+    // #5397: an either/or cost (forage, Thornvault Forager) asks which
+    // way to pay first, through the branch picker the CR 602 chain uses.
+    // One payable branch is the answer and is taken without a question;
+    // none means the row can't be paid (CR 118.3) and nothing is sent.
+    if (abilityCostBranches(ability).length > 0) {
+      const payable = payableCostBranches(ability);
+      if (payable.length === 0) return;
+      if (payable.length === 1) {
+        afterManaBranch(card, ability, payable[0]);
+        return;
+      }
+      manaBranchPrompt = { card, ability };
+      return;
+    }
+    startManaCardCosts(card, ability);
+  }
+
+  // #5397: the branch of a mana ability's either/or cost, carried on the
+  // side like the discard picks until the one activate_mana_ability goes
+  // out as `cost_branch`. undefined means the row has no branches.
+  let manaBranchPrompt = $state<{
+    card: CardView;
+    ability: ManaAbilityView;
+  } | null>(null);
+  let manaCostBranch: number | undefined = undefined;
+  const manaBranchCard = $derived(
+    manaBranchPrompt
+      ? ({
+          ...manaBranchPrompt.card,
+          modes: costBranchModeSpec(manaBranchPrompt.ability),
+        } as CardView)
+      : null,
+  );
+  function confirmManaBranch(modes: number[]): void {
+    const p = manaBranchPrompt;
+    manaBranchPrompt = null;
+    if (!p || modes.length !== 1) return;
+    afterManaBranch(p.card, p.ability, modes[0]);
+  }
+  // afterManaBranch folds the chosen branch into the row and runs the
+  // ordinary mana cost chain on it: the graveyard branch's exile picker or
+  // the Food branch's sacrifice picker.
+  function afterManaBranch(card: CardView, ability: ManaAbilityView, k: number): void {
+    manaCostBranch = k;
+    startManaCardCosts(card, withCostBranch(ability, k));
+  }
+
+  // startManaCardCosts is the head of the mana cost chain once any
+  // either/or branch is folded in (#5397).
+  function startManaCardCosts(card: CardView, ability: ManaAbilityView): void {
     // #1213: the discard pick first, as the CR 602 chain asks its own
     // — it is the cost most likely to make a player back out — and
     // skipped when the hand holds exactly what the clause demands.
@@ -3062,6 +3186,12 @@
   // changed, because the question is the same one; the answer rides
   // its own field, `exile_ids`, because the component is not.
   function askManaExileCost(card: CardView, ability: ManaAbilityView): void {
+    // Collect evidence N (Cryptex): always a choice, so the picker opens
+    // and names the running mana value total, as the CR 602 row's does.
+    if (ability.exile_cost_any_number) {
+      manaExilePrompt = { card, ability };
+      return;
+    }
     if (ability.exile_cost_n) {
       const options = ability.exile_cost_options ?? [];
       if (options.length > ability.exile_cost_n) {
@@ -3232,6 +3362,8 @@
         ...counter,
         // #1443: absent unless the picker named a colour.
         ...manaColorParams(manaColors),
+        // #5397: absent unless the row's cost is an either/or (forage).
+        ...manaCostBranchPayment(manaCostBranch),
       },
       viewerID ?? undefined,
     );
@@ -3244,6 +3376,7 @@
     manaExilePermanentIDs = [];
     manaTapIDs = [];
     manaColors = [];
+    manaCostBranch = undefined;
   }
 
   // #170: an ability row picked from the admin context menu. Same two
@@ -3328,6 +3461,9 @@
         xValue = abilityDiscardX;
       } else if (abilityRevealX !== undefined) {
         xValue = abilityRevealX;
+      } else if (abilityExileX !== undefined) {
+        // #5401: and the artifacts picked for "with total mana value X".
+        xValue = abilityExileX;
       } else {
         xAbilityPrompt = { card, ability, sacrificeIDs, crewIDs, counter };
         return;
@@ -3487,6 +3623,7 @@
     abilityTapIDs = [];
     abilitySacrificeX = undefined;
     abilityDiscardX = undefined;
+    abilityExileX = undefined;
     abilityTapX = undefined;
     abilityCostBranch = undefined;
     guardedSendAction("activate_ability", params, viewerID ?? undefined);
@@ -4375,6 +4512,14 @@
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->
   <DiceLayer {view} {boardEl} {beatsPrimeKey} />
+  {#if view.planechase}
+    <!-- ADR 0216 §10: the face-up plane, at the table's edge between the
+         opponents' row and your board (z 35: under the stack pile, 38,
+         and the strip, 40; the dock, 55, is never under it). -->
+    <div class="planar-anchor">
+      <PlanarZone {view} />
+    </div>
+  {/if}
   <!-- ADR 0119 §4: what the stack targets is ringed in every style,
        compact included; and while the viewer chooses targets, the
        source glows and an arrow runs to each pick and to the pointer. -->
@@ -4501,10 +4646,18 @@
     source={revealPrompt?.card ?? null}
     label={revealPrompt?.label ?? "a card to show"}
     options={revealOptions}
-    count={1}
+    count={revealPrompt?.count ?? 1}
     verb={revealPrompt?.exile ? "Exile" : "Choose"}
     onConfirm={confirmReveal}
     onCancel={() => (revealPrompt = null)}
+  />
+  <!-- #5406: the creature type a behold that prints none is paid with. -->
+  <BeholdTypeModal
+    card={beholdTypePrompt?.card ?? null}
+    types={beholdTypePrompt?.types ?? []}
+    count={beholdTypePrompt?.count ?? 2}
+    onConfirm={confirmBeholdType}
+    onCancel={() => (beholdTypePrompt = null)}
   />
   <!-- #3536: exile six cards from your graveyard, as a spell's additional
        cost — the discard picker with the verb "Exile", over the graveyard. -->
@@ -4666,6 +4819,17 @@
       altSacPromptPrices = undefined;
     }}
   />
+  <!-- #5390: an alternative cost's "remove N counters from among
+       creatures you control" is the ability's counter picker; the
+       payment rides cast_spell's counter fields. -->
+  <CounterCostModal
+    card={castCounterPrompt?.card ?? null}
+    ability={castCounterPrompt ? { ...castCounterPrompt.offer, index: -1 } : null}
+    board={view.battlefield.cards}
+    payFor="cast this spell"
+    onConfirm={confirmCastCounterCost}
+    onCancel={() => (castCounterPrompt = null)}
+  />
   <!-- ADR 0135 §1: an alternative cost's tap ("tap an untapped creature
        you control rather than pay this spell's mana cost") is the tap
        picker; the picks pay the offer, on alt_cost_ids. -->
@@ -4812,6 +4976,8 @@
     options={manaExileOptions}
     need={manaExilePrompt?.ability.exile_cost_n}
     label={manaExilePrompt?.ability.exile_cost_label}
+    variable={manaExilePrompt?.ability.exile_cost_any_number}
+    manaValueMin={manaExilePrompt?.ability.exile_cost_mana_value_min}
     verb="Exile"
     note={manaExilePrompt ? exileCostNote(manaExilePrompt.ability) : undefined}
     where={manaExilePrompt ? exileCostWhere(manaExilePrompt.ability) : undefined}
@@ -5122,6 +5288,17 @@
       abilityCostBranch = undefined;
     }}
   />
+  <!-- #5397: the same question for a mana ability whose cost forages
+       (Thornvault Forager): exile three cards from your graveyard, or
+       sacrifice a Food. -->
+  <ModePickerModal
+    card={manaBranchCard}
+    onConfirm={confirmManaBranch}
+    onCancel={() => {
+      manaBranchPrompt = null;
+      manaCostBranch = undefined;
+    }}
+  />
   {#if $zoneBrowser}
     <ZoneBrowserModal
       {view}
@@ -5201,6 +5378,23 @@
       ),
       radial-gradient(120% 100% at 50% 100%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 80%),
       var(--bg-1);
+  }
+  /* ADR 0216 §10: the face-up plane sits at the table's left edge on the
+     line between the opponents' row and your board, where it covers no
+     avatar and no pile; the stack pile opens right of it, and the dock
+     and the hover zoom are on the right. The row and focus layouts split
+     the table evenly, the quadrant layout 0.7 / 1.3. */
+  .planar-anchor {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    z-index: 35;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  :global(:root[data-table-layout="quadrant"]) .board[data-opp-count="2"] .planar-anchor,
+  :global(:root[data-table-layout="quadrant"]) .board[data-opp-count="3"] .planar-anchor {
+    top: 35%;
   }
   .board::before {
     /* Very subtle tiling noise to break up the flat gradients — makes

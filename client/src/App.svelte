@@ -18,6 +18,10 @@
   import Reclaim from "./routes/Reclaim.svelte";
   import Stats from "./routes/Stats.svelte";
   import Friends from "./routes/Friends.svelte";
+  import Pods from "./routes/Pods.svelte";
+  import Pod from "./routes/Pod.svelte";
+  import PodStats from "./routes/PodStats.svelte";
+  import PodJoin from "./routes/PodJoin.svelte";
   import SharedStats from "./routes/SharedStats.svelte";
   import StatsDeck from "./routes/StatsDeck.svelte";
   import Privacy from "./routes/Privacy.svelte";
@@ -206,6 +210,14 @@
   <Stats />
 {:else if $route.name === "friends"}
   <Friends />
+{:else if $route.name === "pods"}
+  <Pods />
+{:else if $route.name === "pod"}
+  <Pod id={$route.id} />
+{:else if $route.name === "podStats"}
+  <PodStats id={$route.id} />
+{:else if $route.name === "podJoin"}
+  <PodJoin token={$route.token} />
 {:else if $route.name === "statsShared"}
   <SharedStats token={$route.token} />
 {:else if $route.name === "statsDeck"}

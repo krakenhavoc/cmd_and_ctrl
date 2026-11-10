@@ -59,6 +59,15 @@ type ExileUntil struct {
 	// the battlefield" form it rides the keyed exile as the record's
 	// Next, so a prompt the exile pauses on is a restore point.
 	ThenTail game.KeyedTail
+
+	// Linked stamps CR 607.2a's "exiled with this" link on the card as it
+	// lands in exile (ExileTarget.Linked): the resolving item's source
+	// object and its catalog row, so another ability of the same object
+	// can read the card back ("a creature card exiled with this
+	// Equipment", Assimilation Aegis, #5399) with
+	// Game.ExiledWithRowForEffect. The return is unchanged: moving the
+	// card out of exile clears the link.
+	Linked bool
 }
 
 // Apply is CR 610.3a/b first — an "until" whose event has already
@@ -111,7 +120,7 @@ func (e ExileUntil) Apply(ctx *Context) error {
 			next := e.ThenTail
 			t.Next = &next
 		}
-		return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
+		return ExileTarget{Target: target, ThenTail: t, Linked: e.Linked}.Apply(ctx)
 	}
 	// An event-conditioned "until" (Palace Jailer's monarch, #4253): the
 	// record's condition key and the events it watches ride the tail's
@@ -132,7 +141,7 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		next := e.ThenTail
 		t.Next = &next
 	}
-	return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
+	return ExileTarget{Target: target, ThenTail: t, Linked: e.Linked}.Apply(ctx)
 }
 
 // eventKindWords spells event kinds as a tail's words.

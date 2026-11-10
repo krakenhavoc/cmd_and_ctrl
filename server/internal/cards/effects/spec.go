@@ -457,6 +457,16 @@ type Spec struct {
 	// needed this permission; see game/flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
 
+	// FlashIf is "You may cast this spell as though it had flash if
+	// <condition>" (#5207): a timing permission, not an alternative cost,
+	// so the flash cast still takes any cost the caster picks (CR 118.9a
+	// limits alternative costs, not timing). Build it with FlashIfYou /
+	// FlashIfXAtMost / FlashIfTargets; a condition on paying a cost ("if
+	// you pay {2} more", "if you behold a Dragon") is an optional cost
+	// instead (FlashForMore, OptionalBeholdOpeningFlash). See
+	// game/flash_if.go.
+	FlashIf *game.FlashIf
+
 	// CastTimeValues are the numbers this spell fixes AS IT IS CAST
 	// (CR 601.2i, #3781): Lifestream's Blessing's "X is the greatest
 	// power among creatures you controlled as you cast this spell". The
@@ -882,6 +892,15 @@ type Spec struct {
 	// Build the entries with AttackTax / AttackTaxCounting in
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
+
+	// BlockTaxes is the CR 509.1d block tax: "creatures can't block
+	// unless their controller pays {1} for each of those creatures" —
+	// Archangel of Tithes' "as long as this creature is attacking"
+	// half. ADR 0221. Priced per blocking creature and paid as the
+	// defender's block declaration completes. Build the entries with
+	// BlockTax / BlockTaxWhileAttacking in block_tax.go. Nil for nearly
+	// every card.
+	BlockTaxes []game.BlockTax
 
 	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
 	// cost of the first equip ability you activate each turn" (Kíli the
@@ -1450,6 +1469,19 @@ type Spec struct {
 	// Issue #749, ADR 0057 Decision 4.
 	GameEndGates []game.GameEndGate
 
+	// CoinFlipRules declares a printed static over the coins its controller
+	// flips: Edgar, King of Figaro's "Two-Headed Coin — The first time you
+	// flip one or more coins each turn, those coins come up heads and you
+	// win those flips."
+	//
+	//	CoinFlipRules: []game.CoinFlipRule{{Label: "Two-Headed Coin", FirstTimeEachTurn: true, HeadsAndWin: true}},
+	//
+	// DERIVED, not stored: the engine asks the battlefield, through
+	// game.CatalogCoinFlipRules keyed by CatalogAbilityKey, each time its
+	// controller flips (called or uncalled), so the rule ends with the
+	// permanent or its abilities. See game/coin_flip_rules.go.
+	CoinFlipRules []game.CoinFlipRule
+
 	// WantsDistinctColors declares a spell that READS the colours of
 	// the mana that paid for it: converge (CR 207.2c — Painful
 	// Truths, Bring to Light) and sunburst (CR 702.44 — Etched
@@ -1704,6 +1736,11 @@ type Spec struct {
 	// which also means the answer is always about whatever is on top
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
+
+	// LibraryTopVisibleWhen gates LibraryTopVisible by a designation:
+	// "Solved — You may look at the top card of your library any time"
+	// (Case of the Locked Hothouse). The zero value is no gate.
+	LibraryTopVisibleWhen game.Designation
 
 	// HandsRevealed declares "your opponents play with their hands
 	// revealed" (game.HandRevealOpponents, Telepathy) or "players play
@@ -2178,6 +2215,14 @@ type ManaAbility struct {
 	// `OncePerTurn: true, Condition: DuringYourTurn()`.
 	OncePerTurn bool
 
+	// SourceBecomesProducedColor is "This creature becomes that color
+	// until end of turn" after an "Add one mana of any color" clause
+	// (Foraging Wickermaw). Data, not a Rider: the colour is known only
+	// once the controller picks it, which can be after the Rider has
+	// run, so the engine applies it there
+	// (game.ManaAbilityShape.SourceBecomesProducedColor).
+	SourceBecomesProducedColor bool
+
 	// AnyPlayer is the mana ability's printed "Any player may activate
 	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment
 	// 2026-10-16, #1864) — Mana Cache's "Remove a charge counter from
@@ -2643,6 +2688,22 @@ type ManaAbilityCost struct {
 	// The auto-tapper never plans a source that has one: which card to
 	// exile is a decision, and the planner makes none.
 	ExileCards *game.ExileCost
+
+	// Forage is "Forage" as part of the activation cost (CR 701.61a,
+	// #5397): Thornvault Forager's "{T}, Forage: Add two mana in any
+	// combination of colors." The mana-ability spelling of Forage(): the
+	// built ability's cost is an either/or over game.ForageAbilityBranches
+	// (exile three cards from your graveyard, or sacrifice a Food), the
+	// activator names the way as `cost_branch` with the cards in
+	// `exile_ids` or the Food in `sacrifice_ids`, and with fewer than
+	// three cards and no Food the ability can't be activated (CR 118.3).
+	// Paying it records PaidCost.Foraged and emits game.EventForage.
+	//
+	// Declared beside no SacrificeOther, DiscardCards or ExileCards
+	// (Register refuses it): the chosen branch is folded into those
+	// clauses. The auto-tapper never plans such an ability — which way
+	// to forage is the player's decision.
+	Forage bool
 
 	// ExilePermanents is an "Exile a creature you control" component of
 	// the activation cost (#1600) — Food Chain's "Exile a creature you

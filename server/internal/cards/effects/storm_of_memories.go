@@ -47,7 +47,7 @@ func init() {
 			perm := g.FreeCastFromExilePermission(you, item.SourceCardID, name)
 			perm.AltCostKey = game.AltCostKeyGrantedCost
 			perm.ExileInsteadOfGraveyard = true
-			return exileWithPermissionThenOffer(g, pick[0], item.SourceCardID, perm, name, game.MayCastKeywordFreeCast)
+			return exileWithPermissionThenOffer(g, pick[0], item.SourceCardID, perm, name)
 		},
 	})
 }

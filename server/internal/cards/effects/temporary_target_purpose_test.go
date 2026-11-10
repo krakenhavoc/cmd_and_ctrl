@@ -91,6 +91,13 @@ var untilEndOfTurnExempt = map[string]string{
 	"Liliana of the Dark Realms": "the sign is chosen at resolution",
 	// Moves Zack Fair's counters and Equipment onto the creature for good.
 	"Zack Fair": "part of what it does lasts",
+	// "Target opponent loses X life, where X is the amount of life you
+	// gained this turn": "this turn" bounds the count, not a change to the
+	// target.
+	"Midnight Snack": "this turn bounds the count, not a change to the target",
+	// The target is a card in a graveyard, which a permanent direction
+	// cannot describe: it gains embalm until end of turn.
+	"Cursecloth Wrappings": "the target is a graveyard card, not a permanent",
 }
 
 // TestUntilEndOfTurnRowsDeclareTheirDirection holds every catalog
@@ -196,6 +203,10 @@ var untilEndOfTurnSpellExempt = map[string]string{
 	// "+3/-3 and loses all creature types": the power is a benefit, the
 	// toughness and the type loss a harm (#4691).
 	"Nameless Inversion": "partly a benefit and partly a harm",
+	// "+1/-1 until end of turn. When it dies under your control this turn,
+	// draw two cards": the power is a benefit, the toughness a harm, and the
+	// card is cast on your own creature so that it dies.
+	"Desperate Measures": "partly a benefit and partly a harm",
 }
 
 // spellText is a catalog card's printed text, from the coverage package's

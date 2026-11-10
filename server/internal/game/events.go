@@ -1973,7 +1973,14 @@ type Event struct {
 	// log's `sacrifice` line says. Added with #1320.
 	Cause           MoveCauseKind `json:"cause,omitempty"`
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
-	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
+
+	// ExploreRevealed is, on EventExplored, the card the explore revealed
+	// (CR 701.44a): "explores a land card" and "explores a nonland card"
+	// (Nicanzil, Current Conductor) read it where it is now (hand, library
+	// or graveyard). Nil when the library was empty and nothing was
+	// revealed. Engine-internal, like Cause.
+	ExploreRevealed uuid.UUID `json:"explore_revealed,omitempty"`
+	CauseItem       uuid.UUID `json:"cause_item,omitempty"`
 
 	// CauseSource and CauseAbility say WHICH ability put a permanent
 	// onto the battlefield, on its EventETB (#3933, entry_provenance.go):
@@ -2245,6 +2252,12 @@ type Event struct {
 	// empty.
 	LastKnownKeywords []string `json:"last_known_keywords,omitempty"`
 
+	// LastKnownFaceDown is whether the same permanent was face down as it
+	// last existed (a CR 708.2 permanent state): Yarus, Roar of the Old Gods'
+	// "whenever a face-down creature you control dies". Engine-internal,
+	// like LastKnownTypes; additive (#4452).
+	LastKnownFaceDown bool `json:"last_known_face_down,omitempty"`
+
 	// SettingOld / SettingNew are a table setting's value before and
 	// after an EventSettingsChanged, formatted as text: an int as
 	// decimal ("-1" is UndoUnlimited), a bool as "true"/"false", an
@@ -2261,6 +2274,15 @@ type Event struct {
 	// context verbatim into a snapshot. Additive within the snapshot
 	// schema: omitted when empty.
 	TapCause string `json:"tap_cause,omitempty"`
+
+	// TappedBy is the player whose spell or ability instructed an
+	// EventTapCard's tap ("tap target creature", "tap that creature"):
+	// the effect's controller. Empty for a tap a cost, the untap
+	// rules or an attack made. It is what "whenever you tap an untapped
+	// creature an opponent controls" reads. It is an event fact, so it
+	// rides the trigger context into a snapshot. Additive within the
+	// snapshot schema: omitted when empty.
+	TappedBy uuid.UUID `json:"tapped_by,omitempty"`
 }
 
 // TapCauseTeamwork is Event.TapCause for a creature tapped to pay a

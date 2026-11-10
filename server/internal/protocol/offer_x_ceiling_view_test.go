@@ -9,15 +9,14 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// TestOfferXCeilingViewCarriesTheClaimedOffersCeiling is the #3225 view
-// half: an alternative cost with its own X ceiling ("as though it had
-// flash if X is 3 or less", CR 601.3b) ships that ceiling on the OFFER
-// as `x_max`, and leaves the card's own `x_max` absent — the cast for
-// the printed cost is not bound by it. A printed ceiling on the card is
-// folded in by taking the smaller.
-func TestOfferXCeilingViewCarriesTheClaimedOffersCeiling(t *testing.T) {
+// TestFlashIfXCeilingViewBoundsOnlyTheCastThatNeedsIt is the #5207 view
+// half of Silver Scrutiny's "as though it had flash if X is 3 or less"
+// (CR 601.3b): in a main phase the card's `x_max` is absent, and at
+// instant speed, where only the card's own permission opens the window,
+// it is 3. There is no alternative-cost offer for it.
+func TestFlashIfXCeilingViewBoundsOnlyTheCastThatNeedsIt(t *testing.T) {
 	g := buildActiveGame(t)
-	me := g.Seats[0]
+	me := g.Seats[g.Turn.ActiveSeat]
 	id := uuid.New()
 	g.WithWriteLock(func() {
 		me.Hand.PushTop(game.Card{
@@ -27,23 +26,26 @@ func TestOfferXCeilingViewCarriesTheClaimedOffersCeiling(t *testing.T) {
 			KnownBy: map[uuid.UUID]bool{me.ID: true},
 		})
 	})
-
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
 	c := handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String())
 	if c.XMax != nil {
-		t.Errorf("the card carries x_max %d; the ceiling belongs to the offer", *c.XMax)
+		t.Errorf("main phase: the card carries x_max %d, want none", *c.XMax)
 	}
-	var found bool
-	for _, a := range c.AlternativeCosts {
-		if a.Key != "flash-x-at-most" {
-			continue
-		}
-		found = true
-		if a.XMax == nil || *a.XMax != 3 {
-			t.Errorf("offer x_max = %v, want 3", a.XMax)
+	if len(c.AlternativeCosts) != 0 {
+		t.Errorf("alternative costs %+v, want none", c.AlternativeCosts)
+	}
+	for g.Turn.Step != game.StepBeginCombat {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
 		}
 	}
-	if !found {
-		t.Fatalf("the flash offer is not on the card: %+v", c.AlternativeCosts)
+	c = handCardIn(t, ViewOfGameFor(g, me.ID.String()), me.ID.String(), id.String())
+	if c.XMax == nil || *c.XMax != 3 {
+		t.Errorf("beginning of combat: x_max = %v, want 3", c.XMax)
 	}
 }
 

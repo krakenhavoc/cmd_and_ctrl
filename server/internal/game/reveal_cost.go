@@ -44,6 +44,23 @@ type RevealCost struct {
 	// branch (RevealCardCost) still names a Subtype and no colour.
 	// ADR 0020's 2026-10-08 amendment (#2598).
 	Color string
+	// CardType narrows the candidates to one card type ("creature"), read
+	// with Card.HasCardType: a hand card must be a card of that type and a
+	// permanent must be one. It is the clause's quality when no creature
+	// type is named: Monstrous Emergence's "choose a creature you control
+	// or reveal a creature card from your hand" (CR 701.4a, behold's
+	// "creature" form). Combines with Subtype and Color by AND. Lower case,
+	// as HasCardType takes it.
+	CardType string
+	// Chosen records the pick on the cast's payment (PaidCost.Chosen), for a
+	// spell whose text reads the object it chose or revealed: "damage equal
+	// to the power of the creature you chose or the card you revealed". A
+	// permanent is recorded as the object it is now, so its power is read as
+	// the spell resolves and, once it has left the battlefield, as it last
+	// existed there (CR 608.2h); a card from the hand is recorded with the
+	// power it was revealed with. Behold only, on the mandatory slot only
+	// (ChooseOrRevealCost).
+	Chosen bool
 	// Exile is "behold a <type> AND EXILE IT" (#4687, ADR 0100's
 	// 2026-11-05 amendment): the Lorwyn Eclipsed Champions' mandatory
 	// additional cost. The one card named on RevealIDs — a matching
@@ -54,6 +71,73 @@ type RevealCost struct {
 	// "return the exiled card" reads it. Behold only, on the mandatory
 	// slot only: effects.Register refuses it anywhere else.
 	Exile bool
+	// ChooseCreatureOrWarped is Close Encounter's "As an additional cost to
+	// cast this spell, choose a creature you control or a warped creature
+	// card you own in exile" (CR 702.185b): the one object named on
+	// RevealIDs is a creature the caster controls or a warped creature card
+	// they own in exile. Nothing is revealed or moved, so nothing about it
+	// is hidden or paid but the choice, and the chosen object rides the
+	// spell's payment record (payChosenLocked) for the power it is read for
+	// at resolution. Mandatory slot only; Subtype, Color, Behold and Exile
+	// are unused with it.
+	ChooseCreatureOrWarped bool
+	// Count is how many objects one payment beholds: "behold two
+	// creatures of that type" is 2 (#5406, Celestial Reunion). Zero is
+	// the printed "a" — one. Read through count(). Paid like an
+	// alternative cost's behold N (#4689): exactly Count distinct
+	// objects on RevealIDs, no object twice.
+	Count int `json:",omitempty"`
+	// ChosenType is "choose a creature type and behold two creatures of
+	// that type" (#5406, CR 601.2b): the clause prints no type, and the
+	// caster names one on CastSpellParams.BeholdType as they announce
+	// the cost. Subtype is empty on the declared cost; the validator and
+	// the payer read the clause bound to the named type (boundTo), and
+	// the type lands on the stack item as PaidCost.BeholdType, where the
+	// resolution reads it back. On an optional behold only
+	// (effects.OptionalBeholdChosenType).
+	ChosenType bool `json:",omitempty"`
+	// Creature narrows the candidates to creatures: a creature card in
+	// hand or a creature you control. Celestial Reunion's "behold two
+	// creatures of that type" does not admit a Kindred card or a
+	// Kindred permanent of the type (its ruling), so the quality is the
+	// card type as well as the creature type.
+	Creature bool `json:",omitempty"`
+}
+
+// count is how many objects one payment of the clause beholds: Count,
+// or one for the printed "a".
+func (rc *RevealCost) count() int {
+	if rc.Count > 1 {
+		return rc.Count
+	}
+	return 1
+}
+
+// Many reports whether a payment names more than one object, or names a
+// type as well: the shape validated and paid as a behold N (#5406), not
+// as the one-card reveal.
+func (rc *RevealCost) Many() bool {
+	return rc != nil && (rc.ChosenType || rc.count() > 1)
+}
+
+// BeholdCount is how many objects one payment names on reveal_ids.
+func (rc *RevealCost) BeholdCount() int {
+	if rc == nil {
+		return 0
+	}
+	return rc.count()
+}
+
+// boundTo is the clause with the creature type the caster chose at
+// announcement written in (#5406). A clause that chooses no type is
+// returned as it is.
+func (rc *RevealCost) boundTo(subtype string) *RevealCost {
+	if rc == nil || !rc.ChosenType {
+		return rc
+	}
+	bound := *rc
+	bound.Subtype = subtype
+	return &bound
 }
 
 // matches reports whether `c` satisfies the clause's quality: the
@@ -66,10 +150,16 @@ type RevealCost struct {
 // HasColorWord): Martyr of Bones' "Reveal X black cards" under a Sleight
 // of Mind is "X red cards". A copy lent nothing reads the printed word.
 func (rc *RevealCost) matches(c Card) bool {
+	if rc.Creature && !c.IsCreature() {
+		return false
+	}
 	if rc.Subtype != "" && !c.HasSubtypeWord(rc.Subtype) {
 		return false
 	}
 	if rc.Color != "" && !c.HasColorWord(rc.Color) {
+		return false
+	}
+	if rc.CardType != "" && !c.HasCardType(rc.CardType) {
 		return false
 	}
 	return true
@@ -110,6 +200,9 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 	if p == nil {
 		return nil
 	}
+	if rc.ChooseCreatureOrWarped {
+		return g.creatureOrWarpedChoicesLocked(playerID)
+	}
 	text := g.costTextLocked(castID)
 	var out []uuid.UUID
 	for i := range p.Hand.Cards {
@@ -135,14 +228,34 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 // and that one a candidate RevealCostOptionsForEffect lists. Nothing
 // is revealed here.
 //
+// #5406: a behold that chooses its creature type (RevealCost.ChosenType)
+// also needs `beholdType`, a creature type (CR 205.3m), and then exactly
+// count() distinct objects of that type, each a candidate of the clause
+// bound to it: validateBeholdPaymentLocked, the alternative cost's behold
+// N rule. A type named for a plan that chooses none is refused rather
+// than ignored.
+//
 // Caller must hold g.mu.
-func (g *Game) validateRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID) error {
+func (g *Game) validateRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID, beholdType string) error {
 	rc := planReveal(plan)
 	if rc == nil {
-		if len(ids) > 0 {
+		if len(ids) > 0 || beholdType != "" {
 			return ErrInvalidParam
 		}
 		return nil
+	}
+	if rc.ChosenType {
+		t, ok := CanonicalCreatureType(beholdType)
+		if !ok {
+			return ErrInvalidParam
+		}
+		return g.validateBeholdPaymentLocked(playerID, castID, rc.boundTo(t), rc.count(), ids)
+	}
+	if beholdType != "" {
+		return ErrInvalidParam
+	}
+	if rc.Many() {
+		return g.validateBeholdPaymentLocked(playerID, castID, rc, rc.count(), ids)
 	}
 	if len(ids) != 1 {
 		return ErrInvalidParam
@@ -155,6 +268,18 @@ func (g *Game) validateRevealLocked(playerID, castID uuid.UUID, plan []costPayme
 	return ErrInvalidParam
 }
 
+// planBeholdType is the creature type a validated announcement chose for
+// its behold (#5406), in its canonical spelling, or "" when the plan's
+// reveal chooses none. The record PaidCost.BeholdType keeps.
+func planBeholdType(plan []costPayment, beholdType string) string {
+	rc := planReveal(plan)
+	if rc == nil || !rc.ChosenType {
+		return ""
+	}
+	t, _ := CanonicalCreatureType(beholdType)
+	return t
+}
+
 // payRevealLocked pays the plan's reveal cost. A card in hand is
 // revealed to the table (CR 701.20a: every player sees it, and it
 // stays known while it sits there); a permanent chosen to behold is
@@ -165,13 +290,32 @@ func (g *Game) validateRevealLocked(playerID, castID uuid.UUID, plan []costPayme
 // payBeholdExileLocked instead: the card is exiled, not shown.
 //
 // Caller must hold g.mu.
-func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+func (g *Game) payRevealLocked(playerID, castID uuid.UUID, plan []costPayment, ids []uuid.UUID, beholdType string, answers map[uuid.UUID]bool) error {
 	rc := planReveal(plan)
-	if rc == nil || len(ids) != 1 {
+	if rc == nil || len(ids) == 0 {
+		return nil
+	}
+	// #5406: a behold N, or one of a chosen type — the hand cards are
+	// revealed as one reveal, the permanents are chosen.
+	if rc.Many() {
+		if t := planBeholdType(plan, beholdType); t != "" {
+			rc = rc.boundTo(t)
+		}
+		g.payBeholdLocked(playerID, castID, rc, beholdLabel(rc), ids)
+		return nil
+	}
+	if len(ids) != 1 {
+		return nil
+	}
+	if rc.ChooseCreatureOrWarped {
+		g.payChosenLocked(castID, ids[0])
 		return nil
 	}
 	if rc.Exile {
 		return g.payBeholdExileLocked(playerID, castID, ids[0], answers)
+	}
+	if rc.Chosen {
+		g.recordChosenLocked(playerID, castID, ids[0])
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil || !p.Hand.Contains(ids[0]) {
@@ -242,4 +386,142 @@ func (g *Game) payBeholdLocked(playerID, castID uuid.UUID, rc *RevealCost, label
 		reason = c.Name + " — " + reason
 	}
 	g.RevealForEffect(RevealSpec{Player: playerID, Source: castID, Reason: reason, Cards: shown})
+}
+
+// creatureOrWarpedChoicesLocked lists what `playerID` may choose to pay a
+// ChooseCreatureOrWarped cost: the creatures they control, in battlefield
+// order, then the warped creature cards they own in exile (CR 702.185b), in
+// exile order.
+//
+// Caller must hold g.mu.
+func (g *Game) creatureOrWarpedChoicesLocked(playerID uuid.UUID) []uuid.UUID {
+	g.RecomputeLayersIfStaleLocked()
+	var out []uuid.UUID
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == playerID && c.IsCreature() {
+			out = append(out, c.InstanceID)
+		}
+	}
+	for _, c := range g.WarpedCardsOwnedInExileForEffect(playerID) {
+		if c.IsCreature() {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
+}
+
+// WarpedCardsOwnedInExileForEffect is the warped cards `owner` owns in exile
+// (CR 702.185b): the cards exiled by a warp ability's delayed trigger that are
+// still in exile as the same objects. The record is the cast permission warp
+// leaves over the card (CastPermission.Warped), which names the object by its
+// epoch, so a card that was cast, returned or exiled again is no longer one.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) WarpedCardsOwnedInExileForEffect(owner uuid.UUID) []Card {
+	var out []Card
+	for _, c := range g.Exile.Cards {
+		if c.Owner != owner {
+			continue
+		}
+		for _, p := range g.Seats {
+			if p == nil {
+				continue
+			}
+			warped := false
+			for i := range p.CastPermissions {
+				perm := &p.CastPermissions[i]
+				if perm.Warped && perm.CoversCard(c, ZoneExile) {
+					warped = true
+					break
+				}
+			}
+			if warped {
+				out = append(out, c)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// beholdLabel is the reveal reason's words for a behold N (#5406):
+// "two Elf creatures".
+func beholdLabel(rc *RevealCost) string {
+	n := rc.count()
+	words := []string{"", "a", "two", "three", "four", "five"}
+	label := rc.Subtype
+	if rc.Creature {
+		label += " creature"
+	}
+	if n < len(words) {
+		label = words[n] + " " + label
+	}
+	if n > 1 && rc.Creature {
+		label += "s"
+	}
+	return label
+}
+
+// BeholdTypeOption is one creature type a caster could choose for a
+// behold that prints none (#5406), with the objects that could pay it.
+type BeholdTypeOption struct {
+	Type  string
+	Cards []uuid.UUID
+}
+
+// BeholdTypeOptionsForEffect lists the creature types `playerID` could
+// choose to pay `rc` when casting `castID` — a clause with ChosenType —
+// each with the objects that could pay it bound to that type, in the
+// options walk's order: exactly the types with at least count() of them,
+// in CR 205.3m alphabetical order. The types are read off the clause's
+// own candidates (a changeling offers every type), and each type's list
+// is RevealCostOptionsForEffect of the clause bound to it, so the view,
+// the bot and the validator cannot disagree (#544).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) BeholdTypeOptionsForEffect(playerID, castID uuid.UUID, rc *RevealCost) []BeholdTypeOption {
+	if rc == nil || !rc.ChosenType {
+		return nil
+	}
+	types := make(map[string]bool)
+	for _, id := range g.RevealCostOptionsForEffect(playerID, castID, rc) {
+		c, ok := g.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		for _, t := range CreatureTypesOf(&c) {
+			types[t] = true
+		}
+	}
+	var out []BeholdTypeOption
+	for _, t := range AllCreatureTypes {
+		if !types[t] {
+			continue
+		}
+		if ids := g.RevealCostOptionsForEffect(playerID, castID, rc.boundTo(t)); len(ids) >= rc.count() {
+			out = append(out, BeholdTypeOption{Type: t, Cards: ids})
+		}
+	}
+	return out
+}
+
+// payChosenLocked records the object a ChooseCreatureOrWarped cost chose on
+// the spell's payment record, in the slot a tap-another cost records the
+// creature it tapped (PaidCost.TappedOthers: an object, its power when
+// chosen, rewritten with its last-known power if it leaves the battlefield,
+// CR 608.2h). Close Encounter taps nothing, so the slot is free, and the
+// resolution reads it through Context.TappedPower.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) payChosenLocked(castID, chosen uuid.UUID) {
+	item := g.StackMeta[castID]
+	if item == nil {
+		return
+	}
+	c, ok := g.LookupCardForEffect(chosen)
+	if !ok {
+		return
+	}
+	item.Paid.TappedOthers = paidTapsFrom([]Card{c})
 }

@@ -124,6 +124,7 @@ planned just-in-time from the S12 pain-point triage.
 | S78     | Launch week: player reports, flakes and first-game polish            | 7     | [#4648](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4648) | —          | in progress |
 | S79     | Card coverage: every Standard set, newest first                      | 7     | [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) | —          | in progress |
 | S80     | Table effects: a cue for every common moment                         | 7     | [#4650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4650) | —          | in progress |
+| S81     | Formats: Standard 1v1 and booster draft                              | 7     | [#5431](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5431) | —          | in progress |
 
 On 2026-10-11 the milestones for S37, S41, S47–S49, S51, S52, S54–S57, S60–S64, S68 and S69 were
 closed. Their open stragglers (18 issues) moved to the **Backlog** milestone, to be picked up at the
@@ -4052,6 +4053,33 @@ Opened at the 2026-10-30 triage. The epic's own five children (#4394 to #4398) c
 ### Status
 
 **In progress** (2026-10-30 triage). Six of the polish issues are merged into `develop` and close on promotion.
+
+---
+
+## S81 — Formats: Standard 1v1 and booster draft
+
+**Phase:** 7 · **Goal:** the secondary area the owner added to the charter on 2026-11-10 ([PLAN.md](../PLAN.md) §3, [ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md), epic [#5431](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5431)): two-player Standard, then booster draft of a single set with bots filling seats. It moves no beta goal directly; it is new scope the owner asked for, and Commander work comes first when the two compete.
+
+Opened by the owner on 2026-11-10, outside a triage.
+
+- [ ] [#2352](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2352): a format on the table, and best-of-one Standard
+- [ ] [#5436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5436): matches, best-of-three with sideboarding
+- [ ] [#5437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5437): booster packs for one set, and which sets are draftable
+- [ ] [#5438](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5438): the draft, pick one or pick two
+- [ ] [#5439](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5439): draft bots
+- [ ] [#5440](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5440): limited decks and 1v1 rounds
+- [ ] [#5441](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5441): cube
+
+### Exit criteria
+
+1. Two people, or one person and a bot, play a best-of-one Standard game with legal 60-card decks on cmd-dev, and the starting player skips their first draw (CR 103.8a).
+2. One person drafts a draftable set against seven bots, builds a 40-card deck and plays three rounds.
+3. No draft hands anyone a card the catalog doesn't automate.
+4. A four-player Commander table behaves as it did before, apart from the two-player first draw.
+
+### Status
+
+**In progress** (2026-11-10).
 
 ---
 

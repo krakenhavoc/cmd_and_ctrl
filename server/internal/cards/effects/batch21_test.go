@@ -175,14 +175,13 @@ func TestBatch21CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The declared skips that remain must stay out until their seam
-	// lands: a legendary-sorcery cast gate and a mode prompt for a
-	// triggered ability. Rest in Peace shipped with #931 and is in the
+	// The declared skip that remains must stay out until its seam
+	// lands: a legendary-sorcery cast gate (Elder Gargaroth's mode prompt
+	// for a triggered ability has since shipped). Rest in Peace shipped with #931 and is in the
 	// table above; Tome of Legends shipped with the Y'shtola deck
 	// request (#3657) once its counter-removal cost existed.
 	for oracle, name := range map[string]string{
 		"f5f0deb0-070a-45b6-9b81-0bc8143f3040": "Jaya's Immolating Inferno",
-		"397b9dcf-690a-4a58-8637-bb9baab7cc2f": "Elder Gargaroth",
 	} {
 		if _, ok := Lookup(oracle); ok {
 			t.Errorf("%s is declared skipped on #383 but is registered — update the issue", name)

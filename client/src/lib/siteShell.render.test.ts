@@ -80,12 +80,12 @@ describe("the site header's links", () => {
     expect(container.querySelector('button[aria-controls="account-menu"]')).toBeNull();
   });
 
-  it("signed in with Discord: Tables and Stats | Decks, Catalog and Roadmap (no My games, ADR 0158 §1)", async () => {
+  it("signed in with Discord: Tables, Stats and Pods | Decks, Catalog and Roadmap (no My games, ADR 0158 §1)", async () => {
     session.set(sess("identified", USER));
     const { container } = render(SiteHeader as never, {} as never);
     await settle();
     expect(navGroups(container)).toEqual([
-      [L.navTables, "Stats"],
+      [L.navTables, "Stats", L.navPods],
       ["Decks", "Catalog", "Roadmap"],
     ]);
     // The route is still the Lobby's; only the words changed.

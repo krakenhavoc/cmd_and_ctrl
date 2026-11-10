@@ -39,17 +39,7 @@ func init() {
 				ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1})),
 			ModeDoing("Return one or two target nonland permanents to their owners' hands.",
 				TargetPermanent("one or two target nonland permanents", Nonland()).WithCount(1, 2),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					for _, t := range ctx.ModeTargets(occ) {
-						if !ctx.IsTargetLegal(t) {
-							continue
-						}
-						if err := (BounceToHand{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				bounceTheModesTargets),
 		).InsteadIf(2, TeamworkUsed),
 	})
 }

@@ -95,6 +95,11 @@ type WardCost struct {
 	Waterbend string
 	// Life is "ward—pay N life", alone or alongside Mana.
 	Life int
+	// LifeEqualToPower is "Ward—Pay life equal to this creature's power"
+	// (Raubahn, Bull of Ala Mhigo): the life is read as the ward
+	// resolves, from the warded permanent's power then, or its last-known
+	// power once it has left (CR 608.2h). Standalone; Life stays zero.
+	LifeEqualToPower bool
 	// Sacrifice is "ward—sacrifice a <thing>".
 	Sacrifice *WardSacrificeCost
 	// Discard is "ward—discard N cards" (#3172): the payer discards
@@ -115,6 +120,12 @@ type WardCost struct {
 	// Poison is "ward—get N poison counters" (The Serpent Society, #4613):
 	// the payer gets that many poison counters. Always payable.
 	Poison int
+
+	// CollectEvidence is "Ward—Collect evidence N" (Axebane Ferox, #4452,
+	// CR 701.59a): counter it unless the targeting player exiles cards with
+	// total mana value N or greater from their graveyard. See
+	// std_b43_ward_evidence.go.
+	CollectEvidence int
 
 	// Either is a ward with two ways to pay (#4566): Titania, Rugged
 	// Rumbler's "Ward—Discard a card or pay {2}". Each branch is a ward
@@ -179,6 +190,10 @@ func WardWaterbend(cost string) WardCost { return WardCost{Waterbend: cost} }
 
 // WardLife builds the "ward—pay N life" cost.
 func WardLife(n int) WardCost { return WardCost{Life: n} }
+
+// WardLifeEqualToPower builds "Ward—Pay life equal to <this creature>'s
+// power". A power of zero or less costs nothing, so the ward is met.
+func WardLifeEqualToPower() WardCost { return WardCost{LifeEqualToPower: true} }
 
 // WardPoison builds the "ward—get N poison counters" cost (The Serpent
 // Society, "Ward—Get five poison counters"). The payer is offered the
@@ -282,6 +297,9 @@ func (c WardCost) validate() {
 	if c.Life > 0 {
 		n++
 	}
+	if c.LifeEqualToPower {
+		n++
+	}
 	if c.Sacrifice != nil {
 		n++
 	}
@@ -289,6 +307,9 @@ func (c WardCost) validate() {
 		n++
 	}
 	if c.Poison > 0 {
+		n++
+	}
+	if c.CollectEvidence > 0 {
 		n++
 	}
 	compound := n == 2 && c.Mana != "" && c.Life > 0
@@ -460,6 +481,20 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 	if g.StackItemForEffect(targetingItem) == nil {
 		return nil
 	}
+	if cost.LifeEqualToPower {
+		// The amount is the warded permanent's power as the ability
+		// resolves, or as it last existed if it has gone (CR 608.2h).
+		power := 0
+		if ref, ok := g.PermanentRefForEffect(item.SourceCardID); ok {
+			if info, ok := g.PermanentForEffect(ref); ok {
+				power = info.Power
+			}
+		}
+		if power <= 0 {
+			return nil
+		}
+		cost.LifeEqualToPower, cost.Life = false, power
+	}
 	switch {
 	case len(cost.Either) > 0:
 		return wardEitherOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
@@ -471,6 +506,8 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
 	case cost.Poison > 0:
 		return wardPoisonOrCounter(g, item.SourceCardID, payer, cost.Poison, targetingItem)
+	case cost.CollectEvidence > 0:
+		return wardCollectEvidenceOrCounter(g, item.SourceCardID, payer, cost.CollectEvidence, targetingItem)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with

@@ -51,6 +51,11 @@ export const ErrorCode = {
   // the symbols the pool and the tapper together could not cover.
   // No `card_id`: the refusal is about the declaration, not one card.
   AttackTaxUnpaid: "attack_tax_unpaid",
+  // #5375 (ADR 0221): a finish_blocks refused for want of the CR 509.1d
+  // block tax the staged blocks owe (Archangel of Tithes attacking).
+  // `reason` is the whole price ("{1}{1}"), `missing` the shortfall.
+  // Nothing was spent; the declaration is still open, blocks staged.
+  BlockTaxUnpaid: "block_tax_unpaid",
   // #1507 (ADR 0045 Decision 45): a declare_attacker / declare_attackers
   // refused because the declaration breaks a CR 508.1c count limit
   // (Silent Arbiter's "no more than one creature can attack each
@@ -176,6 +181,10 @@ export const BLOCK_REFUSAL_REASONS = [
   // declaring blockers this combat — a late block, such as one on a
   // ninja that entered attacking after the declaration.
   "blocks_declared",
+  // #5396 (CR 506.5, 509.1b): the declaration would leave a creature
+  // that can't block alone as its controller's only blocker. Declare
+  // another blocker first, or both together.
+  "cant_block_alone",
 ] as const;
 export type BlockRefusalReason = (typeof BLOCK_REFUSAL_REASONS)[number];
 
@@ -338,6 +347,25 @@ export interface SnapshotPayload {
 // open opening roll. Round 1 is every seat; each later round is the
 // tied leaders of the one before. `chooser` is present once one leader
 // remains. Everything in it is public.
+/** A planar die face (ADR 0216 §4): the die has no number (CR 901.9d). */
+export type PlanarFace = "blank" | "chaos" | "planeswalk";
+
+/** GameView.planechase (ADR 0216 §9). */
+export interface PlanechaseView {
+  // The planar controller's player ID (CR 901.6): the active player.
+  // Absent until the starting player is known.
+  planar_controller?: string;
+  // The communal planar deck's size. Its cards are on nobody's wire.
+  deck_count: number;
+  // The face-up planar cards, in the order turned up: ordinary
+  // CardViews with layout "planar". Empty until every hand is kept.
+  face_up: CardView[];
+  // How many times the planar die special action was taken this turn,
+  // and what the active player would pay to take it now ("{0}", "{1}").
+  die_rolls: number;
+  die_cost: string;
+}
+
 export interface OpeningRollView {
   rounds: OpeningRollRoundView[];
   chooser?: number;
@@ -497,6 +525,9 @@ export interface GameView {
   // (between Start and the winner's choice). Public to every viewer.
   // While it is present `starting_seat` means nothing (it reads 0).
   opening_roll?: OpeningRollView;
+  // ADR 0216 §9: a Planechase table's planar state. Absent unless the
+  // table plays Planechase. Public to every viewer.
+  planechase?: PlanechaseView;
   // Stack item announce-time metadata (S13.1). Indexed bottom..top —
   // the corresponding spell card (if any) lives in `stack` at the
   // same index. Empty when the stack is empty.
@@ -1314,6 +1345,11 @@ export type LogKind =
   // ADR 0203: a player completed a dungeon (CR 309.7). `label` is its
   // name.
   | "dungeon_completed"
+  // #4450: a player became the monarch (CR 725.1) or took the initiative
+  // (CR 726.2). `seat` is the new holder; an initiative's `card_id` is the
+  // object that gave it, when there is one.
+  | "monarch"
+  | "initiative"
   // ADR 0138 (#2122): a player's speed changed (CR 702.179). `seat` is
   // the player and `amount` the new speed. Narrated because the
   // start-your-engines state-based action has no card behind it.
@@ -1514,6 +1550,9 @@ export interface LogEvent {
   text: string;
   // Random-effect details. These are optional so older log entries
   // and future effect families remain wire-compatible.
+  // ADR 0216 §4: a planar die's face on a `roll`, which then has no
+  // `sides` and no `results` (CR 901.9d).
+  planar_face?: PlanarFace;
   sides?: number;
   results?: number[];
   faces?: string[];
@@ -2134,8 +2173,11 @@ export interface PendingChoiceView {
   // shuffled if and only if "library" was chosen.
   search_zones_pending?: boolean;
   // The zone an and/or search offers beside the library: "graveyard" or
-  // "hand". On every such prompt, asked or answered.
-  search_other_zone?: "graveyard" | "hand";
+  // "hand", or "graveyard_and_hand" for "search your graveyard, hand,
+  // and/or library" (#5408), whose answer names any non-empty subset of
+  // "library", "graveyard" and "hand". On every such prompt, asked or
+  // answered.
+  search_other_zone?: "graveyard" | "hand" | "graveyard_and_hand";
   // An and/or search answered with the other zone alone: the library is not
   // searched, shown or shuffled.
   search_library_skipped?: boolean;
@@ -3300,6 +3342,11 @@ export interface OptionalCostView {
   // cost has no floor; meaningful only beside a `mana_cost` containing
   // {X}. Read by optionalCostXFloor (targeting.ts).
   x_min?: number;
+  // #5207, CR 601.3c: announcing this cost lets the spell be cast as
+  // though it had flash (Quantum Reduction's teamwork, Asinine Antics's
+  // "pay {2} more", Molten Exhale's behold). When the spell is castable
+  // now only because of it, a cast that leaves it unticked is refused.
+  opens_flash?: boolean;
   // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
   // replicate, 3). `max_times` is then capped at what the viewer's energy
   // pays for, and `energy_short` says it pays for none.
@@ -3333,6 +3380,13 @@ export interface OptionalCostView {
   // cover, and fewer options than `min` means it cannot be taken now.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #5358: a kicker that returns a permanent (Chocobo Kick's "Kicker—Return
+  // a land you control to its owner's hand"): AdditionalCostView's
+  // `return_label` / `return_options`, off the same walk. Fewer cards than
+  // `min` means the offer cannot be taken now. Taken, the picks ride
+  // cast_spell as `return_ids`.
+  return_label?: string;
+  return_options?: LegalTargetsView;
   // #1703: blight N (CR 701.68a) — put `blight` -1/-1 counters on one
   // creature you control. `blight_options` is your creatures;
   // present-and-empty means you control none. The pick rides
@@ -3347,6 +3401,14 @@ export interface OptionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #5406: a behold that chooses its creature type ("choose a creature
+  // type and behold two creatures of that type", Celestial Reunion).
+  // `behold_count` is how many objects it beholds and `behold_types` the
+  // types you could choose, each with your objects of it; `reveal_options`
+  // is every object of every listed type. Taken, the type rides cast_spell
+  // as `behold_type` and exactly `behold_count` of its cards as `reveal_ids`.
+  behold_count?: number;
+  behold_types?: BeholdTypeOption[];
   // #5193: "you may collect evidence N" (CR 701.59a) — exile any number of
   // cards from your graveyard with total mana value `collect_evidence` or
   // greater. `evidence_options` is your graveyard cards that could be
@@ -3429,6 +3491,11 @@ export interface AlternativeCostView {
   // is revealed, nothing moves or taps. The picker words its prompt
   // "Behold".
   behold?: boolean;
+  // Collect evidence N as the whole price (Conspiracy Unraveler's granted
+  // "collect evidence 10 rather than pay the mana cost"): `pay_options`
+  // are graveyard cards, any number of them, enough once their total mana
+  // value reaches this N. The picks ride `alt_cost_ids`.
+  collect_evidence?: number;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you
@@ -3438,6 +3505,20 @@ export interface AlternativeCostView {
   // picked IDs ride `alt_cost_ids`. #3931: harmonize's "up to one
   // untapped creature" is min 0, max 1 — tapping none is a payment.
   tap_options?: LegalTargetsView;
+  // #5390: an offer that removes counters (Quilled Greatwurm's "removing
+  // six counters from among creatures you control") carries the
+  // activated ability's counter block, under the same names, so the
+  // counter picker reads it as it reads an ability. No card component
+  // beside it. The payment rides cast_spell as `counter_source_ids`,
+  // `counter_counts` and `counter_kind` / `counter_kinds`.
+  counter_cost_n?: number;
+  counter_cost_kind?: string;
+  counter_cost_self?: boolean;
+  counter_cost_label?: string;
+  counter_cost_among?: boolean;
+  counter_cost_variable?: boolean;
+  counter_cost_max?: number;
+  counter_cost_options?: CounterCostOptionView[];
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
   // for `sacrifice_options` ("three creatures") or for `tap_options`
   // ("an untapped creature you control").
@@ -3485,6 +3566,11 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // #5363, CR 601.3c: the engine accepts THIS claim right now only with
+  // an `opens_flash` optional cost announced (Asinine Antics through
+  // Omniscience at instant speed). `timing_closed` is then absent. Read
+  // by opensFlashCostToPreselect (targeting.ts).
+  opens_flash_required?: boolean;
   // #3225: the largest X the viewer may announce while claiming THIS
   // offer — "you may cast this spell as though it had flash if X is 3
   // or less" (CR 601.3b) — already folded with the card's printed
@@ -3573,6 +3659,9 @@ export interface AbilityCostBranchView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Bloodthorn Flail's "Pay {3}" branch: the mana the branch pays from the
+  // pool (game.AbilityCostBranchMana). Always offered; the payment checks it.
+  mana_cost?: string;
 }
 
 export interface PayOptionView {
@@ -3900,6 +3989,12 @@ export interface ActivatedAbilityView {
   // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #5401: the "with total mana value X" form (Fabrication Foundry's
+  // "Exile one or more other artifacts you control with total mana value
+  // X"). `demands_x` is set, but the picks ARE the announcement: the
+  // client sends their total mana value as `x_value` and narrows the
+  // target clause by it, and never asks for X separately.
+  exile_permanent_total_mana_value_x?: boolean;
   // #4799: an "Unattach an Equipment from <this>" cost (Captain America,
   // First Avenger). The Equipment attached to this permanent right now,
   // whoever controls them, min / max the cost's count (1). The pick rides
@@ -3971,6 +4066,12 @@ export interface ActivatedAbilityView {
   // (`granted_by`) is the payment, so nothing is picked and nothing is
   // sent.
   exile_grantor?: boolean;
+  // "Tap <the permanent that grants this>" (Fishing Pole): advisory, the
+  // grantor is `granted_by`, nothing is sent.
+  tap_grantor?: boolean;
+  // Deconstruction Hammer's "Sacrifice <the permanent that grants this>" on
+  // a granted row. Advisory like `exile_grantor`.
+  sacrifice_grantor?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.
@@ -4425,6 +4526,13 @@ export interface SacrificeGroupView {
   cards?: string[];
 }
 
+// BeholdTypeOption is one creature type a behold that chooses its type
+// could be paid with, and the viewer's objects of that type (#5406).
+export interface BeholdTypeOption {
+  type: string;
+  cards: string[];
+}
+
 export interface LegalTargetsView {
   // #1943: compatible candidates keyed by the earlier clause's pick.
   relation?: { slot: number; pairs: Record<string, string[]> };
@@ -4655,6 +4763,11 @@ export interface CastSurfaceView {
   // the zone browser's button label and canCastFromHand's tooltip stay
   // on the zone-and-payability question alone.
   printed_cost_timing_closed?: boolean;
+  // #5363, CR 601.3c: the printed cost is accepted right now only with
+  // an `opens_flash` optional cost announced (Asinine Antics's "pay {2}
+  // more" outside a main phase). The cost picker pre-selects that cost
+  // and says why. Absent for every other card and moment.
+  opens_flash_required?: boolean;
   // ADR 0073 (#664): the "you may pay an additional cost" offers this
   // card makes — kicker, multikicker, buyback. Rendered inside the
   // same picker the alternative costs open, because CR 601.2b
@@ -5107,6 +5220,10 @@ export interface CardView extends CastSurfaceView {
   // block any number. Both omitted for the ordinary one-attacker case.
   block_capacity?: number;
   blocks_any_number?: boolean;
+  // #5396: the creature "can't block alone" (CR 506.5, 509.1b): it may
+  // block only beside another blocker of its controller's. Omitted
+  // otherwise.
+  cant_block_alone?: boolean;
   // Player ID whose goad on this creature is the most recent, or
   // omitted when not goaded. Cleared on zone exit. Added in S10;
   // enforced server-side since #1571 (CR 701.15b — attacks each combat
@@ -5651,6 +5768,20 @@ export interface ManaAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Collect evidence N as a mana ability's cost (Cryptex's "{T}, Collect
+  // evidence 3"): `exile_cost_n` is absent, the picker takes any number of
+  // `exile_cost_options`, and the picks are enough once their total mana
+  // value reaches `exile_cost_mana_value_min`. The ActivatedAbilityView
+  // fields of the same names; the engine refuses a pick below the floor.
+  exile_cost_any_number?: boolean;
+  exile_cost_mana_value_min?: number;
+  // #5397: an either/or part of the cost — forage, Thornvault Forager's
+  // "{T}, Forage: Add two mana in any combination of colors" (exile three
+  // cards from your graveyard, or sacrifice a Food). The same entries
+  // ActivatedAbilityView.cost_branches carries; the client asks which
+  // first, folds the branch into the row (withCostBranch) and sends its
+  // index on activate_mana_ability as `cost_branch`.
+  cost_branches?: AbilityCostBranchView[];
   // S22: a "Pay N life" component of the activation cost — Mana
   // Confluence's "{T}, Pay 1 life:". Advisory only; the server does
   // the real CR 119.4 check. A damage RIDER ("This land deals 1
@@ -5862,12 +5993,28 @@ export interface TurnView {
   // control shows while the viewer's seat is pending.
   block_pending_seats?: number[];
   blocks_declared_seats?: number[];
+  // #5375 (ADR 0221): the CR 509.1d block tax on each defender still
+  // declaring, one row per seat whose blocks would be taxed. Absent at
+  // every table without one. Server-priced; never re-derived here.
+  block_taxes?: BlockTaxView[];
   // S27: what the ACTIVE player's creatures may attack right now —
   // the other seats, the planeswalkers they don't control, and the
   // battles they don't protect (CR 506.2, 508.1d). Present only
   // during declare_attackers. Server-computed: the client must not
   // re-derive "who protects which battle".
   attack_targets?: AttackTargetView[];
+}
+
+// BlockTaxView is one declaring defender's block tax (ADR 0221).
+export interface BlockTaxView {
+  seat: number;
+  // The price of the blocks staged now: what finish_blocks charges.
+  cost?: string;
+  // What one more blocker adds, when every one of the seat's creatures
+  // pays the same.
+  each?: string;
+  // The printed clauses that tax this seat's blocks.
+  labels: string[];
 }
 
 // uuid generates a v4 UUID. Uses crypto.randomUUID when available (all
@@ -5975,6 +6122,9 @@ export interface TableSettingsView {
   // before the table is offered a way on without it, 0 for never.
   // Absent from an older server, which reads as the default, 3.
   away_after?: number;
+  // ADR 0216 §1: a Planechase table (a communal planar deck and the
+  // planar die). Absent is off. Fixed once the game is active.
+  planechase?: boolean;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

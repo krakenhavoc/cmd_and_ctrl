@@ -866,6 +866,18 @@ type Card struct {
 	// #1572; see ADR 0071's amendment of 2026-09-27.
 	ChosenOption string
 
+	// SecretChoice is the creature type (or other word) its controller
+	// chose in SECRET for this permanent as an effect resolved —
+	// A Killer Among Us's "secretly choose Human, Merfolk, or Goblin" —
+	// and SecretChoiceBy the player who chose it, the only one who may
+	// reveal it (secret_choice.go). Never projected into a view: an
+	// opponent learns it only when it is revealed (EventCreatureTypeChosen
+	// on the reveal). Same lifecycle as ChosenOption: per instance,
+	// carried by the snapshot and by clone, cleared when the permanent
+	// leaves the battlefield (CR 400.7). NOT a copiable value.
+	SecretChoice   string
+	SecretChoiceBy uuid.UUID
+
 	// ChosenNumber is the NUMBER chosen for this permanent as it
 	// entered (CR 614.12a, #1941): Phyrexian Processor's "As this
 	// artifact enters, pay any amount of life", read back by its
@@ -1257,6 +1269,14 @@ type Card struct {
 	// by MoveCard with ExiledWith. Carried by the snapshot.
 	ExiledWithAbility AbilityRef
 
+	// ExiledWithTurn is the Turn.Seq on which ExiledWith was stamped:
+	// "cards exiled with Maralen THIS TURN" (Maralen, Fae Ascendant,
+	// #4458) reads it through PermissionFilter.ExiledWithSourceThisTurn.
+	// Written beside ExiledWith by every linked exile and cleared with it
+	// by MoveCard; zero when the card is linked to nothing. Carried by
+	// the snapshot.
+	ExiledWithTurn int
+
 	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
 	// {instance, epoch} a card with cipher was exiled encoded on as its
 	// spell resolved (#3867, cipher.go). A separate link from ExiledWith
@@ -1456,6 +1476,17 @@ type Card struct {
 	// HasPrintedManaAbility, for Moonsilver Key's "an artifact card with a
 	// mana ability".
 	ManaAbilityText PrintedFact
+
+	// NoAbilitiesText records whether the card's printed oracle text is
+	// empty, so the card has no abilities at all (a vanilla creature), per
+	// NoAbilitiesInText. Stamped by the deck importer beside
+	// ManaAbilityText, for the same reason: game.Card carries no oracle
+	// text. PrintedUnknown (the zero value) on a card that was never
+	// imported. Re-derived from the face that is up by SetFace, and a
+	// copiable value (PrintedValues). Read through PrintsNoAbilities, for
+	// Fang-Druid Summoner's and Rise from the Wreck's "creature card with
+	// no abilities" (#4464).
+	NoAbilitiesText PrintedFact
 
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
@@ -1897,6 +1928,16 @@ type Card struct {
 	// HasntDealtCombatDamage gate.
 	DealtCombatDamage bool
 
+	// DealtDamage is "has dealt damage" (Karakyk Guardian's "has
+	// hexproof as long as it hasn't dealt damage yet"): DealtCombatDamage
+	// for damage of any kind, noncombat damage and damage to a player or
+	// a permanent alike. Set by emitDealDamageLocked when damage this
+	// permanent was the source of actually landed (damage fully
+	// prevented is not dealt) and kept until the permanent leaves the
+	// battlefield (CR 400.7). Not a characteristic; carried by clone and
+	// the snapshot. Read through the HasntDealtDamage gate.
+	DealtDamage bool
+
 	// Bestowed is CR 702.103b's "bestowed" status (ADR 0141, #2862): a
 	// spell cast for its bestow cost, and the permanent that spell
 	// becomes, is an Aura enchantment with enchant creature and not a
@@ -2080,6 +2121,11 @@ func (c Card) CountedPower(use CostPowerUse) int {
 		if r.Uses&use != 0 && r.UseToughness {
 			p = t
 			break
+		}
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 && r.UseToughnessIfGreater && t > p {
+			p = t
 		}
 	}
 	for _, r := range eff.CostPower {

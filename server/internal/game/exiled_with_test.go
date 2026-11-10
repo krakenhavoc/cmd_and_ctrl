@@ -41,23 +41,23 @@ func TestStampExiledWithOnlyLandsInExile(t *testing.T) {
 	id := uuid.New()
 
 	exile := &Zone{Kind: ZoneExile, Cards: []Card{{InstanceID: id}}}
-	stampExiledWithLocked(exile, id, ref, AbilityRef{})
+	stampExiledWithLocked(exile, id, ref, AbilityRef{}, 0)
 	if exile.Cards[0].ExiledWith != ref {
 		t.Errorf("exile card link = %+v, want %+v", exile.Cards[0].ExiledWith, ref)
 	}
 
 	grave := &Zone{Kind: ZoneGraveyard, Cards: []Card{{InstanceID: id}}}
-	stampExiledWithLocked(grave, id, ref, AbilityRef{})
+	stampExiledWithLocked(grave, id, ref, AbilityRef{}, 0)
 	if grave.Cards[0].ExiledWith.ID != uuid.Nil {
 		t.Error("a card that did not land in exile was linked")
 	}
 
 	none := &Zone{Kind: ZoneExile, Cards: []Card{{InstanceID: id}}}
-	stampExiledWithLocked(none, id, PermissionCardRef{}, AbilityRef{})
+	stampExiledWithLocked(none, id, PermissionCardRef{}, AbilityRef{}, 0)
 	if none.Cards[0].ExiledWith.ID != uuid.Nil {
 		t.Error("the zero ref stamped a link")
 	}
-	stampExiledWithLocked(nil, id, ref, AbilityRef{}) // must not panic
+	stampExiledWithLocked(nil, id, ref, AbilityRef{}, 0) // must not panic
 }
 
 func TestMoveCardClearsTheExiledWithLink(t *testing.T) {
@@ -79,7 +79,7 @@ func TestStampExiledWithCarriesTheAbility(t *testing.T) {
 	ab := AbilityRef{Key: "k", Slot: AbilitySlotTriggered, Ref: "own:0", Name: "exile it"}
 	id := uuid.New()
 	exile := &Zone{Kind: ZoneExile, Cards: []Card{{InstanceID: id}}}
-	stampExiledWithLocked(exile, id, ref, ab)
+	stampExiledWithLocked(exile, id, ref, ab, 0)
 	if got := exile.Cards[0].ExiledWithAbility; got != ab {
 		t.Errorf("ExiledWithAbility = %+v, want %+v", got, ab)
 	}

@@ -33,6 +33,11 @@ export interface StatsPrefs {
    * while they have none. The link itself is shown once, when made.
    */
   share_link_at?: number;
+  /**
+   * Whether the person shares their stats with the members of every pod
+   * they are in (ADR 0220 §7): one switch for all pods, off by default.
+   */
+  share_pods: boolean;
 }
 
 /** What every surface shows until the server answers: off, nothing to switch. */
@@ -41,6 +46,7 @@ export const STATS_PREFS_OFF: StatsPrefs = Object.freeze({
   advanced: false,
   choice: "default",
   default: false,
+  share_pods: false,
 });
 
 function normalizeChoice(c: unknown): StatsChoice {
@@ -58,6 +64,7 @@ export function normalizeStatsPrefs(raw: unknown): StatsPrefs {
     advanced: r.advanced === true,
     choice: normalizeChoice(r.choice),
     default: r.default === true,
+    share_pods: r.share_pods === true,
   };
   const by = normalizeSetBy(r.set_by);
   if (by && out.choice !== "default") out.set_by = by;
@@ -102,6 +109,21 @@ export async function setAdvancedStats(on: boolean): Promise<StatsPrefs> {
   const res = await authFetch("/me/stats/prefs", {
     method: "PUT",
     body: JSON.stringify({ advanced: on }),
+  });
+  const got = normalizeStatsPrefs(await res.json());
+  statsPrefs.set(got);
+  return got;
+}
+
+/**
+ * setSharePods switches pod sharing on or off for the caller (ADR 0220
+ * §7). It leaves the advanced-stats switch alone; the server's answer is
+ * already in the store when it resolves.
+ */
+export async function setSharePods(on: boolean): Promise<StatsPrefs> {
+  const res = await authFetch("/me/stats/prefs", {
+    method: "PUT",
+    body: JSON.stringify({ share_pods: on }),
   });
   const got = normalizeStatsPrefs(await res.json());
   statsPrefs.set(got);

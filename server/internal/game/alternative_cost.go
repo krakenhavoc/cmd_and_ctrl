@@ -278,6 +278,13 @@ type AlternativeCost struct {
 	// validator and the payability check read from the hand.
 	DiscardFromHand *TargetSpec
 
+	// Forage marks the non-mana payment of this cost as a forage (CR
+	// 701.61a): exile three cards from your graveyard, or sacrifice a Food
+	// (Osteomancer Adept's "cast creature spells from your graveyard by
+	// foraging in addition to paying their other costs"). Paying it emits
+	// EventForage, which "whenever you forage" watches. Runtime only.
+	Forage bool
+
 	// TapOthers is "tap N untapped [permanents] you control" as the price
 	// (CR 118.9, ADR 0135 §1, #2030): Orim's Cure's creature, Battle
 	// Screech's three white creatures, Zahid's artifact. The same struct
@@ -313,6 +320,47 @@ type AlternativeCost struct {
 	// BeholdCount is how many objects Behold names: the printed N.
 	// Zero reads as one.
 	BeholdCount int
+
+	// CollectEvidence is "collect evidence N rather than pay the mana
+	// cost" (CR 701.59a; Conspiracy Unraveler's granted "You may collect
+	// evidence 10 rather than pay the mana cost for spells you cast"):
+	// the graveyard clause collect evidence is (CollectEvidenceCost), as
+	// the WHOLE price. The caster names any number of their own
+	// graveyard cards with total mana value N or more on
+	// CastSpellParams.AltCostIDs, validated by the exile-cards validator
+	// every other collect evidence reads, so a pick below the floor is
+	// refused and a caster whose graveyard falls short can't claim the
+	// offer (CR 701.59b). The spell being cast is on the stack (CR
+	// 601.2a), so a card cast from the graveyard can't pay for itself.
+	// Paying it exiles the cards with the spell on the stack and emits
+	// EventCollectEvidence. It is not the spell's own optional collect
+	// evidence cost: "if evidence was collected" never reads it (CR
+	// 701.59c). A card component like the seven above, so
+	// effects.Register refuses it beside another one.
+	CollectEvidence *ExileCost
+
+	// RemoveCounters is "by removing N counters from among creatures you
+	// control in addition to paying its other costs" (#5390, CR 601.2b,
+	// 601.2h): Quilled Greatwurm's graveyard cast. It is the activated
+	// ability's counter component (AbilityCost.RemoveCounters, #625,
+	// #789, #943), carried by a cast: the same option walk
+	// (CounterCostOptionsForEffect), validator
+	// (validateCounterRemovalLocked) and payer (payCounterRemovalLocked),
+	// with the spell being cast as the "source" the walk is asked about.
+	// The cast is not on the battlefield, so the self form has nothing to
+	// name; effects.Register holds the component to the among form with a
+	// "from" clause and a fixed count.
+	//
+	// It is not a card component: the payment rides cast_spell's own
+	// counter_source_ids / counter_counts / counter_kind / counter_kinds
+	// (CastSpellParams.CounterSourceIDs and friends), the names
+	// activate_ability already uses, and never alt_cost_ids. A caster who
+	// cannot remove N counters in all cannot claim the offer (CR 118.3):
+	// AlternativeCostPayableLocked withholds it, and announce refuses a
+	// payment that does not total exactly N. The counters come off with
+	// the spell already on the stack, before any other board cost, so a
+	// creature both drained and sacrificed by the one cast pays both.
+	RemoveCounters *CounterRemovalCost
 
 	// PayLabel is the picker's prompt copy for the card component —
 	// ExileFromHand, ReturnToHand, ExileFromGraveyard, DiscardFromHand,
@@ -717,6 +765,12 @@ func (a *AlternativeCost) PaymentDefinesX() bool {
 	return spec != nil && spec.ManaValueEqualsX
 }
 
+// CollectsEvidence reports whether this offer's price is collect
+// evidence N (CollectEvidence). Nil-safe.
+func (a *AlternativeCost) CollectsEvidence() bool {
+	return a != nil && a.CollectEvidence != nil
+}
+
 // Clears reports whether paying this cost deletes the spell's target
 // clause. Nil-safe, so the cast path can ask without a guard.
 func (a *AlternativeCost) Clears() bool {
@@ -856,11 +910,39 @@ func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, 
 	return offer, nil
 }
 
+// validateAltCostCountersLocked resolves the claimed offer's
+// counter-removal component (#5390) into the removal to perform,
+// without removing anything: validateCounterRemovalLocked, the one
+// validator the activated and mana abilities use, with the spell being
+// cast as the source. A payment sent with no offer claimed, or with an
+// offer that removes no counters, is refused rather than ignored (the
+// validator's nil-cost branch), as a stray alt_cost_ids is.
+//
+// Caller must hold g.mu.
+func (g *Game) validateAltCostCountersLocked(playerID, castID uuid.UUID, alt *AlternativeCost, pay CounterCostPayment) (counterPayment, error) {
+	var rc *CounterRemovalCost
+	if alt != nil {
+		rc = alt.RemoveCounters
+	}
+	return g.validateCounterRemovalLocked(playerID, castID, rc, pay)
+}
+
+// castCounterPayment is the counter half of a cast_spell payload, in
+// the shape the validator reads.
+func castCounterPayment(params CastSpellParams) CounterCostPayment {
+	return CounterCostPayment{
+		SourceIDs: params.CounterSourceIDs,
+		Counts:    params.CounterCounts,
+		Kind:      params.CounterKind,
+		Kinds:     params.CounterKinds,
+	}
+}
+
 // PaysCards reports whether this cost has a component the caster
 // must name a card for. Nil-safe.
 func (a *AlternativeCost) PaysCards() bool {
 	spec, _, _ := a.cardComponent()
-	return spec != nil || a.Beholds()
+	return spec != nil || a.Beholds() || a.CollectsEvidence()
 }
 
 // CardPaymentCount is how many cards the caster must name in
@@ -967,11 +1049,23 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	if EnergyShortfall(p, alt.Energy) != nil {
 		return false
 	}
+	// #5390, CR 118.3: "removing six counters from among creatures you
+	// control" — the counters the caster's creatures hold, in all kinds,
+	// must reach N. The activation's own predicate, with the spell as
+	// the source.
+	if alt.RemoveCounters != nil && !g.CounterCostPayable(playerID, castID, alt.RemoveCounters) {
+		return false
+	}
 	// #4689: "behold three Elementals" — enough distinct candidates in
 	// the hand and on the battlefield together. Register keeps any other
 	// card component off a beholding offer.
 	if rc, n := alt.beholdComponent(); rc != nil {
 		return len(g.RevealCostOptionsForEffect(playerID, castID, rc)) >= n
+	}
+	// CR 701.59b: collect evidence N — the caster's graveyard, the spell
+	// itself excluded, reaches the floor.
+	if alt.CollectsEvidence() {
+		return g.ExileCostPayableForEffect(playerID, castID, alt.CollectEvidence)
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -1095,6 +1189,13 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	}
 	if rc, n := alt.beholdComponent(); rc != nil {
 		return g.validateBeholdPaymentLocked(playerID, castID, rc, n, ids)
+	}
+	// CR 701.59a: collect evidence N — any number of distinct cards from
+	// the caster's own graveyard, the spell excluded, reaching the floor;
+	// the validator every collect evidence cost reads.
+	if alt.CollectsEvidence() {
+		_, err := g.validateExileCardsCostLocked(playerID, castID, alt.CollectEvidence, ids, nil)
+		return err
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
@@ -1229,6 +1330,11 @@ func (g *Game) AltCostCandidatesLocked(playerID, castID uuid.UUID, alt *Alternat
 	if rc, _ := alt.beholdComponent(); rc != nil {
 		return g.RevealCostOptionsForEffect(playerID, castID, rc)
 	}
+	// Collect evidence N: every card in the caster's graveyard but the
+	// spell, the walk every collect evidence cost reads.
+	if alt.CollectsEvidence() {
+		return g.ExileCostOptionsForEffect(playerID, castID, alt.CollectEvidence)
+	}
 	spec, kind, _ := alt.cardComponent()
 	if spec == nil {
 		return nil
@@ -1347,6 +1453,16 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		})
 	case alt.ReturnToHand != nil:
 		return move(ids[0], ZoneHand)
+	case alt.CollectEvidence != nil:
+		// CR 701.59a: collect evidence N, exiled as a cost with the
+		// spell already on the stack, then announced once, so "whenever
+		// you collect evidence" sees it.
+		for _, id := range ids {
+			if err := move(id, ZoneExile); err != nil {
+				return err
+			}
+		}
+		g.noteCollectEvidenceLocked(playerID, castID, ids)
 	case alt.ExileFromGraveyard != nil:
 		// Escape's exiles are a cost, so they happen with the spell
 		// already on the stack — which is what makes an escaped Uro
@@ -1358,6 +1474,9 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 				return err
 			}
 		}
+		if alt.Forage {
+			g.noteForageLocked(playerID, castID)
+		}
 	case alt.Sacrifice != nil:
 		// #1727: the additional cost's payer, verbatim. Each permanent
 		// is SACRIFICED — EventSacrifice, then its own route to its
@@ -1367,7 +1486,13 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 		// resolve first; and nothing gives them back if it is
 		// countered. The CR 903.9 answers ride along as they do for the
 		// moves above (#1397).
-		return g.payCostSacrificesLocked(ids, answers)
+		if err := g.payCostSacrificesLocked(ids, answers); err != nil {
+			return err
+		}
+		if alt.Forage {
+			g.noteForageLocked(playerID, castID)
+		}
+		return nil
 	case alt.TapOthers != nil:
 		// ADR 0135 §1: the ability's tap-others payer (#758), with the
 		// spell already on the stack, so each permanent's EventTapCard
@@ -1447,6 +1572,12 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 		return
 	}
 	alt := AlternativeCostByKey(CatalogKey(card), item.AltCost)
+	if alt == nil && item.AltCost == GrantedAltCostWarp {
+		// Tannuk, Steadfast Second: "cards in your hand have warp {2}{R}".
+		// The offer is a static's, not the card's, so the card has no row
+		// to look the key up in; the warp clause is the same one.
+		alt = &AlternativeCost{Key: GrantedAltCostWarp, Label: "Warp", WarpExile: true}
+	}
 	if alt == nil {
 		return
 	}
@@ -1589,6 +1720,7 @@ func warpExile(g *Game, it *StackItem, p EffectParams) error {
 			// owns the card.
 			Duration:     WhileInZoneDuration(),
 			NotBeforeSeq: p.Amount,
+			Warped:       true,
 			Label:        "Warp — cast it from exile",
 		}); err != nil {
 			return err

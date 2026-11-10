@@ -478,6 +478,14 @@ func (s *Store) Create(ctx context.Context, owner, name string) (Summary, error)
 	if err != nil {
 		return Summary{}, err
 	}
+	return s.create(ctx, owner, name, nil)
+}
+
+// create makes the pod for an already cleaned name. Everyone in with but
+// owner gets an invite from owner in the same transaction (a suggestion,
+// §4); those invites count toward owner's hourly total but are not refused
+// by it, since the set is at most three people.
+func (s *Store) create(ctx context.Context, owner, name string, with []string) (Summary, error) {
 	s.write.Lock()
 	defer s.write.Unlock()
 	now := s.now()
@@ -490,20 +498,37 @@ func (s *Store) Create(ctx context.Context, owner, name string) (Summary, error)
 		return Summary{}, ErrCreateRateLimited
 	}
 	id := uuid.NewString()
-	err = s.inTx(ctx, func(tx *sql.Tx) error {
+	invited := 0
+	err := s.inTx(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO pods (id, name, owner_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 			id, name, owner, ms(now), ms(now)); err != nil {
 			return err
 		}
-		_, err := tx.ExecContext(ctx,
-			`INSERT INTO pod_members (pod_id, user_id, joined_at) VALUES (?, ?, ?)`, id, owner, ms(now))
-		return err
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO pod_members (pod_id, user_id, joined_at) VALUES (?, ?, ?)`, id, owner, ms(now)); err != nil {
+			return err
+		}
+		for _, to := range with {
+			if to == owner {
+				continue
+			}
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO pod_invites (pod_id, user_id, invited_by, created_at) VALUES (?, ?, ?, ?)`,
+				id, to, owner, ms(now)); err != nil {
+				return err
+			}
+			invited++
+		}
+		return nil
 	})
 	if err != nil {
 		return Summary{}, err
 	}
 	s.spendCreate(owner, now)
+	for i := 0; i < invited; i++ {
+		s.recordInvite(owner, now)
+	}
 	return Summary{ID: id, Name: name, Members: 1, Role: RoleOwner}, nil
 }
 
@@ -690,6 +715,67 @@ func (s *Store) Get(ctx context.Context, viewer, pod string) (Detail, error) {
 		d.LinkExpiresAt = fromMS(p.linkExpires.Int64)
 	}
 	return d, nil
+}
+
+// Roster is a pod as its stats read it (ADR 0220 §6, §7): who the viewer
+// may see, and who shares.
+type Roster struct {
+	ID   string
+	Name string
+	// Visible is every member the viewer may see, the viewer included:
+	// a member with a block with the viewer is left out, the owner's
+	// "Blocked" row too (a hidden person has no numbers to show).
+	Visible []Member
+	// Sharing is the id of every member with the pod-sharing switch on,
+	// hidden ones too, in joined order. The pod's own numbers are
+	// counted over all of them, so one member's block does not change
+	// another member's record (§6).
+	Sharing []string
+}
+
+// Roster reads pod for a member's stats view. ErrNotFound for a pod that
+// does not exist or that viewer is not in. A deleted account is never a
+// member (account deletion removes the row), and is left out here too.
+func (s *Store) Roster(ctx context.Context, viewer, pod string) (Roster, error) {
+	p, err := s.asMember(ctx, s.db, pod, viewer)
+	if err != nil {
+		return Roster{}, err
+	}
+	blocked, err := s.blockedWith(ctx, viewer)
+	if err != nil {
+		return Roster{}, err
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT m.user_id, u.display_name, COALESCE(u.avatar_url, ''), m.joined_at, COALESCE(sp.share_pods, 0)
+		 FROM pod_members m JOIN users u ON u.id = m.user_id AND u.deleted_at IS NULL
+		 LEFT JOIN stats_prefs sp ON sp.user_id = m.user_id
+		 WHERE m.pod_id = ? ORDER BY m.joined_at, m.rowid`, pod)
+	if err != nil {
+		return Roster{}, err
+	}
+	defer func() { _ = rows.Close() }()
+	r := Roster{ID: p.id, Name: p.name, Visible: []Member{}, Sharing: []string{}}
+	for rows.Next() {
+		var (
+			m      Member
+			joined int64
+			share  int
+		)
+		if err := rows.Scan(&m.UserID, &m.DisplayName, &m.AvatarURL, &joined, &share); err != nil {
+			return Roster{}, err
+		}
+		m.JoinedAt, m.Sharing, m.Owner = fromMS(joined), share == 1, m.UserID == p.owner
+		if m.Sharing {
+			r.Sharing = append(r.Sharing, m.UserID)
+		}
+		if !blocked[m.UserID] {
+			r.Visible = append(r.Visible, m)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return Roster{}, err
+	}
+	return r, nil
 }
 
 // --- the owner's actions ------------------------------------------------------

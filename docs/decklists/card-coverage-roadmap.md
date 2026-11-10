@@ -156,12 +156,13 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **11423** |
-| — whole cards (bare `oracle_id`) | **11020** |
-| — back faces (`<oracle_id>#1`) | 403 |
-| Declared `full` | 11412 |
-| Declared `caveats` | 11 |
+| Registry keys (`len(effects.All())`) | **12641** |
+| — whole cards (bare `oracle_id`) | **12180** |
+| — back faces (`<oracle_id>#1`) | 461 |
+| Declared `full` | 12639 |
+| Declared `caveats` | 2 |
 | Declared `unreviewed` | 0 |
+| Planes and phenomena in the card database with a catalog row | 14 of 196 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
 only its sixty land backs, and those cards are still gap cards on their
@@ -169,6 +170,10 @@ batch issues. The exception is the Sieges, whose fronts are registered
 too — a Siege is one whole card spread over two keys. Whole cards is
 still the number to quote when someone asks how many cards the engine
 automates; it undercounts by the number of Sieges.
+
+The planar line counts Planechase's plane and phenomenon cards (ADR 0216):
+they are catalog keys like any card and are inside the counts above, but no
+deck list holds one, so the Commander coverage is the whole cards less them.
 
 <!-- END GENERATED CATALOG CENSUS -->
 

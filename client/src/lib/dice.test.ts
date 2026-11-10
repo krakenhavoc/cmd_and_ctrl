@@ -15,6 +15,9 @@ import {
   DICE_TUMBLE_MS,
   DICE_TUMBLE_STEPS,
   diceLabel,
+  PLANAR_CHAOS,
+  PLANAR_PLANESWALK,
+  planarFaceOf,
   diceMotion,
   dicePhase,
   diceSeed,
@@ -589,5 +592,43 @@ describe("the sound (#4450)", () => {
     expect(diceSoundsDue(s.plays, DICE_SOUND_LATE_MS + 1, new Set())).toEqual([
       { key: "seq:1", name: null },
     ]);
+  });
+});
+
+// ADR 0216 §4: a planar roll is a `roll` with a face and no number
+// (CR 901.9d). It tumbles as a d6 whose faces are one chaos, one
+// planeswalk and four blanks, the server's own 1 / 6 / 2–5.
+describe("the planar die", () => {
+  const planarRoll = (seq: number, face: "blank" | "chaos" | "planeswalk"): LogEvent => ({
+    seq,
+    kind: "roll",
+    seat: 1,
+    text: `P1 rolled the planar die: ${face}`,
+    planar_face: face,
+  });
+
+  it("lands on its face", () => {
+    const chaos = rollFromLog(planarRoll(4, "chaos"))!;
+    expect(chaos).toMatchObject({ kind: "die", sides: 6, planar: true, source: "card" });
+    expect(chaos.results).toEqual([PLANAR_CHAOS]);
+    expect(rollFromLog(planarRoll(5, "planeswalk"))!.results).toEqual([PLANAR_PLANESWALK]);
+    for (let seq = 10; seq < 30; seq++) {
+      const blank = rollFromLog(planarRoll(seq, "blank"))!;
+      expect(planarFaceOf(blank.results[0])).toBe("blank");
+    }
+  });
+
+  it("reads the same blank on every frame", () => {
+    expect(rollFromLog(planarRoll(9, "blank"))!.results).toEqual(
+      rollFromLog(planarRoll(9, "blank"))!.results,
+    );
+  });
+
+  it("is labelled as the planar die, and never shows its face before it lands", () => {
+    const r = rollFromLog(planarRoll(6, "planeswalk"))!;
+    expect(diceLabel(r)).toBe("planar die");
+    const faces = tumbleFaces(diceSeed(r.key, 0), 6, r.results[0]);
+    expect(faces.slice(0, -1).map(planarFaceOf)).not.toContain("planeswalk");
+    expect(planarFaceOf(faces[faces.length - 1])).toBe("planeswalk");
   });
 });

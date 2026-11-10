@@ -72,6 +72,12 @@ type Features struct {
 	// ReplayScrubber enables stepping a downloaded replay frame by
 	// frame, plus the deterministic-shuffle seed.
 	ReplayScrubber bool `json:"replay_scrubber"`
+	// Planechase offers the Planechase table option (ADR 0216, owner
+	// answer 3): cmd-dev only until the plane card batches land, so a
+	// production table never meets a mostly manual planar deck. The
+	// server refuses turning it on when this is off (lobby create,
+	// PATCH settings, scheduled tables and set_table_settings alike).
+	Planechase bool `json:"planechase"`
 }
 
 // featureVars maps each feature onto its per-feature override
@@ -84,6 +90,7 @@ var featureVars = []struct {
 	{"CMDCTRL_DEV_SEAT_SWAP", func(f *Features) *bool { return &f.SeatSwap }},
 	{"CMDCTRL_DEV_FRAME_INSPECTOR", func(f *Features) *bool { return &f.FrameInspector }},
 	{"CMDCTRL_DEV_REPLAY_SCRUBBER", func(f *Features) *bool { return &f.ReplayScrubber }},
+	{"CMDCTRL_DEV_PLANECHASE", func(f *Features) *bool { return &f.Planechase }},
 }
 
 // LoadFeatures returns the dev features enabled for env.
@@ -102,6 +109,7 @@ func LoadFeatures(env Env) Features {
 		SeatSwap:       true,
 		FrameInspector: true,
 		ReplayScrubber: true,
+		Planechase:     true,
 	}
 	for _, fv := range featureVars {
 		raw, present := os.LookupEnv(fv.name)

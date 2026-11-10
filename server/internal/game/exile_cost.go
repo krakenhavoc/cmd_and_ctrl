@@ -123,7 +123,10 @@ func (g *Game) validateManaExileSelfCostLocked(srcZone ZoneKind, ab ManaAbilityS
 	if !ab.ExileSelf {
 		return nil
 	}
-	if !ManaAbilityFunctionsFromZone(ab, srcZone) || srcZone == ZoneBattlefield {
+	// The battlefield is a zone too: "{T}, Exile this artifact: Add {U}"
+	// (Ether) pays with the permanent itself, which leaves through the
+	// battlefield arm of the exit primitive like a sacrifice does.
+	if !ManaAbilityFunctionsFromZone(ab, srcZone) {
 		return ErrActivationZoneNotAllowed
 	}
 	return nil
@@ -261,6 +264,15 @@ type ExileCost struct {
 	// closure route to Game. Nil with AnyNumber is "any number, no floor".
 	SymbolTotal *ManaSymbolTotal
 
+	// LinkToSource is "cards exiled with this" (CR 607.2a) for a cost that
+	// exiles: each card is stamped Card.ExiledWith the object paying the
+	// cost, as it lands in exile (Kylox's Voltstrider, #4452: "Collect
+	// evidence 6: ... cast an instant or sorcery spell from among cards
+	// exiled with it"). Read it with ExiledWithThis / Game.ExiledWithForEffect.
+	// Meaningful on an ability's cost; false (no link) for every other
+	// clause, additive.
+	LinkToSource bool
+
 	// ManaValueAtLeast is the other floor an AnyNumber clause may read:
 	// the chosen cards' total mana value must be this or more. It is
 	// collect evidence N (CR 701.59a, #5193: "exile any number of cards
@@ -285,6 +297,21 @@ type ExileCost struct {
 	// optional cost and an either/or branch. Plain data, so it adds no
 	// closure route to Game.
 	ManaValueFromTargets bool
+
+	// CountIsX is "Exile X <kind> cards from your graveyard" as an
+	// ACTIVATED ability's cost, where X appears nowhere else in the cost
+	// (Winter, Cursed Rider's exhaust: "{2}{U}{B}, {T}, Exile X artifact
+	// cards from your graveyard: Each other nonartifact creature gets
+	// -X/-X", #4464). The activator announces X (CR 107.3a, CR 602.2b) by
+	// naming that many matching cards, so it is an AnyNumber clause with no
+	// floor: any number of the pile's matching cards, none included, and X
+	// is the number named. The effect reads it back as the number of cards
+	// the cost exiled (Context.Exiled). N is zero and neither floor is set;
+	// effects.Register refuses the flag without AnyNumber, with a floor, and
+	// anywhere but a CR 602 ability. The picker is the any-number picker the
+	// client already has (exile_cost_any_number), so the wire is unchanged.
+	// Build it with effects.ExileXFromGraveyardAsCost.
+	CountIsX bool
 }
 
 // TotalManaValue is the sum of `cards`' mana values as they sit in a
@@ -570,6 +597,25 @@ func findZoneCard(z *Zone, id uuid.UUID) *Card {
 //
 // Caller must hold g.mu and have validated the list.
 func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
+	return g.payExileCardsCostLinkedLocked(playerID, sourceID, ids, answers, false)
+}
+
+// payExileCardsCostLinkedLocked is payExileCardsCostLocked with the cards'
+// CR 607.2a link: when `link` is set (ExileCost.LinkToSource) every card
+// exiled lands in exile "exiled with" the source OBJECT paying the cost
+// (#4452, Kylox's Voltstrider's "cards exiled with it"), stamped as the card
+// really arrives, so a commander that took the command zone is linked to
+// nothing. The link names the object, not an ability row: a cost is not a
+// resolving item.
+//
+// Caller must hold g.mu and have validated the list.
+func (g *Game) payExileCardsCostLinkedLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool, link bool) error {
+	var ref PermissionCardRef
+	if link {
+		if epoch := g.cardObjectEpochLocked(sourceID); epoch >= 0 {
+			ref = PermissionCardRef{ID: sourceID, Epoch: epoch}
+		}
+	}
 	for _, id := range ids {
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:        id,
@@ -578,6 +624,7 @@ func (g *Game) payExileCardsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.
 			Source:        sourceID,
 			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
 			MustSettleNow: true,
+			ExiledWith:    ref,
 			// #1397: see payExileSelfCostLocked.
 			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {

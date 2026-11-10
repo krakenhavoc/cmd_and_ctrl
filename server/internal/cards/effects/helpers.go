@@ -1047,6 +1047,18 @@ func plusOneCounterOnThisIfStillHere(ctx *Context) error {
 	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 }
 
+// plusOneCounterOnTheTarget is "Put a +1/+1 counter on target creature"
+// (Vastwood Fortification, Ingenious Leonin's first sentence): one counter
+// through the counter pipeline on the first still-legal target card, and
+// nothing for a target that is gone (CR 608.2b).
+func plusOneCounterOnTheTarget(ctx *Context) error {
+	id, ok := b16FirstLegalTargetCard(ctx)
+	if !ok {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+}
+
 // tapTargetAndStunIt is "Tap target creature. Put a stun counter on it."
 // (Cryotheory Adept, Loch Mare): the first legal target is tapped and
 // gets one stun counter; a target gone by resolution gets nothing.
@@ -1799,6 +1811,54 @@ func bounceTheTargetThenDraw(item *game.StackItem, ctx *Context) error {
 	return BounceToHand{Target: item.Targets[0].ID, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 }
 
+// bounceTheTargetThenDrawIfKicked is "Return target nonland permanent to
+// its owner's hand. If this spell was kicked, draw a card." as a spell's
+// whole OnResolve (Whoosh!, Into the Roil): bounceTheTargetThenDraw's
+// keyed draw, for one card when the kicker was paid and none otherwise.
+func bounceTheTargetThenDrawIfKicked(item *game.StackItem, ctx *Context) error {
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	draws := 0
+	if ctx.WasKicked() {
+		draws = 1
+	}
+	return BounceToHand{Target: item.Targets[0].ID, ThenTail: withN(ctx.Tail(thenDrawCards), draws)}.Apply(ctx)
+}
+
+// sacrificedSourceDealsItsPowerToTheTarget is "Sacrifice this creature:
+// It deals damage equal to its power to <target>" as an activated
+// ability's whole Effect (Hellhole Flailer, Heartfire Immolator). The
+// sacrifice is the cost, so "its power" is the power the creature had as
+// it last existed on the battlefield (CR 113.7a, ctx.SourcePermanent), and
+// it is still the damage's source. Nothing is dealt for a power of 0 or
+// less, or when the target is no longer legal (CR 608.2b).
+func sacrificedSourceDealsItsPowerToTheTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, ok := ctx.SourcePermanent()
+	legal := ctx.LegalTargets()
+	if !ok || info.Power <= 0 || len(legal) == 0 {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: info.Power}.Apply(ctx)
+}
+
+// plusOneCountersEqualToItsPower puts X +1/+1 counters on the permanent
+// id, where X is its power as the effect applies, with the layers applied
+// (CR 608.2h). A permanent that has left the battlefield, or whose power
+// is 0 or less, gets nothing (Railway Brawler, Heroes' Bane).
+func plusOneCountersEqualToItsPower(g *game.Game, item *game.StackItem, id uuid.UUID) error {
+	if !onBattlefield(g, id) {
+		return nil
+	}
+	g.RecomputeLayersIfStaleLocked()
+	c, ok := g.LookupCardForEffect(id)
+	if !ok || c.CurrentPower() <= 0 {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: c.CurrentPower()}.Apply(NewContext(g, item))
+}
+
 // returnThisFromGraveyardWithAFinalityCounter is "<cost>: Return this card
 // from your graveyard to the battlefield with a finality counter on it"
 // (Uchbenbak, the Great Mistake; Gastal Thrillroller): the card comes back
@@ -1866,4 +1926,88 @@ func exileThatManyYouMayPlayThisTurn(g *game.Game, item *game.StackItem) error {
 		GrantTo: item.Controller,
 		N:       item.Trigger.Event.Amount,
 	}.Apply(NewContext(g, item))
+}
+
+// caveCount is "the number of Caves you control plus the number of Cave
+// cards in your graveyard" (The Lost Caverns of Ixalan: Sinuous
+// Benthisaur, Calamitous Cave-In), read when it is asked. A permanent
+// whose instance is `except` is left out, for Cavernous Maw's "other
+// Caves"; uuid.Nil leaves out nothing. Cave is a land type, read through
+// the effective view on the battlefield (so a type grant counts) and the
+// printed type line in the graveyard.
+func caveCount(g *game.Game, player, except uuid.UUID) int {
+	n := b19ZombieCardsInGraveyard(g, player, "Cave")
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == player && c.InstanceID != except && c.IsLand() && c.HasSubtype("Cave") {
+			n++
+		}
+	}
+	return n
+}
+
+// returnDiedCardToBattlefieldTapped is "When enchanted creature dies,
+// return it to the battlefield tapped under its owner's control" as the
+// dies trigger's body (Ferocity of the Hunt, Fungal Fortitude): the card
+// the trigger's event names comes back as a new object, tapped, under its
+// OWNER's control. A token has no card to return, so it does nothing.
+func returnDiedCardToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
+	_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, uuid.Nil, true)
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	return err
+}
+
+// whenThisEntersReturnAnotherPermanentYouControl is "When this creature
+// enters, return up to one other target permanent you control to its
+// owner's hand" (Mischievous Pup, Stickytongue Sentinel): the still-legal
+// pick returns to its owner's hand (bounceTheTargetToHand), and choosing
+// none returns nothing. "Other" is the object, never a name.
+func whenThisEntersReturnAnotherPermanentYouControl(cardName string) game.TriggeredAbility {
+	return Targeting(
+		WhenThisEnters(cardName+" — return up to one other target permanent you control to its owner's hand",
+			bounceTheTargetToHand),
+		Another(TargetPermanent("up to one other target permanent you control", YouControl())).WithCount(0, 1),
+	)
+}
+
+// opponentsArtifactsEnterTapped is "Artifacts your opponents control enter
+// tapped" (Manglehorn, Dauntless Dismantler): Kismet's CR 614 replacement
+// narrowed to artifacts entering under another player's control. A token
+// runs the same entry pipeline, so an opponent's Treasure enters tapped
+// too.
+func opponentsArtifactsEnterTapped(label string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventZoneMove},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
+				return false
+			}
+			entering, ok := g.LookupCardForEffect(ev.CardID)
+			if !ok || entering.Controller == src.Controller {
+				return false
+			}
+			return entering.IsArtifact()
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.EntersTapped = true
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: label,
+	}
+}
+
+// exileEachChosenCard is a choose-cards answer that exiles every picked
+// card (Ego Drain's and Ruthless Negotiation's "exile a card from your
+// hand"). The prompt's LiveZone has already dropped a pick that left.
+func exileEachChosenCard(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.ExileCardForEffect(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

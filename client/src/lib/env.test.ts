@@ -28,6 +28,17 @@ describe("parseConfig", () => {
     expect(got.features.frame_inspector).toBe(false);
   });
 
+  // ADR 0216 owner answer 3: Planechase is offered on cmd-dev only, so a
+  // production body never offers it whatever it says.
+  it("reads the Planechase option on dev only", () => {
+    expect(parseConfig({ env: "dev", features: { planechase: true } }).features.planechase).toBe(
+      true,
+    );
+    expect(parseConfig({ env: "prod", features: { planechase: true } }).features.planechase).toBe(
+      false,
+    );
+  });
+
   it("survives a dev response with no features object", () => {
     expect(parseConfig({ env: "dev" }).features.card_spawn).toBe(false);
   });

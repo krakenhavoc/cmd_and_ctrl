@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 // trigger_event.go — #1223: the triggering event, carried as DATA on
 // the triggered ability's stack item (CR 603.2, CR 603.10).
@@ -294,6 +298,12 @@ type TriggerContext struct {
 	// state triggered the instance, and Fired is false because nothing
 	// happened (state_triggers.go).
 	Object *ObjectSnapshot
+
+	// ColorsAmongYours is the number of colors among the permanents the
+	// source's controller controlled as the ability triggered, stamped only
+	// for a row that sets TriggeredAbility.StampColorsAmongYours (Vivid
+	// clauses whose TARGET COUNT is that number). Zero otherwise.
+	ColorsAmongYours int `json:"colorsAmongYours,omitempty"`
 }
 
 // Fired reports whether this context describes a real triggering
@@ -466,5 +476,47 @@ func (g *Game) triggerTargetsLocked(t TriggeredAbility, tc TriggerContext, sourc
 	if t.TargetsFrom != nil {
 		return t.TargetsFrom(tc, source, g)
 	}
+	if t.XFromCast && t.Targets != nil && t.Targets.CountFromX {
+		return xCountedTriggerTargets(t.Targets, source)
+	}
 	return t.Targets
+}
+
+// colorsAmongPermanentsLocked is the number of colors among the permanents
+// `player` controls, read through the layered view (CR 105.2): colorless is
+// not a color, so it counts only white, blue, black, red and green.
+//
+// Caller must hold g.mu.
+func (g *Game) colorsAmongPermanentsLocked(player uuid.UUID) int {
+	seen := map[string]bool{}
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller != player {
+			continue
+		}
+		for _, col := range c.EffectiveColors() {
+			seen[strings.ToUpper(col)] = true
+		}
+	}
+	return len(seen)
+}
+
+// xCountedTriggerTargets is the clause of "When this enters, tap X target
+// creatures": a CountFromX clause on a XFromCast row is counted by the X
+// its source was cast with (Card.CastX, CR 107.3m), on a copy so the
+// catalog's clause is untouched. X of zero chooses no targets (a zero Max
+// would read as unbounded), so the ability has none and does nothing.
+func xCountedTriggerTargets(spec *TargetSpec, source *Card) *TargetSpec {
+	x := 0
+	if source != nil {
+		x = source.CastX()
+	}
+	if x <= 0 {
+		return nil
+	}
+	cp := *spec
+	cp.Min, cp.Max, cp.CountFromX = x, x, false
+	if spec.UpToX {
+		cp.Min = 0
+	}
+	return &cp
 }

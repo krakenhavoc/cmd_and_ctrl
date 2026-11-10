@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -332,4 +334,56 @@ func diff(got, want string) string {
 		}
 	}
 	return b.String()
+}
+
+// TestPlanarCardListMatchesTheDump keeps planar_cards.txt, the planar
+// line's denominator, honest against the card database (ADR 0216 §6): the
+// same oracle IDs deck.Collection.PlanarCards reads for a Planechase table.
+// Skips without the dump, as the oracle fixtures do; the nightly sets it.
+func TestPlanarCardListMatchesTheDump(t *testing.T) {
+	path := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
+	if path == "" {
+		t.Skip("CMDCTRL_SCRYFALL_DUMP unset; the planar list is checked against the dump nightly")
+	}
+	idx := cards.NewIndex()
+	if _, err := idx.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{}
+	for _, c := range deck.NewCollection(idx).PlanarCards(game.PlanarPlanes | game.PlanarPhenomena) {
+		want[c.OracleID] = true
+	}
+	got := map[string]bool{}
+	for _, p := range PlanarCards() {
+		got[p.OracleID] = true
+		if !want[p.OracleID] {
+			t.Errorf("planar_cards.txt lists %s (%s), which the dump has no planar card for", p.OracleID, p.Name)
+		}
+	}
+	for id := range want {
+		if !got[id] {
+			t.Errorf("the dump's planar card %s is missing from planar_cards.txt", id)
+		}
+	}
+}
+
+// TestPlanarCardListIsWellFormed: one row per oracle ID, each a plane or a
+// phenomenon, in oracle-ID order.
+func TestPlanarCardListIsWellFormed(t *testing.T) {
+	rows := PlanarCards()
+	if len(rows) == 0 {
+		t.Fatal("planar_cards.txt has no rows")
+	}
+	for i, p := range rows {
+		if !strings.HasPrefix(p.TypeLine, "Plane ") && !strings.HasPrefix(p.TypeLine, "Phenomenon") {
+			t.Errorf("%s: %q is not a plane or a phenomenon", p.Name, p.TypeLine)
+		}
+		if i > 0 && rows[i-1].OracleID >= p.OracleID {
+			t.Errorf("%s is out of oracle-ID order or repeated", p.Name)
+		}
+	}
+	c := TakeCensus()
+	if c.PlanarCards != len(rows) || c.PlanarCatalogued > c.PlanarCards {
+		t.Errorf("planar line %d of %d over %d rows", c.PlanarCatalogued, c.PlanarCards, len(rows))
+	}
 }

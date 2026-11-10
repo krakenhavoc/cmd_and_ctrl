@@ -55,6 +55,7 @@ import (
 // or a noncreature permanent — is a rider, and so is a fixed clause
 // that happens whatever X is.
 var xMattersAllowlist = map[string]string{
+	"lost_in_the_maze.go Lost in the Maze":                        "X is the target count of its enters trigger (CountFromX on an XFromCast row), which the scan cannot see; at X=0 the enchantment taps nothing",
 	"benevolent_hydra.go Benevolent Hydra":                        "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
 	"chandra_chill_of_compliance.go Chandra, Chill of Compliance": "a planeswalker with no X cost of its own: her −X at X=0 still taps the target, and her other abilities never read X",
 	"tezzeret_the_seeker.go Tezzeret the Seeker":                  "a planeswalker with no X cost of its own: his −X at X=0 still finds an artifact card with mana value 0",

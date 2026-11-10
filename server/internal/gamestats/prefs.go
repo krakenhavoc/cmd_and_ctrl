@@ -39,6 +39,10 @@ type Prefs struct {
 	// §6, slice 6), zero while they have none. The token itself is
 	// never stored, only its hash.
 	ShareLinkAt time.Time
+	// SharePods is whether the person shares their stats with the
+	// members of every pod they are in (ADR 0217 §6, ADR 0220 §7): one
+	// switch for all pods, off until they turn it on.
+	SharePods bool
 }
 
 // Effective is whether advanced stats are on for this person, given
@@ -82,6 +86,10 @@ type PrefsStore interface {
 	// SetAdvanced stores userID's switch and who set it. ErrNoUser if
 	// the account does not exist.
 	SetAdvanced(ctx context.Context, userID string, on bool, by SetBy, now time.Time) (Prefs, error)
+	// SetSharePods stores userID's pod-sharing switch (ADR 0220 §7),
+	// leaving the advanced switch and the share link alone. ErrNoUser
+	// if the account does not exist.
+	SetSharePods(ctx context.Context, userID string, on bool, now time.Time) (Prefs, error)
 	// Default is the server's default.
 	Default(ctx context.Context) (DefaultSetting, error)
 	// SetDefault stores the server's default.

@@ -50,10 +50,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["This ability triggers only once" (#5245)](#this-ability-triggers-only-once-5245)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)](#unattaching-an-equipment-as-a-cost-adr-0020-amendment-2026-11-02-4799)
+  - [Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)](#tapping-the-grantor-and-an-ability-a-card-is-given-until-end-of-turn-4465-4464)
   - ["Can't have counters put on it" (#4692, CR 101.2)](#cant-have-counters-put-on-it-4692-cr-1012)
   - [Blight as an effect (#4683, CR 701.68)](#blight-as-an-effect-4683-cr-70168)
   - [Blight as an activated ability's cost (ADR 0020 amendment 2026-11-03, #4684)](#blight-as-an-activated-abilitys-cost-adr-0020-amendment-2026-11-03-4684)
   - [Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)](#collect-evidence-adr-0020-amendment-2026-11-06-5193-cr-70159)
+  - [Cloak (#4452, CR 701.58)](#cloak-4452-cr-70158)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
@@ -65,6 +67,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Cumulative upkeep (#567, CR 702.24)](#cumulative-upkeep-567-cr-70224)
   - [Echo (ADR 0108 §5, #1888, CR 702.30)](#echo-adr-0108-5-1888-cr-70230)
   - [The CR 732 loop breaker (#628)](#the-cr-732-loop-breaker-628)
+  - ["The first time counters are put on it this turn", "the exiled card" and "during your end step" (#4463)](#the-first-time-counters-are-put-on-it-this-turn-the-exiled-card-and-during-your-end-step-4463)
   - [Untapping in another player's untap step (#74)](#untapping-in-another-players-untap-step-74)
   - [Phasing (#1199, CR 702.26)](#phasing-1199-cr-70226)
   - [Adding a preparation card (S46+, ADR 0090)](#adding-a-preparation-card-s46-adr-0090)
@@ -113,6 +116,9 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
+  - [Plane cards (ADR 0216 slice 4, #4870)](#plane-cards-adr-0216-slice-4-4870)
+
+  - [Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)](#aetherdrift-leftovers-no-abilities-exile-x-and-an-event-amount-4464)
   - [When in doubt](#when-in-doubt)
 
 ### Recipe
@@ -185,6 +191,10 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    resolution; a creature removed from combat in response is illegal,
    and a source that has left is read from its last-known blocks
    (#1863, ADR 0019 amendment 2026-10-07).
+   "Two target creature cards that share a creature type" in a graveyard (Unbury)
+   is `SharesACreatureTypeWithTargetCard(spec, slot)` on the second clause, the
+   graveyard twin of `SharesACreatureTypeWithTarget`: the anchor is read wherever
+   its card is now, so a card that left still anchors the other.
    "Target card in exile" is `TargetCardInExile(label, preds…)`, picked
    in the zone browser's exile tab like a graveyard card; "target face-up
    exiled card" adds `FaceUp()` (Pull from Eternity). "Target creature
@@ -422,7 +432,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Register` refuses it on a spell, an activated ability, a granted
    ability and any trigger that watches more than `EventETB`. A
    "choose up to X" whose X is something else (Riku of Many Paths,
-   Bumi, King of Three Trials) is not this.
+   Bumi, King of Three Trials) is not this: it is `ChooseUpToCount(count,
+   …)` with a count registered once at init, `game.RegisterModeCount`
+   for a count of the board (Bumi's Lessons) or
+   `game.RegisterModeCountOfEvent` for one read off the triggering
+   event (Riku's "the number of times you chose a mode for that spell",
+   #4468: `len(StackItem.Modes)` of the spell `ev.CardID` names).
 
    **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
    **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
@@ -1146,6 +1161,8 @@ GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast(
 
 Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label, with two exceptions it checks: energy and "as though it had flash" (ADR 0129 §5), and emerge's one-creature sacrifice (Herigast, Erupting Nullkite, `EmergeForCreatureSpellsYouCast()`, ADR 0135 PR 6). `GrantedAlternativeCost.PricedAtManaCost` prices an offer at the mana cost of the spell being cast ("The emerge cost is equal to its mana cost"), so its `Offer.ManaCost` stays empty. A card that reads "if its emerge cost was paid" asks `PaidEmerge(key)`, which is true for its own emerge and for Herigast's.
 
+Collect evidence N as the whole price ("You may collect evidence 10 rather than pay the mana cost for spells you cast", Conspiracy Unraveler) is `CollectEvidenceTenForSpellsYouCast()`: `game.AlternativeCost.CollectEvidence` holds the clause, the caster names graveyard cards with total mana value N or more on `alt_cost_ids`, the offer view ships `collect_evidence: N` with the graveyard as `pay_options`, a short graveyard withholds the offer (CR 701.59b), and paying it emits the collect evidence event without making "if evidence was collected" true (CR 701.59c).
+
 A Room door's grant goes in `Door.GrantedAlternativeCosts`, and `Room` gates it on the door (`GrantedAlternativeCost.ActiveWhen`, #3174). "Once each turn" is `OnceEachTurn`, a limit per source object spent as the spell becomes cast (`TurnTally.GrantedAltCostsClaimed`); "during each of your turns" adds `YourTurnOnly`; "by paying life equal to its mana value" is `LifeEqualToManaValue`, with the offer's mana cost, life and energy left empty (a spell with {X} or no mana cost gets no offer). Warped Space is `PayZeroForASpellFromExileOnceEachTurn()` and Access Maze `PayLifeForASpellFromHandOnceEachOfYourTurns()`:
 
 ```go
@@ -1213,7 +1230,14 @@ the recipient's and the grant's timestamps (CR 613.7a), and it ends
 when the recipient loses the grant. A keyword in a bundle is an `Apply`
 that appends the token (`GrantToAttached`, `AppendKeywordAbility`).
 Layers 1-5, 7a, and a granted static that removes, grants or borrows
-abilities are refused (`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
+abilities are refused (`game.GrantedStaticProblem`), with one exception
+(#5402, amendment 2026-11-10): a granted static that grants ONE fixed
+bundle with no static of its own, declared with
+`GrantedFixedBundle(label, appliesTo, innerKey)`. The inner bundle must
+be in the same card's `Grants`. 'This Saga gains "Creatures you control
+have '{T}: Add {R}, {G}, or {W}.'"' (Roar of the Fifth People) is a
+chapter that grants the Saga the outer bundle, as Urza's Saga does; see
+`huatli_poet_of_unity.go`. A granted equip is `EquipAbility(cost)`
 in a bundle's `Activated`: it is the recipient's own row and attaches
 the recipient. "<Permanents> are Equipment in addition to their other
 types" is `AreAlsoEquipment(label, applies)` (Gemcutter Buccaneer). A
@@ -1893,6 +1917,19 @@ never waived: strict, permissive and Cast anyway decide only the mana
 the activator's energy, and the enumerator bounds X by it. The view
 stamps `energy_cost` / `energy_cost_x` and greys a row the controller is
 short for.
+
+**"Pay X life" and "Sacrifice a creature with mana value X"** (S79, #4452)
+are the two other X-priced ability components. `PayXLife()` is `AbilityCost.LifeX`
+beside the mana's `{X}`: Krumar Initiate's `Plus(ManaCost("{X}{B}"), TapCost(),
+PayXLife())` pays the announced X as life, and the life total is a ceiling on X
+(`game/life_x_cost.go`, CR 119.4), in the engine's announce gate and in the
+enumerator. `SacrificeAnotherWithManaValueX(label, preds...)` (`effects/
+std_b7_helpers.go`) is Sidisi, Regent of the Mire's cost: X is announced
+(`DemandsX` counts it), the sacrificed permanent must have mana value X
+(`game/sacrifice_mv_x.go`), and the target clause bound to the same X is
+`TargetCardInGraveyard(...).WithManaValueEqualsXPlus(1)`, "mana value X plus 1"
+(`TargetSpec.ManaValueEqualsXPlus`; the view ships such a clause without the
+client's "mana value X" narrowing, which would hide the cards the engine accepts).
 
 **A mana ability that pays energy** (PR 2) declares it on its cost:
 `ManaAbilityCost{Tap: true, Energy: 1}` is Aether Hub's "{T}, Pay {E}:"
@@ -2808,6 +2845,20 @@ never stops it. `Next` is one instance of damage (CR 615.8), spent the
 way `PreventNextDamageFromSource` is. "Choose a source you control" is
 `ChooseSourcePrompt.Controller`.
 
+**"It deals that much damage plus X instead" for the rest of the turn**
+(#4468, Taii Wakeen, Perfect Shot) is the additive sibling, the
+`ScopedEffect` kind `addDamage`, written with `g.AddDamageForEffect`
+(`server/internal/game/add_damage.go`). It takes the multiplier's
+`Sources`, `Recipients` and `CombatOnly`, plus `NoncombatOnly` for "would
+deal noncombat damage". An amount below 1 registers nothing. Two
+additions commute, so no CR 616 order is asked between them; beside a
+multiplier the affected player orders the two.
+
+```go
+g.AddDamageForEffect(game.DamageAddition{EffectSource: ctx.Source(), Controller: ctx.Controller(),
+    Amount: ctx.X(), Sources: game.DamageSourcesYours, NoncombatOnly: true})  // Taii Wakeen
+```
+
 **Choosing a source is a keyed prompt** (#4253 slice 10c). A
 `game.ChooseSourcePrompt` names what happens to the pinned source as data,
 never a closure. The shield, redirection or multiplier the card described
@@ -3031,6 +3082,11 @@ move and `EventETB`, pinned to that object by its epoch:
   reanimation is a new object without it (CR 400.7), and a copy copies
   the printed card (CR 707.2).
 
+"…and it loses all abilities" (Retched Wretch's return) is
+`EntersAs{LosesAllAbilities: true}`, a layer 6 `LoseAllAbilitiesMod` pinned to
+that object like the rest of the record; an overwrite that names no type may
+carry only this field.
+
 "In addition to its other types" is the same overwrite with the add
 fields instead of `Types` (#4834): Excava, the Risen Past's "It's a 1/1
 Spirit creature with flying in addition to its other types" is
@@ -3040,6 +3096,15 @@ ctx.TextSubtypes("Spirit"), Keywords: []string{"flying"}, BasePT:
 keyword, layer 7b base power and toughness, one record). `Problem`
 refuses an overwrite that both sets and adds types. See
 `excava_the_risen_past.go`.
+
+"... and has no abilities" is `EntersAs.LoseAllAbilities` (Xu-Ifit,
+Osteoharmonist: "It's a Skeleton in addition to its other types and has no
+abilities", `EntersAs{AddSubtypes: ctx.TextSubtypes("Skeleton"),
+LoseAllAbilities: true}`). It rides the same record, registered before the
+zone move and `EventETB`, so the card's own "when this enters" triggers and
+enters-tapped or enters-with-counters clauses never apply. A subtype-only or
+abilities-only overwrite is valid (`Problem` no longer demands a card type
+when one of those is set). See `xu_ifit_osteoharmonist.go`.
 
 A "dies, if it was a creature, return it" trigger (Tom, Bert, and
 William) reads `lki.Types` in `AppliesTo`. The returned artifact was
@@ -3173,13 +3238,31 @@ permanent back to its entry copy or to itself (#1593, ADR 0043's
 2026-09-28 amendment). The except clause takes the same
 `PrintedValues` edits, plus `AddKeyword` for "except it has haste".
 "As this enters … until end of turn" (Cursed Mirror) is
-`EntersAsCopyOfUntilEndOfTurn`. An "If you do, …" rider that hangs off
+`EntersAsCopyOfUntilEndOfTurn`. "Until the next end step" (Niko, Light of
+Hope's Shards) is `Duration: CopyUntilNextEndStep`, the game kind
+`UntilNextEndStep`: it ends as the next end step of any turn begins, so a
+blink's delayed return at the same step sees it over. An "If you do, …" rider that hangs off
 the copy (Gogo, Mysterious Mime, #3774) reads `BecomeCopy.ApplyReports`,
 which says whether a copy effect really began — false when the target
 left, came back as a new object, or there was nothing to copy — where
 `Apply` just returns nil. Never write a copy by setting a card's
 printed fields from a card file: the record is what lets it end, undo
 and survive a restart.
+
+**"For as long as this Equipment remains attached to it, that creature
+becomes a copy of a creature card exiled with this Equipment"
+(Assimilation Aegis, #5399)** is `BecomeCopyOfExiledWith{Target, Row,
+Match, Duration: CopyWhileSourceAttached}` in
+[copy_of_exiled_with.go](../server/internal/cards/effects/copy_of_exiled_with.go),
+fired by `On(game.EventAttach, ThisBecameAttachedToACreature, …)` with
+"that creature" as `item.Trigger.Event.Target`. `Row` is the Key of the
+ability that exiled the cards (CR 607.2a), which must stamp the link:
+`ExileTarget{Linked: true}`, or `ExileUntil{ThisLeaves: true, Linked:
+true}` for "until this leaves the battlefield". One candidate is copied,
+several are a keyed pick, none copies nothing. `CopyWhileSourceAttached`
+is also a plain `BecomeCopy` duration; it takes exactly one target. An
+"as this becomes attached" choice (Dinosaur Headdress) is `Spec.AsAttached`
+instead: no trigger, no stack.
 
 **Don't reach for this for a token copy.** "Create a token that's a
 copy of target creature" (Follow the Spirit, Kiki-Jiki) is
@@ -4510,6 +4593,22 @@ battlefield unattached. With nothing attached the ability can't be activated. A 
 `Dividing(DivideBy(DivideUnattachedManaValue))` ("damage equal to that Equipment's mana value divided as you choose");
 the view ships the amount per candidate and the client asks for the Equipment first. Only a count of 1 is supported.
 
+### Tapping the grantor, and an ability a card is given until end of turn (#4465, #4464)
+
+`Plus(ManaCost("{1}"), TapCost(), TapTheGrantor())` in an `AbilityGrant` bundle is Fishing Pole's equipped creature
+having "{1}, {T}, Tap Fishing Pole: …": `{T}` taps the creature, `TapTheGrantor` taps the Equipment whose grant the row is
+(`game.AbilityCost.TapGrantor`, `game/tap_grantor_cost.go`, the same grantor `ExileTheGrantor` reads). It must be
+untapped (CR 118.3), is tapped with the ability on the stack, and the effect puts its counter on `ctx.Grantor()`, never
+on another permanent with the same name. `Register` allows it only in a granted battlefield row and never beside a
+component that picks permanents.
+
+"Target creature card in your graveyard gains embalm until end of turn. The embalm cost is equal to its mana cost"
+(Cursecloth Wrappings) is a graveyard `AbilityGrant` given with
+`Game.GrantAbilityToGraveyardCardUntilEndOfTurnForEffect(card, source, activator, key)`
+(`game/graveyard_effect_grants.go`): Q's exile grant (ADR 0219) on a card in a graveyard, ended by the CR 514.2 sweep
+or by the card moving. The bundle's mana component is `ItsManaCost()` (`AbilityCost.ManaFromSource`); the row builder
+writes the card's own mana cost into it, so every reader of the row sees a plain string.
+
 ### "Can't have counters put on it" (#4692, CR 101.2)
 
 Blossombind's "Enchanted creature … can't have counters put on it" is
@@ -4619,9 +4718,25 @@ WheneverYouForage(label, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})) // 
   `PaidCost.Foraged`, read through `ctx.Foraged()` for "if you foraged";
   the cards are on `ctx.Exiled()` and the Food on
   `ctx.SacrificedPermanents()`.
-- Not yet: forage on a MANA ability (Thornvault Forager's "{T}, Forage: Add
-  two mana"), which has no either/or cost, and "cast … by foraging in
-  addition to paying their other costs" (Osteomancer Adept).
+- On a MANA ability (#5397, Thornvault Forager's "{T}, Forage: Add two
+  mana in any combination of colors") the cost is a field, not `Forage()`:
+
+  ```go
+  Cost: ManaAbilityCost{Tap: true, Forage: true},
+  ```
+
+  The activator names the way as `activate_mana_ability.cost_branch`
+  (0 exiles three graveyard cards on `exile_ids`, 1 sacrifices a Food on
+  `sacrifice_ids`); `game.ChosenManaAbilityShape` folds it into the plain
+  `ExileCards` or `SacrificeOther` clause, so declare neither beside it
+  (`Register` refuses it, and a forage off the battlefield). The
+  auto-tapper never plans the row, so give the card its plain mana row
+  too when it prints one.
+- "Cast … by foraging in addition to paying their other costs" (Osteomancer
+  Adept) is two granted cast permissions, one per way to forage:
+  `ExileOtherFromGraveyard: game.ForageExileCount` and `SacrificeFood: true`,
+  both with `Forage: true` so paying either emits `EventForage`
+  (`AlternativeCost.Forage`).
 
 ### Collect evidence (ADR 0020 amendment 2026-11-06, #5193, CR 701.59)
 
@@ -4660,6 +4775,12 @@ var izoniSpiders = RegisterCollectEvidence("choose-cards/izoni-center-of-the-web
   `Plus`. The activator names the cards on `activate_ability`'s `exile_ids`;
   the row ships `exile_cost_any_number` and `exile_cost_mana_value_min`, and
   is greyed when the graveyard is short.
+- **A mana ability's cost** ("{T}, Collect evidence 3: Add one mana of any
+  color", Cryptex) is `ManaAbilityCost{Tap: true, ExileCards:
+  ManaCollectEvidenceN(n)}`. The cards ride `activate_mana_ability`'s
+  `exile_ids`, the mana row ships the same `exile_cost_any_number` and
+  `exile_cost_mana_value_min` and greys when the graveyard is short, paying
+  it emits the collect evidence event, and the auto-tapper never spends it.
 - **The effect form** ("you may collect evidence N. If you do, …", "When you
   do, …") is a `CollectEvidence` registered once from a package-level var with
   `RegisterCollectEvidence(key, n, then)` and asked with `.Ask(ctx, question)`
@@ -4702,9 +4823,39 @@ var incineratorEvidence = RegisterCollectEvidenceX("incinerator-of-the-guilty", 
   slot of a spell whose every target clause is "up to" (`WithCount(0, 1)`), so
   X = 0 is always a legal cast.
 
-Not built yet: a mana ability that collects evidence, ward with a collect
-evidence cost and collect evidence as an alternative cost (the roadmap's
-`collect-evidence` row names the cards).
+**Ward—Collect evidence N** (Axebane Ferox, #4452) is `WardCollectEvidence(n)`
+in `Ward(...)`: the targeting player gets one choose_cards prompt over their own
+graveyard (a registered set rule, `game.CollectEvidenceMet`); none, or a
+graveyard below N in all, counters the spell or ability. The cards are exiled,
+not targeted, and the collection is announced for "whenever you collect
+evidence". `ExileCost.LinkToSource` makes a cost's exiled cards "exiled with"
+the object paying it (Kylox's Voltstrider, CR 607.2a).
+
+Not built yet: a mana ability that collects evidence (the activation names its
+cards in a picker the client has no mana-ability form for) and collect evidence
+as an alternative cost (the roadmap's `collect-evidence` row names the cards).
+
+### Cloak (#4452, CR 701.58)
+
+To cloak a card is to put it onto the battlefield face down as a 2/2 creature
+with ward {2} (`game.FaceDownCloaked`): manifest with the ward, which the engine
+already hangs off the state, so a card file writes none of it. Three doors,
+in [game/cloak.go](../server/internal/game/cloak.go):
+
+- the top card of a library, any player's, under the cloaker's control:
+  `CloakTopOfLibrary{LibraryOwner: …}` ("cloak the top card of that player's
+  library", Etrata, Deadly Fugitive);
+- a card chosen from your hand: `CloakACardFromYourHand{}` (Vannifar, Evolved
+  Enigma; a hand of one is not asked);
+- cards chosen from a library: `PutCardsFromLibraryOntoBattlefieldKeyedForEffect`
+  with `LibraryEntryOptions{Controller: you, FaceDown: game.FaceDownCloaked}`
+  (Hide in Plain Sight puts the rest on the bottom from the entry's tail).
+
+Any card may be cloaked, a nonpermanent one included. It turns face up for its
+mana cost if it is a creature card (`TurnFaceUpOffers`); `TurnFaceUpForEffect`
+turns it up as an effect, refused for a face-down instant or sorcery (Etrata's
+"if you can't").
+
 
 ### Adding a block-rule card (S37+, #750)
 
@@ -5583,6 +5734,24 @@ go first, which is the order that leaves the least to pay. The
 activation prices at the announced X (`AbilityManaCostAtXForEffect`);
 the menu row, the enumerator and the auto-tap preview price before X is
 chosen, at 0, which only ever shows more than the activation charges.
+
+**A tax on activating (#5382, S79):** "Activated abilities of sources
+with the chosen name cost {2} more to activate" (Skyseer's Chariot) is an
+activation-scoped increase, `ActivationCostsMore(n, label, preds...)`:
+
+```go
+AsEnters:      ChooseCardNameAsEnters("Skyseer's Chariot — choose a nonland card name"),
+CostModifiers: []game.CostModifier{
+    ActivationCostsMore(2, label, OfASourceWithTheChosenNonlandName()),
+},
+```
+
+Unlike a reduction, an increase reaches a cost that prints no mana — a
+{T}-only ability, a mana ability, crew, a loyalty ability — and that
+activation then owes the {n}. Every reader asks
+`Game.AbilityChargesManaForEffect` / `ManaAbilityChargesManaForEffect`,
+never `Cost.Mana != ""`, so the payment, the enumerator, the view's
+`charged_mana_cost` and auto-tap all see it. Several increases sum.
 `OfACreatureYouControl()` is the source predicate: a creature on the
 battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
@@ -5658,6 +5827,15 @@ on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
 
+On a PERMANENT spell the exile is also linked to the spell object and, as
+the spell becomes a permanent, relinked to it (CR 607.2q,
+`relinkCostExilesLocked`, as behold-and-exile does), so the permanent's own
+"each card exiled with it" reads the creature the cost exiled beside the
+cards its abilities exile: Fear of Abduction's leave trigger is
+`b36ReturnCardsExiledWithToOwnersHands` and its enters trigger exiles with
+`ExileTarget{Linked: true}`. An instant or sorcery links nothing (Soul
+Exchange).
+
 **Return a permanent you control as an additional cost (#5247):** "As an
 additional cost to cast this spell, return a permanent you control to its
 owner's hand" is `AdditionalCost: ReturnPermanentToHandCost("a permanent
@@ -5688,6 +5866,27 @@ resolves, so the leave trigger returns that card and no other. A countered
 spell's card stays in exile. With nothing to behold the card can't be cast.
 The mandatory slot only, and alone on it: Register refuses the exiling form
 on a branch, an optional cost, an alternative cost and an ability.
+
+**Choose a creature or reveal a creature card, and read it back (#4452, CR
+701.4a, CR 608.2h):** Monstrous Emergence's "As an additional cost to cast
+this spell, choose a creature you control or reveal a creature card from your
+hand. … damage equal to the power of the creature you chose or the card you
+revealed" is
+
+```go
+AdditionalCost: ChooseOrRevealCost("creature", "Choose a creature you control or reveal a creature card from your hand"),
+// at resolution
+n, ok := b25ChosenPower(ctx) // game.ChosenPowerForEffect(ctx.Item)
+```
+
+It is the behold component over a card type (`RevealCost.CardType`, no creature
+type) with `Chosen` set, so the payment records the pick on `PaidCost.Chosen`
+(a `PaidTap`, as a station's tapped creature). A permanent is read as the
+spell resolves and, once it has left the battlefield, as it last existed there
+(CR 608.2h: the exit hook rewrites the record); a revealed card is read at its
+printed power. The caster names the one object on `reveal_ids`, so the client's
+behold picker, the view and the bot serve it unchanged. The mandatory slot
+only, and alone on it.
 
 **Tap an untapped permanent you control as an additional cost (#3868):**
 "As an additional cost to cast this spell, tap an untapped Vampire you
@@ -6312,8 +6511,11 @@ answers these searches with the helpers (`answerSearchByID` and the others in
 `cards/effects`) searches every zone on offer; one that cares which zones
 were searched answers the question first with `answerSearchZones`. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
-its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
-Prodigy) also reads the hand and is not covered.
+its rule. **`AlsoGraveyard: true` with `AlsoHand: true`** is "search your
+graveyard, hand, and/or library" (#5408, Say Its Name): the question offers
+all three zones (`search_other_zone` `"graveyard_and_hand"`), the searcher
+names any non-empty subset, and the library is shuffled only if it is among
+them. `answerSearchZones` names the zones one by one.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `ThenTail`, a registered tail, not on the next line:
@@ -9849,6 +10051,36 @@ tapped). Two seams sit on top:
   Legend). It counts the `EventTapCard` and the attack that tapped; a permanent
   that enters tapped, or a regenerating one (no event), is not counted.
 
+### "The first time counters are put on it this turn", "the exiled card" and "during your end step" (#4463)
+
+Three small seams from the Tarkir: Dragonstorm leftovers (Standard batches 9
+and 10), each a few lines.
+
+- **Counters put on an object this turn.** `Game.TimesCountersPutThisTurn(id)`
+  is how many times counters have been put on that OBJECT this turn, in the
+  `TurnTally` (`CountersPut`, keyed by `ObjectTallyKey(id, epoch, "counters")`,
+  additive within the snapshot version). One count per placement that raised a
+  kind's count: a removal counts nothing, counters a creature enters with count
+  (CR 122.6), and a permanent that left and came back is a new object (CR 400.7).
+  The tally listener runs ahead of the trigger harvester, so a condition reading
+  `== 1` is "if it's the first time counters have been put on it this turn"
+  (Stalwart Successor, the sibling of `TimesBecameTappedThisTurn`). Watch
+  `game.EventCounterPlaced` and keep the counter kind out of the condition.
+- **"The exiled card" for another ability of the same permanent.**
+  `ExileUntil{Linked: true}` stamps the card exiled with this ability of this
+  object (CR 607.2a); the attack trigger reads it with
+  `Game.ExiledWithRowForEffect(game.PermissionCardRef(ref), game.AbilitySlotTriggered, <the exile trigger's Key>)`
+  (Mardu Siegebreaker). `tokenCopyTemplateFromCard` builds a token template from
+  a card as it is, the printed values of a card in exile, where
+  `TokenCopyTemplate` would read a just-departed permanent's last-known copiable
+  values.
+- **A static that reads the current step.** List `game.EventStepBegan` in
+  `StaticAbility.DependsOnEvents` and the layer cache is invalidated as each step
+  begins while the permanent is in play (Zurgo, Thunder's Decree: "during your end
+  step, Warrior tokens you control have 'This token can't be sacrificed'").
+  Without it a sacrifice made as the end step begins reads the previous step's
+  answer for the first object.
+
 ### Untapping in another player's untap step (#74)
 
 "Untap all permanents you control during each other player's untap
@@ -10814,7 +11046,17 @@ return ExtraCombatAndMainAfterThisMain().Apply(ctx)            // "after this ma
 return AddPhases{Anchor: game.PhaseAnchor{Kind: game.AnchorThisPhase},
     Kinds: []game.PhaseKind{game.PhaseKindBeginning}}.Apply(ctx) // Sphinx of the Second Sun
 return AddStepAfterThisStep{Step: game.StepEnd}.Apply(ctx)     // Y'shtola Rhul
+return YouGetUpkeepStepsAfterThisPhase{N: n}.Apply(ctx)        // Obeka: "you get that many additional upkeep steps after this phase"
 ```
+
+**An added upkeep step after a phase** (#5405, CR 500.10) is a beginning
+phase of its own holding only the upkeep: its untap and draw steps are
+skipped, so nothing untaps and nobody draws, while "at the beginning of
+your upkeep" triggers fire in each one and the active player gets
+priority in each. `YouGetUpkeepStepsAfterThisPhase` adds nothing on
+another player's turn (CR 500.10a's "you get"). The steps are plan
+entries, so a restore point keeps them and the phase strip shows each
+as "+ Upkeep".
 
 Four things the engine does so a card does not:
 
@@ -13008,7 +13250,7 @@ first, second and sixth are in the amendments of [ADR 0025](decisions/0025-alter
 ```go
 AlternativeCosts: []game.AlternativeCost{Dash("{1}{R}")},                   // Ragavan: haste, back to hand at the next end step
 AlternativeCosts: []game.AlternativeCost{Freerunning("{1}{B}", "Assassin")}, // Restart Sequence: Assassin or commander connected
-AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},  // Asinine Antics: printed cost + {2}, total spelled out
+OptionalCosts: []game.AdditionalCost{FlashForMore("{2}")},                 // Asinine Antics: an optional {2} that opens the flash window
 Triggered: []game.TriggeredAbility{Training("Hopeful Initiate — training")}, // +1/+1 counter beside a bigger attacker
 Triggered: []game.TriggeredAbility{Targeting(WheneverYouExpend(8, "…", effect), spec)}, // Trailtracker Scout
 Activated: []ActivatedAbility{Encore("{3}{R}")},                            // Impulsive Pilferer: one bound token per opponent
@@ -13016,11 +13258,11 @@ ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(c
 ```
 
 Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
-that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
-the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Because the offer is an alternative
-cost, the flash cast can't also take another one (CR 118.9a), which the printed card allows: every "as though it had
-flash if" offer (`FlashForMore`, `FlashIfXAtMost`, `FlashIfTargets`, a `Condition`-gated `AsThoughFlash` offer) ships
-`CompletenessCaveats` with that caveat, and coverage's `TestEveryFlashIfOfferCardDeclaresItsCaveat` holds it (#5207).
+that keeps its haste and never goes home. `FlashForMore` takes the SURCHARGE ("{2}"): it is an optional additional cost
+(CR 601.3c) whose announcement opens the instant-speed window for that cast, so it composes with any alternative cost
+and is paid on top of one (#5207); a cast that does not announce it stays sorcery-speed. Never build "as though it had
+flash if" as an alternative cost: coverage's `TestNoFlashIfClauseIsAnAlternativeCost` refuses it (see
+[Flash if a condition holds](#flash-if-a-condition-holds-5207)).
 Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
@@ -13080,22 +13322,28 @@ It opens the graveyard only to a sneak cast of a creature spell, under the grant
 own sneak, never for the mana cost. Engine notes are in the 2026-11-04 amendment of
 [ADR 0025](decisions/0025-alternative-costs.md).
 
-### Flash if X is N or less (#3225)
+### Flash if a condition holds (#5207)
 
-"You may cast this spell as though it had flash if X is 3 or less" (Silver Scrutiny) is an offer at the printed cost that
-opens the instant-speed window for its own claim and bounds the X announced under it
-([ADR 0025](decisions/0025-alternative-costs.md), amendment dated 2026-10-13):
+"You may cast this spell as though it had flash if <condition>" is a TIMING PERMISSION, never an alternative cost, so a
+flash cast still claims whichever cost the caster picks (CR 118.9a limits alternative costs, not timing). Pick the shape
+by what the condition is about ([ADR 0025](decisions/0025-alternative-costs.md), amendment dated 2026-11-09;
+`game/flash_if.go`):
 
 ```go
-AlternativeCosts: []game.AlternativeCost{FlashIfXAtMost("{X}{U}{U}", 3)}, // Silver Scrutiny
+FlashIf: FlashIfYou("if you control a Human", youControlAHuman),             // a game condition, read as the cast begins (CR 601.3)
+FlashIf: FlashIfXAtMost(3),                                                   // Silver Scrutiny: X the caster will announce (CR 601.3b)
+FlashIf: FlashIfTargets("a commander", EnchantCreature(ACommander())),       // Timely Ward: the target it will choose (CR 601.3b)
+OptionalCosts: []game.AdditionalCost{FlashForMore("{2}")},                  // "if you pay {2} more" (CR 601.3c)
+OptionalCosts: []game.AdditionalCost{OptionalBeholdOpeningFlash("a", "Dragon")}, // Molten Exhale: "if you behold a Dragon"
 ```
 
-Use the constructor, never `Spec.XCeiling` and never a flat `CastKindAsThoughFlash`: the first bounds the sorcery-speed
-cast too (nothing prints that), the second opens instant speed for every X (stronger than printed). The printed cost
-stays sorcery-speed with any X. The ceiling rides `AlternativeCost.XCeiling`, read through
-`game.SpellXCeilingForOfferLocked` by the announce gate, the enumerator, the view (`alternative_costs[].x_max`) and the
-auto-tap preview; `Register` refuses one on a cost with no {X}. The card still ships `CompletenessCaveats`: the offer is
-an alternative cost, so the flash cast can't take another one (#5207, the flash surcharge section above).
+`Spec.FlashIf` is step 1c of the cast timing gate. A choice-shaped condition (`XCeiling`, `Targets`) opens the window and
+then binds only a cast that NEEDS the permission (`game.FlashIfReliedOnLocked`): a Silver Scrutiny cast in a main phase,
+or under a Vedalken Orrery, takes any X. The announce gate, the enumerator, the view's card-level `x_max` and
+`legal_targets`, and the auto-tap preview all read it. Never use `Spec.XCeiling` (it bounds the sorcery-speed cast
+too) or a flat `CastKindAsThoughFlash` (stronger than printed). Word order varies: Serpent of the Pass prints "If …, you
+may cast this spell as though it had flash", the same clause. `TestNoFlashIfClauseIsAnAlternativeCost` holds every card
+that prints it to one of these shapes.
 
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 
@@ -13341,8 +13589,8 @@ ctx.SourcePermanent()                                                           
 
 - **"You may cast Aura and Equipment spells as though they had flash"** is
   `CastKindAsThoughFlash(game.PermissionFilter{AuraOrEquipmentOnly: true}, label)` (Sigarda's Aid).
-- **"You may cast this spell as though it had flash if <board condition>"** is an `AlternativeCost` at the printed cost
-  with `AsThoughFlash: true` and a `Condition` (Fated Clash: a creature attacking and a creature blocking).
+- **"You may cast this spell as though it had flash if <board condition>"** is `FlashIf: FlashIfYou(label, cond)` (Fated
+  Clash: a creature attacking and a creature blocking), a timing permission and not an alternative cost (#5207).
 - **"You may cast this spell as though it had flash if it's cast using teamwork"** is the optional cost with
   `AsThoughFlash` set, `OptionalCosts: []game.AdditionalCost{TeamworkOpeningFlash(2)}` (Quantum Reduction). Announcing
   the cost opens the window for that cast only (CR 601.3c); a per-player sorcery restriction still closes it.
@@ -13368,7 +13616,7 @@ Static: []game.StaticAbility{{Layer: game.Layer6Ability, DependsOnEvents: []game
     AppliesTo: selfOnly, Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, src *game.Card) { /* defender unless scried */ }}}
 c.CantBeAttacked = true                                                                  // in a layer 6 Apply: The Aetherspark, attached
 AnyColorSpend: YouMaySpendManaAsAnyTypeToCast("creature spells", "Creature")             // Vizier: coloured mana also pays {C}
-AlternativeCosts: []game.AlternativeCost{FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander()))} // Timely Ward
+FlashIf: FlashIfTargets("a commander", EnchantCreature(ACommander())) // Timely Ward (#5207)
 DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b, Repeats: true} // body reads item.Trigger.Event.Amount
 ```
 
@@ -13691,6 +13939,97 @@ StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
   hold (CR 123.7a).
 - **No card moves a sticker** (CR 123.3d): no Commander-legal card does, so
   nothing implements it; the dump search is in the amendment.
+
+### Plane cards (ADR 0216 slice 4, #4870)
+
+A plane is an ordinary catalog card: one file per plane, one `init()`, keyed by
+its `oracle_id`, `Completeness` declared truthfully. There is no plane registry.
+The engine finds a plane's abilities only while it is face up in the command
+zone (CR 901.7, `game/planechase_sources.go`), and the face-up card's
+`Controller` is the planar controller (CR 901.6), so "you" on a plane is read
+off `source.Controller` / `item.Controller` like any permanent's. The inherent
+planeswalking ability (CR 901.8) is engine-wide: never write it into a card.
+The shapes are in `effects_planechase.go` and `planes_b1_helpers.go`:
+
+```go
+// "Whenever chaos ensues, <effect>." (CR 311.7: any chaos roll of the planar die)
+WheneverChaosEnsues("Coal Hill School — return target historic card …", returnTargetCardToHand),
+// "When you planeswalk to ~ and at the beginning of your upkeep, <effect>." (ONE ability)
+WhenYouPlaneswalkToThisAndAtYourUpkeep("Antarctic Research Base — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+// "When you planeswalk to ~" / "… away from ~" alone
+WhenYouPlaneswalkToThis(label, effect), WhenYouPlaneswalkAwayFromThis(label, effect),
+// "At the beginning of your upkeep / end step / combat on your turn": the ordinary shapes
+AtYourUpkeep(label, effect), AtYourEndStep(label, effect), AtBeginningOfYourCombat(label, effect),
+// A static: the ordinary Static, Grants, SplitSecondGrants … slots
+Static: []game.StaticAbility{GrantAbilities(allCreatures, besiegedVikingVillageBoast)},
+SplitSecondGrants: []game.SplitSecondGrant{{AllSpells: true, Label: "…"}}, // Lake Silencio
+```
+
+- **Name the chaos label after the plane**, `"<plane> — <what happens>"`, and keep
+  an ability word in front when the card prints one (`"Praise Him — Hotel of
+  Fears: …"`, `"Byzantium Radiation — Aplan Mortarium: …"`).
+- **The plane is the source.** "~ deals 6 damage" is `item.SourceCardID`;
+  `ctx.SourceRef()` names the face-up plane object, so "cards exiled with ~" is
+  `ExileTarget{Linked: true}` and `g.ExiledWithForEffect(game.PermissionCardRef(ref))`
+  (Gardens of Tranquil Repose). Planeswalked away from, a plane is a new object
+  (CR 901.7a): its links, counters and "until you planeswalk away" effects end.
+- **Counters on the plane itself** go through
+  `g.PutCountersOnFaceUpPlanarCardForEffect` (Aplan Mortarium): the planar zones
+  are outside the card index, so `AddCounter` never reaches one.
+- **"Then planeswalk"** is `g.PlaneswalkForEffect(item.Controller)`; an effect that
+  outlives the plane it came from ("cards can't enter from exile this turn") is a
+  stored rule, not a static of the plane (Bad Wolf Bay,
+  `g.CardsCantEnterFromExileThisTurnForEffect`).
+- **"The player to your left"** is `ControlledByThePlayerToYourLeft()`
+  (`game.NearestOpponentForEffect(you, game.AttackDirectionLeft)`).
+- **Time travel** (CR 701.56a) is `Do(TimeTravel{})`.
+- **Tests** play the real entry on a Planechase table: `newPlaneGame(t,
+  planeFixture{oracle, name, typeLine})` in `planes_harness_test.go` puts the
+  plane face up at the turn-1 draw step with nothing of it triggered;
+  `planeswalkToPlane` makes the active player planeswalk to it (its "when you
+  planeswalk to" triggers); `rollChaos` / `rollBlank` finish a planar die roll
+  with that face; `toNextUpkeep` passes the turn, so the next player is planar
+  controller. Test the static or triggered half and the chaos half, that a
+  blank does nothing, and one face-down case. `requirePlaneRegisteredFull`
+  checks the registration.
+- **Coverage.** A plane counts in the registry keys like any card, and the
+  census's planar line ("planes and phenomena … N of M") counts it against
+  `coverage/planar_cards.txt`. Generate only your planes' oracle fixtures.
+
+### Aetherdrift leftovers: "no abilities", "exile X" and an event amount (#4464)
+
+Four small seams came with the leftovers of batches 13 and 14.
+
+```go
+// "a creature card with no abilities" (Fang-Druid Summoner, Rise from the Wreck)
+Predicate: b13CreatureCardWithNoAbilities            // SearchLibrary, a func(game.Card) bool
+TargetCardInGraveyard("…", YouOwn(), b13NoAbilities()) // a target clause
+
+// "Exile X artifact cards from your graveyard" as an ability's cost (Winter, Cursed Rider)
+Cost: Plus(ManaCost("{2}{U}{B}"), TapCost(), ExileXFromGraveyardAsCost("X artifact cards", isArtifactCard))
+// the effect: x := len(ctx.Exiled())
+
+// "destroy up to one target artifact or enchantment with mana value X" off a cycling trigger (Webstrike Elite)
+ManaValueEqualsTheEventAmount(TargetPermanent("…", Or(Artifact(), Enchantment())).WithCount(0, 1))
+
+// "except it's 0/0" (Mimeoplasm, Revered One)
+Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
+```
+
+- **"No abilities" is the printed text.** `game.Card.NoAbilitiesText` is stamped by the deck importer from the
+  oracle text (`game.NoAbilitiesInText`, empty text and nothing else), re-derived by `SetFace`, copied with the other
+  printed values, and read through `game.PrintsNoAbilities`. A card the importer never read (a token, a fixture, a
+  restore point from before the stamp) is `PrintedUnknown` and is not "with no abilities". A test fixture says so with
+  `NoAbilitiesText: game.PrintedYes`.
+- **"Exile X cards" on an ability** is `game.ExileCost.CountIsX`, an any-number clause with no floor: the activator
+  announces X by naming that many matching cards, and `ctx.Exiled()` is X. It is graveyard-only, and the wire is the
+  existing `exile_cost_any_number` picker. A cast's "exile X" stays `ExileXFromGraveyardCost`.
+- **An event amount** bounds a triggered clause two ways now: `ManaValueAtMostTheEventAmount` and
+  `ManaValueEqualsTheEventAmount` (`game.TargetSpec.ManaValueEqualsEventAmount`), both read off the trigger's event
+  (`EventCycle.Amount` is the cycling cost's X).
+- **An "as it enters" exile from a graveyard** has no replacement-prompt kind; it is `Spec.AsEnters` queueing a
+  choose-cards prompt over the graveyard whose keyed answer exiles with `ExileLinkedForEffect` (so the cards are
+  "exiled with it", CR 607.2a) and then puts the counters on.
 
 ### When in doubt
 

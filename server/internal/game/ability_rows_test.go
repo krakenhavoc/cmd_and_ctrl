@@ -15,6 +15,7 @@ import (
 // so a slot added to CardDef is placed rather than silently dropped.
 var abilityRowFieldsNotRows = map[string]string{
 	"Resolve":                    "the spell's effect as it resolves, not an ability of the object",
+	"LibraryTopVisibleWhen":      "the designation gating the look-at-the-top-card permission, a condition and not an ability of the object",
 	"ResumeResolve":              "the rest of that effect after a prompt (#4019), not an ability of the object",
 	"DiscardByOpponent":          "a declaration the bot reads about a hand card, not an ability of the object (ADR 0153 §5)",
 	"DiscardByOpponentForHand":   "a declaration the bot reads about the hand, not an ability of the object (ADR 0153 §5)",
@@ -51,6 +52,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"CantBeCounteredIf":          "a property of the spell on the stack, shown there",
 	"CantBeCopied":               "a property of the spell on the stack (\"This spell can't be copied\"), not an ability of a permanent",
 	"FlashWithCleanupSacrifice":  "the spell's own cast timing, read by the cast gate (#3156)",
+	"FlashIf":                    "the spell's own conditional cast timing, read by the cast gate (#5207)",
 	"CastTimeValues":             "a number the spell fixes as it is cast, read by its own resolution (#3781)",
 	"SpellDamageCantBePrevented": "a property of the spell's damage",
 	"Emblem":                     "an emblem's presentation",

@@ -5,6 +5,7 @@ import type {
   AdditionalCostView,
   AlternativeCostView,
   AssistOfferView,
+  BeholdTypeOption,
   CardView,
   DivideView,
   GameView,
@@ -101,6 +102,12 @@ export interface CastChoices {
   // charges one; undefined otherwise, and the server rejects a
   // non-empty list on an offer that charges nothing.
   altCostIDs?: string[];
+  // #5390: the counters the chosen alternative cost removes (Quilled
+  // Greatwurm's six from among creatures you control), already shaped
+  // as the payload's counter_source_ids / counter_counts / counter_kind
+  // / counter_kinds by counterPaymentParams. Undefined for every other
+  // cast.
+  counter?: CounterPayment;
   // ADR 0073 (#664): the optional additional costs being paid, as
   // POSITIONS in the card's `optional_costs`, repeated once per
   // payment for a multikicker. Undefined and [] are the same thing
@@ -163,6 +170,10 @@ export interface CastChoices {
   // branch shows. Set only after the branch is chosen; the server refuses
   // it on a cast that does not pay one.
   revealIDs?: string[];
+  // #5406: the creature type a behold that chooses its type names. Set
+  // before `revealIDs`, which are then that type's cards; rides cast_spell
+  // as `behold_type`.
+  beholdType?: string;
   // CR 107.4f (#916): how many of the cost's Phyrexian symbols are
   // being paid with 2 life each instead of mana. Collected after the
   // X picker — an {X} cost has to be sized before the rest of it can
@@ -261,6 +272,17 @@ export function applyCastChoices(
   if (choices.altCost !== undefined) params.alternative_cost = choices.altCost;
   if (choices.altCostIDs !== undefined && choices.altCostIDs.length > 0)
     params.alt_cost_ids = choices.altCostIDs;
+  // #5390: the offer's counter payment, in activate_ability's words.
+  if (choices.counter !== undefined) {
+    const c = choices.counter;
+    if (c.counter_source_ids !== undefined && c.counter_source_ids.length > 0)
+      params.counter_source_ids = c.counter_source_ids;
+    if (c.counter_counts !== undefined && c.counter_counts.length > 0)
+      params.counter_counts = c.counter_counts;
+    if (c.counter_kind !== undefined && c.counter_kind !== "") params.counter_kind = c.counter_kind;
+    if (c.counter_kinds !== undefined && c.counter_kinds.length > 0)
+      params.counter_kinds = c.counter_kinds;
+  }
   // ADR 0073: omitted when empty, which is the server default and
   // what every client that predates the kicker toggles sends.
   if (choices.optionalCosts !== undefined && choices.optionalCosts.length > 0)
@@ -295,6 +317,8 @@ export function applyCastChoices(
     params.blight_ids = choices.blightIDs;
   if (choices.revealIDs !== undefined && choices.revealIDs.length > 0)
     params.reveal_ids = choices.revealIDs;
+  if (choices.beholdType !== undefined && choices.beholdType !== "")
+    params.behold_type = choices.beholdType;
   if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
     params.exile_permanent_ids = choices.exilePermanentIDs;
   if (choices.returnIDs !== undefined && choices.returnIDs.length > 0)
@@ -1323,6 +1347,34 @@ export function castableAlternativeCostsOf(card: CardView): AlternativeCostView[
   return alternativeCostsOf(card).filter((o) => o.timing_closed !== true);
 }
 
+// opensFlashRequired reports whether the claim `key` (undefined: the
+// printed mana cost) is one the engine accepts RIGHT NOW only with an
+// optional cost marked `opens_flash` announced (#5363, CR 601.3c):
+// Asinine Antics's "pay {2} more" outside a main phase. The server
+// answers it per claim (`opens_flash_required`); the cost picker reads
+// it to pre-select that cost and say why.
+export function opensFlashRequired(card: CardView, key: string | undefined): boolean {
+  if (key === undefined) return card.opens_flash_required === true;
+  return alternativeCostByKey(card, key)?.opens_flash_required === true;
+}
+
+// opensFlashCostToPreselect is the optional cost the picker ticks for a
+// claim that needs one (opensFlashRequired): the first `opens_flash`
+// offer `payable` accepts, or undefined when none is needed, one is
+// already being paid, or none can be paid. `paying` is the picker's
+// per-offer counts.
+export function opensFlashCostToPreselect(
+  card: CardView,
+  key: string | undefined,
+  paying: ReadonlyMap<number, number>,
+  payable: (offer: OptionalCostView) => boolean,
+): number | undefined {
+  if (!opensFlashRequired(card, key)) return undefined;
+  const flashCosts = optionalCostsOf(card).filter((o) => o.opens_flash === true);
+  if (flashCosts.some((o) => (paying.get(o.index) ?? 0) > 0)) return undefined;
+  return flashCosts.find(payable)?.index;
+}
+
 // optionalCostsOf returns the "you may pay an additional cost" offers
 // on a card — kicker, multikicker, buyback — or an empty list for the
 // vast majority that have none (ADR 0073).
@@ -1452,6 +1504,12 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
     const cards = offer.tap_others_options.cards ?? [];
     return cards.length < (offer.tap_others_options.min ?? 1) ? [] : cards;
   }
+  // #5358: a kicker that returns a permanent — nothing to return is an
+  // offer that cannot be taken now.
+  if (offer.return_options) {
+    const cards = offer.return_options.cards ?? [];
+    return cards.length < (offer.return_options.min ?? 1) ? [] : cards;
+  }
   if (!offer.sacrifice_options) return undefined;
   return offer.sacrifice_options.cards ?? [];
 }
@@ -1536,6 +1594,12 @@ export interface ClaimedRevealCost {
   // exile it"), so the prompt says the card is exiled, not shown.
   exile: boolean;
   options: string[];
+  // How many to pick: 1, or a behold N's N (#5406).
+  count: number;
+  // #5406: the creature types a behold that chooses its type could be
+  // paid with, each with its cards. Absent for every other reveal. Once
+  // the cast has a `beholdType`, `options` is that type's cards.
+  types?: BeholdTypeOption[];
 }
 
 // castRevealCost is the reveal / behold cost the chosen either/or branch
@@ -1550,11 +1614,15 @@ export function castRevealCost(
   for (const index of choices?.optionalCosts ?? []) {
     const offer = optionalCostsOf(card)[index];
     if (offer?.reveal) {
+      const types = offer.behold_count !== undefined ? (offer.behold_types ?? []) : undefined;
+      const chosen = types?.find((t) => t.type === choices?.beholdType);
       return {
         label: offer.label ?? (offer.behold ? "Behold" : "Reveal a card from your hand"),
         behold: offer.behold === true,
         exile: false,
-        options: offer.reveal_options?.cards ?? [],
+        options: chosen ? chosen.cards : (offer.reveal_options?.cards ?? []),
+        count: offer.behold_count ?? 1,
+        types,
       };
     }
   }
@@ -1568,6 +1636,7 @@ export function castRevealCost(
     behold: branch.behold === true,
     exile: branch.behold_exile === true,
     options: branch.reveal_options?.cards ?? [],
+    count: 1,
   };
 }
 
@@ -1592,15 +1661,21 @@ export function castExilePermanentCost(
 }
 
 // castReturnCost is the return-a-permanent cost a cast pays, if any (#5247,
-// Fear of Isolation): the card's mandatory additional cost. The same shape
-// as the exile-a-permanent cost, one destination over; the prompt after the
-// exile step asks which to return.
+// Fear of Isolation): the card's mandatory additional cost, or (#5358) a
+// claimed kicker that returns one (Chocobo Kick). The server allows one such
+// cost per card, so the first found is the one. The same shape as the
+// exile-a-permanent cost, one destination over; the prompt after the exile
+// step asks which to return.
 export function castReturnCost(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedExilePermanentCost | undefined {
   const cost = castAdditionalCost(card, choices);
-  return claimedPermanentCost(cost?.return_options, cost?.return_label);
+  if (cost?.return_options) return claimedPermanentCost(cost.return_options, cost.return_label);
+  for (const offer of chosenOptionalCosts(card, choices?.optionalCosts)) {
+    if (offer.return_options) return claimedPermanentCost(offer.return_options, offer.return_label);
+  }
+  return undefined;
 }
 
 // claimedPermanentCost reads one "<verb> a permanent you control" picker

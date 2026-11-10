@@ -105,8 +105,10 @@ func declaresTargetEntry(s effects.Spec) bool {
 // reviewedNotAWipe is every catalog card the sweep reading flags that
 // declares no Sweep, with why. Each was read.
 var reviewedNotAWipe = map[string]string{
-	"Hex Magic":  "exiles the cards in its caster's own hand, not a board",
-	"Armageddon": "destroys lands, which no sweep class holds alone",
+	"Ill-Timed Explosion": "damages each creature only if its controller discards two cards, for the greatest mana value among them: no fixed amount a sweep can declare, and none at all when declined",
+	"Abyssal Harvester":   "exiles only the Nightmare tokens its controller controls, not a board",
+	"Hex Magic":           "exiles the cards in its caster's own hand, not a board",
+	"Armageddon":          "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent.
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
@@ -116,11 +118,14 @@ var reviewedNotAWipe = map[string]string{
 	"Battle-Scarred Goblin":                    "1 damage only to the creatures blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
+	"The Apprentice's Folly":                   "sacrifices only its controller's own Reflection tokens, not a board",
 	"Bewildering Blizzard":                     "-3/-0 kills nothing",
+	"Mouth of the Storm":                       "-3/-0 until your next turn kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
 	"Demonic Consultation":                     "exiles cards from your own library, no permanents",
 	"Council's Judgment":                       "exiles the permanents with the most votes, one per voter: removal, not a wipe",
 	"Crypt Incursion":                          "exiles a graveyard",
+	"Dauntless Scrapbot":                       "exiles the opponents' graveyards, no permanents",
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Espers to Magicite":                       "exiles the opponents' graveyards, no permanents",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",

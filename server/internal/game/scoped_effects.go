@@ -406,6 +406,17 @@ const (
 	// source is a land that is not the one granting it; swept at cleanup
 	// (CR 514.2). Reads Player.
 	ModLegendRuleDoesntApply ModKind = "legendRuleDoesntApply"
+	// ModCardsCantEnterFromExile is "cards can't enter from exile this
+	// turn" (Bad Wolf Bay's chaos ability, ADR 0216 slice 4, #4870; CR
+	// 101.2): no card may enter the battlefield from exile, whoever puts
+	// it there. Scope ScopeGame, Player zero. Read by entryRefusalLocked,
+	// the one entry gate (entry_gate.go), so it reaches a flicker's
+	// return, a reanimation from exile, a land played from exile and
+	// every other way onto the battlefield whose card is leaving exile. A
+	// stored record because it outlives its source, which planeswalks
+	// away in the same resolution; swept at cleanup (CR 514.2). Reads
+	// nothing.
+	ModCardsCantEnterFromExile ModKind = "cardsCantEnterFromExile"
 	// ModVoteChooser is "you choose how each player votes this turn"
 	// (ADR 0146 amendment 2026-10-13, #2928; CR 701.38): Illusion of
 	// Choice. Scope ScopeGame with Player set to the player who chooses.
@@ -497,6 +508,12 @@ const (
 	// pump or a shrink on the blocker after the effect is applied
 	// moves it in or out of the barred set.
 	ModCantBeBlockedByPower ModKind = "cantBeBlockedByPower"
+	// ModCantBeBlockedByPowerAtLeast is the other direction: "<creature>
+	// can't be blocked by creatures with power N or greater this turn"
+	// (Squeak By, CR 509.1b). Reads Amount, N, and Text. The pinned
+	// attacker(s). Pure data, and the blocker's power is read live as
+	// ModCantBeBlockedByPower's is. An on-disk identity: never renamed.
+	ModCantBeBlockedByPowerAtLeast ModKind = "cantBeBlockedByPowerAtLeast"
 	// ModCantBeBlockedByColor bars blockers with Colors[0], read live.
 	// It uses existing Mod fields and is additive within this schema.
 	ModCantBeBlockedByColor ModKind = "cantBeBlockedByColor"
@@ -515,6 +532,12 @@ const (
 	// blocker's name as the refusal sentence reads it. The pinned
 	// attacker(s). Pure data.
 	ModCantBeBlockedByObject ModKind = "cantBeBlockedByObject"
+	// ModCantBeBlockedByMoreThan is "<creature> can't be blocked by more
+	// than N creatures" for a duration (Full Steam Ahead's granted "This
+	// creature can't be blocked by more than one creature", CR 509.1b).
+	// Reads Amount, N. The pinned attacker(s). A count rule: judged on
+	// the whole declaration, the tightest maximum wins.
+	ModCantBeBlockedByMoreThan ModKind = "cantBeBlockedByMoreThan"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -724,6 +747,10 @@ type Mod struct {
 	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
 	CombatOnly bool `json:"combatOnly,omitempty"`
+	// NoncombatOnly narrows ModAddDamage to noncombat damage (#4468,
+	// Taii Wakeen's "would deal noncombat damage"). Refused on every
+	// other kind, and beside CombatOnly.
+	NoncombatOnly bool `json:"noncombatOnly,omitempty"`
 	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
 	// registered BodyRef's key, scheduled at the next end step for each
 	// card the replacement redirects. On every prevention kind
@@ -1144,6 +1171,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileIfWouldDie: {reader: readerReplacement},
 	// ADR 0108 §3 (#1890): damage doubled or tripled this turn.
 	ModMultiplyDamage: {reader: readerReplacement},
+	// #4468: damage increased by N this turn (add_damage.go).
+	ModAddDamage: {reader: readerReplacement},
 	// ADR 0108 §9 (#1905): damage dealt to something else instead.
 	ModRedirectDamage: {reader: readerReplacement},
 	// #4307 (ADR 0208, 2026-10-26): a die added to the next roll, and a
@@ -1174,6 +1203,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
 	ModLegendRuleDoesntApply: {reader: readerRule},
+	// ADR 0216 slice 4 (#4870): the entry gate.
+	ModCardsCantEnterFromExile: {reader: readerRule},
 	// ADR 0146 amendment (#2928): who casts each player's ballot.
 	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
@@ -1186,13 +1217,15 @@ var modKinds = map[ModKind]modKindSpec{
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
-	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
-	ModLimitBlockersPerDefender: {reader: readerBlockRule},
-	ModCantBeBlockedByPlayer:    {reader: readerBlockRule},
-	ModCantBeBlockedByPower:     {reader: readerBlockRule},
-	ModCantBeBlockedByColor:     {reader: readerBlockRule},
-	ModCantBeBlockedBySubtypes:  {reader: readerBlockRule},
-	ModCantBeBlockedByObject:    {reader: readerBlockRule},
+	ModCantBeBlockedExceptBy:       {reader: readerBlockRule},
+	ModLimitBlockersPerDefender:    {reader: readerBlockRule},
+	ModCantBeBlockedByPlayer:       {reader: readerBlockRule},
+	ModCantBeBlockedByPower:        {reader: readerBlockRule},
+	ModCantBeBlockedByPowerAtLeast: {reader: readerBlockRule},
+	ModCantBeBlockedByColor:        {reader: readerBlockRule},
+	ModCantBeBlockedBySubtypes:     {reader: readerBlockRule},
+	ModCantBeBlockedByObject:       {reader: readerBlockRule},
+	ModCantBeBlockedByMoreThan:     {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},

@@ -884,13 +884,17 @@ type PendingChoiceView struct {
 	// library") asks before it looks: which zones the searcher searches.
 	// options[] is withheld (looking through the library is searching it,
 	// CR 701.23a), and the answer is {choice_id, search_zones: [...]}, any
-	// non-empty subset of "library" and search_other_zone. The same prompt
-	// then reappears with the candidates of the chosen zones, without this
+	// non-empty subset of "library" and search_other_zone; for
+	// "graveyard_and_hand" (#5408, "search your graveyard, hand, and/or
+	// library") any non-empty subset of "library", "graveyard" and "hand".
+	// The same prompt then reappears with the candidates of the chosen zones, without this
 	// flag. The library is shuffled, and the search announced, if and only
 	// if "library" was chosen. Chooser-only.
 	SearchZonesPending bool `json:"search_zones_pending,omitempty"`
 	// SearchOtherZone (#4519) is the zone an and/or search offers beside
-	// the library, "graveyard" or "hand". Present on every such prompt,
+	// the library, "graveyard" or "hand", or "graveyard_and_hand" when it
+	// offers both (#5408, each then named on its own in search_zones).
+	// Present on every such prompt,
 	// asked or answered; absent for any other search. Chooser-only.
 	SearchOtherZone string `json:"search_other_zone,omitempty"`
 	// SearchLibrarySkipped (#4519) marks an and/or search answered with the
@@ -1821,6 +1825,13 @@ type OptionalCostView struct {
 	// that contains {X}. The server refuses a kicked cast under it; the
 	// client's X picker opens at it.
 	XMin int `json:"x_min,omitempty"`
+	// OpensFlash marks a cost that, when announced, lets the spell be
+	// cast as though it had flash (AdditionalCost.AsThoughFlash, CR
+	// 601.3c): Quantum Reduction's teamwork, Asinine Antics's "pay {2}
+	// more", Molten Exhale's behold (#5207). When the spell is castable
+	// now only because of it, a cast that leaves it unticked is refused,
+	// so the client can say why and pre-select it.
+	OpensFlash bool `json:"opens_flash,omitempty"`
 	// Energy is the "pay N {E}" each payment of this cost charges (ADR
 	// 0129 §5): Reiterating Bolt's "Replicate—Pay {E}{E}{E}" is 3. For
 	// such a cost MaxTimes is capped at the payments the viewer's energy
@@ -1865,6 +1876,16 @@ type OptionalCostView struct {
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 
+	// ReturnLabel / ReturnOptions are a kicker that returns a permanent
+	// (#5358, Chocobo Kick's "Kicker—Return a land you control to its
+	// owner's hand"): AdditionalCostView's two fields of the same names,
+	// off the same engine walk (game.ReturnToHandOptionsForEffect). min /
+	// max are the clause's count; fewer cards than `min` means the offer
+	// cannot be taken right now (CR 118.3). Taking it, the caster names
+	// the permanent on cast_spell's `return_ids`.
+	ReturnLabel   string            `json:"return_label,omitempty"`
+	ReturnOptions *LegalTargetsView `json:"return_options,omitempty"`
+
 	// Blight is the N of "you may blight N" (CR 701.68a): put N -1/-1
 	// counters on a creature you control. BlightOptions is the
 	// viewer's creatures, present-and-empty when they control none (CR
@@ -1883,6 +1904,18 @@ type OptionalCostView struct {
 	Reveal        bool              `json:"reveal,omitempty"`
 	Behold        bool              `json:"behold,omitempty"`
 	RevealOptions *LegalTargetsView `json:"reveal_options,omitempty"`
+	// BeholdTypes marks a behold that chooses its creature type (#5406,
+	// CR 601.2b): Celestial Reunion's "choose a creature type and behold
+	// two creatures of that type". Each entry is a type the viewer could
+	// choose, with the objects that could pay it (hand cards first, then
+	// permanents); only types with at least BeholdCount of them are
+	// listed, alphabetically. RevealOptions is then every object of
+	// every listed type, its min and max BeholdCount; present-and-empty
+	// (and BeholdTypes empty) means the offer cannot be taken. Taking it,
+	// the caster sends the type as cast_spell's `behold_type` and exactly
+	// BeholdCount of that type's cards as `reveal_ids`.
+	BeholdCount int                `json:"behold_count,omitempty"`
+	BeholdTypes []BeholdTypeOption `json:"behold_types,omitempty"`
 
 	// CollectEvidence is the N of "you may collect evidence N" (CR
 	// 701.59a, #5193): exile any number of cards from your graveyard with
@@ -2034,6 +2067,16 @@ type AlternativeCostView struct {
 	// printed offer.
 	Behold bool `json:"behold,omitempty"`
 
+	// CollectEvidence is the N of an offer whose price is "collect
+	// evidence N" (CR 701.59a; Conspiracy Unraveler's granted "collect
+	// evidence 10 rather than pay the mana cost"). `pay_options` are the
+	// caster's graveyard cards, the spell excluded, min 1 and max all of
+	// them; the picks ride `alt_cost_ids` and are enough once their total
+	// mana value is N or more. The engine refuses a set that falls short.
+	// The wire name the optional collect evidence offer carries. Absent
+	// for every other offer. Public with the rest of the printed offer.
+	CollectEvidence int `json:"collect_evidence,omitempty"`
+
 	// TapOptions is the cost's card-shaped half when that half TAPS
 	// permanents (ADR 0135 §1, #2030): Orim's Cure's "tap an untapped
 	// creature you control", Battle Screech's three white creatures,
@@ -2078,6 +2121,28 @@ type AlternativeCostView struct {
 	// the cast pays with it tapped, priced as SacrificePrices is. Absent
 	// for every other offer. Per viewer, like `tap_options`.
 	TapPrices map[string]AltCostTapPriceView `json:"tap_prices,omitempty"`
+
+	// CounterCost* are the offer's counter-removal component (#5390):
+	// Quilled Greatwurm's "removing six counters from among creatures you
+	// control". The fields an activated ability's counter cost ships
+	// (CounterCostView), with the same wire names, so the client opens the
+	// one counter picker it already has: the count, the printed kind
+	// (absent for any kinds), the "from" clause, among, and the options.
+	// The payment rides cast_spell as `counter_source_ids` /
+	// `counter_counts` / `counter_kind` / `counter_kinds`, never
+	// `alt_cost_ids`. All absent for an offer that removes no counters.
+	//
+	// The count, kind, clause and shape are printed and public with the
+	// offer on a pile; `counter_cost_options` and `counter_cost_max` are
+	// the viewer's own creatures, per viewer like `pay_options` (#1172).
+	CounterCostN        int                     `json:"counter_cost_n,omitempty"`
+	CounterCostKind     string                  `json:"counter_cost_kind,omitempty"`
+	CounterCostSelf     bool                    `json:"counter_cost_self,omitempty"`
+	CounterCostLabel    string                  `json:"counter_cost_label,omitempty"`
+	CounterCostAmong    bool                    `json:"counter_cost_among,omitempty"`
+	CounterCostVariable bool                    `json:"counter_cost_variable,omitempty"`
+	CounterCostMax      int                     `json:"counter_cost_max,omitempty"`
+	CounterCostOptions  []CounterCostOptionView `json:"counter_cost_options,omitempty"`
 
 	// PayLabel is the picker's prompt copy for PayOptions,
 	// SacrificeOptions or TapOptions ("a blue card", "an Island you
@@ -2135,6 +2200,13 @@ type AlternativeCostView struct {
 	// picker drops an offer this is set on exactly as it drops the
 	// printed row when PrintedCostTimingClosed is set.
 	TimingClosed bool `json:"timing_closed,omitempty"`
+
+	// OpensFlashRequired is CastSurfaceView.OpensFlashRequired for THIS
+	// claim (#5363, CR 601.3c): the engine accepts it right now only
+	// with an optional cost marked `opens_flash` announced (Asinine
+	// Antics through Omniscience at instant speed). TimingClosed is then
+	// false, since the claim can be taken.
+	OpensFlashRequired bool `json:"opens_flash_required,omitempty"`
 
 	// XMax is the largest X the viewer may announce while claiming THIS
 	// offer, set only for an offer that carries a ceiling of its own
@@ -3548,6 +3620,11 @@ type CardView struct {
 	// creature has no text of its own to leak.
 	BlockCapacity   int  `json:"block_capacity,omitempty"`
 	BlocksAnyNumber bool `json:"blocks_any_number,omitempty"`
+	// CantBlockAlone marks a creature that "can't block alone" (#5396,
+	// game.BlockRule.NotAlone; CR 506.5, 509.1b): it may block only
+	// beside another blocker of its controller's. Public, read off its
+	// abilities; cleared on a face-down permanent.
+	CantBlockAlone bool `json:"cant_block_alone,omitempty"`
 	// GoadedBy is the player ID whose goad on this creature is the most
 	// recent, or empty when it is not goaded. Cleared on zone exit.
 	// Added in S10; enforced since #1571 — a goaded creature attacks
@@ -4318,6 +4395,14 @@ type CastSurfaceView struct {
 	// on the stack and the battlefield's own grants — all public facts,
 	// the same reasoning ActivatedAbilityView.TimingClosed's doc gives.
 	PrintedCostTimingClosed bool `json:"printed_cost_timing_closed,omitempty"`
+	// OpensFlashRequired says the printed mana cost is one of the prices
+	// this cast may claim and the engine accepts it RIGHT NOW only with an
+	// optional cost marked `opens_flash` announced (CR 601.3c, #5363):
+	// Asinine Antics's "pay {2} more" outside a main phase. The picker
+	// pre-selects that cost and says why; a cast that leaves it out is
+	// refused for timing. Omitted for every other card and moment.
+	// Public, for PrintedCostTimingClosed's reason.
+	OpensFlashRequired bool `json:"opens_flash_required,omitempty"`
 	// TapCost is the S22 convoke / waterbend clause for a card in the
 	// viewer's own hand / command zone: which of your untapped
 	// permanents may be tapped to help pay, and how many. Absent for
@@ -5040,6 +5125,15 @@ type ActivatedAbilityView struct {
 	// like `return_self`: the grantor (`granted_by`) is the payment, so
 	// nothing is collected and nothing rides the payload.
 	ExileGrantor bool `json:"exile_grantor,omitempty"`
+	// TapGrantor is a granted row's "Tap <the permanent that grants this>"
+	// cost component: Fishing Pole. Advisory, like `exile_grantor`: the
+	// grantor (`granted_by`) is the payment, so nothing is collected and
+	// nothing rides the payload.
+	TapGrantor bool `json:"tap_grantor,omitempty"`
+	// SacrificeGrantor is a granted row's "Sacrifice <the permanent that
+	// grants this>" cost component: Deconstruction Hammer. Advisory, like
+	// `exile_grantor`.
+	SacrificeGrantor bool `json:"sacrifice_grantor,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -5215,6 +5309,16 @@ type ActivatedAbilityView struct {
 	// is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// ExilePermanentTotalManaValueX marks the "with total mana value X"
+	// form (#5401) — Fabrication Foundry's "Exile one or more other
+	// artifacts you control with total mana value X". `demands_x` is set
+	// beside it, but X is not asked for: the permanents picked ARE the
+	// announcement, so the client sends their total mana value as
+	// `x_value` (the engine refuses any other) and narrows the ability's
+	// target clause by it before targets are chosen
+	// (`mana_value_at_most_x`). `exile_permanent_options` is the open
+	// count (min 1, max 0). Public: it is the printed rule.
+	ExilePermanentTotalManaValueX bool `json:"exile_permanent_total_mana_value_x,omitempty"`
 	// UnattachLabel / UnattachOptions describe an "Unattach an Equipment
 	// from <this>" cost component (#4799) — Captain America, First
 	// Avenger's throw. The same LegalTargetsView the return and exile
@@ -5629,6 +5733,26 @@ type ManaAbilityView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// ExileCostAnyNumber / ExileCostManaValueMin mark collect evidence N
+	// as a mana ability's cost (CR 701.59a; Cryptex's "{T}, Collect
+	// evidence 3: Add one mana of any color"): ExileCostN is absent, the
+	// picker takes any number of ExileCostOptions, and the picks are
+	// enough once their total mana value is ExileCostManaValueMin or
+	// more. The same wire names ActivatedAbilityView carries for
+	// Forensic Researcher's CR 602 row, so the client's picker is one
+	// component for both ability kinds. The engine refuses a pick below
+	// the floor. Absent for every other mana ability.
+	ExileCostAnyNumber    bool `json:"exile_cost_any_number,omitempty"`
+	ExileCostManaValueMin int  `json:"exile_cost_mana_value_min,omitempty"`
+	// CostBranches are the ways to pay an either/or part of a mana
+	// ability's cost (#5397, game.ManaAbilityShape.Either): forage,
+	// Thornvault Forager's "{T}, Forage: Add two mana in any combination
+	// of colors" — exile three cards from your graveyard, or sacrifice a
+	// Food. The same wire name and shape ActivatedAbilityView carries,
+	// so the client asks which branch first, runs that branch's picker,
+	// and sends its index on activate_mana_ability as `cost_branch`.
+	// Absent for every other mana ability.
+	CostBranches []AbilityCostBranchView `json:"cost_branches,omitempty"`
 	// ConditionUnmet is ActivatedAbilityView.ConditionUnmet for a
 	// mana ability: true while the ability's "Activate only if …"
 	// condition is false — Temple of the False God with four lands,
@@ -5835,6 +5959,14 @@ type TurnView struct {
 	// BlockPendingSeats. Public information, like BlockDecisionSeats.
 	BlockPendingSeats   []int `json:"block_pending_seats,omitempty"`
 	BlocksDeclaredSeats []int `json:"blocks_declared_seats,omitempty"`
+	// BlockTaxes is the CR 509.1d block tax on each defender still
+	// declaring (ADR 0221, #5375) — Archangel of Tithes attacking. One
+	// row per pending seat whose blocks would cost anything; omitted
+	// at every table with no block tax. Public: the clauses and the
+	// staged blocks are on the board. The client shows it on block
+	// staging and pays it with finish_blocks' `auto_tap`; it never
+	// re-derives the price.
+	BlockTaxes []BlockTaxView `json:"block_taxes,omitempty"`
 	// AttackTargets is the set of things the ACTIVE player's
 	// creatures may be declared against right now (CR 506.2,
 	// 508.1d) — the other seated players, the planeswalkers they do
@@ -5852,6 +5984,69 @@ type TurnView struct {
 	// board is already visible — so it survives the per-viewer filter
 	// unredacted. Added in S27.
 	AttackTargets []AttackTargetView `json:"attack_targets,omitempty"`
+}
+
+// BlockTaxView is one pending defender's CR 509.1d block tax (ADR
+// 0221): what finishing the declaration would charge for the blocks
+// staged now, and the clauses that tax this seat's blocks.
+type BlockTaxView struct {
+	// Seat is the defender's seat index.
+	Seat int `json:"seat"`
+	// Cost is the price of the blocks staged now, concatenated per
+	// blocking creature ("{1}{1}"); "" with nothing taxed staged. What
+	// finish_blocks will charge.
+	Cost string `json:"cost,omitempty"`
+	// Each is what one more blocking creature adds when every one of
+	// this seat's creatures would pay the same ("{1}" under Archangel
+	// of Tithes); omitted when they differ, and the block moves'
+	// MoveCost.Mana is the per-creature answer then.
+	Each string `json:"each,omitempty"`
+	// Labels are the printed clauses that tax this seat's blocks, one
+	// per clause, for the hint.
+	Labels []string `json:"labels"`
+}
+
+// viewOfBlockTaxes is TurnView.BlockTaxes. Caller holds g's lock.
+func viewOfBlockTaxes(g *game.Game, pending []int) []BlockTaxView {
+	if len(pending) == 0 || game.CatalogBlockTaxes == nil {
+		return nil
+	}
+	var out []BlockTaxView
+	for _, idx := range pending {
+		if idx < 0 || idx >= len(g.Seats) || g.Seats[idx] == nil {
+			continue
+		}
+		seat := g.Seats[idx].ID
+		row := BlockTaxView{Seat: idx, Cost: g.PriceBlockDeclarationForEffect(seat).Cost}
+		seen := map[string]bool{}
+		each, uniform := "", true
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller != seat || !c.IsCreature() || (c.Tapped && c.BlockingTarget == uuid.Nil) {
+				continue
+			}
+			price := g.PriceBlockersForEffect([]uuid.UUID{c.InstanceID})
+			if each == "" && uniform {
+				each = price.Cost
+			} else if price.Cost != each {
+				uniform = false
+			}
+			for _, l := range price.Lines {
+				if !seen[l.Label] {
+					seen[l.Label] = true
+					row.Labels = append(row.Labels, l.Label)
+				}
+			}
+		}
+		if len(row.Labels) == 0 {
+			continue
+		}
+		if uniform {
+			row.Each = each
+		}
+		out = append(out, row)
+	}
+	return out
 }
 
 // AttackTargetView is one legal attack target: what it is, and the id
@@ -6012,6 +6207,8 @@ func ViewOfGame(g *game.Game) GameView {
 		}
 		// #1279: where each defender's block declaration stands.
 		view.Turn.BlockPendingSeats, view.Turn.BlocksDeclaredSeats = g.BlockDeclarationSeatsLocked()
+		// ADR 0221: the block tax on each defender still declaring.
+		view.Turn.BlockTaxes = viewOfBlockTaxes(g, view.Turn.BlockPendingSeats)
 		// ADR 0066. Asked ONCE per frame and threaded down, not per
 		// seat and not per card: the answer is "nobody may play this"
 		// in almost every game, it costs a walk of the battlefield,
@@ -6882,6 +7079,10 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.SacrificeOptions = nil
 		// ADR 0135 §1: "untapped creatures YOU control", likewise.
 		o.TapOptions = nil
+		// #5390: the creatures YOU control holding counters, and the
+		// most YOU could remove.
+		o.CounterCostOptions = nil
+		o.CounterCostMax = 0
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
 		// #3931: and a harmonize price per creature YOU control.
@@ -7066,6 +7267,10 @@ func publicManaAbilityRow(v ManaAbilityView) (out ManaAbilityView, private bool)
 		private = private || len(v.ExileCostOptions) > 0
 		v.ExileCostOptions = nil
 	}
+	// #5397: an either/or cost's branches, cleared as a CR 602 row's are.
+	var branchesPrivate bool
+	v.CostBranches, branchesPrivate = publicCostBranches(v.CostBranches)
+	private = private || branchesPrivate
 	return v, private
 }
 
@@ -7472,7 +7677,15 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	}
 	// #2581: the printed X ceiling, read for this caster now — the
 	// count CastSpell will read as X is announced (CR 601.2b).
-	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
+	//
+	// #5207, CR 601.3b: and the card's own "as though it had flash if X
+	// is N or less" when the printed cast is open only because of it —
+	// the bound CastSpell then holds that cast to.
+	var flashIf *game.FlashIf
+	if haveLive {
+		flashIf = g.FlashIfReliedOnLocked(caster, live, kind, grant.ForClaim(nil), nil, false)
+	}
+	if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForEffect(caster, key)); ok {
 		out.XMax = &ceiling
 	}
 	// S22: convoke / waterbend. Stamped before the target clause
@@ -7573,7 +7786,7 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		faced = &live
 	}
-	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, kind, offers)
+	out.AlternativeCosts = viewOfAlternativeCosts(g, caster, src, c.InstanceID, f.manaCost, spec, faced, kind, offerGrants)
 	// #1012: and the wire says so when the printed cost is not one of
 	// them. `castable_here` is one bit and means "you may cast this
 	// from here", never "you may cast this from here for the cost in
@@ -7595,20 +7808,43 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	// narrowing (CastPermission.ForClaim) CastSpell applies before its
 	// own timing check, so the picker and the announce path cannot
 	// disagree.
+	//
+	// #5363, CR 601.3c: a card with an optional cost that opens the
+	// window when announced (`opens_flash`) is asked each claim's timing
+	// twice: closed even with that cost announced is `timing_closed`, and
+	// open only with it is `opens_flash_required`, so the picker keeps the
+	// claim, pre-selects the cost and can say why. Every other card is
+	// asked once, as before.
+	optionalFlash := haveLive && game.AnyOptionalCostOpensCastWindow(g.OptionalCostsForCastLocked(caster, live))
+	claimTiming := func(face game.Card, perm *game.CastPermission, offer *game.AlternativeCost) (closed, needsFlash bool) {
+		if g.CastTimingForOfferOpenLocked(caster, face, kind, perm, offer) {
+			return false, false
+		}
+		if optionalFlash && g.CastTimingForCastOpenLocked(caster, face, kind, perm, offer, true) {
+			return false, true
+		}
+		return true, false
+	}
 	if haveLive && len(out.AlternativeCosts) > 0 {
 		if !out.AlternativeCostRequired {
-			out.PrintedCostTimingClosed = !g.CastTimingOpenLocked(caster, live, kind, grant.ForClaim(nil))
+			out.PrintedCostTimingClosed, out.OpensFlashRequired = claimTiming(live, grant.ForClaim(nil), nil)
 		}
 		for i := range out.AlternativeCosts {
 			for _, og := range offerGrants {
 				if o := og.Offer; o != nil && o.Key == out.AlternativeCosts[i].Key {
 					// ADR 0107 §4: a disturb offer is timed as the back
 					// face it casts, as CastSpell times it.
-					out.AlternativeCosts[i].TimingClosed = !g.CastTimingForOfferOpenLocked(caster, o.CastFaceOf(live), kind, og.Permission.ForClaim(o), o)
+					out.AlternativeCosts[i].TimingClosed, out.AlternativeCosts[i].OpensFlashRequired = claimTiming(o.CastFaceOf(live), og.Permission.ForClaim(o), o)
 					break
 				}
 			}
 		}
+	} else if optionalFlash && !out.AlternativeCostRequired {
+		// #5363: a card with no alternative cost still opens the picker
+		// for its optional costs, so the printed claim's half is stamped
+		// for it too (printed_cost_timing_closed stays the alternative-
+		// cost picker's alone, as #1686 scoped it).
+		_, out.OpensFlashRequired = claimTiming(live, grant.ForClaim(nil), nil)
 	}
 	// #1015: and THE cast-surface bit, derived here because this is
 	// the one place that knows both halves of it — the prices this
@@ -7698,6 +7934,10 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if spec == nil {
 		return out
 	}
+	// #5207, CR 601.3b: a printed cast open only because of the card's
+	// own "as though it had flash if it targets <what>" is announced
+	// under that clause, so the picker offers only what CastSpell takes.
+	spec = flashIf.TargetSpecUnder(spec)
 	out.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
 	out.Clauses = viewOfClauses(g, src, spec)
 	return out
@@ -8145,7 +8385,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 		return
 	}
 	v.ManaValueAtMostX = spec.ManaValueAtMostX
-	v.ManaValueEqualsX = spec.ManaValueEqualsX
+	v.ManaValueEqualsX = spec.ManaValueEqualsX && spec.ManaValueEqualsXPlus == 0
 	v.PowerAtMostX = spec.PowerAtMostX
 	v.ToughnessAtMostX = spec.ToughnessAtMostX
 	v.XFromCountersRemoved = spec.BoundByCountersRemoved
@@ -8297,19 +8537,34 @@ func viewOfWaterbend(g *game.Game, player, exclude uuid.UUID, wb *game.TapPerman
 // `zone` is where the card sits, the zone a cast of it comes out of: an
 // emerge offer's per-candidate price (ADR 0135 §4) is priced for a cast
 // from there, commander tax included.
-func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, zone game.ZoneKind, offers []*game.AlternativeCost) []AlternativeCostView {
+//
+// Each entry carries the permission a cast claiming it is made under
+// (#5081). #5363: that permission is what decides whether the cast
+// claiming the offer is open now only because of the card's own "as
+// though it had flash if …" (game.FlashIfReliedOnLocked, CR 601.3b),
+// and when it is, the offer's `x_max` and `legal_targets` narrow to the
+// permission's condition, as castSpellLocked holds that claim.
+func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, self, printedCost string, base *game.TargetSpec, live *game.Card, zone game.ZoneKind, offers []game.OfferGrant) []AlternativeCostView {
 	// A nil result rather than a present-and-empty one: `absent`
 	// is what the field means for a card with no offers, and every
 	// card in every cast surface reaches this function since #1012.
 	var out []AlternativeCostView
 	for i := range offers {
-		if offers[i] == nil {
+		if offers[i].Offer == nil {
 			// The printed mana cost. Not an alternative cost, and
 			// `alternative_cost_required` is where the wire says
 			// whether it is claimable from this zone.
 			continue
 		}
-		ac := *offers[i]
+		ac := *offers[i].Offer
+		// #5363, CR 601.3b: the card's own flash permission, when the
+		// cast claiming this offer under its own permission is open
+		// only because of it. No optional cost is announced yet, so
+		// none opens the window here (the card-level stamp's reading).
+		var flashIf *game.FlashIf
+		if live != nil {
+			flashIf = g.FlashIfReliedOnLocked(caster, *live, zone, offers[i].Permission.ForClaim(&ac), &ac, false)
+		}
 		// ADR 0107 §4, CR 712.8c: a disturb offer casts the BACK
 		// face, so the clause and the printed cost the offer is
 		// judged against are the back face's — Spectral Binding's
@@ -8346,13 +8601,13 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// by.
 			Purpose: viewOfPurpose(ac.Purpose),
 		}
-		if ac.XCeiling > 0 && live != nil {
-			if ceiling, ok := g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac); ok {
+		if _, flashX := flashIf.XCeilingUnder(0, false); (ac.XCeiling > 0 || flashX) && live != nil {
+			if ceiling, ok := flashIf.XCeilingUnder(g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac)); ok {
 				v.XMax = &ceiling
 			}
 		}
 		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
-		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
+		if spec := flashIf.TargetSpecUnder(game.TargetSpecUnderAlternativeCost(offerBase, &ac)); spec != nil {
 			v.TargetMode = spec.Mode
 			v.LegalTargets = viewOfTargetClause(g, src, ac.Key, g.LegalTargetsForEffect(src, spec), spec)
 			v.Clauses = viewOfClauses(g, src, spec)
@@ -8362,7 +8617,14 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// cost's sacrifice picker uses it: a cost does not target, so
 		// the hexproof / shroud gate must not narrow what the client
 		// offers.
-		if paySpec := ac.ExileFromHand; paySpec != nil {
+		if ac.CollectsEvidence() {
+			// Collect evidence N as the price: the engine's own walk of
+			// the caster's graveyard, the spell excluded (CR 601.2a).
+			castID, _ := uuid.Parse(self)
+			cards := cardIDStrings(g.AltCostCandidatesLocked(caster, castID, &ac))
+			v.PayOptions = &LegalTargetsView{Min: 1, Max: len(cards), Cards: cards}
+			v.CollectEvidence = ac.CollectEvidence.ManaValueAtLeast
+		} else if paySpec := ac.ExileFromHand; paySpec != nil {
 			cands := g.SpecCandidatesForEffect(caster, paySpec)
 			opts := viewOfLegalTargets(cands, paySpec)
 			opts.Players = nil
@@ -8438,6 +8700,17 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 				v.ReducesByPower = true
 				v.TapPrices = harmonizePricesView(g, caster, *live, zone, ac.Key, v.TapOptions)
 			}
+		}
+		if rc := ac.RemoveCounters; rc != nil {
+			// #5390: the activation's counter block, with the spell being
+			// cast as the source the option walk is asked about. Not a
+			// card component, so it sits beside the chain above, which
+			// effects.Register keeps empty for such an offer.
+			castID, _ := uuid.Parse(self)
+			cv := counterCostView(g, caster, castID, rc, nil)
+			v.CounterCostN, v.CounterCostKind, v.CounterCostSelf = cv.CounterCostN, cv.CounterCostKind, cv.CounterCostSelf
+			v.CounterCostLabel, v.CounterCostAmong, v.CounterCostVariable = cv.CounterCostLabel, cv.CounterCostAmong, cv.CounterCostVariable
+			v.CounterCostMax, v.CounterCostOptions = cv.CounterCostMax, cv.CounterCostOptions
 		}
 		out = append(out, v)
 	}
@@ -8607,6 +8880,7 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 			ManaCost:     oc.ManaCost,
 			MaxTimes:     oc.MaxPayments(),
 			XMin:         oc.MinX,
+			OpensFlash:   oc.AsThoughFlash,
 			DiscardCards: oc.DiscardCards,
 		}
 		// ADR 0129 §5: an energy cost is paid only as many times as the
@@ -8644,6 +8918,14 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 				}
 			}
 		}
+		// #5358: a kicker that returns a permanent — the mandatory slot's
+		// walk and view, with the spell as the source (it is on no
+		// battlefield, so it is never a pick), so the picker offers exactly
+		// the permanents the validator accepts (#544).
+		if rc := oc.ReturnToHand; !rc.Empty() {
+			v.ReturnLabel = rc.Label
+			v.ReturnOptions = returnCostOptions(g, caster, castID, rc)
+		}
 		if oc.Blight > 0 {
 			v.Blight = oc.Blight
 			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
@@ -8654,7 +8936,11 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 		if oc.Reveal != nil {
 			v.Reveal = true
 			v.Behold = oc.Reveal.Behold
-			v.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, oc.Reveal))}
+			if oc.Reveal.ChosenType {
+				v.BeholdCount, v.RevealOptions, v.BeholdTypes = viewOfBeholdTypes(g, caster, castID, oc.Reveal)
+			} else {
+				v.RevealOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.RevealCostOptionsForEffect(caster, castID, oc.Reveal))}
+			}
 		}
 		// #5193: "you may collect evidence N" — the engine's own walk and
 		// gate (ExileCostPayableForEffect), with the spell itself excluded,
@@ -8692,6 +8978,35 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 		out = append(out, v)
 	}
 	return out
+}
+
+// BeholdTypeOption is one creature type a behold that chooses its type
+// could be paid with (#5406), and the viewer's objects of that type.
+type BeholdTypeOption struct {
+	Type  string   `json:"type"`
+	Cards []string `json:"cards"`
+}
+
+// viewOfBeholdTypes is the picker for a behold that chooses its creature
+// type (#5406), off the engine's own walk (BeholdTypeOptionsForEffect),
+// so the client offers exactly the types and objects the validator
+// accepts (#544): the count, every object of every choosable type, and
+// the types themselves.
+func viewOfBeholdTypes(g *game.Game, caster, castID uuid.UUID, rc *game.RevealCost) (int, *LegalTargetsView, []BeholdTypeOption) {
+	n := rc.BeholdCount()
+	all := &LegalTargetsView{Min: n, Max: n}
+	seen := make(map[uuid.UUID]bool)
+	var types []BeholdTypeOption
+	for _, o := range g.BeholdTypeOptionsForEffect(caster, castID, rc) {
+		types = append(types, BeholdTypeOption{Type: o.Type, Cards: cardIDStrings(o.Cards)})
+		for _, id := range o.Cards {
+			if !seen[id] {
+				seen[id] = true
+				all.Cards = append(all.Cards, id.String())
+			}
+		}
+	}
+	return n, all, types
 }
 
 // stampEscalate fills ModeSpecView.Escalate for an escalate spell and
@@ -9414,6 +9729,13 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 				views[i].CantActivate = short.Error()
 			}
 		}
+		// CR 701.59b: a collect evidence cost (Cryptex) whose graveyard
+		// falls short of the floor can't be chosen, so the row greys with
+		// the CR 602 row's words.
+		if ec := raw[r].ExileCards; views[i].CantActivate == "" && ec.IsCollectEvidence() &&
+			!g.ExileCostPayableForEffect(controller, card.InstanceID, ec) {
+			views[i].CantActivate = "Your graveyard does not hold enough to exile for this cost."
+		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
 		// with the same code — and separately from it, because the
@@ -9480,7 +9802,9 @@ func stampManaChargedCost(g *game.Game, card *game.Card, controller uuid.UUID, v
 	}
 	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
-		if i >= len(raw) || raw[i].ManaCost == "" {
+		// #5382: a tap-only row an activation cost increase taxes is
+		// stamped too, so the chip shows the {2} the engine charges.
+		if i >= len(raw) || !g.ManaAbilityChargesManaForEffect(controller, *card, raw[i]) {
 			continue
 		}
 		views[i].PhyrexianSymbols, views[i].PhyrexianGranted = phyrexianSymbolsIn(g, controller, raw[i].ManaCost)
@@ -9914,6 +10238,25 @@ func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UU
 			views[i].ExileCostLabel = ec.Label
 			views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
 			views[i].ExileCostZone = string(ec.Zone())
+		}
+		// Collect evidence N (Cryptex): the any-number form, off the
+		// same walk, with its mana value floor.
+		if ec := raw[i].ExileCards; ec.IsCollectEvidence() {
+			views[i].ExileCostAnyNumber = true
+			views[i].ExileCostManaValueMin = ec.ManaValueAtLeast
+			views[i].ExileCostLabel = ec.Label
+			views[i].ExileCostZone = string(ec.Zone())
+			if g.ExileCostPayableForEffect(controller, card.InstanceID, ec) {
+				views[i].ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(controller, card.InstanceID, ec))
+			}
+		}
+		// #5397: an either/or cost (forage, Thornvault Forager), each
+		// branch projected through the CR 602 row's projection over the
+		// same fold, so the client runs one branch picker for both
+		// ability kinds and sends the index as `cost_branch`.
+		if raw[i].Branched() {
+			views[i].CostBranches = abilityCostBranchViews(g, controller, card.InstanceID,
+				game.AbilityCost{Either: raw[i].Either, Forage: raw[i].Forage})
 		}
 	}
 }
@@ -12251,6 +12594,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// face-down permanent; this keeps any other unknown card clear too.
 	out.BlockRefusals = nil
 	out.MinBlockers = 0
+	out.CantBlockAlone = false
 	// ADR 0109 §10: "its haste came from riot" says the card has riot,
 	// which names it as loudly as the ability list does.
 	out.RiotHaste = false
@@ -12271,6 +12615,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// or not this particular one is timing-shaped rather than
 	// cost-shaped.
 	out.PrintedCostTimingClosed = false
+	out.OpensFlashRequired = false
 	// ADR 0073: "Kicker {4}" names the card as loudly as an overload
 	// cost does, and CR 708.2 leaves a face-down object with no text
 	// to offer it from.
@@ -12855,6 +13200,7 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		}
 	}
 	if game.IsCreaturePtr(c) {
+		view.CantBlockAlone = game.CantBlockAlone(c)
 		switch n := game.BlockCapacity(c); {
 		case n == 0:
 			view.BlocksAnyNumber = true
@@ -13445,28 +13791,30 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			// ADR 0155 Decision 10: the lender of a borrowed row, and
 			// its label with the lender's name read as this card's
 			// (CR 201.5b).
-			BorrowedFrom:  borrowedFromView(g, origins.At(i)),
-			Label:         game.BorrowedLabel(a.Label, origins.At(i), c.Name),
-			TapCost:       a.Cost.Tap,
-			SacrificeSelf: a.Cost.SacrificeSelf,
-			DiscardSelf:   a.Cost.DiscardSelf,
-			ExileSelf:     a.Cost.ExileSelf,
-			ReturnSelf:    a.Cost.ReturnSelf,
-			BottomSelf:    a.Cost.BottomSelf,
-			ExileGrantor:  a.Cost.ExileGrantor,
-			Exert:         a.Cost.Exert,
-			ManaCost:      a.Cost.Mana,
-			LifeCost:      a.Cost.Life,
-			SorcerySpeed:  a.SorcerySpeed,
-			LoyaltyCost:   a.Cost.Loyalty,
-			LoyaltyCostX:  a.Cost.LoyaltyX,
-			AnyPlayer:     a.AnyPlayer,
-			OpponentsOnly: a.OpponentsOnly,
-			OwnerOnly:     a.OwnerOnly,
-			GrantorOnly:   a.GrantorOnly,
-			Equip:         a.Equip,
-			Reconfigure:   a.Reconfigure,
-			UntapSelf:     a.UntapSelf,
+			BorrowedFrom:     borrowedFromView(g, origins.At(i)),
+			Label:            game.BorrowedLabel(a.Label, origins.At(i), c.Name),
+			TapCost:          a.Cost.Tap,
+			SacrificeSelf:    a.Cost.SacrificeSelf,
+			DiscardSelf:      a.Cost.DiscardSelf,
+			ExileSelf:        a.Cost.ExileSelf,
+			ReturnSelf:       a.Cost.ReturnSelf,
+			BottomSelf:       a.Cost.BottomSelf,
+			ExileGrantor:     a.Cost.ExileGrantor,
+			TapGrantor:       a.Cost.TapGrantor,
+			SacrificeGrantor: a.Cost.SacrificeGrantor,
+			Exert:            a.Cost.Exert,
+			ManaCost:         a.Cost.Mana,
+			LifeCost:         a.Cost.Life,
+			SorcerySpeed:     a.SorcerySpeed,
+			LoyaltyCost:      a.Cost.Loyalty,
+			LoyaltyCostX:     a.Cost.LoyaltyX,
+			AnyPlayer:        a.AnyPlayer,
+			OpponentsOnly:    a.OpponentsOnly,
+			OwnerOnly:        a.OwnerOnly,
+			GrantorOnly:      a.GrantorOnly,
+			Equip:            a.Equip,
+			Reconfigure:      a.Reconfigure,
+			UntapSelf:        a.UntapSelf,
 		}
 		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
 		// "Only you may activate" row is open to.
@@ -13578,7 +13926,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// ManaCost) on a pricing error rather than guessing; a card
 		// with no cost modifier reaching it renders byte-identical to
 		// ManaCost, which is nearly every ability in the catalog.
-		if a.Cost.Mana != "" {
+		// #5382: and a row that prints no mana at all is stamped when an
+		// activation cost increase (Skyseer's Chariot) charges it some —
+		// still nil for every untaxed {T}-only row, so those render
+		// exactly as before.
+		if g.AbilityChargesManaForEffect(caster, c, zone, a, nil) {
 			if charged, err := g.AbilityManaCostForEffect(caster, c, zone, a); err == nil {
 				s := charged.String()
 				v.ChargedManaCost = &s
@@ -13655,6 +14007,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if ec := a.Cost.ExilePermanents; !ec.Empty() {
 			v.ExilePermanentLabel = ec.Label
 			v.ExilePermanentOptions = exilePermanentCostOptions(g, caster, c.InstanceID, ec)
+			v.ExilePermanentTotalManaValueX = game.ExileTotalManaValueX(ec)
+			// #5401: with nothing to exile no X can be paid (CR 118.3).
+			if v.CantActivate == "" && v.ExilePermanentTotalManaValueX && len(v.ExilePermanentOptions.Cards) < ec.Count {
+				v.CantActivate = "Nothing you control can be exiled for this cost."
+			}
 		}
 		// #4799: the unattach component, from the walk the engine
 		// validates against.
@@ -13887,7 +14244,7 @@ func stampUnattachDivide(g *game.Game, v *LegalTargetsView, src game.TargetSourc
 //
 // Caller must hold g's read lock.
 func targetChargedManaCosts(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind, a game.ActivatedAbilityShape, legal *LegalTargetsView) map[string]string {
-	if legal == nil || a.Cost.Mana == "" || a.Modes != nil || a.Targets == nil ||
+	if legal == nil || a.Modes != nil || a.Targets == nil ||
 		a.Targets.ClauseCount() != 1 || legal.Max != 1 || legal.CountFromX {
 		return nil
 	}

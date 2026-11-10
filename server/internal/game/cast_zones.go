@@ -585,7 +585,25 @@ func sameOfferPrice(a, b *AlternativeCost) bool {
 	if (sa == nil) != (sb == nil) || za != zb || na != nb || a.PayLabel != b.PayLabel {
 		return false
 	}
-	return sameManaPrice(a.ManaCost, b.ManaCost) && a.Life == b.Life && a.Energy == b.Energy
+	if a.CollectsEvidence() != b.CollectsEvidence() ||
+		a.CollectsEvidence() && a.CollectEvidence.ManaValueAtLeast != b.CollectEvidence.ManaValueAtLeast {
+		return false
+	}
+	return sameManaPrice(a.ManaCost, b.ManaCost) && a.Life == b.Life && a.Energy == b.Energy &&
+		sameCounterRemoval(a.RemoveCounters, b.RemoveCounters)
+}
+
+// sameCounterRemoval reports whether two offers' counter components
+// (#5390) charge the same: none on either, or the same count, kind and
+// clause.
+func sameCounterRemoval(a, b *CounterRemovalCost) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.N != b.N || a.Counter != b.Counter || a.Among != b.Among || a.Variable != b.Variable || (a.From == nil) != (b.From == nil) {
+		return false
+	}
+	return a.From == nil || a.From.Label == b.From.Label
 }
 
 // castUsesGrantLocked reports whether a cast of `card` out of `srcKind`
@@ -705,7 +723,14 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	// rule below reads the cast as having no permission, and its own
 	// price claimed anyway is refused — here, in the gate the view's
 	// offer list, the bot enumerator and CastSpell share.
-	if grant != nil && g.permissionForSpellLocked(grant, card) == nil {
+	//
+	// #4452: a spell cast face down (morph, megamorph, disguise) is the
+	// CR 708.2a 2/2 it is cast as, which is what the filter judges.
+	judged := card
+	if alt != nil && alt.FaceDown != nil && !card.FaceDown {
+		judged.SetFaceDown(alt.FaceDown.Kind)
+	}
+	if grant != nil && g.permissionForSpellLocked(grant, judged) == nil {
 		if alt != nil && alt.FromPermission {
 			return ErrCastZoneNotAllowed
 		}

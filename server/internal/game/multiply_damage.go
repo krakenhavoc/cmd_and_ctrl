@@ -193,6 +193,14 @@ func (g *Game) MultiplyDamageForEffect(d DamageMultiplier) bool {
 // kind's parameters, and the refusal of its own fields on every other
 // kind (a newer binary's shape). "" when the mod is sound.
 func multiplyDamageModProblem(m Mod) string {
+	if m.NoncombatOnly && m.Kind != ModAddDamage {
+		return fmt.Sprintf("mod %q carries a field only addDamage reads", m.Kind)
+	}
+	if m.Kind == ModAddDamage {
+		// #4468: the additive sibling reads Sources and Recipients with
+		// the multiplier's meaning, and checks them itself.
+		return addDamageModProblem(m)
+	}
 	if m.Kind != ModMultiplyDamage {
 		// ADR 0108 §9: a redirection reads Next and Recipients too, with
 		// the same meaning (redirectDamageModProblem checks them).
@@ -327,6 +335,15 @@ func characteristicHasSubtype(ch *Characteristic, sub string) bool {
 	return false
 }
 
+func characteristicHasSupertype(ch *Characteristic, t string) bool {
+	for _, have := range ch.Supertypes {
+		if strings.EqualFold(have, t) {
+			return true
+		}
+	}
+	return false
+}
+
 func characteristicHasType(ch *Characteristic, t string) bool {
 	for _, have := range ch.Types {
 		if strings.EqualFold(have, t) {
@@ -369,7 +386,9 @@ func (g *Game) DamageMultiplierLines() []string {
 	for i := range g.ScopedEffects {
 		e := &g.ScopedEffects[i]
 		for _, m := range e.Mods {
-			if m.Kind != ModMultiplyDamage {
+			// #4468: an addition ("plus X") is the same kind of
+			// banner fact, so it rides the same line list.
+			if m.Kind != ModMultiplyDamage && m.Kind != ModAddDamage {
 				continue
 			}
 			out = append(out, g.damageMultiplierLineLocked(e, m))
@@ -391,6 +410,13 @@ func (g *Game) damageMultiplierLineLocked(e *ScopedEffect, m Mod) string {
 	kind := "damage"
 	if m.CombatOnly {
 		kind = "combat damage"
+	}
+	if m.NoncombatOnly {
+		kind = "noncombat damage"
+	}
+	if m.Kind == ModAddDamage {
+		// "Alice's sources deal 2 more noncombat damage this turn".
+		factor = fmt.Sprintf("%d more", m.Amount)
 	}
 	you := g.playerNameLocked(e.Controller)
 	var b strings.Builder

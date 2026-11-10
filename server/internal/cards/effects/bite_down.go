@@ -50,6 +50,13 @@ func bitingSpell(oracleID, name string) Spec {
 // a spell's whole resolution, read off a two-clause announcement:
 // slot 0 deals, slot 1 takes. Bite Down and Stump Stomp share it.
 func oneSidedBite(_ *game.StackItem, ctx *Context) error {
+	return oneSidedBiteTimes(ctx, 1)
+}
+
+// oneSidedBiteTimes is oneSidedBite dealing `times` times the biter's
+// power — Chocobo Kick's kicked "twice that much damage instead" (#5358).
+// Nothing is dealt unless both picks are still legal (CR 608.2b).
+func oneSidedBiteTimes(ctx *Context, times int) error {
 	biter, ok := ctx.ClauseTarget(0)
 	if !ok || biter.Kind != game.TargetCard {
 		return nil
@@ -62,5 +69,5 @@ func oneSidedBite(_ *game.StackItem, ctx *Context) error {
 	if !ok {
 		return nil
 	}
-	return DealDamage{Source: biter.ID, Target: victim.ID, Amount: c.CurrentPower()}.Apply(ctx)
+	return DealDamage{Source: biter.ID, Target: victim.ID, Amount: times * c.CurrentPower()}.Apply(ctx)
 }

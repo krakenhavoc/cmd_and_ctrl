@@ -125,6 +125,14 @@ type tokenTemplate struct {
 	// Spec.BlockRules are, and registered under the same token key.
 	BlockRules []game.BlockRule
 
+	// AttackLimits are the token's printed CR 508.1c attack
+	// restrictions — Toby, Beastie Befriender's Beast's "This token
+	// can't attack or block alone" is CantAttackAlone here beside
+	// CantBlockAlone in BlockRules (#5396). Built with the
+	// attack_limits.go constructors, exactly as a card's
+	// Spec.AttackLimits are, and registered under the same token key.
+	AttackLimits []game.AttackLimit
+
 	// Grants are the ability bundles the token gives ANOTHER object
 	// (ADR 0093, amended 2026-10-08): a Role token's "Enchanted
 	// creature has 'Whenever this creature attacks, scry 1.'" is a
@@ -178,7 +186,8 @@ type tokenTemplate struct {
 type tokenTemplateBuilder func() tokenTemplate
 
 // tokenTemplates is every token whose template declares a mana,
-// activated, triggered or static ability, or a block rule. A token
+// activated, triggered or static ability, a block rule or an attack
+// limit. A token
 // that declares none is a row in tokens_table.go and needs no entry
 // here; one that is not here could not declare an ability at all.
 //
@@ -203,6 +212,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedB16LanderToken,
 	printedMutagenToken,
 	printedB14ReplicatedRingToken,
+	printedVrenRatToken,
 
 	// ADR 0083's first tokens with an ability of their own that is
 	// not a mana or activated ability.
@@ -234,6 +244,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Weapons Manufacturing's Munitions.
 	printedMunitionsToken,
+
+	// Ashiok, Wicked Manipulator's Nightmare (Standard batch 53, #4452).
+	printedStd53NightmareToken,
 
 	// Scriv, the Obligator's Contract: a white Aura token (#4834).
 	printedContractToken,
@@ -337,9 +350,21 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
 
+	// Thousand Moons Smithy's Gnome Soldier: a */* artifact creature whose
+	// size is its controller's artifacts and creatures (#4470).
+	printedGnomeSoldierToken,
+
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,
+
+	// Roxanne, Starfall Savant's Meteorite (Outlaws of Thunder Junction,
+	// #4468): enters dealing 2 damage to any target, taps for any color.
+	printedMeteoriteToken,
+
+	// Bonny Pall, Clearcutter's Beau (Outlaws of Thunder Junction, #4468):
+	// a legendary blue Ox whose power and toughness are the lands you control.
+	printedBeauToken,
 
 	// Final Fantasy's Chocobo Bird (#4462): a 2/2 green Bird that gets
 	// +1/+0 on landfall.
@@ -349,6 +374,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// creatures with flying (Wilds of Eldraine, #4471).
 	printedFlyingBlockerFaerieToken,
 
+	// Desculpting Blast's Drone: flying, and it can block only creatures
+	// with flying (Edge of Eternities, #4461).
+	printedDroneToken,
+
 	// Mabel, Heir to Cragflame's Cragflame (Bloomburrow, #4467): a
 	// legendary Equipment token, +1/+1, vigilance, trample and haste,
 	// equip {2}.
@@ -357,6 +386,20 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Blacksmith's Talent's Sword (Bloomburrow, #4467): an Equipment
 	// token, +1/+1, equip {2}.
 	printedBlacksmithsSwordToken,
+	// Aplan Mortarium's Alien Angel (Doctor Who plane, #4870): a 2/2
+	// artifact creature that stops being a creature when an opponent
+	// casts a creature spell.
+	printedAlienAngelToken,
+
+	// Toby, Beastie Befriender's Beast (#5396): a 4/4 that can't attack
+	// or block alone, the first token printed with an attack limit.
+	printedTobyBeastToken,
+
+	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
+	printedReliquaryDragonToken,
+	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
+	// "When this creature dies, it deals 2 damage to each opponent."
+	printedImpDamageToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -374,6 +417,7 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 		Triggered:     t.Triggered,
 		Static:        t.Static,
 		BlockRules:    t.BlockRules,
+		AttackLimits:  t.AttackLimits,
 		TokenText:     t.Text,
 	}
 }
@@ -388,7 +432,7 @@ func checkTokenTemplate(t tokenTemplate) string {
 	switch {
 	case t.Slug == "":
 		return "declares no slug — the slug is its catalog identity"
-	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.BlockRules) == 0:
+	case len(t.Mana) == 0 && len(t.Activated) == 0 && len(t.Triggered) == 0 && len(t.Static) == 0 && len(t.BlockRules) == 0 && len(t.AttackLimits) == 0:
 		// A template with nothing to register would hand out a key
 		// that resolves to an empty entry, which reads as "this
 		// token's abilities were removed" everywhere downstream. A
@@ -453,7 +497,7 @@ func checkTokenBack(t tokenTemplate) string {
 // hasAbilities reports whether the template declares any ability slot.
 func (t tokenTemplate) hasAbilities() bool {
 	return len(t.Mana) > 0 || len(t.Activated) > 0 || len(t.Triggered) > 0 ||
-		len(t.Static) > 0 || len(t.BlockRules) > 0
+		len(t.Static) > 0 || len(t.BlockRules) > 0 || len(t.AttackLimits) > 0
 }
 
 // tokenBackKey is the catalog key of a double-faced token's back face:

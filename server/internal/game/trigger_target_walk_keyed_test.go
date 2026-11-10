@@ -96,7 +96,7 @@ func requireWrittenWalk(t *testing.T, snap *GameSnapshot, kind PendingChoiceKind
 			pc = &snap.PendingChoices[i]
 		}
 	}
-	if pc == nil || pc.TargetWalk == nil || pc.PickThen != targetWalkMarker(kind) || len(pc.ResumeFrames) != 0 {
+	if pc == nil || pc.TargetWalk == nil || pc.PickThen != targetWalkMarker(kind, false) || len(pc.ResumeFrames) != 0 {
 		t.Fatalf("the %s's walk was not written: %+v", kind, pc)
 	}
 	want := AbilityRef{Key: frameRefOracle, Slot: AbilitySlotTriggered, Ref: "own:0", Name: name}

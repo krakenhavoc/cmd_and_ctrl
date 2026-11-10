@@ -672,6 +672,11 @@
   // then (search_zones_pending).
   const searchZonesPending = $derived(isSearch && active?.search_zones_pending === true);
   const searchOtherZone = $derived(active?.search_other_zone === "hand" ? "hand" : "graveyard");
+  // #5408: "search your graveyard, hand, and/or library" offers both other
+  // zones, each answered on its own.
+  const searchThreeZones = $derived(isSearch && active?.search_other_zone === "graveyard_and_hand");
+  // The zones beside the library, as the sheet's prose names them.
+  const searchOtherZoneText = $derived(searchThreeZones ? "graveyard or hand" : searchOtherZone);
   // An and/or search whose library is not searched: nothing of it is
   // shown, it is not shuffled, and no search is announced.
   const searchLibrarySkipped = $derived(isSearch && active?.search_library_skipped === true);
@@ -2267,20 +2272,24 @@
       // every player means); the single zones are secondaries.
       primary: searchUndecided
         ? confirmAction("Search", beginSearch, { enter: true })
-        : searchZonesPending
-          ? confirmAction(
-              searchOtherZone === "hand" ? L.searchLibraryAndHand : L.searchLibraryAndGraveyard,
-              () => chooseZones(["library", searchOtherZone]),
-              { enter: true },
-            )
-          : isSearch && none && pickMin === 0
-            ? null
-            : confirmAction(verb, submit, {
-                disabled: !canSubmit,
-                enter: !(none && pickMin === 0),
-              }),
+        : searchZonesPending && searchThreeZones
+          ? confirmAction(L.searchEveryZone, () => chooseZones(["library", "graveyard", "hand"]), {
+              enter: true,
+            })
+          : searchZonesPending
+            ? confirmAction(
+                searchOtherZone === "hand" ? L.searchLibraryAndHand : L.searchLibraryAndGraveyard,
+                () => chooseZones(["library", searchOtherZone]),
+                { enter: true },
+              )
+            : isSearch && none && pickMin === 0
+              ? null
+              : confirmAction(verb, submit, {
+                  disabled: !canSubmit,
+                  enter: !(none && pickMin === 0),
+                }),
       secondary: [
-        ...(searchZonesPending
+        ...(searchZonesPending && searchThreeZones
           ? [
               {
                 id: "zones-library",
@@ -2288,12 +2297,35 @@
                 onPress: () => chooseZones(["library"]),
               },
               {
-                id: "zones-other",
-                label: searchOtherZone === "hand" ? L.searchHandOnly : L.searchGraveyardOnly,
-                onPress: () => chooseZones([searchOtherZone]),
+                id: "zones-graveyard-hand",
+                label: L.searchGraveyardAndHand,
+                onPress: () => chooseZones(["graveyard", "hand"]),
+              },
+              {
+                id: "zones-graveyard",
+                label: L.searchGraveyardOnly,
+                onPress: () => chooseZones(["graveyard"]),
+              },
+              {
+                id: "zones-hand",
+                label: L.searchHandOnly,
+                onPress: () => chooseZones(["hand"]),
               },
             ]
-          : []),
+          : searchZonesPending
+            ? [
+                {
+                  id: "zones-library",
+                  label: L.searchLibraryOnly,
+                  onPress: () => chooseZones(["library"]),
+                },
+                {
+                  id: "zones-other",
+                  label: searchOtherZone === "hand" ? L.searchHandOnly : L.searchGraveyardOnly,
+                  onPress: () => chooseZones([searchOtherZone]),
+                },
+              ]
+            : []),
         ...(isSearch && pickMin === 0 && !searchUndecided && !searchZonesPending
           ? [{ id: "fail", label: "Find nothing", onPress: findNothing }]
           : []),
@@ -3110,11 +3142,11 @@
           looked at or shuffled.
         {:else if searchZonesPending}
           Where do you search? Looking through your library is searching it: choose the library and
-          you'll see its matches, and it is shuffled afterwards whatever you take. Choose only your {searchOtherZone}
+          you'll see its matches, and it is shuffled afterwards whatever you take. Choose only your {searchOtherZoneText}
           and your library isn't looked at or shuffled.
         {:else if isSearch && optionCards.length === 0 && searchLibrarySkipped}
-          Nothing in your {searchOtherZone} matches. Find nothing to carry on; your library wasn't searched,
-          so it isn't shuffled.
+          Nothing {searchThreeZones ? "you searched" : `in your ${searchOtherZone}`} matches. Find nothing
+          to carry on; your library wasn't searched, so it isn't shuffled.
         {:else if isSearch && optionCards.length === 0 && searchAsksZones}
           Nothing you searched matches. Find nothing to carry on: you searched your library, so it
           is shuffled all the same.
@@ -3134,14 +3166,16 @@
             You're searching their graveyard, hand and library. Cards marked Graveyard or Hand are
             there, the rest are in the library, and the library is shuffled either way.
           {:else if searchLibrarySkipped}
-            You're searching only your {searchOtherZone}: your library isn't shown, and it isn't
+            You're searching only your {searchOtherZoneText}: your library isn't shown, and it isn't
             shuffled.
           {:else if searchAsksZones}
             You chose to search your library, so it is shuffled afterwards, whatever you take. Only
-            you can see its cards; the ones marked {searchOtherZone === "hand"
-              ? "Hand"
-              : "Graveyard"}
-            come from your {searchOtherZone}.
+            you can see its cards; the ones marked {searchThreeZones
+              ? "Graveyard or Hand"
+              : searchOtherZone === "hand"
+                ? "Hand"
+                : "Graveyard"}
+            come from your {searchOtherZoneText}.
           {:else}
             Only you can see them, and your library is shuffled either way.
           {/if}

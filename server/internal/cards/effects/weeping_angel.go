@@ -41,14 +41,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, AnOpponentCast(Creature()),
 				"Weeping Angel — isn't a creature until end of turn",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
-						return nil
-					}
-					return untilEndOfTurn(ctx, item.SourceCardID, nil,
-						"Weeping Angel — isn't a creature until end of turn", game.RemoveTypesMod("Creature"))
-				}),
+				thisIsntACreatureUntilEndOfTurn("Weeping Angel — isn't a creature until end of turn")),
 		},
 		Replacements: []game.ReplacementEffect{
 			PreventDamageDealtTo(PreventionStatic{

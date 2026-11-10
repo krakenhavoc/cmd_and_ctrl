@@ -25,7 +25,6 @@ const (
 	avB6TeoTypeLine         = "Legendary Creature — Human Pilot Ally"
 	avB6SerpentTypeLine     = "Creature — Serpent"
 	avB6SerpentManaCost     = "{5}{U}{U}"
-	avB6SerpentFlashOffer   = "flash-if-three-lessons"
 	avB6AscensionTypeLine   = "Enchantment"
 	avB6WaterLessonTypeLine = "Sorcery — Lesson"
 )
@@ -210,10 +209,9 @@ func TestAvatarB6SerpentOfThePassHasFlashWithThreeLessons(t *testing.T) {
 			id := avB6HandSpell(me, "Serpent of the Pass", avB6SerpentTypeLine, avB6SerpentOracle, avB6SerpentManaCost)
 			// The lessons are noncreature, nonland cards: the discount applies too.
 			addPool(t, g, me.ID, "{C}{C}{C}{C}{U}{U}")
-			if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err == nil {
-				t.Fatal("cast at sorcery speed outside a main phase without the flash offer")
-			}
-			err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, AlternativeCost: avB6SerpentFlashOffer})
+			// #5207: the flash is the card's own timing permission, so the
+			// printed cost is what the instant-speed cast pays.
+			err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true})
 			if lessons >= 3 && err != nil {
 				t.Fatalf("flash cast with three Lessons in the graveyard: %v", err)
 			}

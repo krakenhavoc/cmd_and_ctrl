@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Manglehorn — Creature — Beast {2}{G}, 2/2 (EDHREC rank 2253):
 //
@@ -41,26 +37,8 @@ func init() {
 			Key:            "Manglehorn — destroy target artifact",
 			Effect:         destroyChosenPermanent,
 		}},
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
-					return false
-				}
-				entering, ok := g.LookupCardForEffect(ev.CardID)
-				if !ok || entering.Controller == src.Controller {
-					return false
-				}
-				return entering.IsArtifact()
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.EntersTapped = true
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Manglehorn: artifacts your opponents control enter tapped",
-		}},
+		Replacements: []game.ReplacementEffect{
+			opponentsArtifactsEnterTapped("Manglehorn: artifacts your opponents control enter tapped"),
+		},
 	})
 }

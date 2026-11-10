@@ -548,6 +548,19 @@ type TargetSpec struct {
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
 
+	// OfSourcesChosenType is "target card of the chosen type": the
+	// candidate must have the creature type chosen for the clause's own
+	// source as it entered (Card.NamedTribe, CR 614.12) — Dawn-Blessed
+	// Pennant's "{2}, {T}, Sacrifice this artifact: Return target card
+	// of the chosen type from your graveyard to your hand". DATA, for the
+	// reason ExiledWithSource is: CardOK never sees the source. The
+	// source is the live object while it stands and its last-known
+	// record once it has left (PermanentInfo.NamedTribe, CR 608.2h), so
+	// a sacrifice paid as the cost does not forget the type. With no
+	// source, or none chosen, the clause admits nothing. Build one with
+	// effects.OfTheChosenType.
+	OfSourcesChosenType bool
+
 	// ControlledByThatPlayer is "that opponent controls" / "that player
 	// controls" on a TRIGGERED ability's clause: the candidate must be
 	// controlled by the player the triggering event's Target names -- the
@@ -600,6 +613,17 @@ type TargetSpec struct {
 	// admits NOTHING, never everything. Build it with
 	// effects.ManaValueAtMostTheEventAmount.
 	ManaValueAtMostEventAmount bool
+
+	// ManaValueEqualsEventAmount is "with mana value X", where X is the
+	// triggering event's Amount (Webstrike Elite: "When you cycle this
+	// card, destroy up to one target artifact or enchantment with mana
+	// value X", X being the cycling cost's X, #4464). ManaValueAtMostEventAmount's
+	// twin for an exact value: fixed when the trigger fires, so it is known
+	// when the target is chosen (CR 603.3d) and re-checked on resolution
+	// (CR 608.2b). DATA, judged in the same gate; a walk with no fired
+	// trigger admits NOTHING. Build it with
+	// effects.ManaValueEqualsTheEventAmount.
+	ManaValueEqualsEventAmount bool
 
 	// OpponentSlot is "for each opponent, … target … that player
 	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
@@ -966,6 +990,15 @@ type TargetSpec struct {
 	// "exactly" are different clauses, never one card's.
 	ManaValueEqualsX bool
 
+	// ManaValueEqualsXPlus is the "plus N" of "with mana value X plus N"
+	// (Sidisi, Regent of the Mire's "target creature card with mana value
+	// X plus 1"): with ManaValueEqualsX set, a candidate admits only at
+	// mana value X + N. Zero is plain "mana value X". Meaningless without
+	// ManaValueEqualsX; the view does not ship the clause as a plain
+	// "mana value X" one, so a client narrowing by X never hides a
+	// candidate the engine accepts.
+	ManaValueEqualsXPlus int
+
 	// PowerAtMostX and ToughnessAtMostX are "with power X or less" and
 	// "with toughness X or less" (ADR 0109 §9, #1842): the same
 	// announced-X bound as ManaValueAtMostX, on another statistic.
@@ -1158,6 +1191,15 @@ func (s *TargetSpec) WithManaValueAtMostX() *TargetSpec {
 // WithCount does.
 func (s *TargetSpec) WithManaValueEqualsX() *TargetSpec {
 	s.ManaValueEqualsX = true
+	return s
+}
+
+// WithManaValueEqualsXPlus marks the clause "with mana value X plus N"
+// (Sidisi, Regent of the Mire). Mutates and returns the receiver, as
+// WithManaValueEqualsX does.
+func (s *TargetSpec) WithManaValueEqualsXPlus(n int) *TargetSpec {
+	s.ManaValueEqualsX = true
+	s.ManaValueEqualsXPlus = n
 	return s
 }
 
@@ -1815,6 +1857,30 @@ func (s *TargetSpec) exiledWithAdmits(src TargetSource, c Card) bool {
 	return ok && ref.ID != uuid.Nil && c.ExiledWith == ref
 }
 
+// chosenTypeAdmits is OfSourcesChosenType's gate: true without the
+// flag, and with it only a candidate that has the creature type chosen
+// for the source (changeling included, CR 702.73a). A walk with no
+// source, or a source with no type chosen, admits nothing.
+func (s *TargetSpec) chosenTypeAdmits(src TargetSource, c Card) bool {
+	if !s.OfSourcesChosenType {
+		return true
+	}
+	tribe := src.namedTribe()
+	return tribe != "" && c.HasSubtype(tribe)
+}
+
+// namedTribe is the creature type chosen for the walk's source: the
+// live object's, or its last-known record's once it has left.
+func (s TargetSource) namedTribe() string {
+	switch {
+	case s.Departed != nil:
+		return s.Departed.NamedTribe
+	case s.Object != nil:
+		return s.Object.NamedTribe
+	}
+	return ""
+}
+
 // PaidForSourceKind names which payment PaidForSource asks about. The
 // zero value is no clause at all.
 type PaidForSourceKind string
@@ -1880,18 +1946,25 @@ func (s *TargetSpec) eventActorAdmits(src TargetSource, c Card) bool {
 	return who != uuid.Nil && c.Controller == who
 }
 
-// eventAmountAdmits is ManaValueAtMostEventAmount's gate: true without the
-// flag, and with it only a candidate whose mana value is at most the
+// eventAmountAdmits is ManaValueAtMostEventAmount's and
+// ManaValueEqualsEventAmount's gate: true without either flag, and with one
+// only a candidate whose mana value is at most (or exactly) the
 // triggering event's Amount. No fired trigger admits nothing.
 func (s *TargetSpec) eventAmountAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.ManaValueAtMostEventAmount {
+	if !s.ManaValueAtMostEventAmount && !s.ManaValueEqualsEventAmount {
 		return true
 	}
 	if src.Trigger == nil || !src.Trigger.Fired() {
 		return false
 	}
 	mv, ok := g.ManaValueForEffect(c)
-	return ok && mv <= src.Trigger.Event.Amount
+	if !ok {
+		return false
+	}
+	if s.ManaValueEqualsEventAmount {
+		return mv == src.Trigger.Event.Amount
+	}
+	return mv <= src.Trigger.Event.Amount
 }
 
 // chooserAdmits is ControlledByChooser's gate (#2055): true without the
@@ -1927,11 +2000,12 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
 // comparisons, CombatWithSource's combat relation, ExiledWithSource's
-// exile link and PaidForSource's crew / saddle payment. True with none
+// exile link, OfSourcesChosenType's chosen type and PaidForSource's crew
+// / saddle payment. True with none
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

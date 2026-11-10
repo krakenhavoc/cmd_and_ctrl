@@ -966,7 +966,8 @@ type Config struct {
 
 	// AttackTaxPenalty is what one point of CR 508.1h attack tax costs
 	// an attack's value (ADR 0080, #1063) — Propaganda's {2} is worth
-	// 2 × this. It is a MANA price rather than a life or card price,
+	// 2 × this. ADR 0221 prices a CR 509.1d block tax (Archangel of
+	// Tithes) with the same weight: one mana is one mana. It is a MANA price rather than a life or card price,
 	// so it is tuned against DamageToOpponent: at the default, {2}
 	// cancels roughly a 6-power swing, which is the right shape for
 	// "a 1/1 into Ghostly Prison is not worth the turn's mana, a Wurm
@@ -1501,7 +1502,8 @@ type state struct {
 	// Config says; Config.LeftoverWindows decides whether it is read.
 	leftover bool
 	// beforeMyMain is the bot's own upkeep or draw step with an empty
-	// stack: a window before its first main phase, where the mana it
+	// stack and a main phase still to come this turn: a window before
+	// its main phase, where the mana it
 	// spends is the mana its main phases would have (#2457, waitmain.go).
 	beforeMyMain bool
 	// dying caches dyingAnyway per permanent for this decision (ADR
@@ -1597,7 +1599,15 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	st.beforeMyUntap = st.step == "end" && nextTurnSeat(v) >= 0 && v.Seats[nextTurnSeat(v)].ID == st.me
 	st.leftover = stackEmpty &&
 		(st.beforeMyUntap || (st.myTurn && st.step == "postcombat_main" && !mainPhaseUpcoming(v)))
-	st.beforeMyMain = stackEmpty && st.myTurn && (st.step == "upkeep" || st.step == "draw")
+	// #5405: an upkeep an effect added after a phase (Obeka, Splitter of
+	// Seconds) is a beginning phase of its own, and the turn's plan says
+	// whether a main phase still follows it. With none left the wait
+	// would carry the mana past the turn's last window. A view with no
+	// plan at all (an older server, a hand-built test view) is the
+	// template's beginning phase, which a main phase always follows: a
+	// live upkeep or draw step always has steps still to come.
+	st.beforeMyMain = stackEmpty && st.myTurn && (st.step == "upkeep" || st.step == "draw") &&
+		(len(v.Turn.Upcoming) == 0 || mainPhaseUpcoming(v))
 	return st
 }
 

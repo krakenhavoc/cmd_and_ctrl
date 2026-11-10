@@ -214,3 +214,19 @@ func registerPunisher(p punisherRepeat, slug string) {
 	})
 	punisherKeysOf[p.Name] = keys
 }
+
+// onTargetPlayer is the punisher asked once, of the player the ability
+// targets: "target opponent loses 3 life unless they sacrifice a nonland
+// permanent of their choice or discard a card" (Thornplate Intimidator,
+// Starseer Mentor). A player who is no longer a legal target by
+// resolution is asked nothing (CR 608.2b).
+//
+// Caller holds g.mu.
+func (p punisherRepeat) onTargetPlayer(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return p.step(ctx, []uuid.UUID{t.ID})
+		}
+	}
+	return nil
+}

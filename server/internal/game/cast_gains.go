@@ -32,12 +32,17 @@ type permissionCastGains struct {
 	entersTapped bool
 	keywords     []string
 	abilities    []string
+	subtypes     []string
 	label        string
 	// #4679: "that creature enters with an additional <kind> counter",
 	// and the permission's source, which the mark names for the log.
 	counterKind string
 	counters    int
 	source      uuid.UUID
+	// anyPermanent widens the counter rider from creature spells to any
+	// permanent spell (Noctis, Prince of Lucis: "that artifact enters with
+	// a finality counter on it").
+	anyPermanent bool
 }
 
 // permissionCastGainsOf copies the riders out of the permission the
@@ -51,10 +56,13 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 		entersTapped: p.EntersTapped,
 		keywords:     append([]string(nil), p.GainsKeywords...),
 		abilities:    append([]string(nil), p.GainsAbilities...),
+		subtypes:     append([]string(nil), p.GainsSubtypes...),
 		label:        p.SourceName,
 		counterKind:  p.EntersWithCounterKind,
 		counters:     p.EntersWithCounters,
 		source:       p.Source,
+
+		anyPermanent: p.EntersWithCountersPermanent,
 	}
 }
 
@@ -67,7 +75,8 @@ func permissionCastGainsOf(p *CastPermission) permissionCastGains {
 // before the CR 614 pipeline (CR 614.1c, CR 614.12), so replacements
 // that modify counters (Doubling Season) see it.
 //
-// Nothing for a spell that is not a creature spell as cast: the card on
+// Nothing for a spell that is not a creature spell as cast (a permanent
+// spell, when the permission says EntersWithCountersPermanent): the card on
 // the stack has its cast face and bestow status by now, so an
 // Adventure, a modal card's noncreature face and a bestowed Aura spell
 // all read as what they are (CR 702.103b). The mark is on the item, so
@@ -84,7 +93,7 @@ func (g *Game) markPermissionEntryCountersLocked(cardID uuid.UUID, gains permiss
 		return
 	}
 	spell, item := g.spellCardOnStackLocked(cardID), g.StackMeta[cardID]
-	if spell == nil || item == nil || !spell.IsCreature() {
+	if spell == nil || item == nil || !(spell.IsCreature() || (gains.anyPermanent && spell.IsPermanent())) {
 		return
 	}
 	addPromisedCounterLocked(item, PromisedCounter{
@@ -104,7 +113,7 @@ func (g *Game) markPermissionEntryCountersLocked(cardID uuid.UUID, gains permiss
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantGainsForCastLocked(cardID uuid.UUID, gains permissionCastGains) {
-	if len(gains.keywords) == 0 && len(gains.abilities) == 0 {
+	if len(gains.keywords) == 0 && len(gains.abilities) == 0 && len(gains.subtypes) == 0 {
 		return
 	}
 	c, ok := g.LookupCardForEffect(cardID)
@@ -112,6 +121,9 @@ func (g *Game) grantGainsForCastLocked(cardID uuid.UUID, gains permissionCastGai
 		return
 	}
 	var mods []Mod
+	if len(gains.subtypes) > 0 {
+		mods = append(mods, AddSubtypesMod(gains.subtypes...))
+	}
 	if len(gains.keywords) > 0 {
 		mods = append(mods, AddKeywordsMod(gains.keywords...))
 	}

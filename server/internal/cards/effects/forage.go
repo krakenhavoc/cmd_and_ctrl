@@ -1,6 +1,11 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+	"slices"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // forage.go — #5184: the card side of the forage keyword action (CR
 // 701.61a, game/forage.go). To forage is to exile three cards from your
@@ -26,8 +31,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // 1 sacrifices a Food) and names the cards or the Food with it, and a
 // branch they can't pay can't be chosen, so with fewer than three cards
 // in the graveyard and no Food the ability can't be activated. Paying it
-// records PaidCost.Foraged and emits game.EventForage. A CR 602 ability
-// only: a mana ability has no either/or cost yet.
+// records PaidCost.Foraged and emits game.EventForage. A mana ability
+// declares the same cost as ManaAbilityCost.Forage (#5397).
 func Forage() game.AbilityCost {
 	return game.AbilityCost{Either: game.ForageAbilityBranches(), Forage: true}
 }
@@ -67,4 +72,24 @@ var mayForageNothingMore = PayUnlessBranches("pay-unless/forage-only",
 // additional cost or "you may forage" — off game.EventForage.
 func WheneverYouForage(label string, effect Effect) game.TriggeredAbility {
 	return On(game.EventForage, ByYou, label, effect)
+}
+
+// checkManaForage is Register's guard on a mana ability's forage
+// (#5397, ManaAbilityCost.Forage). The branch is folded into the
+// ability's sacrifice-another or exile-cards clause
+// (game.ChosenManaAbilityShape), so the rest of the cost may carry
+// neither, nor a discard; and a forage is paid from the battlefield,
+// where the Food and the activator's graveyard are, so a hand ability
+// (a Spirit Guide's shape) may not forage. Card-file mistakes, refused
+// at boot.
+func checkManaForage(name string, i int, ma ManaAbility) {
+	if !ma.Cost.Forage {
+		return
+	}
+	if ma.Cost.SacrificeOther != nil || ma.Cost.DiscardCards != nil || ma.Cost.ExileCards != nil {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d forages beside its own sacrifice, discard or exile clause — the forage branch would replace it (game.ChosenManaAbilityShape)", name, i))
+	}
+	if ma.Cost.ExileSelf || len(ma.Zones) > 0 && !slices.Equal(ma.Zones, []game.ZoneKind{game.ZoneBattlefield}) {
+		panic(fmt.Sprintf("effects.Register: %q mana ability %d forages off the battlefield or exiles its source — a forage mana ability is a permanent's", name, i))
+	}
 }

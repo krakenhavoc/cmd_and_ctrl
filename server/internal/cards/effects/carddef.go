@@ -98,6 +98,8 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			AddCounter:                a.Cost.AddCounter,
 			DiscardCards:              a.Cost.DiscardCards,
 			ExileCards:                a.Cost.ExileCards,
+			Either:                    manaForageBranches(a.Cost.Forage),
+			Forage:                    a.Cost.Forage,
 			ExilePermanents:           a.Cost.ExilePermanents,
 			Produced:                  a.Produced,
 			Label:                     a.Label,
@@ -121,6 +123,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			RestrictionsFunc:          a.RestrictionsFunc,
 			SpendRiders:               a.SpendRiders,
 		}
+		out[i].SourceBecomesProducedColor = a.SourceBecomesProducedColor
 	}
 	return out
 }
@@ -219,6 +222,7 @@ func buildDef(spec Spec) *game.CardDef {
 		BoastLimits:                         spec.BoastLimits,
 		PowerUpExtras:                       spec.PowerUpExtras,
 		AttackTaxes:                         spec.AttackTaxes,
+		BlockTaxes:                          spec.BlockTaxes,
 		EquipCostAlternatives:               spec.EquipCostAlternatives,
 		TargetTaxes:                         spec.TargetTaxes,
 		BlockRules:                          spec.BlockRules,
@@ -239,6 +243,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CantBeCountered:                     spec.CantBeCountered,
 		CantBeCopied:                        spec.CantBeCopied,
 		FlashWithCleanupSacrifice:           spec.FlashWithCleanupSacrifice,
+		FlashIf:                             spec.FlashIf,
 		CastTimeValues:                      spec.CastTimeValues,
 		CantBeCounteredIf:                   spec.CantBeCounteredIf,
 		SpellDamageCantBePrevented:          spec.SpellDamageCantBePrevented,
@@ -265,6 +270,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ZeroLoyaltyExemptions:               spec.ZeroLoyaltyExemptions,
 		OpponentEffectProtections:           spec.OpponentEffectProtections,
 		GameEndGates:                        spec.GameEndGates,
+		CoinFlipRules:                       spec.CoinFlipRules,
 		WantsDistinctColors:                 spec.WantsDistinctColors,
 		ReadsManaSpent:                      spec.ReadsManaSpent,
 		WantsManaFrom:                       spec.WantsManaFrom,
@@ -280,6 +286,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
+		LibraryTopVisibleWhen:               spec.LibraryTopVisibleWhen,
 		HandsRevealed:                       spec.HandsRevealed,
 		AttackOnlyNearestOpponentInChosenDirection: spec.AttackOnlyNearestOpponentInChosenDirection,
 		LooksAtFaceDownCreatures:                   spec.LooksAtFaceDownCreatures,
@@ -516,4 +523,14 @@ func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
 		return game.ConditionalLandPlays{}
 	}
 	return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, Another: spec.AdditionalLandPlaysNeedsAnother}
+}
+
+// manaForageBranches is a mana ability's either/or cost: forage's two
+// branches when the cost forages (#5397, ManaAbilityCost.Forage), nil
+// otherwise.
+func manaForageBranches(forage bool) []game.AbilityCostBranch {
+	if !forage {
+		return nil
+	}
+	return game.ForageAbilityBranches()
 }

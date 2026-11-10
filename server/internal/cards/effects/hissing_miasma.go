@@ -36,13 +36,7 @@ func init() {
 				item.Params.Player = ev.Actor
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				victim := item.Params.Player
-				if p := g.PlayerByIDForEffect(victim); p == nil || p.Eliminated {
-					return nil
-				}
-				return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1)
-			},
+			Effect: cmdrB3AttackersControllerLosesOne,
 		}},
 	})
 }

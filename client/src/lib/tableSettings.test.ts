@@ -7,6 +7,7 @@ import {
   formatUndoCount,
   hasUndoBudget,
   isUnlimitedUndo,
+  settingsPatchError,
   settingsSummary,
   undoBlockedReason,
 } from "./tableSettings";
@@ -154,5 +155,20 @@ describe("undoBlockedReason", () => {
         undoBlockedReason(seat({ undos_remaining: 1, undo_blocked: "too_deep" }), admin),
       ).toContain("only goes back 8 actions");
     }
+  });
+});
+
+// ADR 0216 §1: Planechase is chosen in the lobby and fixed at Start.
+describe("Planechase setting", () => {
+  it("is refused once the game has started, and allowed in the lobby", () => {
+    expect(settingsPatchError({ planechase: true }, "lobby")).toBeNull();
+    expect(settingsPatchError({ planechase: false }, "active")).toMatch(/Planechase is fixed/);
+  });
+
+  it("joins the settings summary when on", () => {
+    expect(settingsSummary({ ...DEFAULT_TABLE_SETTINGS, planechase: true })).toContain(
+      "Planechase",
+    );
+    expect(settingsSummary(DEFAULT_TABLE_SETTINGS)).not.toContain("Planechase");
   });
 });
