@@ -859,6 +859,7 @@ coinflip coin-flip/goblin-psychopath
 coinflip coin-flip/invert-polarity
 coinflip coin-flip/kerblam-warehouse
 coinflip coin-flip/krark-the-thumbless
+coinflip coin-flip/mirrored-depths-counter
 coinflip coin-flip/negative-zone-portal
 coinflip coin-flip/next-time-double-or-prevent
 coinflip coin-flip/nothing
@@ -1235,6 +1236,7 @@ option option-pick/lunar-avenger-keyword
 option option-pick/mana-vortex-sacrifice-or-counter
 option option-pick/manifold-mouse-keyword
 option option-pick/memories-returning-opponent
+option option-pick/minamo-return-blue-card
 option option-pick/mister-hyde-remove-a-counter
 option option-pick/mogis-god-of-slaughter-damage-or-sacrifice
 option option-pick/multiform-wonder-keyword
@@ -1403,6 +1405,7 @@ payunless pay-unless/jolted-awake-return
 payunless pay-unless/kalastria-highborn-drain
 payunless pay-unless/kavaron-harrier-robot
 payunless pay-unless/kazuul-ogre
+payunless pay-unless/kilnspire-district-damage
 payunless pay-unless/koya-death-from-above-return
 payunless pay-unless/krenko-baron-of-tin-street-goblin
 payunless pay-unless/krovod-haunch-dogs
