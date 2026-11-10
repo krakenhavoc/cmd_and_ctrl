@@ -28,13 +28,7 @@ func init() {
 					return creatureCardLeftYourGraveyard(ev, source, g)
 				},
 				"Skeleton Crew — create a 2/2 black Skeleton Pirate creature token",
-				func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("2/2 black Skeleton Pirate"),
-						N:          1,
-					}.Apply(NewContext(g, item))
-				})),
+				Do(CreateToken{Template: TokenCard("2/2 black Skeleton Pirate"), N: 1}))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{5}{B}: Return this card from your graveyard to the battlefield tapped.",

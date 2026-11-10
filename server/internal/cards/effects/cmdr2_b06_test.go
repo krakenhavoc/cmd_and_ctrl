@@ -398,3 +398,68 @@ func TestCmdr2B06FranciscoExploresOnAnyPirateDamageToAPlayerOncePerBatch(t *test
 		t.Errorf("more than one explore: library %d", me.Library.Size())
 	}
 }
+
+// --- Admiral Brass, Unsinkable ------------------------------------------
+
+func TestCmdr2B06AdmiralBrassMillsFourWhenItEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	msc18Library(me, 10)
+	gy := me.Graveyard.Size()
+	castCatalogSpell(t, g, "Admiral Brass, Unsinkable", "Legendary Creature — Human Pirate", cmdr2B06BrassOracle, nil)
+	passPriorityAroundTable(t, g)
+	if got := me.Graveyard.Size() - gy; got != 4 {
+		t.Errorf("milled %d, want 4", got)
+	}
+}
+
+func cmdr2B06BrassCombat(t *testing.T) (g *game.Game, me *game.Player, pirate, bear uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[0]
+	cmdr2B05Card(g, me.ID, "Admiral Brass, Unsinkable", "Legendary Creature — Human Pirate", cmdr2B06BrassOracle, 3, 3)
+	pirate = pushCatalogGraveyardCard(me, "Dead Pirate", "Creature — Human Pirate", "", 2, 1)
+	bear = pushCatalogGraveyardCard(me, "Dead Bear", "Creature — Bear", "", 2, 2)
+	advanceTo(t, g, game.StepBeginCombat)
+	return
+}
+
+func TestCmdr2B06AdmiralBrassReturnsAPirateWithFinalityBase44AndHaste(t *testing.T) {
+	g, me, pirate, bear := cmdr2B06BrassCombat(t)
+	if opts := pickTargetPrompt(t, g).PickTargetCards; len(opts) != 1 || opts[0] != pirate {
+		t.Fatalf("legal targets %v, want only the Pirate card %v (not %v)", opts, pirate, bear)
+	}
+	answerPickTarget(t, g, pirate)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCardByID(g, pirate); !ok {
+		t.Fatal("the Pirate did not return")
+	}
+	if got := counterOn(g, pirate, game.CounterFinality); got != 1 {
+		t.Errorf("finality counters %d, want 1", got)
+	}
+	if got := effectivePower(t, g, pirate); got != 4 {
+		t.Errorf("power %d, want base 4", got)
+	}
+	if got := effectiveToughness(t, g, pirate); got != 4 {
+		t.Errorf("toughness %d, want base 4", got)
+	}
+	if !hasKeywordOf(g, pirate, "haste") {
+		t.Error("no haste")
+	}
+	if !me.Graveyard.Contains(bear) {
+		t.Error("the non-Pirate card left the graveyard")
+	}
+}
+
+func TestCmdr2B06AdmiralBrassMayDecline(t *testing.T) {
+	g, me, pirate, _ := cmdr2B06BrassCombat(t)
+	answerPickTarget(t, g, pirate)
+	passPriorityAroundTable(t, g)
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if _, ok := battlefieldCardByID(g, pirate); ok {
+		t.Error("declining still returned the Pirate")
+	}
+}
