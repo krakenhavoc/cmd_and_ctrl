@@ -417,3 +417,57 @@ func TestCmdrB25PiaAndKiranNalaarNeedsAnArtifactToSacrifice(t *testing.T) {
 		t.Fatal("activated with no artifact to sacrifice")
 	}
 }
+
+const cmdrB25VizierOracle = "55bceb83-bbba-477f-98ce-6e0a80b91080"
+
+func TestCmdrB25VizierOfManyFacesCastCopiesWithoutAnException(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bears := seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	id := castCatalogSpell(t, g, "Vizier of Many Faces", "Creature — Shapeshifter Cleric", cmdrB25VizierOracle, nil)
+	resolveWithCopyChoice(t, g, bears)
+	got := copyBattlefieldCard(t, g, id)
+	if got.Name != "Grizzly Bears" || got.TypeLine != "Creature — Bear" {
+		t.Errorf("copy is %q %q, want a plain Grizzly Bears", got.Name, got.TypeLine)
+	}
+}
+
+func TestCmdrB25VizierOfManyFacesEmbalmedTokenIsAWhiteZombieCopyWithNoManaCost(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	bears := seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	// The Bears are green so the white exception is visible.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == bears {
+				g.Battlefield.Cards[i].Colors = []string{"G"}
+				g.Battlefield.Cards[i].ManaCost = "{1}{G}"
+			}
+		}
+	})
+	gy := pushCatalogGraveyardCard(me, "Vizier of Many Faces", "Creature — Shapeshifter Cleric", cmdrB25VizierOracle, 0, 0)
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{U}{U}"); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, gy, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("embalm: %v", err)
+	}
+	resolveWithCopyChoice(t, g, bears)
+	tok := cmdrB25Copy(g, me.ID, "Grizzly Bears", bears)
+	if tok == nil {
+		t.Fatal("the embalm token did not enter as a Grizzly Bears")
+	}
+	if !tok.IsToken() {
+		t.Error("not a token")
+	}
+	if tok.ManaCost != "" {
+		t.Errorf("mana cost %q, want none", tok.ManaCost)
+	}
+	if len(tok.Colors) != 1 || tok.Colors[0] != "W" {
+		t.Errorf("colours %v, want white", tok.Colors)
+	}
+	if !tok.HasSubtype("Zombie") || !tok.HasSubtype("Bear") {
+		t.Errorf("type line %q, want a Zombie in addition to Bear", tok.TypeLine)
+	}
+}
