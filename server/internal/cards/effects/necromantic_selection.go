@@ -110,5 +110,5 @@ var necromanticSelectionZombie = TogetherTail("necromantic-selection/black-zombi
 // necromanticSelectionExile is the last sentence: the spell exiles itself
 // (it moves itself, so the resolution does not put it into the graveyard).
 func necromanticSelectionExile(ctx *Context, _ []uuid.UUID, _ int) error {
-	return ctx.Game.ExileCardForEffect(ctx.Source())
+	return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
 }

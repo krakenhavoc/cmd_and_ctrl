@@ -31,3 +31,14 @@ var cmdrB19ReturnListedToCommandZoneBody = game.SimpleDelayedBody("commander/ret
 		}
 		return nil
 	})
+
+// cmdrB19DealXToTheTarget is "<this> deals X damage to any target" as the
+// first step of a spell's resolution (Electrodominance): the chosen target,
+// if still legal, is dealt the announced X by the spell.
+func cmdrB19DealXToTheTarget(ctx *Context) error {
+	t, ok := firstLegalTarget(ctx)
+	if !ok {
+		return nil
+	}
+	return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: ctx.X()}.Apply(ctx)
+}

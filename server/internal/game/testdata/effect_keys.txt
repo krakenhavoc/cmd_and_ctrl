@@ -72,6 +72,7 @@ body cipher/cast
 body claim-the-kingdom/indestructible
 body clone-saga/copy-creature-spell-not-legendary
 body combat/untap-and-remove-the-payload
+body commander/return-listed-to-command-zone
 body conspire/copy
 body construct-a-cosmic-cube/control
 body copy/surge-to-victory-exiled-card
@@ -485,6 +486,7 @@ choose choose-cards/dyadrine-remove-two-counters
 choose choose-cards/each-player-reanimates-one
 choose choose-cards/eerie-ultimatum-return
 choose choose-cards/ego-drain-exile
+choose choose-cards/electrodominance-cast
 choose choose-cards/elemental-teachings-settle
 choose choose-cards/ellywick-tumblestrum-take
 choose choose-cards/elven-passage-behold
@@ -522,6 +524,7 @@ choose choose-cards/great-intelligences-plan-cast
 choose choose-cards/green-goblin-revenant-draw
 choose choose-cards/heart-shaped-herb-sacrifice
 choose choose-cards/heated-argument-exile
+choose choose-cards/hellkite-courser-commander
 choose choose-cards/heroes-hangout-play
 choose choose-cards/hideaway-exile-face-down
 choose choose-cards/hobbit-take-milled-into-hand

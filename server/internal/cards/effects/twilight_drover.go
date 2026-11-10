@@ -29,7 +29,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}, Remove a +1/+1 counter from this creature: Create two 1/1 white Spirit creature tokens with flying.",
-			Purpose: game.Purpose{Tokens: 2, CreatureTokens: 2},
+			Purpose: game.Purpose{Tokens: 2, CreatureTokens: 2, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{2}{W}"), RemoveCountersFromThis(game.CounterPlusOne, 1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TokenCard("1/1 white Spirit with flying"), N: 2}.Apply(NewContext(g, item))

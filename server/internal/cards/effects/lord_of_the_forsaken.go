@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Lord of the Forsaken — Creature — Demon {4}{B}{B}, 6/6 (Tarkir: Dragonstorm Commander)
 // Commander):
 //
@@ -33,15 +31,7 @@ func init() {
 			Label:   "{B}, Sacrifice another creature: Target player mills three cards.",
 			Cost:    Plus(ManaCost("{B}"), SacrificeAnotherN(1, "another creature", Creature())),
 			Targets: TargetPlayer("target player"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetPlayer {
-						return MillCards{Player: t.ID, N: 3}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect:  TargetPlayerMills(3),
 		}},
 	})
 }

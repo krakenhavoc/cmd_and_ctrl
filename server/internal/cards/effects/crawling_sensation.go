@@ -27,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Optional(AtYourUpkeep("Crawling Sensation — you may mill two cards", Do(MillCards{N: 2})),
 				"Crawling Sensation — mill two cards?"),
-			TriggersOnlyOnceEachTurn(OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, gitrogLandToGraveyard,
+			TriggersOnlyOnceEachTurn(OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB, game.EventMill}, gitrogLandToGraveyard,
 				"Crawling Sensation — create a 1/1 green Insect creature token",
 				Do(CreateToken{Template: TokenCard("1/1 green Insect"), N: 1})))),
 		},

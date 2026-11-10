@@ -21,13 +21,7 @@ func init() {
 		Targets:      TargetAny(),
 		OnResolve: ResolveSteps(
 			// The life gain waits for a prompt the damage asks (CR 608.2c, #4155).
-			Instruction(func(ctx *Context) error {
-				t, ok := firstLegalTarget(ctx)
-				if !ok {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: ctx.X()}.Apply(ctx)
-			}),
+			Instruction(func(ctx *Context) error { return cmdrB19DealXToTheTarget(ctx) }),
 			// "and you gain X life" is not conditional on the target.
 			Instruction(func(ctx *Context) error {
 				return GainLife{Player: ctx.Controller(), Amount: ctx.X()}.Apply(ctx)

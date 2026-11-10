@@ -72,24 +72,24 @@ func hellkiteCourserAsk(g *game.Game, item *game.StackItem) error {
 // gives it haste and schedules its return. An on-disk key.
 var hellkiteCourserPicked = askedPickRule("choose-cards/hellkite-courser-commander", nil,
 	func(ctx *Context, r game.CardsChosen) error {
-		for _, id := range r.Picked {
-			entered, err := ctx.Game.PutFromCommandZoneOntoBattlefieldForEffect(id, game.ZoneEntryOptions{Controller: ctx.Controller()})
-			if err != nil || entered == uuid.Nil {
-				return err
-			}
-			if err := (ScopedEffectFor{
-				Target:   entered,
-				Mods:     []game.Mod{game.AddKeywordsMod("haste")},
-				Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), entered),
-				Label:    "Hellkite Courser — it gains haste",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ScheduleDelayedTrigger{
-				Label: "Hellkite Courser — return the commander to the command zone",
-				Cards: []uuid.UUID{entered},
-				Body:  cmdrB19ReturnListedToCommandZoneBody,
-			}.Apply(ctx)
+		if len(r.Picked) == 0 {
+			return nil
 		}
-		return nil
+		entered, err := ctx.Game.PutFromCommandZoneOntoBattlefieldForEffect(r.Picked[0], game.ZoneEntryOptions{Controller: ctx.Controller()})
+		if err != nil || entered == uuid.Nil {
+			return err
+		}
+		if err := (ScopedEffectFor{
+			Target:   entered,
+			Mods:     []game.Mod{game.AddKeywordsMod("haste")},
+			Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), entered),
+			Label:    "Hellkite Courser — it gains haste",
+		}).Apply(ctx); err != nil {
+			return err
+		}
+		return ScheduleDelayedTrigger{
+			Label: "Hellkite Courser — return the commander to the command zone",
+			Cards: []uuid.UUID{entered},
+			Body:  cmdrB19ReturnListedToCommandZoneBody,
+		}.Apply(ctx)
 	})
