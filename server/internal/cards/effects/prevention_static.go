@@ -67,6 +67,10 @@ const (
 	// planeswalkers you control" (The Western Cloud): a battlefield
 	// creature or planeswalker the static's controller controls.
 	ToCreaturesAndPlaneswalkersYouControl
+	// ToAnything is no restriction on the recipient: "prevent all combat
+	// damage that would be dealt by <sources>" (Kessig); the source filter
+	// does the narrowing.
+	ToAnything
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -251,6 +255,8 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	case ToAnotherCreatureYouControl:
 		return target != src.InstanceID && staticProtects(ToCreaturesYouControl, target, g, src)
+	case ToAnything:
+		return true
 	case ToCreaturesAndPlaneswalkersYouControl:
 		c, ok := g.LookupCardForEffect(target)
 		return ok && (c.IsCreature() || c.IsPlaneswalker()) && c.Controller == src.Controller && g.Battlefield.Contains(target)

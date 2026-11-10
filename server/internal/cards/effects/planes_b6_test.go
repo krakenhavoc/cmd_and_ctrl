@@ -1366,3 +1366,42 @@ func TestLairOfTheAshenIdolChaosMakesZombiesForChosenPlayers(t *testing.T) {
 		t.Errorf("zombies %d and %d, want 1 each", count(me.ID), count(opp.ID))
 	}
 }
+
+var planeKessig = planeFixture{"b54d9a4a-1d55-4ceb-96fd-2b1d5e46de14", "Kessig", "Plane — Innistrad"}
+
+func TestKessigPreventsNonWerewolfCombatDamageAndChaosMakesWerewolves(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeKessig)
+	g, _ := newPlaneGame(t, planeKessig)
+	advanceToMain(t, g)
+	me, opp := g.Seats[g.Turn.ActiveSeat], opponentOf(g)
+	bear := pushVanillaCreature(g, me.ID, "Bear", 2, 2)
+	wolf := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Wolf", TypeLine: "Creature — Human Werewolf", Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID})
+	life := opp.Life
+	pr7bAttack(t, g, opp.ID, bear, wolf)
+	advanceTo(t, g, game.StepEndCombat)
+	if got := life - opp.Life; got != 3 {
+		t.Errorf("the defender lost %d, want 3 (only the Werewolf's damage)", got)
+	}
+
+	g2, _ := newPlaneGame(t, planeKessig)
+	advanceToMain(t, g2)
+	me2 := g2.Seats[g2.Turn.ActiveSeat]
+	b2 := pushVanillaCreature(g2, me2.ID, "Bear", 2, 2)
+	rollChaos(t, g2, me2.ID)
+	passPriorityAroundTable(t, g2)
+	if p, tough := ptOf(t, g2, b2); p != 4 || tough != 4 {
+		t.Errorf("%d/%d after chaos, want 4/4", p, tough)
+	}
+	if !hasEffectiveKeyword(t, g2, b2, "trample") {
+		t.Error("no trample")
+	}
+	var werewolf bool
+	g2.WithWriteLock(func() {
+		g2.RecomputeLayersIfStaleLocked()
+		c, _ := g2.LookupCardForEffect(b2)
+		werewolf = c.HasSubtype("Werewolf")
+	})
+	if !werewolf {
+		t.Error("not a Werewolf")
+	}
+}
