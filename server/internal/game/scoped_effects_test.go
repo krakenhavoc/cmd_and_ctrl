@@ -340,6 +340,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5235: Prairie Dog's extra +1/+1 counter, read by no layer. Its
 		// cases are in one_more_counter_test.go and cards/effects.
 		ModOneMorePlusOneCounter: true,
+		// #5368: Kaya, Geist Hunter's token doubling, read by no layer. Its
+		// cases are in multiply_tokens_test.go and cards/effects.
+		ModMultiplyTokens: true,
 		// #5251: Lumbering Laundry's look at face-down creatures, read by
 		// no layer. Its cases are in face_down_look_test.go, in
 		// protocol's face_down_look_view_test.go and in cards/effects.

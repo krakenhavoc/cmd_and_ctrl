@@ -1170,6 +1170,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModOneMoreCounter: {reader: readerReplacement},
 	// #5235: Prairie Dog's one more +1/+1 counter this turn.
 	ModOneMorePlusOneCounter: {reader: readerReplacement},
+	// #5368: Kaya, Geist Hunter's tokens doubled this turn.
+	ModMultiplyTokens: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
