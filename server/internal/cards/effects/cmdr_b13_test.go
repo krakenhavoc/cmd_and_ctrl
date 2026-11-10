@@ -701,3 +701,42 @@ func TestCmdrB14CanopyGargantuanCountersEqualToughnessOnOthers(t *testing.T) {
 		t.Errorf("an opponent's creature got %d counters", got)
 	}
 }
+
+const cmdrB14FloralOracle = "4da17e9e-df3e-4c46-a0cf-baafbe67186f"
+
+func TestCmdrB14FloralEvokerLandfallAndRecursion(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	evoker := b12Push(g, me.ID, "Floral Evoker", "Creature — Snake Druid", cmdrB14FloralOracle, 2, 3)
+	b12PlayFromHand(t, g, "Forest", "Basic Land — Forest", "", game.CastSpellParams{})
+	passPriorityAroundTable(t, g)
+	if got := plusOneCounters(g, evoker); got != 1 {
+		t.Fatalf("%d counters after a land entered, want 1", got)
+	}
+	// Discard a creature card to return a land card from the graveyard
+	// tapped; that entry is landfall too.
+	deadLand := seedGraveyardCard(t, g, "Dead Island", "Basic Land — Island", "")
+	fodder := handCardForTest(me, "Fodder", "Creature — Bear", "")
+	b06AddMana(me, "G")
+	b16Activate(t, g, me.ID, evoker, 0, game.ActivateAbilityParams{
+		DiscardIDs: []uuid.UUID{fodder},
+		Targets:    []game.TargetRef{{Kind: game.TargetCard, ID: deadLand}},
+	})
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(deadLand) || !b13Tapped(t, g, deadLand) {
+		t.Error("the land did not return tapped")
+	}
+	if !me.Graveyard.Contains(fodder) {
+		t.Error("the discarded creature card is not in the graveyard")
+	}
+	if got := plusOneCounters(g, evoker); got != 2 {
+		t.Errorf("%d counters after the returned land entered, want 2", got)
+	}
+	// A noncreature card can't pay the cost.
+	spell := handCardForTest(me, "Bolt", "Instant", "")
+	if err := g.ActivateCatalogAbility(me.ID, evoker, 0, game.ActivateAbilityParams{
+		DiscardIDs: []uuid.UUID{spell}, Targets: []game.TargetRef{{Kind: game.TargetCard, ID: deadLand}},
+	}); err == nil {
+		t.Error("an Instant paid for a creature-card discard")
+	}
+}
