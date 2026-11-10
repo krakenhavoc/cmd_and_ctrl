@@ -29,12 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, ASourceYouControlDealtNoncombatDamageToAnOpponent,
 				"Niv-Mizzet, Visionary — draw that many cards",
-				func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					return DrawCards{N: item.Trigger.Event.Amount}.Apply(NewContext(g, item))
-				}),
+				cmdr2B08DrawThatMany),
 		},
 	})
 }
