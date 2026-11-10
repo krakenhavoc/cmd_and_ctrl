@@ -1111,3 +1111,72 @@ func TestFieldsOfSummerLetsTheCasterGainTwoAndChaosLetsYouGainTen(t *testing.T) 
 		t.Errorf("gained %d life, want 10", got)
 	}
 }
+
+var planeFurnaceLayer = planeFixture{"1799d361-85e7-4c04-aa04-6f83e6499573", "Furnace Layer", "Plane — New Phyrexia"}
+
+func TestFurnaceLayerDiscardsAtRandomAndChaosDestroys(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeFurnaceLayer)
+	g, _ := newPlaneGame(t, planeFurnaceLayer)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	// Make every hand a single land so whoever is picked pays 3 life.
+	var lives []int
+	for _, p := range g.Seats {
+		for p.Hand.Size() > 0 {
+			_, _ = p.Hand.PopTop()
+		}
+		p.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Plains", TypeLine: "Basic Land — Plains", Owner: p.ID, Controller: p.ID})
+		lives = append(lives, p.Life)
+	}
+	planeswalkToPlane(t, g, planeFurnaceLayer.Oracle)
+	passPriorityAroundTable(t, g)
+	for _, c := range g.PendingChoices {
+		if c != nil && isSacrificePrompt(c) {
+			t.Fatal("unexpected sacrifice prompt")
+		}
+	}
+	// A discard prompt is a choose_cards of the discard kind; answer it.
+	for i := 0; i < 4; i++ {
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoiceChooseCards && len(c.ChooseCards) > 0 {
+				_ = g.ResolveChooseCards(c.ID, c.Chooser, c.ChooseCards[:1])
+			}
+		}
+		passPriorityAroundTable(t, g)
+	}
+	lost, emptied := 0, 0
+	for i, p := range g.Seats {
+		if lives[i]-p.Life == 3 {
+			lost++
+		}
+		if p.Hand.Size() == 0 {
+			emptied++
+		}
+	}
+	if lost != 1 || emptied != 1 {
+		t.Errorf("%d players lost 3 life and %d discarded; want exactly one player to do both", lost, emptied)
+	}
+
+	opp := opponentOf(g)
+	rock := b12Permanent(g, opp.ID, "Rock", "Artifact")
+	land := b12Permanent(g, opp.ID, "Island", "Basic Land — Island")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(land)); err == nil {
+		t.Fatal("a land was accepted as the target")
+	}
+	answerPickTarget(t, g, rock)
+	passPriorityAroundTable(t, g)
+	if c := latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt); c != nil {
+		if err := g.ResolveTriggerPrompt(c.ID, c.Chooser, true); err != nil {
+			t.Fatalf("answering: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	g.ReadSnapshot(func() {
+		if z := g.FindCardZoneForEffect(rock); z != nil && z.Kind == game.ZoneBattlefield {
+			t.Error("the nonland permanent was not destroyed")
+		}
+	})
+}
