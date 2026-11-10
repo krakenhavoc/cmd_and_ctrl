@@ -32,7 +32,7 @@ func init() {
 					if !YouPutACounterOnACreatureThisTurn(g, item.Controller) {
 						return nil
 					}
-					return CreateToken{Controller: item.Controller, Template: ClueToken(), N: 1}.Apply(NewContext(g, item))
+					return Investigate{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				}),
 		},
 	})

@@ -32,7 +32,7 @@ func init() {
 					Reason:        "They Went This Way — a basic land, onto the battlefield tapped",
 				}.Apply(ctx)
 			}),
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 		),
 	})
 }

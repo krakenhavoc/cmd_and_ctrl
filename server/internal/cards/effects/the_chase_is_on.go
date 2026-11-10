@@ -22,7 +22,7 @@ func init() {
 			Instruction(func(ctx *Context) error {
 				return pumpAndGrantFirstTarget(3, 0, label, "first strike")(ctx.Game, ctx.Item)
 			}),
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 		),
 	})
 }

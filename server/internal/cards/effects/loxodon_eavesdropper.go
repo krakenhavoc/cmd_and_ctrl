@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Loxodon Eavesdropper — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisEnters("Loxodon Eavesdropper — investigate", Do(Investigate{N: 1})),
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b41DrewYourSecondCardThisTurn(ev, source, g)
 			}, "Loxodon Eavesdropper — +1/+1 and vigilance until end of turn", loxodonEavesdropperPump),

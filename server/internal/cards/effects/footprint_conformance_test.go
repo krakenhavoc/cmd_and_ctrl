@@ -146,6 +146,12 @@ var footprintConformanceCases = map[string]conformanceCase{
 		Template: TokenCard("1/1 white Rabbit"), Name: "creature",
 		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },
 	}},
+	// #5425: investigate is the Clue's creation and EventInvestigate.
+	"Investigate": {step: Investigate{N: 2}},
+	"InvestigateForEach": {step: InvestigateForEach{
+		Name:  "creature",
+		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },
+	}},
 	"If:nested": {step: If{Cond: CondNoSpellsCast{}, Then: []Applier{
 		GainLife{Amount: 1},
 		If{Cond: CondMonarch{}, Then: []Applier{DrawCards{N: 1}}},

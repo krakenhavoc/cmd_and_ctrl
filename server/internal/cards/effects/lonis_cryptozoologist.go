@@ -60,7 +60,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherNontokenCreatureYouControlEntered(ev, source, g)
-			}, "Lonis, Cryptozoologist — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			}, "Lonis, Cryptozoologist — investigate", Do(Investigate{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   label,

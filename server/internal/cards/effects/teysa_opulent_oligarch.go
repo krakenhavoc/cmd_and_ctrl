@@ -37,7 +37,7 @@ func init() {
 					if n == 0 {
 						return nil
 					}
-					return CreateToken{Template: ClueToken(), N: n}.Apply(NewContext(g, item))
+					return Investigate{N: n}.Apply(NewContext(g, item))
 				}),
 			TriggersOnlyOnceEachTurn(On(game.EventLTB, aClueYouControlWasPutIntoAGraveyard,
 				"Teysa — create a 1/1 white and black Spirit creature token with flying",

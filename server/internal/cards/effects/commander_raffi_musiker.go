@@ -30,7 +30,7 @@ func init() {
 			}),
 			GainLife{Amount: 2}),
 		ModeSteps("Investigate. You lose 2 life.", nil,
-			CreateToken{Template: ClueToken(), N: 1},
+			Investigate{N: 1},
 			GainLife{Amount: -2}),
 	)
 	Register(Spec{

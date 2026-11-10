@@ -26,7 +26,7 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, trekB18DiedDuringYourTurn, "Starfleet Security — investigate",
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 		},
 	})
 }

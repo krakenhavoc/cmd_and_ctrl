@@ -47,7 +47,7 @@ func init() {
 				if p == nil || p.Eliminated || perSeat[i] != most {
 					continue
 				}
-				if err := (CreateToken{Controller: p.ID, Template: ClueToken(), N: 1}).Apply(ctx); err != nil {
+				if err := (Investigate{Player: p.ID, N: 1}).Apply(ctx); err != nil {
 					return err
 				}
 			}
