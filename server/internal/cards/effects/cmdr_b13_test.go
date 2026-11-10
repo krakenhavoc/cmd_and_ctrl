@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"errors"
 	"testing"
 
@@ -927,5 +928,63 @@ func TestCmdrB15AdaptiveTrainingPostChargesToThreeThenCopiesTheNextSpell(t *test
 	passPriorityAroundTable(t, g)
 	if opp.Life != life-3 {
 		t.Errorf("opponent at %d, want %d: a second Bolt must not be copied", opp.Life, life-3)
+	}
+}
+
+const cmdrB15DivinerOracle = "abf4dcd8-5176-4f4a-b7c1-5ce24ff181bf"
+
+func cmdrB15DivinerAttack(t *testing.T) (g *game.Game, me *game.Player, bolt, big uuid.UUID) {
+	t.Helper()
+	g = newCatalogGame(t)
+	me = g.Seats[0]
+	diviner := b12Push(g, me.ID, "Diviner of Mist", "Creature — Dragon", cmdrB15DivinerOracle, 4, 5)
+	bolt = uuid.New()
+	big = uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: bolt, Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", OracleID: lightningBoltOracle, Owner: me.ID, Controller: me.ID})
+		me.Graveyard.PushTop(game.Card{InstanceID: big, Name: "Big Sorcery", TypeLine: "Sorcery", ManaCost: "{4}{R}", Owner: me.ID, Controller: me.ID})
+	})
+	declareAttack(t, g, g.Seats[1].ID, diviner)
+	passPriorityAroundTable(t, g)
+	return g, me, bolt, big
+}
+
+func TestCmdrB15DivinerMillsFourAndCastsAnInstantFreeThenExilesIt(t *testing.T) {
+	g, me, bolt, big := cmdrB15DivinerAttack(t)
+	opp := g.Seats[1]
+	c := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, bolt)
+	if slices.Contains(c.DiscardOptions, big) {
+		t.Error("a mana value 5 sorcery was offered")
+	}
+	life := opp.Life
+	if err := castThroughResolutionCast(t, g, me.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{playerTarget(opp.ID)}, Strict: true, AlternativeCost: game.AltCostKeyGrantedCost,
+	}); err != nil {
+		t.Fatalf("free cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life > life-3 {
+		t.Errorf("opponent at %d, want at most %d", opp.Life, life-3)
+	}
+	if slices.Contains(c.DiscardOptions, big) || me.Graveyard.Contains(bolt) {
+		t.Error("the Bolt returned to the graveyard instead of being exiled")
+	}
+	if !g.Exile.Contains(bolt) {
+		t.Error("the Bolt is not in exile")
+	}
+}
+
+func TestCmdrB15DivinerMillsFourCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	diviner := b12Push(g, me.ID, "Diviner of Mist", "Creature — Dragon", cmdrB15DivinerOracle, 4, 5)
+	before := me.Library.Size()
+	declareAttack(t, g, g.Seats[1].ID, diviner)
+	passPriorityAroundTable(t, g)
+	if got := before - me.Library.Size(); got != 4 {
+		t.Errorf("milled %d, want 4", got)
+	}
+	if resolutionCastOfferFor(g, me.ID) != nil {
+		t.Error("an offer was made with no instant or sorcery in the graveyard")
 	}
 }
