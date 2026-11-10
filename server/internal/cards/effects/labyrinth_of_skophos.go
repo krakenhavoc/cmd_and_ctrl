@@ -16,7 +16,7 @@ func init() {
 		OracleID:      "9ec5a487-d8ed-459a-8f58-56f6e9a2dfe8",
 		Name:          "Labyrinth of Skophos",
 		Completeness:  CompletenessFull,
-		ManaAbilities: []ManaAbility{cmdr2B01TapForColorless()},
+		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}: Remove target attacking or blocking creature from combat.",
 			Cost:    Plus(ManaCost("{4}"), TapCost()),

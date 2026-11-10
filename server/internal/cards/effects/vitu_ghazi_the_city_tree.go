@@ -15,7 +15,7 @@ func init() {
 		OracleID:      "88fb9e82-28b9-4275-a1e2-cb3a9bfda127",
 		Name:          "Vitu-Ghazi, the City-Tree",
 		Completeness:  CompletenessFull,
-		ManaAbilities: []ManaAbility{cmdr2B01TapForColorless()},
+		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{G}{W}, {T}: Create a 1/1 green Saproling creature token.",
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},

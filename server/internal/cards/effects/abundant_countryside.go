@@ -20,7 +20,7 @@ func init() {
 		Name:         "Abundant Countryside",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
-			cmdr2B01TapForColorless(),
+			painlessColorless(),
 			cmdr2B01TapForCreatureOnlyMana(),
 		},
 		Activated: []ActivatedAbility{{

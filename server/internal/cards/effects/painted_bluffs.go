@@ -14,7 +14,7 @@ func init() {
 		Name:         "Painted Bluffs",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
-			cmdr2B01TapForColorless(),
+			painlessColorless(),
 			{
 				Cost:     ManaAbilityCost{Mana: "{1}", Tap: true},
 				Produced: "{W|U|B|R|G}",

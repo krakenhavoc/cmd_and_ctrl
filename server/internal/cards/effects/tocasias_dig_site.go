@@ -15,10 +15,11 @@ func init() {
 		OracleID:      "a91f93fd-e428-4a36-b1b3-604b47a34287",
 		Name:          "Tocasia's Dig Site",
 		Completeness:  CompletenessFull,
-		ManaAbilities: []ManaAbility{cmdr2B01TapForColorless()},
+		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}: Surveil 1.",
-			Cost:  Plus(ManaCost("{3}"), TapCost()),
+			Label:   "{3}, {T}: Surveil 1.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Surveil{N: 1}.Apply(NewContext(g, item))
 			},

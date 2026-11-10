@@ -13,7 +13,7 @@ func init() {
 		OracleID:      "4b508087-99da-4eb1-8b12-29162f2ec85d",
 		Name:          "Swarmyard",
 		Completeness:  CompletenessFull,
-		ManaAbilities: []ManaAbility{cmdr2B01TapForColorless()},
+		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
 			Label: "{T}: Regenerate target Insect, Rat, Spider, or Squirrel.",
 			Cost:  TapCost(),

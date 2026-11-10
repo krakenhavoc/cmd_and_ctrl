@@ -15,7 +15,7 @@ func init() {
 		OracleID:      "a9f8344c-1705-4254-81d6-aa05e0c69c29",
 		Name:          "Sunhome, Fortress of the Legion",
 		Completeness:  CompletenessFull,
-		ManaAbilities: []ManaAbility{cmdr2B01TapForColorless()},
+		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}{W}, {T}: Target creature gains double strike until end of turn.",
 			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "double strike")),

@@ -307,3 +307,377 @@ func TestC2PaintedBluffsFiltersAnyColor(t *testing.T) {
 		t.Error("the filtered mana is not red")
 	}
 }
+
+// --- Batch 2: mana rocks, mana creatures and mana triggers ------------
+
+const (
+	c2DarksteelIngotOracle  = "a2529491-7389-4cfa-92d2-145eda779603"
+	c2SeanceBoardOracle     = "8331d2ff-3729-4014-8dcb-278644d2632a"
+	c2LeylineDowserOracle   = "2ea2ac09-690d-4cd2-8e3a-fc01ecd7c132"
+	c2BountyBoardOracle     = "e40c66cf-0a4a-4833-98bf-c685d35b9309"
+	c2CitanulOracle         = "f67df84f-667e-41cf-80f9-911abafe70ac"
+	c2BrainstoneOracle      = "ffac1923-99d0-48e6-b1e7-168e5c324a80"
+	c2BarbflareOracle       = "bd7accec-ca8a-49c7-9ae4-fe97d99b4a34"
+	c2WolfwillowHavenOracle = "7579f57d-c76e-4703-a030-34fb7160cb23"
+	c2GhirapurOrreryOracle  = "c6bb3a58-131a-4d7b-8c07-173a7de23b06"
+	c2ChaliceOracle         = "74027ba4-a6ba-4696-baf1-60ef0b27ee0a"
+)
+
+func TestC2DarksteelIngotIsIndestructibleAndTapsForAnyColor(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	ingot := pushCatalogPermanent(g, me.ID, "Darksteel Ingot", "Artifact", c2DarksteelIngotOracle, false)
+	if !hasEffectiveKeyword(t, g, ingot, "indestructible") {
+		t.Error("not indestructible")
+	}
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(ingot) })
+	if !g.Battlefield.Contains(ingot) {
+		t.Error("destroyed")
+	}
+	if err := g.ActivateManaAbility(me.ID, ingot, 0, game.ManaAbilityParams{Colors: []string{"U"}}); err != nil {
+		t.Fatalf("tap for {U}: %v", err)
+	}
+	if got := poolColors(me); len(got) != 1 || got[0] != "U" {
+		t.Errorf("pool %v, want [U]", got)
+	}
+}
+
+func TestC2SeanceBoardGrowsOnlyWhenACreatureDied(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	board := pushCatalogPermanent(g, me.ID, "Séance Board", "Artifact", c2SeanceBoardOracle, false)
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if got := counterOnBattlefieldCard(g, board, "soul"); got != 0 {
+		t.Fatalf("%d soul counters with no death this turn, want 0", got)
+	}
+
+	g2, me2, _ := c2LandTable(t)
+	board2 := pushCatalogPermanent(g2, me2.ID, "Séance Board", "Artifact", c2SeanceBoardOracle, false)
+	bear := pushVanillaCreature(g2, me2.ID, "Bear", 2, 2)
+	killCreature(t, g2, me2.ID, bear)
+	advanceTo(t, g2, game.StepEnd)
+	passPriorityAroundTable(t, g2)
+	if got := counterOnBattlefieldCard(g2, board2, "soul"); got != 1 {
+		t.Fatalf("%d soul counters after a creature died, want 1", got)
+	}
+}
+
+func TestC2SeanceBoardManaIsXOfOneColorForInstantsSorceriesDemonsAndSpirits(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	board := pushCatalogPermanent(g, me.ID, "Séance Board", "Artifact", c2SeanceBoardOracle, false)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == board {
+				g.Battlefield.Cards[i].Counters = map[string]int{"soul": 2}
+			}
+		}
+	})
+	if err := g.ActivateManaAbility(me.ID, board, 0, game.ManaAbilityParams{Colors: []string{"R"}}); err != nil {
+		t.Fatalf("tap: %v", err)
+	}
+	if got := poolColors(me); len(got) != 2 || got[0] != "R" || got[1] != "R" {
+		t.Fatalf("pool %v, want {R}{R}", got)
+	}
+	bear := handSpell(me, "Red Bear", "Creature — Bear", "{R}")
+	refusedForMana(t, g.CastSpell(me.ID, bear, game.CastSpellParams{Strict: true}), "a plain creature spell")
+	demon := handSpell(me, "Red Demon", "Creature — Demon", "{R}")
+	if err := g.CastSpell(me.ID, demon, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("a Demon spell: %v", err)
+	}
+	bolt := handSpell(me, "Bolt", "Instant", "{R}")
+	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("an instant: %v", err)
+	}
+}
+
+func TestC2SeanceBoardWithNoCountersAddsNothing(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	board := pushCatalogPermanent(g, me.ID, "Séance Board", "Artifact", c2SeanceBoardOracle, false)
+	_ = g.ActivateManaAbility(me.ID, board, 0, game.ManaAbilityParams{Colors: []string{"R"}})
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("pool %d with no soul counters, want 0", me.ManaPool.Total())
+	}
+}
+
+func TestC2LeylineDowserMillsAndUntapsWithALegend(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	dowser := pushCatalogPermanent(g, me.ID, "Leyline Dowser", "Artifact", c2LeylineDowserOracle, false)
+	ids := seedLibrary(me, "Spell", "Other")
+	_ = ids
+	c2Pay(t, g, me, "{C}")
+	if err := g.ActivateCatalogAbility(me.ID, dowser, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("mill: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+	if pick == nil || len(pick.ChooseCards) != 1 {
+		t.Fatalf("no offer for the milled instant or sorcery: %+v", pick)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, pick.ChooseCards[:1]); err != nil {
+		t.Fatal(err)
+	}
+	if me.Hand.Size() == 0 || me.Graveyard.Size() != 0 {
+		t.Errorf("hand %d, graveyard %d: the milled spell should be in hand", me.Hand.Size(), me.Graveyard.Size())
+	}
+
+	// Untap: needs an untapped legendary creature.
+	if !isTapped(g, dowser) {
+		t.Fatal("the Dowser did not tap")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, dowser, 1, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("untapped with no legendary creature")
+	}
+	legend := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Legend", TypeLine: "Legendary Creature — Test",
+		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID})
+	plain := pushVanillaCreature(g, me.ID, "Plain", 1, 1)
+	if err := g.ActivateCatalogAbility(me.ID, dowser, 1, game.ActivateAbilityParams{TapIDs: []uuid.UUID{plain}, Strict: true}); err == nil {
+		t.Fatal("tapped a nonlegendary creature to untap")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, dowser, 1, game.ActivateAbilityParams{TapIDs: []uuid.UUID{legend}, Strict: true}); err != nil {
+		t.Fatalf("untap: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if isTapped(g, dowser) {
+		t.Error("the Dowser is still tapped")
+	}
+}
+
+func TestC2BountyBoardPaysOpponentsWhenAMarkedCreatureDies(t *testing.T) {
+	g, me, opp := c2LandTable(t)
+	board := pushCatalogPermanent(g, me.ID, "Bounty Board", "Artifact", c2BountyBoardOracle, false)
+	victim := pushVanillaCreature(g, opp.ID, "Victim", 2, 2)
+	other := pushVanillaCreature(g, opp.ID, "Unmarked", 2, 2)
+	c2Pay(t, g, me, "{C}")
+	if err := g.ActivateCatalogAbility(me.ID, board, 0, game.ActivateAbilityParams{Targets: cardRefs(victim), Strict: true}); err != nil {
+		t.Fatalf("bounty: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := counterOnBattlefieldCard(g, victim, "bounty"); got != 1 {
+		t.Fatalf("%d bounty counters, want 1", got)
+	}
+	killCreature(t, g, opp.ID, other)
+	passPriorityAroundTable(t, g)
+	hand, life := me.Hand.Size(), me.Life
+	killCreature(t, g, opp.ID, victim)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+1 || me.Life != life+2 {
+		t.Errorf("me: hand %d life %d, want %d and %d", me.Hand.Size(), me.Life, hand+1, life+2)
+	}
+}
+
+func TestC2CitanulHierophantsGivesEveryCreatureATapForGreen(t *testing.T) {
+	g, me, opp := c2LandTable(t)
+	hier := gaPut(g, me.ID, "Citanul Hierophants", "Creature — Human Druid", c2CitanulOracle)
+	bear := gaPut(g, me.ID, "Bear", "Creature — Bear", "")
+	theirs := gaPut(g, opp.ID, "Their Bear", "Creature — Bear", "")
+	if n := grantedManaRowsOf(g, hier); n != 1 {
+		t.Errorf("the Hierophants have %d granted mana rows, want 1: it is a creature you control", n)
+	}
+	if n := grantedManaRowsOf(g, bear); n != 1 {
+		t.Fatalf("your bear has %d granted mana rows, want 1", n)
+	}
+	if n := grantedManaRowsOf(g, theirs); n != 0 {
+		t.Errorf("an opponent's bear has %d granted rows, want 0", n)
+	}
+	if err := tapGrantedMana(t, g, me.ID, bear, "G"); err != nil {
+		t.Fatalf("tap the bear: %v", err)
+	}
+	if got := poolColors(me); len(got) != 1 || got[0] != "G" {
+		t.Errorf("pool %v, want [G]", got)
+	}
+	if err := tapGrantedMana(t, g, me.ID, bear, "G"); err == nil {
+		t.Error("the bear tapped twice")
+	}
+	fresh := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Fresh Bear", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID,
+	})
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == fresh {
+				g.Battlefield.Cards[i].SummonedThisTurn = true
+			}
+		}
+	})
+	if err := tapGrantedMana(t, g, me.ID, fresh, "G"); err == nil {
+		t.Error("a summoning-sick creature tapped for the granted mana (CR 302.6)")
+	}
+}
+
+func TestC2BrainstoneDrawsThreeAndPutsTwoBack(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	stone := pushCatalogPermanent(g, me.ID, "Brainstone", "Artifact", c2BrainstoneOracle, false)
+	seedLibrary(me, "A", "B", "C", "D", "E")
+	hand := me.Hand.Size()
+	c2Pay(t, g, me, "{C}{C}")
+	if err := g.ActivateCatalogAbility(me.ID, stone, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if g.Battlefield.Contains(stone) {
+		t.Error("Brainstone not sacrificed")
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+3 {
+		t.Fatalf("hand %d, want %d", me.Hand.Size(), hand+3)
+	}
+	pick := latestChooseCardsFor(g, me.ID)
+	if pick == nil || pick.ChooseMin != 2 || pick.ChooseMax != 2 {
+		t.Fatalf("put-back prompt %+v, want exactly two cards", pick)
+	}
+	first, second := me.Hand.Cards[0].InstanceID, me.Hand.Cards[1].InstanceID
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{first, second}); err != nil {
+		t.Fatal(err)
+	}
+	order := putInLibraryChoiceFor(g, me.ID)
+	if order == nil {
+		t.Fatal("no order prompt after the pick")
+	}
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, []uuid.UUID{second, first}); err != nil {
+		t.Fatal(err)
+	}
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d, want %d", me.Hand.Size(), hand+1)
+	}
+	if top := me.Library.Cards[len(me.Library.Cards)-1].InstanceID; top != second {
+		t.Error("the first card of the answer must end on top of the library")
+	}
+}
+
+func TestC2WolfwillowHavenAddsGreenAndMakesAWolf(t *testing.T) {
+	g, me, opp := c2LandTable(t)
+	forest := b31Push(g, me.ID, "Forest", "Basic Land — Forest", "", "", 0, 0)
+	haven := pushAuraOnLand(t, g, me.ID, "Wolfwillow Haven", c2WolfwillowHavenOracle, forest)
+	tapForMana(t, g, me.ID, forest)
+	if got := sortedPool(me); len(got) != 2 || got[0] != "G" || got[1] != "G" {
+		t.Fatalf("pool %v, want {G}{G}", got)
+	}
+	me.ManaPool = game.ManaPool{}
+	c2Pay(t, g, me, "{C}{C}{C}{C}{G}")
+	if err := g.ActivateCatalogAbility(me.ID, haven, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if countTokensControlled(g, me.ID, "Wolf") != 1 {
+		t.Error("no Wolf")
+	}
+	_ = opp
+}
+
+func TestC2GhirapurOrreryGivesEachPlayerAnExtraLandDrop(t *testing.T) {
+	g, me, opp := c2LandTable(t)
+	var before [2]int
+	g.ReadSnapshot(func() { before = [2]int{g.EffectiveLandDropsLocked(me), g.EffectiveLandDropsLocked(opp)} })
+	pushCatalogPermanent(g, me.ID, "Ghirapur Orrery", "Artifact", c2GhirapurOrreryOracle, false)
+	g.ReadSnapshot(func() {
+		if n := g.EffectiveLandDropsLocked(me); n != before[0]+1 {
+			t.Errorf("controller's land drops %d, want %d", n, before[0]+1)
+		}
+		if n := g.EffectiveLandDropsLocked(opp); n != before[1]+1 {
+			t.Errorf("opponent's land drops %d, want %d: each player", n, before[1]+1)
+		}
+	})
+}
+
+func TestC2GhirapurOrreryDrawsThreeForTheUpkeepPlayerOnlyWithAnEmptyHand(t *testing.T) {
+	for _, empty := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		pushCatalogPermanent(g, me.ID, "Ghirapur Orrery", "Artifact", c2GhirapurOrreryOracle, false)
+		seedLibrary(opp, "A", "B", "C", "D", "E", "F")
+		seedLibrary(me, "A", "B", "C", "D", "E", "F")
+		if !empty {
+			handSpell(opp, "Held", "Sorcery", "{1}")
+		}
+		g.WithWriteLock(func() {
+			if empty {
+				opp.Hand.Cards = nil
+			}
+		})
+		handBefore, myHand := opp.Hand.Size(), me.Hand.Size()
+		for i := 0; i < 80 && !(g.Turn.ActiveSeat == 1 && g.Turn.Step == game.StepUpkeep); i++ {
+			if _, err := g.AdvanceStep(); err != nil {
+				t.Fatal(err)
+			}
+			passPriorityAroundTable(t, g)
+		}
+		if g.Turn.ActiveSeat != 1 {
+			t.Fatal("never reached the opponent's upkeep")
+		}
+		passPriorityAroundTable(t, g)
+		got := opp.Hand.Size() - handBefore
+		want := 0
+		if empty {
+			want = 3
+		}
+		if got != want {
+			t.Errorf("empty hand %v: the upkeep player drew %d, want %d", empty, got, want)
+		}
+		if me.Hand.Size() > myHand+1 {
+			t.Errorf("the Orrery's controller drew %d extra", me.Hand.Size()-myHand)
+		}
+	}
+}
+
+func TestC2ChaliceCountersAMatchingSpellOnly(t *testing.T) {
+	g, me, _ := c2LandTable(t)
+	chalice := b12PlayFromHand(t, g, "Chalice of the Void", "Artifact", c2ChaliceOracle, game.CastSpellParams{XValue: 2})
+	passPriorityAroundTable(t, g)
+	if got := counterOnBattlefieldCard(g, chalice, game.CounterCharge); got != 2 {
+		t.Fatalf("%d charge counters, want 2", got)
+	}
+	c2Pay(t, g, me, "{C}{C}{C}")
+	three := handSpell(me, "Three Drop", "Artifact", "{3}")
+	if err := g.CastSpell(me.ID, three, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Graveyard.Contains(three) || !g.Battlefield.Contains(three) {
+		t.Fatal("a mana value 3 spell was countered by a Chalice on 2")
+	}
+	two := handSpell(me, "Two Drop", "Artifact", "{2}")
+	c2Pay(t, g, me, "{C}{C}")
+	if err := g.CastSpell(me.ID, two, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(two) {
+		t.Error("the mana value 2 spell was not countered")
+	}
+}
+
+func TestC2BarbflareGremlinDoublesAnyPlayersLandOnlyWhileTappedAndPingsThem(t *testing.T) {
+	g, me, opp := c2LandTable(t)
+	gremlin := pushCatalogPermanent(g, me.ID, "Barbflare Gremlin", "Creature — Gremlin", c2BarbflareOracle, false)
+	myForest := b31Push(g, me.ID, "Forest", "Basic Land — Forest", "", "", 0, 0)
+	theirMountain := b31Push(g, opp.ID, "Mountain", "Basic Land — Mountain", "", "", 0, 0)
+
+	life := me.Life
+	tapForMana(t, g, me.ID, myForest)
+	if me.ManaPool.Total() != 1 || me.Life != life {
+		t.Fatalf("an untapped Gremlin did something: pool %d, life %d", me.ManaPool.Total(), me.Life)
+	}
+
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == gremlin {
+				g.Battlefield.Cards[i].Tapped = true
+			}
+		}
+	})
+	untap(g, myForest)
+	me.ManaPool = game.ManaPool{}
+	tapForMana(t, g, me.ID, myForest)
+	if got := sortedPool(me); len(got) != 2 || got[0] != "G" || got[1] != "G" {
+		t.Fatalf("pool %v, want {G}{G}", got)
+	}
+	if me.Life != life-1 {
+		t.Errorf("life %d, want %d: the Forest deals 1 damage to its tapper", me.Life, life-1)
+	}
+
+	oppLife, myLife := opp.Life, me.Life
+	tapForMana(t, g, opp.ID, theirMountain)
+	if got := sortedPool(opp); len(got) != 2 || got[0] != "R" || got[1] != "R" {
+		t.Fatalf("opponent pool %v, want {R}{R}: a player, not you", got)
+	}
+	if opp.Life != oppLife-1 || me.Life != myLife {
+		t.Errorf("life: opponent %d (want %d), me %d (want %d)", opp.Life, oppLife-1, me.Life, myLife)
+	}
+}

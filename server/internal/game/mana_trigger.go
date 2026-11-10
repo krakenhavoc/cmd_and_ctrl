@@ -180,6 +180,15 @@ type ManaTrigger struct {
 	// SkipNextUntapForEffect), after its mana is added. Plain data, so
 	// the rider adds no closure route. False for every other card.
 	TappedSkipsNextUntap bool
+
+	// LandDamagesTapper is Barbflare Gremlin's rider: "Then that land
+	// deals N damage to that player." When the ability resolves, after
+	// its mana is added, the permanent that was tapped deals this much
+	// damage to the player whose pool the mana landed in. The damage is
+	// dealt by the tapped permanent as the production made it (a source
+	// that has since gone still deals it, CR 608.2h). Plain data, so the
+	// rider adds no closure route. Zero for every other card.
+	LandDamagesTapper int
 }
 
 // CatalogManaTriggers returns the registered triggered mana abilities
@@ -250,6 +259,8 @@ type manaTriggerFiring struct {
 	produced string
 	// skip is ManaTrigger.TappedSkipsNextUntap (#1997).
 	skip bool
+	// landDamage is ManaTrigger.LandDamagesTapper.
+	landDamage int
 }
 
 // addsMana reports whether p is a production that can trigger anything:
@@ -357,6 +368,8 @@ func (g *Game) manaTriggerFiringsLocked(prod ManaProduced) []manaTriggerFiring {
 				label:    t.Label,
 				produced: produced,
 				skip:     t.TappedSkipsNextUntap,
+
+				landDamage: t.LandDamagesTapper,
 			})
 		}
 	}
@@ -438,6 +451,11 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 			if land := g.findBattlefieldCardLocked(prod.SourceID()); land != nil {
 				_ = g.SkipNextUntapForEffect(land.InstanceID, land.Controller)
 			}
+		}
+		if f.landDamage > 0 {
+			// "Then that land deals N damage to that player": the tapped
+			// permanent is the source, the producing player the victim.
+			_ = g.dealDamageToPlayerLocked(prod.SourceID(), nil, prod.Controller, f.landDamage, DamageMarks{})
 		}
 	}
 }
