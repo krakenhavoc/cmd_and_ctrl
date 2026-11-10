@@ -907,6 +907,9 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 			out[i].FollowUpObject = &ref
 		}
 		// #3768: what the permanent the cast produces gains.
+		if len(in[i].GainsSubtypes) > 0 {
+			out[i].GainsSubtypes = append([]string(nil), in[i].GainsSubtypes...)
+		}
 		if len(in[i].GainsKeywords) > 0 {
 			out[i].GainsKeywords = append([]string(nil), in[i].GainsKeywords...)
 		}

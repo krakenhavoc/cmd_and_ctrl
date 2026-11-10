@@ -208,6 +208,13 @@ type manaCostBranchParams struct {
 	CostBranch *int `json:"cost_branch"`
 }
 
+// manaExileParams is the field that marks an activate_mana_ability move
+// exiling cards as its cost: collect evidence on a mana ability
+// (Cryptex), or Cadaverous Bloom's card from the hand.
+type manaExileParams struct {
+	ExileIDs []string `json:"exile_ids"`
+}
+
 type discardSelectionParams struct {
 	CardIDs []string `json:"card_ids"`
 }

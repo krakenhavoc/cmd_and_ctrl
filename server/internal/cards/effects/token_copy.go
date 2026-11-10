@@ -260,6 +260,12 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 	if !ok {
 		return game.Card{}, false
 	}
+	return tokenCopyTemplateFromCard(src), true
+}
+
+// tokenCopyTemplateFromCard is TokenCopyTemplate's body over a card already
+// chosen as the copy source: the template carrying its copiable values.
+func tokenCopyTemplateFromCard(src game.Card) game.Card {
 	out := game.Card{
 		Name:               src.Name,
 		ScryfallID:         src.ScryfallID,
@@ -308,7 +314,7 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 			out.TokenKey = sv.TokenKey
 		}
 	}
-	return out, true
+	return out
 }
 
 // tokenTypeLine prepends the "Token" supertype to a printed type

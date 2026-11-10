@@ -303,6 +303,9 @@ func copiedPaidCost(p PaidCost) PaidCost {
 		// rewrite of one record never reaches the other through a
 		// shared backing array; both are rewritten, independently.
 		TappedOthers: append([]PaidTap(nil), p.TappedOthers...),
+		// A copy of a spell that chose or revealed an object reads the same
+		// one (CR 707.10), rewritten independently on its exit.
+		Chosen: append([]PaidTap(nil), p.Chosen...),
 		// ADR 0109 §8: every other object the original's cost moved,
 		// for the same CR 707.10 reason — "if an effect of the copy
 		// refers to objects used to pay its costs, it uses the objects

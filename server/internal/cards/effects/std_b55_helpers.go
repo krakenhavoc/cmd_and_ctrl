@@ -113,13 +113,14 @@ func scionDiscountAbility(label, source, colors string, gained bool) ActivatedAb
 // YouTappedAnOpponentsCreature is the When for "whenever you tap an untapped
 // creature an opponent controls" (Sharae of Numbing Depths, Hylda of the
 // Icy Crown): the EventTapCard of a spell or ability YOU control telling a
-// creature of an opponent's to tap (game.TapCauseEffect, the tapper as the
-// event's Actor, emitted only when the creature was untapped, CR 701.26a). A
-// tap you cause by cost, attack or mana ability is not one, and neither is
-// a tap an opponent's effect tells them to make of their own creature, as
-// the printed rulings say. Watch game.EventTapCard.
+// creature of an opponent's to tap (Event.TappedBy, stamped by
+// game.TapTargetForEffectBy, emitted only when the creature was untapped,
+// CR 701.26a). A tap you cause by cost, attack or mana ability names no
+// TappedBy, and a tap an opponent's effect tells them to make of their own
+// creature names them, so neither counts, as the printed rulings say.
+// Watch game.EventTapCard.
 func YouTappedAnOpponentsCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Kind != game.EventTapCard || ev.TapCause != game.TapCauseEffect || ev.Actor != source.Controller {
+	if ev.Kind != game.EventTapCard || ev.TappedBy == uuid.Nil || ev.TappedBy != source.Controller {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)

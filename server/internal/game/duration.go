@@ -212,6 +212,25 @@ const (
 	// refuses a file carrying it through Known.
 	UntilPlaneswalkAway
 
+	// UntilNextEndStep is "until the next end step" (Niko, Light of Hope):
+	// the effect lasts until the next end step of ANY turn begins, which
+	// is this turn's when its end step has not begun, and the following
+	// turn's otherwise. It ends as that step BEGINS (CR 611.2b), so the
+	// delayed trigger that fires at the same moment sees it over.
+	//
+	// The twelfth kind, appended after UntilPlaneswalkAway so every
+	// persisted int keeps its meaning; a binary from before it refuses a
+	// file carrying it through Known.
+	//
+	// The stamp is ExpiresAtTurnsBegun, here the number of end steps that
+	// had begun when the effect was made (endStepsBegunLocked). Each end
+	// step that begins raises that number, so the effect is over when it
+	// has grown: a pure read, like UntilEndOfCombat's, with no flag to set
+	// and nothing to forget. A turn that is ended (CR 724.1) skips its end
+	// step, which never begins, so the effect carries to the next one that
+	// does, as the delayed trigger it is paired with does.
+	UntilNextEndStep
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -724,6 +743,28 @@ func (g *Game) UntilYourNextEndStepDuration(player uuid.UUID) Duration {
 	}
 }
 
+// UntilNextEndStepDuration is "until the next end step" (any player's),
+// stamped with the end steps that have begun so far. Caller must hold
+// g.mu.
+func (g *Game) UntilNextEndStepDuration() Duration {
+	return Duration{Kind: UntilNextEndStep, ExpiresAtTurnsBegun: g.endStepsBegunLocked()}
+}
+
+// endStepsBegunLocked is how many end steps have begun in this game,
+// counted as the sum over the seats of the turn each one's latest end
+// step began in (Player.EndStepTurn). An end step raises one seat's
+// number by at least one, so the sum only ever grows, and seats are
+// permanent once a game has started. Caller must hold g.mu.
+func (g *Game) endStepsBegunLocked() int {
+	n := 0
+	for _, p := range g.Seats {
+		if p != nil {
+			n += p.EndStepTurn
+		}
+	}
+	return n
+}
+
 // UntilEndOfItsControllersNextTurnDuration is "during its controller's
 // next turn" for the creature `creature` (#2567), pinned to it as the
 // object it is now and stamped with the current turn. The second return
@@ -1167,6 +1208,10 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// not.
 		p := g.playerByIDLocked(d.Player)
 		return p != nil && p.EndStepTurn >= d.ExpiresAtTurnsBegun
+	case UntilNextEndStep:
+		// Over once an end step has begun since the effect was made
+		// (UntilNextEndStep): the count has grown past its stamp.
+		return g.endStepsBegunLocked() > d.ExpiresAtTurnsBegun
 	case UntilEndOfCombat:
 		// Over the moment the cursor is outside the combat phase it
 		// names (CR 511.3, 724.2d): the next step after end of combat,
@@ -1418,6 +1463,8 @@ func (k DurationKind) String() string {
 		return "until the end of its controller's next turn"
 	case UntilPlaneswalkAway:
 		return "until you planeswalk away"
+	case UntilNextEndStep:
+		return "until the next end step"
 	}
 	return "unknown duration"
 }

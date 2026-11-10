@@ -380,6 +380,17 @@ type PermissionFilter struct {
 	// object the card must be linked to. Zero on every catalog entry.
 	ExiledWith PermissionCardRef `json:"exiledWith"`
 
+	// ExiledWithSourceThisTurn narrows ExiledWithSource to the cards
+	// linked during the current turn: Maralen, Fae Ascendant's "from
+	// among cards exiled with Maralen this turn" (#4458). The card's
+	// Card.ExiledWithTurn must equal ExiledOnTurn, which the standing
+	// derivation fills with the current Turn.Seq (fillDerivedLiveLocked)
+	// for the reason ExiledWith is derived: a catalog entry cannot name
+	// a turn. A flag with no derived turn matches nothing. Set it with
+	// ExiledWithSource. Additive.
+	ExiledWithSourceThisTurn bool `json:"exiledWithSourceThisTurn,omitempty"`
+	ExiledOnTurn             int  `json:"exiledOnTurn,omitempty"`
+
 	// Subtype is a subtype a qualifying card must have, read from its
 	// effective subtypes (any case): Herald of Amity's "an Aura spell"
 	// (#4834). Empty constrains nothing. Additive.
@@ -415,6 +426,15 @@ type PermissionFilter struct {
 	// or toughness for this clause (CR 208.3).
 	PowerOrToughnessCapped bool `json:"powerOrToughnessCapped,omitempty"`
 	PowerOrToughnessAtMost int  `json:"powerOrToughnessAtMost,omitempty"`
+
+	// PowerCapped and PowerAtMost are "creature spells with power N or
+	// less" (Assemble the Players, #4452): a card qualifies when it is a
+	// creature and its power is N or less. The flag says the clause is
+	// there, because 0 is a legal N. Judged like PowerOrToughnessCapped
+	// (same lent reading, same unknown-is-never-N-or-less rule), on the
+	// face the card shows. Additive, and both write nothing when unset.
+	PowerCapped bool `json:"powerCapped,omitempty"`
+	PowerAtMost int  `json:"powerAtMost,omitempty"`
 }
 
 // Matches reports whether a card in the zone qualifies under this
@@ -492,7 +512,13 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
 		return false
 	}
+	if f.ExiledWithSourceThisTurn && (f.ExiledOnTurn == 0 || c.ExiledWithTurn != f.ExiledOnTurn) {
+		return false
+	}
 	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
+		return false
+	}
+	if f.PowerCapped && !powerAtMost(&c, f.PowerAtMost) {
 		return false
 	}
 	return true
@@ -508,6 +534,7 @@ func (f PermissionFilter) faceBlind() bool {
 	f.NotOwnedByHolder, f.OwnedByHolder = false, false
 	f.WithCounter = ""
 	f.ExiledWithSource, f.ExiledWith = false, PermissionCardRef{}
+	f.ExiledWithSourceThisTurn, f.ExiledOnTurn = false, 0
 	f.PutInGraveyardThisTurn = false
 	f.FromChosenType = false
 	return f == PermissionFilter{}
@@ -753,6 +780,14 @@ type CastPermission struct {
 	// fewer than N counters in all cannot claim it (CR 118.3). Zero
 	// charges none. Additive within a snapshot version.
 	RemoveCountersInAddition int `json:"removeCountersInAddition,omitempty"`
+	// SacrificeFood is "by sacrificing a Food in addition to paying its
+	// other costs" (forage's second way, Osteomancer Adept): the offer
+	// charges the card's printed mana cost and one Food the holder
+	// controls, sacrificed as a cost. Forage marks it (or an
+	// ExileOtherFromGraveyard of three) as a forage, so paying it emits
+	// EventForage. Additive within a snapshot version.
+	SacrificeFood bool `json:"sacrificeFood,omitempty"`
+	Forage        bool `json:"forage,omitempty"`
 	// ExileOnResolution is flashback's "exile this card instead of
 	// putting it anywhere else any time it would leave the stack"
 	// (CR 702.34a). A REPLACEMENT, so it also catches a granted
@@ -922,6 +957,13 @@ type CastPermission struct {
 	// cast this way gains nothing. Empty gains nothing.
 	GainsKeywords  []string `json:"gainsKeywords,omitempty"`
 	GainsAbilities []string `json:"gainsAbilities,omitempty"`
+	// GainsSubtypes are creature types the permanent is IN ADDITION to its
+	// own: The Tomb of Aclazotz's "If you do, it enters with a finality
+	// counter on it and is a Vampire in addition to its other types". The
+	// same one scoped effect as the keywords, a layer-4 AddSubtypesMod
+	// that lasts as long as the permanent is that object. Additive within a
+	// snapshot version.
+	GainsSubtypes []string `json:"gainsSubtypes,omitempty"`
 
 	// EntersWithCounterKind and EntersWithCounters are "If you cast a
 	// creature spell this way, that creature enters with an additional
@@ -964,6 +1006,16 @@ type CastPermission struct {
 	// list and the bot enumerator share, so all three refuse the same
 	// casts.
 	MaxSpellManaValue *int `json:"maxSpellManaValue,omitempty"`
+	// MaxSpellManaValueCountOf is a MaxSpellManaValue that is a count,
+	// not a constant: "a spell with mana value less than or equal to the
+	// number of Elves and Faeries you control" (Maralen, Fae Ascendant,
+	// #4458) is []string{"Elf", "Faerie"}, the permanents the holder
+	// controls that have any of these subtypes, each counted once. Only a
+	// STANDING permission reads it: the derivation (fillDerivedLiveLocked)
+	// counts the battlefield on every query and writes the result into
+	// MaxSpellManaValue, so the cap is the count as the spell is cast.
+	// Empty is no such cap. Additive.
+	MaxSpellManaValueCountOf []string `json:"maxSpellManaValueCountOf,omitempty"`
 
 	// MinSpellManaValue is the floor of the same test: the SPELL this
 	// permission lets a player cast must have at least this mana value
@@ -1536,6 +1588,11 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.ExileOtherFromGraveyard > 0 {
 		out.ExileFromGraveyard = escapeExileSpec(p.ExileOtherFromGraveyard)
 	}
+	if p.SacrificeFood {
+		out.Sacrifice = foodSacrificeSpec()
+		out.PayLabel = "a Food"
+	}
+	out.Forage = p.Forage
 	if p.DiscardLandCard {
 		out.DiscardFromHand = RetraceDiscardSpec()
 		out.PayLabel = "a land card"
@@ -2009,6 +2066,7 @@ func (p *CastPermission) opensFace(spell Card, player uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) castPermissionForClaimMatchingLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string, accept func(*CastPermission) bool) *CastPermission {
 	claim = AltCostKeyword(claim)
+	card = faceDownSpellStandIn(card, claim)
 	if zone == ZoneHand && isMiracleKey(claim) {
 		// A card can hold a printed miracle's grant and a granted one's
 		// (Molecule Man beside a Terminus): the claim names which.
@@ -2577,6 +2635,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			for _, perm := range CatalogCastPermissions(key) {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+					g.fillDerivedLiveLocked(&stamped, p.ID)
 					out = append(out, stamped)
 				}
 			}
@@ -2593,6 +2652,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
 				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+				g.fillDerivedLiveLocked(&stamped, p.ID)
 				out = append(out, stamped)
 			}
 		}
@@ -2615,6 +2675,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			for _, perm := range CatalogCastPermissions(key) {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
 					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+					g.fillDerivedLiveLocked(&stamped, p.ID)
 					out = append(out, stamped)
 				}
 			}
@@ -3058,6 +3119,19 @@ func cardHasAnyCreatureType(c Card, want [2]string) bool {
 // "Other" needs no clause here: CR 601.2a has already moved the spell
 // to the stack, and validateAlternativeCostPaymentLocked refuses the
 // cast ID outright.
+func foodSacrificeSpec() *TargetSpec {
+	food := FoodQuery()
+	return &TargetSpec{
+		Mode:  "permanent",
+		Label: "a Food",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(g *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return food.matchesLocked(g, &c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
 func escapeExileSpec(n int) *TargetSpec {
 	label := "Exile " + countWord(n) + " other cards from your graveyard"
 	return &TargetSpec{

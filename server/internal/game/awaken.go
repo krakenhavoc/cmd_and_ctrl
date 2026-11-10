@@ -59,6 +59,21 @@ const awakenLabel = "awaken — becomes a 0/0 Elemental creature with haste that
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) AwakenForEffect(actor, source, land uuid.UUID, n int) error {
+	return g.AnimateLandWithCountersForEffect(actor, source, land, n, "Elemental")
+}
+
+// AnimateLandWithCountersForEffect is AwakenForEffect with the creature
+// type named: "Put seven +1/+1 counters on target noncreature land you
+// control. It becomes a 0/0 Fungus creature with haste. It's still a land."
+// (Tendril of the Mycotyrant) and Cosmium Confluence's Elemental share the
+// counters-then-animate shape awaken has (CR 702.113a), and an empty
+// subtype reads as Elemental. The type rides the tail as its Word.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) AnimateLandWithCountersForEffect(actor, source, land uuid.UUID, n int, subtype string) error {
+	if subtype == "" {
+		subtype = "Elemental"
+	}
 	if land == uuid.Nil {
 		return nil
 	}
@@ -68,13 +83,13 @@ func (g *Game) AwakenForEffect(actor, source, land uuid.UUID, n int) error {
 	}
 	stamp := c.EnteredBattlefieldAt
 	if n <= 0 {
-		return g.awakenAnimateLocked(source, land, stamp)
+		return g.awakenAnimateLocked(source, land, stamp, subtype)
 	}
 	// #4253 slice 7: the animation is the counters' keyed tail, so a CR 616
 	// ordering prompt over the placement is a restore point. The land and its
 	// entry stamp ride the tail as data.
 	return g.AddCounterByKeyedForEffect(actor, land, CounterPlusOne, n, KeyedTail{
-		Ref: awakenAnimateTail, Source: source, Player: actor, Carry: []uuid.UUID{land}, N: int(stamp),
+		Ref: awakenAnimateTail, Source: source, Player: actor, Carry: []uuid.UUID{land}, N: int(stamp), Word: subtype,
 	})
 }
 
@@ -85,7 +100,7 @@ var awakenAnimateTail = RegisterTail("engine/awaken-animate", func(g *Game, o Ta
 	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	return g.awakenAnimateLocked(o.Tail.Source, o.Tail.Carry[0], int64(o.Tail.N))
+	return g.awakenAnimateLocked(o.Tail.Source, o.Tail.Carry[0], int64(o.Tail.N), o.Tail.Word)
 })
 
 // awakenAnimateLocked makes land a 0/0 Elemental creature with haste when it
@@ -93,11 +108,14 @@ var awakenAnimateTail = RegisterTail("engine/awaken-animate", func(g *Game, o Ta
 // or came back is skipped.
 //
 // Caller must hold g.mu.
-func (g *Game) awakenAnimateLocked(source, land uuid.UUID, stamp int64) error {
+func (g *Game) awakenAnimateLocked(source, land uuid.UUID, stamp int64, subtype string) error {
+	if subtype == "" {
+		subtype = "Elemental"
+	}
 	now, ok := g.battlefieldCardLocked(land)
 	if !ok || now.EnteredBattlefieldAt != stamp {
 		return nil
 	}
-	g.animateLandLocked(source, land, stamp, awakenLabel, "Elemental")
+	g.animateLandLocked(source, land, stamp, awakenLabel, subtype)
 	return nil
 }

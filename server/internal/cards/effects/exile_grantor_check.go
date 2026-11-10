@@ -21,7 +21,7 @@ import (
 //     pays one component (CR 118.3). No printed card does it.
 func checkExileGrantor(card, where string, ab ActivatedAbility, granted bool, zone game.ZoneKind) {
 	c := ab.Cost
-	if !c.ExileGrantor && !c.TapGrantor {
+	if !c.ExileGrantor && !c.TapGrantor && !c.SacrificeGrantor {
 		return
 	}
 	switch {

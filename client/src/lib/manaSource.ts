@@ -139,6 +139,10 @@ export function manaAbilityRider(a: ManaAbilityView): string {
   if (a.exile_self) parts.push("exile it");
   if (a.discard_cost_n) parts.push(a.discard_cost_label || `discard ${a.discard_cost_n}`);
   if (a.exile_cost_n) parts.push(a.exile_cost_label || `exile ${a.exile_cost_n}`);
+  // Collect evidence N (Cryptex).
+  if (a.exile_cost_any_number && a.exile_cost_mana_value_min) {
+    parts.push(`collect evidence ${a.exile_cost_mana_value_min}`);
+  }
   if (a.exile_permanent_options) {
     parts.push(`exile ${a.exile_permanent_label || "a creature you control"}`);
   }

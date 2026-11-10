@@ -37,9 +37,15 @@
   // Elementals") is worded "Behold": its options are cards in your hand and
   // permanents you control, the hand cards are revealed and nothing is
   // spent.
+  //
+  // A collect evidence offer (`collect_evidence`, Conspiracy Unraveler's
+  // "collect evidence 10 rather than pay the mana cost") is worded
+  // "Exile": any number of graveyard cards, ready once their total mana
+  // value reaches the N, with the running total shown.
   import type { AlternativeCostView, CardView } from "../../protocol";
   import { altCostPayCount } from "../../targeting";
   import { canFillEachOf, fillsEachOf } from "../../sacrificeCost";
+  import { exileCostManaValueTotal } from "../../exileCost";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
 
@@ -58,12 +64,28 @@
   const { card, offer, options, onConfirm, onCancel }: Props = $props();
 
   const need = $derived(altCostPayCount(offer ?? undefined));
-  const verb = $derived(offer?.behold ? "Behold" : offer?.discards ? "Discard" : "Pay");
+  const evidence = $derived(offer?.collect_evidence ?? 0);
+  const verb = $derived(
+    offer?.behold ? "Behold" : offer?.discards ? "Discard" : evidence > 0 ? "Exile" : "Pay",
+  );
   const purpose = $derived(offer?.behold ? " to behold" : offer?.discards ? " to discard" : "");
   const eachOf = $derived(offer?.pay_options?.each_of);
 
   let chosen = $state<string[]>([]);
-  const ready = $derived(chosen.length === need && fillsEachOf(chosen, eachOf));
+  const evidenceTotal = $derived(evidence > 0 ? exileCostManaValueTotal(options, chosen) : 0);
+  const optionsTotal = $derived(
+    evidence > 0
+      ? exileCostManaValueTotal(
+          options,
+          options.map((c) => c.instance_id),
+        )
+      : 0,
+  );
+  const ready = $derived(
+    evidence > 0
+      ? chosen.length > 0 && evidenceTotal >= evidence
+      : chosen.length === need && fillsEachOf(chosen, eachOf),
+  );
 
   // Reset when a different cast opens the prompt.
   let lastCardID: string | null = null;
@@ -79,6 +101,12 @@
   // second card replaces the first rather than erroring, which is
   // what every single-card cost did before S29.
   function toggle(instanceID: string): void {
+    if (evidence > 0) {
+      chosen = chosen.includes(instanceID)
+        ? chosen.filter((id) => id !== instanceID)
+        : [...chosen, instanceID];
+      return;
+    }
     if (need === 1) {
       chosen = chosen[0] === instanceID ? [] : [instanceID];
       return;
@@ -111,7 +139,9 @@
       {#if offer.behold}
         Cards from your hand are revealed; nothing leaves its zone.
       {/if}
-      {#if need > 1}
+      {#if evidence > 0}
+        <span class="tally">mana value {evidenceTotal} of {evidence}</span>
+      {:else if need > 1}
         <span class="tally">{chosen.length} of {need}</span>
       {/if}
       {#if offer.life}
@@ -123,7 +153,7 @@
         One card for each part: {eachOf.map((g) => g.label).join(", ")}.
       </p>
     {/if}
-    {#if options.length < need || !canFillEachOf(eachOf)}
+    {#if evidence > 0 ? optionsTotal < evidence : options.length < need || !canFillEachOf(eachOf)}
       <p class="prompt-hint error">You have nothing that can pay this cost.</p>
     {:else}
       <ul class="prompt-options">

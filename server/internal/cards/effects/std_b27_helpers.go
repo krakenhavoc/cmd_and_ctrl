@@ -6,125 +6,87 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// std_b27_helpers.go — shared pieces of Standard-set batches 27–30
-// (Bloomburrow and Duskmourn leftovers, umbrella #4452).
+// std_b27_helpers.go — shared pieces of the Standard leftovers redo set
+// (feat/std-redo-27).
 
-// The delayed "return it at the beginning of the next end step" bodies
-// with one counter each (Parting Gust's +1/+1, Salvation Swan's flying).
-var (
-	returnExiledWithPlusOneCreatureBody = game.SimpleDelayedBody(
-		"flicker/return-exiled-with-plus-one-counter", returnExiledCardsWithPlusOneCounter)
-	returnExiledWithFlyingCounterBody = game.SimpleDelayedBody(
-		"flicker/return-exiled-with-flying-counter", returnExiledCardsWithFlyingCounter)
-)
+// CondYourGraveyardAtLeast is "if there are N or more cards in your
+// graveyard" (threshold, N = 7) declared as an intervening if
+// (InterveningIf): asked as the ability triggers and again as it
+// resolves (CR 603.4). The graveyard is the resolving item's
+// controller's, which for an ability that works from a graveyard is the
+// card's owner (CR 108.4a).
+type CondYourGraveyardAtLeast struct{ N int }
 
-func exiledCardTargets(item *game.StackItem) []uuid.UUID {
-	var ids []uuid.UUID
-	for _, t := range item.Targets {
-		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
-			ids = append(ids, t.ID)
-		}
+func (c CondYourGraveyardAtLeast) Holds(ctx *Context) bool {
+	return b31GraveyardSize(ctx.Game, ctx.Controller()) >= c.N
+}
+
+func (CondYourGraveyardAtLeast) condition() (game.FootprintStep, bool) {
+	return game.FootprintStep{}, false
+}
+
+// --- Vren, the Relentless's Rat ------------------------------------
+
+// VrenRatToken is the 1/1 black Rat creature token with "This token gets
+// +1/+1 for each other Rat you control" (Vren, the Relentless; the printed
+// Rat token of Bloomburrow, tblb #13).
+func VrenRatToken() game.Card { return tokenFromCatalog(printedVrenRatToken) }
+
+// printedVrenRatToken is that Rat as PRINTED. Its slug is an on-disk
+// identity and is never renamed.
+func printedVrenRatToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "rat-pumped-by-other-rats",
+		Card: game.Card{
+			Name:      "Rat",
+			TypeLine:  "Token Creature — Rat",
+			Power:     1,
+			Toughness: 1,
+			Colors:    []string{"B"},
+		},
+		Static: []game.StaticAbility{{
+			Label:    "This token gets +1/+1 for each other Rat you control.",
+			Layer:    game.Layer7PT,
+			SubLayer: game.SubLayer7C_Modify,
+			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+				return target.InstanceID == source.InstanceID
+			},
+			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+				n := hobA9OtherSubtypeYouControl(g, source, source.TextSubtype("Rat"))
+				c.Power += n
+				c.Toughness += n
+			},
+		}},
+		Text: "This token gets +1/+1 for each other Rat you control.",
 	}
-	return ids
 }
 
-// returnExiledCardsWithPlusOneCounter returns the listed cards together
-// under their owners' control, each entering with a +1/+1 counter on it
-// (CR 614.12; Parting Gust).
-func returnExiledCardsWithPlusOneCounter(g *game.Game, item *game.StackItem) error {
-	return ReturnFromExileTogether{
-		Targets:        exiledCardTargets(item),
-		CountersIfType: []game.EntryCountersIfType{{CardType: "creature", Counter: game.CounterPlusOne, N: 1}},
-	}.Apply(NewContext(g, item))
-}
+// --- "exile it, then return it" for a creature that dealt combat damage ----
 
-// returnExiledCardsWithFlyingCounter returns the listed cards together
-// under their owners' control, each entering with a flying counter on it
-// (Salvation Swan).
-func returnExiledCardsWithFlyingCounter(g *game.Game, item *game.StackItem) error {
-	return ReturnFromExileTogether{
-		Targets:        exiledCardTargets(item),
-		CountersIfType: []game.EntryCountersIfType{{CardType: "creature", Counter: game.CounterFlying, N: 1}},
-	}.Apply(NewContext(g, item))
-}
-
-// splashPortalDrawIfTribe is Splash Portal's "if that creature is a Bird,
-// Frog, Otter, or Rat, draw a card", asked of the permanent that actually
-// came back (the ruling: its types after returning). A token never
-// returns, so entered is nil and nothing is drawn. An on-disk key.
-var splashPortalDrawIfTribe = EnteredTail("blb/splash-portal-draw-if-tribe", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
-	if entered == uuid.Nil {
+// stdB27FlickerObject is "exile it. If you do, return it to the battlefield
+// under its owner's control" (Long River Lurker, Gossip's Talent) for the
+// creature `ref` names: the Flicker primitive, done only when that very
+// object is still on the battlefield. A creature that left and came back is
+// a new object (CR 400.7) the trigger knows nothing of, so it is left alone.
+func stdB27FlickerObject(ctx *Context, ref game.ObjectRef) error {
+	if ref.ID == uuid.Nil || !onBattlefield(ctx.Game, ref.ID) {
 		return nil
 	}
-	c, ok := ctx.Game.LookupCardForEffect(entered)
-	if !ok {
+	c, ok := ctx.Game.LookupCardForEffect(ref.ID)
+	if !ok || c.ObjectEpoch != ref.Epoch {
 		return nil
 	}
-	for _, sub := range []string{"Bird", "Frog", "Otter", "Rat"} {
-		if c.HasSubtype(sub) {
-			return DrawCards{N: 1}.Apply(ctx)
+	return Flicker{Target: ref.ID, Controller: c.Owner}.Apply(ctx)
+}
+
+// targetPlayerMillsTwo is "target player mills two cards": the still-legal
+// player target mills two (Scavenger's Talent, Extractor Demon).
+func targetPlayerMillsTwo(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return MillCards{Player: t.ID, N: 2}.Apply(ctx)
 		}
 	}
 	return nil
-})
-
-// splashPortalReturn returns the exiled card under its owner's control
-// and then asks the tribe question of it. An on-disk key.
-var splashPortalReturn = CardTail("blb/splash-portal-return", func(ctx *Context, o game.TailOutcome) error {
-	if len(o.IDs) != 1 {
-		return nil
-	}
-	return ReturnFromExile{Target: o.Tail.Carry[0], ThenTail: ctx.ItemTail(splashPortalDrawIfTribe)}.Apply(ctx)
-})
-
-// driftgloomCoyoteCounter is "if that creature had power 2 or less, put a
-// +1/+1 counter on this creature": N carries the answer, read off the
-// creature before it was exiled (CR 608.2h), and it runs only when the
-// creature was exiled this way. An on-disk key.
-var driftgloomCoyoteCounter = CardTail("blb/driftgloom-coyote-counter", func(ctx *Context, o game.TailOutcome) error {
-	if o.Tail.N != 1 {
-		return nil
-	}
-	if z := ctx.Game.FindCardZoneForEffect(o.Tail.Source); z == nil || z.Kind != game.ZoneBattlefield {
-		return nil
-	}
-	return ctx.Game.AddCounterForEffect(o.Tail.Source, game.CounterPlusOne, 1)
-})
-
-// coilingRebirthCopy is Coiling Rebirth's "then if the gift was promised and
-// that creature isn't legendary, create a token that's a copy of that
-// creature, except it's 1/1": N is 1 when the gift was promised, and the
-// question is asked of the creature that actually came back. An on-disk key.
-var coilingRebirthCopy = EnteredTail("blb/coiling-rebirth-copy", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
-	if entered == uuid.Nil || o.Tail.N != 1 {
-		return nil
-	}
-	c, ok := ctx.Game.LookupCardForEffect(entered)
-	if !ok || c.IsLegendary() {
-		return nil
-	}
-	return CreateTokenCopy{
-		Copy: entered,
-		N:    1,
-		Except: func(tok *game.Card) {
-			tok.Power, tok.Toughness = 1, 1
-			tok.VariableToughness = false
-			tok.PrintedPTKnown = true
-		},
-	}.Apply(ctx)
-})
-
-// TapCreaturesForManaCost is "{cost}. For each mana in this ability's
-// activation cost, you may tap an untapped creature you control rather
-// than pay that mana" (Heirloom Epic): the whole mana cost may be paid by
-// tapping untapped creatures, one for each {1}. It is waterbend's
-// machinery over creatures alone and under its own key, so it never counts
-// as waterbending (CR 701.67) and an artifact cannot pay.
-func TapCreaturesForManaCost(cost string) game.AbilityCost {
-	return game.AbilityCost{Mana: cost, Waterbend: &game.TapPermanentsCost{
-		Key:   "tap-creatures-for-mana",
-		Label: "Tap creatures for {1} each",
-		Extra: cost,
-		Spec:  TargetCreature("an untapped creature you control", YouControl(), Untapped()),
-	}}
 }

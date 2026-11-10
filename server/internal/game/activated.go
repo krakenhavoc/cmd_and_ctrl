@@ -430,6 +430,12 @@ type AbilityCost struct {
 	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
 	RevealHand bool
 
+	// RevealSecretChoice is "Reveal the creature type you chose" as a
+	// cost (A Killer Among Us, secret_choice.go): the word the source's
+	// controller secretly chose for it is shown to the table as the cost
+	// is paid. Payable only by the player who chose it.
+	RevealSecretChoice bool
+
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
 	// "Return a Forest you control to its owner's hand", Master
@@ -571,6 +577,15 @@ type AbilityCost struct {
 	// the stack, so a "becomes tapped" watcher goes above it. See
 	// tap_grantor_cost.go.
 	TapGrantor bool
+	// SacrificeGrantor sacrifices the permanent that GRANTED this ability
+	// as part of the cost — Deconstruction Hammer's equipped creature has
+	// "{3}, {T}, Sacrifice Deconstruction Hammer: …". ExileGrantor's
+	// sibling, one verb over: the grantor goes through the ordinary
+	// sacrifice payment (CR 701.21a), so it must be controlled by the
+	// payer — an Equipment whose controller differs from the creature's
+	// controller can't pay it. Only on a granted row; see
+	// sacrifice_grantor_cost.go.
+	SacrificeGrantor bool
 
 	// UnattachEquipment is "Unattach an Equipment from <this>" as a cost
 	// (#4799, ADR 0020's 2026-11-02 amendment) — Captain America, First
@@ -1816,6 +1831,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	sacrifices, err = g.addSacrificeGrantorLocked(playerID, ab.Cost, origins.At(index), sacrifices)
+	if err != nil {
+		return err
+	}
 	crew, err := g.validateCrewCostLocked(playerID, cardID, ab.Cost, params.CrewIDs)
 	if err != nil {
 		return err
@@ -1965,6 +1984,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// Validated with the rest and paid before the sacrifices; nothing
 	// moves, so no other component's pick is excluded.
 	if err := g.validateRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs, params.XValue); err != nil {
+		return err
+	}
+	// "Reveal the creature type you chose" (A Killer Among Us).
+	if err := g.validateRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost); err != nil {
 		return err
 	}
 	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
@@ -2412,6 +2435,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// And "Reveal the creature type you chose", while the source is still
+	// on the battlefield to be read.
+	g.payRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost)
 	// #4799: the unattach component, at the same point: the Equipment
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)
@@ -2460,7 +2486,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// item is built so the leaves-triggers it queues sit ABOVE the
 	// ability (CR 603.3b). Not a sacrifice: no EventSacrifice, and
 	// nothing dies.
-	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
+	// ADR 0137: craft's materials (the only ExilePermanents clause that
+	// reads a graveyard) say so on the move, for Market Gnome.
+	exileKind := MoveCauseCost
+	if ab.Cost.ExilePermanents != nil && ab.Cost.ExilePermanents.FromGraveyard {
+		exileKind = MoveCauseCraftCost
+	}
+	exiledPermanents, err := g.payExilePermanentsCostKindLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, exileKind, PermissionCardRef{})
 	if err != nil {
 		return err
 	}
@@ -2504,7 +2536,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// door: nothing here is discarded. Recorded on the payment so an
 	// effect that reads "the card exiled this way" can find it in exile
 	// by instance ID, where this just put it.
-	if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
+	if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
 		return err
 	}
 	paid.Exiled = exiles

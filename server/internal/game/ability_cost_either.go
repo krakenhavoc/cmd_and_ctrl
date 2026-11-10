@@ -47,6 +47,12 @@ const (
 	// your graveyard" (ForageAbilityBranches). Folded into ExileCards,
 	// so the graveyard walk, validator and payer are the plain clause's.
 	AbilityCostBranchExileGraveyard AbilityCostBranchKind = "exile_graveyard"
+	// AbilityCostBranchMana pays the branch's Mana from the pool (Bloodthorn
+	// Flail's "Equip—Pay {3} or discard a card"). Folded into the cost's
+	// Mana component, so the pool payment, the strict and permissive postures
+	// and the activation's other mana readers are the ordinary ones; the rest
+	// of the cost must have no mana of its own (effects.Register checks it).
+	AbilityCostBranchMana AbilityCostBranchKind = "mana"
 )
 
 // AbilityCostBranch is one way to pay an either/or part of an activated
@@ -66,6 +72,8 @@ type AbilityCostBranch struct {
 	// Nonland narrows a discard to nonland cards. Unused by a
 	// sacrifice.
 	Nonland bool
+	// Mana is a mana branch's cost ("{3}"). Unused by every other kind.
+	Mana string
 }
 
 // ErrAbilityCostBranch is returned when an activation names no branch
@@ -106,6 +114,11 @@ func ChosenAbilityCost(c AbilityCost, branch *int) (AbilityCost, error) {
 		out.DiscardCards = b.discardClause()
 	case AbilityCostBranchExileGraveyard:
 		out.ExileCards = &ExileCost{N: b.count(), Label: b.Label, From: ZoneGraveyard}
+	case AbilityCostBranchMana:
+		if b.Mana == "" || out.Mana != "" {
+			return c, ErrAbilityCostBranch
+		}
+		out.Mana = b.Mana
 	default:
 		return c, ErrAbilityCostBranch
 	}
@@ -158,6 +171,8 @@ func (b AbilityCostBranch) BranchLabel() string {
 		return "Discard " + b.Label
 	case AbilityCostBranchExileGraveyard:
 		return "Exile " + b.Label + " from your graveyard"
+	case AbilityCostBranchMana:
+		return "Pay " + b.Mana
 	}
 	return b.Label
 }

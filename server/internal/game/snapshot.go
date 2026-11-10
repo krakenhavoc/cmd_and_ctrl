@@ -1212,6 +1212,12 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// SecretChoice and SecretChoiceBy are the word chosen in secret for
+	// this permanent and the player who chose it (secret_choice.go, A
+	// Killer Among Us). Carried for ChosenPlayer's reason: a player chose
+	// it and nothing can rebuild it. Additive within the version.
+	SecretChoice   string    `json:"secretChoice,omitempty"`
+	SecretChoiceBy uuid.UUID `json:"secretChoiceBy,omitempty"`
 	// ChosenNumber is the number chosen as this permanent entered
 	// (#1941, CR 614.12a) — the life Phyrexian Processor's controller
 	// paid. Carried for ChosenPlayer's reason: a player chose it and
@@ -1410,6 +1416,12 @@ type cardSnapshot struct {
 	// have found nothing before. A pointer, so a card no ability linked
 	// writes nothing (the #1492 omitzero rule).
 	ExiledWithAbility *AbilityRef `json:"exiledWithAbility,omitempty"`
+	// ExiledWithTurn is the turn that link was made on (Maralen, Fae
+	// Ascendant's "cards exiled with Maralen this turn", #4458).
+	// Additive within the version: a file without it restores zero,
+	// "not this turn", so a restored game's earlier links grant nothing
+	// this-turn clauses read, which is the safe direction.
+	ExiledWithTurn int `json:"exiledWithTurn,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -1911,6 +1923,7 @@ type pendingChoiceSnapshot struct {
 	ManaSettled          []string               `json:"manaSettled,omitempty"`
 	ManaPicksLeft        []ManaPickSlot         `json:"manaPicksLeft,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
+	ManaRecolorsSource   bool                   `json:"manaRecolorsSource,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
 	NoLegalTarget        bool                   `json:"noLegalTarget"`
@@ -3100,6 +3113,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenName:               c.ChosenName,
 		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
+		SecretChoice:             c.SecretChoice,
+		SecretChoiceBy:           c.SecretChoiceBy,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		LinkedPermanent:          objectRefPtr(c.LinkedPermanent),
@@ -3132,6 +3147,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:           c.ExiledWithTurn,
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -3490,6 +3506,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		ManaSettled:           copyStrings(c.ManaSettled),
 		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
 		ManaTapped:            c.ManaTapped,
+		ManaRecolorsSource:    c.ManaRecolorsSource,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:         c.NoLegalTarget,
 		PickTargetPlayers:     copyUUIDs(c.PickTargetPlayers),
@@ -4234,6 +4251,8 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenName:               c.ChosenName,
 		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
+		SecretChoice:             c.SecretChoice,
+		SecretChoiceBy:           c.SecretChoiceBy,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		LinkedPermanent:          objectRefValue(c.LinkedPermanent),
@@ -4266,6 +4285,7 @@ func restoreCard(c *cardSnapshot) Card {
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
+		ExiledWithTurn:           c.ExiledWithTurn,
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
@@ -4600,6 +4620,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ManaSettled:           copyStrings(c.ManaSettled),
 		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
 		ManaTapped:            c.ManaTapped,
+		ManaRecolorsSource:    c.ManaRecolorsSource,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:         c.NoLegalTarget,
 		PickTargetPlayers:     copyUUIDs(c.PickTargetPlayers),

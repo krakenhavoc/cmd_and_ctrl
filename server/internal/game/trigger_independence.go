@@ -158,6 +158,10 @@ const (
 	// FootprintCondAttacked: the item's controller declared an attacker
 	// this turn (raid: Fire Nation Raider).
 	FootprintCondAttacked FootprintCond = "attacked"
+	// FootprintCondFaceDownEntered: a permanent entered the battlefield
+	// face down under the item's controller this turn (Tunnel Tipster).
+	// The tally only rises within a turn.
+	FootprintCondFaceDownEntered FootprintCond = "face_down_entered"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -811,6 +815,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).MaxManaValue >= s.N
 	case FootprintCondAttacked:
 		return tally.AttacksDeclared > 0
+	case FootprintCondFaceDownEntered:
+		return tally.PermanentsEnteredFaceDown > 0
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:
@@ -1419,7 +1425,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
-	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true,
+	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
 	ModCantBeBlockedByMoreThan: true,
 }
 
@@ -1745,7 +1751,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "LibraryTopVisibleWhen": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 

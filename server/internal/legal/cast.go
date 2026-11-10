@@ -1053,7 +1053,18 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// #3175: the X each payment in altCostSets announces, for an offer
 	// whose card is bound to X (Shining Shoal); nil for every other offer.
 	var altXs []int
-	if want := offer.CardPaymentCount(); want > 0 {
+	if offer.CollectsEvidence() {
+		// Conspiracy Unraveler's "collect evidence 10 rather than pay the
+		// mana cost": the cheapest fuel first until the floor is reached,
+		// the one payment the ability cost's collect evidence enumerates
+		// (exileCardsPayment). Unreachable short, since
+		// CastOffersForLocked drops an offer the graveyard can't pay.
+		pay, ok := e.exileCardsPayment(offer.CollectEvidence, card.InstanceID, nil)
+		if !ok || len(pay) == 0 {
+			return
+		}
+		altCostSets = [][]uuid.UUID{pay}
+	} else if want := offer.CardPaymentCount(); want > 0 {
 		// #1013: the candidates come back in ZONE order, which is an
 		// arbitrary answer to "which three cards does this Uro eat".
 		// cheapestFuelFirst asks the seat's own policy what each one is

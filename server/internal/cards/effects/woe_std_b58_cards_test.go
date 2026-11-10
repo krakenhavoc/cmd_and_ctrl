@@ -303,7 +303,7 @@ func TestB55SharaeTapsStunsAndDrawsOnceEachTurn(t *testing.T) {
 	v2 := b12Creature(g, opp.ID, "V2", "Creature — Bear", 2, 2)
 	hand = b55HandSize(g, me)
 	g.WithWriteLock(func() {
-		if err := g.TapTargetByEffectForEffect(v2, me.ID); err != nil {
+		if err := g.TapTargetForEffectBy(v2, me.ID); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -320,7 +320,7 @@ func TestB55SharaeIgnoresATapAnOpponentInstructsOfTheirOwnCreature(t *testing.T)
 	v := b12Creature(g, opp.ID, "V", "Creature — Bear", 2, 2)
 	hand := b55HandSize(g, me)
 	g.WithWriteLock(func() {
-		if err := g.TapTargetByEffectForEffect(v, opp.ID); err != nil { // the opponent's own effect
+		if err := g.TapTargetForEffectBy(v, opp.ID); err != nil { // the opponent's own effect
 			t.Fatal(err)
 		}
 	})

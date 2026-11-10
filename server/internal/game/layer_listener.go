@@ -446,10 +446,11 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if attackingStatusStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
-	case EventScry, EventSurveil, EventDealDamage, EventBlock, EventDrawCard:
+	case EventScry, EventSurveil, EventDealDamage, EventBlock, EventDrawCard, EventStepBegan:
 		// StaticAbility.DependsOnEvents: "has this happened this turn"
 		// and "is it blocking" have a new answer the moment the event
-		// is in the log. Gated, so a table with no such permanent pays
+		// is in the log, and "during your end step" (Zurgo, Thunder's
+		// Decree) the moment the step begins. Gated, so a table with no such permanent pays
 		// one walk of the battlefield per event and no recompute.
 		if eventStaticIsLiveLocked(g, ev.Kind) {
 			g.layerVersion.Add(1)
