@@ -28,7 +28,6 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{G}, Sacrifice three creatures: Return target land card from your graveyard to your hand.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{G}"), SacrificeN(3, "three creatures", Creature())),
 			Targets: TargetCardInGraveyard("target land card in your graveyard", YouOwn(), Land()),
 			Effect: Do(OnTheTargetCard(func(ctx *Context, id uuid.UUID) error {
