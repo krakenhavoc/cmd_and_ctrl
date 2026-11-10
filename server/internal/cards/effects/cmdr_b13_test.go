@@ -676,3 +676,28 @@ func TestCmdrB14InfantryShieldGivesMenaceAndMobilizeByPower(t *testing.T) {
 		t.Errorf("%d Warriors, want 3 (mobilize X for the equipped 3-power creature only)", n)
 	}
 }
+
+const cmdrB14CanopyOracle = "ec1e69b1-f664-494b-8da2-c7199872b08b"
+
+func TestCmdrB14CanopyGargantuanCountersEqualToughnessOnOthers(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	canopy := b12Push(g, me.ID, "Canopy Gargantuan", "Creature — Dragon", cmdrB14CanopyOracle, 7, 7)
+	wall := b12Creature(g, me.ID, "Wall", "Creature — Wall", 0, 4)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, g.Seats[1].ID, "Theirs", "Creature — Elf", 1, 1)
+	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
+	passPriorityAroundTable(t, g)
+	if got := plusOneCounters(g, wall); got != 4 {
+		t.Errorf("Wall has %d counters, want 4", got)
+	}
+	if got := plusOneCounters(g, bear); got != 2 {
+		t.Errorf("Bear has %d counters, want 2", got)
+	}
+	if got := plusOneCounters(g, canopy); got != 0 {
+		t.Errorf("Canopy put %d counters on itself", got)
+	}
+	if got := plusOneCounters(g, theirs); got != 0 {
+		t.Errorf("an opponent's creature got %d counters", got)
+	}
+}
