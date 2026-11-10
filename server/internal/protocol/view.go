@@ -9694,7 +9694,9 @@ func stampManaChargedCost(g *game.Game, card *game.Card, controller uuid.UUID, v
 	}
 	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
-		if i >= len(raw) || raw[i].ManaCost == "" {
+		// #5382: a tap-only row an activation cost increase taxes is
+		// stamped too, so the chip shows the {2} the engine charges.
+		if i >= len(raw) || !g.ManaAbilityChargesManaForEffect(controller, *card, raw[i]) {
 			continue
 		}
 		views[i].PhyrexianSymbols, views[i].PhyrexianGranted = phyrexianSymbolsIn(g, controller, raw[i].ManaCost)
@@ -13801,7 +13803,11 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// ManaCost) on a pricing error rather than guessing; a card
 		// with no cost modifier reaching it renders byte-identical to
 		// ManaCost, which is nearly every ability in the catalog.
-		if a.Cost.Mana != "" {
+		// #5382: and a row that prints no mana at all is stamped when an
+		// activation cost increase (Skyseer's Chariot) charges it some —
+		// still nil for every untaxed {T}-only row, so those render
+		// exactly as before.
+		if g.AbilityChargesManaForEffect(caster, c, zone, a, nil) {
 			if charged, err := g.AbilityManaCostForEffect(caster, c, zone, a); err == nil {
 				s := charged.String()
 				v.ChargedManaCost = &s
@@ -14110,7 +14116,7 @@ func stampUnattachDivide(g *game.Game, v *LegalTargetsView, src game.TargetSourc
 //
 // Caller must hold g's read lock.
 func targetChargedManaCosts(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind, a game.ActivatedAbilityShape, legal *LegalTargetsView) map[string]string {
-	if legal == nil || a.Cost.Mana == "" || a.Modes != nil || a.Targets == nil ||
+	if legal == nil || a.Modes != nil || a.Targets == nil ||
 		a.Targets.ClauseCount() != 1 || legal.Max != 1 || legal.CountFromX {
 		return nil
 	}

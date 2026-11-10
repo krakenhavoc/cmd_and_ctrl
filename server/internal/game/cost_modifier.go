@@ -375,11 +375,11 @@ type AbilityCostSubject struct {
 	PowerUp bool
 
 	// Mana says this is a CR 605 mana ability rather than a CR 602
-	// activation. Always false today — the mana path prices its cost
-	// without this pass at all — and present so that a predicate
-	// written now says which kind it means rather than being silently
-	// widened the day the other path joins. See ADR 0020's exhaust
-	// addendum, note of 2026-09-22.
+	// activation — set by manaAbilityCostQueryLocked (#1191), so a
+	// predicate says which kind it means. CR 605.1a makes both
+	// activated abilities, so a printed "activated abilities of …"
+	// (Skyseer's Chariot, #5382) leaves it unread and reaches both. See
+	// ADR 0020's exhaust addendum, note of 2026-09-22.
 	Mana bool
 
 	// own is the ability's own cost clauses
@@ -1115,20 +1115,27 @@ func (g *Game) AbilityManaCostAtXForEffect(activator uuid.UUID, source Card, zon
 	if err != nil {
 		return ParsedCost{}, err
 	}
-	if ab.Cost.Mana == "" {
-		// Nothing to discount and nothing to tax: a cost with no mana
-		// component is not made of mana, so the pass has no subject.
-		// The early return is also what keeps the battlefield walk
-		// off the {T}-only abilities that are most of the catalog.
-		return base, nil
-	}
 	q := g.abilityCostQueryLocked(activator, source, zone, ab, targets)
 	if x > 0 {
 		q.XValue = x
 	}
+	if ab.Cost.Mana == "" && !g.activationTaxApplicableLocked(q) {
+		// Nothing to discount: a cost with no mana component has no
+		// generic mana for a reduction to take off (CR 118.7a). Only an
+		// INCREASE can give it one (#5382, CR 602.2b through 601.2f:
+		// Skyseer's Chariot's "{2} more to activate" reaches a {T}-only
+		// ability), and with none on the board the printed (empty) cost
+		// is the price.
+		return base, nil
+	}
 	priced, err := g.applyCostModifiersLocked(base, q)
 	if err != nil {
 		return ParsedCost{}, err
+	}
+	if ab.Cost.Mana == "" && priced.Empty() {
+		// An increase that declined this activation: the printed
+		// empty cost, byte for byte, as before #5382.
+		return base, nil
 	}
 	// #1600: "Spend only mana of the chosen color to activate this
 	// ability" — resolved against THIS source and stamped AFTER the
@@ -1202,13 +1209,15 @@ func (g *Game) PriceActivation(activator, cardID uuid.UUID, index int, targets [
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool {
-	if ab.Cost.Mana == "" {
-		// The pass never runs for a cost with no mana component
-		// (AbilityManaCostForTargetsForEffect), so nothing reads targets.
-		return false
+	// #5382: a cost with no mana component is priced only by an
+	// increase (activationTaxApplicableLocked), so for one only an
+	// increase that reads targets can make the price read them.
+	noMana := ab.Cost.Mana == ""
+	reads := func(m CostModifier) bool {
+		return m.ReadsTargets && (!noMana || m.Kind == CostIncrease)
 	}
 	for _, m := range ab.CostModifiers {
-		if m.ReadsTargets {
+		if reads(m) {
 			return true
 		}
 	}
@@ -1217,7 +1226,7 @@ func (g *Game) AbilityPriceReadsTargetsForEffect(ab ActivatedAbilityShape) bool 
 	}
 	for i := range g.Battlefield.Cards {
 		for _, m := range costModifiersOf(&g.Battlefield.Cards[i]) {
-			if m.Activations && m.ReadsTargets {
+			if m.Activations && reads(m) {
 				return true
 			}
 		}
@@ -1350,14 +1359,91 @@ func (g *Game) ManaAbilityManaCostForEffect(activator uuid.UUID, source Card, ab
 	if err != nil {
 		return ParsedCost{}, err
 	}
-	if ab.ManaCost == "" {
-		// Nothing to discount and nothing to tax, exactly as the CR
-		// 602 early return: a tap-only mana ability is not made of
-		// mana, so the pass has no subject and the battlefield walk
-		// never runs for the ordinary land or Sol Ring.
+	q := g.manaAbilityCostQueryLocked(activator, source, ab)
+	if ab.ManaCost == "" && !g.activationTaxApplicableLocked(q) {
+		// Nothing to discount, exactly as the CR 602 twin: a tap-only
+		// mana ability has no generic mana for a reduction to take off,
+		// and only an activation cost INCREASE could give it some
+		// (#5382; CR 605.3 makes a mana ability's activation follow
+		// CR 602.2, so Skyseer's Chariot naming Sol Ring taxes its {T}).
 		return base, nil
 	}
-	return g.applyCostModifiersLocked(base, g.manaAbilityCostQueryLocked(activator, source, ab))
+	priced, err := g.applyCostModifiersLocked(base, q)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	if ab.ManaCost == "" && priced.Empty() {
+		return base, nil
+	}
+	return priced, nil
+}
+
+// activationTaxApplicableLocked reports whether any activation cost
+// INCREASE bears on the activation q describes (#5382): a board,
+// command-zone or planar modifier with CostModifier.Activations, or the
+// ability's own clause, whose AppliesTo admits it. It is the gate the
+// two activation pricers put in front of the CR 601.2f pass for a cost
+// with no mana component — the {T}-only, sacrifice-only, crew and
+// loyalty costs that are most of the catalog — so a board with no
+// "costs {N} more to activate" on it prices them as it always did,
+// without running the reductions over a cost they cannot touch.
+//
+// An increase whose AppliesTo panics is not this function's problem:
+// amountFor runs the same predicate again inside the pass. One whose
+// amount would be negative still reads as applicable here, so the pass
+// runs and refuses it, exactly as for a printed mana cost.
+//
+// Caller must hold g.mu.
+func (g *Game) activationTaxApplicableLocked(q CostQuery) bool {
+	for _, bm := range g.activeCostModifiersLocked(q) {
+		if bm.modifier.Kind != CostIncrease {
+			continue
+		}
+		mq := q
+		mq.Source = bm.source
+		if !bm.modifier.ReadsTargets {
+			mq.Targets = nil
+		}
+		if bm.modifier.AppliesTo == nil || bm.modifier.AppliesTo(mq) {
+			return true
+		}
+	}
+	return false
+}
+
+// AbilityChargesManaForEffect reports whether one activation of `ab`
+// owes any mana at all (#5382): its printed cost has a mana component,
+// or an activation cost increase gives one to a cost that printed none
+// (Skyseer's Chariot's "{2} more to activate" on a {T}-only ability, a
+// crew ability or a loyalty ability). A pricing error answers true, so
+// the caller goes on to the pricer and refuses where the pricer does.
+//
+// The one question every reader that used to test ab.Cost.Mana != ""
+// asks instead — the activation's payment gate, the legal-move
+// enumerator's affordability gate and the view's charged cost — so a
+// tax the engine charges is never a payment a reader skipped.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilityChargesManaForEffect(activator uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, targets []TargetRef) bool {
+	if ab.Cost.Mana != "" {
+		return true
+	}
+	priced, err := g.AbilityManaCostForTargetsForEffect(activator, source, zone, ab, targets)
+	return err != nil || !priced.Empty()
+}
+
+// ManaAbilityChargesManaForEffect is AbilityChargesManaForEffect for a
+// CR 605 mana ability: its printed ManaCost, or a tax on a tap-only one
+// (#5382). Read by ActivateManaAbility, the enumerator's mana moves, the
+// view's mana rows and the auto-tapper's planners.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ManaAbilityChargesManaForEffect(activator uuid.UUID, source Card, ab ManaAbilityShape) bool {
+	if ab.ManaCost != "" {
+		return true
+	}
+	priced, err := g.ManaAbilityManaCostForEffect(activator, source, ab)
+	return err != nil || !priced.Empty()
 }
 
 // ApplyCostModifiers is the read-locked public surface: price `base`

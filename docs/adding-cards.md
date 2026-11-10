@@ -5621,6 +5621,24 @@ go first, which is the order that leaves the least to pay. The
 activation prices at the announced X (`AbilityManaCostAtXForEffect`);
 the menu row, the enumerator and the auto-tap preview price before X is
 chosen, at 0, which only ever shows more than the activation charges.
+
+**A tax on activating (#5382, S79):** "Activated abilities of sources
+with the chosen name cost {2} more to activate" (Skyseer's Chariot) is an
+activation-scoped increase, `ActivationCostsMore(n, label, preds...)`:
+
+```go
+AsEnters:      ChooseCardNameAsEnters("Skyseer's Chariot — choose a nonland card name"),
+CostModifiers: []game.CostModifier{
+    ActivationCostsMore(2, label, OfASourceWithTheChosenNonlandName()),
+},
+```
+
+Unlike a reduction, an increase reaches a cost that prints no mana — a
+{T}-only ability, a mana ability, crew, a loyalty ability — and that
+activation then owes the {n}. Every reader asks
+`Game.AbilityChargesManaForEffect` / `ManaAbilityChargesManaForEffect`,
+never `Cost.Mana != ""`, so the payment, the enumerator, the view's
+`charged_mana_cost` and auto-tap all see it. Several increases sum.
 `OfACreatureYouControl()` is the source predicate: a creature on the
 battlefield under the modifier's controller, so a cycling ability from
 the hand is not one. Register refuses the floor on an increase, a
