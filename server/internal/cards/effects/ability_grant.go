@@ -83,6 +83,14 @@ type AbilityGrant struct {
 	Activated []ActivatedAbility
 	Mana      []ManaAbility
 
+	// LibraryTopVisible is a granted "You may look at the top card of
+	// your library any time" (Glowcap Lantern's equipped creature,
+	// game.LibraryTopOwner): the permanent that has the grant makes its
+	// controller's top card visible, as a printed Courser of Kruphix does
+	// (game.LibraryTopVisibilityLocked reads the permanent's layered
+	// grants). Zero is no such clause.
+	LibraryTopVisible game.LibraryTopVisibility
+
 	// LegendRuleExempt is a granted "the legend rule doesn't apply to
 	// permanents you control" (a copy of Sakashima of a Thousand Faces).
 	LegendRuleExempt []game.LegendRuleExemption
@@ -204,6 +212,8 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 		ManaAbilities: manaShapes(gr.Mana),
 		GrantText:     gr.Text,
 
+		LibraryTopVisible: gr.LibraryTopVisible,
+
 		LegendRuleExemptions: gr.LegendRuleExempt,
 		AttackLimits:         gr.AttackLimits,
 
@@ -314,7 +324,7 @@ func checkGrants(name string, grants []AbilityGrant) {
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
 			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 &&
-			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 {
+			gr.AdditionalLandPlays == 0 && len(gr.CastPermissions) == 0 && len(gr.CostModifiers) == 0 && gr.LibraryTopVisible == game.LibraryTopHidden {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {

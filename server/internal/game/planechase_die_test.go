@@ -314,8 +314,8 @@ func TestUntilYouPlaneswalkAwayEnds(t *testing.T) {
 	if live() != 0 {
 		t.Error("the effect outlived planeswalking away from its plane")
 	}
-	if !UntilPlaneswalkAway.Known() || (UntilPlaneswalkAway + 1).Known() {
-		t.Error("UntilPlaneswalkAway is not the last known duration kind")
+	if !UntilPlaneswalkAway.Known() || UntilPlaneswalkAway+1 != UntilNextEndStep || (UntilNextEndStep + 1).Known() {
+		t.Error("UntilNextEndStep is not the last known duration kind, right after UntilPlaneswalkAway")
 	}
 }
 

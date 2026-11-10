@@ -471,6 +471,11 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHo
 		// #4361 S11c: Hinder's leg is a keyed counter route too.
 		return g.CounterSpellToLibraryKeyedForEffect(leg.id, at, landed)
 	}
+	if src.Kind == ZoneStack {
+		// A spell put into a library by an effect that does not counter it
+		// (Sudden Setback): the spell's own exit route, not a tuck.
+		return g.PutSpellInLibraryKeyedForEffect(leg.id, at, landed)
+	}
 	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{leg.id}, at, landed)
 }
 

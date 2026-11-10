@@ -67,6 +67,10 @@ func HexproofFromColor(color string) string {
 // monocolored" (Dragonfire Blade, Sphinx of the Guildpact).
 const HexproofFromMonocolored = hexproofFromPrefix + hexproofQualityMonocolored
 
+// HexproofFromMulticolored is the token for "hexproof from multicolored"
+// (Niv-Mizzet, Guildpact).
+const HexproofFromMulticolored = hexproofFromPrefix + "multicolored"
+
 // HexproofFromEachColor is the token for "hexproof from each color"
 // (Breaker of Creation).
 const HexproofFromEachColor = hexproofFromPrefix + hexproofQualityEachColor
@@ -105,7 +109,11 @@ func ParseHexproofFromQuality(token string) (ProtectionQuality, bool) {
 		return ProtectionQuality{}, false
 	}
 	switch q.Kind {
-	case ProtectionQualityColor, ProtectionQualityCardType, ProtectionQualitySubtype:
+	case ProtectionQualityColor, ProtectionQualityCardType, ProtectionQualitySubtype,
+		// #4452, Niv-Mizzet, Guildpact: "hexproof from multicolored" is the
+		// colour-count quality protection already has (two or more colours,
+		// CR 105.2b), read by the same test.
+		ProtectionQualityMulticolored:
 		return q, true
 	}
 	return ProtectionQuality{}, false

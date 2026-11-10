@@ -66,6 +66,11 @@ var textWordLiteralAllowed = map[string]string{
 	// mana cost") is judged as the card is cast from a hand (CR 601.2b),
 	// before anything can change its text: a change lives on a permanent
 	// or a spell already on the stack.
+	// Faerie Fencing's "if you controlled a Faerie as you cast this spell"
+	// is read as the spell is cast (CR 601.2h), before a text change on a
+	// spell on the stack could reach it.
+	"std_b53_helpers.go": "as-you-cast value, judged as cast",
+
 	"angelic_favor.go":  "alternative cost, judged as cast",
 	"lashknife.go":      "alternative cost, judged as cast",
 	"bards_company.go":  "alternative cost, judged as cast",

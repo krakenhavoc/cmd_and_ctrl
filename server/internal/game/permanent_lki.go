@@ -198,6 +198,12 @@ type PermanentInfo struct {
 	// resolves after the Observatory has gone (CR 608.2h, #2709).
 	ChosenOption string `json:"chosenOption,omitempty"`
 
+	// SecretChoice is the word its controller chose for it in secret
+	// (Card.SecretChoice), as it last existed: A Killer Among Us's
+	// reveal ability still knows the type after the enchantment has been
+	// sacrificed to pay for it (CR 608.2h).
+	SecretChoice string `json:"secretChoice,omitempty"`
+
 	// ChosenNumber is the number chosen for it as it entered
 	// (Card.ChosenNumber, #1941), as it last existed: Phyrexian
 	// Processor's token is still the size of the life paid when the
@@ -298,6 +304,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		CraftedWith:     cloneObjectRefs(c.CraftedWith),
 		ChosenColor:     c.ChosenColor,
 		ChosenOption:    c.ChosenOption,
+		SecretChoice:    c.SecretChoice,
 		NamedTribe:      c.NamedTribe,
 		ChosenNumber:    c.ChosenNumber,
 		LinkedPermanent: objectRefPtr(c.LinkedPermanent),

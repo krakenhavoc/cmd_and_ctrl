@@ -466,5 +466,29 @@ func (g *Game) triggerTargetsLocked(t TriggeredAbility, tc TriggerContext, sourc
 	if t.TargetsFrom != nil {
 		return t.TargetsFrom(tc, source, g)
 	}
+	if t.XFromCast && t.Targets != nil && t.Targets.CountFromX {
+		return xCountedTriggerTargets(t.Targets, source)
+	}
 	return t.Targets
+}
+
+// xCountedTriggerTargets is the clause of "When this enters, tap X target
+// creatures": a CountFromX clause on a XFromCast row is counted by the X
+// its source was cast with (Card.CastX, CR 107.3m), on a copy so the
+// catalog's clause is untouched. X of zero chooses no targets (a zero Max
+// would read as unbounded), so the ability has none and does nothing.
+func xCountedTriggerTargets(spec *TargetSpec, source *Card) *TargetSpec {
+	x := 0
+	if source != nil {
+		x = source.CastX()
+	}
+	if x <= 0 {
+		return nil
+	}
+	cp := *spec
+	cp.Min, cp.Max, cp.CountFromX = x, x, false
+	if spec.UpToX {
+		cp.Min = 0
+	}
+	return &cp
 }

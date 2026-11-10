@@ -50,6 +50,14 @@ const (
 	// (CR 608.2h, the Secret Tunnel ruling), so the creature still here is
 	// still a legal target as long as it shares one of them.
 	TargetSharesCreatureType TargetRelationKind = "shares_creature_type"
+	// TargetCardSharesCreatureType is TargetSharesCreatureType for two
+	// CARDS in a graveyard (Unbury's "two target creature cards that share
+	// a creature type"). The anchor is read wherever its card is now, so a
+	// card that left the graveyard answers with the creature types it has
+	// (a card's types outside the battlefield are its own, CR 205.3d), and
+	// the other card is still returned as long as it shares one of them
+	// (the Unbury ruling). The zone of the candidate is the clause's own.
+	TargetCardSharesCreatureType TargetRelationKind = "card_shares_creature_type"
 )
 
 // ManyPicks reports whether a dependent clause of this kind may pick
@@ -105,6 +113,12 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 		a := findBattlefieldCard(g, anchor.ID)
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&
 			len(SharedCardTypes([]Card{*a, *c})) > 0
+	case TargetCardSharesCreatureType:
+		if anchor.Kind != TargetCard {
+			return false
+		}
+		a := g.findCardByIDLocked(anchor.ID)
+		return a != nil && SharesCreatureType(a, c)
 	case TargetSharesCreatureType:
 		if anchor.Kind != TargetCard || z.Kind != ZoneBattlefield {
 			return false

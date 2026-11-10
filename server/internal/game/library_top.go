@@ -85,6 +85,11 @@ const (
 // top card of your library" is not one.
 var CatalogLibraryTopVisible func(oracleID string) LibraryTopVisibility
 
+// CatalogLibraryTopVisibleWhen returns the designation that gates a
+// permanent's LibraryTopVisible clause (CardDef.LibraryTopVisibleWhen):
+// the zero Designation is no gate. Populated at init.
+var CatalogLibraryTopVisibleWhen func(oracleID string) Designation
+
 // LibraryTopVisibilityLocked returns how far playerID's top library
 // card is currently visible: the most permissive clause among the
 // permanents they control.
@@ -104,11 +109,26 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 		// The gate is "has no catalog entry", not "has no oracle ID"
 		// (ADR 0083 decision 3): a TOKEN has a key of its own since
 		// #521, and an object CR 708.2a has silenced has none.
-		key := catalogAbilityKeyOf(c)
-		if key == "" {
-			continue
+		v := LibraryTopHidden
+		if key := catalogAbilityKeyOf(c); key != "" {
+			v = CatalogLibraryTopVisible(key)
+			if CatalogLibraryTopVisibleWhen != nil && !CatalogLibraryTopVisibleWhen(key).Active(*c) {
+				// "Solved — you may look at the top card" and its kin: the
+				// clause is off until the permanent's designation holds.
+				v = LibraryTopHidden
+			}
 		}
-		v := CatalogLibraryTopVisible(key)
+		// A bundle a layer-6 effect gave the permanent says it too: Glowcap
+		// Lantern's equipped creature has "You may look at the top card of
+		// your library any time" (AbilityGrant.LibraryTopVisible). It is the
+		// permanent's controller's library, as a printed one is.
+		if c.Controller == playerID {
+			for _, gr := range layeredGrants(c) {
+				if gv := CatalogLibraryTopVisible(gr.Key); gv > v {
+					v = gv
+				}
+			}
+		}
 		switch {
 		case v == LibraryTopRevealedEachPlayer:
 			// #1997: every player's library, whoever controls it.

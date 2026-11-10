@@ -55,7 +55,7 @@ func init() {
 			}
 			const name = "Creative Technique"
 			return exileWithPermissionThenOffer(ctx.Game, hit, item.SourceCardID,
-				ctx.Game.FreeCastFromExilePermission(you, item.SourceCardID, name), name, game.MayCastKeywordFreeCast)
+				ctx.Game.FreeCastFromExilePermission(you, item.SourceCardID, name), name)
 		},
 	})
 }

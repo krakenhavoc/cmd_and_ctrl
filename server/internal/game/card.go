@@ -866,6 +866,18 @@ type Card struct {
 	// #1572; see ADR 0071's amendment of 2026-09-27.
 	ChosenOption string
 
+	// SecretChoice is the creature type (or other word) its controller
+	// chose in SECRET for this permanent as an effect resolved —
+	// A Killer Among Us's "secretly choose Human, Merfolk, or Goblin" —
+	// and SecretChoiceBy the player who chose it, the only one who may
+	// reveal it (secret_choice.go). Never projected into a view: an
+	// opponent learns it only when it is revealed (EventCreatureTypeChosen
+	// on the reveal). Same lifecycle as ChosenOption: per instance,
+	// carried by the snapshot and by clone, cleared when the permanent
+	// leaves the battlefield (CR 400.7). NOT a copiable value.
+	SecretChoice   string
+	SecretChoiceBy uuid.UUID
+
 	// ChosenNumber is the NUMBER chosen for this permanent as it
 	// entered (CR 614.12a, #1941): Phyrexian Processor's "As this
 	// artifact enters, pay any amount of life", read back by its
@@ -1256,6 +1268,14 @@ type Card struct {
 	// closure trigger), so a reader by row never matches those. Cleared
 	// by MoveCard with ExiledWith. Carried by the snapshot.
 	ExiledWithAbility AbilityRef
+
+	// ExiledWithTurn is the Turn.Seq on which ExiledWith was stamped:
+	// "cards exiled with Maralen THIS TURN" (Maralen, Fae Ascendant,
+	// #4458) reads it through PermissionFilter.ExiledWithSourceThisTurn.
+	// Written beside ExiledWith by every linked exile and cleared with it
+	// by MoveCard; zero when the card is linked to nothing. Carried by
+	// the snapshot.
+	ExiledWithTurn int
 
 	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
 	// {instance, epoch} a card with cipher was exiled encoded on as its
