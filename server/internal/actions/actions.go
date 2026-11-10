@@ -2773,6 +2773,13 @@ func dispatch(g *game.Game, a Action) error {
 			// cast_spell and activate_ability use. See
 			// game.ManaAbilityParams.PhyrexianLife.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// #5397 — cost_branch is the branch of an either/or cost
+			// the activation pays: forage on a mana ability (Thornvault
+			// Forager), 0 exiles three graveyard cards (exile_ids), 1
+			// sacrifices a Food (sacrifice_ids). The wire name
+			// activate_ability uses; a pointer, because 0 is a branch.
+			// See game.ManaAbilityParams.CostBranch.
+			CostBranch *int `json:"cost_branch,omitempty"`
 			// #4885 — player_ability names a mana ability the PLAYER
 			// has, bound to no card (Channel's "pay 1 life: add {C}"),
 			// by the object that granted it
@@ -2866,6 +2873,7 @@ func dispatch(g *game.Game, a Action) error {
 			Colors:            manaColors,
 			AutoTap:           p.AutoTap,
 			PhyrexianLife:     p.PhyrexianLife,
+			CostBranch:        p.CostBranch,
 		})
 
 	case TypeSetMaxHandSize:

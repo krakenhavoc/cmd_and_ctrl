@@ -482,6 +482,11 @@ const (
 	// for the creature tapped to pay it. A Planet's station does not ask
 	// for it.
 	CostPowerStation
+	// CostPowerStationAny is "stations permanents" (CR 702.184c; Tapestry
+	// Warden): the power a station ability of ANY permanent, a Planet as
+	// well as a Spacecraft, reads for the creature tapped to pay it. A rule
+	// that should also reach Spacecraft sets CostPowerStation beside it.
+	CostPowerStationAny
 )
 
 // CostPowerRule is "this creature [saddles Mounts and] crews Vehicles
@@ -497,7 +502,12 @@ type CostPowerRule struct {
 	Uses         CostPowerUse
 	Bonus        int
 	UseToughness bool
-	Multiplier   int `json:",omitempty"`
+	// UseToughnessIfGreater is "with toughness greater than its power ...
+	// using its toughness rather than its power" (Tapestry Warden): the
+	// toughness replaces the power only when it is the larger, judged when
+	// the cost is paid or resolves, not when the rule is granted.
+	UseToughnessIfGreater bool `json:",omitempty"`
+	Multiplier            int  `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's

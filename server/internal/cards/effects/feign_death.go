@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Feign Death — Instant {B}:
 //
 //	"Until end of turn, target creature gains "When this creature
@@ -19,33 +17,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The returned creature is a new object (CR 400.7) the grant never
 // named, so it does not come back a second time.
 //
+// The spell is registerReturnWithCounterSpell, shared with Undying Malice.
+//
 // No simplification.
 const feignDeathReturn = "feign-death/return"
 
 func init() {
-	Register(Spec{
-		OracleID:     "f718e507-296b-4f22-842b-5fb91322069b",
-		Name:         "Feign Death",
-		Completeness: CompletenessFull,
-		Targets:      TargetCreature("target creature"),
-		Grants: []AbilityGrant{{
-			Key: feignDeathReturn,
-			Triggered: []game.TriggeredAbility{
-				WhenThisDies("Feign Death — return it with a +1/+1 counter",
-					returnThisCreatureFromGraveyard(map[string]int{game.CounterPlusOne: 1}, nil)),
-			},
-			Text: "When this creature dies, return it to the battlefield tapped under its owner's control with a +1/+1 counter on it.",
-		}},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			target, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			return GrantAbilitiesFor{
-				Target: target,
-				Keys:   []string{feignDeathReturn},
-				Label:  "Feign Death — until end of turn, it returns when it dies",
-			}.Apply(ctx)
-		},
-	})
+	registerReturnWithCounterSpell("f718e507-296b-4f22-842b-5fb91322069b", "Feign Death", feignDeathReturn)
 }

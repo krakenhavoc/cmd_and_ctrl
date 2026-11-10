@@ -142,6 +142,12 @@ export function manaAbilityRider(a: ManaAbilityView): string {
   if (a.exile_permanent_options) {
     parts.push(`exile ${a.exile_permanent_label || "a creature you control"}`);
   }
+  // #5397: forage — "exile three cards from your graveyard or sacrifice a Food".
+  if (a.cost_branches && a.cost_branches.length > 0) {
+    parts.push(
+      a.cost_branches.map((b) => b.label.charAt(0).toLowerCase() + b.label.slice(1)).join(" or "),
+    );
+  }
   if (a.counter_cost_label) parts.push(a.counter_cost_label);
   return parts.join(", ");
 }

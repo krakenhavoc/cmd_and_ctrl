@@ -36,10 +36,15 @@ func (c ModeUpToCount) Key() string { return c.key }
 // IsZero reports whether no count is named.
 func (c ModeUpToCount) IsZero() bool { return c.key == "" }
 
+// modeCountFunc is a registered count. ev is the event that fired the
+// trigger whose modes are being chosen (TriggerContext.Event); a count of
+// the board ignores it.
+type modeCountFunc func(g *Game, chooser uuid.UUID, ev Event) int
+
 var modeCounts = struct {
 	sync.RWMutex
-	byKey map[string]func(g *Game, chooser uuid.UUID) int
-}{byKey: map[string]func(g *Game, chooser uuid.UUID) int{}}
+	byKey map[string]modeCountFunc
+}{byKey: map[string]modeCountFunc{}}
 
 // RegisterModeCount registers the count "choose up to X" reads under
 // `key` and returns its name. Call it once, from a package-level var in
@@ -50,11 +55,29 @@ var modeCounts = struct {
 // public locking accessor; `chooser` is the player choosing the modes,
 // the "you" of "Lesson cards in your graveyard".
 func RegisterModeCount(key string, fn func(g *Game, chooser uuid.UUID) int) ModeUpToCount {
-	if key == "" {
-		panic("game: RegisterModeCount with an empty key")
-	}
 	if fn == nil {
 		panic(fmt.Sprintf("game: mode count %q has no count", key))
+	}
+	return registerModeCount(key, func(g *Game, chooser uuid.UUID, _ Event) int { return fn(g, chooser) })
+}
+
+// RegisterModeCountOfEvent is RegisterModeCount for an X read off the
+// event that fired the trigger (#4468): Riku of Many Paths' "Whenever
+// you cast a modal spell, choose up to X, where X is the number of times
+// you chose a mode for that spell". `ev` is the triggering event as the
+// trigger is put on the stack (CR 603.3c), so "that spell" is ev.CardID.
+// The same rules as RegisterModeCount: once, at init, read-only, under
+// g.mu.
+func RegisterModeCountOfEvent(key string, fn func(g *Game, chooser uuid.UUID, ev Event) int) ModeUpToCount {
+	if fn == nil {
+		panic(fmt.Sprintf("game: mode count %q has no count", key))
+	}
+	return registerModeCount(key, fn)
+}
+
+func registerModeCount(key string, fn modeCountFunc) ModeUpToCount {
+	if key == "" {
+		panic("game: RegisterModeCount with an empty key")
 	}
 	modeCounts.Lock()
 	defer modeCounts.Unlock()
@@ -65,9 +88,10 @@ func RegisterModeCount(key string, fn func(g *Game, chooser uuid.UUID) int) Mode
 	return ModeUpToCount{key: key}
 }
 
-// count evaluates the named count for `chooser`. An unknown or zero key
-// counts 0, which chooses no bullet: the weaker reading.
-func (c ModeUpToCount) count(g *Game, chooser uuid.UUID) int {
+// count evaluates the named count for `chooser`, for the trigger fired by
+// ev. An unknown or zero key counts 0, which chooses no bullet: the
+// weaker reading.
+func (c ModeUpToCount) count(g *Game, chooser uuid.UUID, ev Event) int {
 	if c.key == "" {
 		return 0
 	}
@@ -77,7 +101,7 @@ func (c ModeUpToCount) count(g *Game, chooser uuid.UUID) int {
 	if !ok {
 		return 0
 	}
-	return fn(g, chooser)
+	return fn(g, chooser, ev)
 }
 
 // upToX reports whether the spec's upper bound is an X read as the

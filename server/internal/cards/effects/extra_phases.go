@@ -130,6 +130,21 @@ func (a AddStepAfterThisStep) Apply(ctx *Context) error {
 	return nil
 }
 
+// YouGetUpkeepStepsAfterThisPhase is "you get N additional upkeep steps
+// after this phase" (Obeka, Splitter of Seconds; #5405). Each is a
+// beginning phase holding only its upkeep step (CR 500.10), directly
+// after the phase in progress, and "you get" adds nothing on another
+// player's turn (CR 500.10a): the resolving ability's controller is the
+// "you".
+type YouGetUpkeepStepsAfterThisPhase struct {
+	N int
+}
+
+func (a YouGetUpkeepStepsAfterThisPhase) Apply(ctx *Context) error {
+	ctx.Game.AddUpkeepStepsAfterThisPhaseForEffect(ctx.Source(), ctx.Controller(), a.N)
+	return nil
+}
+
 // IsFirstCombatPhase is "if it's the first combat phase of the turn"
 // (Karlach, Genji Glove, Raiyuu).
 func IsFirstCombatPhase(g *game.Game) bool {

@@ -903,6 +903,7 @@ func Register(spec Spec) {
 		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
+		checkManaForage(spec.Name, i, ma)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
 		// ability exiles graveyard cards through this component.
 		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0) {
@@ -2611,6 +2612,10 @@ func checkEnergyCost(name string, i int, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
 			name, i))
 	}
+	if cost.LifeX && (cost.EnergyX || game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d pays X life AND claims X another way — one announced X cannot pay both",
+			name, i))
+	}
 }
 
 // checkLoyaltyX is the boot-time refusal for a −X loyalty cost (#1944):
@@ -2711,6 +2716,19 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 			panic(fmt.Sprintf("effects.Register: %q %s exiles any number of cards and also prints a count of %d",
 				name, where, ec.N))
 		}
+		// "Exile X <kind> cards from your graveyard" on an ability
+		// (Winter, Cursed Rider): the number named IS X, so there is no
+		// floor to state and nothing is free about it (#4464).
+		if ec.CountIsX {
+			if ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 || ec.CountFromX || ec.Zone() != game.ZoneGraveyard {
+				panic(fmt.Sprintf("effects.Register: %q %s exiles X cards with a floor, with CountFromX or from the %s — X is the number named, from the graveyard",
+					name, where, ec.Zone()))
+			}
+			if !game.ExileCostZoneSupported(ec.Zone()) {
+				panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s", name, where, ec.Zone()))
+			}
+			return
+		}
 		// #5193: or collect evidence N, a floor on the total mana value
 		// (CR 701.59a), from the graveyard only. One floor, never both.
 		symbols := ec.SymbolTotal != nil
@@ -2725,6 +2743,8 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 		if !symbols && !ec.IsCollectEvidence() {
 			panic(fmt.Sprintf("effects.Register: %q %s has a mana value floor that is not collect evidence — build it with CollectEvidenceN (#5193)", name, where))
 		}
+	} else if ec.CountIsX {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards as the number named without AnyNumber (ExileXFromGraveyardAsCost)", name, where))
 	} else if ec.SymbolTotal != nil || ec.ManaValueAtLeast != 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s names a symbol or mana value floor without AnyNumber", name, where))
 	} else if ec.N <= 0 {
