@@ -28,6 +28,7 @@
   import Terms from "./routes/Terms.svelte";
   import Funding from "./routes/Funding.svelte";
   import About from "./routes/About.svelte";
+  import DraftSets from "./routes/DraftSets.svelte";
   import Guide from "./routes/Guide.svelte";
   import Practice from "./routes/Practice.svelte";
   import Settings from "./lib/components/Settings.svelte";
@@ -186,6 +187,8 @@
   {:catch}
     <RouteLoading failed />
   {/await}
+{:else if $route.name === "draftSets"}
+  <DraftSets />
 {:else if $route.name === "privacy"}
   <Privacy />
 {:else if $route.name === "terms"}
