@@ -71,3 +71,35 @@ func planesB2BecomeVehicles(label, crewKey string, match CardPredicate, power, t
 		}.Apply(ctx)
 	}
 }
+
+// planesB2OwnedByNthOpponent passes for a card owned by the n-th seat (1-based)
+// after the chooser's, in turn order: controlledByNthOpponent for a card in a
+// graveyard, where an owner holds it.
+func planesB2OwnedByNthOpponent(n int) CardPredicate {
+	return func(g *game.Game, chooser uuid.UUID, c game.Card) bool {
+		seats := len(g.Seats)
+		if n < 1 || n >= seats {
+			return false
+		}
+		for i, p := range g.Seats {
+			if p != nil && p.ID == chooser {
+				o := g.Seats[(i+n)%seats]
+				return o != nil && c.Owner == o.ID
+			}
+		}
+		return false
+	}
+}
+
+// planesB2PerOpponentGraveyardClauses is "for each opponent, choose up to one
+// target <noun> in that player's graveyard": one "up to one" clause per
+// possible opponent (at most MaxPlayers-1), the n-th bound to the n-th seat
+// after the chooser's, the shape perOpponentClauses uses for permanents.
+func planesB2PerOpponentGraveyardClauses(noun string, what ...CardPredicate) *game.TargetSpec {
+	var out []*game.TargetSpec
+	for n := 1; n <= game.MaxPlayers-1; n++ {
+		out = append(out, TargetCardInGraveyard("target "+noun+" in the "+nthOpponentWords[n]+" opponent after you in turn order's graveyard",
+			append([]CardPredicate{planesB2OwnedByNthOpponent(n)}, what...)...).WithCount(0, 1))
+	}
+	return Clauses(out[0], out[1:]...)
+}

@@ -71263,6 +71263,7 @@ spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 spellsCastThisTurn{}.maxManaValue	number:int
 spellsCastThisTurn{}.notFromHand	number:int
+spellsCastThisTurn{}.twoOrMoreManaValue	number:int
 spellsCastThisTurn{}.xSpells	number:int
 splitSecondActive	bool
 stack	object

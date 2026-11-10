@@ -2625,6 +2625,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 				if mv > tally.MaxManaValue {
 					tally.MaxManaValue = mv
 				}
+				if mv >= 2 {
+					tally.TwoOrMoreManaValue++
+				}
 			}
 			break
 		}

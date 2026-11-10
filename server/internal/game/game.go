@@ -2119,6 +2119,13 @@ type CastTally struct {
 	// with mana value 4 or greater this turn" is MaxManaValue >= 4.
 	// Additive within the snapshot version.
 	MaxManaValue int `json:"maxManaValue,omitempty"`
+	// TwoOrMoreManaValue counts the spells the player cast this turn with
+	// mana value 2 or greater, read as each spell became cast like
+	// MaxManaValue (CR 202.3, 601.2i). TARDIS Bay's "the first spell you
+	// cast during each of your turns with mana value 2 or greater has
+	// cascade" is TwoOrMoreManaValue == 1 once the tally is bumped, which
+	// is before EventCast. Additive within the snapshot version.
+	TwoOrMoreManaValue int `json:"twoOrMoreManaValue,omitempty"`
 	// InstantSorcery counts the instant and sorcery spells the player cast
 	// this turn, read as each spell became cast like Artifact (#3258).
 	// Arcane Bombardment's "whenever you cast your first instant or

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -654,5 +655,146 @@ func TestPompeiiChaosErupts(t *testing.T) {
 	}
 	if _, ok := faceUpPlane(g, planePompeii.Oracle); ok {
 		t.Error("the table did not planeswalk after the sacrifices")
+	}
+}
+
+// --- TARDIS Bay --------------------------------------------------------------
+
+func TestTardisBayGivesCascadeToTheFirstSpellWithManaValueTwoOrMore(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTardisBay)
+	g, _ := newPlaneGame(t, planeTardisBay)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedCheapLibrary(g, me, 6)
+	castWithCost(t, g, "One Drop", "Sorcery", "{G}", "")
+	passPriorityAroundTable(t, g)
+	if got := countMayCastPrompts(g); got != 0 {
+		t.Fatalf("a one-drop got %d cascade offers, want 0", got)
+	}
+	castWithCost(t, g, "Two Drop", "Sorcery", "{1}{G}", "")
+	passPriorityAroundTable(t, g)
+	if got := countMayCastPrompts(g); got != 1 {
+		t.Fatalf("the first spell with mana value 2 or greater got %d cascade offers, want 1", got)
+	}
+	answerAllMayCast(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	castWithCost(t, g, "Three Drop", "Sorcery", "{2}{G}", "")
+	passPriorityAroundTable(t, g)
+	if got := countMayCastPrompts(g); got != 0 {
+		t.Errorf("the second such spell got %d cascade offers, want 0", got)
+	}
+}
+
+func TestTardisBayChaosStealsAnArtifactThenPlaneswalks(t *testing.T) {
+	g, _ := newPlaneGame(t, planeTardisBay)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	rock := b12Permanent(g, opp.ID, "Rock", "Artifact")
+	bear := b12Creature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	ch := pickTargetPrompt(t, g)
+	if err := g.ResolvePickTarget(ch.ID, ch.Chooser, cardRef(bear)); err == nil {
+		t.Fatal("a nonartifact was accepted as the target")
+	}
+	answerPickTarget(t, g, rock)
+	passPriorityAroundTable(t, g)
+	if c := tmtB1Card(t, g, rock); c.Controller != me.ID {
+		t.Error("the artifact is not under the planar controller's control")
+	}
+	endTurn(t, g)
+	if c := tmtB1Card(t, g, rock); c.Controller != me.ID {
+		t.Error("control of the artifact ended with the turn")
+	}
+	if _, ok := faceUpPlane(g, planeTardisBay.Oracle); ok {
+		t.Error("the table did not planeswalk away")
+	}
+}
+
+// --- The Moonbase ------------------------------------------------------------
+
+func TestMoonbaseChaosReanimatesFaceDownCybermenFromEachOpponent(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeMoonbase)
+	g, _ := newPlaneGame(t, planeMoonbase)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	o1 := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	o2 := g.Seats[(g.Turn.ActiveSeat+2)%4]
+	d1 := pushGraveyardCardWithTypeLineID(o1, "Dead Wolf", "Creature — Wolf")
+	d2 := pushGraveyardCardWithTypeLineID(o2, "Dead Bear", "Creature — Bear")
+	_ = pushGraveyardCardWithTypeLineID(o2, "Dead Rock", "Artifact")
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	// One "up to one" prompt per opponent, in turn order: take what each offers.
+	for range 3 {
+		ch := latestChoiceOfKind(g, game.PendingChoicePickTarget)
+		if ch == nil {
+			break
+		}
+		var pick []game.TargetRef
+		for _, want := range []uuid.UUID{d1, d2} {
+			if slices.Contains(ch.PickTargetCards, want) {
+				pick = append(pick, game.TargetRef{Kind: game.TargetCard, ID: want})
+			}
+		}
+		if err := g.ResolvePickTargets(ch.ID, ch.Chooser, pick); err != nil {
+			t.Fatalf("ResolvePickTargets: %v", err)
+		}
+	}
+	passPriorityAroundTable(t, g)
+	n := 0
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == me.ID && c.FaceDownIsPermanent() {
+			n++
+			if c.CurrentPower() != 2 || c.CurrentToughness() != 2 || !c.IsArtifact() || !c.IsCreature() || !c.HasSubtypeWord("Cyberman") {
+				t.Errorf("a face-down card is %d/%d %q, want a 2/2 Cyberman artifact creature", c.CurrentPower(), c.CurrentToughness(), c.Effective().Subtypes)
+			}
+		}
+	}
+	if n != 2 {
+		t.Errorf("%d face-down permanents under my control, want 2", n)
+	}
+}
+
+func TestMoonbaseGivesEveryCreatureASorceryFlyingAbility(t *testing.T) {
+	g, _ := newPlaneGame(t, planeMoonbase)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	b09AddColorless(me, 2)
+	if err := g.ActivateCatalogAbility(me.ID, bear, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activating the granted ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !planesB2Keyword(t, g, bear, "flying") {
+		t.Error("the creature did not gain flying")
+	}
+}
+
+// --- The Drum, Mining Facility -----------------------------------------------
+
+func TestTheDrumPumpsOnAnyPlanarRollAndChaosEndsTheTurn(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeTheDrum)
+	g, plane := newPlaneGame(t, planeTheDrum)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	rollBlank(t, g, me.ID)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	c := tmtB1Card(t, g, bear)
+	if c.CurrentPower() != 3 || !planesB2Keyword(t, g, bear, "haste") {
+		t.Errorf("after a blank the creature is %d/%d, want 3/3 with haste", c.CurrentPower(), c.CurrentToughness())
+	}
+	turn := g.Turn.Seq
+	rollChaos(t, g, me.ID)
+	answerOpenOrderingIfAny(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if n := itemsFromPlane(g, plane.InstanceID); n != 0 {
+		t.Errorf("%d items from the plane are still waiting", n)
+	}
+	if g.Turn.Seq == turn && g.Turn.Step != game.StepCleanup {
+		t.Errorf("the turn did not end: still turn %d at %s", g.Turn.Seq, g.Turn.Step)
 	}
 }
