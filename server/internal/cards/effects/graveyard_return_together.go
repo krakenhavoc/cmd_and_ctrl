@@ -171,6 +171,7 @@ func (r ReturnFromExileTogether) Apply(ctx *Context) error {
 // and ReturnFromExileTogether: keep the targets still in a zone of kind
 // `from` that can enter (not a token, a permanent card), and put them
 // onto the battlefield as one entry through the engine's batch door.
+//
 //nolint:unparam // "tapped" is the printed "return ... tapped" option; the cards so far return untapped.
 func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool) error {
 	return putCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, game.TailRef{}, 0)
