@@ -32,17 +32,12 @@ func init() {
 		Name:         "Discerning Financier",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginUpkeep,
+			InterveningIf(discerningFinancierBehindOnLands, On(game.EventBeginUpkeep,
 				AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return anOpponentHasMoreLands(g, source.Controller)
 				}),
 				"Discerning Financier — create a Treasure token",
-				func(g *game.Game, item *game.StackItem) error {
-					if !anOpponentHasMoreLands(g, item.Controller) {
-						return nil
-					}
-					return CreateToken{Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CreateToken{Template: TreasureToken(), N: 1}))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}: Choose another player. That player gains control of target Treasure you control. You draw a card.",
@@ -58,6 +53,13 @@ func init() {
 			},
 		}},
 	})
+}
+
+// discerningFinancierBehindOnLands is the upkeep trigger's "if an opponent
+// controls more lands than you", re-read as it resolves (CR 603.4).
+var discerningFinancierBehindOnLands = CondBoard{
+	Name: "an opponent controls more lands than you",
+	Test: func(ctx *Context) bool { return anOpponentHasMoreLands(ctx.Game, ctx.Controller()) },
 }
 
 // discerningFinancierChosen is the ability's second half once the player is

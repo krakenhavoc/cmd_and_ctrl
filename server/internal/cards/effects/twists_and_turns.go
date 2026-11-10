@@ -35,6 +35,9 @@ func init() {
 		OracleID:     twistsAndTurnsOracleID,
 		Name:         "Twists and Turns",
 		Completeness: CompletenessFull,
+		// Its enters effect explores, and its own replacement makes that
+		// explore scry 1 first: the card's one fixed-amount rider (#4978).
+		Purpose: game.Purpose{Scry: 1},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters("Twists and Turns — target creature you control explores", targetCreatureYouControlExplores),
 				targetCreatureYouControl()),
