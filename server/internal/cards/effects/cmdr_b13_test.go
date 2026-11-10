@@ -1706,3 +1706,56 @@ func TestCmdrB16CommandersInsigniaCountsCommanderCasts(t *testing.T) {
 		t.Errorf("an opponent's creature has power %d, want 2", p)
 	}
 }
+
+const cmdrB16BaldinOracle = "14493624-fdc7-4630-9b1e-f35668651108"
+
+func TestCmdrB16BaldinAssignsDamageByToughnessOnlyOnYourTurnAndPumpsByHandSize(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	baldin := b12Push(g, me.ID, "Baldin, Century Herdmaster", "Legendary Creature — Human Warrior", cmdrB16BaldinOracle, 0, 7)
+	cannon := pushVanillaCreature(g, me.ID, "Glass Cannon", 4, 1)
+	theirs := pushVanillaCreature(g, opp.ID, "Their Cannon", 6, 2)
+	hand := me.Hand.Size()
+	before := opp.Life
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{baldin, cannon} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	lockInAttacks(t, g)
+	c := latestPickTarget(g, me.ID)
+	if c == nil {
+		t.Fatal("no target prompt for Baldin's attack trigger")
+	}
+	if err := g.ResolvePickTargets(c.ID, me.ID, []game.TargetRef{
+		{Kind: game.TargetCard, ID: cannon}, {Kind: game.TargetCard, ID: theirs},
+	}); err != nil {
+		t.Fatalf("ResolvePickTargets: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	advanceTo(t, g, game.StepEndCombat)
+	passPriorityAroundTable(t, g)
+	// Baldin (0/7) deals 7 and the Cannon (4/1 pumped by +0/+hand) deals 1+hand.
+	want := before - (7 + 1 + hand)
+	if opp.Life != want {
+		t.Errorf("opponent at %d, want %d (Baldin 7 and the pumped Cannon %d)", opp.Life, want, 1+hand)
+	}
+	if got := layeredCard(t, g, theirs).CurrentToughness(); got != 2+hand {
+		t.Errorf("their creature toughness %d, want %d (an opposing creature may be targeted)", got, 2+hand)
+	}
+}
+
+func TestCmdrB16BaldinDoesNothingOnAnOpponentsTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Baldin, Century Herdmaster", "Legendary Creature — Human Warrior", cmdrB16BaldinOracle, 0, 7)
+	theirs := pushVanillaCreature(g, opp.ID, "Their Cannon", 6, 2)
+	advanceToNextSeatsTurn(t, g)
+	before := me.Life
+	attackWith(t, g, me.ID, theirs)
+	passPriorityAroundTable(t, g)
+	if me.Life != before-6 {
+		t.Errorf("I took %d, want 6: on their turn damage is by power", before-me.Life)
+	}
+}
