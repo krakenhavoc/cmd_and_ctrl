@@ -363,9 +363,11 @@ func cmdr2B13Mill(t *testing.T, g *game.Game, me *game.Player, name, typeLine st
 	g.WithWriteLock(func() {
 		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, Owner: me.ID, Controller: me.ID})
 	})
-	if err := g.MillNForEffect(me.ID, 1); err != nil {
-		t.Fatalf("mill: %v", err)
-	}
+	g.WithWriteLock(func() {
+		if err := g.MillNForEffect(me.ID, 1); err != nil {
+			t.Errorf("mill: %v", err)
+		}
+	})
 	passPriorityAroundTable(t, g)
 }
 
