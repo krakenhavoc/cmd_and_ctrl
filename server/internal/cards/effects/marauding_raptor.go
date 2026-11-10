@@ -51,7 +51,8 @@ var maraudingRaptorDealt = recipientTail("recipient/marauding-raptor-dinosaur-pu
 		return nil
 	}
 	c, ok := ctx.Game.LookupCardForEffect(target)
-	if !ok || !c.HasSubtype("Dinosaur") {
+	src, srcOK := ctx.Game.LookupCardForEffect(ctx.Source())
+	if !ok || !srcOK || !c.HasSubtype(src.TextSubtype("Dinosaur")) {
 		return nil
 	}
 	return BoostUntilEOT{Target: ctx.Source(), Power: 2, Label: "Marauding Raptor — +2/+0"}.Apply(ctx)

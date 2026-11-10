@@ -21,7 +21,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{5}{G}: Create a 3/3 green Dinosaur creature token with trample.",
 			Cost:    ManaCost("{5}{G}"),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 			Effect:  Do(CreateToken{Template: TokenCard("3/3 green Dinosaur with trample"), N: 1}),
 		}},
 	})
