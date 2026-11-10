@@ -36,16 +36,10 @@ func init() {
 			),
 		},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCast},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller || source.NamedTribe == "" {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && spell.HasSubtype(source.NamedTribe)
-			},
-			Key:    "Door of Destinies — put a charge counter",
-			Effect: putChargeCounterOnThis,
+			Watches:   []game.EventKind{game.EventCast},
+			AppliesTo: YouCastASpellOfTheChosenType,
+			Key:       "Door of Destinies — put a charge counter",
+			Effect:    putChargeCounterOnThis,
 		}},
 	})
 }

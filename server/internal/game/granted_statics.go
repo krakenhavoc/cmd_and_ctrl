@@ -43,8 +43,20 @@ import "github.com/google/uuid"
 //     exist, which would put the bucket back into a loop whose
 //     termination nothing guarantees ("this creature has 'creatures you
 //     control have "…"'"). Lifelink, flying and every other keyword is
-//     an Apply that appends a token, not a bundle, so no printed card
-//     needs a granted grant.
+//     an Apply that appends a token, not a bundle.
+//   - The one exception (amendment 2026-11-10, #5402): a static that
+//     opts in with GrantsFixedBundle may grant exactly one registered
+//     bundle that carries no static. Roar of the Fifth People's chapter
+//     II is the printed need: 'This Saga gains "Creatures you control
+//     have '{T}: Add {R}, {G}, or {W}.'"'. The inner bundle has no
+//     static, so it can grant, remove or borrow nothing, and the cascade
+//     ends after two steps by construction: the outer grant inserts this
+//     static into the bucket, the static writes the inner grant
+//     (grantedStaticEffect.Apply), and noteAppendedGrants finds no
+//     static on it to insert. Its order needs no new rule: the inner
+//     grant is written in this static's own slot, at its CR 613.7a
+//     timestamp, and when the host loses the outer grant the static's
+//     AppliesTo is false, so the inner grant is never written.
 //
 // The rest is free:
 //
@@ -68,10 +80,17 @@ func GrantedStaticProblem(s StaticAbility) string {
 	switch {
 	case !grantableLayer(s.Layer, s.SubLayer):
 		return "a layer-6 grant can give a static ability only in layer 6 or in layer 7b, 7c or 7e (ADR 0093 Decision 10, amended 2026-10-10 and 2026-10-15)"
-	case s.AppliesTo == nil || s.Apply == nil:
-		return "a granted static needs AppliesTo and Apply"
-	case s.RemovesAbilities, s.ContinuesAfterRemoval, len(s.GrantAbilities) > 0, s.Borrows != nil:
+	case s.RemovesAbilities, s.ContinuesAfterRemoval, s.Borrows != nil,
+		len(s.GrantAbilities) > 0 && !s.GrantsFixedBundle:
 		return "a granted static cannot remove, grant or borrow abilities"
+	case s.AppliesTo == nil || (s.Apply == nil && !s.GrantsFixedBundle):
+		return "a granted static needs AppliesTo and Apply"
+	case s.GrantsFixedBundle:
+		if p := fixedBundleGrantProblem(s); p != "" {
+			return p
+		}
+	}
+	switch {
 	case s.ReadsAbilities:
 		return "a granted static cannot read abilities: the layer-6 dependency order is kept for the battlefield's own statics (ADR 0067 amendment 2026-10-23)"
 	case s.ActiveWhen.IsGate():
@@ -86,6 +105,30 @@ func GrantedStaticProblem(s StaticAbility) string {
 		// statics of the grants a permanent holds as well as its own
 		// (staticOnBattlefieldLocked). The others still wait for a card.
 		return "a granted static cannot declare this invalidation hint — only DependsOnHandSize is read off a permanent's grants"
+	}
+	return ""
+}
+
+// fixedBundleGrantProblem is the GrantsFixedBundle half of
+// GrantedStaticProblem (ADR 0093 amendment 2026-11-10, #5402): a
+// layer-6 static that grants exactly one bundle the catalog registers,
+// and that bundle carries no static, so it cannot grant, remove or
+// borrow in its turn. Read against the live catalog, which is complete
+// by the time anything asks (the layer pass, a resolving grant, the
+// build-time key scans).
+func fixedBundleGrantProblem(s StaticAbility) string {
+	if s.Layer != Layer6Ability {
+		return "a granted static that grants must be a layer-6 static (ADR 0093 amendment 2026-11-10)"
+	}
+	if len(s.GrantAbilities) != 1 {
+		return "a granted static that grants names exactly one bundle (ADR 0093 amendment 2026-11-10)"
+	}
+	inner := catalogDef(GrantKey(s.GrantAbilities[0]))
+	if inner == nil {
+		return "a granted static that grants must name a bundle the catalog registers (ADR 0093 amendment 2026-11-10)"
+	}
+	if len(inner.Static) > 0 {
+		return "a granted static may grant only a bundle with no static of its own, so it cannot grant, remove or borrow again (ADR 0093 amendment 2026-11-10)"
 	}
 	return ""
 }
@@ -149,6 +192,17 @@ func (e grantedStaticEffect) AppliesTo(target *Card, g *Game) bool {
 func (e grantedStaticEffect) Apply(c *Characteristic, target *Card, g *Game) {
 	if e.ability.Apply != nil {
 		e.ability.Apply(c, target, g, e.host)
+	}
+	// ADR 0093 amendment 2026-11-10: a granted static that opted in
+	// with GrantsFixedBundle writes its one bundle in its own slot, as
+	// staticContinuousEffect.Apply does for a permanent's own static,
+	// with the HOST as the grantor (the static is the host's ability).
+	// The bundle carries no static (GrantedStaticProblem), so
+	// noteAppendedGrants inserts nothing more.
+	if e.ability.GrantsFixedBundle && e.host != nil {
+		for _, key := range e.ability.GrantAbilities {
+			c.GrantAbility(key, e.host.InstanceID, e.host.Controller)
+		}
 	}
 }
 

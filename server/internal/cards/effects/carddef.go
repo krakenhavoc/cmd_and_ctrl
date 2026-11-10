@@ -123,6 +123,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			RestrictionsFunc:          a.RestrictionsFunc,
 			SpendRiders:               a.SpendRiders,
 		}
+		out[i].SourceBecomesProducedColor = a.SourceBecomesProducedColor
 	}
 	return out
 }
@@ -285,6 +286,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
+		LibraryTopVisibleWhen:               spec.LibraryTopVisibleWhen,
 		HandsRevealed:                       spec.HandsRevealed,
 		AttackOnlyNearestOpponentInChosenDirection: spec.AttackOnlyNearestOpponentInChosenDirection,
 		LooksAtFaceDownCreatures:                   spec.LooksAtFaceDownCreatures,

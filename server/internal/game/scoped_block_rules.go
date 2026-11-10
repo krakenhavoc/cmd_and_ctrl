@@ -27,6 +27,7 @@ import (
 //   - cantBeBlockedByPlayer — The Black Gate: the pinned attacker, and
 //     the Player whose creatures may not block it (#2172);
 //   - cantBeBlockedByPower — bars blockers at or below Amount;
+//   - cantBeBlockedByPowerAtLeast — bars blockers at or above Amount;
 //   - cantBeBlockedByColor — Skrelv's chosen-color evasion, reading
 //     the blocker's effective colors against Colors[0];
 //   - limitBlockersPerDefender — Mirri, Weatherlight Duelist's attack
@@ -79,7 +80,7 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedByColor rule needs its printed barred set"
 		}
-	case ModCantBeBlockedByPower:
+	case ModCantBeBlockedByPower, ModCantBeBlockedByPowerAtLeast:
 		if m.Text == "" {
 			return "a cantBeBlockedByPower rule needs Text, the clause the refusal sentence reads"
 		}
@@ -93,6 +94,10 @@ func blockRuleModProblem(m Mod) string {
 		}
 		if m.Text == "" {
 			return "a cantBeBlockedByObject rule needs Text, the blocker's name as the refusal sentence reads it"
+		}
+	case ModCantBeBlockedByMoreThan:
+		if m.Amount < 1 {
+			return fmt.Sprintf("a cantBeBlockedByMoreThan rule needs a maximum of at least 1, got %d", m.Amount)
 		}
 	case ModLimitBlockersPerDefender:
 		if m.Amount < 1 {
@@ -123,6 +128,12 @@ func LimitBlockersPerDefenderMod(n int) Mod {
 	return Mod{Kind: ModLimitBlockersPerDefender, Amount: n}
 }
 
+// CantBeBlockedByMoreThanMod is "<creature> can't be blocked by more than
+// N creatures" for a duration (Full Steam Ahead, CR 509.1b).
+func CantBeBlockedByMoreThanMod(n int) Mod {
+	return Mod{Kind: ModCantBeBlockedByMoreThan, Amount: n}
+}
+
 // CantBeBlockedByPlayerMod is "<creature> can't be blocked by creatures
 // that player controls this turn" (The Black Gate, #2172). `text` is
 // the barred set as the refusal sentence reads it ("creatures Bob
@@ -137,6 +148,14 @@ func CantBeBlockedByPlayerMod(player uuid.UUID, text string) Mod {
 // power 2 or less").
 func CantBeBlockedByPowerMod(n int, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedByPower, Amount: n, Text: text}
+}
+
+// CantBeBlockedByPowerAtLeastMod is "<creature> can't be blocked by
+// creatures with power N or greater this turn" (Squeak By). `text` is the
+// barred set as the refusal sentence reads it ("creatures with power 3 or
+// greater").
+func CantBeBlockedByPowerAtLeastMod(n int, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedByPowerAtLeast, Amount: n, Text: text}
 }
 
 // CantBeBlockedByColorMod bars creatures of the named color from
@@ -235,6 +254,16 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 				return blocker != nil && blocker.PowerForComparison() <= n && affected(attacker, g, nil)
 			},
 		}
+	case ModCantBeBlockedByPowerAtLeast:
+		affected := affectedPredicate(e.Affected)
+		n := m.Amount
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return blocker != nil && blocker.PowerForComparison() >= n && affected(attacker, g, nil)
+			},
+		}
 	case ModCantBeBlockedBySubtypes:
 		affected := affectedPredicate(e.Affected)
 		// The same subtype test the "except by" kind's allowed set uses,
@@ -260,6 +289,17 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return blocker != nil && barred.ID != uuid.Nil && blocker.InstanceID == barred.ID &&
 					blocker.ObjectEpoch == barred.Epoch && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedByMoreThan:
+		affected := affectedPredicate(e.Affected)
+		n := m.Amount
+		return BlockRule{
+			Count: func(g *Game, attacker, _ *Card) (int, int) {
+				if attacker == nil || !affected(attacker, g, nil) {
+					return 0, 0
+				}
+				return 0, n
 			},
 		}
 	case ModLimitBlockersPerDefender:

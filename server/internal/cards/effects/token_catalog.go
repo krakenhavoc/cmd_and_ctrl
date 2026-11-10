@@ -212,6 +212,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedB16LanderToken,
 	printedMutagenToken,
 	printedB14ReplicatedRingToken,
+	printedVrenRatToken,
 
 	// ADR 0083's first tokens with an ability of their own that is
 	// not a mana or activated ability.
@@ -243,6 +244,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Weapons Manufacturing's Munitions.
 	printedMunitionsToken,
+
+	// Ashiok, Wicked Manipulator's Nightmare (Standard batch 53, #4452).
+	printedStd53NightmareToken,
 
 	// Scriv, the Obligator's Contract: a white Aura token (#4834).
 	printedContractToken,
@@ -346,9 +350,21 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
 
+	// Thousand Moons Smithy's Gnome Soldier: a */* artifact creature whose
+	// size is its controller's artifacts and creatures (#4470).
+	printedGnomeSoldierToken,
+
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,
+
+	// Roxanne, Starfall Savant's Meteorite (Outlaws of Thunder Junction,
+	// #4468): enters dealing 2 damage to any target, taps for any color.
+	printedMeteoriteToken,
+
+	// Bonny Pall, Clearcutter's Beau (Outlaws of Thunder Junction, #4468):
+	// a legendary blue Ox whose power and toughness are the lands you control.
+	printedBeauToken,
 
 	// Final Fantasy's Chocobo Bird (#4462): a 2/2 green Bird that gets
 	// +1/+0 on landfall.
@@ -381,6 +397,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Dragonbroods' Relic's Reliquary Dragon (Tarkir: Dragonstorm, #4463).
 	printedReliquaryDragonToken,
+	// Judith, Carnage Connoisseur's Imp (Murders at Karlov Manor, #4469):
+	// "When this creature dies, it deals 2 damage to each opponent."
+	printedImpDamageToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

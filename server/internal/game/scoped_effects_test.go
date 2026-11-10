@@ -305,8 +305,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// scoped_block_rules_test.go here and in cards/effects.
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
 		ModCantBeBlockedByPlayer: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
-		ModCantBeBlockedBySubtypes: true, // #4100
-		ModCantBeBlockedByObject:   true, // #4307, cases in scoped_block_rules_object_test.go
+		ModCantBeBlockedBySubtypes:     true, // #4100
+		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
+		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go
+		ModCantBeBlockedByMoreThan:     true, // cases in scoped_block_rules_max_test.go
 		// #1651: cantHaveKeywords has a case above; waiveHexproof is read
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -72,8 +73,8 @@ import (
 type ExilePermanentsCost struct {
 	// Count is how many permanents must be exiled, or the floor with
 	// OrMore. A count bounded by a TOTAL ("one or more other artifacts
-	// you control with total mana value X", Fabrication Foundry) is an
-	// announcement this component does not model.
+	// you control with total mana value X", Fabrication Foundry) is
+	// OrMore with TotalManaValueX.
 	Count int
 
 	// CardType is the card type the permanent must have — "creature"
@@ -163,9 +164,140 @@ type ExilePermanentsCost struct {
 	// 0155 Decision 3). An uncatalogued card has none the engine knows.
 	WithActivatedAbilities bool
 
+	// TotalManaValueX is "with total mana value X" (#5401) —
+	// Fabrication Foundry's "Exile one or more other artifacts you
+	// control with total mana value X: Return target artifact card with
+	// mana value X or less from your graveyard to the battlefield." The
+	// cost has no {X} symbol: X is the variable the activator announces
+	// with the activation (CR 601.2b, which CR 602.2b applies to an
+	// activated ability), before the targets are chosen (CR 601.2c), and
+	// the payment at CR 601.2h must then be materials whose mana values
+	// add up to exactly that X. The target clause reads the same number
+	// (TargetSpec.WithManaValueAtMostX), so the engine binds it at
+	// announce and re-checks it at resolution (CR 608.2b), as it does
+	// for Kozilek's DiscardCost.ManaValueX.
+	//
+	//   - Built with OrMore (a floor of Count, normally one), by
+	//     effects.ExileArtifactsWithTotalManaValueX. AbilityCost.DemandsX
+	//     counts it, so x_value is accepted; the activation is refused,
+	//     with nothing paid, when the picks' total is not the announced
+	//     X — which is also every activation when no set of materials
+	//     adds up to it (CR 118.3).
+	//   - A material's mana value is its own as a permanent: {X} in its
+	//     cost counts as zero there (CR 202.3e is a stack rule), and a
+	//     permanent whose cost the engine cannot read (a joined
+	//     split-card cost) has no value to add, so it is no material.
+	//   - An ACTIVATED ability only: a mana ability has no stack item to
+	//     carry the announced X (CR 605.3b) and a cast's additional cost
+	//     has no announcement here, so Register refuses it on both, and
+	//     beside any other claimant on the announced X.
+	TotalManaValueX bool
+
 	// Label is the clause as printed, without the verb — "a creature
 	// you control" — shown above the client's picker.
 	Label string
+}
+
+// ExileTotalManaValueX reports the "with total mana value X" form
+// (#5401). Nil-safe.
+func ExileTotalManaValueX(ec *ExilePermanentsCost) bool {
+	return !ec.Empty() && ec.TotalManaValueX
+}
+
+// errExileTotalNotX is the refusal of a "with total mana value X"
+// payment whose materials do not add up to the announced X (#5401). It
+// wraps ErrInvalidParam, as Kozilek's mismatched discard is refused,
+// and says the rule.
+var errExileTotalNotX = fmt.Errorf("%w: the exiled permanents' total mana value must equal the announced X", ErrInvalidParam)
+
+// exileMaterialManaValue is a material's mana value for a
+// TotalManaValueX clause: its printed cost's, read as the permanent
+// it is (no announced X; CR 202.3e). ok is false when the engine
+// cannot read the cost.
+func exileMaterialManaValue(c *Card) (int, bool) {
+	return c.ParsedManaValue()
+}
+
+// ExileTotalManaValueForEffect is the total mana value of the
+// materials `ids` names for `ec`, read as validateExilePermanentsCostLocked
+// reads them. ok is false when one of them is no material or has no
+// readable mana value.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ExileTotalManaValueForEffect(playerID uuid.UUID, ec *ExilePermanentsCost, ids []uuid.UUID) (int, bool) {
+	cards := g.exileMaterialsLocked(playerID, ec, ids)
+	if cards == nil && len(ids) > 0 {
+		return 0, false
+	}
+	total := 0
+	for _, c := range cards {
+		mv, ok := exileMaterialManaValue(c)
+		if !ok {
+			return 0, false
+		}
+		total += mv
+	}
+	return total, true
+}
+
+// ExileTotalManaValuePaymentsForEffect is one payment of a "with total
+// mana value X" clause (#5401) for each total the candidates can reach,
+// in ascending order of the total, at most `limit` of them (0 is no
+// limit). `candidates` are already in payment order (the cheapest to
+// keep first), and each total is reached with the earliest candidates
+// that reach it — a subset-sum walk over the candidates in that order,
+// so the payment for a total keeps the permanents the seat would miss
+// most. Every payment has at least Count materials. Nil when the
+// candidates cannot pay the clause at all (CR 118.3).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ExileTotalManaValuePaymentsForEffect(playerID uuid.UUID, ec *ExilePermanentsCost, candidates []uuid.UUID, limit int) [][]uuid.UUID {
+	if !ExileTotalManaValueX(ec) || len(candidates) < ec.Count {
+		return nil
+	}
+	// found[{t, n}] is the first set of candidates (in order) found to
+	// total t with n materials, n capped at Count: a set of Count or
+	// more meets the floor, and which of those is kept does not matter.
+	type key struct{ total, n int }
+	found := map[key][]uuid.UUID{{0, 0}: {}}
+	order := []key{{0, 0}}
+	for _, id := range candidates {
+		cards := g.exileMaterialsLocked(playerID, ec, []uuid.UUID{id})
+		if cards == nil {
+			continue
+		}
+		mv, ok := exileMaterialManaValue(cards[0])
+		if !ok {
+			continue
+		}
+		// Walk the states found before this candidate, so each is used
+		// at most once.
+		n := len(order)
+		for i := 0; i < n; i++ {
+			k := order[i]
+			nk := key{k.total + mv, min(k.n+1, ec.Count)}
+			if _, seen := found[nk]; seen {
+				continue
+			}
+			found[nk] = append(append([]uuid.UUID(nil), found[k]...), id)
+			order = append(order, nk)
+		}
+	}
+	var totals []int
+	for k := range found {
+		if k.n >= ec.Count {
+			totals = append(totals, k.total)
+		}
+	}
+	sort.Ints(totals)
+	var out [][]uuid.UUID
+	for _, t := range totals {
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+		out = append(out, found[key{t, ec.Count}])
+	}
+	return out
 }
 
 // ExilePermanentsCostBounds is how many materials one payment may
@@ -225,6 +357,13 @@ func (c *ExilePermanentsCost) matches(text *TextWords, card *Card) bool {
 	}
 	if c.WithActivatedAbilities && !hasActivatedAbility(card) {
 		return false
+	}
+	// #5401: a material of a "total mana value X" clause adds its mana
+	// value, so one whose cost cannot be read is no material.
+	if c.TotalManaValueX {
+		if _, ok := exileMaterialManaValue(card); !ok {
+			return false
+		}
 	}
 	return c.Subtype == "" || card.HasSubtypeWord(c.Subtype)
 }
@@ -677,6 +816,15 @@ func movedSourceAlso(sourceID uuid.UUID, exileSelf bool, lists ...[]uuid.UUID) [
 //
 // Caller must hold g.mu.
 func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool, link PermissionCardRef) ([]uuid.UUID, error) {
+	return g.payExilePermanentsCostKindLocked(playerID, sourceID, ids, answers, MoveCauseCost, link)
+}
+
+// payExilePermanentsCostKindLocked is payExilePermanentsCostLocked with the
+// move cause named: MoveCauseCraftCost for the materials of a craft
+// ability (CR 702.167a), so "exiled while you're activating a craft
+// ability" (Market Gnome) can tell them from any other exile cost.
+// Caller must hold g.mu.
+func (g *Game) payExilePermanentsCostKindLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool, kind MoveCauseKind, link PermissionCardRef) ([]uuid.UUID, error) {
 	var moved []uuid.UUID
 	for _, id := range ids {
 		// ADR 0137: a craft material in the activator's graveyard goes
@@ -692,7 +840,7 @@ func (g *Game) payExilePermanentsCostLocked(playerID, sourceID uuid.UUID, ids []
 			Dst:           ZoneExile,
 			Actor:         playerID,
 			Source:        sourceID,
-			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
+			Cause:         MoveCause{Kind: kind, Controller: playerID},
 			MustSettleNow: true,
 			// #1397: the owner's CR 903.9 answer, asked before the
 			// payment by askCostCommanderLocked.

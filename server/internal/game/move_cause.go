@@ -68,6 +68,12 @@ const (
 	// CauseController is the paying player.
 	MoveCauseCost MoveCauseKind = "cost"
 
+	// MoveCauseCraftCost is a cost being paid for a CRAFT ability's
+	// materials (CR 702.167a): MoveCauseCost's sibling, so "exiled while
+	// you're activating a craft ability" (Market Gnome) can tell them from
+	// any other cost. CauseController is the paying player.
+	MoveCauseCraftCost MoveCauseKind = "craft_cost"
+
 	// MoveCauseSpecialAction is a special action (CR 116.2) — foretell,
 	// suspend. CauseController is the player taking it.
 	MoveCauseSpecialAction MoveCauseKind = "special_action"

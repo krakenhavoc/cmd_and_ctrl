@@ -19,6 +19,8 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
     !!ability.tap_others_options ||
     !!ability.discard_cost_n ||
     !!ability.exile_cost_n ||
+    // Collect evidence N (Cryptex) asks which graveyard cards.
+    !!ability.exile_cost_any_number ||
     // #1600: Food Chain's "Exile a creature you control".
     !!ability.exile_permanent_options ||
     // #5397: an either/or cost (forage) asks which way to pay.

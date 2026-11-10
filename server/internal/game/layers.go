@@ -251,6 +251,18 @@ type StaticAbility struct {
 	// appends to it.
 	GrantAbilities []string
 
+	// GrantsFixedBundle is the explicit opt-in a static needs to grant
+	// when it is itself carried by a layer-6 grant (ADR 0093 Decision
+	// 10, amendment 2026-11-10, #5402): Roar of the Fifth People's
+	// chapter II, 'This Saga gains "Creatures you control have '{T}:
+	// Add {R}, {G}, or {W}.'"'. GrantedStaticProblem accepts such a
+	// static only when GrantAbilities names exactly ONE bundle, the
+	// catalog registers it, and it carries no static of its own — so
+	// the bundle it writes can grant, remove or borrow nothing, and the
+	// cascade ends after two steps. Removal and borrow stay refused
+	// beside it. Ignored on a static that is not carried by a grant.
+	GrantsFixedBundle bool
+
 	// Borrows declares this static a "has all activated abilities of …"
 	// borrow (CR 113.10, ADR 0155): every object it applies to has every
 	// activated ability — mana abilities included (CR 605.1a) — that
@@ -410,9 +422,11 @@ type StaticAbility struct {
 	// EventChangeLife, which the tally reads.
 	//
 	// Same contract and same reason as the flags above; the list keeps
-	// a third and fourth card from needing a flag each. Only these five
-	// kinds are read by the listener (its EventScry and EventChangeLife
-	// arms), so any other kind here would do nothing.
+	// a third and fourth card from needing a flag each. "During your end
+	// step" lists EventStepBegan (Zurgo, Thunder's Decree): a static that
+	// reads the current step has a new answer as each step begins. Only
+	// these kinds are read by the listener (its EventScry, EventChangeLife
+	// and EventStepBegan arms), so any other kind here would do nothing.
 	DependsOnEvents []EventKind
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:

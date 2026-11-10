@@ -139,6 +139,10 @@ type exitLKI struct {
 	controller       uuid.UUID
 	colors           []string
 	keywords         []string
+	// faceDown is whether the permanent was face down as it left (a CR 708.2
+	// permanent state), #4452, Yarus's "whenever a face-down creature you
+	// control dies".
+	faceDown bool
 }
 
 // exitLKILocked reads cardID's combat state, card types, subtypes,
@@ -167,6 +171,7 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 		// face-down permanent is never every creature type (CR 708.2 —
 		// the changeling underneath is text it does not have), and
 		// anything else is when its layered characteristic says so.
+		faceDown:         c.FaceDownIsPermanent(),
 		allCreatureTypes: !c.FaceDownIsPermanent() && HasAllCreatureTypes(c),
 		attacking:        c.AttackingTarget,
 		blocking:         c.BlockingTarget,
@@ -181,7 +186,8 @@ func (g *Game) exitLKILocked(cardID uuid.UUID) exitLKI {
 // (Event.AttackingTarget, Event.BlockingTarget, Event.Blocked,
 // Event.LastKnownTypes, Event.LastKnownSubtypes,
 // Event.LastKnownAllCreatureTypes, Event.LastKnownSupertypes,
-// Event.LastKnownController, Event.LastKnownColors, Event.LastKnownKeywords).
+// Event.LastKnownController, Event.LastKnownColors, Event.LastKnownKeywords,
+// Event.LastKnownFaceDown).
 func (l exitLKI) stamp(ev *Event) {
 	ev.AttackingTarget = l.attacking
 	ev.BlockingTarget = l.blocking
@@ -193,6 +199,7 @@ func (l exitLKI) stamp(ev *Event) {
 	ev.LastKnownController = l.controller
 	ev.LastKnownColors = l.colors
 	ev.LastKnownKeywords = l.keywords
+	ev.LastKnownFaceDown = l.faceDown
 }
 
 // WasType reports whether the permanent an EventLTB names had card
@@ -379,4 +386,20 @@ func (g *Game) forgetPerObjectTurnStateLocked(cardID uuid.UUID) {
 	if len(g.blockedAttackers) == 0 {
 		g.blockedAttackers = nil
 	}
+}
+
+// WasFaceDown reports whether the permanent an EventLTB names was face down
+// as it last existed on the battlefield (CR 708.2, CR 603.10a), and whether
+// the event carries that at all (#4452, Yarus, Roar of the Old Gods:
+// "whenever a face-down creature you control dies"). A permanent that dies
+// is turned face up on its way to the graveyard (CR 708.9), so the card there
+// cannot say; the stamp, written by the same exitLKI as the types, can.
+// known is false for every kind but EventLTB and for one that carries no
+// last-known types (logged before the field existed, or built by hand in a
+// test): the caller decides what unknown means.
+func (ev Event) WasFaceDown() (was, known bool) {
+	if ev.Kind != EventLTB || ev.LastKnownTypes == nil {
+		return false, false
+	}
+	return ev.LastKnownFaceDown, true
 }

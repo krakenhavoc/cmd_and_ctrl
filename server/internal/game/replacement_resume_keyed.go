@@ -525,6 +525,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"LifePlayer":                 repFieldCarried,
 	"LifeDelta":                  repFieldCarried,
 	"LifeFromRadiation":          repFieldCarried,
+	"LifePayment":                repFieldCarried,
 	// #4253 slice 3: a tail's data half — a keyed continuation, or a
 	// lose-life batch's remaining players — is carried; a closure gates
 	// (replacementEventKeyable).
@@ -854,6 +855,7 @@ type replacementEventSnapshot struct {
 	LifePlayer                 *uuid.UUID                 `json:"lifePlayer,omitempty"`
 	LifeDelta                  int                        `json:"lifeDelta,omitempty"`
 	LifeFromRadiation          bool                       `json:"lifeFromRadiation,omitempty"`
+	LifePayment                bool                       `json:"lifePayment,omitempty"`
 	// #4253 slice 9: a discard.
 	DiscardPlayer          *uuid.UUID   `json:"discardPlayer,omitempty"`
 	DiscardCause           DiscardCause `json:"discardCause,omitempty"`
@@ -1304,6 +1306,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LifePlayer:                 uuidPtrOrNil(ev.LifePlayer),
 		LifeDelta:                  ev.LifeDelta,
 		LifeFromRadiation:          ev.LifeFromRadiation,
+		LifePayment:                ev.LifePayment,
 		DiscardPlayer:              uuidPtrOrNil(ev.DiscardPlayer),
 		DiscardCause:               ev.DiscardCause,
 		DiscardCauseController:     uuidPtrOrNil(ev.DiscardCauseController),
@@ -1477,6 +1480,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		LifePlayer:                 uuidOrNil(s.LifePlayer),
 		LifeDelta:                  s.LifeDelta,
 		LifeFromRadiation:          s.LifeFromRadiation,
+		LifePayment:                s.LifePayment,
 		DiscardPlayer:              uuidOrNil(s.DiscardPlayer),
 		DiscardCause:               s.DiscardCause,
 		DiscardCauseController:     uuidOrNil(s.DiscardCauseController),

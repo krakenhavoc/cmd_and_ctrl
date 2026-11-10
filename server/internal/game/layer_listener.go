@@ -230,6 +230,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if ev.OldZone == ZoneBattlefield {
 			clearEffectiveCacheLocked(g, ev.CardID)
 		}
+		// A static that reads what is in exile ("as long as you own a card
+		// in exile that has an Adventure", Howling Galefang) declares
+		// DependsOnEvents: EventZoneMove, and has a new answer the moment a
+		// card enters or leaves exile. Gated, so a table with no such
+		// permanent pays one walk of the battlefield per exile move.
+		if (ev.OldZone == ZoneExile || ev.NewZone == ZoneExile) && eventStaticIsLiveLocked(g, EventZoneMove) {
+			g.layerVersion.Add(1)
+		}
 	case EventTokenCreated:
 		g.layerVersion.Add(1)
 		stampBattlefieldEntryLocked(g, ev.CardID)
@@ -438,10 +446,11 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if attackingStatusStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
-	case EventScry, EventSurveil, EventDealDamage, EventBlock:
+	case EventScry, EventSurveil, EventDealDamage, EventBlock, EventDrawCard, EventStepBegan:
 		// StaticAbility.DependsOnEvents: "has this happened this turn"
 		// and "is it blocking" have a new answer the moment the event
-		// is in the log. Gated, so a table with no such permanent pays
+		// is in the log, and "during your end step" (Zurgo, Thunder's
+		// Decree) the moment the step begins. Gated, so a table with no such permanent pays
 		// one walk of the battlefield per event and no recompute.
 		if eventStaticIsLiveLocked(g, ev.Kind) {
 			g.layerVersion.Add(1)

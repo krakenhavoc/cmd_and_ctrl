@@ -548,6 +548,19 @@ type TargetSpec struct {
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
 
+	// OfSourcesChosenType is "target card of the chosen type": the
+	// candidate must have the creature type chosen for the clause's own
+	// source as it entered (Card.NamedTribe, CR 614.12) — Dawn-Blessed
+	// Pennant's "{2}, {T}, Sacrifice this artifact: Return target card
+	// of the chosen type from your graveyard to your hand". DATA, for the
+	// reason ExiledWithSource is: CardOK never sees the source. The
+	// source is the live object while it stands and its last-known
+	// record once it has left (PermanentInfo.NamedTribe, CR 608.2h), so
+	// a sacrifice paid as the cost does not forget the type. With no
+	// source, or none chosen, the clause admits nothing. Build one with
+	// effects.OfTheChosenType.
+	OfSourcesChosenType bool
+
 	// ControlledByThatPlayer is "that opponent controls" / "that player
 	// controls" on a TRIGGERED ability's clause: the candidate must be
 	// controlled by the player the triggering event's Target names -- the
@@ -1844,6 +1857,30 @@ func (s *TargetSpec) exiledWithAdmits(src TargetSource, c Card) bool {
 	return ok && ref.ID != uuid.Nil && c.ExiledWith == ref
 }
 
+// chosenTypeAdmits is OfSourcesChosenType's gate: true without the
+// flag, and with it only a candidate that has the creature type chosen
+// for the source (changeling included, CR 702.73a). A walk with no
+// source, or a source with no type chosen, admits nothing.
+func (s *TargetSpec) chosenTypeAdmits(src TargetSource, c Card) bool {
+	if !s.OfSourcesChosenType {
+		return true
+	}
+	tribe := src.namedTribe()
+	return tribe != "" && c.HasSubtype(tribe)
+}
+
+// namedTribe is the creature type chosen for the walk's source: the
+// live object's, or its last-known record's once it has left.
+func (s TargetSource) namedTribe() string {
+	switch {
+	case s.Departed != nil:
+		return s.Departed.NamedTribe
+	case s.Object != nil:
+		return s.Object.NamedTribe
+	}
+	return ""
+}
+
 // PaidForSourceKind names which payment PaidForSource asks about. The
 // zero value is no clause at all.
 type PaidForSourceKind string
@@ -1963,11 +2000,12 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
 // comparisons, CombatWithSource's combat relation, ExiledWithSource's
-// exile link and PaidForSource's crew / saddle payment. True with none
+// exile link, OfSourcesChosenType's chosen type and PaidForSource's crew
+// / saddle payment. True with none
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

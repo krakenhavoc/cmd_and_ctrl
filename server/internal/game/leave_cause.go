@@ -144,7 +144,7 @@ func (r zoneRoute) leaveMoveCause() MoveCause {
 // Caller must hold g.mu.
 func (g *Game) leaveSourceLocked(c MoveCause) uuid.UUID {
 	switch c.Kind {
-	case MoveCauseCost, MoveCauseSpecialAction, MoveCauseManual:
+	case MoveCauseCost, MoveCauseCraftCost, MoveCauseSpecialAction, MoveCauseManual:
 		return uuid.Nil
 	}
 	if g.carriedCause != nil && g.carriedCause.Source != uuid.Nil {

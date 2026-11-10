@@ -110,6 +110,15 @@ type AbilityCost struct {
 	// means no mana component.
 	Mana string
 
+	// ManaFromSource is "its cost is equal to its mana cost": the mana
+	// component is the mana cost of the card that has the row, not a
+	// printed string. Only in an ability bundle a resolved effect gives a
+	// card (Cursecloth Wrappings' embalm): the row builder
+	// (activatedAbilityRows) writes that card's mana cost into Mana, so every
+	// reader of a granted row sees a plain string. Mana stays empty on the
+	// bundle itself.
+	ManaFromSource bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'
@@ -421,6 +430,12 @@ type AbilityCost struct {
 	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
 	RevealHand bool
 
+	// RevealSecretChoice is "Reveal the creature type you chose" as a
+	// cost (A Killer Among Us, secret_choice.go): the word the source's
+	// controller secretly chose for it is shown to the table as the cost
+	// is paid. Payable only by the player who chose it.
+	RevealSecretChoice bool
+
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
 	// "Return a Forest you control to its owner's hand", Master
@@ -550,6 +565,27 @@ type AbilityCost struct {
 	// no longer on the battlefield, and one the same payment already
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
+
+	// TapGrantor taps the permanent that GRANTED this ability as part of
+	// the cost: Fishing Pole's equipped creature has "{1}, {T}, Tap
+	// Fishing Pole: …". Same grantor as ExileGrantor (AbilityOrigin.
+	// GrantedBy), same rule that only a granted battlefield row has one,
+	// but the grantor stays where it is and an already tapped grantor
+	// can't pay (CR 118.3). Tapping a permanent that isn't a creature
+	// isn't the {T} symbol (CR 302.6 is about the source), so no
+	// summoning-sickness check is made on it. Paid with the ability on
+	// the stack, so a "becomes tapped" watcher goes above it. See
+	// tap_grantor_cost.go.
+	TapGrantor bool
+	// SacrificeGrantor sacrifices the permanent that GRANTED this ability
+	// as part of the cost — Deconstruction Hammer's equipped creature has
+	// "{3}, {T}, Sacrifice Deconstruction Hammer: …". ExileGrantor's
+	// sibling, one verb over: the grantor goes through the ordinary
+	// sacrifice payment (CR 701.21a), so it must be controlled by the
+	// payer — an Equipment whose controller differs from the creature's
+	// controller can't pay it. Only on a granted row; see
+	// sacrifice_grantor_cost.go.
+	SacrificeGrantor bool
 
 	// UnattachEquipment is "Unattach an Equipment from <this>" as a cost
 	// (#4799, ADR 0020's 2026-11-02 amendment) — Captain America, First
@@ -722,7 +758,8 @@ type AbilityCost struct {
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
 	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LifeX || c.LoyaltyX || SacrificeManaValueX(c.SacrificeOther) ||
-		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
+		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards) ||
+		ExileTotalManaValueX(c.ExilePermanents)
 }
 
 // LoyaltyDelta is the loyalty counters an activation of this cost puts
@@ -1794,6 +1831,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	sacrifices, err = g.addSacrificeGrantorLocked(playerID, ab.Cost, origins.At(index), sacrifices)
+	if err != nil {
+		return err
+	}
 	crew, err := g.validateCrewCostLocked(playerID, cardID, ab.Cost, params.CrewIDs)
 	if err != nil {
 		return err
@@ -1836,6 +1877,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, sacrifices, params.ReturnIDs)); err != nil {
 		return err
 	}
+	// #5401: "Exile one or more other artifacts you control with total
+	// mana value X". X was announced with the activation (CR 601.2b via
+	// CR 602.2b) and bounds the targets; the payment (CR 601.2h) must add
+	// up to exactly that X, so a set worth any other total is the
+	// activator announcing one number and paying another.
+	if ExileTotalManaValueX(ab.Cost.ExilePermanents) {
+		if total, ok := g.ExileTotalManaValueForEffect(playerID, ab.Cost.ExilePermanents, params.ExilePermanentIDs); !ok || total != params.XValue {
+			return errExileTotalNotX
+		}
+	}
 	// #2028: "Return this enchantment to its owner's hand". Nothing to
 	// choose — the source IS the payment — so this is the zone check and
 	// the one-permanent-one-component check (CR 118.3) against the
@@ -1857,6 +1908,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
+		return err
+	}
+	// "Tap <the permanent that granted this>" (Fishing Pole): the row's
+	// grantor must still be on the battlefield and untapped, and pays no
+	// other component (CR 118.3).
+	tapGrantor, err := g.tapGrantorOfLocked(ab.Cost, origins.At(index))
+	if err != nil {
+		return err
+	}
+	if err := validateTapGrantorCostLocked(tapGrantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs, params.TapIDs); err != nil {
 		return err
 	}
 	// #4799: "Unattach an Equipment from <this>" (Captain America, First
@@ -1923,6 +1984,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// Validated with the rest and paid before the sacrifices; nothing
 	// moves, so no other component's pick is excluded.
 	if err := g.validateRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs, params.XValue); err != nil {
+		return err
+	}
+	// "Reveal the creature type you chose" (A Killer Among Us).
+	if err := g.validateRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost); err != nil {
 		return err
 	}
 	// #1297: "Exile two cards from your graveyard" (Grim Lavamancer)
@@ -2370,6 +2435,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.RevealHand {
 		g.payRevealHandCostLocked(playerID, cardID)
 	}
+	// And "Reveal the creature type you chose", while the source is still
+	// on the battlefield to be read.
+	g.payRevealSecretChoiceCostLocked(playerID, cardID, ab.Cost)
 	// #4799: the unattach component, at the same point: the Equipment
 	// stays on the battlefield, attached to nothing (CR 701.3d).
 	g.payUnattachCostLocked(params.UnattachIDs)
@@ -2418,7 +2486,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// item is built so the leaves-triggers it queues sit ABOVE the
 	// ability (CR 603.3b). Not a sacrifice: no EventSacrifice, and
 	// nothing dies.
-	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, PermissionCardRef{})
+	// ADR 0137: craft's materials (the only ExilePermanents clause that
+	// reads a graveyard) say so on the move, for Market Gnome.
+	exileKind := MoveCauseCost
+	if ab.Cost.ExilePermanents != nil && ab.Cost.ExilePermanents.FromGraveyard {
+		exileKind = MoveCauseCraftCost
+	}
+	exiledPermanents, err := g.payExilePermanentsCostKindLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers, exileKind, PermissionCardRef{})
 	if err != nil {
 		return err
 	}
@@ -2462,7 +2536,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// door: nothing here is discarded. Recorded on the payment so an
 	// effect that reads "the card exiled this way" can find it in exile
 	// by instance ID, where this just put it.
-	if err := g.payExileCardsCostLocked(playerID, cardID, exiles, params.commanderAnswers); err != nil {
+	if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
 		return err
 	}
 	paid.Exiled = exiles
@@ -2717,6 +2791,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taps are paid — so station's effect can read the tapped
 	// creature back at resolution (CR 702.184a). See PaidTap.
 	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	// Fishing Pole: and the tap-the-grantor half, for the same reason.
+	g.payTapGrantorCostLocked(playerID, tapGrantor)
 	// #2695: a saddle ability's tapped creatures are the "creatures
 	// that saddled it" (CR 702.171c); the effect hands them to
 	// SaddleForEffect from this record. No printed cost has both a
@@ -2731,7 +2807,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	g.payTapPermanentsCostLocked(playerID, params.WaterbendIDs)
 	// #5276, CR 701.67c: the waterbend cost is paid, however much of it
 	// the taps covered, so the activator has waterbent.
-	if !ab.Cost.Waterbend.Empty() {
+	if !ab.Cost.Waterbend.Empty() && ab.Cost.Waterbend.Key == "waterbend" {
 		g.noteBendLocked(EventWaterbend, playerID, cardID)
 	}
 	// The cost may have queued dies-triggers (a sacrifice outlet

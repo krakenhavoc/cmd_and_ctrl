@@ -34,6 +34,12 @@ func checkOrCost(name string, i int, cost game.AbilityCost) {
 		panic(fmt.Sprintf("effects.Register: %q %s has an either/or cost beside its own sacrifice, discard or exile clause — the branch would replace it (game.ChosenAbilityCost)", name, where))
 	}
 	for b, branch := range cost.Either {
+		if branch.Kind == game.AbilityCostBranchMana {
+			if cost.Mana != "" || branch.Mana == "" {
+				panic(fmt.Sprintf("effects.Register: %q %s branch %d pays mana beside the cost's own mana, or names none (ManaBranch)", name, where, b))
+			}
+			continue
+		}
 		switch {
 		case branch.Kind == game.AbilityCostBranchMana:
 			if branch.Mana == "" {

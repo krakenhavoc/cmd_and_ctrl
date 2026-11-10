@@ -3491,6 +3491,11 @@ export interface AlternativeCostView {
   // is revealed, nothing moves or taps. The picker words its prompt
   // "Behold".
   behold?: boolean;
+  // Collect evidence N as the whole price (Conspiracy Unraveler's granted
+  // "collect evidence 10 rather than pay the mana cost"): `pay_options`
+  // are graveyard cards, any number of them, enough once their total mana
+  // value reaches this N. The picks ride `alt_cost_ids`.
+  collect_evidence?: number;
   // ADR 0135 §1: the cost's card-shaped half when it TAPS permanents —
   // Orim's Cure's "tap an untapped creature you control", Battle
   // Screech's three white creatures. The untapped permanents you
@@ -3654,6 +3659,9 @@ export interface AbilityCostBranchView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Bloodthorn Flail's "Pay {3}" branch: the mana the branch pays from the
+  // pool (game.AbilityCostBranchMana). Always offered; the payment checks it.
+  mana_cost?: string;
 }
 
 export interface PayOptionView {
@@ -3981,6 +3989,12 @@ export interface ActivatedAbilityView {
   // the activator's own graveyard (CR 702.167b), after the permanents.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #5401: the "with total mana value X" form (Fabrication Foundry's
+  // "Exile one or more other artifacts you control with total mana value
+  // X"). `demands_x` is set, but the picks ARE the announcement: the
+  // client sends their total mana value as `x_value` and narrows the
+  // target clause by it, and never asks for X separately.
+  exile_permanent_total_mana_value_x?: boolean;
   // #4799: an "Unattach an Equipment from <this>" cost (Captain America,
   // First Avenger). The Equipment attached to this permanent right now,
   // whoever controls them, min / max the cost's count (1). The pick rides
@@ -4052,6 +4066,12 @@ export interface ActivatedAbilityView {
   // (`granted_by`) is the payment, so nothing is picked and nothing is
   // sent.
   exile_grantor?: boolean;
+  // "Tap <the permanent that grants this>" (Fishing Pole): advisory, the
+  // grantor is `granted_by`, nothing is sent.
+  tap_grantor?: boolean;
+  // Deconstruction Hammer's "Sacrifice <the permanent that grants this>" on
+  // a granted row. Advisory like `exile_grantor`.
+  sacrifice_grantor?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.
@@ -5748,6 +5768,13 @@ export interface ManaAbilityView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // Collect evidence N as a mana ability's cost (Cryptex's "{T}, Collect
+  // evidence 3"): `exile_cost_n` is absent, the picker takes any number of
+  // `exile_cost_options`, and the picks are enough once their total mana
+  // value reaches `exile_cost_mana_value_min`. The ActivatedAbilityView
+  // fields of the same names; the engine refuses a pick below the floor.
+  exile_cost_any_number?: boolean;
+  exile_cost_mana_value_min?: number;
   // #5397: an either/or part of the cost — forage, Thornvault Forager's
   // "{T}, Forage: Add two mana in any combination of colors" (exile three
   // cards from your graveyard, or sacrifice a Food). The same entries

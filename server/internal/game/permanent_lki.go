@@ -130,6 +130,12 @@ type PermanentInfo struct {
 	// Counters is a copy of the counters it had. Nil when it had none.
 	Counters map[string]int `json:"counters,omitempty"`
 
+	// DamageMarked is the damage that was marked on it as it last existed
+	// (Card.DamageMarked): "the amount of damage dealt to it this turn" of
+	// Tangled Colony's dies trigger, read after it has gone (CR 608.2h).
+	// Additive; zero when it carried none.
+	DamageMarked int `json:"damageMarked,omitempty"`
+
 	// AttachedTo is what it was attached to (CR 301.5c / 303.4). An
 	// Aura's "enchanted creature" reads it after the Aura has gone.
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
@@ -197,6 +203,12 @@ type PermanentInfo struct {
 	// Observatory's tap ability still names its card type when it
 	// resolves after the Observatory has gone (CR 608.2h, #2709).
 	ChosenOption string `json:"chosenOption,omitempty"`
+
+	// SecretChoice is the word its controller chose for it in secret
+	// (Card.SecretChoice), as it last existed: A Killer Among Us's
+	// reveal ability still knows the type after the enchantment has been
+	// sacrificed to pay for it (CR 608.2h).
+	SecretChoice string `json:"secretChoice,omitempty"`
 
 	// ChosenNumber is the number chosen for it as it entered
 	// (Card.ChosenNumber, #1941), as it last existed: Phyrexian
@@ -292,12 +304,14 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Toughness:       c.CurrentToughness(),
 		BasePower:       c.BasePower(),
 		Counters:        copyStringIntMap(c.Counters),
+		DamageMarked:    c.DamageMarked,
 		AttachedTo:      c.AttachedTo,
 		Tapped:          c.Tapped,
 		Delved:          append([]ObjectRef(nil), c.Provenance.Delved...),
 		CraftedWith:     cloneObjectRefs(c.CraftedWith),
 		ChosenColor:     c.ChosenColor,
 		ChosenOption:    c.ChosenOption,
+		SecretChoice:    c.SecretChoice,
 		NamedTribe:      c.NamedTribe,
 		ChosenNumber:    c.ChosenNumber,
 		LinkedPermanent: objectRefPtr(c.LinkedPermanent),

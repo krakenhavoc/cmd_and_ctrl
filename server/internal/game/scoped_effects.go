@@ -508,6 +508,12 @@ const (
 	// pump or a shrink on the blocker after the effect is applied
 	// moves it in or out of the barred set.
 	ModCantBeBlockedByPower ModKind = "cantBeBlockedByPower"
+	// ModCantBeBlockedByPowerAtLeast is the other direction: "<creature>
+	// can't be blocked by creatures with power N or greater this turn"
+	// (Squeak By, CR 509.1b). Reads Amount, N, and Text. The pinned
+	// attacker(s). Pure data, and the blocker's power is read live as
+	// ModCantBeBlockedByPower's is. An on-disk identity: never renamed.
+	ModCantBeBlockedByPowerAtLeast ModKind = "cantBeBlockedByPowerAtLeast"
 	// ModCantBeBlockedByColor bars blockers with Colors[0], read live.
 	// It uses existing Mod fields and is additive within this schema.
 	ModCantBeBlockedByColor ModKind = "cantBeBlockedByColor"
@@ -526,6 +532,12 @@ const (
 	// blocker's name as the refusal sentence reads it. The pinned
 	// attacker(s). Pure data.
 	ModCantBeBlockedByObject ModKind = "cantBeBlockedByObject"
+	// ModCantBeBlockedByMoreThan is "<creature> can't be blocked by more
+	// than N creatures" for a duration (Full Steam Ahead's granted "This
+	// creature can't be blocked by more than one creature", CR 509.1b).
+	// Reads Amount, N. The pinned attacker(s). A count rule: judged on
+	// the whole declaration, the tightest maximum wins.
+	ModCantBeBlockedByMoreThan ModKind = "cantBeBlockedByMoreThan"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -1205,13 +1217,15 @@ var modKinds = map[ModKind]modKindSpec{
 	// the view (face_down_look.go).
 	ModLookAtFaceDownCreatures: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
-	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
-	ModLimitBlockersPerDefender: {reader: readerBlockRule},
-	ModCantBeBlockedByPlayer:    {reader: readerBlockRule},
-	ModCantBeBlockedByPower:     {reader: readerBlockRule},
-	ModCantBeBlockedByColor:     {reader: readerBlockRule},
-	ModCantBeBlockedBySubtypes:  {reader: readerBlockRule},
-	ModCantBeBlockedByObject:    {reader: readerBlockRule},
+	ModCantBeBlockedExceptBy:       {reader: readerBlockRule},
+	ModLimitBlockersPerDefender:    {reader: readerBlockRule},
+	ModCantBeBlockedByPlayer:       {reader: readerBlockRule},
+	ModCantBeBlockedByPower:        {reader: readerBlockRule},
+	ModCantBeBlockedByPowerAtLeast: {reader: readerBlockRule},
+	ModCantBeBlockedByColor:        {reader: readerBlockRule},
+	ModCantBeBlockedBySubtypes:     {reader: readerBlockRule},
+	ModCantBeBlockedByObject:       {reader: readerBlockRule},
+	ModCantBeBlockedByMoreThan:     {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},

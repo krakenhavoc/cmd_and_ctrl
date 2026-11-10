@@ -387,6 +387,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.RevealHand {
 			out.RevealHand = true
 		}
+		// "Reveal the creature type you chose" likewise: dropped, A Killer
+		// Among Us would show nothing and need no choice.
+		if c.RevealSecretChoice {
+			out.RevealSecretChoice = true
+		}
 		// #1213: the same reasoning again — a composed "{1}, Return a
 		// land you control to its owner's hand" that dropped the
 		// return would be a free token every turn, which is Meloku
@@ -471,6 +476,20 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileGrantor {
 			out.ExileGrantor = true
 		}
+		// Cursecloth Wrappings: and "its mana cost" as the mana component;
+		// dropped, the granted embalm would be free.
+		if c.ManaFromSource {
+			out.ManaFromSource = true
+		}
+		// Fishing Pole: and the tap-the-grantor component; dropped, the
+		// granted ability would be free of its Equipment tap.
+		if c.TapGrantor {
+			out.TapGrantor = true
+		}
+		// and the sacrifice-the-grantor component (Deconstruction Hammer).
+		if c.SacrificeGrantor {
+			out.SacrificeGrantor = true
+		}
 		// #4799: and the unattach component; dropped, Captain America's
 		// throw would deal damage for {3} and keep the Equipment on him.
 		if c.UnattachEquipment != 0 {
@@ -535,6 +554,13 @@ func RemoveCountersBranch(kind string, n int, label string) game.AbilityCostBran
 // permanents the activator controls matching `of`.
 func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCostBranch {
 	return game.AbilityCostBranch{Kind: game.AbilityCostBranchSacrifice, Count: n, Label: label, Of: of}
+}
+
+// ManaBranch is "Pay <cost>" as a branch of an OrCost (Bloodthorn Flail's
+// "Equip—Pay {3} or discard a card"): the branch folds into the ability's
+// mana cost, so the cost it is composed with must have none.
+func ManaBranch(cost string) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchMana, Mana: cost}
 }
 
 // DiscardBranch is "Discard <n> <label>" as a branch of an OrCost:
@@ -663,6 +689,29 @@ func ExileAPermanentYouControl(label, cardType string) game.AbilityCost {
 	}}
 }
 
+// ExileArtifactsWithTotalManaValueX is "Exile one or more other
+// artifacts you control with total mana value X" as a COST (#5401) —
+// Fabrication Foundry's. The cost has no {X} symbol: X is announced
+// with the activation (CR 601.2b via CR 602.2b), before the targets
+// (CR 601.2c), and the artifacts the activator names at announce must
+// add up to exactly that X when the cost is paid (CR 601.2h). Pair it
+// with a target clause bounded by the same X
+// (TargetSpec.WithManaValueAtMostX); the effect may read ctx.X().
+//
+// "Other" is ExcludeSource: the ability's own source is never a
+// material. The client sends the picks' total as x_value and never
+// asks for X on its own; the engine refuses any other number.
+func ExileArtifactsWithTotalManaValueX(label string) game.AbilityCost {
+	return game.AbilityCost{ExilePermanents: &game.ExilePermanentsCost{
+		Count:           1,
+		OrMore:          true,
+		CardType:        "artifact",
+		ExcludeSource:   true,
+		TotalManaValueX: true,
+		Label:           label,
+	}}
+}
+
 // ExileACreatureYouControl is "Exile a creature you control" — The
 // Soul Stone's harness, Altar of Bhaal, City of Shadows, Food Chain.
 // The type is read off the permanent's current characteristics, so an
@@ -717,6 +766,31 @@ func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
 // never beside a component that picks permanents: Register refuses
 // anything else. Compose it with Plus like any other component.
 func ExileTheGrantor() game.AbilityCost { return game.AbilityCost{ExileGrantor: true} }
+
+// ItsManaCost is "pay a cost equal to its mana cost" as the mana component
+// of a granted ability's cost (game.AbilityCost.ManaFromSource): Cursecloth
+// Wrappings' embalm. The bundle row names no mana of its own; the card that
+// has the row supplies its mana cost as the row is built.
+func ItsManaCost() game.AbilityCost { return game.AbilityCost{ManaFromSource: true} }
+
+// TapTheGrantor is "Tap <the permanent that grants this ability>" as a
+// cost: Fishing Pole's equipped creature has "{1}, {T}, Tap Fishing Pole:
+// …". The ability is the creature's, so {T} taps the creature; this taps
+// the Equipment whose grant the row is (game.AbilityCost.TapGrantor), which
+// must be untapped.
+//
+// Only in an AbilityGrant bundle given to battlefield permanents, and never
+// beside a component that picks permanents: Register refuses anything else.
+// Compose it with Plus like any other component.
+func TapTheGrantor() game.AbilityCost { return game.AbilityCost{TapGrantor: true} }
+
+// SacrificeTheGrantor is "Sacrifice <the permanent that grants this
+// ability>" as a cost: Deconstruction Hammer's equipped creature has
+// "{3}, {T}, Sacrifice Deconstruction Hammer: …". The grantor is
+// sacrificed through the ordinary sacrifice payment, so only its
+// controller can pay it (game.AbilityCost.SacrificeGrantor). Only in an
+// AbilityGrant bundle given to battlefield permanents.
+func SacrificeTheGrantor() game.AbilityCost { return game.AbilityCost{SacrificeGrantor: true} }
 
 // PutThisOnTheBottomOfItsOwnersLibrary is "Put this creature on the
 // bottom of its owner's library" as a cost (#2726).

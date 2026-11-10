@@ -99,6 +99,7 @@ var silentEventKinds = map[string]string{
 	// across to another player's permanent (ADR 0106 §1).
 	"EventKeywordAction": silentImpliedByAnotherLine,
 	"EventExplored":      "every step of an explore is already a line: the reveal, the land's move to hand, the +1/+1 counter and the card's move to the graveyard (CR 701.44a); the event exists for \"whenever a creature you control explores\" triggers (#2720)",
+	"EventGiftGiven":     "the gift's own effect (the card drawn, the token created) is already a line; the event exists for \"whenever you give a gift\" triggers (Jolly Gerbils, #4467)",
 	"EventConnived":      "every step of a connive is already a line: the draw, the discard and the +1/+1 counter (CR 701.50a); the event exists for \"whenever a creature you control connives\" triggers (#4641)",
 
 	// --- the step spine ----------------------------------------------

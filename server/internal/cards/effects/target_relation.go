@@ -45,3 +45,12 @@ func SharesACreatureTypeWithTarget(spec *game.TargetSpec, slot int) *game.Target
 	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetSharesCreatureType}
 	return spec
 }
+
+// SharesACreatureTypeWithTargetCard is SharesACreatureTypeWithTarget for two
+// cards in a graveyard (Unbury's "two target creature cards that share a
+// creature type"): the earlier pick is read wherever its card is now, so
+// one that left the graveyard still anchors the other (the ruling).
+func SharesACreatureTypeWithTargetCard(spec *game.TargetSpec, slot int) *game.TargetSpec {
+	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetCardSharesCreatureType}
+	return spec
+}

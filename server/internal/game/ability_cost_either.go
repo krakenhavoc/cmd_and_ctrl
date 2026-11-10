@@ -47,9 +47,11 @@ const (
 	// your graveyard" (ForageAbilityBranches). Folded into ExileCards,
 	// so the graveyard walk, validator and payer are the plain clause's.
 	AbilityCostBranchExileGraveyard AbilityCostBranchKind = "exile_graveyard"
-	// AbilityCostBranchMana pays Mana: "Equip—Pay {3} or remove a counter
-	// from this Equipment" (Gavel of the Righteous). Folded into the
-	// cost's mana, after any mana the rest of the cost already has.
+	// AbilityCostBranchMana pays the branch's Mana from the pool (Bloodthorn
+	// Flail's "Equip—Pay {3} or discard a card"). Folded into the cost's
+	// Mana component, so the pool payment, the strict and permissive postures
+	// and the activation's other mana readers are the ordinary ones; the rest
+	// of the cost must have no mana of its own (effects.Register checks it).
 	AbilityCostBranchMana AbilityCostBranchKind = "mana"
 	// AbilityCostBranchRemoveCounters removes Count counters of kind
 	// Counter from the ability's source. Folded into RemoveCounters, so
@@ -74,7 +76,7 @@ type AbilityCostBranch struct {
 	// Nonland narrows a discard to nonland cards. Unused by a
 	// sacrifice.
 	Nonland bool
-	// Mana is the mana a mana branch pays ("{3}").
+	// Mana is a mana branch's cost ("{3}"). Unused by every other kind.
 	Mana string
 	// Counter is the kind of counter a remove-counters branch takes
 	// from the source ("charge").
@@ -120,7 +122,10 @@ func ChosenAbilityCost(c AbilityCost, branch *int) (AbilityCost, error) {
 	case AbilityCostBranchExileGraveyard:
 		out.ExileCards = &ExileCost{N: b.count(), Label: b.Label, From: ZoneGraveyard}
 	case AbilityCostBranchMana:
-		out.Mana += b.Mana
+		if b.Mana == "" || out.Mana != "" {
+			return c, ErrAbilityCostBranch
+		}
+		out.Mana = b.Mana
 	case AbilityCostBranchRemoveCounters:
 		out.RemoveCounters = &CounterRemovalCost{Counter: b.Counter, N: b.count()}
 	default:

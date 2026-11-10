@@ -464,6 +464,13 @@ type PendingChoice struct {
 	// snapshot.
 	ManaTapped bool
 
+	// ManaRecolorsSource carries ManaAbilityShape.
+	// SourceBecomesProducedColor onto the pick: the last answer makes the
+	// source (Source) the colour it produced, until end of turn
+	// (sourceBecomesManaColorLocked). Carried by the value copy every
+	// clone starts from, and by the snapshot.
+	ManaRecolorsSource bool
+
 	// ReplacementEffectIDs is the ordered set of applicable
 	// replacement-effect IDs the chooser must reorder for a
 	// PendingChoiceReplacementOrder entry. The resolve_choice
@@ -1979,6 +1986,9 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 		nil,
 	)
 	source := choice.Source
+	if choice.ManaRecolorsSource {
+		g.sourceBecomesManaColorLocked(source, produced)
+	}
 	g.dequeueChoiceLocked(idx)
 	// #763, CR 605.1b / 605.4a: the second of the three production
 	// sites, and the ONLY one that knows the colour a

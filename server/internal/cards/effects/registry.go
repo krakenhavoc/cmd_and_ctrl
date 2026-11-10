@@ -699,6 +699,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.SacrificeOther, true, true, false)
 		checkReturnClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ReturnToHand)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExilePermanents)
+		checkExileTotalManaValueX(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost)
 		// ADR 0137: craft's graveyard half and an exile-cards component
 		// could both name one graveyard card, and no printed cost has
 		// both.
@@ -897,16 +898,17 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d discards a card with mana value X — a mana ability announces no X (CR 605.3b)",
 				spec.Name, i))
 		}
-		if ec := ma.Cost.ExileCards; ec != nil && ec.AnyNumber {
+		if ec := ma.Cost.ExileCards; ec != nil && ec.AnyNumber && !ec.IsCollectEvidence() {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles any number of cards — a CR 602 ability's cost only",
 				spec.Name, i))
 		}
+		checkManaCollectEvidence(spec.Name, i, ma)
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		checkManaForage(spec.Name, i, ma)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
 		// ability exiles graveyard cards through this component.
-		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0) {
+		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0 || ec.TotalManaValueX) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials (the graveyard, an open count or a set rule) — only a CR 602 ability may (ADR 0137)", spec.Name, i))
 		}
 		if ma.Cost.Mana != "" {
@@ -1622,6 +1624,33 @@ func checkExilePermanentsClause(card, where string, ec *game.ExilePermanentsCost
 	}
 }
 
+// checkExileTotalManaValueX is the boot-time refusal for #5401's "with
+// total mana value X" exile clause on an activated ability's cost:
+//
+//   - it is an open count ("one or more"), so it needs OrMore;
+//   - it adds the mana values of permanents, so a graveyard material or
+//     a set rule beside it is a card nothing prints;
+//   - it claims the announced X, so beside any other claimant ({X} in
+//     the mana, "Pay X {E}", a −X loyalty cost, or a count of
+//     sacrificed, tapped, discarded or revealed cards, or a discarded
+//     card's mana value) it is refused: one announced X cannot pay both.
+//
+// A mana ability and a cast's additional cost refuse it with the other
+// open-count clauses.
+func checkExileTotalManaValueX(card, where string, cost game.AbilityCost) {
+	ec := cost.ExilePermanents
+	if ec == nil || !ec.TotalManaValueX {
+		return
+	}
+	if !ec.OrMore || ec.FromGraveyard || ec.GraveyardOnly || ec.ShareCardType || len(ec.EachSubtype) > 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles permanents with total mana value X without an open count, or with craft's graveyard or a set rule — build it with ExileArtifactsWithTotalManaValueX", card, where))
+	}
+	if cost.XSlots() > 0 || cost.EnergyX || cost.LoyaltyX || game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers) ||
+		game.DiscardCountFromX(cost.DiscardCards) || game.DiscardManaValueX(cost.DiscardCards) || game.RevealCardsCountFromX(cost.RevealCards) {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles permanents with total mana value X AND pays X another way — one announced X cannot pay both", card, where))
+	}
+}
+
 // checkTapOthersClause is the boot-time refusal for #758's fixed-count
 // and #1421's X-count tap-others component. TapOthersCost.Empty
 // intentionally treats a malformed zero value as inert so engine call
@@ -1888,7 +1917,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
 			}
 			switch r.Kind {
-			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType, game.TargetSharesCreatureType:
+			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType, game.TargetSharesCreatureType, game.TargetCardSharesCreatureType:
 			case game.TargetInTargetPlayersGraveyard:
 				checkPlayersGraveyardRelation(name, i, spec.Clause(r.Slot), spec.Clause(i))
 			default:

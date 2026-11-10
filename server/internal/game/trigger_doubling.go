@@ -388,6 +388,13 @@ func (g *Game) withLastKnownTriggerIdentityLocked(c Card) Card {
 		c.Name = lki.Name
 		c.Controller = lki.Controller
 		c.effective = &lki
+		// CR 603.10a: the counters it last had are part of what it last
+		// looked like, and a "less than or equal to this creature's power"
+		// clause (Fiendish Panda) counts them. MoveCard zeroed the card's
+		// own (CR 400.7); the snapshot kept them on the game.
+		if counters := g.lastKnownCounters[c.InstanceID]; len(counters) > 0 {
+			c.Counters = copyStringIntMap(counters)
+		}
 	}
 	return c
 }

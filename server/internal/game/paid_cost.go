@@ -277,6 +277,16 @@ type PaidCost struct {
 	// answer. ADR 0071, addendum 2026-09-23.
 	TappedOthers []PaidTap `json:"tappedOthers,omitempty"`
 
+	// Chosen is the object a Chosen behold named (RevealCost.Chosen,
+	// chosen_cost.go): Monstrous Emergence's "choose a creature you control
+	// or reveal a creature card from your hand", read back as "the power of
+	// the creature you chose or the card you revealed". The same PaidTap
+	// record a station's tapped creature uses, rewritten on the exit by the
+	// same hook (CR 608.2h) and read through ChosenPowerForEffect. Nil for
+	// every cast without the component. Carried onto a copy of the spell
+	// (CR 707.10).
+	Chosen []PaidTap `json:"chosen,omitempty"`
+
 	// Delved is what delve exiled from the caster's graveyard to pay
 	// for the spell (CR 702.66a, ADR 0100 §1), in the order named: the
 	// objects AS THEY LANDED IN EXILE, instance ID and epoch. Nil for a
@@ -511,7 +521,7 @@ func (p PaidCost) IsZero() bool {
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
+		len(p.TappedOthers) == 0 && len(p.Chosen) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
 		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
 }
@@ -533,6 +543,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.TappedOthers) > 0 {
 		out.TappedOthers = append([]PaidTap(nil), p.TappedOthers...)
+	}
+	if len(p.Chosen) > 0 {
+		out.Chosen = append([]PaidTap(nil), p.Chosen...)
 	}
 	if len(p.Exiled) > 0 {
 		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)

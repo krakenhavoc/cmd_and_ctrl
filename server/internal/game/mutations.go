@@ -853,7 +853,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// (CR 601.3e, 709.3a, 712.11c, 715.3a). One it does not admit is no
 	// permission for this cast, from here down: the path gate refuses a
 	// zone nothing else opens, and a hand cast is an ordinary one.
-	grant = g.permissionForSpellLocked(grant, card)
+	grant = g.permissionForSpellLocked(grant, faceDownSpellStandIn(card, params.AlternativeCost))
 	// CR 702.62a (#659): a permanent cast from a suspended card has
 	// haste. It is the PERMISSION that says so, not the card, so it is
 	// read here where the permission is consumed and registered
@@ -2598,6 +2598,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 				if mv, ok := g.castManaValueLocked(sc); ok && mv > tally.InstantSorceryMaxManaValue {
 					tally.InstantSorceryMaxManaValue = mv
 				}
+			}
+			if characteristicHasType(ch, "Instant") {
+				tally.Instants++
+			}
+			if characteristicHasType(ch, "Sorcery") {
+				tally.Sorceries++
+			}
+			if characteristicHasSubtype(ch, "Otter") && !strings.EqualFold(sc.Name, "Alania, Divergent Storm") {
+				tally.OtterSpellsExceptAlania++
 			}
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") ||
 				characteristicHasSubtype(ch, "Villain") {
@@ -6837,7 +6846,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	if shuffleAfter && dest == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
 	}
-	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability)
+	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability, g.Turn.Seq)
 	stampExileCounterLocked(destZone, cardID, exileCounter)
 	move := Event{
 		Kind:    EventZoneMove,
@@ -8655,6 +8664,14 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		}
 		paid.Exiled = append(paid.Exiled, exiles...)
 		needStateChecks = true
+		// CR 701.59a: a collect evidence clause (Cryptex's "{T}, Collect
+		// evidence 3") announces its collection once the cards are
+		// exiled, as the CR 602 path does, so "whenever you collect
+		// evidence" triggers; the trigger reaches the stack on the way
+		// out, with the mana already in the pool (CR 605.3b).
+		if ab.ExileCards.IsCollectEvidence() {
+			g.noteCollectEvidenceLocked(playerID, cardID, exiles)
+		}
 	}
 	// #5397, CR 701.61a: a forage paid — either branch, now that its
 	// cards or its Food have moved. Recorded as the CR 602 path records
@@ -8895,6 +8912,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				nil,
 			)...)
 		}
+		if ab.SourceBecomesProducedColor {
+			g.sourceBecomesManaColorLocked(cardID, settled)
+		}
 	} else {
 		// Queue the first pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
@@ -8931,6 +8951,8 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			ManaSettled:   settled,
 			ManaPicksLeft: picks[1:],
 		}
+		// The "becomes that color" rider waits for the colour too.
+		choice.ManaRecolorsSource = ab.SourceBecomesProducedColor
 		if first := picks[0]; first.Different > 0 {
 			g.queueDifferentColorsPickLocked(choice, first.Options, first.Different, ab.Label)
 		} else {

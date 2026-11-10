@@ -224,8 +224,14 @@ type PayAction struct {
 	// Nonland narrows a discard to nonland cards (#4566): Bullseye,
 	// Death Dealer's "discard a nonland card". Only a nonland card in the
 	// payer's hand is an option, so a hand of lands can't pay (CR
-	// 118.3). Unused by every other kind.
+	// 118.3). It narrows a sacrifice the same way: "sacrifice three other
+	// nonland permanents" (Scavenger's Talent). Unused by every other kind.
 	Nonland bool `json:",omitempty"`
+	// Except is a permanent a sacrifice may not take: the "other" of
+	// "sacrifice three other nonland permanents", the ability's own
+	// source (Scavenger's Talent). The zero value excludes nothing.
+	// Unused by every other kind.
+	Except *uuid.UUID `json:",omitempty"`
 	// Mana is a PayActionMana branch's cost ("{2}"), parsed when it is
 	// paid (#4566). Unused by every other kind.
 	Mana string `json:",omitempty"`
@@ -336,9 +342,13 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			// CR 701.21a: only what you control.
-			if c.Controller == chooser && a.Of.matchesLocked(g, c) {
-				out = append(out, c.InstanceID)
+			if c.Controller != chooser || !a.Of.matchesLocked(g, c) {
+				continue
 			}
+			if (a.Except != nil && c.InstanceID == *a.Except) || (a.Nonland && c.IsLand()) {
+				continue
+			}
+			out = append(out, c.InstanceID)
 		}
 		out = g.SacrificePaymentOrderForEffect(out, uuid.Nil)
 	case PayActionTap:

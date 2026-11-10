@@ -124,6 +124,11 @@ const (
 	// FootprintCondNoSpellsCast: the item's controller cast no spells
 	// this turn (Edgar). No step in the vocabulary casts a spell.
 	FootprintCondNoSpellsCast FootprintCond = "no_spells_cast"
+	// FootprintCondSpellsCast: the item's controller has cast N or more
+	// spells this turn (Loan Shark's "if you've cast two or more spells
+	// this turn"). The turn's cast tally only rises, and no step in the
+	// vocabulary casts a spell.
+	FootprintCondSpellsCast FootprintCond = "spells_cast"
 	// FootprintCondNoSpellsCastFromHand: the item's controller cast no
 	// spell from their hand this turn (#5235, Outlaws of Thunder
 	// Junction). No step in the vocabulary casts a spell.
@@ -153,6 +158,10 @@ const (
 	// FootprintCondAttacked: the item's controller declared an attacker
 	// this turn (raid: Fire Nation Raider).
 	FootprintCondAttacked FootprintCond = "attacked"
+	// FootprintCondFaceDownEntered: a permanent entered the battlefield
+	// face down under the item's controller this turn (Tunnel Tipster).
+	// The tally only rises within a turn.
+	FootprintCondFaceDownEntered FootprintCond = "face_down_entered"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -800,10 +809,14 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).Total == 0
 	case FootprintCondNoSpellsCastFromHand:
 		return g.CastTallyFor(you).FromHand() == 0
+	case FootprintCondSpellsCast:
+		return g.CastTallyFor(you).Total >= atLeast
 	case FootprintCondCastSpellMV:
 		return g.CastTallyFor(you).MaxManaValue >= s.N
 	case FootprintCondAttacked:
 		return tally.AttacksDeclared > 0
+	case FootprintCondFaceDownEntered:
+		return tally.PermanentsEnteredFaceDown > 0
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:
@@ -1412,7 +1425,8 @@ var characteristicModKinds = map[ModKind]bool{
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
-	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true,
+	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
+	ModCantBeBlockedByMoreThan: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects
@@ -1737,7 +1751,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AdditionalLandPlays": defFieldInert, "ConditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "LibraryTopVisibleWhen": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "LooksAtFaceDownCreatures": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 

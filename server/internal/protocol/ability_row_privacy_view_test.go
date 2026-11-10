@@ -75,7 +75,7 @@ var activatedRowScopes = map[string]rowScope{
 	// the shortfall it greys the row with is too.
 	"MillCost":     rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "LoyaltyCostX": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "BottomSelf": rowPublic, "ExileGrantor": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "BottomSelf": rowPublic, "ExileGrantor": rowPublic, "TapGrantor": rowPublic, "SacrificeGrantor": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
@@ -101,6 +101,8 @@ var activatedRowScopes = map[string]rowScope{
 	// #1600: "Exile a creature you control" — its words, and the
 	// permanents on the battlefield that could pay.
 	"ExilePermanentLabel": rowPublic, "ExilePermanentOptions": rowPublic,
+	// #5401: "with total mana value X" — the printed rule.
+	"ExilePermanentTotalManaValueX": rowPublic,
 	// #4799: "Unattach an Equipment from <this>" — its words, and the
 	// Equipment attached to the permanent, on the battlefield.
 	"UnattachLabel": rowPublic, "UnattachOptions": rowPublic,
@@ -172,6 +174,7 @@ var manaRowScopes = map[string]rowScope{
 	"TriggerAdds":  rowPublic,
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
+	"ExileCostAnyNumber": rowPublic, "ExileCostManaValueMin": rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,
 	"CounterCostLabel": rowPublic, "CounterCostAmong": rowPublic,
 	"CounterCostVariable": rowPublic, "CounterCostMax": rowPublic,

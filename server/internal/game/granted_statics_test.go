@@ -244,3 +244,118 @@ func TestGrantedStaticProblemNamesWhatAGrantCannotCarry(t *testing.T) {
 		}
 	}
 }
+
+// --- ADR 0093 amendment 2026-11-10 (#5402): a granted static that grants
+// one fixed bundle ------------------------------------------------------
+
+const (
+	gsInnerMana   = "fixture/inner-mana"
+	gsInnerStatic = "fixture/inner-static"
+)
+
+// gsGrantsInnerMana is the outer bundle's static: "Creatures you control
+// have '{T}: Add {G}.'", read with the HOST as its source.
+var gsGrantsInnerMana = StaticAbility{
+	Label: "Creatures you control have \"{T}: Add {G}.\"",
+	Layer: Layer6Ability,
+	AppliesTo: func(target *Card, _ *Game, source *Card) bool {
+		return target.IsCreature() && target.Controller == source.Controller
+	},
+	GrantAbilities:    []string{gsInnerMana},
+	GrantsFixedBundle: true,
+}
+
+// stubFixedGrantCatalog is stubGrantedStaticCatalog plus the two inner
+// bundles: one with a mana ability only, one with a static.
+func stubFixedGrantCatalog(t *testing.T, bundle ...StaticAbility) {
+	t.Helper()
+	stubGrantedStaticCatalog(t, bundle...)
+	outer := CatalogLookup
+	inner := map[string]*CardDef{
+		GrantKey(gsInnerMana):   {ManaAbilities: []ManaAbilityShape{{TapCost: true, Produced: "{G}"}}, GrantText: "{T}: Add {G}."},
+		GrantKey(gsInnerStatic): {Static: []StaticAbility{gsLifelinkToOthers}, GrantText: "lifelink to others"},
+	}
+	CatalogLookup = func(key string) *CardDef {
+		if d := inner[key]; d != nil {
+			return d
+		}
+		return outer(key)
+	}
+}
+
+func gsHasInnerGrant(t *testing.T, g *Game, id uuid.UUID, host uuid.UUID) bool {
+	t.Helper()
+	for _, ga := range scopedEffectChar(t, g, id).GrantedAbilities {
+		if ga.Key == GrantKey(gsInnerMana) && ga.Source == host {
+			return true
+		}
+	}
+	return false
+}
+
+func TestGrantedStaticProblemAcceptsOnlyAFixedBundleGrant(t *testing.T) {
+	stubFixedGrantCatalog(t, gsGrantsInnerMana)
+	if p := GrantedStaticProblem(gsGrantsInnerMana); p != "" {
+		t.Fatalf("the fixed-bundle grant was refused: %s", p)
+	}
+	with := func(edit func(*StaticAbility)) StaticAbility {
+		s := gsGrantsInnerMana
+		s.GrantAbilities = append([]string(nil), s.GrantAbilities...)
+		edit(&s)
+		return s
+	}
+	for name, tc := range map[string]struct {
+		s    StaticAbility
+		want string
+	}{
+		"no opt-in":        {with(func(s *StaticAbility) { s.GrantsFixedBundle = false }), "remove, grant or borrow"},
+		"two bundles":      {with(func(s *StaticAbility) { s.GrantAbilities = []string{gsInnerMana, gsInnerMana} }), "exactly one bundle"},
+		"unregistered":     {with(func(s *StaticAbility) { s.GrantAbilities = []string{"nobody/registered"} }), "registers"},
+		"inner has static": {with(func(s *StaticAbility) { s.GrantAbilities = []string{gsInnerStatic} }), "no static of its own"},
+		"inner is itself":  {with(func(s *StaticAbility) { s.GrantAbilities = []string{gsBundle} }), "no static of its own"},
+		"with a removal":   {with(func(s *StaticAbility) { s.RemovesAbilities = true }), "remove, grant or borrow"},
+		"with a borrow":    {with(func(s *StaticAbility) { s.Borrows = &AbilityBorrow{} }), "remove, grant or borrow"},
+		"continues":        {with(func(s *StaticAbility) { s.ContinuesAfterRemoval = true }), "remove, grant or borrow"},
+		"layer 7c":         {with(func(s *StaticAbility) { s.Layer, s.SubLayer = Layer7PT, SubLayer7C_Modify }), "layer-6 static"},
+		"no applies-to":    {with(func(s *StaticAbility) { s.AppliesTo = nil }), "needs AppliesTo"},
+		"to a zone":        {with(func(s *StaticAbility) { s.GrantZone = ZoneHand }), "battlefield"},
+	} {
+		if p := GrantedStaticProblem(tc.s); !strings.Contains(p, tc.want) {
+			t.Errorf("%s: problem %q, want one mentioning %q", name, p, tc.want)
+		}
+	}
+}
+
+// The outer grant inserts the static, the static writes the inner bundle
+// on every creature its host's controller controls — one that enters
+// later too — and a removal on the host after the grant ends it
+// (CR 613.8a), while one on a recipient sorts by timestamp (CR 613.7).
+func TestAGrantedStaticGrantsItsFixedBundleThroughItsHost(t *testing.T) {
+	stubFixedGrantCatalog(t, gsGrantsInnerMana)
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	host := gsCreature(g, me.ID, gsHostName)
+	friend := gsCreature(g, me.ID, "Friend")
+	enemy := gsCreature(g, opp.ID, "Enemy")
+	gsGrantor(g, me.ID)
+
+	if !gsHasInnerGrant(t, g, friend, host) || !gsHasInnerGrant(t, g, host, host) {
+		t.Fatal("the host's granted static did not grant the inner bundle to its controller's creatures")
+	}
+	if gsHasInnerGrant(t, g, enemy, host) {
+		t.Error("\"you control\" reached an opponent's creature")
+	}
+	late := gsCreature(g, me.ID, "Latecomer")
+	if !gsHasInnerGrant(t, g, late, host) {
+		t.Error("a creature that entered later did not get the inner bundle")
+	}
+
+	registerScopedEffectForTest(t, g, friend, []Mod{LoseAllAbilitiesMod()}, IndefiniteDuration())
+	if gsHasInnerGrant(t, g, friend, host) {
+		t.Error("a recipient that lost all abilities after the grant kept the inner bundle")
+	}
+	registerScopedEffectForTest(t, g, host, []Mod{LoseAllAbilitiesMod()}, IndefiniteDuration())
+	if gsHasInnerGrant(t, g, late, host) {
+		t.Error("the host lost all abilities after the grant, but its granted static still grants")
+	}
+}
