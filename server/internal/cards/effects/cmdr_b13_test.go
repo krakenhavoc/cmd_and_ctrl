@@ -1669,3 +1669,40 @@ func TestCmdrB16TreeOfRedemptionModifiersApplyAfterTheExchange(t *testing.T) {
 		t.Errorf("toughness %d, want 9 (7 plus the two counters)", got)
 	}
 }
+
+const cmdrB16InsigniaOracle = "979a5d92-1c67-4fa4-b932-638b0cc1adcd"
+
+func TestCmdrB16CommandersInsigniaCountsCommanderCasts(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	bear := auraBear(g, me.ID)
+	theirs := auraBear(g, opp.ID)
+	pushCatalogPermanent(g, me.ID, "Commander's Insignia", "Enchantment", cmdrB16InsigniaOracle, false)
+	if p := effectivePower(t, g, bear); p != 2 {
+		t.Fatalf("with no commander cast the Bear has power %d, want 2", p)
+	}
+	cmdID := uuid.New()
+	me.Command.PushTop(game.Card{InstanceID: cmdID, Name: "My Commander", TypeLine: "Legendary Creature — Elf",
+		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID, IsCommander: true})
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, cmdID, game.CastSpellParams{FromZone: "command"}); err != nil {
+		t.Fatalf("commander cast: %v", err)
+	}
+	// Counted as soon as it is cast, while it is still on the stack.
+	if p, tt := effectivePower(t, g, bear), effectiveToughness(t, g, bear); p != 3 || tt != 3 {
+		t.Errorf("with the commander spell on the stack the Bear is %d/%d, want 3/3", p, tt)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(cmdID) {
+		t.Fatal("the commander did not resolve")
+	}
+	if p := effectivePower(t, g, bear); p != 3 {
+		t.Errorf("after it resolved the Bear has power %d, want 3", p)
+	}
+	if p := effectivePower(t, g, cmdID); p != 3 {
+		t.Errorf("the commander itself has power %d, want 3", p)
+	}
+	if p := effectivePower(t, g, theirs); p != 2 {
+		t.Errorf("an opponent's creature has power %d, want 2", p)
+	}
+}

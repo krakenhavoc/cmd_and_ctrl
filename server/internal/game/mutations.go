@@ -2553,6 +2553,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			p.CommanderCasts = make(map[uuid.UUID]int)
 		}
 		p.CommanderCasts[cardID]++
+		// Commander's Insignia counts these; a cached layer pass would keep the
+		// old number until something else moved.
+		g.layerVersion.Add(1)
 	}
 	// #4973: the first spell this player has cast this game, as the
 	// object it is on the stack (First Contact).
