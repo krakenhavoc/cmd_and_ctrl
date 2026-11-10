@@ -19,3 +19,16 @@ func cmdrB21UpToTwoBasicsTapped(ctx *Context, name string) error {
 		Reason:        name + " — up to two basic lands",
 	}.Apply(ctx)
 }
+
+// cmdrB21OtherCreatureToughness is "the total toughness of other
+// creatures you control", read as the entering card's controller sees the
+// battlefield (effective toughness, the entering card excluded).
+func cmdrB21OtherCreatureToughness(g *game.Game, src *game.Card) int {
+	total := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == src.Controller && c.InstanceID != src.InstanceID && c.IsCreature() {
+			total += c.CurrentToughness()
+		}
+	}
+	return total
+}
