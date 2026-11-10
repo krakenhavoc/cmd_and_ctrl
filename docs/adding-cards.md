@@ -1163,6 +1163,8 @@ Nothing is stored: the offer is derived from the battlefield on every cast query
 
 Collect evidence N as the whole price ("You may collect evidence 10 rather than pay the mana cost for spells you cast", Conspiracy Unraveler) is `CollectEvidenceTenForSpellsYouCast()`: `game.AlternativeCost.CollectEvidence` holds the clause, the caster names graveyard cards with total mana value N or more on `alt_cost_ids`, the offer view ships `collect_evidence: N` with the graveyard as `pay_options`, a short graveyard withholds the offer (CR 701.59b), and paying it emits the collect evidence event without making "if evidence was collected" true (CR 701.59c).
 
+"<Spells> you cast from your hand gain evoke {cost} as you cast them" (Ashling, the Limitless; #5428, CR 702.74a) is `EvokeForSpellsYouCastFromHand("{4}", "Elemental permanent spells", game.PermissionFilter{PermanentOnly: true, CreatureType: "Elemental"})` in `effects/granted_evoke.go`. Its key, `granted-evoke` (`game.GrantedAltCostEvoke`), is with granted warp the one granted offer that carries a clause for the permanent the spell becomes: the entry hook reads evoke's sacrifice off the key, so the permanent is sacrificed even if the grantor has left (CR 610.5), and a copy of the spell becomes a token that is sacrificed too. A card that asks "if its evoke cost was paid" reads `effects.PaidEvoke(key)`, never `key == "evoke"`.
+
 A Room door's grant goes in `Door.GrantedAlternativeCosts`, and `Room` gates it on the door (`GrantedAlternativeCost.ActiveWhen`, #3174). "Once each turn" is `OnceEachTurn`, a limit per source object spent as the spell becomes cast (`TurnTally.GrantedAltCostsClaimed`); "during each of your turns" adds `YourTurnOnly`; "by paying life equal to its mana value" is `LifeEqualToManaValue`, with the offer's mana cost, life and energy left empty (a spell with {X} or no mana cost gets no offer). Warped Space is `PayZeroForASpellFromExileOnceEachTurn()` and Access Maze `PayLifeForASpellFromHandOnceEachOfYourTurns()`:
 
 ```go
@@ -13550,6 +13552,15 @@ ctx.SourcePermanent()                                                           
   Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
   engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
   whose own cost already uses `teamwork_ids` (`castTapListTaken`).
+- **"<Spells> you cast gain offspring {cost} as you cast them"** (Zinnia, Valley's Voice; #5428, CR 702.175) is
+  `GrantedOptionalCosts: []game.GrantedOptionalCost{OffspringForSpellsYouCast(label, Creature(), "{2}")}`
+  (`granted_offspring.go`). The cost has its own key, `granted-offspring`, so a creature that prints offspring keeps
+  its own cost beside it, and the grant is `EachSource`: two permanents granting it give two instances (CR 702.175b).
+  The token is the permanent's own enters trigger, derived from its cast record and not from the grantor: a granted
+  optional cost whose payoff belongs to the permanent the spell becomes registers that trigger once, at init, with
+  `game.RegisterGrantedOptionalEntryTrigger(key, trigger)` (`game/granted_entry_trigger.go`). The paid key then rides
+  `CastProvenance.GrantedOptional` (and a CR 707.10 copy of the spell), and the trigger must build a keyed item
+  (`game.NewKeyedTriggeredItem`), since the card has no row for it.
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.

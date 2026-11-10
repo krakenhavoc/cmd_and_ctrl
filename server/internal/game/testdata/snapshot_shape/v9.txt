@@ -362,6 +362,8 @@ battlefield.cards[].provenance.delved[].epoch	number:int
 battlefield.cards[].provenance.delved[].id	custom(uuid.UUID)
 battlefield.cards[].provenance.fromZone	string
 battlefield.cards[].provenance.giftOpponent	custom(uuid.UUID)
+battlefield.cards[].provenance.grantedOptional	array
+battlefield.cards[].provenance.grantedOptional[]	string
 battlefield.cards[].provenance.mana	array
 battlefield.cards[].provenance.manaOnPaper	bool
 battlefield.cards[].provenance.mana[]	object
@@ -914,6 +916,8 @@ enteringTokens[].provenance.delved[].epoch	number:int
 enteringTokens[].provenance.delved[].id	custom(uuid.UUID)
 enteringTokens[].provenance.fromZone	string
 enteringTokens[].provenance.giftOpponent	custom(uuid.UUID)
+enteringTokens[].provenance.grantedOptional	array
+enteringTokens[].provenance.grantedOptional[]	string
 enteringTokens[].provenance.mana	array
 enteringTokens[].provenance.manaOnPaper	bool
 enteringTokens[].provenance.mana[]	object
@@ -1426,6 +1430,8 @@ exile.cards[].provenance.delved[].epoch	number:int
 exile.cards[].provenance.delved[].id	custom(uuid.UUID)
 exile.cards[].provenance.fromZone	string
 exile.cards[].provenance.giftOpponent	custom(uuid.UUID)
+exile.cards[].provenance.grantedOptional	array
+exile.cards[].provenance.grantedOptional[]	string
 exile.cards[].provenance.mana	array
 exile.cards[].provenance.manaOnPaper	bool
 exile.cards[].provenance.mana[]	object
@@ -8614,6 +8620,8 @@ frozenEntries[].event.keywordActionTail.armyToken.provenance.delved[].epoch	numb
 frozenEntries[].event.keywordActionTail.armyToken.provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.provenance.fromZone	string
 frozenEntries[].event.keywordActionTail.armyToken.provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.provenance.grantedOptional	array
+frozenEntries[].event.keywordActionTail.armyToken.provenance.grantedOptional[]	string
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana	array
 frozenEntries[].event.keywordActionTail.armyToken.provenance.manaOnPaper	bool
 frozenEntries[].event.keywordActionTail.armyToken.provenance.mana[]	object
@@ -10873,6 +10881,8 @@ frozenEntries[].event.millTail.run.planned[].provenance.delved[].epoch	number:in
 frozenEntries[].event.millTail.run.planned[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].provenance.fromZone	string
 frozenEntries[].event.millTail.run.planned[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].provenance.grantedOptional	array
+frozenEntries[].event.millTail.run.planned[].provenance.grantedOptional[]	string
 frozenEntries[].event.millTail.run.planned[].provenance.mana	array
 frozenEntries[].event.millTail.run.planned[].provenance.manaOnPaper	bool
 frozenEntries[].event.millTail.run.planned[].provenance.mana[]	object
@@ -11277,6 +11287,8 @@ frozenEntries[].event.millTail.run.seen[].provenance.delved[].epoch	number:int
 frozenEntries[].event.millTail.run.seen[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].provenance.fromZone	string
 frozenEntries[].event.millTail.run.seen[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].provenance.grantedOptional	array
+frozenEntries[].event.millTail.run.seen[].provenance.grantedOptional[]	string
 frozenEntries[].event.millTail.run.seen[].provenance.mana	array
 frozenEntries[].event.millTail.run.seen[].provenance.manaOnPaper	bool
 frozenEntries[].event.millTail.run.seen[].provenance.mana[]	object
@@ -13441,6 +13453,8 @@ frozenEntries[].event.tokenGroups[].template.provenance.delved[].epoch	number:in
 frozenEntries[].event.tokenGroups[].template.provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.provenance.fromZone	string
 frozenEntries[].event.tokenGroups[].template.provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.provenance.grantedOptional	array
+frozenEntries[].event.tokenGroups[].template.provenance.grantedOptional[]	string
 frozenEntries[].event.tokenGroups[].template.provenance.mana	array
 frozenEntries[].event.tokenGroups[].template.provenance.manaOnPaper	bool
 frozenEntries[].event.tokenGroups[].template.provenance.mana[]	object
@@ -14471,6 +14485,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.delved[].ep
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.fromZone	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.grantedOptional	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.grantedOptional[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.manaOnPaper	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.provenance.mana[]	object
@@ -14888,6 +14904,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.delved[].epo
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.fromZone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.manaOnPaper	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].provenance.mana[]	object
@@ -15292,6 +15310,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.delved[].epoch	
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.fromZone	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.manaOnPaper	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].provenance.mana[]	object
@@ -18858,6 +18878,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.delved[].epoch	num
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.delved[].id	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.fromZone	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.giftOpponent	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.grantedOptional	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.grantedOptional[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.manaOnPaper	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].provenance.mana[]	object
@@ -19881,6 +19903,8 @@ lastKnownStack[].card.provenance.delved[].epoch	number:int
 lastKnownStack[].card.provenance.delved[].id	custom(uuid.UUID)
 lastKnownStack[].card.provenance.fromZone	string
 lastKnownStack[].card.provenance.giftOpponent	custom(uuid.UUID)
+lastKnownStack[].card.provenance.grantedOptional	array
+lastKnownStack[].card.provenance.grantedOptional[]	string
 lastKnownStack[].card.provenance.mana	array
 lastKnownStack[].card.provenance.manaOnPaper	bool
 lastKnownStack[].card.provenance.mana[]	object
@@ -26665,6 +26689,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.provenance.delved[].epoch	numb
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.fromZone	string
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.provenance.grantedOptional	array
+movesAwaitingTokens[].keywordActionTail.armyToken.provenance.grantedOptional[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana	array
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.manaOnPaper	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.provenance.mana[]	object
@@ -28924,6 +28950,8 @@ movesAwaitingTokens[].millTail.run.planned[].provenance.delved[].epoch	number:in
 movesAwaitingTokens[].millTail.run.planned[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].provenance.fromZone	string
 movesAwaitingTokens[].millTail.run.planned[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].provenance.grantedOptional	array
+movesAwaitingTokens[].millTail.run.planned[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana	array
 movesAwaitingTokens[].millTail.run.planned[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].millTail.run.planned[].provenance.mana[]	object
@@ -29328,6 +29356,8 @@ movesAwaitingTokens[].millTail.run.seen[].provenance.delved[].epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].provenance.fromZone	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].provenance.grantedOptional	array
+movesAwaitingTokens[].millTail.run.seen[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana	array
 movesAwaitingTokens[].millTail.run.seen[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].millTail.run.seen[].provenance.mana[]	object
@@ -31492,6 +31522,8 @@ movesAwaitingTokens[].tokenGroups[].template.provenance.delved[].epoch	number:in
 movesAwaitingTokens[].tokenGroups[].template.provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.provenance.fromZone	string
 movesAwaitingTokens[].tokenGroups[].template.provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.provenance.grantedOptional	array
+movesAwaitingTokens[].tokenGroups[].template.provenance.grantedOptional[]	string
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana	array
 movesAwaitingTokens[].tokenGroups[].template.provenance.manaOnPaper	bool
 movesAwaitingTokens[].tokenGroups[].template.provenance.mana[]	object
@@ -32522,6 +32554,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.delved[].ep
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.fromZone	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.grantedOptional	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.grantedOptional[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.manaOnPaper	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.provenance.mana[]	object
@@ -32939,6 +32973,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.delved[].epo
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.fromZone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].provenance.mana[]	object
@@ -33343,6 +33379,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.delved[].epoch	
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.fromZone	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].provenance.mana[]	object
@@ -36909,6 +36947,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.delved[].epoch	num
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.delved[].id	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.fromZone	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.giftOpponent	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.grantedOptional	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.grantedOptional[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.manaOnPaper	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].provenance.mana[]	object
@@ -38747,6 +38787,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.provenance.delved[].epoch
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.fromZone	string
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.provenance.grantedOptional	array
+pendingChoices[].attackSplit.settled.chosen[].template.provenance.grantedOptional[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana	array
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.manaOnPaper	bool
 pendingChoices[].attackSplit.settled.chosen[].template.provenance.mana[]	object
@@ -39171,6 +39213,8 @@ pendingChoices[].attackSplit.settled.groups[].template.provenance.delved[].epoch
 pendingChoices[].attackSplit.settled.groups[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.provenance.fromZone	string
 pendingChoices[].attackSplit.settled.groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.provenance.grantedOptional	array
+pendingChoices[].attackSplit.settled.groups[].template.provenance.grantedOptional[]	string
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana	array
 pendingChoices[].attackSplit.settled.groups[].template.provenance.manaOnPaper	bool
 pendingChoices[].attackSplit.settled.groups[].template.provenance.mana[]	object
@@ -40181,6 +40225,8 @@ pendingChoices[].attackSplit.template.provenance.delved[].epoch	number:int
 pendingChoices[].attackSplit.template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.provenance.fromZone	string
 pendingChoices[].attackSplit.template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.provenance.grantedOptional	array
+pendingChoices[].attackSplit.template.provenance.grantedOptional[]	string
 pendingChoices[].attackSplit.template.provenance.mana	array
 pendingChoices[].attackSplit.template.provenance.manaOnPaper	bool
 pendingChoices[].attackSplit.template.provenance.mana[]	object
@@ -40967,6 +41013,8 @@ pendingChoices[].copyWalk.src.provenance.delved[].epoch	number:int
 pendingChoices[].copyWalk.src.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.provenance.fromZone	string
 pendingChoices[].copyWalk.src.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.provenance.grantedOptional	array
+pendingChoices[].copyWalk.src.provenance.grantedOptional[]	string
 pendingChoices[].copyWalk.src.provenance.mana	array
 pendingChoices[].copyWalk.src.provenance.manaOnPaper	bool
 pendingChoices[].copyWalk.src.provenance.mana[]	object
@@ -52115,6 +52163,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.fromZone	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.provenance.mana[]	object
@@ -54374,6 +54424,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.delve
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].provenance.mana[]	object
@@ -54778,6 +54830,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.delved[]
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].provenance.mana[]	object
@@ -56942,6 +56996,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.delve
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.fromZone	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.provenance.mana[]	object
@@ -57972,6 +58028,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pro
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.fromZone	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.provenance.mana[]	object
@@ -58389,6 +58447,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prov
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].provenance.mana[]	object
@@ -58793,6 +58853,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provena
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].provenance.mana[]	object
@@ -62359,6 +62421,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.fromZone	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.grantedOptional	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.grantedOptional[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.manaOnPaper	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].provenance.mana[]	object
@@ -64500,6 +64564,8 @@ pendingChoices[].targetWalk.frame.source.provenance.delved[].epoch	number:int
 pendingChoices[].targetWalk.frame.source.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.provenance.fromZone	string
 pendingChoices[].targetWalk.frame.source.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.provenance.grantedOptional	array
+pendingChoices[].targetWalk.frame.source.provenance.grantedOptional[]	string
 pendingChoices[].targetWalk.frame.source.provenance.mana	array
 pendingChoices[].targetWalk.frame.source.provenance.manaOnPaper	bool
 pendingChoices[].targetWalk.frame.source.provenance.mana[]	object
@@ -65249,6 +65315,8 @@ pendingChoices[].triggerFrame.source.provenance.delved[].epoch	number:int
 pendingChoices[].triggerFrame.source.provenance.delved[].id	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.provenance.fromZone	string
 pendingChoices[].triggerFrame.source.provenance.giftOpponent	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.provenance.grantedOptional	array
+pendingChoices[].triggerFrame.source.provenance.grantedOptional[]	string
 pendingChoices[].triggerFrame.source.provenance.mana	array
 pendingChoices[].triggerFrame.source.provenance.manaOnPaper	bool
 pendingChoices[].triggerFrame.source.provenance.mana[]	object
@@ -66361,6 +66429,8 @@ phasedOut.cards[].provenance.delved[].epoch	number:int
 phasedOut.cards[].provenance.delved[].id	custom(uuid.UUID)
 phasedOut.cards[].provenance.fromZone	string
 phasedOut.cards[].provenance.giftOpponent	custom(uuid.UUID)
+phasedOut.cards[].provenance.grantedOptional	array
+phasedOut.cards[].provenance.grantedOptional[]	string
 phasedOut.cards[].provenance.mana	array
 phasedOut.cards[].provenance.manaOnPaper	bool
 phasedOut.cards[].provenance.mana[]	object
@@ -66768,6 +66838,8 @@ planechase.deck.cards[].provenance.delved[].epoch	number:int
 planechase.deck.cards[].provenance.delved[].id	custom(uuid.UUID)
 planechase.deck.cards[].provenance.fromZone	string
 planechase.deck.cards[].provenance.giftOpponent	custom(uuid.UUID)
+planechase.deck.cards[].provenance.grantedOptional	array
+planechase.deck.cards[].provenance.grantedOptional[]	string
 planechase.deck.cards[].provenance.mana	array
 planechase.deck.cards[].provenance.manaOnPaper	bool
 planechase.deck.cards[].provenance.mana[]	object
@@ -67175,6 +67247,8 @@ planechase.faceUp.cards[].provenance.delved[].epoch	number:int
 planechase.faceUp.cards[].provenance.delved[].id	custom(uuid.UUID)
 planechase.faceUp.cards[].provenance.fromZone	string
 planechase.faceUp.cards[].provenance.giftOpponent	custom(uuid.UUID)
+planechase.faceUp.cards[].provenance.grantedOptional	array
+planechase.faceUp.cards[].provenance.grantedOptional[]	string
 planechase.faceUp.cards[].provenance.mana	array
 planechase.faceUp.cards[].provenance.manaOnPaper	bool
 planechase.faceUp.cards[].provenance.mana[]	object
@@ -67816,6 +67890,8 @@ resolving.card.provenance.delved[].epoch	number:int
 resolving.card.provenance.delved[].id	custom(uuid.UUID)
 resolving.card.provenance.fromZone	string
 resolving.card.provenance.giftOpponent	custom(uuid.UUID)
+resolving.card.provenance.grantedOptional	array
+resolving.card.provenance.grantedOptional[]	string
 resolving.card.provenance.mana	array
 resolving.card.provenance.manaOnPaper	bool
 resolving.card.provenance.mana[]	object
@@ -68808,6 +68884,8 @@ seats[].attractionDeck.cards[].provenance.delved[].epoch	number:int
 seats[].attractionDeck.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].provenance.fromZone	string
 seats[].attractionDeck.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].attractionDeck.cards[].provenance.grantedOptional	array
+seats[].attractionDeck.cards[].provenance.grantedOptional[]	string
 seats[].attractionDeck.cards[].provenance.mana	array
 seats[].attractionDeck.cards[].provenance.manaOnPaper	bool
 seats[].attractionDeck.cards[].provenance.mana[]	object
@@ -69361,6 +69439,8 @@ seats[].command.cards[].provenance.delved[].epoch	number:int
 seats[].command.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].command.cards[].provenance.fromZone	string
 seats[].command.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].command.cards[].provenance.grantedOptional	array
+seats[].command.cards[].provenance.grantedOptional[]	string
 seats[].command.cards[].provenance.mana	array
 seats[].command.cards[].provenance.manaOnPaper	bool
 seats[].command.cards[].provenance.mana[]	object
@@ -69770,6 +69850,8 @@ seats[].companion.cards[].provenance.delved[].epoch	number:int
 seats[].companion.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].companion.cards[].provenance.fromZone	string
 seats[].companion.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].companion.cards[].provenance.grantedOptional	array
+seats[].companion.cards[].provenance.grantedOptional[]	string
 seats[].companion.cards[].provenance.mana	array
 seats[].companion.cards[].provenance.manaOnPaper	bool
 seats[].companion.cards[].provenance.mana[]	object
@@ -70188,6 +70270,8 @@ seats[].emblems.cards[].provenance.delved[].epoch	number:int
 seats[].emblems.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.fromZone	string
 seats[].emblems.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].emblems.cards[].provenance.grantedOptional	array
+seats[].emblems.cards[].provenance.grantedOptional[]	string
 seats[].emblems.cards[].provenance.mana	array
 seats[].emblems.cards[].provenance.manaOnPaper	bool
 seats[].emblems.cards[].provenance.mana[]	object
@@ -70693,6 +70777,8 @@ seats[].graveyard.cards[].provenance.delved[].epoch	number:int
 seats[].graveyard.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.fromZone	string
 seats[].graveyard.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].graveyard.cards[].provenance.grantedOptional	array
+seats[].graveyard.cards[].provenance.grantedOptional[]	string
 seats[].graveyard.cards[].provenance.mana	array
 seats[].graveyard.cards[].provenance.manaOnPaper	bool
 seats[].graveyard.cards[].provenance.mana[]	object
@@ -71098,6 +71184,8 @@ seats[].hand.cards[].provenance.delved[].epoch	number:int
 seats[].hand.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].hand.cards[].provenance.fromZone	string
 seats[].hand.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].hand.cards[].provenance.grantedOptional	array
+seats[].hand.cards[].provenance.grantedOptional[]	string
 seats[].hand.cards[].provenance.mana	array
 seats[].hand.cards[].provenance.manaOnPaper	bool
 seats[].hand.cards[].provenance.mana[]	object
@@ -71508,6 +71596,8 @@ seats[].junkyard.cards[].provenance.delved[].epoch	number:int
 seats[].junkyard.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].junkyard.cards[].provenance.fromZone	string
 seats[].junkyard.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].junkyard.cards[].provenance.grantedOptional	array
+seats[].junkyard.cards[].provenance.grantedOptional[]	string
 seats[].junkyard.cards[].provenance.mana	array
 seats[].junkyard.cards[].provenance.manaOnPaper	bool
 seats[].junkyard.cards[].provenance.mana[]	object
@@ -71922,6 +72012,8 @@ seats[].library.cards[].provenance.delved[].epoch	number:int
 seats[].library.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].library.cards[].provenance.fromZone	string
 seats[].library.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].library.cards[].provenance.grantedOptional	array
+seats[].library.cards[].provenance.grantedOptional[]	string
 seats[].library.cards[].provenance.mana	array
 seats[].library.cards[].provenance.manaOnPaper	bool
 seats[].library.cards[].provenance.mana[]	object
@@ -72368,6 +72460,8 @@ seats[].sideboard.cards[].provenance.delved[].epoch	number:int
 seats[].sideboard.cards[].provenance.delved[].id	custom(uuid.UUID)
 seats[].sideboard.cards[].provenance.fromZone	string
 seats[].sideboard.cards[].provenance.giftOpponent	custom(uuid.UUID)
+seats[].sideboard.cards[].provenance.grantedOptional	array
+seats[].sideboard.cards[].provenance.grantedOptional[]	string
 seats[].sideboard.cards[].provenance.mana	array
 seats[].sideboard.cards[].provenance.manaOnPaper	bool
 seats[].sideboard.cards[].provenance.mana[]	object
@@ -73107,6 +73201,8 @@ stack.cards[].provenance.delved[].epoch	number:int
 stack.cards[].provenance.delved[].id	custom(uuid.UUID)
 stack.cards[].provenance.fromZone	string
 stack.cards[].provenance.giftOpponent	custom(uuid.UUID)
+stack.cards[].provenance.grantedOptional	array
+stack.cards[].provenance.grantedOptional[]	string
 stack.cards[].provenance.mana	array
 stack.cards[].provenance.manaOnPaper	bool
 stack.cards[].provenance.mana[]	object

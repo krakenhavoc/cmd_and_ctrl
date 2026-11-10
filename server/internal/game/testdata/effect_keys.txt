@@ -46,6 +46,7 @@ body ant-man-colony-commander/counter
 body anthropede/destroy-room
 body arcane-denial/draws
 body ascend/exile-listed-unless-citys-blessing
+body ashling-the-limitless/pay-wubrg-or-sacrifice
 body attach/sacrifice-the-returned-creature
 body augusta-order-returned/counters
 body auron-venerated-guardian/exile
@@ -249,6 +250,7 @@ body nine-lives/incarnation-counter
 body noctis/warp-strike-return
 body novel-nunchaku/fight
 body nuka-nuke-launcher/defender-gets-two-rad-counters
+body offspring/granted-token
 body ondu-rising/attacker-gains-lifelink
 body overcharged-amalgam/counter
 body overlook/brokers-hideout-fetch
@@ -1472,6 +1474,7 @@ payunless pay-unless/antagonist-incorporator-borg
 payunless pay-unless/anthropede-destroy-room
 payunless pay-unless/arahbo-roar-of-the-world-pump
 payunless pay-unless/arcums-whistle-must-attack
+payunless pay-unless/ashling-the-limitless-sacrifice-token
 payunless pay-unless/ashling-transform
 payunless pay-unless/assaultron-dominator-counter
 payunless pay-unless/assimilate-essence-incubate
@@ -1958,6 +1961,7 @@ tail ark-of-hunger/play-the-milled-card
 tail armored-skyhunter/rest-then-offer-attach
 tail artistic-process/token-haste
 tail ascent-of-the-worthy/angel-warrior
+tail ashling-the-limitless/haste-and-pay-or-sacrifice
 tail assemble-the-legion/muster
 tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
