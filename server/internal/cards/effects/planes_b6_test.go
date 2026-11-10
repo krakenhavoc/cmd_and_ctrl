@@ -400,12 +400,18 @@ func TestTurriIslandCreatureSpellsCostTwoLessAndChaosTakesCreatures(t *testing.T
 	g, _ := newPlaneGame(t, planeTurriIsland)
 	advanceToMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]
-	id := uuid.New()
-	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Two Drop", TypeLine: "Creature — Bear", ManaCost: "{2}", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
-		t.Fatalf("a {2} creature spell was not free: %v", err)
+	creature := func(cost string) int {
+		return b6Price(t, g, me, game.Card{Name: "Bear", TypeLine: "Creature — Bear", ManaCost: cost, Power: 2, Toughness: 2})
 	}
-	passPriorityAroundTable(t, g)
+	if got := creature("{3}{G}"); got != 2 {
+		t.Errorf("a {3}{G} creature spell costs %d, want 2", got)
+	}
+	if got := creature("{1}{G}"); got != 1 {
+		t.Errorf("a {1}{G} creature spell costs %d, want 1 (only generic mana is reduced)", got)
+	}
+	if got := b6Price(t, g, me, game.Card{Name: "Spell", TypeLine: "Sorcery", ManaCost: "{3}"}); got != 3 {
+		t.Errorf("a noncreature spell costs %d, want 3", got)
+	}
 
 	libraryTop(me,
 		cardNamed("Spell", "Sorcery"),
@@ -1009,4 +1015,52 @@ func TestElorenWildsDoublesAnyPermanentsManaAndChaosBansCasting(t *testing.T) {
 			t.Error("the cast ban outlived the planeswalk")
 		}
 	}
+}
+
+var planeFeedingGrounds = planeFixture{"b1eff630-b56c-48a5-ac21-836a60157b35", "Feeding Grounds", "Plane — Muraganda"}
+
+func TestFeedingGroundsReducesRedAndGreenSpellsAndChaosCountsManaValue(t *testing.T) {
+	requirePlaneRegisteredFull(t, planeFeedingGrounds)
+	g, _ := newPlaneGame(t, planeFeedingGrounds)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	cost := func(colors ...string) int {
+		return b6Price(t, g, me, game.Card{Name: "Spell", TypeLine: "Sorcery", ManaCost: "{2}", Colors: colors})
+	}
+	if got := cost("R"); got != 1 {
+		t.Errorf("a red {2} spell costs %d, want 1", got)
+	}
+	if got := cost("G"); got != 1 {
+		t.Errorf("a green {2} spell costs %d, want 1", got)
+	}
+	if got := cost("R", "G"); got != 0 {
+		t.Errorf("a red-green {2} spell costs %d, want 0 (both reductions)", got)
+	}
+	if got := cost("U"); got != 2 {
+		t.Errorf("a blue {2} spell costs %d, want 2", got)
+	}
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Big Bear", TypeLine: "Creature — Bear", ManaCost: "{2}{G}", Power: 2, Toughness: 2, Colors: []string{"G"}, Owner: me.ID, Controller: me.ID})
+	rollChaos(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	if got := countersOn(g, bear, game.CounterPlusOne); got != 3 {
+		t.Errorf("%d counters, want 3 (the creature's mana value)", got)
+	}
+}
+
+// b6Price is what the board charges `seat` to cast `card` from hand, as a mana
+// value (the real cast is free in these tables: nothing demands the payment).
+func b6Price(t *testing.T, g *game.Game, seat *game.Player, card game.Card) int {
+	t.Helper()
+	base, err := game.ParseCost(card.ManaCost)
+	if err != nil {
+		t.Fatalf("ParseCost(%q): %v", card.ManaCost, err)
+	}
+	card.InstanceID, card.Owner, card.Controller = uuid.New(), seat.ID, seat.ID
+	out, err := g.ApplyCostModifiers(base, game.CostQuery{Card: card, Controller: seat.ID, FromZone: game.ZoneHand})
+	if err != nil {
+		t.Fatalf("ApplyCostModifiers: %v", err)
+	}
+	return out.ManaValue()
 }
