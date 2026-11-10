@@ -2611,6 +2611,29 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 		}
 	}
+	// ADR 0216 §6, CR 901.7: a face-up plane's abilities function in the
+	// command zone, and its controller is the planar controller (CR 901.6),
+	// so Stormcage Containment Facility's "each creature card in your
+	// graveyard has escape" is the planar controller's standing permission
+	// for as long as the plane is face up. Ungated, like an emblem's.
+	if CatalogCastPermissions != nil && g.Planechase != nil && g.PlanarFaceUp != nil {
+		for i := range g.PlanarFaceUp.Cards {
+			c := &g.PlanarFaceUp.Cards[i]
+			if c.Controller != p.ID {
+				continue
+			}
+			key := catalogAbilityKeyOf(c)
+			if key == "" {
+				continue
+			}
+			for _, perm := range CatalogCastPermissions(key) {
+				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
+					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
+					out = append(out, stamped)
+				}
+			}
+		}
+	}
 	return out
 }
 

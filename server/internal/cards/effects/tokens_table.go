@@ -223,6 +223,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 colorless Assembly-Worker artifact":                           {Name: "Assembly-Worker", TypeLine: "Token Artifact Creature — Assembly-Worker", Power: 2, Toughness: 2},
 	"2/2 green Cat":                                                    {Name: "Cat", TypeLine: "Token Creature — Cat", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"2/2 colorless Spawn artifact":                                     {Name: "Spawn", TypeLine: "Token Artifact Creature — Spawn", Power: 2, Toughness: 2},
+	"2/2 black Human Rogue":                                            {Name: "Human Rogue", TypeLine: "Token Creature — Human Rogue", Power: 2, Toughness: 2, Colors: []string{"B"}}, // Spectrox Mines (#4870)
 	"2/2 white Alien":                                                  {Name: "Alien", TypeLine: "Token Creature — Alien", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Ox":                                                     {Name: "Ox", TypeLine: "Token Creature — Ox", Power: 2, Toughness: 2, Colors: []string{"W"}},
 	"2/2 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}}, // Signaling Roar (#5175)
