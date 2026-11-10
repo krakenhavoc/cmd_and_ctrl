@@ -1278,3 +1278,96 @@ func TestCmdrB15TransformingFlourishDestroysThenGivesTheOwnerAFreeCast(t *testin
 		t.Errorf("caster at %d, want %d", me.Life, life-3)
 	}
 }
+
+const cmdrB15JeskaiOracle = "2c3e6377-d09c-46b6-8a83-ada4a2930b14"
+
+func TestCmdrB15WillOfTheJeskaiWheelsForFiveAndGrantsFlashback(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for i := 0; i < 20; i++ {
+		stapleLibraryCard(me, "Spare", "Sorcery")
+	}
+	deadBolt := seedGraveyardCard(t, g, "Lightning Bolt", "Instant", lightningBoltOracle)
+	creature := seedGraveyardCard(t, g, "Dead Bear", "Creature — Bear", "")
+	if err := b22TryModal(g, cmdrB15JeskaiOracle, []int{0, 1}, nil); err == nil {
+		t.Fatal("no commander: choosing both modes was accepted")
+	}
+	castModal(t, g, "Will of the Jeskai", "Sorcery", cmdrB15JeskaiOracle, []int{1}, nil)
+	passPriorityAroundTable(t, g)
+	perm := grantedPermissionOn(g, me.ID, deadBolt, game.ZoneGraveyard)
+	if !perm.Granted() || perm.AltCostKey != "flashback" {
+		t.Fatalf("the Bolt gained no flashback: %+v", perm)
+	}
+	if p := grantedPermissionOn(g, me.ID, creature, game.ZoneGraveyard); p.Granted() {
+		t.Error("a creature card gained flashback")
+	}
+}
+
+func TestCmdrB15WillOfTheJeskaiWheelOnlyForThoseWhoAgree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	for _, p := range g.Seats {
+		for i := 0; i < 12; i++ {
+			stapleLibraryCard(p, "Spare", "Sorcery")
+		}
+	}
+	oppHand := opp.Hand.Size()
+	myCards := append([]game.Card(nil), me.Hand.Cards...)
+	castModal(t, g, "Will of the Jeskai", "Sorcery", cmdrB15JeskaiOracle, []int{0}, nil)
+	passPriorityAroundTable(t, g)
+	// Everyone is asked in turn order: I say yes, the others decline.
+	for i := 0; i < 8; i++ {
+		c := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+		if c == nil {
+			break
+		}
+		if err := g.ResolveConfirm(c.ID, c.Chooser, c.Chooser == me.ID); err != nil {
+			t.Fatalf("answer: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if me.Hand.Size() != 5 {
+		t.Errorf("my hand is %d cards, want 5", me.Hand.Size())
+	}
+	for _, c := range myCards {
+		if me.Hand.Contains(c.InstanceID) {
+			t.Errorf("an old card stayed in my hand")
+			break
+		}
+	}
+	if opp.Hand.Size() != oppHand {
+		t.Errorf("a player who declined changed hands: %d -> %d", oppHand, opp.Hand.Size())
+	}
+}
+
+func TestCmdrB15WillOfTheJeskaiBothModesGrantsFlashbackToTheDiscardedInstant(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for _, p := range g.Seats {
+		for i := 0; i < 12; i++ {
+			stapleLibraryCard(p, "Spare", "Sorcery")
+		}
+	}
+	pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "My Commander", TypeLine: "Legendary Creature — Elf",
+		ManaCost: "{2}", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID, IsCommander: true})
+	bolt := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: bolt, Name: "Lightning Bolt", TypeLine: "Instant", ManaCost: "{R}", OracleID: lightningBoltOracle, Owner: me.ID, Controller: me.ID})
+	castModal(t, g, "Will of the Jeskai", "Sorcery", cmdrB15JeskaiOracle, []int{0, 1}, nil)
+	passPriorityAroundTable(t, g)
+	for i := 0; i < 8; i++ {
+		c := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+		if c == nil {
+			break
+		}
+		if err := g.ResolveConfirm(c.ID, c.Chooser, c.Chooser == me.ID); err != nil {
+			t.Fatalf("answer: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	if !me.Graveyard.Contains(bolt) {
+		t.Fatal("the Bolt was not discarded by the wheel")
+	}
+	if perm := grantedPermissionOn(g, me.ID, bolt, game.ZoneGraveyard); !perm.Granted() {
+		t.Error("the discarded Bolt did not gain flashback: the grant ran before the wheel finished")
+	}
+}
