@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // cmdr2_b08_helpers.go — card-side helpers for Commander deck wave 2,
 // batch 8 (enrage, damage triggers and damage modifiers; #5368).
@@ -75,4 +79,75 @@ func cmdr2B08CreateBeastForTheDamage(g *game.Game, item *game.StackItem) error {
 		Toughness: x,
 		Keywords:  []string{"trample"},
 	}, N: 1}.Apply(NewContext(g, item))
+}
+
+// cmdr2B08RecipientIsOpponentOrTheirPermanent reports whether damage to
+// `target` goes to a player other than `you`, or to a permanent on the
+// battlefield another player controls.
+func cmdr2B08RecipientIsOpponentOrTheirPermanent(target uuid.UUID, g *game.Game, you uuid.UUID) bool {
+	if p := g.PlayerByIDForEffect(target); p != nil {
+		return p.ID != you
+	}
+	c, ok := g.LookupCardForEffect(target)
+	return ok && g.Battlefield.Contains(target) && c.Controller != you
+}
+
+// cmdr2B08RecipientIsYouOrYourPermanent reports whether damage to `target`
+// goes to `you` or to a permanent on the battlefield `you` control.
+func cmdr2B08RecipientIsYouOrYourPermanent(target uuid.UUID, g *game.Game, you uuid.UUID) bool {
+	if target == you {
+		return true
+	}
+	if g.PlayerByIDForEffect(target) != nil {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(target)
+	return ok && g.Battlefield.Contains(target) && c.Controller == you
+}
+
+// cmdr2B08ItTargetsTwoCreaturesYouControl is Wayta's discount condition:
+// the activation's announced targets are two creatures its controller
+// controls. Like ItTargets it reads q.Targets, so it is only meaningful on a
+// modifier that sets ReadsTargets.
+func cmdr2B08ItTargetsTwoCreaturesYouControl() CostPredicate {
+	return func(q game.CostQuery) bool {
+		if q.Game == nil || len(q.Targets) != 2 {
+			return false
+		}
+		for _, t := range q.Targets {
+			if t.Kind != game.TargetCard {
+				return false
+			}
+			c, ok := q.Game.LookupCardForEffect(t.ID)
+			if !ok || !c.IsCreature() || c.Controller != q.Controller {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// cmdr2B08CreatureYouControlDealtDamageDoubler is Wayta's "If a creature you
+// control being dealt damage causes a triggered ability of a permanent you
+// control to trigger, that ability triggers an additional time" (CR 603.2d):
+// the event is damage dealt to a creature the doubler's controller controls,
+// and the ability belongs to a permanent they control.
+func cmdr2B08CreatureYouControlDealtDamageDoubler() game.TriggerDoubler {
+	return game.TriggerDoubler{
+		Label:    "Wayta, Trainer Prodigy",
+		RowLabel: "Abilities of your permanents that trigger when a creature you control is dealt damage trigger an additional time.",
+		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
+			if q.FromSpell || !q.SourceIsPermanent || q.Ability == nil {
+				return false
+			}
+			if q.Event.Kind != game.EventDealDamage || q.Event.Amount <= 0 || q.Event.Target == uuid.Nil {
+				return false
+			}
+			if q.SourceLKI.Controller != q.DoublerLKI.Controller {
+				return false
+			}
+			c, ok := g.LookupCardForEffect(q.Event.Target)
+			return ok && c.IsCreature() && c.Controller == q.DoublerLKI.Controller
+		},
+	}
 }
