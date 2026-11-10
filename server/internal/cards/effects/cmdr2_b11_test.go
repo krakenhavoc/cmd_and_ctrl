@@ -16,9 +16,7 @@ const (
 )
 
 func b11Flyer(g *game.Game, owner uuid.UUID, name string) uuid.UUID {
-	id := pr7Creature(g, owner, name, 1, "U")
-	g.WithWriteLock(func() { findBattlefieldCardForTest(g, id).Keywords = []string{"flying"} })
-	return id
+	return apaPush(g, owner, owner, game.Card{Name: name, TypeLine: "Creature — Faerie", Power: 1, Toughness: 4, Colors: []string{"U"}, Keywords: []string{"flying"}})
 }
 
 func b11Tapped(g *game.Game, id uuid.UUID) (tapped bool) {
@@ -127,13 +125,7 @@ func TestCmdr2B11CardsAreFullWithNoCaveats(t *testing.T) {
 }
 
 func b11PutOnBattlefield(g *game.Game, owner uuid.UUID, name, typeLine, oracle string, power, toughness int, kws ...string) uuid.UUID {
-	id := pushCatalogPermanent(g, owner, name, typeLine, oracle, false)
-	g.WithWriteLock(func() {
-		c := findBattlefieldCardForTest(g, id)
-		c.Power, c.Toughness, c.Keywords = power, toughness, kws
-		g.RecomputeLayersIfStaleLocked()
-	})
-	return id
+	return apaPush(g, owner, owner, game.Card{Name: name, TypeLine: typeLine, OracleID: oracle, Power: power, Toughness: toughness, Keywords: kws})
 }
 
 // Shadow Puppeteers: two Faerie Rogues on entering; a flyer that attacks
@@ -173,18 +165,19 @@ func TestShadowPuppeteersTokensAndDragon(t *testing.T) {
 		t.Fatalf("DeclareAttacker rogue: %v", err)
 	}
 	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
 	// Exactly one trigger (the flyer's), asked as a "you may".
-	ask := latestConfirmFor(g, me.ID)
+	ask := b11TriggerPrompt(g, me.ID)
 	for i := 0; ask == nil && i < 8; i++ {
 		if err := g.PassPriority(); err != nil {
 			break
 		}
-		ask = latestConfirmFor(g, me.ID)
+		ask = b11TriggerPrompt(g, me.ID)
 	}
 	if ask == nil {
 		t.Fatal("no optional prompt for the flying attacker")
 	}
-	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
+	if err := g.ResolveTriggerPrompt(ask.ID, me.ID, true); err != nil {
 		t.Fatalf("ResolveConfirm: %v", err)
 	}
 	passPriorityAroundTable(t, g)
@@ -205,7 +198,7 @@ func TestShadowPuppeteersTokensAndDragon(t *testing.T) {
 	if p := effectivePower(t, g, ground); p != 2 {
 		t.Errorf("the ground attacker's power is %d, want 2", p)
 	}
-	if latestConfirmFor(g, me.ID) != nil {
+	if b11TriggerPrompt(g, me.ID) != nil {
 		t.Error("a second prompt was asked for the ground attacker")
 	}
 }
@@ -220,17 +213,18 @@ func TestShadowPuppeteersDecline(t *testing.T) {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
 	lockInAttacks(t, g)
-	ask := latestConfirmFor(g, me.ID)
+	passPriorityAroundTable(t, g)
+	ask := b11TriggerPrompt(g, me.ID)
 	for i := 0; ask == nil && i < 8; i++ {
 		if g.PassPriority() != nil {
 			break
 		}
-		ask = latestConfirmFor(g, me.ID)
+		ask = b11TriggerPrompt(g, me.ID)
 	}
 	if ask == nil {
 		t.Fatal("no optional prompt")
 	}
-	if err := g.ResolveConfirm(ask.ID, me.ID, false); err != nil {
+	if err := g.ResolveTriggerPrompt(ask.ID, me.ID, false); err != nil {
 		t.Fatalf("ResolveConfirm: %v", err)
 	}
 	passPriorityAroundTable(t, g)
@@ -320,19 +314,9 @@ func TestFaerieBladecrafterCounterAndDrain(t *testing.T) {
 	g, me, opp := tapTable(t)
 	bc := b11PutOnBattlefield(g, me.ID, "Faerie Bladecrafter", "Creature — Faerie Rogue", faerieBladecrafterOrcl, 2, 2, "flying")
 	other := b11PutOnBattlefield(g, me.ID, "Faerie Two", "Creature — Faerie", "", 1, 1, "flying")
-	advanceTo(t, g, game.StepDeclareAttackers)
-	for _, id := range []uuid.UUID{bc, other} {
-		if err := g.DeclareAttacker(id, opp.ID); err != nil {
-			t.Fatalf("DeclareAttacker: %v", err)
-		}
-	}
-	lockInAttacks(t, g)
-	for i := 0; i < 16 && g.Turn.Step != game.StepEndCombat; i++ {
-		if err := g.PassPriority(); err != nil {
-			break
-		}
-	}
-	if p := effectivePower(t, g, bc); p != 3 {
+	attackWith(t, g, opp.ID, bc, other)
+	passPriorityAroundTable(t, g)
+	if p := effectivePowerWithCounters(t, g, bc); p != 3 {
 		t.Errorf("Bladecrafter has power %d after two Faeries connected, want 3 (one counter)", p)
 	}
 	meLife, oppLife := me.Life, opp.Life
@@ -361,4 +345,59 @@ func TestNymrisFirstSpellOnAnOpponentsTurn(t *testing.T) {
 	if triggerOnStack(g, uuid.Nil) != nil || len(g.PendingChoices) != 0 {
 		t.Fatal("Nymris triggered on my own turn")
 	}
+}
+
+func b11TriggerPrompt(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		if c := g.PendingChoices[i]; c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+// Rankle: choose the life-and-draw bullet and the sacrifice bullet; every
+// player loses 1 life, draws a card and (with a creature) sacrifices it.
+func TestRankleChoosesAnyNumberOfBullets(t *testing.T) {
+	g, me, opp := tapTable(t)
+	rankle := b11PutOnBattlefield(g, me.ID, "Rankle", "Legendary Creature — Faerie Rogue", rankleOracle, 3, 3, "flying", "haste")
+	mine := pr7Creature(g, me.ID, "My Bear", 2, "G")
+	theirs := pr7Creature(g, opp.ID, "Their Bear", 2, "G")
+	g.WithWriteLock(func() {
+		for _, p := range []*game.Player{me, opp} {
+			p.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Land", Owner: p.ID, Controller: p.ID})
+		}
+	})
+	myHand, oppHand, myLife, oppLife := me.Hand.Size(), opp.Hand.Size(), me.Life, opp.Life
+	dealCombatDamageToPlayer(g, rankle, opp.ID, 3)
+	mode := latestChoiceOfKindFor(g, game.PendingChoiceModePick, me.ID)
+	for i := 0; mode == nil && i < 6; i++ {
+		passPriorityAroundTable(t, g)
+		mode = latestChoiceOfKindFor(g, game.PendingChoiceModePick, me.ID)
+	}
+	if mode == nil {
+		t.Fatal("no mode pick")
+	}
+	if err := g.ResolveModePick(mode.ID, me.ID, []int{1, 2}); err != nil {
+		t.Fatalf("ResolveModePick: %v", err)
+	}
+	for i := 0; i < 12; i++ {
+		passPriorityAroundTable(t, g)
+		if p := latestChooseCardsFor(g, me.ID); p != nil {
+			_ = g.ResolveChooseCards(p.ID, me.ID, p.ChooseCards[:1])
+		}
+		if p := latestChooseCardsFor(g, opp.ID); p != nil {
+			_ = g.ResolveChooseCards(p.ID, opp.ID, p.ChooseCards[:1])
+		}
+	}
+	if me.Life != myLife-1 || opp.Life != oppLife-1 {
+		t.Errorf("life me %d→%d opp %d→%d, want -1 each", myLife, me.Life, oppLife, opp.Life)
+	}
+	if me.Hand.Size() != myHand+1 || opp.Hand.Size() != oppHand+1 {
+		t.Errorf("hands me %d→%d opp %d→%d, want +1 each", myHand, me.Hand.Size(), oppHand, opp.Hand.Size())
+	}
+	if g.Battlefield.Contains(theirs) {
+		t.Error("the opponent kept their only creature")
+	}
+	_ = mine
 }
