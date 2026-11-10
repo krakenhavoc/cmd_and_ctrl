@@ -1679,6 +1679,7 @@ run prompt-run/west-wind-avatar-gain-3
 run prompt-run/white-plume-adventurer-untap
 run prompt-run/wilhelt-the-rotcleaver-draw
 run prompt-run/will-of-the-abzan-lose-life
+run prompt-run/winnowing-sacrifice-unshared
 run prompt-run/winter-tormented-loner-sacrifice
 run prompt-run/witch-king-of-angmar-ring
 run prompt-run/witherbloom-charm-sacrifice-draw
