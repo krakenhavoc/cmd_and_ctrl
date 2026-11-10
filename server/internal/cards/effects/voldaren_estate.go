@@ -35,7 +35,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{5}, {T}: Create a Blood token. This ability costs {1} less to activate for each Vampire you control.",
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Tokens: 1},
 			Cost:    Plus(ManaCost("{5}"), TapCost()),
 			CostModifiers: []game.CostModifier{
 				CostsLessEach(PermanentsYouControl(And(Creature(), HasSubtype("Vampire"))),

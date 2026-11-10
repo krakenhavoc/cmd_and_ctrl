@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"errors"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Kaya's Ghostform — Enchantment — Aura {B}:
 //
@@ -37,13 +33,7 @@ func init() {
 				return ev.Kind == game.EventLTB && source.IsAttachedTo(ev.CardID) &&
 					(ev.NewZone == game.ZoneGraveyard || ev.NewZone == game.ZoneExile)
 			}, "Kaya's Ghostform — return that card to the battlefield under your control",
-				func(g *game.Game, item *game.StackItem) error {
-					_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, item.Controller, false)
-					if errors.Is(err, game.ErrCardNotFound) {
-						return nil
-					}
-					return err
-				}),
+				cmdr2B09ReturnTheEventCardUnderYourControl),
 		},
 	})
 }

@@ -43,7 +43,7 @@ func init() {
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
 				return ok && dead.InstanceID != source.InstanceID && !IsToken(dead) &&
-					leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Vampire")
+					leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Vampire"))
 			}, "Timothar, Baron of Bats — you may pay {1} and exile it; if you do, create a 1/1 Bat that returns it",
 				cmdr2B09TimotharOffer),
 		},

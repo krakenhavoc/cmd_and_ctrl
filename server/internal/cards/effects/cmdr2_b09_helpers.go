@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -58,9 +60,6 @@ var cmdr2B09FlorianExile = game.RegisterChooseCardsThen("choose-cards/cmdr2-b09-
 		Label:  "Florian, Voldaren Scion — play the exiled card this turn",
 	}); err != nil {
 		return err
-	}
-	if len(rest) == 0 {
-		return nil
 	}
 	return g.PutOnBottomInRandomOrderForEffect(r.Chooser, game.ZoneLibrary, rest)
 })
@@ -166,4 +165,31 @@ func cmdr2B09BatReturnsTheCard(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	return nil
+}
+
+// cmdr2B09ReturnTheEventCardUnderYourControl is "return that card to the
+// battlefield under your control" for a trigger whose event names the card
+// (Kaya's Ghostform, Athreos, Shroud-Veiled): the card that left the
+// battlefield returns as a new object (CR 400.7) under the trigger's
+// controller, and a card that has since left its zone is "nothing to
+// return".
+func cmdr2B09ReturnTheEventCardUnderYourControl(g *game.Game, item *game.StackItem) error {
+	_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, item.Controller, false)
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	return err
+}
+
+// cmdr2B09DrawForEachCounterOnIt is "draw a card for each +1/+1 counter on
+// it" when the source has left the battlefield (Toothy, Imaginary Friend,
+// Bloodtracker): it counts the +1/+1 counters the permanent had as it left
+// (last-known information, CR 608.2h).
+func cmdr2B09DrawForEachCounterOnIt(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, ok := ctx.SourcePermanent()
+	if !ok {
+		return nil
+	}
+	return DrawCards{Player: item.Controller, N: info.Counters[game.CounterPlusOne]}.Apply(ctx)
 }

@@ -34,13 +34,13 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{B}, {T}, Pay 1 life: Create a 1/1 white and black Vampire creature token with lifelink.",
-				Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1, CreatureTokens: 1},
 				Cost:    Plus(ManaCost("{B}"), TapCost(), PayLife(1)),
 				Effect:  Do(CreateToken{Template: TokenCard("1/1 white and black Vampire with lifelink"), N: 1}),
 			},
 			{
 				Label:   "{B}{B}, {T}, Sacrifice this artifact and thirteen Blood tokens: Each opponent loses 13 life and you gain 13 life.",
-				Purpose: game.Purpose{LifeGain: 13},
+				Purpose: game.Purpose{Answers: game.AnswerValue, LifeGain: 13},
 				Cost: Plus(ManaCost("{B}{B}"), TapCost(), SacrificeThis(),
 					SacrificeN(13, "thirteen Blood tokens", HasSubtype("Blood"))),
 				Effect: Do(EachOpponentLosesLife{N: 13}, GainLife{Amount: 13}),

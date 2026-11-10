@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"errors"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Athreos, Shroud-Veiled — Legendary Enchantment Creature — God {4}{W}{B},
 // 4/7 (Commander, #5368):
@@ -54,13 +50,7 @@ func init() {
 				c, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && leftAsType(ev, c, "creature") && g.LastKnownCountersForEffect(ev.CardID)[stdB31CoinCounter] > 0
 			}, "Athreos, Shroud-Veiled — return that card to the battlefield under your control",
-				func(g *game.Game, item *game.StackItem) error {
-					_, err := g.ReturnToBattlefieldForEffect(item.Trigger.Event.CardID, item.Controller, false)
-					if errors.Is(err, game.ErrCardNotFound) {
-						return nil
-					}
-					return err
-				}),
+				cmdr2B09ReturnTheEventCardUnderYourControl),
 		},
 	})
 }

@@ -32,14 +32,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisLeaves("Bloodtracker — draw a card for each +1/+1 counter on it",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					info, ok := ctx.SourcePermanent()
-					if !ok {
-						return nil
-					}
-					return DrawCards{Player: item.Controller, N: info.Counters[game.CounterPlusOne]}.Apply(ctx)
-				}),
+				cmdr2B09DrawForEachCounterOnIt),
 		},
 	})
 }
