@@ -1412,6 +1412,7 @@ option option-pick/season-of-gathering-type
 option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
+option option-pick/shifting-ceratops-keyword
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
@@ -2092,6 +2093,7 @@ tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
+tail deathgorge-scavenger/exiled-card-riders
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
@@ -2490,6 +2492,7 @@ tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
 tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
+tail recipient/marauding-raptor-dinosaur-pump
 tail recipient/reckless-blaze-watch-death
 tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
