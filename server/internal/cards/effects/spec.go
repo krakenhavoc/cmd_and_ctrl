@@ -106,6 +106,17 @@ type Spec struct {
 	// card.AttachedTo.
 	AsAttached func(card *game.Card, ctx *Context) error
 
+	// OffBattlefield is the card's own "As long as this card isn't on
+	// the battlefield, it's a 1/1 Insect creature in addition to its
+	// other types" (Grist, the Hunger Tide, #5427): the types and
+	// subtypes it adds and the power and toughness it has in a hand, a
+	// library, a graveyard, exile, the command zone and on the stack
+	// (CR 113.6c). Data, read by the type, subtype and power/toughness
+	// readers for a card that is not on the battlefield
+	// (game/off_battlefield_self.go); on the battlefield the card is
+	// its printed self. Nil for every other card.
+	OffBattlefield *game.OffBattlefieldSelf
+
 	// StartingLoyalty is the loyalty counter count a planeswalker
 	// enters the battlefield with. 0 means "not a planeswalker" or
 	// "planeswalker with 0 starting loyalty" (which the SBA would
