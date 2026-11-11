@@ -17,6 +17,7 @@
     type DraftCard,
     type PoolGroupKey,
   } from "../../draft";
+  import { cardEdge } from "../../draftEdge";
   import ManaCost from "../board/ManaCost.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
 
@@ -25,9 +26,10 @@
     /** Draw the cards as images (a finished draft) instead of a list. */
     images?: boolean;
     /**
-     * Makes every card a button (the deckbuilding screen, #5440): a
-     * click calls it with the card, and the card can be dragged. `verb`
-     * begins each button's name ("Add to deck: Lightning Bolt").
+     * Makes every card a button (the picks beside the pack and the
+     * deckbuilding screen, #5440, #5699): a click calls it with the
+     * card, and the card can be dragged. `verb` begins each button's
+     * name ("Move to sideboard: Lightning Bolt").
      */
     onpick?: (card: DraftCard) => void;
     verb?: string;
@@ -79,6 +81,7 @@
                     class="move"
                     aria-label={`${verb}: ${cardAccessibleName(card)}`}
                     title={`${verb}: ${card.name}`}
+                    data-move-id={card.id}
                     draggable="true"
                     ondragstart={(ev) => dragStart(ev, card)}
                     onclick={() => onpick(card)}
@@ -95,13 +98,39 @@
           <ul class="rows">
             {#each g.byValue as row (row.manaValue)}
               {#each stackCopies(row.cards) as s (s.card.id)}
+                {@const edge = cardEdge(s.card)}
                 <li>
-                  <span class="mv"><span class="sr-only">{"mana value "}</span>{row.manaValue}</span
-                  >
-                  <span class="name">
-                    {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
-                  </span>
-                  {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                  {#if onpick}
+                    <!-- One row is one card; a click or Enter moves one copy of a stack. -->
+                    <button
+                      type="button"
+                      class="row"
+                      aria-label={`${verb}: ${cardAccessibleName(s.card)}`}
+                      data-move-id={s.card.id}
+                      data-identity={edge.key}
+                      draggable="true"
+                      ondragstart={(ev) => dragStart(ev, s.card)}
+                      onclick={() => onpick(s.card)}
+                    >
+                      <span class="edge" style:--edge={edge.background} aria-hidden="true"></span>
+                      <span class="mv"
+                        ><span class="sr-only">{"mana value "}</span>{row.manaValue}</span
+                      >
+                      <span class="name">
+                        {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
+                      </span>
+                      {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                    </button>
+                  {:else}
+                    <span class="edge" style:--edge={edge.background} aria-hidden="true"></span>
+                    <span class="mv"
+                      ><span class="sr-only">{"mana value "}</span>{row.manaValue}</span
+                    >
+                    <span class="name">
+                      {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
+                    </span>
+                    {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                  {/if}
                 </li>
               {/each}
             {/each}
@@ -172,6 +201,42 @@
   }
   .rows li + li {
     border-top: 1px solid var(--border);
+  }
+  /* A pick that moves is a button across the whole row. */
+  .rows li:has(> .row) {
+    padding: 0;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    padding: 3px 4px 3px 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .row:hover {
+    background: var(--surface-sunken);
+  }
+  .row:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 1px;
+  }
+  /* The colour edge (#5704): a slight band at the row's start. */
+  .edge {
+    flex: none;
+    align-self: stretch;
+    width: 4px;
+    min-height: 16px;
+    border-radius: 2px;
+    background: var(--edge, none);
+    box-shadow: 0 0 0 1px var(--border);
   }
   .mv {
     flex: none;
