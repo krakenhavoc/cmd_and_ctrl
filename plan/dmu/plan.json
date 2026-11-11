@@ -1,0 +1,525 @@
+{
+ "set": "dmu",
+ "mechanics": [
+  {
+   "name": "Enlist",
+   "exists": false,
+   "evidence": "grep -rli enlist server/internal/game -> 0 files; in cards/effects only cenns_enlistment.go (a name) and one test. CR 702.154 / 508.1g read in cmdr/cr.txt."
+  },
+  {
+   "name": "Read ahead",
+   "exists": true,
+   "evidence": "grep -rli 'read ahead' cards/effects -> read_ahead_test.go, the_cruelty_of_gix.go, the_elder_dragon_war.go, love_song_of_night_and_day.go; 'ReadAhead' in 10 files of internal/game (CR 702.155, 714.3b)."
+  },
+  {
+   "name": "Kicker",
+   "exists": true,
+   "evidence": "grep -rli kicker -> 29 files in internal/game, 135 in cards/effects (emblazoned_golem.go, vodalian_serpent.go, entry_counters.go for 'if it was kicked, it enters with')."
+  },
+  {
+   "name": "Domain",
+   "exists": true,
+   "evidence": "No engine keyword is needed (ability word). Count exists only as two private copies: domainCountYouControl (leyline_binding.go:38, a CostQuery reader) and rfCreatureBBasicLandTypesAmong (reality_fracture_fra_creature_b_helpers.go:134). No shared exported helper: see s9."
+  },
+  {
+   "name": "Stun counters",
+   "exists": true,
+   "evidence": "grep -rli stun -> 130 files in internal/game, 954 in cards/effects."
+  },
+  {
+   "name": "Compleated",
+   "exists": true,
+   "evidence": "cards/effects/compleated.go, vraska_betrayals_sting.go; game/phyrexian_mana.go, cast_provenance.go ('two fewer loyalty' found in compleated.go)."
+  },
+  {
+   "name": "Powerstone tokens",
+   "exists": true,
+   "evidence": "grep -rli powerstone -> 30 files in cards/effects, 9 in internal/game."
+  },
+  {
+   "name": "Defiler cycle (optional 2 life for a coloured permanent spell)",
+   "exists": false,
+   "evidence": "grep 'As an additional cost to cast .* spells, you may pay' and 'reduces only the amount of' -> 0 files. game/granted_optional_cost.go (Silverquill's casualty grant) is the nearest seam; see s2."
+  },
+  {
+   "name": "Affinity for creatures",
+   "exists": true,
+   "evidence": "salt_road_packbeast.go, leonardo_worldly_warrior.go, witherbloom_the_balancer.go."
+  },
+  {
+   "name": "Battle cry / Heroic / forestwalk / ward / 'can be your commander'",
+   "exists": true,
+   "evidence": "battle_cry.go, hero_of_bladehold.go; heroic in 55 effect files; forestwalk in 6; 'can be your commander' in 7."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Add enlist",
+   "clause": "Enlist (As this creature attacks, you may tap a nonattacking creature you control without summoning sickness. When you do, add its power to this creature's until end of turn.) / Whenever this creature enlists a creature, scry 2.",
+   "why": "CR 702.154: an optional cost to attack (CR 508.1g) paid by tapping another untapped creature that was not declared as an attacker and has haste or has been under your control since the turn began, plus a linked trigger giving +X/+0. Nothing in internal/game offers a per-attacker optional tap of ANOTHER creature at declaration. Expect to extend game/attackers.go beside the exert choice (attackers.go:105-121, game/exert.go, ADR 0130), the declare-attackers protocol/client prompt (which creature is enlisted), the legal probe, the bot's declaration, and an 'enlisted' event for Guardian of New Benalia's trigger. An enlisted creature cannot also be an attacker, and one creature cannot be tapped for two enlists.",
+   "checked": "grep -rli enlist server/internal/game -> none; cards/effects -> cenns_enlistment.go (card name only), retrace_followups_test.go. grep 'enlists a creature' -> 0. grep 'OptionalAttackCost|AttackCostChoice|508.1g' in game -> only exert files (attackers.go, exert.go, declaration_control.go, card.go, mutations.go), which tap/exert the attacker itself.",
+   "size": "medium",
+   "cards": [
+    "c45090bd-a589-45a0-8388-025b8e0b3487",
+    "3a7b1d1c-1724-4208-943b-650a5d773653",
+    "cbac75c6-6006-4025-b893-8828965b5f97",
+    "278db664-4235-40f0-a926-3074a0e038c1",
+    "dc763f20-73e7-4db7-9e98-6f419b8fba84",
+    "84d67d87-2696-4c2f-9f10-29d5832bfbb6",
+    "33747a34-79cc-446f-8718-b499bd497687",
+    "f3b4097f-b84f-4645-81f1-018366e40eeb",
+    "0efedec3-b57c-4395-ad72-19d79560c99f",
+    "c3b395b3-fea0-41d9-a3f2-6c90f89d8bdb",
+    "ad181ee7-756f-4002-9009-023ea6172991"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Let a permanent offer '2 life' on coloured permanent spells, with the linked coloured discount",
+   "clause": "As an additional cost to cast blue permanent spells, you may pay 2 life. Those spells cost {U} less to cast if you paid life this way. This effect reduces only the amount of blue mana you pay.",
+   "why": "The grant half has a seam: game/granted_optional_cost.go (GrantedOptionalCost, Silverquill the Disputant). Missing: a cost reduction that applies only when that granted cost was announced. CostQuery.OptionalCosts (game/cost_modifier.go) carries the printed indices; granted costs are recorded by key on PaidCost.GrantedOptional and no cost modifier reads them. Also to confirm: a granted cost priced in life, a reduction that takes only a coloured symbol (CostModifier.Unit), one offer per Defiler on the battlefield (EachSource), and that Karn's Sylex (s3) switches the offer off. Start from granted_optional_cost.go and cost_modifier.go; if the reduction can already see the announcement, this is five ordinary cards.",
+   "checked": "grep 'As an additional cost to cast .* spells, you may pay' -> 0; 'reduces only the amount of' -> 0; 'you may pay 2 life' -> 9 files, none a grant to other spells; life_for_mana.go (K'rrik) replaces a mana symbol with life, which is a different rule. grep GrantedOptionalCost in cards/effects -> casualty.go, conspire.go, silverquill_the_disputant.go, raiding_schemes.go, hugh_first_of_many.go.",
+   "size": "small",
+   "cards": [
+    "9d4ec5e5-5520-45c3-8071-53191811117d",
+    "88ac2d09-7993-4bce-8aae-b2683c5c25a5",
+    "3ad002de-8be3-48d2-a0e0-865538144789",
+    "590137df-af61-4e93-b6f1-3a2e438b8037",
+    "0a1dc797-7531-4494-afe6-add6ac3f74c0"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Add 'players can't pay life to cast spells or activate non-mana abilities'",
+   "clause": "Players can't pay life to cast spells or to activate abilities that aren't mana abilities.",
+   "why": "No restriction of this kind exists. Paying life is gated only by 'can't lose life' (game/effect_api.go PayLifeForEffect, payLifeAsCostLocked in life_tail.go). Needs a world rule in game/restrictions.go read by spell and ability cost payment (printed life costs, Phyrexian mana, K'rrik's life-for-mana, granted costs such as s2), by the legal offers and by the client's payment choices; mana abilities stay exempt. The rest of the card (enters tapped; {X},{T}, exile: destroy each nonland permanent with mana value X or less, sorcery speed, declares Sweep) is ordinary.",
+   "checked": "grep -i \"can't pay life|CantPayLife|cannot pay life\" in game and cards/effects -> only comments about a player who cannot lose life (effect_api.go:602, corpses_of_the_lost.go, sylvan_library.go, teferis_reproach.go). game/restrictions.go has no life-payment rule.",
+   "size": "small",
+   "cards": [
+    "c5e817f9-a003-45b5-8e16-1746e6096166"
+   ]
+  },
+  {
+   "id": "s4",
+   "title": "Add 'mana abilities of this land cost an additional 1 life'",
+   "clause": "Mana abilities of this land cost an additional 1 life to activate.",
+   "why": "Thran Portal is the chosen basic land type in addition, so its mana ability is the intrinsic one of that type (CR 305.6, game/mana_ability_text.go), not a printed ability a card file can price with PayLife. Needs a cost increase in life on every mana ability of one permanent, including intrinsic and granted ones. CostModifier (game/cost_modifier.go) has Activations but its Unit is a mana cost; the only life surcharge is TargetTax.Life (target_tax.go), for spells. Auto-tap and the bot must know the land costs life. The other three lines have precedents: fastlands.go / conditional_enters_tapped.go ('two or fewer other lands') and land_types.go ChooseBasicLandTypeAsEnters, attachments.go SetsChosenBasicLandType (multiversal_passage.go).",
+   "checked": "grep 'Mana abilities of this land cost' -> 0; 'cost an additional|costs an additional .* life' -> spec.go, target_tax.go, terror_of_the_peaks.go (spells that target, not activations); grep -i 'LifeIncrease|AdditionalLife|ExtraLife' in game -> none.",
+   "size": "small",
+   "cards": [
+    "926ce6a2-7bdd-4380-ac65-bc902ba0c284"
+   ]
+  },
+  {
+   "id": "s5",
+   "title": "Report the life paid on an ability's activation event",
+   "clause": "Whenever you activate an ability that isn't a mana ability, if life was paid to activate it, you may pay that much life again. If you do, copy that ability.",
+   "why": "PaidCost.LifePaid is computed at activation (game/activated.go:2343-2397, including Phyrexian symbols) and survives on an ability copy (ability_copy.go:297), but the Event struct has no life-paid field, so a trigger on EventActivateAbility cannot ask 'was life paid, and how much'. Small: put the amount on the event (or expose the stack item's PaidCost to the trigger), then build the trigger from the ability-copy precedents (rowan_kenrith.go, the_enigma_jewel.go, lithoform_engine.go).",
+   "checked": "grep 'if life was paid|pay that much life again' -> only vraska_betrayals_sting.go (compleated). grep -i 'LifePaid|PaidLife' in game -> paid_cost/activated.go/ability_copy.go only; the Event struct (game/events.go) has no such field. No WheneverYouActivate helper reads a paid cost (triggers_common.go:818 is exhaust only).",
+   "size": "small",
+   "cards": [
+    "04853f06-3fd2-445d-9b0d-d68d0f116635"
+   ]
+  },
+  {
+   "id": "s6",
+   "title": "Remember that an opponent's creature or planeswalker was dealt excess damage this turn",
+   "clause": "At the beginning of your end step, if a creature or planeswalker an opponent controlled was dealt excess damage this turn, create a 4/4 red Dragon creature token with flying.",
+   "why": "Excess damage is rebuilt per event inside a trigger (cards/effects/excess_damage.go, noncombat and creatures only); nothing keeps it for the turn. Needs a turn tally (game/turn_tally.go) set when damage, combat or not, exceeds lethal on a creature or the loyalty of a planeswalker an opponent of the reader controlled, per controller, and a condition helper. The rest (ward {2}, other Dragons have ward {2}, Dragon token) is ordinary. The 4/4 red Dragon with flying is also made by Rohgahh (batch 18); reuse the tokens_table.go row.",
+   "checked": "grep 'excess damage this turn|dealt excess damage' -> only fall_of_cair_andros.go (a per-event trigger). grep -i ExcessDamage in game -> none; grep -i excess game/turn_*.go -> none.",
+   "size": "small",
+   "cards": [
+    "f89de40f-52d3-44b1-8faa-6ddaa32880d0"
+   ]
+  },
+  {
+   "id": "s7",
+   "title": "Add 'it can't phase in for as long as you control this'",
+   "clause": "Another target nonland permanent phases out. It can't phase in for as long as you control this Saga.",
+   "why": "The only phase-in lock is the world rule PermanentsCantPhaseIn (game/restrictions.go:140, read in game/phasing.go:288), which stops every permanent. Needs a lock on one phased-out object tied to a source and its controller, ending when the Saga leaves or changes controller (so the permanent phases in at its controller's next untap step after the Saga is sacrificed), and saved in a snapshot (additive). Chapter III is ordinary but declares Sweep: destroy all creatures, each controller creates a 2/2 black Phyrexian token per creature destroyed (new token row). Read ahead exists.",
+   "checked": "grep \"can't phase in\" in cards/effects -> the_city_on_the_edge_of_forever.go, trek_b23_helpers.go (world rule only). grep CantPhaseIn in game -> phasing.go, restrictions.go, the world rule only. grep 'It can.t phase in for as long as' -> 0.",
+   "size": "small",
+   "cards": [
+    "6b92a5f4-a241-48c8-9aec-c8e9d5b01fa5"
+   ]
+  },
+  {
+   "id": "s8",
+   "title": "Add a this-turn form of 'activate loyalty abilities twice'",
+   "clause": "You may activate the loyalty abilities of planeswalkers you control twice this turn rather than only once.",
+   "why": "The rule exists only as a printed static of a permanent: CardDef.LoyaltyTwiceEachTurn / YourPlaneswalkersLoyaltyTwiceEachTurn (game/carddef.go:393-403; oath_of_teferi.go, urza_planeswalker.go). A chapter ability needs the same permission as an effect that lasts until end of turn for one player. Expect a turn-scoped player rule read where the loyalty limit is checked. Chapters I and II are ordinary (scry 4 then reveal the top card; put a planeswalker card with mana value 6 or less from hand onto the battlefield).",
+   "checked": "grep 'loyalty abilities .* twice|twice each turn rather than only once' -> oath_of_teferi.go, urza_planeswalker.go, spec.go; grep LoyaltyTwice in game -> carddef.go and ability_rows.go only, no duration form.",
+   "size": "small",
+   "cards": [
+    "0d406496-e1c3-4e1c-976c-618d5ad67d0b"
+   ]
+  },
+  {
+   "id": "s9",
+   "title": "Promote one shared domain count (helper, not an engine gap)",
+   "clause": "Domain — ... for each basic land type among lands you control. / This ability costs {1} less to activate for each basic land type among lands you control.",
+   "why": "Not missing engine work: the count is written twice as private helpers, domainCountYouControl (leyline_binding.go:38, takes a CostQuery) and rfCreatureBBasicLandTypesAmong (reality_fracture_fra_creature_b_helpers.go:134). 21 cards of this set need it in three shapes: a spell or activation cost reduction, a characteristic-defining power/toughness, and a count read at resolution. It is listed as a seam item only so ONE worker exports one helper (an Amount for effects.Do, a CostQuery reader, a P/T static with a Label) before batches 10, 11 and 14 use it, instead of three batches each writing their own. Move the two existing callers onto it. These seven cards cover each shape. Llanowar Greenwidow's granted 'If this permanent would leave the battlefield, exile it instead' has 6 precedents (grep 'would leave the battlefield, exile it instead').",
+   "checked": "grep 'basic land types? among lands' -> attack_tax.go, leyline_binding.go; grep 'func.*[Dd]omain|func.*BasicLandType' -> the two private helpers above plus land-type setters; 'costs {1} less to activate for each' -> 19 files (cost_modifier.go, boseiju_who_endures.go).",
+   "size": "small",
+   "cards": [
+    "1ba5b108-59cb-4af1-88cb-d3ceaaf00784",
+    "23391456-5dfd-4402-88fa-3b08f5e23864",
+    "0d6d5509-41e5-4099-98a0-18ae7531df7d",
+    "b3e9917e-1bcf-4e8e-9550-7f5897dcb433",
+    "c47ae79c-4e07-47f2-8920-2ab62b471e4f",
+    "478eeed5-8170-4fb3-8ec2-bcebc0265622",
+    "c501e577-5137-4dd6-b923-95408b78258a"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Vanilla, French vanilla and one-line commons",
+   "shared": "No new helpers. Pump and tap activations from activated.go; scry and gain-life entries from effects.Do primitives. Vanquisher's Axe: any '+N/+0, equip' Equipment file. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "9a74a1dd-c36f-4900-b835-fc39dd725bde",
+    "6bc14f1e-1df8-4e72-b05a-a848faa3b080",
+    "898763f8-a333-43f5-9f66-52e2adbe5758",
+    "26afc8c1-c23f-4212-a2aa-386c71c4a7f9",
+    "6358ee1c-3577-4196-bae4-29a3c160a66a",
+    "eb570331-35da-44b8-b711-ccf7444d8e39",
+    "1396e7f1-ac91-4778-9f71-493c7a44bd51",
+    "b38c0575-37f7-413c-9dad-c8d7e6a41b90",
+    "49475268-be95-4670-a5ca-2f2b6c5cf005",
+    "f1861fac-e0e5-4b96-b6e4-6b6573bd02d1",
+    "e49eb21c-2a0d-4fd0-9f69-1bff6e94f9e7",
+    "ac2668a3-7a26-47b1-9ad4-56e23643de80",
+    "fbdd3ba9-d799-476b-87bc-a689d8e3cff9"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Simple removal, tricks and stun",
+   "shared": "Stun counters exist (954 effect files). Cut Down: 'total power and toughness' in meek_attack.go. Extinguish the Light: 'If its mana value was' in tainted_treats.go, seedship_impact.go. Tail Swipe: 'If you cast this spell during your main phase' in unbreakable_formation.go. Ertai's Scorn: 'opponent cast two or more spells this turn' readers in mindbreak_trap.go, brightspear_zealot.go; watch item: a conditional {U}-only reduction, stop and report if cost_modifier.go cannot take one coloured symbol. Smash to Dust's third mode is not a wipe of all creatures but check whether it must declare Sweep. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "533d6b9f-a145-44c4-9d16-74fcd9c0ae2f",
+    "6c75b92a-4fc1-4f26-95be-1b92f462c111",
+    "4fb0ff70-eba1-4485-b68d-444eb512a2a7",
+    "250f804f-b5d5-414c-bb25-476d1fe1f85a",
+    "6f8bf849-890e-4fc7-981f-37ff4b4fb844",
+    "c0239ff1-6ae6-431a-806e-7321d8272a1d",
+    "4e4a21a8-9332-4aeb-8519-949feb211294",
+    "1b30210d-10e9-4703-8967-032063bb4f26",
+    "6dbef43d-40d3-4894-86a5-d31a5026604e",
+    "c13955b8-bad3-4f79-ad9f-11e214a1cab2",
+    "525d98d6-b117-44f4-b19c-3dd26e7c9fd4",
+    "fad32e19-2eda-46b7-8d3c-b95a7dbeabc2",
+    "76e6c0e7-593a-4b4a-9eb6-a912f9c3f26f"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Simple creatures: one trigger or one activation",
+   "shared": "'becomes tapped' triggers in 62 files (attentive_sunscribe.go). Knight of Dawn's Light: 'gain that much life plus 1' replacement precedents, needs a Label. Salvaged Manaworker: mana ability with 'Activate only once each turn'. Coral Colony counts creatures with defender; Shield-Wall Sentinel searches for one. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "0c7f9701-c39e-4f14-844a-15f2e3c41ca9",
+    "a96814fe-dc74-4d02-a44e-f7daa794b647",
+    "efc0aa25-9ac2-4a25-956c-fff39ef536be",
+    "c6106021-08ae-49c8-b32c-fdc7397522e7",
+    "fac57730-8fd8-4702-8b35-4ef0ed5fa41a",
+    "90d375fa-0487-4990-9a98-260f9ee28d2a",
+    "9c99ce14-5059-47a9-b874-637b39473062",
+    "a7cf5b74-123c-4def-a4aa-771ecd3be260",
+    "68bde9ff-3206-4a9c-9233-4b2387dcd306",
+    "af753429-c121-4957-b768-8bed43dc06cb",
+    "801e55c7-f8a1-4a90-81cb-3ad7022290ba",
+    "5e186931-992b-491c-bffc-6877a613d5c3",
+    "4976f08c-6f8e-42e4-9584-f04793518ddb"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Cost reductions, graveyard abilities and 'this turn' conditions",
+   "shared": "Affinity for creatures: salt_road_packbeast.go. Molten Monstrosity: 'costs {X} less, X the greatest power' in ghalta_the_immovable.go. Cult Conscript: activation_conditions.go ('Activate only if a ... died'), check the non-Skeleton reading goes through TextSubtype. Eerie Soultender, Valiant Veteran: exile-from-graveyard activations. Baird: 'power greater than its base power' in ms_marvel_elastic_ally.go. Haunting Figment: 'you've cast an instant or sorcery spell this turn' in hall_of_oracles.go. Sengir Connoisseur: 'one or more', 'triggers only once each turn' (#5245 section of docs/adding-cards.md). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "1ca8d2cb-58ba-476b-a4f2-1bf273a54cf3",
+    "ea55886c-48a1-4339-81fd-03dbaa116c28",
+    "7f6505a1-ab8b-468b-a5de-33451598b464",
+    "26685121-ab1f-4366-840b-c5a80508cde6",
+    "399d19cd-e6fa-4959-8d2a-9f1cfd52dce7",
+    "a3e4d14b-818a-4a4b-8462-1de9ad844941",
+    "e5762815-5fc3-4ae7-abee-69f27c5e4e90",
+    "ba21f18e-ee65-4c10-92c9-b9fb41510eba",
+    "8a4d505e-b884-4b8b-93d5-495992f3858e",
+    "ed416ae3-9291-4e1e-ad83-2f14138e9e47",
+    "1d078108-f88c-4a32-a28f-bae5182b2f53"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Instants-and-sorceries matter",
+   "shared": "'Whenever you cast an instant or sorcery spell' helper in triggers_common.go for all of them; Soldier token row exists. Djinn of the Fountain: modal trigger, flicker until next end step as in abuelo_ancestral_echo.go (Stenn's activation is the same sentence). Rona: 'You may cast this card from your graveyard by' in alternative_cost.go, here an ADDITIONAL cost of discarding two; watch item, stop and report if the graveyard-cast permission cannot carry an additional cost. Vohar: 'If that spell would be put into your graveyard, exile it instead' in granted_permissions.go. Stenn: 'choose a card type other than' in arachne_psionic_weaver.go, 'Spells you cast of the chosen type cost' in cloud_key.go. Raff: optional 'tap two untapped creatures you control' at resolution. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "0cd77ee1-408c-4c51-ac87-24f4fc50083d",
+    "ba8883fc-db24-4c3d-ae36-05085089c9cc",
+    "dcf28f91-1bf4-48be-a3d0-e061f443fd9e",
+    "4cb3a303-9ded-46d5-90e7-1cc1c65a75da",
+    "41f3acbf-6092-435f-a5af-4d80dd6e1aef",
+    "52e92296-7af9-4e68-8045-40b6d6b73910",
+    "4380df08-7be4-48ca-9783-d644fd2ea27d",
+    "4246b503-0da8-4de7-9343-9dfb3c3672df",
+    "03d2d7dd-54b6-469e-8b1c-c48db8cc0925"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Kicker creatures, simple",
+   "shared": "Kicker exists. 'If this spell was kicked' / 'When this creature enters, if it was kicked' appears in batches 6, 7, 8 and 9: all use the existing kicker readers (kicked check in context.go; emblazoned_golem.go, vodalian_serpent.go, entry_counters.go), no new helper. Shalai's Acolyte and Viashino Branchrider: 'If this creature was kicked, it enters with' in entry_counters.go. Volshe Tideturner: watch item, mana that may be spent on 'an instant or sorcery spell or a kicked spell'; instant/sorcery restriction in hydro_channeler.go, 'kicked spell' appears in context.go and jets_brainwashing.go; stop and report if a mana restriction cannot read the announced kicker. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "49f0b317-6b06-482e-ab64-e02713e6c7e8",
+    "14c3692d-16a9-4ef0-98cd-60d15e4aa31f",
+    "6d8e464c-9df1-46b1-88e6-dcc7fe7b7caa",
+    "5914d4d5-51b8-49c2-9459-bf5579df4990",
+    "be04f54f-59fa-4f0a-b8b5-790d568932b6",
+    "05075332-6856-4147-a22d-3a5bd1e96b7b",
+    "c41172c6-5133-48ed-bde0-3168b5371c18",
+    "9900c771-ab81-415e-90a7-123c1bacfa83",
+    "53ec394a-5aaa-4d83-82ec-f00e99902c0d",
+    "50fcb431-626c-4db5-aa2c-445f3b81e7fa",
+    "eab16fd1-735c-411f-a23a-0b93131c2eb2"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Kicker with a delayed or replaced outcome",
+   "shared": "Kicker exists. 'If this spell was kicked' / 'When this creature enters, if it was kicked' appears in batches 6, 7, 8 and 9: all use the existing kicker readers (kicked check in context.go; emblazoned_golem.go, vodalian_serpent.go, entry_counters.go), no new helper. Monstrous War-Leech: watch item, 'As this creature enters, if it was kicked, mill four cards' is an as-enters action (not a trigger) before a graveyard-reading power and toughness; stop and report if no as-enters hook can mill. Balduvian Atrocity and In Thrall to the Pit: 'sacrifice it at the beginning of the next end step' delayed bodies (delayed_bodies.go). Keldon Strike Team: 'entered this turn' readers exist (92 files), the static needs a Label. Rona's Vortex: 'on the bottom of its owner's library instead' in spell_crumple.go. Sheoldred's Restoration exiles itself on resolution. Warhost's Frenzy: delayed 'whenever a creature you control dies this turn' (delayed_on_event.go). Elvish Hydromancer: token copy of a target creature. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "0dcd13ab-37f9-4d66-8227-1e72d920f297",
+    "eb1ab332-5549-4ff4-8afa-b385a236fb9b",
+    "9a708f82-a4a1-47f9-8ff3-65608269eebd",
+    "a965898b-9c68-46cb-82a5-a1e11397f68f",
+    "6465f93d-e6bf-4a7b-86f3-5a2376f8b127",
+    "b92f2a4c-36dc-40a6-a874-7405fc97fb7a",
+    "5bf1c26b-12eb-4be7-b9d6-f8ad75a778aa",
+    "df587772-516f-4ae8-aefe-e6fc63f8b365",
+    "21989fad-9672-46d4-b7d5-101906e7aed2",
+    "a0218a14-8301-4484-aed5-90334349620e"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Kicker spells, part 1",
+   "shared": "Kicker exists. 'If this spell was kicked' / 'When this creature enters, if it was kicked' appears in batches 6, 7, 8 and 9: all use the existing kicker readers (kicked check in context.go; emblazoned_golem.go, vodalian_serpent.go, entry_counters.go), no new helper. Soldier token row exists (Scout the Wilderness). Colossal Growth: 'instead' on kick. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "a47ff11e-dbcf-45b1-a13d-fff677ea42c9",
+    "0611beb7-a38d-4fbf-af9b-ee2a5b9a2896",
+    "862511a3-672f-44fe-8121-a9afe1d1404f",
+    "2f541bf9-1e5b-4d16-8558-a5cfce7e93ad",
+    "32dce35e-182d-41be-9fb2-b0738d0781b8",
+    "aa597788-4149-48b8-9f43-8c0de063eb68",
+    "422aca0b-8e8f-4774-9a20-6f7a1cae967e",
+    "f0b24d59-b3f4-47e6-befd-40a25ad976e2",
+    "d2240ce8-0bd6-4c4f-a73e-fb0a2af5bfac"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Kicker spells, part 2",
+   "shared": "Kicker exists. 'If this spell was kicked' / 'When this creature enters, if it was kicked' appears in batches 6, 7, 8 and 9: all use the existing kicker readers (kicked check in context.go; emblazoned_golem.go, vodalian_serpent.go, entry_counters.go), no new helper. Choking Miasma declares Sweep (all creatures get -2/-2) and puts its counter first. Protect the Negotiators: counter unless pays {1} per creature you control, counted after the Soldier is made. Timely Interference: 'blocks this turn if able' in academic_dispute.go. Urborg Repossession: a second target only when kicked; the legal probe must offer it. Joint Exploration: 'you may put a land card from your hand onto the battlefield' in burgeoning.go. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "158aaeab-1646-4160-9615-bc8747620a03",
+    "d6afb1a9-c9ed-4a56-ba7d-700ab71f2e0d",
+    "9eba1789-6e58-4d78-8a0d-b54a8be76ec5",
+    "7ccd666a-0d56-4fe3-b16b-d035bf2ad420",
+    "09a400bd-83f1-4fac-a218-64c9f041874f",
+    "d64feb23-8259-4445-9b40-efc8b4466679",
+    "8355d44d-cf03-4b19-b2dc-0ca3450dbf5c",
+    "0c0eeb01-62e7-4a7f-923d-a7b830e4c83b"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "Domain: spells and enter triggers",
+   "shared": "Uses the shared domain count from s9; write no second copy. Drag to the Bottom declares Sweep. Herd Migration: discard-from-hand activation (docs/adding-cards.md 'Abilities from the hand'), Beast 3/3 row exists. Shadow Prophecy, Voda Sea Scavenger, and Slimefoot's Survey share the 'look at the top X' shape with Nael in batch 11: reuse the existing library-look primitives, no new helper. Bortuk: 'if you cast it' entry condition. Artillery Blast must be castable by the legal probe (target tapped creature). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [
+    "s9"
+   ],
+   "cards": [
+    "dad0b69f-ef33-475b-aebc-3a3ca880feb1",
+    "c4d7a200-7401-4c9a-a7cf-6c98fa8eb61a",
+    "dfdc0eab-309b-4441-a94c-930c6dde4c48",
+    "6ae9aa10-38f5-4b10-8b44-1164b85acd7f",
+    "620f3851-493d-496e-880a-4a9dee074e79",
+    "8ace9425-fcdd-45b0-abf0-1a7d601de25e",
+    "81a9da9d-c422-4293-b210-d89222633b4c",
+    "d965e8c2-34b1-42eb-9647-59951d9fc06b"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Domain triggers, lands and green rares",
+   "shared": "Uses the shared domain count from s9. Sphinx of Clear Skies: 'An opponent separates' in fact_or_fiction.go / resolution_choice.go, here into hand and graveyard. Threats Undetected: 'with different powers' in collectors_cage.go, 'An opponent chooses two' in elemental_teachings.go; watch item, stop and report if the search cannot enforce pairwise different powers. Tatyova: 'Land creatures you control' in blossoming_tortoise.go; the animation has no duration. Quirion Beastcaller: 'distribute X +1/+1 counters' in elusive_otter.go, X read as it last existed. Rulik Mons: Goblin row exists. Silverback Elder: modal cast trigger. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [
+    "s9"
+   ],
+   "cards": [
+    "caaedd67-e074-47c4-a956-da88a01f8996",
+    "6044696a-0f64-474a-840e-8ed4dbd30221",
+    "7ee394a2-84de-42e8-834e-6c1030be0aef",
+    "fbf0bde7-cb13-402b-b3ab-81c787ce4827",
+    "1402c792-6e2f-4a85-8a0c-8db3c8ce5f1f",
+    "24108160-e72b-4451-b1b1-b2b3ac3ede85",
+    "b1a0ae56-77aa-43ad-9aa8-dc1ab779e9d9",
+    "741dc9c3-1998-4f4c-9c07-6f34fea2bae4",
+    "7d5e734f-3efc-4124-b1d8-4fe3e9d3db28",
+    "d777e428-cc50-40b1-a241-41576d2575d1"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Go-wide rares: lords, tokens and recursion",
+   "shared": "Token rows that exist: Soldier, Goblin, Saproling. The Raven Man: check for a 1/1 black Bird with flying and 'This token can't block' row (35 files use that sentence) before adding one; 'a player discarded a card this turn' in azula_ruthless_firebender.go, typhoid_mary_fractured.go. Nemata: 'would die, exile it instead' has 18 precedents (dealt_damage_by.go); watch item, the reflexive 'When you do, create a Saproling' off a replacement, stop and report if it does not fit. Queen Allenal: 'those tokens plus' in peregrin_took.go, needs a Label. Squee: alternative_cost.go graveyard cast with 'exiling four other cards'. Phoenix Chick: 'attack with three or more creatures' in karlov_watchdog.go, return tapped and attacking as in persistent_marshstalker.go. Tori D'Avenant reads red and white through colour, lords read subtypes through TextSubtype. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "e923d956-b036-4789-9311-4763a71fcbf8",
+    "5f04d4b0-2c75-4f2d-97d5-96220b624b17",
+    "124a5dd7-c4f8-479c-9eb0-669aca01d045",
+    "1e080c7d-102c-4d28-bcb9-62b36d400d13",
+    "cf42a7e3-71ee-40b8-a6ca-0368c746e128",
+    "6d51ebd1-ceb9-42c0-8c1e-34dbbbc7bf8a",
+    "0166996d-941f-49fe-bf4f-64b6fd4b69e9",
+    "40bb7b6b-a75d-4b59-ba45-a5801dcd59a1",
+    "19918740-f6e3-40cd-9848-3c7a852a6c2a",
+    "f72558f5-ac5c-4efa-b01b-439bc0bbf18d"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Rares with a choice or a continuous effect",
+   "shared": "Rules-heavy. Anointed Peacekeeper: sorcerous_spyglass.go (look at an opponent's hand, name a card), skyseers_chariot.go and kopala_warden_of_waves.go for the two taxes. Academy Loremaster: watch item, 'spells they cast this turn cost {2} more' for one player until end of turn (armor_wars.go, goblin_maskmaker.go have turn-scoped costs); stop and report if only reductions exist. Astor: 'have equip {0}' grant in puresteel_paladin.go, crew 1 grant by the same route (docs 'Granting an ability to another permanent'). Danitha: 'onto the battlefield attached to' in light_paws_emperors_voice.go. Evolved Sleeper: figure_of_fable.go; deathtouch counter in qarsi_revenant.go. Tyrannical Pitlord: 'As ... enters, choose' (36 files), 'The chosen creature'. Zur: watch item, animating a non-Aura enchantment with base P/T equal to its mana value and no duration (karn_the_great_creator.go is the nearest). Shanna: may_pay_x.go with 'X can't be greater than' (open_the_way.go) and life gained this turn. Chaotic Transformation: five 'up to one target' slots of different types, 'shares a card type with it' (target_relation.go), reveal-until in proteus_staff.go; must be castable with zero targets. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "a67f78be-8fbe-414a-9574-bb11ac50e1a5",
+    "7d540860-ae94-4773-a526-aaffca3eb057",
+    "196962f0-6aff-4198-9e0c-eaf42aeaf147",
+    "43b5dbe9-41f7-4082-944b-ea9d6292c6fd",
+    "12367806-5924-485c-814a-5b67dd79235e",
+    "776ea0c7-fc5b-44b4-9302-5a3514ff843b",
+    "cfc5dc9c-6f26-460b-a624-3681b8584eb3",
+    "7677c7ce-1db3-41f5-8f86-e68718ea2d11",
+    "a754458d-55b5-44c2-98de-8bf26b82c1b1"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Read-ahead Sagas and enchantments",
+   "shared": "Rules-heavy. Read ahead exists (the_cruelty_of_gix.go, the_elder_dragon_war.go, read_ahead_test.go). The Weatherseed Treaty uses the s9 domain count. Yotia Declares War: new token row (0/2 colorless Thopter artifact creature with flying named Ornithopter); 'Tap any number of untapped' in burn_at_the_stake.go, then a reflexive damage trigger. Founding the Third Path III: 'You may cast the copy' in copy_and_cast.go, isochron_scepter.go. The World Spell: non-Saga permanent cards. Historian's Boon: 'final chapter ability' trigger in tom_bombadil.go; Angel 4/4 flying vigilance row is shared with Jenson Carthalion in batch 15 (check tokens_table.go, 4 Angel rows exist). Temporary Lockdown declares Sweep. The two Sagas that need engine work are seams s7 and s8. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [
+    "s9"
+   ],
+   "cards": [
+    "4567a42a-aa1c-4ca2-b5e2-b09acac3f276",
+    "0eff910a-712d-4652-8b3b-9eddf63eb891",
+    "7d723a6f-854f-43df-9401-a4eb0c0f639f",
+    "f5186d3f-52b2-43ef-be11-d183ab765663",
+    "4ce785b9-aee0-4ac6-ab20-ee20d0551be4",
+    "ce1e6ae2-78c1-4bc6-bb73-bb025dd67a90",
+    "6f554418-9ee6-4a03-b81e-f93d5c70873e",
+    "b21c99b3-b975-4428-9c9a-326ded2fa8dc",
+    "fbfd7f38-be9a-49bf-8769-79e1e7e8dfdc"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Multicoloured and 'all colors'",
+   "shared": "Rules-heavy. 'is all colors' in leyline_of_the_guildpact.go, dragonbroods_relic.go; 'was all colors' in the_wandering_minstrel.go; 'number of colors that spell is' in crystal_inhuman_princess.go: one shared colour-count read for Jared, Jenson, Mana Cannons, Iridian Maelstrom. Fallaji Wayfarer: 'have convoke' in convoke_grant.go; its 'all colors' must not change colour identity. Jared Carthalion: new token row (3/3 Kavu with trample that's all colors); 'can be your commander' exists. Iridian Maelstrom declares Sweep. Unite the Coalition: 'choose the same mode more than once' in modes.go, fiery_confluence.go; watch item, five picks each with its own target, stop and report if the modal prompt or the legal probe caps repeats below five. The Mana Rig: Powerstone exists; {X}{X}{X} activation. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "01de1f9d-3b63-49b9-b2c6-929c2a69ef54",
+    "92cc43e5-782f-4540-bc60-3d18f357caf3",
+    "f9485c76-122d-4faf-9194-b84ed9c41378",
+    "68cefb44-afad-4638-8fdc-65a099b51d55",
+    "26d28b68-e03b-4367-ae4b-5e54f42f8a88",
+    "58678469-77e5-4c1b-88d6-5e6642b0c8ca",
+    "27596982-f4ab-488f-a974-5b0404438504",
+    "164651c5-b831-4070-8491-16d30ac8395b"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Planeswalkers and artifact engines",
+   "shared": "Rules-heavy. Ajani: compleated.go; emblem with a cast trigger giving poison. Jaya: Monk with prowess row exists (cori_steel_cutter.go); 'Choose one of them. You may play that card this turn' in case_of_the_burning_masks.go; 'Whenever you attack this turn' in delayed_on_event.go; 'copy it twice' in summon_gf_cerberus.go. Karn: watch item, 'Pay any amount of mana' at resolution (may_pay_x.go) and an emblem with an ACTIVATED ability (emblem.go EmblemSpec has Activated; 'Tap an untapped artifact you control' cost in urza_lord_high_artificer.go, shared with Meria's 'nontoken' form); stop and report if an emblem's ability cannot be activated from the command zone. Dihada and Sivitri: 'can be your commander'; Sivitri +1 is attack_tax.go / norns_annex.go as an until-your-next-turn effect paid in life per creature, watch item. Dihada -11 and Sivitri -7 declare Sweep where they wipe. Weatherlight Compleated: 'it's a ... creature in addition' as long as counters (idol_of_false_gods.go). Jhoira: ingenuity counter exists (lady_octopus_inspired_inventor.go). Loyalty statics: docs 'Planeswalker statics, eminence and loyalty timing'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "37714eb9-a39d-4534-a2d3-27908c418f8a",
+    "2458aa66-5b20-4811-a4a4-8375ad0a6498",
+    "09ab1278-811f-4b97-bd34-7493d6e081e9",
+    "d326de4d-6157-4586-91b8-5668e1381ac3",
+    "5cf86603-cc47-4644-890a-0997c694817f",
+    "24aaadda-ef1c-44eb-9b01-4847bf454cd5",
+    "060a7d77-61a8-4964-8fb6-35bd9a999517",
+    "83b9a734-ee92-44c8-bf47-ca69b6d6405e"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Copy effects",
+   "shared": "Rules-heavy; read docs 'Adding a copy effect' and the clone gate first. Activated Sleeper: Body Double shape in copy_effects.go ('copy of any creature card in a graveyard') with 'put there from the battlefield this turn' (brought_back.go) and a Phyrexian type exception. Cadric: legend_rule_exemption.go, token copy that gains haste and is sacrificed. The Ever-Changing 'Dane: 'becomes a copy ... except it has this ability' in dimir_doppelganger.go, unstable_shapeshifter.go, from the sacrificed creature as it last existed. The Peregrine Dynamo: 'Copy target activated or triggered ability' in lithoform_engine.go; watch item, the 'another legendary source that's not a commander' target filter. Stangg: watch item, a named legendary token (Stangg Twin, new row) entering tapped and attacking plus token copies of each attached Aura and Equipment entering attached to it (become_copy.go, liberated_livestock.go); stop and report if a token copy of an Aura cannot enter attached. Ratadrabik: copy with 'not legendary, 2/2 black Zombie in addition' exceptions. Ivy and Vesuvan Duplimancy share 'targets only a single' (retarget.go, chefs_kiss.go); Ivy's 'The copy targets' in feather_radiant_arbiter.go, dirgur_focusmage.go. Twinferno and Najal share 'when you next cast an instant or sorcery spell this turn, copy it' (doublecast.go, galvanic_iteration.go, delayed_on_event.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "e12da2a1-e390-4487-b154-69e439cb7b05",
+    "739bbf44-9169-4749-abea-21c20823915f",
+    "bda0468f-1c72-4d3d-ad94-15d446c75313",
+    "da21f1a7-65d0-46d0-8ad1-f84a387ba753",
+    "aaf2a587-ced7-4615-b10f-164e7384b073",
+    "b3ab43f2-4f2b-4439-9254-0110ce443fdb",
+    "55ad6a6b-1c44-4397-86ae-dd9221892b22",
+    "6058fab1-9878-42b7-93be-b0a5aa99bd6d",
+    "93989dd7-2d3e-46e2-8e92-8d0479796087",
+    "2a7504b9-220d-412e-9381-b6a8a3750241"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Commander legends: token makers and tribal lords",
+   "shared": "Rules-heavy legends. New token rows, each used by one card of this batch only: 3/3 green Badger (Greensleeves), 2/2 green Cat Warrior with forestwalk (Jedit; forestwalk exists), 2/2 white Knight with protection from red (Rasputin), 4/4 green Wurm (Baru; check the one Wurm row). Existing: Kobolds of Kher Keep (kher_keep.go; Rohgahh and Rosnakht), Zombie Knight with menace (Bladewing), Soldier, Zombie, Goblin, Griffin. Rohgahh's 4/4 red Dragon with flying is the token of Rith (seam s6): check tokens_table.go (2 Dragon rows) and reuse. Greensleeves: 'protection from planeswalkers and from Wizards' are two keywords (baneslayer_angel.go; ProtectionQualityCardType and ProtectionQualitySubtype in game/protection.go). Baru: activation cost reduced by the greatest power among Wurms. Rasputin: 'Each opponent creates' in captive_audience.go; 'Remove one or more ... counters: Add that much {C}' in jetfire_ingenious_scientist.go. Rosnakht: battle_cry.go and heroic. Tobias: 'died this turn' count in rictus_robber.go, nontoken only. Bladewing: 'combat damage to a player or planeswalker' in the_reaver_cleaver.go. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "1cf27d78-d6ae-4fa2-9c8d-c277913f821c",
+    "cc4bc5d7-ed37-4a80-a5e7-eb68c255cbef",
+    "2ac2d483-2d2a-4912-8db4-04a5a2080831",
+    "3d80fa33-9032-4c16-8355-2f18a71af67c",
+    "c16fd2b9-9147-43bc-aa08-6d1bddf1d3e8",
+    "a14c692e-dce6-4121-84ec-7fa28ffe4d6b",
+    "86f7d513-1f5f-4551-83e6-56d24da5ab39",
+    "fa1dc21d-f7f6-425f-a4ae-2b0f143091e3",
+    "3b1c6c1e-e298-4f45-8ab7-e0bb5358e11f",
+    "e4544369-910a-41b4-b835-eee341bb48c6"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "Commander legends: combat and conditions",
+   "shared": "Rules-heavy legends. Ramses: watch item. 'Whenever a player loses the game' has the precedent zenos_yae_galvus.go (On(game.EventPlayerEliminated)), but 'if they were attacked this turn by an Assassin you controlled' needs a per-defending-player record of attackers; game/turn_tally.go has AttackedThisTurn by card only. Stop and report if the tally does not keep the defender; do not approximate. Ayesha: 'mana value less than or equal to ... power' in alesha_who_laughs_at_fate.go; 'can't be blocked as long as defending player controls' in sand_squid.go. General Marhault: 'for each creature blocking it' in she_hulk_wallbreaker.go. Jasmine Boreal: 'with no abilities' (17 files, adversary_by_algorithm.go) and mana restricted to creature spells (gwenna_eyes_of_gaea.go); watch item, the two combined: 'creature spells with no abilities' and 'can't be blocked by creatures with abilities'. Moira: 'put there from the battlefield this turn' in brought_back.go. Ohabi: untap in each other player's untap step (untap_step.go, #74); 'Whenever an Archer you control deals damage to a creature' has no exact precedent, build it from the damage-event trigger with TextSubtype. Shanid: 'play a ... land or cast' in crystal_skull_isu_spyglass.go. Tetsuo: 'greatest mana value among' (26 files) over attached Equipment, modal attack trigger. Tor Wauki: 'deals that much damage plus 1' in valley_flamecaller.go, noncombat only, needs a Label. Xira: new egg counter kind (grep 'egg counter' -> 0), delayed 'When that creature dies' in delayed_that_creature_dies.go; Insect 1/1 black flying row. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "59fcd09c-4633-457e-b36a-488e94c1c941",
+    "f49b31ce-910e-446a-b7a7-4274d71e961d",
+    "138201c0-556d-4c76-b383-90fc9dad0fe0",
+    "48060406-dd5a-4df5-84e9-3e797f0248cd",
+    "e403fadb-537c-41ac-924a-450f0eabe2c4",
+    "170182ed-af1d-442a-8868-d74a96e17f03",
+    "70e03c58-194f-443d-ab64-646dd14d2f53",
+    "1111e042-0bce-4819-ab42-9912aed4d930",
+    "b44d5457-b4d6-4521-a25a-8ef96adba461",
+    "18d0e6e1-3824-465d-9245-21e0174f551f"
+   ]
+  }
+ ]
+}
