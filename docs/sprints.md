@@ -125,6 +125,7 @@ planned just-in-time from the S12 pain-point triage.
 | S79     | Card coverage: every Standard set, newest first                      | 7     | [#4649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4649) | —          | in progress |
 | S80     | Table effects: a cue for every common moment                         | 7     | [#4650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4650) | —          | in progress |
 | S81     | Formats: Standard 1v1 and booster draft                              | 7     | [#5431](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5431) | —          | in progress |
+| S82     | Card coverage: sets outside Standard, newest first                   | 7     | [#5458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5458) | —          | planned     |
 
 On 2026-10-11 the milestones for S37, S41, S47–S49, S51, S52, S54–S57, S60–S64, S68 and S69 were
 closed. Their open stragglers (18 issues) moved to the **Backlog** milestone, to be picked up at the
@@ -4062,13 +4063,13 @@ Opened at the 2026-10-30 triage. The epic's own five children (#4394 to #4398) c
 
 Opened by the owner on 2026-11-10, outside a triage.
 
-- [ ] [#2352](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2352): a format on the table, and best-of-one Standard
-- [ ] [#5436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5436): matches, best-of-three with sideboarding
-- [ ] [#5437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5437): booster packs for one set, and which sets are draftable
-- [ ] [#5438](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5438): the draft, pick one or pick two
-- [ ] [#5439](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5439): draft bots
-- [ ] [#5440](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5440): limited decks and 1v1 rounds
-- [ ] [#5441](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5441): cube
+- [x] [#2352](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2352): a format on the table, and best-of-one Standard
+- [x] [#5436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5436): matches, best-of-three with sideboarding
+- [x] [#5437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5437): booster packs for one set, and which sets are draftable
+- [x] [#5438](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5438): the draft, pick one or pick two
+- [x] [#5439](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5439): draft bots
+- [x] [#5440](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5440): limited decks and 1v1 rounds
+- [x] [#5441](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5441): cube
 
 ### Exit criteria
 
@@ -4080,6 +4081,42 @@ Opened by the owner on 2026-11-10, outside a triage.
 ### Status
 
 **In progress** (2026-11-10).
+
+---
+
+## S82 — Card coverage: sets outside Standard, newest first
+
+**Phase:** 7 · **Goal:** the cards a deck needs are there when someone brings it ([PLAN.md](../PLAN.md) §3): after the Standard sets and their Commander decks (S79), the sets that have left Standard, newest first. Umbrella [#5458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5458).
+
+Opened by the owner on 2026-11-11, outside a triage, as **planning only**: the issues and batch plans below exist so the work can start on the owner's word. No card or seam worker runs for these sets until then.
+
+Measured on `develop` on 2026-11-11, counting a card under the set that printed it first: 187 sets outside Standard are missing about 19,950 cards. Each of 184 sets has its own issue ([#5459](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5459) to [#5642](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5642)), listed newest first on the umbrella.
+
+The ten newest rotated sets are planned to the batch, each together with its Commander set. A planner read every missing card against `develop`; the set issue holds the batch table, the cards of each batch and the watch items, and each seam has its own issue.
+
+| Set                                         | Issue                                                            | Commander set                                                          | Missing cards | Seams                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Card batches |
+| ------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| March of the Machine: The Aftermath (`mat`) | [#5476](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5476) | —                                                                      | 40            | [#5644](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5644), [#5645](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5645), [#5646](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5646)                                                                                                                                                                                                                                                                                                                                                                                                             | 4            |
+| March of the Machine (`mom`)                | [#5477](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5477) | `moc` [#5478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5478) | 248           | [#5647](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5647), [#5648](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5648), [#5649](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5649), [#5650](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5650), [#5651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5651), [#5652](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5652)                                                                                                                                                                                                       | 23           |
+| Phyrexia: All Will Be One (`one`)           | [#5479](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5479) | `onc` [#5480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5480) | 233           | [#5653](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5653), [#5654](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5654), [#5655](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5655)                                                                                                                                                                                                                                                                                                                                                                                                             | 20           |
+| The Brothers' War (`bro`)                   | [#5482](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5482) | `brc` [#5483](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5483) | 237           | [#5656](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5656), [#5657](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5657)                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 21           |
+| Dominaria United (`dmu`)                    | [#5487](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5487) | `dmc` [#5488](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5488) | 218           | [#5658](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5658), [#5659](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5659), [#5660](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5660), [#5661](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5661), [#5662](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5662), [#5663](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5663), [#5664](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5664), [#5665](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5665), [#5666](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5666) | 19           |
+| Streets of New Capenna (`snc`)              | [#5491](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5491) | `ncc` [#5492](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5492) | 251           | [#5667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5667), [#5668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5668), [#5669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5669), [#5670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5670)                                                                                                                                                                                                                                                                                                                                           | 23           |
+| Kamigawa: Neon Dynasty (`neo`)              | [#5493](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5493) | `nec` [#5494](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5494) | 225           | [#5671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5671), [#5672](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5672), [#5673](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5673), [#5674](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5674)                                                                                                                                                                                                                                                                                                                                           | 20           |
+| Innistrad: Crimson Vow (`vow`)              | [#5495](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5495) | `voc` [#5496](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5496) | 206           | [#5675](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5675), [#5676](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5676), [#5677](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5677)                                                                                                                                                                                                                                                                                                                                                                                                             | 18           |
+| Innistrad: Midnight Hunt (`mid`)            | [#5497](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5497) | `mic` [#5498](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5498) | 184           | [#5677](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5677), [#5678](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5678), [#5679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5679), [#5680](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5680)                                                                                                                                                                                                                                                                                                                                           | 17           |
+| Adventures in the Forgotten Realms (`afr`)  | [#5499](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5499) | `afc` [#5500](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5500) | 227           | [#5681](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5681), [#5682](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5682), [#5683](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5683)                                                                                                                                                                                                                                                                                                                                                                                                             | 20           |
+
+In all: 2,069 cards, 40 seam issues (Innistrad: Crimson Vow and Innistrad: Midnight Hunt share [#5677](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5677)) and 185 card batches of 6 to 13 cards.
+
+### Exit criteria
+
+1. Every card of the ten planned sets is in the catalog, Full, with no caveats, or is listed on its set issue with the seam issue or owner decision it waits on.
+2. Each remaining set issue has a batch plan before any of its cards is built.
+
+### Status
+
+**Planned** (2026-11-11). Not started; waits on the owner.
 
 ---
 
