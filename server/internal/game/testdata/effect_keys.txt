@@ -491,6 +491,9 @@ choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
+choose choose-cards/cmdr2-b11-quickling-return
+choose choose-cards/cmdr2-b19-liberated-livestock-aura
+choose choose-cards/cmdr2-b25-land-from-hand-or-graveyard-tapped
 choose choose-cards/cmdr2-b27-take-rest-top-and-bottom
 choose choose-cards/cmdr2-b27-take-rest-top-any-order
 choose choose-cards/coax-from-the-blind-eternities-exile
@@ -766,6 +769,7 @@ choose choose-cards/mog-moogle-warrior-discarded
 choose choose-cards/mount-doom-keep
 choose choose-cards/msc-m1-romantic-rendezvous-draw
 choose choose-cards/myr-battlesphere-tap
+choose choose-cards/nantuko-cultivator-discard
 choose choose-cards/narset-of-the-ancient-way-discarded
 choose choose-cards/narset-transcendent-take
 choose choose-cards/nautiloid-ship-return
@@ -1378,6 +1382,7 @@ option option-pick/energy-chosen-counter
 option option-pick/engine-clash
 option option-pick/engine-clash-opponent
 option option-pick/eumidian-wastewaker-choice
+option option-pick/eventides-shadow-remove
 option option-pick/explosion-of-riches-draw
 option option-pick/extinction-event-parity
 option option-pick/extrapolate-the-impossible-opponent
@@ -1494,6 +1499,7 @@ option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-the-master-gallifreys-end
 option option-pick/villainous-this-is-how-it-ends
 option option-pick/viper-cruel-conspirator-keyword
+option option-pick/winding-way-type
 option option-pick/wingnut-bat-on-the-belfry-keyword
 option option-pick/winota-joiner-of-forces-attack
 option option-pick/winters-chill-pay
@@ -1728,6 +1734,7 @@ run blight/gutsplitter-gang-lose-life
 run blight/nothing-after
 run blight/scuzzback-scrounger-treasure
 run blight/sourbread-auntie-tokens
+run blight/ward-blight
 run blight/warren-torchmaster-when-you-do
 run dalek-intensive-care/exile
 run engine/explore-each-pick
@@ -2068,6 +2075,7 @@ tail blighted/blight/gutsplitter-gang-lose-life
 tail blighted/blight/nothing-after
 tail blighted/blight/scuzzback-scrounger-treasure
 tail blighted/blight/sourbread-auntie-tokens
+tail blighted/blight/ward-blight
 tail blighted/blight/warren-torchmaster-when-you-do
 tail blitzwing/convert-if-none-lost
 tail blue-mages-cane/copy-exiled
@@ -2106,6 +2114,11 @@ tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
 tail cmdr-b9/gain-haste-until-eot
 tail cmdr-b9/then-proliferate
+tail cmdr2-b11/quickling-after-bounce
+tail cmdr2-b11/stolen-by-the-fae-tokens
+tail cmdr2-b15/cavalier-of-thorns-exiled
+tail cmdr2-b15/the-mending-of-dominaria-shuffle
+tail cmdr2-b19/liberated-livestock-next
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
@@ -2483,6 +2496,7 @@ tail msh-a9/ultron-robot-villain
 tail mutinous-massacre/steal-everything
 tail myriad/exile-tokens-at-end-of-combat
 tail mysterio-master-of-illusion/exile-tokens-when-he-leaves
+tail nantuko-cultivator/discarded
 tail necromantic-selection/black-zombie-then-exile
 tail necropotence/schedule-delivery
 tail negative-zone-portal/after-exile
