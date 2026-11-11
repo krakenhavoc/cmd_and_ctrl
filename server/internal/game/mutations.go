@@ -5018,7 +5018,7 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// The three "as it resolves" exits (resolution_exits.go). Two
 		// or more is CR 616.1's choice, asked of the spell's
 		// controller; the card waits on the stack for the answer.
-		exits := resolutionExitsLocked(c, item)
+		exits := g.resolutionExitsLocked(c, item)
 		if len(exits) > 1 {
 			return g.chooseResolutionExitLocked(c, item, exits)
 		}

@@ -963,6 +963,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
@@ -1495,4 +1496,14 @@ func cloneGameOutcome(in *GameOutcome) *GameOutcome {
 	}
 	out := *in
 	return &out
+}
+
+// clonePermissionCardRefPtr copies an optional object link, so a cloned stack
+// item shares no pointer with its source.
+func clonePermissionCardRefPtr(p *PermissionCardRef) *PermissionCardRef {
+	if p == nil {
+		return nil
+	}
+	c := *p
+	return &c
 }

@@ -424,6 +424,9 @@ var tokenTable = map[string]game.Card{
 	// #4470: The Lost Caverns of Ixalan's Vampire Demon (Vito, Fanatic of Aclazotz).
 	"4/3 white and black Vampire Demon with flying": {Name: "Vampire Demon", TypeLine: "Token Creature — Vampire Demon", Power: 4, Toughness: 3, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},
 
+	// #5368: Bloomburrow Commander's Storm Crow Bird (Murmuration).
+	"1/2 blue Bird with flying named Storm Crow": {Name: "Storm Crow", TypeLine: "Token Creature — Bird", Power: 1, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
+
 	// #4467: Bloomburrow's Otter (Stormchaser's Talent).
 	"1/1 blue and red Otter with prowess": {Name: "Otter", TypeLine: "Token Creature — Otter", Power: 1, Toughness: 1, Colors: []string{"U", "R"}, Keywords: []string{"prowess"}},
 

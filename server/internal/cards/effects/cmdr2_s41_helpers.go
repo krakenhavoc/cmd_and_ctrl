@@ -87,3 +87,115 @@ func cmdr2S41FifteenOrMoreCardsInGraveyard(g *game.Game, controller, _ uuid.UUID
 	p := g.PlayerByIDForEffect(controller)
 	return p != nil && len(p.Graveyard.Cards) >= 15
 }
+
+// cmdr2S41BirdsYouControl is Murmuration's "Birds you control" AppliesTo. The
+// type is read through the source's text (CR 612.2) and the creature's
+// effective subtypes, so a changeling counts.
+func cmdr2S41BirdsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+	return target.IsCreature() && target.Controller == source.Controller &&
+		target.HasSubtype(source.TextSubtype("Bird"))
+}
+
+// cmdr2S41StormCrowForEachSpell is Murmuration's end-step effect: one 1/2
+// blue Bird token named Storm Crow for each spell its controller has cast
+// this turn (the per-turn cast tally, which counts every spell cast, from any
+// zone, countered or not).
+func cmdr2S41StormCrowForEachSpell(g *game.Game, item *game.StackItem) error {
+	n := g.CastTallyFor(item.Controller).Total
+	if n <= 0 {
+		return nil
+	}
+	return CreateToken{Template: TokenCard("1/2 blue Bird with flying named Storm Crow"), N: n}.Apply(NewContext(g, item))
+}
+
+// cmdr2S41FoundryCheapInstantOrSorcery is Forger's Foundry's spend filter:
+// the mana paid for an instant or sorcery spell with mana value 3 or less.
+func cmdr2S41FoundryCheapInstantOrSorcery(g *game.Game, _ uuid.UUID, paidFor game.Card) bool {
+	if !paidFor.IsInstant() && !paidFor.IsSorcery() {
+		return false
+	}
+	mv, _ := g.ManaValueForEffect(paidFor)
+	return mv <= 3
+}
+
+// cmdr2S41FoundryExileAnswer is the "you may" of Forger's Foundry's spend
+// trigger, asked as it resolves (CR 608.2d): on a yes, the spell the mana
+// paid for (Carry[0]) is marked to be exiled, linked to the Foundry, instead
+// of going to its owner's graveyard as it resolves. A spell that has left the
+// stack, or that is a copy, is not marked, and a Foundry that has left the
+// battlefield offers no link (the spell goes to the graveyard).
+var cmdr2S41FoundryExileAnswer = MayYes("cmdr2-s41/forgers-foundry-exile", func(ctx *Context, r game.ConfirmAnswer) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	ref, ok := ctx.SourceRef()
+	if !ok {
+		return nil
+	}
+	ctx.Game.MarkSpellExilesLinkedForEffect(r.Carry[0], game.PermissionCardRef(ref))
+	return nil
+})
+
+// cmdr2S41FoundryExileTrigger is the spend trigger's effect: ask whether to
+// exile the spell the mana paid for (Payload[0]).
+func cmdr2S41FoundryExileTrigger(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	cards := ctx.PayloadCards()
+	if len(cards) == 0 {
+		return nil
+	}
+	return MayChoice{
+		Question: "Forger's Foundry — exile that spell instead of putting it into its owner's graveyard as it resolves?",
+		YesLabel: "Exile it",
+		NoLabel:  "Put it into the graveyard",
+		Then:     cmdr2S41FoundryExileAnswer,
+		Carry:    []uuid.UUID{cards[0]},
+	}.Apply(ctx)
+}
+
+// cmdr2S41FoundryCastExiled is Forger's Foundry's second ability: the
+// controller may cast any number of spells from among the cards exiled with
+// it without paying their mana costs. One free, flash-speed, cast-only
+// permission over each nonland card linked to the Foundry (CR 607.2a), kept
+// until its holder passes priority, that a cast does not use up (AnyNumber);
+// the offer is the resolution_cast prompt (CR 608.2g). An {X} in a cast
+// spell's cost is 0 (CR 107.3b). A land among them cannot be cast and is left
+// where it is.
+func cmdr2S41FoundryCastExiled(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	ref, ok := ctx.SourceRef()
+	if !ok {
+		return nil
+	}
+	controller := ctx.Controller()
+	perm := game.CastPermission{
+		Player:      controller,
+		Zone:        game.ZoneExile,
+		Cost:        "{0}",
+		Timing:      game.TimingFlash,
+		CastOnly:    true,
+		LapseOnPass: game.LapseStaysInExile,
+		AnyNumber:   true,
+		Source:      ctx.Source(),
+		SourceName:  "Forger's Foundry",
+		Label:       "Cast any number of spells from among the cards exiled with Forger's Foundry without paying their mana costs",
+	}
+	var ids []uuid.UUID
+	for _, c := range g.ExiledWithForEffect(game.PermissionCardRef(ref)) {
+		if c.IsLand() {
+			continue
+		}
+		ids = append(ids, c.InstanceID)
+	}
+	var granted []uuid.UUID
+	for _, id := range ids {
+		if g.GrantCastPermissionOverCardForEffect(id, perm) {
+			granted = append(granted, id)
+		}
+	}
+	if len(granted) == 0 {
+		return nil
+	}
+	offerResolutionCastOver(g, controller, ctx.Source(), "Forger's Foundry", game.MayCastKeywordFreeCast, declineLeaveInExile, granted...)
+	return nil
+}
