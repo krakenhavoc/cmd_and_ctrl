@@ -178,3 +178,96 @@ func TestCmdr2B20OxDroverGivesAnOpponentAnOxAndDrawsWhenItEntersAndAttacks(t *te
 		}
 	}
 }
+
+func TestCmdr2B20SionaLooksAtSevenForAnAuraAndBottomsTheRest(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	me.Library.Cards = nil
+	// Pushed bottom first: the eighth card down is an Aura too, and is not looked at.
+	eighth := seedLibraryTop(me, "Eighth Aura", "Enchantment — Aura", "")
+	var seen []uuid.UUID
+	var auraIDs []uuid.UUID
+	for i, line := range []string{"Instant", "Enchantment — Aura", "Sorcery", "Creature — Bear", "Enchantment", "Enchantment — Aura", "Land"} {
+		id := seedLibraryTop(me, "Card", line, "")
+		seen = append(seen, id)
+		if i == 1 || i == 5 {
+			auraIDs = append(auraIDs, id)
+		}
+	}
+	advanceToMain(t, g)
+	ecl6Cast(t, g, me, "Siona, Captain of the Pyleas", "Legendary Creature — Human Soldier", cmdr2Siona, 2, 2, game.CastSpellParams{})
+	passPriorityAroundTable(t, g)
+	prompt := latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no prompt for the look at the top seven")
+	}
+	if len(prompt.ChooseCards) != 2 {
+		t.Fatalf("offered %d cards, want the 2 Aura cards among the top seven", len(prompt.ChooseCards))
+	}
+	for _, id := range prompt.ChooseCards {
+		if id == eighth {
+			t.Error("offered the eighth card")
+		}
+		if id != auraIDs[0] && id != auraIDs[1] {
+			t.Errorf("offered a card that is not an Aura card: %s", id)
+		}
+	}
+	hand := me.Hand.Size()
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{auraIDs[0]}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if !me.Hand.Contains(auraIDs[0]) || me.Hand.Size() != hand+1 {
+		t.Error("the chosen Aura should be the one card added to hand")
+	}
+	// The six not taken are the bottom six; the eighth card is now on top.
+	if got := len(me.Library.Cards); got != 7 {
+		t.Fatalf("library has %d cards, want 7", got)
+	}
+	if me.Library.Cards[len(me.Library.Cards)-1].InstanceID != eighth {
+		t.Error("the unseen eighth card is not on top")
+	}
+	_ = seen
+}
+
+func TestCmdr2B20SionaMakesASoldierWhenYourAuraAttachesToYourCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	dskB1Creature(g, me.ID, "Siona, Captain of the Pyleas", "Legendary Creature — Human Soldier", cmdr2Siona, 2, 2)
+	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
+	soldiers := func() int { return namedOnBattlefield(g, "Human Soldier", me.ID) }
+	attach := func(controller *game.Player, host uuid.UUID) uuid.UUID {
+		aura := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "An Aura", TypeLine: auraTypeLine,
+			Owner: controller.ID, Controller: controller.ID})
+		g.WithWriteLock(func() {
+			if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: host}); err != nil {
+				t.Fatalf("attach: %v", err)
+			}
+		})
+		passPriorityAroundTable(t, g)
+		return aura
+	}
+	attach(me, theirs)
+	if soldiers() != 0 {
+		t.Fatalf("a Soldier for my Aura on an opponent's creature")
+	}
+	attach(opp, mine)
+	if soldiers() != 0 {
+		t.Fatalf("a Soldier for an opponent's Aura on my creature")
+	}
+	aura := attach(me, mine)
+	if soldiers() != 1 {
+		t.Fatalf("%d Soldiers after my Aura attached to my creature, want 1", soldiers())
+	}
+	// Moving it to another creature of mine is "becomes attached" again.
+	other := b12Creature(g, me.ID, "Other", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: other}); err != nil {
+			t.Fatalf("move: %v", err)
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if soldiers() != 2 {
+		t.Errorf("%d Soldiers after moving the Aura to another creature of mine, want 2", soldiers())
+	}
+}

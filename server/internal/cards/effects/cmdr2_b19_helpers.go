@@ -160,3 +160,18 @@ func cmdr2B19LesserPowerThanAttacker() BlockerAgainstAttacker {
 		return blocker.PowerForComparison() < attacker.PowerForComparison()
 	}
 }
+
+// cmdr2B19YourAuraBecameAttachedToYourCreature is "Whenever an Aura you
+// control becomes attached to a creature you control": both read as the
+// Aura attaches.
+func cmdr2B19YourAuraBecameAttachedToYourCreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventAttach || ev.Label != "Aura" || ev.AlreadyAttached || source == nil {
+		return false
+	}
+	aura, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || aura.Controller != source.Controller {
+		return false
+	}
+	host, ok := g.LookupCardForEffect(ev.Target)
+	return ok && host.IsCreature() && host.Controller == source.Controller && host.Controller != uuid.Nil
+}
