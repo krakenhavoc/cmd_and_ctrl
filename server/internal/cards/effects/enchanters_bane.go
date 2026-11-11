@@ -39,23 +39,25 @@ const enchantersBaneSacrificeLabel = "Sacrifice the enchantment"
 
 func enchantersBaneResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok {
-			return nil
-		}
-		return PickOption{
-			Player:   c.Controller,
-			Question: "Enchanter's Bane — take damage equal to " + c.Name + "'s mana value, or sacrifice it",
-			Options: []game.ChoiceOption{
-				{Label: "Take damage equal to its mana value"},
-				{Label: enchantersBaneSacrificeLabel},
-			},
-			ThenKey: enchantersBaneAnswer,
-			Carry:   []uuid.UUID{t.ID},
-		}.Apply(ctx)
+	targets := ctx.LegalTargets()
+	if len(targets) == 0 {
+		return nil
 	}
-	return nil
+	t := targets[0]
+	c, ok := g.LookupCardForEffect(t.ID)
+	if !ok {
+		return nil
+	}
+	return PickOption{
+		Player:   c.Controller,
+		Question: "Enchanter's Bane — take damage equal to " + c.Name + "'s mana value, or sacrifice it",
+		Options: []game.ChoiceOption{
+			{Label: "Take damage equal to its mana value"},
+			{Label: enchantersBaneSacrificeLabel},
+		},
+		ThenKey: enchantersBaneAnswer,
+		Carry:   []uuid.UUID{t.ID},
+	}.Apply(ctx)
 }
 
 // enchantersBaneAnswer is the controller's answer: sacrifice the

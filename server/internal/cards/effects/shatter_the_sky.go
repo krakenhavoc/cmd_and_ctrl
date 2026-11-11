@@ -21,10 +21,7 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		OnResolve: ResolveSteps(
 			Instruction(func(ctx *Context) error {
-				var drawers []game.Card
-				for _, c := range MatchingBattlefield(ctx, And(Creature(), PowerGE(4))) {
-					drawers = append(drawers, c)
-				}
+				drawers := MatchingBattlefield(ctx, And(Creature(), PowerGE(4)))
 				for _, p := range tablePlayers(ctx) {
 					for _, c := range drawers {
 						if c.Controller == p {

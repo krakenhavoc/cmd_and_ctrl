@@ -312,18 +312,6 @@ func TestS49IntellectualOfferingTwoChoices(t *testing.T) {
 	}
 }
 
-func s49Tap(g *game.Game, ids ...uuid.UUID) {
-	g.WithWriteLock(func() {
-		for i := range g.Battlefield.Cards {
-			for _, id := range ids {
-				if g.Battlefield.Cards[i].InstanceID == id {
-					g.Battlefield.Cards[i].Tapped = true
-				}
-			}
-		}
-	})
-}
-
 func TestS49DisorientingChoiceExilesOrFetchesLands(t *testing.T) {
 	g := newCatalogGame(t)
 	me, o1, o2 := g.Seats[0], g.Seats[1], g.Seats[2]

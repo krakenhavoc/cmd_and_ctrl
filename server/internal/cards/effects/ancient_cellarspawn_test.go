@@ -18,9 +18,9 @@ func TestAncientCellarspawnIsRegisteredFull(t *testing.T) {
 }
 
 // castUnderCellarspawn casts a spell with the given type line and cost,
-// paying `pool`, and reports the cast error and the first opponent's life
-// change once the trigger has resolved.
-func castUnderCellarspawn(t *testing.T, typeLine, cost, pool string) (err error, lifeLost int) {
+// paying `pool`, and reports the first opponent's life change once the
+// trigger has resolved, and the cast error.
+func castUnderCellarspawn(t *testing.T, typeLine, cost, pool string) (lifeLost int, err error) {
 	t.Helper()
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -35,7 +35,7 @@ func castUnderCellarspawn(t *testing.T, typeLine, cost, pool string) (err error,
 	before := opp.Life
 	err = g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true})
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	if pick := latestPickTarget(g, me.ID); pick != nil {
 		if e := g.ResolvePickTarget(pick.ID, me.ID, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}); e != nil {
@@ -43,7 +43,7 @@ func castUnderCellarspawn(t *testing.T, typeLine, cost, pool string) (err error,
 		}
 	}
 	passPriorityAroundTable(t, g)
-	return nil, before - opp.Life
+	return before - opp.Life, nil
 }
 
 func TestAncientCellarspawnDiscountsDemonsHorrorsAndNightmares(t *testing.T) {
@@ -58,7 +58,7 @@ func TestAncientCellarspawnDiscountsDemonsHorrorsAndNightmares(t *testing.T) {
 		{"other creature gets no discount", "Creature — Bear", "{2}{B}", "BB", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err, _ := castUnderCellarspawn(t, tc.typeLine, tc.cost, tc.pool)
+			_, err := castUnderCellarspawn(t, tc.typeLine, tc.cost, tc.pool)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("cast err = %v, want error %v", err, tc.wantErr)
 			}
@@ -68,11 +68,11 @@ func TestAncientCellarspawnDiscountsDemonsHorrorsAndNightmares(t *testing.T) {
 
 func TestAncientCellarspawnDrainsTheDifference(t *testing.T) {
 	// A {2}{B} Horror cast for {B}{B}: spent 2, mana value 3 → 1 life.
-	if err, lost := castUnderCellarspawn(t, "Creature — Horror", "{2}{B}", "BB"); err != nil || lost != 1 {
+	if lost, err := castUnderCellarspawn(t, "Creature — Horror", "{2}{B}", "BB"); err != nil || lost != 1 {
 		t.Fatalf("discounted Horror: err %v, lost %d, want nil and 1", err, lost)
 	}
 	// Paid in full: no trigger.
-	if err, lost := castUnderCellarspawn(t, "Creature — Bear", "{2}{B}", "BBB"); err != nil || lost != 0 {
+	if lost, err := castUnderCellarspawn(t, "Creature — Bear", "{2}{B}", "BBB"); err != nil || lost != 0 {
 		t.Fatalf("full price: err %v, lost %d, want nil and 0", err, lost)
 	}
 }

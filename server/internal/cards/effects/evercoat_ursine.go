@@ -41,7 +41,7 @@ func init() {
 				Watches: []game.EventKind{game.EventDealDamage},
 				AppliesTo: AllOf(ThisDealtCombatDamageToAPlayer,
 					func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-						return len(g.HiddenCardsForEffect(game.PermissionCardRef(game.ObjectRefOf(*source)))) > 0
+						return len(g.HiddenCardsForEffect(game.ObjectRefOf(*source))) > 0
 					}),
 				Key: evercoatUrsineLabel,
 				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
