@@ -32,9 +32,10 @@ func init() {
 			if err := (CreateToken{Template: TokenCard("1/1 green Squirrel"), N: 2}).Apply(ctx); err != nil {
 				return err
 			}
+			types := []string{ctx.TextSubtype("Insect"), ctx.TextSubtype("Rat"), ctx.TextSubtype("Spider"), ctx.TextSubtype("Squirrel")}
 			n := 0
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.Controller == item.Controller && cmdr2B17IsInsectRatSpiderOrSquirrel(c) {
+				if c.Controller == item.Controller && cmdr2B17HasAnySubtype(c, types) {
 					n++
 				}
 			}
@@ -43,7 +44,7 @@ func init() {
 			}
 			return BoostUntilEOT{
 				Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-					return c.IsCreature() && !cmdr2B17IsInsectRatSpiderOrSquirrel(c)
+					return c.IsCreature() && !cmdr2B17HasAnySubtype(c, types)
 				},
 				Power: -n, Toughness: -n,
 				Label: "Swarmyard Massacre — -1/-1 for each Insect, Rat, Spider or Squirrel you control",

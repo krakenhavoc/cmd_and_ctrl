@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // cmdr2_b17_helpers.go — card-side helpers of cmdr2 batch 17
 // (Squirrels, Rats and Saprolings, #5368).
@@ -18,7 +22,7 @@ func cmdr2B17SquirrelMobPT() game.StaticAbility {
 		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 			n := 0
 			for _, o := range g.Battlefield.Cards {
-				if o.InstanceID != source.InstanceID && o.IsCreature() && o.HasSubtype("Squirrel") {
+				if o.InstanceID != source.InstanceID && o.IsCreature() && o.HasSubtype(source.TextSubtype("Squirrel")) {
 					n++
 				}
 			}
@@ -28,12 +32,19 @@ func cmdr2B17SquirrelMobPT() game.StaticAbility {
 	}
 }
 
-// cmdr2B17IsInsectRatSpiderOrSquirrel is the class Swarmyard Massacre
-// names: a creature with any of the four types, read through its
-// effective subtypes.
-func cmdr2B17IsInsectRatSpiderOrSquirrel(c game.Card) bool {
-	return c.IsCreature() && (c.HasSubtype("Insect") || c.HasSubtype("Rat") ||
-		c.HasSubtype("Spider") || c.HasSubtype("Squirrel"))
+// cmdr2B17HasAnySubtype is the class Swarmyard Massacre names: a creature
+// with any of the given types, read through its effective subtypes. The
+// caller reads the type words through the spell's own text (CR 612.2).
+func cmdr2B17HasAnySubtype(c game.Card, types []string) bool {
+	if !c.IsCreature() {
+		return false
+	}
+	for _, t := range types {
+		if c.HasSubtype(t) {
+			return true
+		}
+	}
+	return false
 }
 
 // cmdr2B17VanishingKeyword is the Keyword of a vanishing upkeep row.
@@ -42,7 +53,9 @@ const cmdr2B17VanishingKeyword = "vanishing"
 // cmdr2B17VanishingEntry is the first of vanishing's three abilities
 // (CR 702.63a): "This permanent enters with N time counters on it."
 func cmdr2B17VanishingEntry(n int) game.ReplacementEffect {
-	return b10EntersWithCounters(game.CounterTime, n, "Vanishing: enters with time counters on it")
+	r := b10EntersWithCounters(game.CounterTime, n, "Vanishing: enters with time counters on it")
+	r.RowLabel = fmt.Sprintf("Vanishing %d", n)
+	return r
 }
 
 // cmdr2B17VanishingTriggers are the other two (CR 702.63a): at the
