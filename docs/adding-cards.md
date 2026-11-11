@@ -14239,6 +14239,11 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
   printed values, and read through `game.PrintsNoAbilities`. A card the importer never read (a token, a fixture, a
   restore point from before the stamp) is `PrintedUnknown` and is not "with no abilities". A test fixture says so with
   `NoAbilitiesText: game.PrintedYes`.
+- **"Card with warp" is the printed text too.** `game.Card.WarpText` is stamped by the deck importer
+  (`game.WarpInText`: a line of its own that starts "Warp [cost]", CR 702.185a) and re-derived by `SetFace`, because
+  warp is not a canonical keyword token and `Keywords` does not carry it. `game.HasWarp` (`WithWarp()`) answers yes
+  on the stamp or on a catalog warp cost, so a card the catalog does not run counts, and no for any face-down card
+  (CR 406.3a, CR 708.2a). A test fixture says so with `WarpText: game.PrintedYes`.
 - **"Exile X cards" on an ability** is `game.ExileCost.CountIsX`, an any-number clause with no floor: the activator
   announces X by naming that many matching cards, and `ctx.Exiled()` is X. It is graveyard-only, and the wire is the
   existing `exile_cost_any_number` picker. A cast's "exile X" stays `ExileXFromGraveyardCost`.

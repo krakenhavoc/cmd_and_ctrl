@@ -61,12 +61,7 @@ a player right now.
 // cannot change in either direction without somebody saying why.
 //
 // Key is Finding.Key() — "<card name> / <mechanic>".
-var adoptableGaps = map[string]string{
-	// Not a warp gap: Blade has no warp. The caveat is that its target
-	// filter reads "has warp" off the catalog, so an uncatalogued card
-	// with warp in exile can't be chosen (#4461).
-	"Blade of the Swarm / warp": "the caveat is about which exiled cards count as having warp, not about the card itself",
-}
+var adoptableGaps = map[string]string{}
 
 // TestAdoptableGapsArePinned fails on any movement in that set.
 func TestAdoptableGapsArePinned(t *testing.T) {

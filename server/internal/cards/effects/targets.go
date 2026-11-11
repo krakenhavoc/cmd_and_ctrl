@@ -311,14 +311,15 @@ func WithMorphAbility() CardPredicate {
 // was ever cast for its warp cost.
 //
 // Not HasKeyword("warp"): warp is not a token in canonicalKeywords (the
-// deck importer drops it), for morph's reason, so the card's
-// declaration of the warp alternative cost IS the ability and the
-// predicate asks for that. A card with warp that is not in the catalog
-// declares nothing and does not pass; a face-down card answers false,
-// because CatalogKey answers "" for one.
+// deck importer drops it), for morph's reason. game.HasWarp answers
+// instead: the card's printed text has the keyword (Card.WarpText,
+// stamped by the deck importer, so a card the catalog does not run
+// passes too, #5688), or its catalog entry declares the warp
+// alternative cost. A face-down card answers false (CR 708.2a, CR
+// 406.3a).
 func WithWarp() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return game.AlternativeCostByKey(game.CatalogKey(c), "warp") != nil
+		return game.HasWarp(c)
 	}
 }
 

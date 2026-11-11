@@ -19,12 +19,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it got there, goes to the bottom of its owner's library
 // (PutIntoLibrary, the tuck route).
 //
-// Simplification: "with warp" is read off the card's catalog entry
-// (WithWarp), because the deck importer keeps no record of warp on a
-// card the catalog does not cover. An exiled card with warp that is not
-// in the catalog can't be chosen. Every card that can actually be warp
-// cast here is in the catalog, so a warped creature in exile is always
-// a legal pick.
+// "With warp" is game.HasWarp (WithWarp): the card's printed text has
+// the keyword, as the deck importer read it, or its catalog entry
+// declares the warp cost. So a card with warp that is not automated
+// here, which only a manual move can have put into exile, is a legal
+// pick like any other (#5688). A card exiled face down has no
+// characteristics (CR 406.3a) and is not one.
+//
+// No simplification.
 func init() {
 	trigger := WhenThisEnters("Blade of the Swarm — choose one", func(*game.Game, *game.StackItem) error { return nil })
 	trigger.Modes = ChooseOne(
@@ -45,10 +47,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "33042d12-f08b-4b3e-b106-c424ef868c13",
 		Name:         "Blade of the Swarm",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The second mode can't choose an exiled card with warp that isn't automated on this site.",
-		},
-		Triggered: []game.TriggeredAbility{trigger},
+		Completeness: CompletenessFull,
+		Triggered:    []game.TriggeredAbility{trigger},
 	})
 }
