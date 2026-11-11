@@ -312,3 +312,66 @@ func TestCmdr2B20RetetherReturnsEachAuraOntoACreatureOnly(t *testing.T) {
 		t.Error("an Aura card from another player's graveyard returned")
 	}
 }
+
+func TestCmdr2B20KnickknackOupheEntersWithXCountersAndPutsAurasOfManaValueXOrLess(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	host := pushTribalCreature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
+	me.Library.Cards = nil
+	push := func(name, typeLine, oracle, cost string) uuid.UUID {
+		id := uuid.New()
+		me.Library.PushTop(game.Card{InstanceID: id, Name: name, TypeLine: typeLine, OracleID: oracle, ManaCost: cost,
+			Colors: []string{"W"}, Owner: me.ID, Controller: me.ID})
+		return id
+	}
+	// Pushed bottom first: the fourth card down is not revealed.
+	unrevealed := push("Unrevealed", "Creature — Bear", "", "{1}")
+	bear := push("Gy Bear", "Creature — Bear", "", "{1}{G}")
+	tooBig := push("Pacifism", auraTypeLine, pacifismOracle, "{3}{W}")
+	fits := push("Pacifism", auraTypeLine, pacifismOracle, "{1}{W}")
+
+	id, err := socB5CastX(t, g, "Knickknack Ouphe", "Creature — Ouphe", cmdr2KnickknackOuphe, "{X}{G}", 3, nil)
+	if err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c, ok := battlefieldCard(g, id); !ok || c.Counters[game.CounterPlusOne] != 3 {
+		t.Fatalf("the Ouphe did not enter with three +1/+1 counters")
+	}
+	prompt := latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no prompt for the Auras among the revealed cards")
+	}
+	if len(prompt.ChooseCards) != 1 || prompt.ChooseCards[0] != fits {
+		t.Fatalf("offered %v, want only the Aura with mana value 3 or less", prompt.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{fits}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	// One legal host among the creatures is forced only with one creature: the
+	// Ouphe itself and the Bear are both legal.
+	if c := auraHostChoiceFor(g, me.ID); c != nil {
+		answerAuraHost(t, g, me.ID, cardRef(host))
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(fits) {
+		t.Fatal("the Aura did not enter")
+	}
+	if got := attachmentHostOf(t, g, fits); got != cardRef(host) {
+		t.Errorf("the Aura enchants %v, want the chosen creature", got)
+	}
+	if g.Battlefield.Contains(tooBig) {
+		t.Error("an Aura with mana value 4 entered on X = 3")
+	}
+	// The revealed cards that did not enter are on the bottom; the unrevealed one is on top.
+	if got := len(me.Library.Cards); got != 3 {
+		t.Fatalf("library has %d cards, want 3", got)
+	}
+	if top := me.Library.Cards[len(me.Library.Cards)-1].InstanceID; top != unrevealed {
+		t.Error("the unrevealed card is not still on top")
+	}
+	bottom := map[uuid.UUID]bool{me.Library.Cards[0].InstanceID: true, me.Library.Cards[1].InstanceID: true}
+	if !bottom[bear] || !bottom[tooBig] {
+		t.Error("the revealed cards that did not enter are not on the bottom")
+	}
+}
