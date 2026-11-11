@@ -73805,6 +73805,7 @@ turnTally.damageDealers[]	object
 turnTally.damageDealers[].combat	bool
 turnTally.damageDealers[].epoch	number:int
 turnTally.damageDealers[].source	custom(uuid.UUID)
+turnTally.damageDealers[].types	string
 turnTally.damageDealers[].victim	custom(uuid.UUID)
 turnTally.damageSources	array
 turnTally.damageSources[]	object
