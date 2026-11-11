@@ -169,14 +169,10 @@ func TestS35RootElementalPutsACreatureFromHand(t *testing.T) {
 	me.Hand.PushTop(game.Card{InstanceID: bear, Name: "Hand Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
 	s35TurnUp(t, g, id, "G", "G", "C", "C", "C", "C", "C")
 	passPriorityAroundTable(t, g)
-	s35AnswerYes(t, g, me.ID)
+	answerChooseCards(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 	if _, ok := battlefieldCard(g, bear); !ok {
-		answerSearchByID(t, g, me.ID, bear)
-		passPriorityAroundTable(t, g)
-		if _, ok := battlefieldCard(g, bear); !ok {
-			t.Fatal("the creature card was not put onto the battlefield")
-		}
+		t.Fatal("the creature card was not put onto the battlefield")
 	}
 }
 
@@ -215,5 +211,8 @@ func s35AnswerYes(t *testing.T, g *game.Game, chooser uuid.UUID) {
 			return
 		}
 	}
-	t.Fatalf("no yes/no prompt for %s: %+v", chooser, g.PendingChoices)
+	for _, c := range g.PendingChoices {
+		t.Logf("pending kind=%s chooser=%s reason=%q", c.Kind, c.Chooser, c.Reason)
+	}
+	t.Fatalf("no yes/no prompt for %s", chooser)
 }
