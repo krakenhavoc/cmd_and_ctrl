@@ -199,3 +199,107 @@ func cmdr2S41FoundryCastExiled(g *game.Game, item *game.StackItem) error {
 	offerResolutionCastOver(g, controller, ctx.Source(), "Forger's Foundry", game.MayCastKeywordFreeCast, declineLeaveInExile, granted...)
 	return nil
 }
+
+// cmdr2S41FeatherTargetsOnlyThis is Feather's trigger condition: its
+// controller cast a noncreature spell that targets only Feather ("only" is
+// every target, in each instance of the word, being Feather: a spell that
+// names Feather twice qualifies, one that names anything else does not).
+func cmdr2S41FeatherTargetsOnlyThis(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
+		return false
+	}
+	spell, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || spell.IsCreature() {
+		return false
+	}
+	sole, ok := g.StackItemSoleTargetForEffect(ev.CardID)
+	return ok && sole.Kind == game.TargetCard && sole.ID == source.InstanceID
+}
+
+// cmdr2S41FeatherCandidates is every other creature, whoever controls it,
+// that a copy of the spell (controlled by its caster) could target in
+// Feather's place: hexproof from the caster, protection from the spell, a
+// clause that excludes it, or a failed target of a multi-target spell rules
+// a creature out (game.SpellCouldTargetInsteadForEffect).
+func cmdr2S41FeatherCandidates(g *game.Game, spell, caster, feather uuid.UUID) []uuid.UUID {
+	var out []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.InstanceID == feather || !c.IsCreature() {
+			continue
+		}
+		if g.SpellCouldTargetInsteadForEffect(spell, caster, feather, c.InstanceID) {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
+}
+
+// cmdr2S41FeatherOffer is the trigger's effect: if the spell could target
+// any other creature, its caster may pay {2} for each creature they will
+// copy it for, up to the number of such creatures. The number is chosen first
+// and the creatures after, which is the same choice (CR 608.2d) with the
+// payment known.
+func cmdr2S41FeatherOffer(g *game.Game, item *game.StackItem) error {
+	if item.Trigger == nil {
+		return nil
+	}
+	spell, caster := item.Trigger.Event.CardID, item.Trigger.Event.Actor
+	n := len(cmdr2S41FeatherCandidates(g, spell, caster, item.SourceCardID))
+	if n == 0 {
+		return nil
+	}
+	return MayPayX{
+		Symbol: "{2}",
+		Max:    n,
+		Label:  "Feather, Radiant Arbiter",
+		Buys:   "copy that spell for X other creatures",
+		Unit:   game.PayAmountOther,
+		Then:   cmdr2S41FeatherPaid,
+		Carry:  []uuid.UUID{spell},
+	}.Apply(NewContext(g, item))
+}
+
+// cmdr2S41FeatherPaid is the paid half: for each of the creatures chosen,
+// copy the spell with that creature as the target of every target that was
+// Feather. With as many creatures as could be chosen, nothing is asked.
+var cmdr2S41FeatherPaid = PayUnlessBranches("pay-unless/cmdr2-s41-feather-radiant-arbiter",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		if r.Number <= 0 || len(r.Carry) == 0 {
+			return nil
+		}
+		spell, feather := r.Carry[0], ctx.Source()
+		cands := cmdr2S41FeatherCandidates(ctx.Game, spell, r.Chooser, feather)
+		if len(cands) == 0 {
+			return nil
+		}
+		if r.Number >= len(cands) {
+			return cmdr2S41FeatherCopies(ctx.Game, spell, r.Chooser, feather, cands)
+		}
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:  r.Chooser,
+			Source:   feather,
+			Question: "Feather, Radiant Arbiter — choose the creatures to copy that spell for (the copies go on the stack in the order chosen)",
+			Cards:    cands,
+			Min:      r.Number,
+			Max:      r.Number,
+			ThenKey:  cmdr2S41FeatherChosen,
+			Carry:    []uuid.UUID{spell, feather},
+		})
+		return nil
+	}, nil)
+
+var cmdr2S41FeatherChosen = game.RegisterChooseCardsThen("choose-cards/cmdr2-s41-feather-radiant-arbiter", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) < 2 || !r.Answered {
+		return nil
+	}
+	return cmdr2S41FeatherCopies(g, r.Carry[0], r.Chooser, r.Carry[1], r.Picked)
+})
+
+// cmdr2S41FeatherCopies makes one copy of the spell for each creature, in
+// order. A creature that is no longer a legal target by now gets none.
+func cmdr2S41FeatherCopies(g *game.Game, spell, caster, feather uuid.UUID, creatures []uuid.UUID) error {
+	for _, id := range creatures {
+		g.CopySpellRetargetedForEffect(spell, caster, feather, id)
+	}
+	return nil
+}
