@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // TestRealDumpDeckCopyAllowances pins CR 113.6n against the real oracle
@@ -67,7 +68,7 @@ func TestRealDumpDeckCopyAllowances(t *testing.T) {
 		t.Errorf("deck holds %d Nazgûl, want 9", nazgul)
 	}
 	var ve *ValidationError
-	if errors.As(Validate(list), &ve) {
+	if errors.As(Validate(list, game.FormatCommander), &ve) {
 		for _, v := range ve.Violations {
 			if v.Code == CodeSingleton {
 				t.Errorf("singleton violation on the real deck: %s", v.Message)

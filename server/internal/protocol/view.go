@@ -122,6 +122,20 @@ type GameView struct {
 	// identical for every viewer: the command zone is public, and the
 	// planar deck's cards are on nobody's wire, only its size.
 	Planechase *PlanechaseView `json:"planechase,omitempty"`
+	// Match is the table's match (ADR 0222 §3, match_view.go): its
+	// score and, between two of its games, the sideboarding window.
+	// Absent at a table with no match, which is every Commander table.
+	// While match.sideboarding is present, state is "active" (the
+	// table is in play), the board is the finished game's, outcome is
+	// absent and no game action is legal.
+	Match *MatchView `json:"match,omitempty"`
+	// NoCommanders is true when no seat brought a commander (ADR 0222
+	// slice 1), which is when the client hides its commander UI: the
+	// command zone tile, the commander damage grid and the commander
+	// damage setting. It reads the cards, not the format, and is
+	// omitted at every table with a commander, so a Commander table's
+	// view is unchanged.
+	NoCommanders bool `json:"no_commanders,omitempty"`
 	// StackItems is the announce-time metadata for every item
 	// currently on the stack — caster, target list, modes, X,
 	// distribution, hold-priority, split-second flags. Indexed in
@@ -922,6 +936,15 @@ type PendingChoiceView struct {
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
 	// decline; only the wording differs.
 	ExchangesText bool `json:"exchanges_text,omitempty"`
+	// CopyUse says what a "copy_target" pick is for when nothing is
+	// entering as a copy: "tokens" (Esix, Fractal Bloom: the creature
+	// the tokens being created will copy; the empty answer creates the
+	// tokens as they were); "exile_copied" then "exile_other" (The
+	// Mimeoplasm's two graveyard cards: the one to copy, then the one
+	// whose power becomes counters; both are exiled, and an empty answer
+	// to either exiles nothing). Absent for the ordinary
+	// enters-as-a-copy pick. Same answer, same empty decline.
+	CopyUse string `json:"copy_use,omitempty"`
 	// Placement populates the ADR 0088 "put_in_library" kind: which
 	// lanes the answer may use — "top" ({top_order} alone), "bottom"
 	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
@@ -1586,6 +1609,13 @@ type AdditionalCostView struct {
 	// DiscardCards is how many cards the caster must discard. The
 	// picked instance IDs ride back on cast_spell's discard_ids.
 	DiscardCards int `json:"discard_cards,omitempty"`
+	// DiscardOptions lists the cards in the caster's hand that may pay
+	// a discard the clause narrows: "discard a land card" (Magmatic
+	// Insight, #5457). min / max are the clause's count. Absent when
+	// any card pays (every other discard); present with fewer cards
+	// than `min` means the cost cannot be paid right now, which makes
+	// the spell uncastable (CR 118.3).
+	DiscardOptions *LegalTargetsView `json:"discard_options,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
 	// caster's own board (CR 701.21a). Its min / max are how many
@@ -6151,8 +6181,11 @@ func ViewOfGame(g *game.Game) GameView {
 		// the frame, whose owner, controller and knowers are all seats.
 		ids := newIDStrings(g.Seats)
 		view = GameView{
-			ID:          g.ID.String(),
-			State:       string(g.State),
+			ID: g.ID.String(),
+			// ADR 0222 §3: a table between two games of a match is in
+			// play on the wire, as it is to the lobby; match.sideboarding
+			// says where it is.
+			State:       string(wireState(g.State)),
 			Seats:       viewOfSeats(g, g.Seats, ids),
 			Battlefield: viewOfZone(g.Battlefield, ids),
 			Stack:       viewOfZone(g.Stack, ids),
@@ -6188,6 +6221,8 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			Planechase:            viewOfPlanechase(g, ids),
+			Match:                 viewOfMatch(g, ids),
+			NoCommanders:          !g.HasCommanderLocked(),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
@@ -6270,9 +6305,23 @@ func ViewOfGame(g *game.Game) GameView {
 		view.Reveals = publicRevealsOf(g, &view)
 		// ADR 0057: the result, resolved out of the same assembled
 		// view the log names its cards from.
-		view.Outcome = viewOfOutcome(g.Outcome, &view)
+		// ADR 0222 §3: between two games of a match the outcome on the
+		// engine is the finished game's, not the table's; it is in
+		// match.games, and the table has no outcome yet.
+		if g.State != game.StateBetweenGames {
+			view.Outcome = viewOfOutcome(g.Outcome, &view)
+		}
 	})
 	return view
+}
+
+// wireState is the state the wire names: a table between two games of
+// a match is "active".
+func wireState(s game.State) game.State {
+	if s == game.StateBetweenGames {
+		return game.StateActive
+	}
+	return s
 }
 
 // enumerateLegalMoves runs the legal-move enumerator once per seat
@@ -8191,7 +8240,8 @@ type ProtectionView struct {
 	// "everything", "player", "mana_value_at_most" (Value is the
 	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
 	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
-	// "noncreature_permanents" (#4307) or "multicolored" (#4834).
+	// "noncreature_permanents" (#4307), "multicolored" (#4834) or
+	// "mana_value_at_least" (Value is the bound N).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
@@ -8745,6 +8795,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		Label:        ac.Label,
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
+	}
+	if ac.DiscardLand && ac.DiscardCards > 0 {
+		out.DiscardOptions = &LegalTargetsView{
+			Min:   ac.DiscardCards,
+			Max:   ac.DiscardCards,
+			Cards: cardIDStrings(g.AdditionalDiscardOptionsForEffect(caster, castID, ac)),
+		}
 	}
 	if ac.Sacrifice != nil {
 		// SpecCandidatesForEffect, not LegalTargetsForEffect: an
@@ -10325,6 +10382,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			AskedByHand:      string(c.AskedByHand),
 			PrivateText:      c.PrivateText(),
 			ExchangesText:    c.ExchangesText,
+			CopyUse:          c.CopyUse,
 		}
 		for _, earlier := range c.EarlierPermanentChoicesForEffect() {
 			entry := EarlierChoiceView{
@@ -11919,7 +11977,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll: v.OpeningRoll,
 		// ADR 0216 §9: the face-up planar cards are public.
-		Planechase:            filterPlanechaseFor(v.Planechase, isKnower),
+		Planechase: filterPlanechaseFor(v.Planechase, isKnower),
+		// ADR 0222 §3: a pool is its owner's, and so is the choice of
+		// who plays first until the window closes.
+		Match:                 filterMatchFor(v.Match, viewerID),
+		NoCommanders:          v.NoCommanders,
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
 		DelayedTriggers:       v.DelayedTriggers,
@@ -14777,6 +14839,14 @@ type TableSettingsView struct {
 	// Planechase plays the game with a communal planar deck and the
 	// planar die (ADR 0216). Fixed once the game is active.
 	Planechase bool `json:"planechase,omitempty"`
+	// Format is the table's format (ADR 0222 §1): "standard", or
+	// omitted for Commander, the default, so a Commander table's wire
+	// is what it was. Fixed once the game is active.
+	Format string `json:"format,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3): 3, or
+	// omitted for best-of-one and for a table with no match. Fixed once
+	// the game is active.
+	BestOf int `json:"best_of,omitempty"`
 }
 
 // PlanechaseView is GameView.planechase (ADR 0216 §9).
@@ -14863,7 +14933,25 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		FreeMulligans: s.EffectiveFreeMulligans(),
 		AwayAfter:     s.EffectiveAwayAfter(),
 		Planechase:    s.Planechase,
+		Format:        string(storedFormatOf(s)),
+		BestOf:        storedBestOfOf(s),
 	}
+}
+
+// storedBestOfOf is the wire's match length: 0 for best-of-one.
+func storedBestOfOf(s game.TableSettings) int {
+	if n := s.EffectiveBestOf(); n > 1 {
+		return n
+	}
+	return 0
+}
+
+// storedFormatOf is the wire's format: empty for Commander.
+func storedFormatOf(s game.TableSettings) game.Format {
+	if f := s.EffectiveFormat(); f != game.FormatCommander {
+		return f
+	}
+	return ""
 }
 
 // modeMemoryWire is the wire spelling of a "that hasn't been chosen"

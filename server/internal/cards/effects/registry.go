@@ -857,7 +857,7 @@ func Register(spec Spec) {
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
 		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
-		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers, false)
+		checkManaTapOthersClause(spec.Name, i, ma)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
 		// every one of them a boot-time refusal rather than a
@@ -903,6 +903,10 @@ func Register(spec Spec) {
 				spec.Name, i))
 		}
 		checkManaCollectEvidence(spec.Name, i, ma)
+		if ma.Cost.ExileCards.Processes() {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d puts a card from exile into a graveyard — a CR 602 ability's cost only (#5457)",
+				spec.Name, i))
+		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		checkManaForage(spec.Name, i, ma)
@@ -1001,6 +1005,10 @@ func Register(spec Spec) {
 	// zone layer step finds a Mycosynth Lattice by one map read per
 	// permanent.
 	game.IndexZoneLayers(spec.OracleID, spec.Static)
+	// #5427: and the card's own "as long as this card isn't on the
+	// battlefield, it's a ..." (game/off_battlefield_self.go).
+	checkOffBattlefieldSelf(spec.Name, spec.OffBattlefield)
+	game.IndexOffBattlefieldSelf(spec.OracleID, spec.OffBattlefield)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -1135,6 +1143,26 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 					card, what, i, zone, why))
 			}
 		}
+	}
+}
+
+// checkOffBattlefieldSelf is the registration check for
+// Spec.OffBattlefield (#5427): the sentence adds at least one card type
+// and, since every printed one makes the card a creature, it is read
+// as setting power and toughness, so a declaration that is not a
+// creature's would silently give a noncreature card a 0/0 (CR 208.3).
+func checkOffBattlefieldSelf(card string, self *game.OffBattlefieldSelf) {
+	if self == nil {
+		return
+	}
+	creature := false
+	for _, t := range self.Types {
+		if strings.EqualFold(t, "creature") {
+			creature = true
+		}
+	}
+	if !creature {
+		panic(fmt.Sprintf("effects.Register: %q declares OffBattlefield without the Creature type: the seam sets power and toughness, which only a creature card has (CR 208.3)", card))
 	}
 }
 
@@ -1315,7 +1343,10 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			// #3276 (Jetfire, Ingenious Scientist: "one or more +1/+1
 			// counters from among artifacts you control"). Only the
 			// printed form is: one kind, and a floor of at least one.
-			if rc.Variable && rc.Counter == "" {
+			if rc.OnePermanent && !rc.Among {
+				panic(fmt.Sprintf("effects.Register: %q %s marks a counter removal OnePermanent without Among — build it with RemoveCountersXFromOne", card, where))
+			}
+			if rc.Variable && rc.Counter == "" && !rc.OnePermanent {
 				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters of any kind from among several permanents — no printed card does", card, where))
 			}
 			if rc.Variable && rc.N < 1 {
@@ -1677,6 +1708,29 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 	case tc.Filter.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a tap-others clause matches permanents only", card, where))
 	}
+}
+
+// checkManaTapOthersClause is checkTapOthersClause for a mana ability,
+// which may also print "Tap X untapped <permanents> you control" with X
+// the number tapped (#5447, Hazel of the Rootbloom): the any-number form
+// (TapXUntappedForMana). A mana ability announces no X, so the count has
+// to be read off the payment, and such an ability must declare
+// ProducedForPaid: an output that ignored the count would be a cost the
+// player could pay with nothing.
+func checkManaTapOthersClause(card string, i int, ma ManaAbility) {
+	tc := ma.Cost.TapOthers
+	where := fmt.Sprintf("mana ability %d", i)
+	if tc == nil || !tc.AnyNumber {
+		checkTapOthersClause(card, where, tc, false)
+		return
+	}
+	if ma.ProducedForPaid == nil {
+		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but its output does not read the payment (ProducedForPaid)", card, where))
+	}
+	fixed := *tc
+	fixed.AnyNumber = false
+	fixed.Count = 1
+	checkTapOthersClause(card, where, &fixed, false)
 }
 
 // zoneDeclared reports whether `zone` appears in a Spec's
@@ -2783,6 +2837,13 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if !game.ExileCostZoneSupported(ec.Zone()) {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — an exile cost reads the hand or the graveyard",
 			name, where, ec.Zone()))
+	}
+	// #5457: "Put a card an opponent owns from exile into that player's
+	// graveyard" has a printed count and links nothing: the card leaves
+	// exile, so "cards exiled with this" could never name it.
+	if ec.Processes() && (ec.AnyNumber || ec.LinkToSource) {
+		panic(fmt.Sprintf("effects.Register: %q %s puts cards from exile into a graveyard with an open count or a link — build it with ProcessCards (#5457)",
+			name, where))
 	}
 }
 

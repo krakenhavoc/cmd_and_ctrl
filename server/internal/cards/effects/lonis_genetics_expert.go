@@ -53,7 +53,7 @@ func init() {
 					if item.Params.Amount <= 0 {
 						return nil
 					}
-					return CreateToken{Controller: item.Controller, Template: ClueToken(), N: item.Params.Amount}.Apply(NewContext(g, item))
+					return Investigate{Player: item.Controller, N: item.Params.Amount}.Apply(NewContext(g, item))
 				},
 			},
 			Targeting(On(game.EventSacrifice, lonisYouSacrificedAClue,

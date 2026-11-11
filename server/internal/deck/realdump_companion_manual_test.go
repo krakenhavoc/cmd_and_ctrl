@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // realdump_companion_manual_test.go — ADR 0172 against the real
@@ -71,7 +72,7 @@ func TestRealDumpCompanion(t *testing.T) {
 			continue
 		}
 		var codes []string
-		if err := Validate(list); err != nil {
+		if err := Validate(list, game.FormatCommander); err != nil {
 			codes = violationCodes(err)
 		}
 		t.Logf("%s: %d cards, violations %v", tc.file, len(list.Commanders)+len(list.Mainboard), codes)

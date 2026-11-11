@@ -109,6 +109,12 @@ type TargetSource struct {
 	// that carries it still excludes nothing and compares nothing.
 	text *TextWords
 
+	// tribe is the creature type chosen for the ability's source, lent to a
+	// COST clause (costSourceLocked) that names it: Etchings of the Chosen's
+	// "Sacrifice a creature of the chosen type". A cost walk holds no source
+	// object, so OfSourcesChosenType would otherwise read an empty type.
+	tribe string
+
 	// casting says Object is a card being CAST (SourceCast), not a spell
 	// already on the stack or a permanent: CR 601.2a moves the card to
 	// the stack before CR 601.2c's targets are announced, so the card is
@@ -211,6 +217,11 @@ func (s TargetSource) lend(c Card) Card {
 func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
 	src := SourceChooser(playerID)
 	src.text = g.costTextLocked(sourceID)
+	if sourceID != uuid.Nil {
+		if c := findBattlefieldCard(g, sourceID); c != nil {
+			src.tribe = c.NamedTribe
+		}
+	}
 	return src
 }
 
@@ -581,6 +592,15 @@ type TargetSpec struct {
 	// admits NOTHING, never everything. Build one with
 	// effects.ControlledByThatPlayer.
 	ControlledByThatPlayer bool
+
+	// AttackingThatPlayer is "creature that's attacking that player" on a
+	// TRIGGERED ability's clause (Echoing Assault, #5368): the candidate
+	// must be attacking the player the triggering event's Target names. A
+	// creature attacking a planeswalker or battle that player controls is
+	// not attacking that player (CR 508.3e). DATA, judged in sourceAdmits
+	// for ControlledByThatPlayer's reasons; a walk with no fired trigger
+	// admits NOTHING. Build it with effects.AttackingThatPlayer.
+	AttackingThatPlayer bool
 
 	// ControlledByEventActor is "…that player controls" where that player is
 	// the triggering event's ACTOR, the controller of whatever caused it
@@ -1878,7 +1898,7 @@ func (s TargetSource) namedTribe() string {
 	case s.Object != nil:
 		return s.Object.NamedTribe
 	}
-	return ""
+	return s.tribe
 }
 
 // PaidForSourceKind names which payment PaidForSource asks about. The
@@ -1935,6 +1955,20 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 	return that != uuid.Nil && c.Controller == that
 }
 
+// attackingThatPlayerAdmits is AttackingThatPlayer's gate: true without the
+// flag, and with it only a creature attacking the player the triggering
+// event names as its Target. No fired trigger admits nothing.
+func (s *TargetSpec) attackingThatPlayerAdmits(src TargetSource, c Card) bool {
+	if !s.AttackingThatPlayer {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	that := src.Trigger.Event.Target
+	return that != uuid.Nil && c.AttackingTarget == that
+}
+
 // eventActorAdmits is ControlledByEventActor's gate: true without the flag,
 // and with it only a candidate controlled by the player the triggering event
 // names as its Actor. No trigger, or an event with no Actor, admits nothing.
@@ -1979,13 +2013,25 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 	if s.ChosenByTriggerActor {
 		// #1997: the chooser is the triggering event's player, read off
 		// the walk's own event at announce and at the re-check alike.
-		who := triggerActorOf(src)
+		who := triggerChooserOf(src)
 		return who != uuid.Nil && c.Controller == who
 	}
 	if s.chooser != uuid.Nil {
 		return c.Controller == s.chooser
 	}
 	return c.Controller != uuid.Nil && c.Controller != src.Controller
+}
+
+// triggerChooserOf is the player who answers a ChosenByTriggerActor
+// clause: the triggering event's Actor (the upkeep player of The Abyss),
+// except for damage, whose Actor is the damage source's controller and
+// whose "that player" is the one it was dealt to (Bladegriff Prototype's
+// "of that player's choice" after combat damage to a player).
+func triggerChooserOf(src TargetSource) uuid.UUID {
+	if src.Trigger != nil && src.Trigger.Fired() && src.Trigger.Event.Kind == EventDealDamage {
+		return src.Trigger.Event.Target
+	}
+	return triggerActorOf(src)
 }
 
 // triggerActorOf is the player the walk's triggering event names as its
@@ -2005,7 +2051,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

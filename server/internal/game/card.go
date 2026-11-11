@@ -1359,6 +1359,11 @@ type Card struct {
 	// snapshotted, rebuilt by the recompute a restore forces.
 	basePower int
 
+	// baseToughness is basePower's twin for toughness: the toughness after
+	// layer 7b (CR 208.4b), read through BaseToughness. A derived cache like
+	// basePower: never snapshotted.
+	baseToughness int
+
 	// stackGranted is the keyword abilities the stack step of the layer
 	// pass gave this SPELL (CR 613.1f, ADR 0107 §3, #1854): "that spell
 	// gains rebound", "instant and sorcery spells you control have
@@ -1791,6 +1796,15 @@ type Card struct {
 	// does not hold the game's clock. Carried by the snapshot.
 	PutInGraveyardThisTurn bool
 
+	// Surveilled says the arrival PutInGraveyardFrom records was a
+	// surveil's graveyard leg (CR 701.25a, #5429, surveilled_cards.go): the
+	// card's owner looked at it while surveilling and put it into their
+	// graveyard. With PutInGraveyardThisTurn it is "cards in your graveyard
+	// you've surveilled this turn" (Card.SurveilledThisTurn, Eye of
+	// Duskmantle). Cleared by MoveCard on every move, so a card that leaves
+	// and comes back is a new object (CR 400.7). Carried by the snapshot.
+	Surveilled bool
+
 	// SuspendGranted says an effect gave this exiled card suspend (CR
 	// 702.62a, #4455): Kang Prime's and Doom's Time Platform's "If it
 	// doesn't have suspend, it gains suspend". triggersOf then derives the
@@ -2083,6 +2097,17 @@ func (c Card) BasePower() int {
 		return c.basePower
 	}
 	return printedShared(&c).Power
+}
+
+// BaseToughness is the toughness the layer pass had after layer 7b, the twin
+// of BasePower (CR 208.4b): the printed value as changed by a copy effect or an
+// effect that sets toughness, and not by a pump, an anthem or a counter. Off
+// the battlefield no layer pass has run and it is the printed toughness.
+func (c Card) BaseToughness() int {
+	if c.effective != nil {
+		return c.baseToughness
+	}
+	return printedShared(&c).Toughness
 }
 
 // PowerForComparison includes layers and counters without clamping negative
@@ -2422,7 +2447,13 @@ func hasCardType(c *Card, lowerType string) bool {
 		if c.Bestowed {
 			return typeListHas(bestowBaseline(c).Types, lowerType)
 		}
-		return typeLineHas(c.TypeLine, lowerType)
+		if typeLineHas(c.TypeLine, lowerType) {
+			return true
+		}
+		// #5427, CR 113.6c: a type the card's own text gives it while
+		// it isn't on the battlefield (off_battlefield_self.go).
+		self := offBattlefieldSelfOf(c)
+		return self != nil && self.hasType(lowerType)
 	}
 	return typeListHas(c.effective.Types, lowerType)
 }
@@ -2479,6 +2510,15 @@ func hasSubtype(c *Card, subtype string) bool {
 		}
 		if typeListHas(printed, subtype) {
 			return true
+		}
+		// #5427, CR 113.6c: and a subtype the card's own text gives it
+		// while it isn't on the battlefield (off_battlefield_self.go).
+		// A spell with a changed word has it in the baseline above,
+		// already read through the change (CR 612.2).
+		if c.TextWords == nil {
+			if self := offBattlefieldSelfOf(c); self != nil && self.hasSubtype(subtype) {
+				return true
+			}
 		}
 	} else if typeListHas(c.effective.Subtypes, subtype) {
 		return true

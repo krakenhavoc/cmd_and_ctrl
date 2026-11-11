@@ -64,7 +64,10 @@ const SELF_ORIGIN = self.location.origin;
 // /cards/<id>/image is session-gated and the catalogue page is public
 // (see server/internal/catalog/http.go). Tested before API_PATH below,
 // which is what keeps "catalog" in that deny list from swallowing it.
-const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|catalog\/image\/[^/]+)$/;
+// /draft/image/<id> is the same again for a draft (ADR 0222 §5, #5438): the
+// printings a draftable set's packs can contain, public because a guest
+// drafter has no session.
+const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|(?:catalog|draft)\/image\/[^/]+)$/;
 
 // The API deny list. Mirrors the @api path matcher in deploy/Caddyfile, which
 // in turn mirrors the server's route table. Deliberately broader than that
@@ -80,11 +83,16 @@ const CARD_IMAGE_PATH = /^\/(?:cards\/[^/]+\/image|catalog\/image\/[^/]+)$/;
 // alternative is a client that starts serving a stale /config from cache the
 // day the route lands.
 //
+// /draft is the booster draft's whole tree (ADR 0222 §5, #5438): the sets
+// list, a draft's preview (who has sat down this second), its POSTs and its
+// socket at /draft/{id}/ws. All of it is network only. The one exception is
+// /draft/image/<id>, card art, which CARD_IMAGE_PATH claims first.
+//
 // /join is the login page's bare-code join (ADR 0050). It is top-level rather
 // than under /games — the code alone names the table — so /games does not
 // cover it and it needs its own entry here, as in the @api matcher.
 const API_PATH =
-  /^\/(ws|healthz|me|logout|config|games|join|cards|admin|auth|avatars|playmats|bugreport|dev|bot|catalog|roadmap|decks|community|stats|pods|scheduled)(\/|$)/;
+  /^\/(ws|healthz|me|logout|config|games|join|cards|admin|auth|avatars|playmats|bugreport|dev|bot|catalog|roadmap|draft|decks|community|stats|pods|scheduled)(\/|$)/;
 
 // Hashed build output. Vite content-hashes these filenames, so a given URL's
 // bytes never change and cache-first is always correct.

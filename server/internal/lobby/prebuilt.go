@@ -7,6 +7,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // prebuilt.go is the human half of the pre-built deck catalog: the
@@ -40,6 +41,10 @@ type prebuiltDeckInfo struct {
 	Archetype string `json:"archetype,omitempty"`
 	Summary   string `json:"summary,omitempty"`
 	Commander string `json:"commander,omitempty"`
+	// Format is the format the deck is built for (ADR 0222 §2):
+	// "standard", or omitted for Commander. The picker offers the
+	// decks of the table's format.
+	Format string `json:"format,omitempty"`
 	// Colors is the deck's colour identity as single WUBRG letters,
 	// so the picker can render pips without parsing the list.
 	Colors []string `json:"colors,omitempty"`
@@ -79,7 +84,7 @@ type prebuiltDecksResponse struct {
 // — see decks.Coverages.
 func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 	covs := decks.Coverages(c.Cards)
-	all := decks.All()
+	all := decks.Every()
 	out := make([]prebuiltDeckInfo, 0, len(all))
 	for _, d := range all {
 		colors := make([]string, 0, len(d.Identity))
@@ -87,9 +92,16 @@ func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 			colors = append(colors, string(ch))
 		}
 		cards := make([]prebuiltCard, 0, len(d.Mainboard)+1)
-		cards = append(cards, prebuiltCard{Name: d.Commander.Name, Count: d.Commander.Copies()})
-		for _, c := range d.Mainboard {
+		for _, c := range d.Cards() {
 			cards = append(cards, prebuiltCard{Name: c.Name, Count: c.Copies()})
+		}
+		format := ""
+		if f := d.FormatOf(); f != game.FormatCommander {
+			format = string(f)
+		}
+		var commanderCards []myDeckCommander
+		if d.HasCommander() {
+			commanderCards = catalogCommanderCards(c.Cards, d.Commander.Name)
 		}
 		out = append(out, prebuiltDeckInfo{
 			ID:             d.ID,
@@ -97,8 +109,9 @@ func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 			Archetype:      d.Archetype,
 			Summary:        d.Summary,
 			Commander:      d.Commander.Name,
+			Format:         format,
 			Colors:         colors,
-			CommanderCards: catalogCommanderCards(c.Cards, d.Commander.Name),
+			CommanderCards: commanderCards,
 			CardCount:      d.Size(),
 			Coverage:       covs[d.ID],
 			Cards:          cards,
@@ -177,4 +190,14 @@ func uploadDeckChoice(body uploadDeckRequest) (format, source, deckID string, er
 	default:
 		return "", "", "", httpError(http.StatusBadRequest, "deck or source is required")
 	}
+}
+
+// prebuiltFitsTable checks a pre-built deck's format against the
+// table's. An unknown id is left to the caller, which has refused it.
+func prebuiltFitsTable(deckID string, table game.Format) error {
+	d, ok := decks.Lookup(deckID)
+	if !ok || d.FormatOf() == table.Spec().Format {
+		return nil
+	}
+	return wrongFormatError(d.Name, d.FormatOf(), table)
 }

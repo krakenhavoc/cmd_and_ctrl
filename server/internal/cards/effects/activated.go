@@ -481,6 +481,10 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ManaFromSource {
 			out.ManaFromSource = true
 		}
+		// Graywater's Fixer: and "its mana value" as the mana component.
+		if c.ManaValueFromSource {
+			out.ManaValueFromSource = true
+		}
 		// Fishing Pole: and the tap-the-grantor component; dropped, the
 		// granted ability would be free of its Equipment tap.
 		if c.TapGrantor {
@@ -537,6 +541,13 @@ func OrCost(branches ...game.AbilityCostBranch) game.AbilityCost {
 	return game.AbilityCost{Either: append([]game.AbilityCostBranch(nil), branches...)}
 }
 
+// RemoveCountersBranch is "Remove <n> <kind> counter(s) from this
+// permanent" as a branch of an OrCost: `label` is the printed object
+// ("a counter from this Equipment").
+func RemoveCountersBranch(kind string, n int, label string) game.AbilityCostBranch {
+	return game.AbilityCostBranch{Kind: game.AbilityCostBranchRemoveCounters, Counter: kind, Count: n, Label: label}
+}
+
 // SacrificeBranch is "Sacrifice <n> <label>" as a branch of an OrCost:
 // permanents the activator controls matching `of`.
 func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCostBranch {
@@ -544,7 +555,8 @@ func SacrificeBranch(n int, label string, of game.PermanentQuery) game.AbilityCo
 }
 
 // ManaBranch is "Pay <cost>" as a branch of an OrCost (Bloodthorn Flail's
-// "Equip—Pay {3} or discard a card"): the branch folds into the ability's
+// "Equip—Pay {3} or discard a card", Gavel of the Righteous's "Equip—Pay
+// {3} or remove a counter from this Equipment"): the branch folds into the ability's
 // mana cost, so the cost it is composed with must have none.
 func ManaBranch(cost string) game.AbilityCostBranch {
 	return game.AbilityCostBranch{Kind: game.AbilityCostBranchMana, Mana: cost}
@@ -604,6 +616,23 @@ func TapXUntapped(label string, preds ...CardPredicate) game.AbilityCost {
 		Filter: filter,
 		Label:  label,
 	}}
+}
+
+// TapXUntappedForMana is "Tap X untapped <permanents> you control" as a
+// component of a MANA ability's cost (#5447, Hazel of the Rootbloom's
+// "{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana in any
+// combination of colors"). A mana ability announces no X (CR 605.3b), so
+// X is the number of permanents the activator names, from none up to
+// every one that could pay, and the ability's ProducedForPaid reads it
+// back as len(paid.TappedOthers). Like every tap-others cost it is not
+// the {T} symbol (CR 302.6) and does not target; a source that also pays
+// its own {T} is never one of the X (CR 118.3).
+func TapXUntappedForMana(label string, preds ...CardPredicate) *game.TapOthersCost {
+	return &game.TapOthersCost{
+		Filter:    TargetPermanent(label, preds...),
+		Label:     label,
+		AnyNumber: true,
+	}
 }
 
 // ReturnAPermanentToHand is "Return a <permanent> you control to its
@@ -983,6 +1012,21 @@ func ExileCardsFromGraveyard(n int, label string, match func(game.Card) bool) *g
 	return &game.ExileCost{N: n, Label: label, From: game.ZoneGraveyard, Match: match}
 }
 
+// ProcessCards is "Put N cards an opponent owns from exile into that
+// player's graveyard" as a CR 602 activated ability's cost (#5457): Void
+// Attendant, and the other Eldrazi Processors' activated abilities. The
+// exile-a-card component read against the shared exile zone
+// (game.ExileCost with From: ZoneExile): the activator names the cards on
+// exile_ids, each one a card an opponent owns, and each goes to its
+// owner's graveyard. `match` narrows the cards (nil is any card); a
+// face-down card has no characteristics, so a clause with a predicate
+// never offers one.
+//
+//	Cost: Plus(Mana("{1}{G}"), ProcessCards(1, "a card an opponent owns from exile", nil)),
+func ProcessCards(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{N: n, Label: label, From: game.ZoneExile, Match: match}}
+}
+
 // ExileFromGraveyard is "Exile N <kind> cards from your graveyard" as
 // a CR 602 activated ability's cost (#1297):
 //
@@ -1153,6 +1197,24 @@ func RemoveCountersAmong(kind string, n int, label string, preds ...CardPredicat
 		N:       n,
 		From:    TargetPermanent(label, preds...),
 		Among:   true,
+	}}
+}
+
+// RemoveCountersXFromOne is "Remove X counters from <a permanent you
+// control>" of ANY kinds, all off a single permanent (Moxite Refinery's
+// "Remove X counters from an artifact or creature you control"): the
+// activator announces X and names the permanent and the counters of each
+// kind it gives, and a payment spread over two permanents is refused. The
+// floor is one counter, since X of zero removes nothing and the ability
+// then does nothing at all. The count reaches the effect as
+// Context.CountersRemoved.
+func RemoveCountersXFromOne(label string, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		N:            1,
+		From:         TargetPermanent(label, preds...),
+		Among:        true,
+		Variable:     true,
+		OnePermanent: true,
 	}}
 }
 

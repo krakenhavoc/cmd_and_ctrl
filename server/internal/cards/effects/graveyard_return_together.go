@@ -50,6 +50,11 @@ type ReturnFromGraveyardTogether struct {
 	// return that names no host, whose Auras choose theirs as they enter
 	// (CR 303.4f).
 	AttachedTo game.TargetRef
+	// AuraHostsCreaturesOnly is "only creatures can be enchanted this way"
+	// (Retether): each returning Aura chooses its host among the creatures
+	// its enchant clause admits, and one with none stays in the graveyard
+	// (CR 303.4g). Ignored with AttachedTo.
+	AuraHostsCreaturesOnly bool
 	// EntersAs is "they are <types> with <ability>" (Supper for
 	// Spiders, ADR 0210): every card enters as that type and is it for
 	// as long as it is that permanent. Nil for every other return.
@@ -63,7 +68,7 @@ type ReturnFromGraveyardTogether struct {
 
 func (r ReturnFromGraveyardTogether) Apply(ctx *Context) error {
 	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
-		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo, EntersAs: r.EntersAs}, r.ThenTail, r.ThenN)
+		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo, AuraHostsCreaturesOnly: r.AuraHostsCreaturesOnly, EntersAs: r.EntersAs}, r.ThenTail, r.ThenN)
 }
 
 // TogetherTail registers the rest of a ReturnFromGraveyardTogether or
@@ -171,6 +176,8 @@ func (r ReturnFromExileTogether) Apply(ctx *Context) error {
 // and ReturnFromExileTogether: keep the targets still in a zone of kind
 // `from` that can enter (not a token, a permanent card), and put them
 // onto the battlefield as one entry through the engine's batch door.
+//
+//nolint:unparam // "tapped" is the printed "return ... tapped" option; the cards so far return untapped.
 func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool) error {
 	return putCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, game.TailRef{}, 0)
 }

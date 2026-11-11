@@ -28,6 +28,7 @@
   import Terms from "./routes/Terms.svelte";
   import Funding from "./routes/Funding.svelte";
   import About from "./routes/About.svelte";
+  import DraftSets from "./routes/DraftSets.svelte";
   import Guide from "./routes/Guide.svelte";
   import Practice from "./routes/Practice.svelte";
   import Settings from "./lib/components/Settings.svelte";
@@ -57,6 +58,9 @@
   const loadDecks = () => import("./routes/Decks.svelte");
   const loadCatalog = () => import("./routes/Catalog.svelte");
   const loadRoadmap = () => import("./routes/Roadmap.svelte");
+  const loadDraft = () => import("./routes/Draft.svelte");
+  const loadMyDrafts = () => import("./routes/MyDrafts.svelte");
+  const loadMyCubes = () => import("./routes/MyCubes.svelte");
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
@@ -183,6 +187,46 @@
     <RouteLoading />
   {:then { default: Roadmap }}
     <Roadmap />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
+{:else if $route.name === "draftSets"}
+  <DraftSets />
+{:else if $route.name === "draftNew"}
+  {#await loadDraft()}
+    <RouteLoading />
+  {:then { default: Draft }}
+    <Draft set={$route.set} cube={$route.cube} />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
+{:else if $route.name === "draft"}
+  <!-- Keyed like the table: draft A → draft B is a fresh page with a
+       fresh socket, never the old one with a swapped prop. -->
+  {#key $route.id}
+    {#await loadDraft()}
+      <RouteLoading />
+    {:then { default: Draft }}
+      <Draft id={$route.id} invite={$route.invite} />
+    {:catch}
+      <RouteLoading failed />
+    {/await}
+  {/key}
+{:else if $route.name === "myDrafts"}
+  {#key $route.id ?? ""}
+    {#await loadMyDrafts()}
+      <RouteLoading />
+    {:then { default: MyDrafts }}
+      <MyDrafts id={$route.id} />
+    {:catch}
+      <RouteLoading failed />
+    {/await}
+  {/key}
+{:else if $route.name === "myCubes"}
+  {#await loadMyCubes()}
+    <RouteLoading />
+  {:then { default: MyCubes }}
+    <MyCubes />
   {:catch}
     <RouteLoading failed />
   {/await}

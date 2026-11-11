@@ -44,7 +44,9 @@ const (
 	// reason it has to: the card is on the stack by the time the
 	// event fires and carries no memory of where it came from.
 	// Added in S22 alongside StackItem.CastFromZone, which is the
-	// same fact recorded on the stack item.
+	// same fact recorded on the stack item. Amount is the spell's mana
+	// value as it was cast, X included (CR 202.3e); zero for a face-down
+	// spell.
 	EventCast EventKind = "cast"
 
 	// EventResolve — a stack item successfully resolved. For a SPELL,
@@ -1251,6 +1253,16 @@ const (
 	// game begins and before its hands are dealt: every event after it
 	// belongs to the new game, and the public log begins again here.
 	EventGameRestarted EventKind = "game_restarted"
+
+	// EventMatchGame — the next game of a match began (ADR 0222 §3,
+	// match.go). Actor is the player who chose who plays first (CR
+	// 103.1: the loser of the previous game), Target the starting
+	// player, Amount the game's number in the match, and Label what the
+	// chooser chose (MatchChosePlay or MatchChoseDraw). Emitted once,
+	// as the game begins and before its hands are dealt: every event
+	// after it belongs to that game, and the public log begins again
+	// here, as it does for a restarted game.
+	EventMatchGame EventKind = "match_game"
 
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,

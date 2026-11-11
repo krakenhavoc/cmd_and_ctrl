@@ -28,7 +28,7 @@ func init() {
 			Key: curiousInquiryInvestigate,
 			Triggered: []game.TriggeredAbility{
 				WheneverThisDealsCombatDamageToAPlayer("Curious Inquiry — investigate",
-					Do(CreateToken{Template: ClueToken(), N: 1})),
+					Do(Investigate{N: 1})),
 			},
 			Text: "Whenever this creature deals combat damage to a player, investigate.",
 		}},

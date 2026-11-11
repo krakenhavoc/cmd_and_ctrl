@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // attractions_test.go — ADR 0207 §2: a deck declares its Attraction
@@ -119,7 +120,7 @@ func TestAttractionsRoundTripThroughText(t *testing.T) {
 func TestALegalAttractionDeckSeatsInTheCommandZone(t *testing.T) {
 	list := legalDeck()
 	list.Attractions = attractionCards(10)
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Fatalf("a legal deck with ten Attractions: %v", err)
 	}
 	out := list.ToGameCards()
@@ -151,7 +152,7 @@ func TestAnIllegalAttractionDeckIsSaidAndNotSeated(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			list := legalDeck()
 			list.Attractions = deck
-			codes := violationCodes(Validate(list))
+			codes := violationCodes(Validate(list, game.FormatCommander))
 			if !slices.Equal(codes, []string{CodeAttractionDeckIllegal}) {
 				t.Fatalf("codes %v, want only %s", codes, CodeAttractionDeckIllegal)
 			}
@@ -171,7 +172,7 @@ func TestANotLegalAttractionIsRefused(t *testing.T) {
 	list := legalDeck()
 	list.Attractions = attractionCards(10)
 	list.Attractions[3].Legalities = map[string]string{"commander": "not_legal"}
-	if codes := violationCodes(Validate(list)); !slices.Contains(codes, CodeNotLegalInFormat) {
+	if codes := violationCodes(Validate(list, game.FormatCommander)); !slices.Contains(codes, CodeNotLegalInFormat) {
 		t.Errorf("codes %v, want %s", codes, CodeNotLegalInFormat)
 	}
 }

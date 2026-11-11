@@ -107,6 +107,14 @@ func CantAttackAPlayerItAlreadyAttackedThisTurn() game.StaticAbility {
 	return selfAttackTargetRestriction(game.AttackTargetRestriction{NotAlreadyAttackedThisTurn: true})
 }
 
+// CantAttackUnlessYouHaveCardsInHand is "This creature can't attack
+// unless you have N or more cards in hand" (Kefnet the Mindful's seven):
+// the attack half of the sentence, a fact about the attacking creature's
+// controller read live at declaration (CR 508.1c).
+func CantAttackUnlessYouHaveCardsInHand(n int) game.StaticAbility {
+	return selfAttackTargetRestriction(game.AttackTargetRestriction{ControllerHandAtLeast: n})
+}
+
 // QuerySubtype is "a permanent with this subtype": an Island, a Mountain.
 func QuerySubtype(subtype string) game.PermanentQuery {
 	return game.PermanentQuery{Subtypes: []string{subtype}}

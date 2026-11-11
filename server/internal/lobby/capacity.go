@@ -94,6 +94,9 @@ func (l *Lobby) loadLocked() int {
 	for _, e := range l.games {
 		n += l.entryCostLocked(e)
 	}
+	// A draft counts as one table while people are picking (ADR 0222
+	// §9, drafts.go).
+	n += l.draftsLoadLocked()
 	return n
 }
 

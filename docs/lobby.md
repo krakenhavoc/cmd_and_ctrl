@@ -606,6 +606,311 @@ once. `Cache-Control: public, max-age=300`, the same as `/catalog`.
   decision record's file name. Either may be absent, as may `rules`,
   `pin` and `unblocks`.
 
+
+### `GET /draft/sets`
+
+Which sets can be drafted ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §4, #5437; `server/internal/draftpacks`).
+Public, no session, read-only, `Cache-Control: public, max-age=300`. It
+generates and opens no pack: drafting is #5438.
+
+```json
+{
+  "sets": [
+    {
+      "code": "blb",
+      "name": "Bloomburrow",
+      "released": "2024-08-02",
+      "booster": "play",
+      "cards": 266,
+      "draftable": false,
+      "blockers": ["A Card Name", "Another Card Name"]
+    }
+  ],
+  "draftable": 0
+}
+```
+
+(The example's numbers are illustrative.)
+
+- `sets` is every set a pack can be made for, newest first: a `core`,
+  `expansion`, `masters` or `draft_innovation` set whose booster cards
+  include a common, an uncommon, and a rare or mythic. A set's booster
+  cards are the printings Scryfall flags with `booster`. Scryfall flags none
+  of the printings of some sets (Star Trek, Secrets of Strixhaven and TMNT
+  on 2026-11-11, #5689); for a set none of whose printings is flagged, they
+  are its main run instead: the printings numbered 1, 2, 3, ... up to the
+  first number with no plain-frame, non-promo printing. That leaves out the
+  showcase, extended-art and borderless reprints that follow the run, promos,
+  lettered numbers and the basic lands past the run, and so gives the same
+  cards the flag gives a set that has it. A set with any flagged printing is
+  read by the flag alone.
+- `booster` is the kind of retail booster the set's packs are modelled on,
+  the draftable booster of the set's era, chosen from its `released` date:
+  `"play"` for a set released on or after 2024-02-09, `"draft"` for an older
+  one. Set and collector boosters were never draft products and are not
+  modelled.
+- `cards` counts the different cards the set's packs can contain, basic
+  lands included when the booster has a basic land slot.
+- `draftable` is true only when every one of those cards is in the catalog
+  as Full. `blockers` names the ones that are not, sorted; it is empty for a
+  draftable set. The check uses the set's own booster, so a slot it does not
+  have cannot block (a draft booster from before mythic rares holds no
+  mythic). Basic lands never block (the catalog registers none: the
+  engine plays them as they are). The verdict is computed from the catalog
+  and the dump on the first request after a boot or a dump reload, never
+  from a list someone keeps.
+- The top-level `draftable` is the number of draftable sets.
+- With no dump loaded the body is `{"sets":[],"draftable":0}`.
+
+A pack is an approximation of the retail booster the set was drafted with,
+by release date (`draftpacks.Eras`):
+
+| Released | Booster | Cards | Slots |
+|---|---|---|---|
+| on or after 2024-02-09 | play | 14 | 6 commons, 1 common that may be a bonus-sheet card, 3 uncommons, 1 rare or mythic (1 mythic in 7), 1 basic land, 2 wildcards |
+| 2008-10-03 to 2024-02-08 | draft | 15 | 10 commons, 3 uncommons, 1 rare or mythic (1 mythic in 8), 1 basic land |
+| before 2008-10-03 | draft | 15 | 11 commons, 3 uncommons, 1 rare |
+
+The dates and rates are named constants in `draftpacks/recipe.go` and have
+not been checked against a Wizards source; `draftpacks/overrides.json`
+corrects one set. A set with no release date in the data gets the play
+booster. One printing of each card, no foils or other treatments, no
+tokens. The client's `#/draft/sets` page renders this list, names each
+set's booster and says packs are approximations.
+
+### Drafts: `POST /draft`, `GET /draft/{id}`, `POST /draft/{id}/join`, `/start`, `/leave`, `/match`
+
+A booster draft ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §5, #5438; `server/internal/draft`, `server/internal/lobby/drafts.go`).
+A draft is its own lobby object, not a game: an id, a host, a set, a pick
+mode and 2 to 8 seats. It lives in memory only. A restart or a deploy ends
+every draft, and nothing about a person is stored (ADR 0222 §9: a finished
+draft is first persisted by slice 6, #5440).
+
+All five routes are **public**: none sits behind `auth.Middleware`, so a
+visitor can draft against bots with no sign-in, as they can play a practice
+game. Who the caller is comes from the session they happen to carry, read
+the way `POST /games/{id}/join` reads one.
+
+**The seat token.** Creating or joining a draft answers with a `token`: a
+session of role `drafter`, minted by the same authenticator as every other
+session, bound to that draft and seat. It is **not** set as the session
+cookie, so a signed-in person stays signed in and a guest gets no cookie at
+all. Send it as `Authorization: Bearer <token>` on `/start` and `/leave`,
+and as `?token=` on the draft socket. On these routes the header and the
+query are read before the cookie. A drafter session opens nothing else: the
+game socket and every `/games` route refuse it. A signed-in person's seat
+token expires with the session it was minted from (ADR 0110 §1); a guest's
+lasts the session TTL.
+
+#### `POST /draft`
+
+```json
+{ "name": "Friday draft", "set": "blb", "mode": "pick_one", "seats": 8, "pick_seconds": 60,
+  "build_seconds": 900, "best_of": 1 }
+```
+
+- `set` is a set code from `GET /draft/sets` whose `draftable` is true. Any
+  other set is a **422** (`code: "set_not_draftable"`): the check is the
+  same one that page shows, computed from the catalog on every create.
+- `cube` takes the place of `set`: the id of one of the caller's own
+  [cubes](#cubes-get-post-mecubes-get-put-delete-mecubesid) ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)
+  §8, #5441). Send one of the two; both is a 400, neither is a 400. The
+  cube is shuffled from the draft's seed and cut into packs of `pack_size`
+  cards with no rarity slots, and no card is dealt twice in a draft.
+  Everything after the packs is the same draft. Refusals:
+  - **403** `cube_needs_sign_in` for a caller who is not a signed-in
+    person. A visitor drafts a set.
+  - **404** for an id that is not a cube of the caller's, the answer a
+    cube that does not exist gets.
+  - **422** `cube_not_ready` when the cube's check does not pass (a card
+    that is not Full in the catalog, an unknown name, a repeated card in a
+    singleton cube, or no cards). The message names the first five cards.
+    The check runs against the catalog as it is at the create.
+  - **422** `cube_too_small` when the cube holds fewer than
+    `seats` x 3 x `pack_size` cards. The message states the sum.
+  - **503** with no database, where there are no cubes.
+- `pack_size` is the cards in a cube's packs: 9 to 20, default 15. With
+  `set` it is a 400: a set's packs have their own size.
+- `mode` is `"pick_one"` (the default) or `"pick_two"`. Pick two is allowed
+  at any number of seats; the client offers it by default at 4.
+- `seats` is 2 to 8 (default 8).
+- `pick_seconds` is the pick timer, 15 to 300 (default 60).
+- `build_seconds` is the deckbuilding timer that follows the last pick, 120
+  to 1800 (default 900).
+- `best_of` is the length of the draft's matches: 1 (the default) or 3.
+- `name` is optional, at most 80 bytes, and goes through the name filter
+  (400 `name_not_allowed`, as on `POST /games`). Blank gets a generated
+  name, like a table.
+
+Who may create:
+
+- **A signed-in person** gets a draft with an invite link, and is its host.
+  They may hold one unfinished draft at a time; a new one closes the old.
+- **Anyone else** (a visitor) gets a **solo** draft: `solo: true`, no
+  invite, and every other seat is a bot. Nobody can join it. This is the
+  same line `POST /games` draws: a visitor plays against bots, and a table
+  other people join is made by someone signed in.
+
+Limits: the per-address creation bucket of `POST /games`
+(`CMDCTRL_CREATE_IP_BURST` / `_INTERVAL`), a visitor's own bucket of 3 per
+10 minutes per address, and the load cap (below). **201**:
+
+```json
+{ "token": "...", "expires_at": "2026-11-11T20:00:00Z", "draft": { } }
+```
+
+`draft` is the caller's [draft view](protocol.md#the-draft-socket-draftidws).
+A cube draft's view and preview carry `"cube": true`, an empty `set`, the
+cube's name as `set_name` and `"booster": "cube"`. The cube's name is the
+only thing about the cube the other drafters are shown, beside the cards
+they are dealt, and it is what a signed-in drafter's
+[finished-draft record](#get-medrafts-and-get-medraftsid) keeps as `set_name`.
+
+#### `GET /draft/{id}?invite=<code>`
+
+What an invite page shows before joining. Needs the invite (or a seat
+token of that draft). 404 for an unknown draft or a wrong invite, the same
+answer for both.
+
+```json
+{ "id": "...", "name": "Friday draft", "set": "blb", "set_name": "Bloomburrow",
+  "mode": "pick_one", "seats": 8, "taken": 3, "state": "lobby", "host": "Ian" }
+```
+
+#### `POST /draft/{id}/join`
+
+```json
+{ "invite": "<code>", "name": "Sam" }
+```
+
+Takes a seat while the draft is in its lobby. A signed-in person sits under
+their Discord display name and `name` is ignored; anyone else sits under
+`name` (at most 40 bytes, through the name filter, default "Player"). A
+person who already holds a seat (same user) gets that seat back with a new
+token, in any state: this is how someone returns from another device.
+**200** with the same body as `POST /draft`.
+
+404 wrong invite or unknown draft (one answer for both, and for a solo
+draft, which has no invite), 409 `draft_started` once picking has begun,
+409 `draft_full`, 400 `name_not_allowed`, 503 `server_full` at the
+connection cap or when one more person does not fit under the load cap.
+
+#### `POST /draft/{id}/start` *(the host's seat token)*
+
+Starts the draft. Every seat no person has taken becomes a bot, packs are
+generated from the draft's seed, and the first pick's timer starts. One
+person and seven bots is a normal draft. **200** `{ "draft": { } }`. 403
+for a seat that is not the host, 409 `draft_started` if it already has.
+
+#### `POST /draft/{id}/leave` *(a seat token)*
+
+**204**. In the lobby the seat is freed; if the host leaves, the next
+person hosts, and a draft with no person left closes. Once picking has
+begun the seat becomes a bot for the rest of the draft and its token stops
+working.
+
+After the picks the seat becomes a bot the same way, and plays on with the
+deck it built, or the deck the server builds for it. A person who leaves in
+the middle of a match concedes that match. The draft closes when its last
+person leaves. What a signed-in person drafted is saved first (see
+[`GET /me/drafts`](#get-medrafts-and-get-medraftsid)).
+
+#### After the picks: the build and the rounds (#5440)
+
+When the last pick is made the draft's `state` is `done` and its `phase`
+says what follows ([protocol.md](protocol.md#the-draft-socket-draftidws)):
+
+- **`building`.** Each person builds a deck of at least 40 cards from their
+  pool and any number of basic lands (CR 100.2b), and submits it with a
+  `draft_deck` frame on the draft socket. The server runs the limited deck
+  check (`deck.ValidateLimited`); a deck that fails is refused and changes
+  nothing. A person may submit again until the rounds begin, which is when
+  the last person has submitted or `build_seconds` runs out. A person who
+  has not submitted by then gets a deck built from their pool by the
+  server's deck builder, as every bot seat does.
+- **`rounds`.** Three rounds of one-against-one matches, best of one unless
+  the draft asked for `best_of` 3. Each round pairs every seat at random
+  from the draft's seed: nobody meets a seat they have already played,
+  people are paired with people first, and with an odd number of seats a
+  bot sits the round out. A draft of two seats has one possible pairing, so
+  its rounds are rematches. A match between two bots is not played: its
+  result is a coin tossed from the seed, as the round begins. The next
+  round begins when every match of this one has a result.
+- **`finished`.** The rounds are over, or every person has left.
+
+A match with a person in it is played at a **limited table** the server
+opens: format `limited` (20 life, two seats, no commander), started, with
+both seats already at it and each deck's sideboard the rest of its pool
+(CR 100.4b). A seat with no person is a bot seat ([ADR 0033](decisions/0033-ai-bot-seat.md))
+holding the deck its draft seat built. Like the practice table, it has no
+invite, is not in `GET /games`, is never written to the database (so it is
+not in `GET /me/games` and writes no statistics record), and ends with its
+draft. Its `GameMeta` carries `draft_id`. A table nobody touches for 20
+minutes is recorded as a draw and closed, and the draft moves on; if it was
+the draft's only match in play and nobody is on the draft's own page
+either, the draft is closed instead, after saving what its signed-in
+people drafted. A finished table stays up 10 minutes. A `limited` table cannot be made with `POST /games` (400) or
+chosen with a settings patch.
+
+#### `POST /draft/{id}/match` *(a seat token)*
+
+Seats the caller at the table of their match in the round in play. **200**
+with the body of a join: `{ "token", "expires_at", "principal", "game",
+"player_id" }`, and the table seat's session set as the session cookie,
+which is what the game page and `GET /ws` read. The session is minted from
+the draft seat's, so a signed-in person's carries their account as every
+table seat's does. The draft seat token is unchanged and still opens the
+draft. **409** when the seat has no match to play now: decks are still
+being built, its match is over, or it sits this round out. 401, 403 and
+404 as on the other seat-token routes.
+
+#### Limits and closing
+
+- **Capacity (ADR 0148).** A draft counts against the table-load cap as one
+  table while it is in its lobby, people are picking or decks are being
+  built: `CMDCTRL_LOAD_WEIGHT_TABLE` plus `CMDCTRL_LOAD_WEIGHT_HUMAN_SEAT`
+  for each person. Its bots add nothing: a draft bot picks a card and runs
+  no game. Once the rounds begin the draft counts nothing itself and **each
+  match it opens counts as a table** with its seats, a bot seat at
+  `CMDCTRL_LOAD_WEIGHT_BOT_SEAT`, until that match ends. A round's tables
+  are opened even at the cap, because the draft was admitted when it was
+  made; while they are open they count, so new tables and drafts are
+  refused. A match between two bots has no table and costs nothing.
+  A finished draft counts nothing. A create the cap refuses is the usual 503
+  `server_full`. A draft socket counts against `CMDCTRL_MAX_WS_CONNECTIONS`
+  like any other.
+- **Idle drafts close (ADR 0211)**, on the idle sweep that closes idle
+  tables and by the same three settings. A draft still in its lobby closes
+  after `CMDCTRL_IDLE_LOBBY_TABLE_AFTER` with no person doing anything. A
+  draft with a match still being played is not idle: its people are at that
+  table, which has its own 20-minute limit. Otherwise a
+  draft that is picking or finished closes after `CMDCTRL_IDLE_BOTS_AFTER`
+  with no person connected (the pick timer drafts on without them, so
+  nobody is left waiting), and after `CMDCTRL_IDLE_GAME_AFTER` whoever is
+  connected. A visitor's draft still in its lobby closes after 15 minutes
+  with its page closed, so an abandoned one does not hold a table's weight
+  for a day. A draft nobody is left in closes at once. Its sockets get close
+  code 1000, reason `draft closed`. There is no warning first: a draft has
+  no chat to post one in.
+- **Images.** `GET /draft/image/{scryfall_id}` (`?size=`, `?face=`, as
+  `/catalog/image/{id}`) serves the art of the cards a draft hands out. It
+  is public, because a visitor's draft has no session cookie for
+  `/cards/{id}/image` to read, and it is scoped like `/catalog/image`: it
+  answers only for the printings a draftable set's packs can contain (basic
+  lands included), and 404s everything else. A cube draft hands out the
+  printings its list names, so the route also answers for any printing of a
+  card the catalog holds as Full, and for basic lands: still a set fixed by
+  the dump and the catalog, of cards the public catalogue shows.
+- **Hidden information (CR 905.1c).** A view is built for one seat and
+  holds that seat's pack and picks only.
+- **Moderation.** Draft names and guest names go through the name filter. A
+  revoked sign-in loses its draft seat token and its draft sockets with its
+  other sessions. There is no report button on a draft: a draft has no
+  chat and shows other people only as a name. Reports work from a match
+  table as they do from any table (ADR 0222 §9).
+- **What is kept (ADR 0149).** Nothing of a guest's draft. For a signed-in
+  person, their own record of it, below.
+
 ### `POST /deck-coverage`
 
 The deck coverage checker ([ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md)
@@ -831,6 +1136,26 @@ starts. A server that does not offer the option (`GET /config`'s
 `features.planechase` is false: production, until ADR 0216's plane card
 batches land, owner answer 3) answers **400** ("planechase is not offered on
 this server yet") and creates nothing.
+
+`format` is optional: `"commander"` (the default, and what a table that names
+none is) or `"standard"` ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §1). It is applied through the engine's
+settings as soon as the creator has sat down, before any bot or other person
+can: a Standard table has two seats and starts at 20 life. The answer and
+every later meta of a table of another format carry `format` and `max_seats`;
+a Commander table's carry neither, so its JSON is what it was. A format this
+server does not know answers **400** and creates nothing. With
+`"setup": "last"` the setup's own format wins: a setup remembers the format
+of the table it was captured at, and one saved before formats existed is a
+Commander setup.
+
+`best_of` is optional: `1` (the default) or `3`, the length of the table's
+match ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §3). Only a format that plays matches takes a `3`: at a
+Commander table, which has no match, it answers **400** and creates nothing,
+as does any other number. A best-of-three table's answer and every later meta
+carry `best_of: 3`; every other table's carry no `best_of`. Once the match has
+started, `GET /games` also gives the table `match_game` (the number of the
+game it is on) and each seat `match_wins` (its games won), and keeps them
+after the match ends. A setup remembers the match length with the format.
 
 **Response 201**
 
@@ -1172,6 +1497,17 @@ on. The WebSocket twin is the `set_table_settings` action
 
 **Request** — a *partial*. Only the fields present are applied; a field left
 out is untouched, which is why this is a `PATCH` and not a `PUT`.
+
+`format` ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §1) may be patched only while the table is in the lobby and no
+seat has a deck: a deck was checked against the format the table had. After
+that, or with more seats taken than the new format has, it is a **422**. A
+change with no `starting_life` beside it also sets the format's own starting
+life. Naming the format the table already has is never a change.
+
+`best_of` ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §3) is `1` or `3` and may be patched only while the table is in
+the lobby; after that a change is a **422**. A `3` at a table whose format
+plays no matches is a **400**. Changing the format to one that plays none
+sets it back to 1.
 
 ```json
 {
@@ -1700,6 +2036,15 @@ pre-built decks from `GET /decks`. RolePlayer may only set their own
 seat's deck (`player_id` in the body must match the session's bound
 player); RoleAdmin may set any seat.
 
+The deck is checked against the **table's format** ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §2). Commander: as
+it always was. Standard: at least 60 cards, at most four of a card other than
+basic lands counted across deck and sideboard, a sideboard of at most 15, no
+commander, and every card `legalities.standard == "legal"` (violation codes
+`too_many_copies`, `commander_not_allowed`, `sideboard_over_limit`, and the
+shared `wrong_card_count` and `not_legal_in_format`). A pre-built deck built
+for another format is a **422** that says so in one sentence. A signed-in
+player's saved copy records the table's format.
+
 **Request** — exactly one of `deck` and `source`:
 
 ```json
@@ -1939,6 +2284,11 @@ there; find it via `GET /me/decks`.
 Seat a deck already in the caller's library, without re-pasting it.
 `{deck_id}` is one of `GET /me/decks`' ids. No request body.
 
+A saved deck is seated only at a table of the format it was built for
+([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §2): otherwise a **422** naming both. `GET /me/decks` gives each
+deck's `format` (`"standard"`, or absent for Commander, which every deck
+saved before formats is).
+
 Only a `player` session already seated in this game may call it
 (`session.game_id` must match the path), for their own seat — there is
 no `player_id` field, unlike `POST /games/{id}/decks`, because a
@@ -1977,6 +2327,12 @@ The pre-built deck catalog the lobby's deck picker renders from, with
 each deck's engine-coverage profile. Game-independent — the same
 answer for every table — so the client fetches it once on mount.
 Session-gated; there is no seat to install a deck into without one.
+
+The decks of every format are listed ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) slice 1): the Commander decks
+first, then the others. A deck of another format carries `format`
+(`"standard"`) and has no `commander` and no `commander_cards`; a Commander
+deck's row is unchanged. The picker offers the decks of the table's format,
+and so does `GET /bot/options`, whose deck rows carry the same `format`.
 
 Served whether or not a Scryfall dump is loaded: the coverage grades
 come out of the effect registry and are true regardless. The honest
@@ -3043,6 +3399,142 @@ authenticated, you are just not a person.
 - `rejoin` is present only while the table is still open: live in this
   process and not archived. It is the path to POST for a seat session.
 - No invite token appears anywhere in the response.
+
+### Cubes: `GET`, `POST /me/cubes`; `GET`, `PUT`, `DELETE /me/cubes/{id}`
+
+A signed-in person's saved cubes ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)
+§8, #5441; `server/internal/cubes`, `server/internal/lobby/cubes_http.go`,
+migration 0039). A cube is a named list of cards a draft can deal its packs
+from in place of a set's ([`POST /draft`](#post-draft) with `cube`). It is a
+list: no commander, no sideboard, and every row of a pasted deck list or a
+deck site's deck is a card of the cube, whatever section it sat in.
+
+Same caller rule as `GET /me/games`: 401 with no session, 403 for a session
+with no account (a guest, the admin token). Every route reads and writes
+only the caller's own cubes; a cube that is not theirs is a 404, the answer
+one that does not exist gets. The five routes share a bucket of 1 request a
+second, burst 5, per address. With no database `GET /me/cubes` lists none
+and the others are a 503.
+
+**The check.** A cube is stored as text and checked against the catalog
+every time it is read, never as a stored verdict, so a card that is built
+later stops blocking the cube with no edit:
+
+```json
+{ "cards": 360, "unknown": [], "not_full": ["Some Card"], "repeated": [],
+  "too_large": false, "ready": false, "max_seats": 8 }
+```
+
+- `cards` is the size of the list, copies counted.
+- `not_full` names the cards the catalog does not hold as Full, `unknown`
+  the names the card index does not know, and `repeated` the cards a
+  singleton cube holds more than once. Each is sorted by name and names a
+  card once. Any entry in any of them blocks the cube.
+- Basic lands are exempt from `not_full` (the engine plays them with no
+  catalog entry) and from `repeated`.
+- `too_large` is true over 1,080 cards. A save refuses such a list, so it
+  is only ever true if the cap is lowered later.
+- `ready` is true when the list has a card, nothing blocks it and it is
+  within the cap. Only a ready cube can be drafted.
+- `max_seats` is the largest draft of 15-card packs the list can deal
+  (`cards` / 45, at most 8), and 0 when it cannot deal two seats. Whether a
+  cube is large enough is otherwise a matter of the draft being made: it
+  needs `seats` x 3 packs x `pack_size` cards.
+
+#### `GET /me/cubes`
+
+```json
+{ "cubes": [ { "id": "…", "name": "Pauper cube", "singleton": true,
+               "check": { }, "updated_at": "2026-11-11T19:02:11Z" } ],
+  "max_cubes": 20, "max_cards": 1080, "max_name_length": 60,
+  "pack_size": 15, "min_pack_size": 9, "max_pack_size": 20, "packs_per_seat": 3 }
+```
+
+The caller's cubes by name, each with its check and without its list, and
+the limits the client states.
+
+#### `POST /me/cubes`
+
+```json
+{ "name": "Pauper cube", "text": "Lightning Bolt\n2 Llanowar Elves\n…", "singleton": true }
+```
+
+- Send `text` or `url`, not both. `text` is a pasted list in the dialect
+  the deck importers read, or one card name a line (a row with no count is
+  one copy), at most 256 KiB. `url` is a link the deck importers support;
+  it is fetched through the deck checker's fetch, so a link its cache
+  holds fetches nothing and one that must be fetched spends a token of the
+  [`POST /deck-coverage`](#post-deck-coverage) fetch bucket (429 with
+  `Retry-After` when it is empty) and fails with the same errors. The link
+  is not stored.
+- `name` is at most 60 characters and goes through the name filter (400
+  `name_not_allowed`). It may be left out with a `url`: the deck's own
+  name is used, cut to fit, and filtered the same way. One name once per
+  person: a second is a **409** `cube_name_taken`.
+- `singleton` is true when left out: one copy of each card, basic lands
+  aside. False lifts the limit.
+
+A list with cards that block is saved: the check names them, and the owner
+drops them. A list with no cards is a 400, and one over 1,080 cards is a
+**400** `cube_too_large`. A person keeps at most 20 cubes; one more is a
+**409** `cubes_full`. **201** `{ "cube": { } }`: the cube with its `list`,
+the stored text (one `N Name` row a card, with `(SET) number` where the
+list named a printing), and its check.
+
+#### `GET /me/cubes/{id}`
+
+**200** `{ "cube": { } }`: one cube with its `list` and its check.
+
+#### `PUT /me/cubes/{id}`
+
+The body of the create, every field optional: a new `name`, a new list
+(`text` or `url`), `singleton`, or any of them together. What is left out
+stays as it was. The same refusals as the create. **200** `{ "cube": { } }`.
+
+#### `DELETE /me/cubes/{id}`
+
+**204**. A draft already dealt from the cube is not affected: it took its
+cards when it was made.
+
+Account deletion deletes a person's cubes (ADR 0149,
+`cubes.ForgetAccount`). The client's page is `#/cubes`.
+
+### `GET /me/drafts` and `GET /me/drafts/{id}`
+
+A signed-in person's finished drafts ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)
+§9, #5440; `server/internal/drafthistory`, migration 0038). Same caller
+rule as `GET /me/games` (401 with no session, 403 for a session with no
+account). A record is written for each signed-in seat when a draft
+finishes, when that person leaves it after the picks, and when the server
+closes it; a guest's seat writes nothing.
+
+`GET /me/drafts` is the list, newest first, at most 100, without cards:
+
+```json
+{ "drafts": [ {
+    "id": "…", "name": "Friday draft", "set": "blb", "set_name": "Bloomburrow",
+    "mode": "pick_one", "seats": 8, "best_of": 1, "seat": 2,
+    "drafted_at": "2026-11-11T19:02:11Z",
+    "matches": [
+      { "round": 1, "opponent_kind": "person", "opponent_name": "Bea", "result": "win", "games_won": 1, "games_lost": 0 },
+      { "round": 2, "opponent_kind": "bot", "result": "loss", "games_won": 0, "games_lost": 1 },
+      { "round": 3, "opponent_kind": "bye", "result": "", "games_won": 0, "games_lost": 0 } ],
+    "wins": 1, "losses": 1, "draws": 0 } ] }
+```
+
+`GET /me/drafts/{id}` is `{ "draft": { } }`, the same record with `picks`
+(every card the person picked, in the order taken, each a draft card's
+fields plus `in_deck`) and `basics` (the basic lands their deck added, by
+name). **404** for a draft that is not the caller's, the same answer as one
+that does not exist.
+
+- `opponent_kind` is `person`, `guest`, `bot` or `bye`. `opponent_name` is
+  present only for a `person` whose account still exists: it is that
+  account's display name now. No name is stored, and no account id is ever
+  sent.
+- Account deletion deletes a person's records, and clears the pointer where
+  someone else's record named them, so that round reads as a `person` with
+  no name.
 
 ### `GET /me/stats`
 
@@ -6725,4 +7217,6 @@ query string.
 
 The routes the lobby and the server serve, with the API reference above.
 
-- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/seats/{player_id}/away` + `POST /games/{id}/seats/me/take-back` (moving the table on without a player who has been offline for the table's `away_after`: hand the seat to a heuristic bot, concede it for them or keep waiting, decided by the host, else any present player, else the admin; and the player taking their seat back from the bot — [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md), [docs/lobby.md](lobby.md)), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/stats/advanced` + `GET /me/stats/decks/{deck_id}` (the advanced-stats read routes: the overview and one saved deck, filtered by `makeup` and `range`, the deck by `version`; 403 while the caller's advanced stats are off — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) slice 5), `POST` + `DELETE /me/stats/share-link`, `GET /stats/shared/{token}` and `GET /stats/shared/{token}/decks/{deck_id}` (the stats share link: mint or rotate, revoke, and the read-only shared view and its deck pages, public and limited per address, which never names another player — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §6), `GET` + `PUT /me/stats/prefs`, `GET /admin/stats/advanced`, `PUT /admin/stats/advanced-default` and `PUT /admin/users/{id}/advanced-stats` (the advanced-stats switch: a person's own, an admin's for a person, and the server's default, off unless an admin stores one; `GET /me/stats` reports `advanced` — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §2), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `POST /me/decks/{id}/update` + `POST /me/decks/{id}/update/confirm` (the owner previews, then commits, an update of a saved deck from its own link, a new link or a pasted list: a diff, the new coverage, and optionally a deck request for only the cards the deck's earlier request did not list; a table already seated with the deck keeps its list; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) amendment 2026-10-19, #2036), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6; a tablemate or a friend, with no block either way — ADR 0213 slice 3), `GET /me/friends`, `POST /me/friends/requests` (by `user_id`, or by `game_id` + `player_id` for a seat at your table), `POST /me/friends/requests/{user_id}/accept` + `/ignore`, `DELETE /me/friends/requests/{user_id}`, `DELETE /me/friends/{user_id}`, `GET /me/blocks`, `GET` + `PUT` + `DELETE /me/blocks/{user_id}` and `GET` + `PUT /me/social` (friends, requests, personal blocks and the two social settings: mutual by request, someone you have played with, 200 friends, 20 pending, 10 new an hour, 30-day expiry, a block ends both sides' ties and refuses requests and DM invites — [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md) §2, §3, [docs/lobby.md](lobby.md#friends-and-blocks-adr-0213-slice-3)), `GET /me/pods`, `POST /pods`, `GET` + `PATCH` + `DELETE /pods/{id}`, `PUT /pods/{id}/owner`, `POST /pods/{id}/invites` + `DELETE /pods/{id}/invites/{user_id}`, `POST /me/pod-invites/{pod_id}/accept` + `/decline`, `POST /me/pod-suggestions/{group_key}/dismiss` (Not now on a suggested pod; the suggestions ride `GET /me/pods`), `POST` + `DELETE /pods/{id}/link`, `GET` + `POST /pods/join/{token}`, `GET /pods/{id}/stats` + `GET /pods/{id}/leaderboard` (a pod's numbers: only members who switched on `share_pods`, pod games only, a 5-game minimum to rank, a block hides a person and not the group's history — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md) §6, §7, [docs/lobby.md](lobby.md#get-podsidstats-and-get-podsidleaderboard)), `DELETE /pods/{id}/members/{user_id}` and `PUT /admin/pods/{id}/name` + `DELETE /admin/pods/{id}` (pods: a named group with one owner who passes on to the member who joined first; in by a friend invite or the owner's 7-day link; members only, 404 to anyone else; 12 members, 10 pods each, 20 pending invites, 10 invites an hour, 3 new pods then 1 an hour, 30-day invites; one answer for every dead link; a block keeps a person out and hides two members from each other — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md), [docs/lobby.md](lobby.md#pods-adr-0220-slice-2)), `GET` + `POST /scheduled`, `GET` + `PATCH` + `DELETE /scheduled/{id}`, `PUT` + `DELETE /scheduled/{id}/rsvp`, `DELETE /scheduled/{id}/rsvps/{discord_id}` and `POST /scheduled/{id}/claim` (scheduled tables: a plan until its doors open 15 minutes before the start, then an ordinary table whose seats are held for the first N reservations until 10 minutes after the start and then passed down the waitlist; `GET /scheduled/{id}` is public by id, names go to the host and the list only; 3 upcoming a host, 50 on the server, 30 minutes to 30 days ahead, 3 moves — [ADR 0215](decisions/0215-scheduled-games-discord-scheduled-events-and-rsvp-seats.md), [docs/lobby.md](lobby.md#scheduled-tables-adr-0215-slice-2)), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `GET /auth/discord/linked-role` (Discord Linked Roles' verification URL: public, mints no session, pushes the person's games played, games won and join date to their Discord profile — [ADR 0163](decisions/0163-discord-linked-roles.md), [docs/lobby.md](lobby.md#get-authdiscordlinked-role-adr-0163)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/seats/{player_id}/away` + `POST /games/{id}/seats/me/take-back` (moving the table on without a player who has been offline for the table's `away_after`: hand the seat to a heuristic bot, concede it for them or keep waiting, decided by the host, else any present player, else the admin; and the player taking their seat back from the bot — [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md), [docs/lobby.md](lobby.md)), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `GET /me/stats/advanced` + `GET /me/stats/decks/{deck_id}` (the advanced-stats read routes: the overview and one saved deck, filtered by `makeup` and `range`, the deck by `version`; 403 while the caller's advanced stats are off — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) slice 5), `POST` + `DELETE /me/stats/share-link`, `GET /stats/shared/{token}` and `GET /stats/shared/{token}/decks/{deck_id}` (the stats share link: mint or rotate, revoke, and the read-only shared view and its deck pages, public and limited per address, which never names another player — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §6), `GET` + `PUT /me/stats/prefs`, `GET /admin/stats/advanced`, `PUT /admin/stats/advanced-default` and `PUT /admin/users/{id}/advanced-stats` (the advanced-stats switch: a person's own, an admin's for a person, and the server's default, off unless an admin stores one; `GET /me/stats` reports `advanced` — [ADR 0217](decisions/0217-advanced-player-stats-per-deck-and-overall.md) §2), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `POST /me/decks/{id}/update` + `POST /me/decks/{id}/update/confirm` (the owner previews, then commits, an update of a saved deck from its own link, a new link or a pasted list: a diff, the new coverage, and optionally a deck request for only the cards the deck's earlier request did not list; a table already seated with the deck keeps its list; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md) amendment 2026-10-19, #2036), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6; a tablemate or a friend, with no block either way — ADR 0213 slice 3), `GET /me/friends`, `POST /me/friends/requests` (by `user_id`, or by `game_id` + `player_id` for a seat at your table), `POST /me/friends/requests/{user_id}/accept` + `/ignore`, `DELETE /me/friends/requests/{user_id}`, `DELETE /me/friends/{user_id}`, `GET /me/blocks`, `GET` + `PUT` + `DELETE /me/blocks/{user_id}` and `GET` + `PUT /me/social` (friends, requests, personal blocks and the two social settings: mutual by request, someone you have played with, 200 friends, 20 pending, 10 new an hour, 30-day expiry, a block ends both sides' ties and refuses requests and DM invites — [ADR 0213](decisions/0213-friends-recently-played-with-and-live-presence.md) §2, §3, [docs/lobby.md](lobby.md#friends-and-blocks-adr-0213-slice-3)), `GET /me/pods`, `POST /pods`, `GET` + `PATCH` + `DELETE /pods/{id}`, `PUT /pods/{id}/owner`, `POST /pods/{id}/invites` + `DELETE /pods/{id}/invites/{user_id}`, `POST /me/pod-invites/{pod_id}/accept` + `/decline`, `POST /me/pod-suggestions/{group_key}/dismiss` (Not now on a suggested pod; the suggestions ride `GET /me/pods`), `POST` + `DELETE /pods/{id}/link`, `GET` + `POST /pods/join/{token}`, `GET /pods/{id}/stats` + `GET /pods/{id}/leaderboard` (a pod's numbers: only members who switched on `share_pods`, pod games only, a 5-game minimum to rank, a block hides a person and not the group's history — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md) §6, §7, [docs/lobby.md](lobby.md#get-podsidstats-and-get-podsidleaderboard)), `DELETE /pods/{id}/members/{user_id}` and `PUT /admin/pods/{id}/name` + `DELETE /admin/pods/{id}` (pods: a named group with one owner who passes on to the member who joined first; in by a friend invite or the owner's 7-day link; members only, 404 to anyone else; 12 members, 10 pods each, 20 pending invites, 10 invites an hour, 3 new pods then 1 an hour, 30-day invites; one answer for every dead link; a block keeps a person out and hides two members from each other — [ADR 0220](decisions/0220-pods-groups-of-players-for-shared-stats.md), [docs/lobby.md](lobby.md#pods-adr-0220-slice-2)), `GET` + `POST /scheduled`, `GET` + `PATCH` + `DELETE /scheduled/{id}`, `PUT` + `DELETE /scheduled/{id}/rsvp`, `DELETE /scheduled/{id}/rsvps/{discord_id}` and `POST /scheduled/{id}/claim` (scheduled tables: a plan until its doors open 15 minutes before the start, then an ordinary table whose seats are held for the first N reservations until 10 minutes after the start and then passed down the waitlist; `GET /scheduled/{id}` is public by id, names go to the host and the list only; 3 upcoming a host, 50 on the server, 30 minutes to 30 days ahead, 3 moves — [ADR 0215](decisions/0215-scheduled-games-discord-scheduled-events-and-rsvp-seats.md), [docs/lobby.md](lobby.md#scheduled-tables-adr-0215-slice-2)), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `GET /auth/discord/linked-role` (Discord Linked Roles' verification URL: public, mints no session, pushes the person's games played, games won and join date to their Discord profile — [ADR 0163](decisions/0163-discord-linked-roles.md), [docs/lobby.md](lobby.md#get-authdiscordlinked-role-adr-0163)), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /draft`, `GET /draft/{id}`, `POST /draft/{id}/join`, `/start`, `/leave` and `/match` (a booster draft: its own lobby object, in memory only, 2 to 8 seats, pick one or pick two, bots in every seat no person takes; public, so a visitor drafts against bots with no sign-in; the seat token is a `drafter` session returned in the body, never set as the cookie; one table against the load cap while people are picking or building; after the picks a timed build, then three rounds of 1v1 matches at `limited` tables the draft opens, each a table against the cap, with `POST /draft/{id}/match` seating the caller at theirs; the picks and the deck ride `GET /draft/{id}/ws` — [ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §5, #5438, [docs/lobby.md](lobby.md#drafts-post-draft-get-draftid-post-draftidjoin-start-leave), [docs/protocol.md](protocol.md#the-draft-socket-draftidws)), `GET /me/drafts` + `GET /me/drafts/{id}` (a signed-in person's finished drafts: the set, the date, their picks and deck, and each round's result; their own only, deleted with the account; a guest's draft keeps nothing — [ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §9, #5440, [docs/lobby.md](lobby.md#get-medrafts-and-get-medraftsid)), `GET` + `POST /me/cubes` and `GET` + `PUT` + `DELETE /me/cubes/{id}` (a signed-in person's saved cubes: a named card list read by the deck importers, checked against the catalog on every read so that every card must be Full, singleton unless its owner says otherwise, at most 1,080 cards and 20 cubes; `POST /draft` takes one as `cube` with a `pack_size` in place of a set, for its owner only; deleted with the account — [ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §8, #5441, [docs/lobby.md](lobby.md#cubes-get-post-mecubes-get-put-delete-mecubesid)), `GET /draft/sets` (public, no session, read-only — which sets can be drafted: a set is draftable only when every card its packs can contain is Full in the catalog, and each set that is not names the cards that block it; [ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §4, #5437, [docs/lobby.md](lobby.md#get-draftsets)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))
+- Also served and documented above, but not named in the list: `POST /logout` + `/logout/everywhere`, `DELETE /me/account`, `GET` + `PUT` + `DELETE /me/model-key` and `POST /me/model-key/test`, `GET` + `PUT /me/notifications`, `GET` + `PUT /me/decks/{id}/printings`, `GET /me/games/{id}/cards`, `POST /games/{id}/spectate` and `GET` + `DELETE /games/{id}/spectators`, `GET /games/{id}/blocks` + `DELETE /games/{id}/blocks/{block_id}`, `POST /games/{id}/reports` with `GET /admin/reports` + `DELETE /admin/reports/{id}`, `GET /games/{id}/preview`, `GET /games/{id}/replay`, `POST /bugreport` with `GET /bugreport/config`, `/bugreport/{id}/gamelog`, `/bugreport/{id}/replay`, `/bugreport/att/{id}/{name}`, `GET /admin/bugreport` and `PUT /admin/bugreport/paused`, `GET /config`, `GET /bot/options`, `GET` + `PUT /admin/bot/model`, `PUT /admin/decks/{id}/power`, `POST /admin/users/{id}/revoke-sessions` and `POST /admin/discord-members/{discord_id}/revoke-sessions`, `POST /admin/capacity/restore-deferred`, `GET /auth/discord/start`, `/callback` and `/config`, `GET /avatars/{id}/{hash}`, `GET /draft/image/{id}`, and the dev-only `GET /dev/cards` and `POST /games/{id}/dev/spawn`.
+- Documented elsewhere: `GET /games/{id}/auto-tap-preview` in [protocol.md](protocol.md), and `GET /metrics`, on its own loopback listener, in [monitoring.md](monitoring.md).

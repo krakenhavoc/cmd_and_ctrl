@@ -66,6 +66,7 @@ var permissionFilterDerived = map[string]string{
 	"conspicuous_snoop.go":            "standing play permission (stampStandingPermissionLocked)",
 	"deeproot_historian.go":           "standing retrace permission (stampStandingPermissionLocked)",
 	"granted_alternative_cost.go":     "Rooftop Storm's granted alternative cost (grantedAlternativeCostsLocked)",
+	"ashling_the_limitless.go":        "granted evoke (grantedAlternativeCostsLocked)",
 	"blur_of_heroism.go":              "standing cast timing (castTimingVerdictLocked)",
 	"whirlwing_stormbrood.go":         "standing cast timing (castTimingVerdictLocked)",
 	"rivaz_of_the_claw.go":            "standing cast permission (stampStandingPermissionLocked)",
@@ -74,6 +75,8 @@ var permissionFilterDerived = map[string]string{
 	"mai_and_zuko.go":                 "standing cast timing (castTimingVerdictLocked)",
 	"traveling_chocobo.go":            "standing cast permission (stampStandingPermissionLocked)",
 	"std_b7_helpers.go":               "Dracogenesis's granted alternative cost (grantedAlternativeCostsLocked)",
+	"emperor_mihail_ii.go":            "standing cast permission (stampStandingPermissionLocked)",
+	"singer_of_swift_rivers.go":       "standing cast timing (castTimingVerdictLocked)",
 }
 
 func TestTokenDescriptionsReadThroughText(t *testing.T) {

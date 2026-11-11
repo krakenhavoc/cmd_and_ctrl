@@ -49,6 +49,7 @@ var landwalkTokens = []struct {
 	{"swampwalk", landwalkSpec{subtype: "Swamp"}},
 	{"mountainwalk", landwalkSpec{subtype: "Mountain"}},
 	{"forestwalk", landwalkSpec{subtype: "Forest"}},
+	{"desertwalk", landwalkSpec{subtype: "Desert"}},
 	{"nonbasic landwalk", landwalkSpec{supertype: "basic", negated: true}},
 }
 

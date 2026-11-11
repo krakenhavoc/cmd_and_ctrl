@@ -21,7 +21,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, AnOpponentCast(Creature()),
 				"Sam Kirk, Xenoanthropologist — investigate",
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 		},
 	})
 }

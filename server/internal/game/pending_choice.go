@@ -834,6 +834,14 @@ type PendingChoice struct {
 	// copy (CopySelector.ExchangeText, ADR 0160 Decision 6). The answer
 	// is the same; only the wording differs. Wire `exchanges_text`.
 	ExchangesText bool
+	// CopyUse says what a PendingChoiceCopyTarget's pick is for when it
+	// is not the object the entering permanent copies: CopyUseTokens (the
+	// creature a token creation's tokens copy, Esix, Fractal Bloom), or
+	// CopyUseExileCopied and CopyUseExileOther (The Mimeoplasm's two
+	// graveyard cards, both exiled). Empty for the ordinary
+	// enters-as-a-copy pick. The answer and the empty
+	// decline are the same; only the wording differs. Wire `copy_use`.
+	CopyUse string
 
 	// ExcludedTypes are creature types a PendingChoiceCreatureType may
 	// NOT be answered with (ADR 0160's 2026-10-15 amendment): Artificial
@@ -3871,7 +3879,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			// judged for the controller. A walk with no such player, or
 			// one who has left, has nobody to choose: CR 603.3d removes
 			// the ability for a required clause.
-			who := triggerActorOf(src)
+			who := triggerChooserOf(src)
 			if who == uuid.Nil || !g.playerInGameLocked(who) {
 				if clause.Min > 0 {
 					return
@@ -5664,6 +5672,7 @@ func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, keyed KeyedTail, ke
 // on-disk key: never renamed, never reused.
 var surveilRouted = RegisterTail("engine/surveil-routed", func(g *Game, o TailOutcome) error {
 	t := o.Tail
+	g.markSurveilledLocked(t.Player, o.IDs)
 	g.EmitEvent(Event{
 		Kind:     EventSurveil,
 		Actor:    t.Player,

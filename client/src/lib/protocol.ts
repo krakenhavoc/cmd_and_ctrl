@@ -19,13 +19,24 @@ export type Kind =
   | "ack"
   | "legal_moves_request"
   | "legal_moves"
-  | "visibility";
+  | "visibility"
+  // The draft socket's two frames (/draft/{id}/ws, ADR 0222 §5, #5438):
+  // the per-seat view, and a seat's pick. Neither travels on a game
+  // socket; lib/draftSocket.ts sends and reads them.
+  | "draft"
+  | "draft_pick"
+  | "draft_deck";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
   BadJSON: "bad_json",
   BadRequest: "bad_request",
   Internal: "internal",
+  // #5438 (ADR 0222 §5): a draft_pick the draft would not take (not
+  // picking, already picked, a card not in the pack, the wrong number
+  // of cards). Only ever sent on the draft socket.
+  DraftPickRefused: "draft_pick_refused",
+  DraftDeckRefused: "draft_deck_refused",
   // S15 sub-PR 3: the strict-mode mana-cost gate rejected a
   // cast_spell. The error payload carries `missing` (brace-formatted
   // unpaid symbols) and `card_id` (the rejected cast's instance) so
@@ -307,6 +318,12 @@ export type ActionType =
   // fields present are applied. Host or admin only, and deliberately
   // not undoable.
   | "set_table_settings"
+  // ADR 0222 §3: sideboarding between two games of a match, and
+  // conceding the whole match.
+  | "set_match_deck"
+  | "choose_play_first"
+  | "sideboard_ready"
+  | "concede_match"
   // Deprecated since S35: a one-field alias for set_table_settings
   // that cannot select an unlimited budget (a negative limit clamps
   // to 0). Kept so an old client and the gamecli scripts still work.
@@ -341,6 +358,65 @@ export interface SnapshotPayload {
   seq: number;
   generation: number;
   game: GameView;
+}
+
+// MatchView mirrors protocol.MatchView (ADR 0222 §3): the score of a
+// table's match and, between two of its games, the sideboarding window.
+// A best-of-one table has one too, with best_of 1; a score is shown
+// only for a longer match.
+export interface MatchView {
+  best_of: number;
+  // The number of the game in play, or of the last game played while
+  // the table is between games or the match is over.
+  game: number;
+  // Each seat's games won, by seat index.
+  wins: number[];
+  games?: MatchGameView[];
+  over?: boolean;
+  // The seat that won the match; absent for a draw.
+  winner_seat?: number;
+  conceded_seat?: number;
+  // Present between two games. The table's state is then "active", the
+  // board is the finished game's, and only sideboarding's actions are
+  // accepted.
+  sideboarding?: SideboardingView;
+}
+
+export interface MatchGameView {
+  // Absent for a drawn game.
+  winner_seat?: number;
+  cause?: string;
+  starting_seat: number;
+  turns: number;
+}
+
+export interface SideboardingView {
+  // RFC 3339 UTC, and the same in seconds by the server's clock when
+  // the frame was built.
+  deadline: string;
+  seconds_left: number;
+  // The seats that are ready; a bot seat always is.
+  ready: number[];
+  // Who chooses who plays first (CR 103.1), and the choice as it
+  // stands, which only the chooser's frame carries.
+  chooser_seat: number;
+  play_first?: boolean;
+  deck_min: number;
+  sideboard_max: number;
+  /** The sideboard has no size limit and `sideboard_max` is not read (a limited table, CR 100.4b). */
+  sideboard_any?: boolean;
+  // The viewer's own pool; none on a spectator's frame.
+  pools?: MatchPoolView[];
+}
+
+// One seat's deck and sideboard between games. A card's instance_id is
+// its pool id, which set_match_deck takes.
+export interface MatchPoolView {
+  seat: number;
+  player_id: string;
+  deck: CardView[];
+  sideboard: CardView[];
+  registered: string[];
 }
 
 // OpeningRollView mirrors protocol.OpeningRollView (ADR 0121 §3): the
@@ -528,6 +604,14 @@ export interface GameView {
   // ADR 0216 §9: a Planechase table's planar state. Absent unless the
   // table plays Planechase. Public to every viewer.
   planechase?: PlanechaseView;
+  // ADR 0222 §3: the table's match, absent at a table with no match,
+  // which is every Commander table. Read it through match.ts.
+  match?: MatchView;
+  // ADR 0222 slice 1: true when no seat brought a commander, which is
+  // when the commander UI is hidden (the command zone tile, the
+  // commander damage grid and setting). Absent at every table with a
+  // commander, so a Commander table is unchanged.
+  no_commanders?: boolean;
   // Stack item announce-time metadata (S13.1). Indexed bottom..top —
   // the corresponding spell card (if any) lives in `stack` at the
   // same index. Empty when the stack is empty.
@@ -1213,6 +1297,13 @@ export type LogKind =
   // `seat` is the vote's controller, `card_id` the card, and `seats` and
   // `votes` are parallel: each voter and what they voted for.
   | "votes_revealed"
+  // #5424, CR 701.30: `seat` clashed with `target_seat`. `cause` is where
+  // their revealed card went ("bottom" or "top"; absent when their
+  // library was empty) and `card_id` the card whose effect said to clash.
+  | "clash"
+  // #5424, CR 701.30d: `seat` won a clash with `target_seat`. `card_id` is
+  // the card whose effect said to clash.
+  | "clash_won"
   // ADR 0150 §5: `seat` paid, or didn't pay, an "unless any player pays"
   // offer. `label` is the payment ("{2}") and `card_id` the card whose
   // effect it was.
@@ -1389,6 +1480,7 @@ export type LogKind =
   // many exiled cards will enter under their control after the
   // mulligans. Always the first line: the log begins again here.
   | "game_restarted"
+  | "match_game"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -2185,6 +2277,14 @@ export interface PendingChoiceView {
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
   exchanges_text?: boolean;
+  // #5457: what a "copy_target" pick is for when nothing is entering as a
+  // copy. "tokens" (Esix, Fractal Bloom): the creature the tokens being
+  // created will copy; the empty answer creates the tokens as they were.
+  // "exile_copied" then "exile_other" (The Mimeoplasm): the graveyard
+  // card to exile and enter as a copy of, then the other card to exile,
+  // whose power becomes +1/+1 counters; an empty answer to either exiles
+  // nothing. Absent for the ordinary enters-as-a-copy pick.
+  copy_use?: "tokens" | "exile_copied" | "exile_other";
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
@@ -3172,6 +3272,11 @@ export interface EscalateView {
 // them.
 export interface AdditionalCostView {
   discard_cards?: number;
+  // #5457: the cards in the viewer's hand that may pay a discard the
+  // clause narrows ("discard a land card", Magmatic Insight). Absent
+  // when any card pays. Fewer cards than `min` means the cost cannot be
+  // paid right now, so the spell is uncastable.
+  discard_options?: LegalTargetsView;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.
@@ -3834,9 +3939,15 @@ export type ExilePlayUntil =
   | "while_exiled"
   | "until_another";
 
-// #1297: the pile an "Exile N cards from your …" cost reads — always
-// the activator's own. The server stamps it with `exile_cost_n`.
-export type ExileCostZone = "hand" | "graveyard";
+// #1297: the pile an "Exile N cards from your …" cost reads — the
+// activator's own hand or graveyard. The server stamps it with
+// `exile_cost_n`. #5457: "exile" is the other move, "Put a card an
+// opponent owns from exile into that player's graveyard" (Void
+// Attendant): the options are cards in the shared `exile` zone that an
+// opponent owns, and each pick goes to its owner's graveyard. A
+// face-down option stands for its group: the server moves a card chosen
+// at random from the cards exiled face down with it.
+export type ExileCostZone = "hand" | "graveyard" | "exile";
 
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
@@ -5664,7 +5775,7 @@ export interface ProtectionView {
   // "player", "mana_value_at_most" (value = the bound N, #2181),
   // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
   // "mana_value_even", "multityped_creatures", "noncreature_permanents"
-  // (#4307) or "multicolored" (#4834).
+  // (#4307), "multicolored" (#4834) or "mana_value_at_least" (value = N).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype
@@ -5740,8 +5851,10 @@ export interface ManaAbilityView {
   // #758: "Tap an untapped creature you control" on a mana ability
   // (Springleaf Drum). Same fields as an activated ability's
   // TapOthers component; the answer rides activate_mana_ability as
-  // `tap_ids`. This surface is fixed-count: CR 605.3b gives a mana
-  // ability no X announcement, so `count_from_x` is never set here.
+  // `tap_ids`. CR 605.3b gives a mana ability no X announcement, so
+  // `count_from_x` is never set here. #5447: "Tap X untapped tokens you
+  // control: Add X mana" (Hazel of the Rootbloom) ships `min` 0 and `max`
+  // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #1600: "Exile a creature you control" on a mana ability (Food
@@ -6125,6 +6238,13 @@ export interface TableSettingsView {
   // ADR 0216 §1: a Planechase table (a communal planar deck and the
   // planar die). Absent is off. Fixed once the game is active.
   planechase?: boolean;
+  // ADR 0222 §1: the table's format, "standard", or absent for
+  // Commander, the default. Chosen when the table is made; read it
+  // through formatOf (formats.ts).
+  format?: string;
+  // ADR 0222 §3: the length of the table's match, 3, or absent for a
+  // best-of-one and for a table with no match.
+  best_of?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

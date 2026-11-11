@@ -209,3 +209,53 @@ describe("endGateBadges", () => {
     expect(both.map((b) => b.key)).toEqual(["cant-play-from-hand", "cant-play-lands"]);
   });
 });
+
+// ADR 0222 §3: a finished best-of-three is a match won, and its winner
+// need not have won its last game.
+describe("a finished match", () => {
+  const match = { best_of: 3, game: 3, wins: [2, 1], over: true, winner_seat: 0 };
+
+  it("names the match's winner and its score", () => {
+    const v = {
+      ...view("ended", [alice, { ...bob, eliminated: true }], {
+        kind: "win",
+        winner: alice.id,
+        cause: "last_standing",
+      } as OutcomeView),
+      match,
+    } as GameView;
+    expect(winnerOf(v)?.name).toBe("Alice");
+    expect(gameOverText(v)).toEqual({ winner: v.seats[0], text: "wins the match 2–1." });
+  });
+
+  it("reads the winner from the match when the last game was a draw", () => {
+    const v = {
+      ...view("ended", [alice, bob], { kind: "draw", cause: "all_lost" } as OutcomeView),
+      match: { ...match, wins: [1, 0] },
+    } as GameView;
+    expect(winnerOf(v)?.name).toBe("Alice");
+    expect(gameOverText(v).text).toBe("wins the match 1–0.");
+    expect(endCueFor(v, alice.id)).toBe("win");
+    expect(endCueFor(v, bob.id)).toBe("loss");
+  });
+
+  it("says a drawn match is a draw", () => {
+    const v = {
+      ...view("ended", [alice, bob], { kind: "draw", cause: "all_lost" } as OutcomeView),
+      match: { best_of: 3, game: 3, wins: [1, 1], over: true },
+    } as GameView;
+    expect(winnerOf(v)).toBeNull();
+    expect(gameOverText(v)).toEqual({ winner: null, text: "The match is a draw, 1–1." });
+  });
+
+  it("leaves a best-of-one and a Commander table as they were", () => {
+    const outcome = { kind: "win", winner: alice.id, cause: "last_standing" } as OutcomeView;
+    const plain = view("ended", [alice, { ...bob, eliminated: true }], outcome);
+    const one = {
+      ...plain,
+      match: { best_of: 1, game: 1, wins: [1, 0], over: true, winner_seat: 0 },
+    } as GameView;
+    expect(gameOverText(plain).text).toBe("wins the game.");
+    expect(gameOverText(one).text).toBe("wins the game.");
+  });
+});

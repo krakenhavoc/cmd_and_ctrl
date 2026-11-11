@@ -5,8 +5,7 @@ What to run, from the repo root. The Go rules are in [AGENTS.md](../AGENTS.md) �
 ## Dev environment
 
 The devcontainer installs Go, Node, and the GitHub CLI. Ports 3000, 5173, and
-8080 are forwarded. (The Java/Maven features remain installed for now but are
-unused — they can be removed in a later cleanup PR.)
+8080 are forwarded.
 
 ## Commands
 
@@ -20,7 +19,8 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
 - `make help` — list targets
 - `make server-dev` — run the Go server on :8080
 - `make client-dev` — run the Vite dev server on :5173
-- `make test` — server tests + client typecheck
+- `make test` — server tests, client typecheck and client unit tests (Vitest)
+- `make server-dev-skip-validation` — like `server-dev`, but skips deck validation so a small test deck imports; never in prod
 - `make lint` — `go vet` + client ESLint + Prettier check
 - `make cost-report` — what the project has cost: human-team estimate, Claude API list price, subscriptions. `make cost-push` publishes your Claude Code usage for the weekly report; see [scripts/cost/README.md](../scripts/cost/README.md)
 
@@ -50,4 +50,5 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
 - `npm run build` — type-check + production build into `client/dist/`
 - `npm run check` — `svelte-check` typecheck only
 - `npm run lint` — ESLint + Prettier check
+- `npm test` — Vitest unit and render tests
 - `npm run format` — auto-format

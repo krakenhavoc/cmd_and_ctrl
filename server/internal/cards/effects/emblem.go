@@ -152,6 +152,22 @@ type EmblemSpec struct {
 	// same budget a card's are (game.MaxCatalogReplacementSlots).
 	Replacements []game.ReplacementEffect
 
+	// HandSize are the emblem's maximum-hand-size statics, the
+	// `Spec.HandSize` slot one zone over: Wrenn and Seven's "You have no
+	// maximum hand size". Folded in CR 613.11's timestamp order with every
+	// other effect on the player's maximum hand size
+	// (game.Game.EffectiveMaxHandSizeLocked walks the emblems after the
+	// battlefield).
+	HandSize []game.HandSizeStatic
+
+	// GrantedAlternativeCosts are the emblem's "you may cast spells ...
+	// without paying their mana costs" statics (ADR 0118 §3), the
+	// `Spec.GrantedAlternativeCosts` slot one zone over, built with the
+	// same constructors and checked by the same Register guard: Tamiyo,
+	// Field Researcher's "You may cast nonland cards from your hand without
+	// paying their mana costs". Offered to the emblem's owner.
+	GrantedAlternativeCosts []game.GrantedAlternativeCost
+
 	// Lines are the emblem's abilities line by line, each with the
 	// count it is gained at, for an emblem whose abilities switch on one
 	// by one (the Ring, CR 701.54c). The wire's text for it is derived
@@ -183,8 +199,10 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		// #2528: standing permissions an emblem grants its owner.
 		CastPermissions: standingCastPermissions(e.CastPermissions),
 		// #4192: read through CatalogReplacements by the gather's emblem walk.
-		Replacements: e.Replacements,
-		Emblem:       &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
+		Replacements:            e.Replacements,
+		HandSize:                e.HandSize,
+		GrantedAlternativeCosts: e.GrantedAlternativeCosts,
+		Emblem:                  &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
 	}
 }
 
@@ -204,12 +222,13 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
 		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
 		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 &&
-		len(e.Replacements) == 0 {
+		len(e.Replacements) == 0 && len(e.HandSize) == 0 && len(e.GrantedAlternativeCosts) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
 	checkCastRestrictions(name+" emblem", e.CastRestrictions)
 	checkLandPlayRestrictions(name+" emblem", e.LandPlayRestrictions)
+	checkGrantedAlternativeCosts(name+" emblem", e.GrantedAlternativeCosts)
 	// #4192: the same slot budget and Then/Prevention rule as a Spec's.
 	if n := len(e.Replacements); n > game.MaxCatalogReplacementSlots {
 		panic(fmt.Sprintf("effects.Register: %s declares an Emblem with %d replacement effects — the ID scheme reserves %d slots per object (game.MaxCatalogReplacementSlots)",

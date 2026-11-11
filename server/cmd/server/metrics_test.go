@@ -37,7 +37,7 @@ func publicStack(t *testing.T) (*httptest.Server, auth.Authenticator) {
 		Auth:       a,
 		AdminToken: "a-sufficiently-long-admin-token",
 	})
-	srv := httptest.NewServer(newPublicHandler(hub, a, nil, nil, lobbyHandler))
+	srv := httptest.NewServer(newPublicHandler(hub, a, nil, nil, nil, lobbyHandler))
 	t.Cleanup(func() {
 		srv.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -199,7 +199,7 @@ func TestMetricsIsAbsentFromThePublicMux(t *testing.T) {
 // handler, every series in the registry keeps the closed-set rule.
 func TestPublicHandlerKeepsLabelsClosed(t *testing.T) {
 	srv, _ := publicStack(t)
-	for _, p := range []string{"/healthz", "/games", "/me", "/cards/x", "/catalog", "/roadmap", "/no/such/path", "/metrics"} {
+	for _, p := range []string{"/healthz", "/games", "/me", "/cards/x", "/catalog", "/roadmap", "/draft/sets", "/no/such/path", "/metrics"} {
 		do(t, srv, "GET", p, "")
 	}
 	do(t, srv, "BREW", "/healthz", "")

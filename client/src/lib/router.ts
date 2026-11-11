@@ -37,6 +37,25 @@ export type Route =
   // automates today, what's partial, what's missing, and what's next.
   // Public, like the catalogue (ADR 0092).
   | { name: "roadmap" }
+  // Which sets can be drafted (ADR 0222 §4, #5437), at #/draft/sets.
+  // Public: it is card data, like the catalogue.
+  | { name: "draftSets" }
+  // A booster draft (ADR 0222 §5, #5438). #/draft (and #/draft/new) is
+  // the create form; `set` is ?set=<code>, the set the sets page's
+  // "Draft this set" link chose. #/draft/<id> is one draft: its lobby,
+  // the picks and the finished pool. `invite` is ?invite=<code>, the
+  // link a host shares, which opens the join page for a browser that
+  // holds no seat there. Both are public: a visitor drafts against bots
+  // with no sign-in, as they play a practice game.
+  // `cube` is ?cube=<id>, one of the caller's own cubes, chosen by the
+  // My cubes page's "Draft this cube" link (ADR 0222 §8, #5441).
+  | { name: "draftNew"; set?: string; cube?: string }
+  // A signed-in person's saved cubes (ADR 0222 §8, #5441), at #/cubes.
+  | { name: "myCubes" }
+  // A signed-in person's finished drafts (ADR 0222 §9, #5440): the list
+  // at #/drafts and one draft, read-only, at #/drafts/<id>.
+  | { name: "myDrafts"; id?: string }
+  | { name: "draft"; id: string; invite?: string }
   // The privacy notice (#2983, ADR 0149): what is stored, why, for how
   // long, who it is shared with, and how a signed-in person deletes
   // their account. Public: a stranger deciding whether to sign in has
@@ -178,6 +197,23 @@ export function parseHash(hash: string): Route {
         : { name: "requestAccess" };
     case "roadmap":
       return { name: "roadmap" };
+    case "draft": {
+      // "sets" and "new" are pages of their own, so neither is ever a
+      // draft's id (the server's ids are uuids).
+      if (parts[1] === "sets") return { name: "draftSets" };
+      if (!parts[1] || parts[1] === "new") {
+        const set = params.get("set");
+        const cube = params.get("cube");
+        if (cube) return { name: "draftNew", cube };
+        return set ? { name: "draftNew", set } : { name: "draftNew" };
+      }
+      const invite = params.get("invite");
+      return invite ? { name: "draft", id: parts[1], invite } : { name: "draft", id: parts[1] };
+    }
+    case "cubes":
+      return { name: "myCubes" };
+    case "drafts":
+      return parts[1] ? { name: "myDrafts", id: parts[1] } : { name: "myDrafts" };
     case "privacy":
       return { name: "privacy" };
     case "terms":

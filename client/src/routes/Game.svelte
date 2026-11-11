@@ -11,6 +11,7 @@
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
   import { HISTORY_HASH } from "../lib/tablesPage";
+  import { draftHash, draftOfMatch } from "../lib/draft";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { removedNotice, session } from "../lib/session";
   import { serverFull } from "../lib/serverFull";
@@ -201,6 +202,10 @@
   import RevealBanner from "../lib/components/board/RevealBanner.svelte";
   import OpeningRollBanner from "../lib/components/board/OpeningRollBanner.svelte";
   import OpeningRollDock from "../lib/components/board/OpeningRollDock.svelte";
+  import MatchClock from "../lib/components/board/MatchClock.svelte";
+  import MatchScore from "../lib/components/board/MatchScore.svelte";
+  import SideboardingSheet from "../lib/components/board/SideboardingSheet.svelte";
+  import { lastGameText, matchOf, poolOf, scoreLine, sideboardingOf } from "../lib/match";
   import BotFeed from "../lib/components/BotFeed.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import {
@@ -348,6 +353,12 @@
     gameID: string;
   }
   const { gameID }: Props = $props();
+
+  // The draft this table is a match of, when the draft page sent the
+  // player here (lib/draft.ts rememberDraftMatch); null at any other
+  // table. The page is keyed on the game, so its id never changes here.
+  // svelte-ignore state_referenced_locally
+  const matchDraft = draftOfMatch(gameID);
 
   // ADR 0121 §7: one dice schedule for the screen. The board's dice
   // layer fills it and draws from it; the strip's roll cue waits on it.
@@ -1104,12 +1115,16 @@
       // settings and session back as the route changes.
       const question = isPracticeGame(gameID)
         ? "Leave the practice game? It ends when you leave."
-        : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
+        : matchDraft
+          ? "Leave this match? Your seat stays active: you can come back to it from the draft."
+          : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
       if (!confirm(question)) {
         return;
       }
     }
-    navigate("#/lobby");
+    // A draft's match goes back to its draft, where the next round is
+    // (ADR 0222 §6, #5440).
+    navigate(matchDraft ? draftHash(matchDraft) : "#/lobby");
   }
 
   // ---- Turn / priority / quick actions ----
@@ -1397,6 +1412,17 @@
   // mulligan window is open too (the turn is parked the same way), but
   // no hand has been dealt, so the mulligan sheet and its roll call wait.
   const openingRollOpen = $derived(!!view?.opening_roll);
+  // ADR 0222 §3: a best-of-three's score, and the window between two of
+  // its games. Both are null at a Commander table and a best-of-one.
+  const match = $derived(matchOf(view));
+  const sideboarding = $derived(sideboardingOf(view));
+  const sideboardPool = $derived(poolOf(sideboarding, viewerID));
+  // "Look at the board" sets the sideboarding screen aside; the strip's
+  // banner brings it back. Each new window opens on the screen.
+  let sideboardingHidden = $state(false);
+  $effect(() => {
+    if (!sideboarding) sideboardingHidden = false;
+  });
   const openingRoll = $derived(openingRollWinner(view));
   // CR 103.5: only the seat whose turn it is may keep or mulligan; the
   // others see the sheet and who they are waiting for.
@@ -2626,6 +2652,26 @@
     client.sendAction("concede", viewerID);
   }
 
+  // ADR 0222 §3: the match's own verbs. Conceding the match is as final
+  // as conceding a game, and both of its doors ask first.
+  function concedeMatch(): void {
+    if (!viewerID || gameEnded) return;
+    client.sendAction("concede_match", viewerID);
+  }
+  function setMatchDeck(main: string[]): void {
+    if (!viewerID) return;
+    client.lastError.set(null);
+    client.sendAction("set_match_deck", viewerID, { main });
+  }
+  function choosePlayFirst(playFirst: boolean): void {
+    if (!viewerID) return;
+    client.sendAction("choose_play_first", viewerID, { play_first: playFirst });
+  }
+  function sideboardReady(ready: boolean): void {
+    if (!viewerID) return;
+    client.sendAction("sideboard_ready", viewerID, { ready });
+  }
+
   // ---- Keyboard shortcuts (ADR 0047) ----
   //
   // The single global listener lives at the app shell; this route
@@ -3063,14 +3109,18 @@
     onAccept: () => void runRematch(() => acceptRematch(gameID)),
     onLeave: () => void runRematch(() => leaveRematch(gameID)),
   };
+  // A draft's match has no rematch (its draft pairs the next round), and
+  // its way out is the draft.
   const gameOverDockRequest = $derived(
-    gameEnded
-      ? gameOverRequest(back, gameOverArmed, {
-          plan: rematch,
-          busy: rematchBusy,
-          ...rematchActions,
-        })
-      : null,
+    !gameEnded
+      ? null
+      : matchDraft
+        ? gameOverRequest(back, gameOverArmed, undefined, L.draftBackToDraft)
+        : gameOverRequest(back, gameOverArmed, {
+            plan: rematch,
+            busy: rematchBusy,
+            ...rematchActions,
+          }),
   );
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
@@ -3115,6 +3165,7 @@
     seated: dockShown,
     eliminated: viewerEliminated,
     gameEnded,
+    commanders: !view?.no_commanders,
     drawKey: keyHint(keys.drawCard) ? formatChord(keys.drawCard, mac) : "",
     drawTitle: `draw a card${keyHint(keys.drawCard)}`,
     canManage,
@@ -3183,6 +3234,7 @@
     onMyGames: () => navigate(HISTORY_HASH),
     onBack: back,
     onConcede: concede,
+    onConcedeMatch: match && !match.over ? concedeMatch : undefined,
     onStartVote: (topic, options) =>
       sendAction("start_vote", { topic, options }, viewerID ?? undefined),
   });
@@ -3252,6 +3304,9 @@
           attackDirections={view.attack_directions ?? []}
         />
       </div>
+    {/if}
+    {#if match && view}
+      <MatchScore {match} seats={view.seats} />
     {/if}
     <span class="bar-spacer"></span>
     {#if isSpectator}
@@ -3416,7 +3471,12 @@
         </h2>
         <!-- The lobby card's deck picker (ADR 0212 §3), with its own
              Sit down button: there is no card footer here. -->
-        <DeckPicker {gameID} playerID={viewerID} onSuccess={() => (deckImportDismissed = true)} />
+        <DeckPicker
+          {gameID}
+          playerID={viewerID}
+          format={tableSettings.format}
+          onSuccess={() => (deckImportDismissed = true)}
+        />
         <p class="prompt-hint import-hint">
           You can also manage decks (and other seats) from the
           <button class="linkish" onclick={back}>lobby</button>.
@@ -3535,6 +3595,39 @@
               <!-- ADR 0121 §6: the opening roll, before any hand is
                    dealt. Everyone sees it, spectators included. -->
               <OpeningRollBanner {view} />
+            {:else if match && sideboarding && view && !gameEnded}
+              <!-- ADR 0222 §3: between two games of a match. Everyone
+                   sees it; a player also gets the way back to the
+                   sideboarding screen. -->
+              <div class="att match-banner" role="group" aria-label={L.sideboardingBanner}>
+                <span class="att-label">Between games</span>
+                <span class="att-text">
+                  <strong>{lastGameText(match, view.seats)}</strong>
+                  <span class="mono">{scoreLine(match, view.seats)}</span>
+                </span>
+                {#each seats as seat (seat.id)}
+                  <span
+                    class="mull"
+                    class:waiting={!sideboarding.ready.includes(seat.seat)}
+                    class:kept={sideboarding.ready.includes(seat.seat)}
+                    style="--seat-color: {seatColor(seat.seat)}"
+                  >
+                    <span class="seat-dot" style="background:{seatColor(seat.seat)}"></span>
+                    <b>{seat.name}</b>
+                    {#if sideboarding.ready.includes(seat.seat)}
+                      ready <Icon name="check" size={11} />
+                    {:else}
+                      sideboarding…
+                    {/if}
+                  </span>
+                {/each}
+                <MatchClock {sideboarding} label="time until the next game" />
+                {#if sideboardPool && sideboardingHidden}
+                  <button type="button" onclick={() => (sideboardingHidden = false)}>
+                    Sideboard
+                  </button>
+                {/if}
+              </div>
             {:else if mulligansOpen && !gameEnded}
               <div class="att mulligan-banner" aria-label={L.openingHandDecisions}>
                 <span class="att-label">Opening hands</span>
@@ -4004,6 +4097,22 @@
     <p class="muted centered">waiting for snapshot…</p>
   {/if}
 
+  {#if match && sideboarding && sideboardPool && view && viewerSeat && !sideboardingHidden}
+    <SideboardingSheet
+      {match}
+      {sideboarding}
+      pool={sideboardPool}
+      seats={view.seats}
+      viewerSeat={viewerSeat.seat}
+      error={$lastError?.message ?? ""}
+      onSetDeck={setMatchDeck}
+      onChoosePlayFirst={choosePlayFirst}
+      onReady={sideboardReady}
+      onConcedeMatch={concedeMatch}
+      onHide={() => (sideboardingHidden = true)}
+    />
+  {/if}
+
   {#if tableSettingsOpen}
     <ModalLayer />
     <div
@@ -4021,6 +4130,7 @@
           settings={tableSettings}
           {canManage}
           gameState={gameEnded ? "ended" : "active"}
+          commanders={!view?.no_commanders}
           onpatch={patchTableSettingsOverSocket}
         />
         {#if voice}

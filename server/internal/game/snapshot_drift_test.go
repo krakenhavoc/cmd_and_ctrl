@@ -98,6 +98,11 @@ var gameFields = plan(
 	// point taken in either gap must still finish the restart.
 	"RestartPending", carried, "",
 	"RestartTail", carried, "",
+	// ADR 0222 §3: the table's match (the score, each seat's pool and
+	// the sideboarding window), in the snapshot's `match` object.
+	// Carried: a restore in the middle of a match, or of sideboarding,
+	// goes on from there.
+	"Match", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
@@ -500,6 +505,9 @@ var cardFields = plan(
 	// dropped it would close Banon's permission on the cards it opens.
 	"PutInGraveyardFrom", carried, "",
 	"PutInGraveyardThisTurn", carried, "",
+	// #5429: carried — a restore that dropped it would close Eye of
+	// Duskmantle's permission on the cards this turn's surveil opened.
+	"Surveilled", carried, "",
 	// #4455: carried — a restore that dropped it would leave a card Kang
 	// Prime gave suspend counting down with no upkeep trigger and no free cast.
 	"SuspendGranted", carried, "",
@@ -732,6 +740,7 @@ var cardFields = plan(
 	"ptAnywhere", rebuilt, "#4964: set only on a value copy handed to a cast permission lookup (withPTAnywhereLocked), never on a card in a zone",
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
+	"baseToughness", rebuilt, "the layer pass's toughness after layer 7b (CR 208.4b, Card.BaseToughness); derived, rebuilt by the recompute restore forces",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
 	"zoneLayered", rebuilt, "the types and colours a battlefield static gave this object off the battlefield (#3862, zone_layers.go); rebuilt from the battlefield statics by the recompute restore forces",
@@ -786,6 +795,10 @@ var playerFields = plan(
 	// What the player's creatures attacked during their last turn
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",
+	// #5368: Territorial Hellkite's "didn't attack during your last
+	// combat": the current and the previous combat phase's attacks.
+	"CombatAttacks", carried, "",
+	"LastCombatAttacks", carried, "",
 	// #1997: Arboria's "cast a spell or put a nontoken permanent onto
 	// the battlefield during their last turn".
 	"LastTurnCastOrPut", carried, "",
@@ -977,6 +990,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileAndPlot", carried, "",
+	"ExileLinkedTo", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
 	"BottomInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
@@ -1205,6 +1219,7 @@ var pendingChoiceFields = plan(
 	// ADR 0160: a copy_target prompt that exchanges text boxes. Carried
 	// with CopyOptions; only the wording reads it.
 	"ExchangesText", carried, "",
+	"CopyUse", carried, "",
 	// ADR 0160's 2026-10-15 amendment: the creature types a
 	// choose_creature_type prompt refuses.
 	"ExcludedTypes", carried, "",
@@ -1490,6 +1505,9 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		CastPermission{},
 		// ADR 0121 §1: the opening roll is embedded by value.
 		OpeningRoll{}, OpeningRollRound{}, OpeningRollDie{},
+		// ADR 0222 §3: the match's finished games and its sideboarding
+		// window are embedded by value.
+		Match{}, MatchDeck{}, MatchGame{}, MatchBetween{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)

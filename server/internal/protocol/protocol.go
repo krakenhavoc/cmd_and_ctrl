@@ -46,6 +46,17 @@ const (
 	// connection is in front (ADR 0162 §2). Sent on visibilitychange
 	// and once on connect; never answered. See VisibilityPayload.
 	KindVisibility Kind = "visibility"
+
+	// KindDraft (server → client) is a booster draft as one seat may
+	// see it, on the draft socket (/draft/{id}/ws, ADR 0222 §5, #5438). Its
+	// payload is draft.View. It never travels on a game socket.
+	KindDraft Kind = "draft"
+	// KindDraftPick (client → server) is a seat's pick on the draft
+	// socket: DraftPickPayload.
+	KindDraftPick Kind = "draft_pick"
+	// KindDraftDeck (client → server) is a seat's deck for the draft's
+	// rounds, on the draft socket: DraftDeckPayload (#5440).
+	KindDraftDeck Kind = "draft_deck"
 )
 
 // Error codes for Kind == KindError. Kept deliberately small at v0.
@@ -126,6 +137,15 @@ const (
 	// player was away (ADR 0177 §6). Nothing was applied. The player
 	// takes the seat back first (POST /games/{id}/seats/me/take-back).
 	CodeStandIn = "stand_in"
+
+	// CodeDraftPickRefused answers a draft_pick the draft would not
+	// take: no pick is being made, the seat has already picked, a named
+	// card is not in the pack it holds, or the wrong number of cards.
+	CodeDraftPickRefused = "draft_pick_refused"
+	// CodeDraftDeckRefused answers a draft_deck the draft would not
+	// take: the deck fails the limited check, or no deck is being
+	// built. The message says which, in words for the player.
+	CodeDraftDeckRefused = "draft_deck_refused"
 )
 
 // LegalMovesRequestsPerSecond is how many legal_moves_request frames
@@ -442,4 +462,21 @@ type LegalMovesPayload struct {
 type AckPayload struct {
 	Seq        uint64 `json:"seq"`
 	Generation uint64 `json:"generation"`
+}
+
+// DraftDeckPayload is the payload of a draft_deck frame: the deck a
+// seat built from its card pool. Main names the pool cards it plays by
+// their draft ID, and Basics how many of each basic land it adds
+// ("Forest": 9). Every pool card it leaves out is its sideboard (CR
+// 100.4b).
+type DraftDeckPayload struct {
+	Main   []string       `json:"main"`
+	Basics map[string]int `json:"basics,omitempty"`
+}
+
+// DraftPickPayload is the payload of a draft_pick frame: the cards the
+// seat takes from the pack it holds, by their draft card IDs. Exactly
+// as many as the pick takes (one, or two in pick two).
+type DraftPickPayload struct {
+	Cards []string `json:"cards"`
 }

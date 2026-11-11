@@ -137,8 +137,31 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * games played, games won, the date joined), and the Discord paragraph
  * says so; account deletion empties the Discord connection, then
  * deletes the token with the identity row.
+ * 36 (#2352, ADR 0222 §2) adds decks.format: the format a saved deck was
+ * built for (Commander or Standard). It describes a list the person
+ * already saved; the "Your decks" row names it, and account deletion
+ * deletes it with the deck.
+ * 37 (#5436, ADR 0222 §3) adds match_games: for a best-of-three, a row
+ * per game saying which seat won it, why it ended, who went first and
+ * how many turns it took. Numbers by game and seat, no names or user
+ * ids, kept with the game's statistics; the "Game statistics" row says
+ * so.
+ * 38 (#5440, ADR 0222 §9) adds draft_history and draft_history_matches:
+ * a signed-in person's finished drafts (the draft's name, the set, the
+ * date, the cards they picked, the deck they built) and each round's
+ * result, with a pointer to the opponent's account when it was a
+ * signed-in person and never a name. The new "Your drafts" row names
+ * them, and says a guest's draft is kept only while it runs; account
+ * deletion deletes the person's rows and clears the pointer wherever
+ * another person's draft named them.
+ * 39 (#5441, ADR 0222 §8) adds cubes: a signed-in person's saved cubes
+ * (the name they gave one, its card list, its singleton setting and
+ * when it was made and changed). The new "Your cubes" row names them,
+ * with the caps, and says the cube's name is shown at a draft dealt
+ * from it and kept in the other drafters' records; account deletion
+ * deletes the person's cubes.
  */
-export const PRIVACY_SCHEMA_VERSION = 35;
+export const PRIVACY_SCHEMA_VERSION = 39;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
@@ -191,6 +214,10 @@ export const PRIVACY_FACTS = {
   podSuggestGames: 3,
   /** pods.SuggestWindow, in days: how far back those games count. */
   podSuggestDays: 30,
+  /** cubes.MaxCubes: cubes one person can keep. */
+  cubesPerPerson: 20,
+  /** cubes.MaxCards: cards one cube can hold. */
+  cubeMaxCards: 1080,
   /** schedule.Keep, in hours: a scheduled table and its list are kept this long after the start, or after a cancel. */
   scheduledKeepHours: 24,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */

@@ -210,12 +210,16 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/oracletext"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/tokenart"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cubes"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draft"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/drafthistory"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
@@ -879,21 +883,45 @@ func main() {
 		l.SetLinkedRoles(linkedRoles)
 	}
 
+	// One draftable-set list for GET /draft/sets, the draft's own set
+	// check and the draft image route (ADR 0222 §4, §5).
+	draftSets := draftpacks.NewLister(cardIdx)
+	// The draft bots rate cards from this index and the catalog
+	// (ADR 0222 §7, #5439).
+	draft.UseCards(cardIdx)
+	// A signed-in person's finished drafts (ADR 0222 §9, migration
+	// 0038). With no database nothing is kept and the list is empty.
+	var draftHistory drafthistory.Store
+	if database != nil {
+		store := drafthistory.NewSQLStore(database)
+		draftHistory = store
+		l.SetDraftRecorder(store)
+	}
+	// A signed-in person's saved cubes (ADR 0222 §8, migration 0039).
+	// With no database there are none, and no cube can be drafted.
+	var cubeStore cubes.Store
+	if database != nil {
+		cubeStore = cubes.NewSQLStore(database)
+	}
 	lobbyCfg := lobby.Config{
-		Lobby:       l,
-		Auth:        authenticator,
-		AdminToken:  cfg.AdminToken,
-		Admins:      admins,
-		SessionTTL:  cfg.SessionTTL,
-		IdentityTTL: cfg.IdentityTTL,
-		Env:         cfg.Env,
-		Features:    cfg.Features,
-		Cards:       cardIdx,
-		Tokens:      effects.Tokens(),
-		Evictor:     hub,
-		Capacity:    cfg.Capacity,
-		Discord:     discordCfg,
-		DiscordBot:  discordBot,
+		Lobby:        l,
+		DraftSets:    draftSets,
+		DraftHub:     hub,
+		DraftHistory: draftHistory,
+		Cubes:        cubeStore,
+		Auth:         authenticator,
+		AdminToken:   cfg.AdminToken,
+		Admins:       admins,
+		SessionTTL:   cfg.SessionTTL,
+		IdentityTTL:  cfg.IdentityTTL,
+		Env:          cfg.Env,
+		Features:     cfg.Features,
+		Cards:        cardIdx,
+		Tokens:       effects.Tokens(),
+		Evictor:      hub,
+		Capacity:     cfg.Capacity,
+		Discord:      discordCfg,
+		DiscordBot:   discordBot,
 		// GET /community (ADR 0156 §6).
 		CommunityInviteURL: cfg.CommunityInviteURL,
 		// GET /config's shop link templates (ADR 0179).
@@ -954,7 +982,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           newPublicHandler(hub, authenticator, cardIdx, imgCache, lobby.Handler(lobbyCfg)),
+		Handler:           newPublicHandler(hub, authenticator, cardIdx, imgCache, draftSets, lobby.Handler(lobbyCfg)),
 		ReadHeaderTimeout: 5 * time.Second,
 		// Reap idle keep-alive connections so abandoned sockets don't
 		// pin fds indefinitely. NO WriteTimeout on purpose: it would
@@ -1092,7 +1120,7 @@ const wsRoute = "GET /ws"
 // is NOT here and must never be: it is served on its own loopback-only
 // listener (metrics.NewServer), so no change to these routes or to
 // Caddy's @api matcher can expose it.
-func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *cards.Index, imgCache *cards.ImageCache, lobbyHandler http.Handler) http.Handler {
+func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *cards.Index, imgCache *cards.ImageCache, draftSets *draftpacks.Lister, lobbyHandler http.Handler) http.Handler {
 	mux := metrics.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -1135,6 +1163,23 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 	// "GET /roadmap" pattern answers a POST with 405 rather than the
 	// lobby catch-all below answering it.
 	mux.Handle("/roadmap", roadmap.Handler())
+	// Which sets can be drafted (ADR 0222 §4, #5437): set names and the
+	// names of the cards that keep a set from being drafted, computed
+	// from the dump and the catalog. Read-only.
+	//
+	// Deliberately NOT behind auth.Middleware, like /catalog: it is card
+	// data, which never sits behind a sign-in or a Discord gate (PLAN.md
+	// §3), and a visitor can draft against bots without signing in (ADR
+	// 0222 §9). Mounted on the exact path, every method, so the
+	// handler's own "GET /draft/sets" answers a POST with 405.
+	mux.Handle("/draft/sets", draftpacks.ListerHandler(draftSets))
+	// The art of the cards a draft hands out (#5438). Public for the
+	// same reason, and scoped like /catalog/image: only the printings
+	// a draftable set's packs can contain, so it is not a general
+	// image proxy. draftpacks.ImageHandler's doc is the record.
+	mux.Handle("/draft/image/", draftpacks.ImageHandler(draftSets, cardIdx, imgCache))
+	// Every other /draft route (the draft itself: POST /draft,
+	// /draft/{id}/..., and its socket) is the lobby's, below.
 	// The lobby: everything not routed above. Its own mux records its
 	// own patterns, so a lobby route is labelled as itself, not "/".
 	mux.Handle("/", lobbyHandler)

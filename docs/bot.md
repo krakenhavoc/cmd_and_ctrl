@@ -2557,6 +2557,36 @@ how well the catalog supports it.
 
 ---
 
+
+### The Standard decks
+
+[ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)
+slice 1 added two curated **Standard** decks (`server/internal/decks/standard.go`),
+so a person can sit down at a Standard table against a bot. They are sixty
+cards with no commander, mono-coloured, and built from Foundations cards only.
+They are kept apart from the Commander catalog: `decks.All()` and `decks.IDs()`
+are still the Commander decks, `decks.In(format)` is one format's, and
+`decks.Every()` is what the pickers serve, each row naming its format. A deck
+is offered only at tables of its format.
+
+| ID | Name | Archetype |
+|---|---|---|
+| `standard-goblin-rush` | Goblin Rush | Aggro (R): cheap Goblins from turn one, Krenko to double them, and burn for the last points of damage |
+| `standard-overgrowth` | Overgrowth | Stompy (G): mana Elves into creatures bigger than the other side's, with pump spells and Overrun to end it |
+
+Every non-basic card in them is in the catalog and graded full, with no
+minor-caveats list (`standard_test.go`), and the lists are legal by the numbers
+offline (sixty cards, at most four of a name). **The card pool is not checked
+in CI**: `deck.Validate` reads `legalities.standard` from the Scryfall dump,
+which CI does not have. Run
+`CMDCTRL_SCRYFALL_DUMP=… go test ./internal/decks/ -run RealDumpStandard -v`
+after touching a list, and after a rotation or a ban. A deck that rots fails
+at `Load`, where a player's upload would, and the fix is a new list.
+
+The model tiers' primer names the game: a Standard deck's says two players,
+sixty cards, twenty life and no commander (`model.DeckProfile.Format`). A
+Commander deck's primer is unchanged.
+
 ## Improvisation, and why an undo is free
 
 > **Which tiers.** `assisted` and `strong` only. `random` and

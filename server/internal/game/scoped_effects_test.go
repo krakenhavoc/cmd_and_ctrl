@@ -286,6 +286,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
 		ModCantAttackOwner:                  true, // ADR 0180: cases in cant_attack_owner_mod_test.go
 		ModWaiveDefender:                    true, // #1936: cases in defender_waivers_test.go
+		ModDamageByToughness:                true, // #5368: cases in cards/effects/cmdr_b23_test.go
 		ModSetBasicLandTypes:                true,
 		ModLoseLandTypes:                    true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
@@ -304,7 +305,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// layer applies either. Their cases are in
 		// scoped_block_rules_test.go here and in cards/effects.
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
-		ModCantBeBlockedByPlayer: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
+		ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
 		ModCantBeBlockedBySubtypes:     true, // #4100
 		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
 		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go
@@ -342,6 +343,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #5235: Prairie Dog's extra +1/+1 counter, read by no layer. Its
 		// cases are in one_more_counter_test.go and cards/effects.
 		ModOneMorePlusOneCounter: true,
+		// #5368: Kaya, Geist Hunter's token doubling, read by no layer. Its
+		// cases are in multiply_tokens_test.go and cards/effects.
+		ModMultiplyTokens: true,
 		// #5251: Lumbering Laundry's look at face-down creatures, read by
 		// no layer. Its cases are in face_down_look_test.go, in
 		// protocol's face_down_look_view_test.go and in cards/effects.

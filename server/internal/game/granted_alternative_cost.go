@@ -123,6 +123,13 @@ type GrantedAlternativeCost struct {
 	// no mana cost for the price to equal.
 	PricedAtManaCost bool
 
+	// ManaCostReducedBy is Aminatou, Veil Piercer's "its miracle cost is
+	// equal to its mana cost reduced by {4}" (CR 118.7): with
+	// PricedAtManaCost, the generic mana taken off the spell's mana cost
+	// to make the offer's price, never below {0} and never touching a
+	// coloured symbol. Zero is no reduction.
+	ManaCostReducedBy int
+
 	// ActiveWhen gates the static on a designation of its source: a
 	// Room door (CR 709.5, #3174). A locked half has no rules text, so
 	// Access Maze and Warped Space offer nothing until their door is
@@ -301,12 +308,28 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 		return out
 	}
 	var seen map[string]bool
+	// The battlefield's sources, then the emblems' (CR 114.3: an emblem's
+	// static functions in the command zone, and its owner is "you", CR
+	// 114.2; Tamiyo, Field Researcher's emblem).
+	type offerSource struct {
+		src *Card
+		key string
+	}
+	var sources []offerSource
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		key := catalogAbilityKeyOf(src)
-		if key == "" {
-			continue
+		if key := catalogAbilityKeyOf(src); key != "" {
+			sources = append(sources, offerSource{src, key})
 		}
+	}
+	g.forEachEmblemLocked(func(src *Card) bool {
+		if key := CatalogKey(*src); key != "" {
+			sources = append(sources, offerSource{src, key})
+		}
+		return true
+	})
+	for _, os := range sources {
+		src, key := os.src, os.key
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
 			// A static offers its controller's casts, unless it says it
 			// offers every player's (Weftwalking).
@@ -349,7 +372,12 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 				// ADR 0135 PR 6: the price is the spell's own mana cost,
 				// shown in the label ("Emerge {4}{G}{G}").
 				offer.ManaCost = card.ManaCost
-				offer.Label += " " + card.ManaCost
+				if gr.ManaCostReducedBy > 0 {
+					if pc, err := ParseCost(card.ManaCost); err == nil {
+						offer.ManaCost = reduceGeneric(pc, gr.ManaCostReducedBy).String()
+					}
+				}
+				offer.Label += " " + offer.ManaCost
 			}
 			if gr.LifeEqualToManaValue {
 				// #3174: Bolas's Citadel's price (CastPermission.
@@ -378,10 +406,25 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 // never reused.
 const GrantedAltCostWarp = "granted-warp"
 
+// GrantedAltCostEvoke is the key of "<spells> you cast gain evoke {cost}
+// as you cast them" (Ashling, the Limitless; CR 702.74a, #5428): a
+// granted offer that carries evoke's "When this permanent enters, if its
+// evoke cost was paid, its controller sacrifices it". Like granted warp,
+// the entry hook (queueAltCostEntryTriggerLocked) reads the clause off
+// the key, because the card prints no row for it and the permanent that
+// granted it may be gone by the time the spell resolves (CR 610.5). An
+// on-disk identity: never renamed, never reused.
+const GrantedAltCostEvoke = "granted-evoke"
+
 // GrantedAltCostNextFree is the key of the free offer a live
 // NextSpellPromise.WithoutPayingManaCost makes (#2709). An on-disk
 // identity, like every granted key: never renamed, never reused.
 const GrantedAltCostNextFree = "granted-next-spell-free"
+
+// GrantedAltCostNextLife is the key of the life offer a live
+// NextSpellPromise.PayLifeEqualToManaValue makes (Marshland Bloodcaster). An
+// on-disk identity, like every granted key: never renamed, never reused.
+const GrantedAltCostNextLife = "granted-next-spell-life"
 
 // nextSpellFreeOffersLocked is the one offer `playerID`'s live
 // "without paying its mana cost" promises make to a cast of `card`: at
@@ -396,6 +439,15 @@ func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card) []*Alter
 	}
 	for _, s := range p.Statics {
 		np := s.NextSpell
+		if np.PayLifeEqualToManaValue && g.livePromise(s) && np.Matches(card) {
+			if life, ok := lifeEqualToManaValue(card); ok {
+				label := fmt.Sprintf("Pay life equal to its mana value rather than pay its mana cost (%d life)", life)
+				if s.Label != "" {
+					label += " (" + s.Label + ")"
+				}
+				return []*AlternativeCost{{Key: GrantedAltCostNextLife, Label: label, Granted: true, Life: life}}
+			}
+		}
 		if !np.WithoutPayingManaCost || !g.livePromise(s) || !np.Matches(card) {
 			continue
 		}

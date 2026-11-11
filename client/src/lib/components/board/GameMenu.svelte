@@ -40,6 +40,7 @@
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
   import { HAND_SORTS } from "../../handOrder";
   import { L } from "../../labels";
+  import { settingsTopics } from "../../tableSettings";
   import {
     BLOCK_SPECTATOR_LABEL,
     REMOVE_SPECTATOR_LABEL,
@@ -177,6 +178,11 @@
     close(false);
     if (cannotConcede) return;
     props.onConcede();
+  }
+  function confirmConcedeMatch(): void {
+    close(false);
+    if (cannotConcede) return;
+    props.onConcedeMatch?.();
   }
   async function loadWatchers(): Promise<void> {
     if (!props.loadSpectators) return;
@@ -434,7 +440,7 @@
         role="menuitem"
         onclick={via(props.onTableSettings)}
         title={props.canManage
-          ? "the table's house rules — undos, life, commander damage, table pace, spawning"
+          ? `the table's house rules — ${settingsTopics(props.commanders !== false, "life")}`
           : "the table's house rules (only the host can change them)"}
       >
         <Icon name="gear" size={15} /> Table settings…
@@ -699,13 +705,26 @@
   {:else if mode === "concede"}
     <div class="pop confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
       <div class="confirm-title">Concede the game?</div>
-      <p class="confirm-body">
-        You'll be eliminated and keep watching as a spectator. This can't be undone.
-      </p>
+      {#if props.onConcedeMatch}
+        <p class="confirm-body">
+          Conceding the game gives your opponent this game, and the match goes on to the next one.
+          Conceding the match ends it now. Neither can be undone.
+        </p>
+      {:else}
+        <p class="confirm-body">
+          You'll be eliminated and keep watching as a spectator. This can't be undone.
+        </p>
+      {/if}
       <div class="pop-actions">
         <button type="button" class="keep" onclick={() => close(true)}>Keep playing</button>
+        {#if props.onConcedeMatch}
+          <button type="button" class="danger" onclick={confirmConcedeMatch}
+            >{L.concedeMatch}</button
+          >
+        {/if}
         <button type="button" class="danger" onclick={confirmConcede}
-          ><Icon name="flag" size={14} /> Concede</button
+          ><Icon name="flag" size={14} />
+          {props.onConcedeMatch ? "Concede game" : "Concede"}</button
         >
       </div>
     </div>

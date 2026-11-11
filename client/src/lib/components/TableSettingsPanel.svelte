@@ -44,9 +44,12 @@
     startingLifeLocked,
     type TableSettingsPatch,
   } from "../tableSettings";
+  import { bestOfSetting } from "../match";
+  import { MATCH_LENGTHS, playsMatches } from "../matchLength";
   import type { TableSettingsView } from "../protocol";
   import { DEFAULT_AWAY_AFTER, describeAwayAfter } from "../away";
   import { devFeature } from "../env";
+  import { formatOf } from "../formats";
   import { L } from "../labels";
 
   interface Props {
@@ -69,9 +72,24 @@
     // verbatim — "this table has spawning switched off" is advice,
     // and paraphrasing it loses the advice.
     error?: string | null;
+    // Whether the table has commanders (ADR 0222 slice 1): false at a
+    // table of a format with none, or in a game where no seat brought
+    // one, and the commander damage setting is then left out. Absent
+    // is true, which is every Commander table.
+    commanders?: boolean;
   }
 
-  const { settings, canManage, gameState, onpatch, busy = false, error = null }: Props = $props();
+  const {
+    settings,
+    canManage,
+    gameState,
+    onpatch,
+    busy = false,
+    error = null,
+    commanders = true,
+  }: Props = $props();
+
+  const format = $derived(formatOf(settings.format));
 
   // Numbers are edited, not chosen, so they need somewhere to live
   // between keystrokes. The draft follows the authoritative settings
@@ -223,31 +241,33 @@
         Fixed — the life totals have already been dealt. Use the ± controls on a seat to change
         somebody's life now.
       {:else}
-        What each seat starts on. Commander is 40.
+        What each seat starts on. {format.name} is {format.startingLife}.
       {/if}
     </p>
   </section>
 
-  <section class="tsp-field" data-field="commander_damage">
-    <div class="tsp-row">
-      <label class="tsp-label" for="tsp-cmd">Commander damage</label>
-      <span class="tsp-control">
-        <input
-          id="tsp-cmd"
-          type="number"
-          min={MIN_COMMANDER_DAMAGE}
-          max={MAX_COMMANDER_DAMAGE}
-          {disabled}
-          bind:value={cmdDraft}
-          onchange={() => commitNumber(cmdDraft, "commander_damage")}
-        />
-      </span>
-    </div>
-    <p class="tsp-hint">Damage from one commander that knocks a player out. Commander is 21.</p>
-    {#if commanderWarning}
-      <p class="tsp-warn" role="status">{commanderWarning}</p>
-    {/if}
-  </section>
+  {#if commanders}
+    <section class="tsp-field" data-field="commander_damage">
+      <div class="tsp-row">
+        <label class="tsp-label" for="tsp-cmd">Commander damage</label>
+        <span class="tsp-control">
+          <input
+            id="tsp-cmd"
+            type="number"
+            min={MIN_COMMANDER_DAMAGE}
+            max={MAX_COMMANDER_DAMAGE}
+            {disabled}
+            bind:value={cmdDraft}
+            onchange={() => commitNumber(cmdDraft, "commander_damage")}
+          />
+        </span>
+      </div>
+      <p class="tsp-hint">Damage from one commander that knocks a player out. Commander is 21.</p>
+      {#if commanderWarning}
+        <p class="tsp-warn" role="status">{commanderWarning}</p>
+      {/if}
+    </section>
+  {/if}
 
   <section class="tsp-field" data-field="bot_pace">
     <div class="tsp-row">
@@ -323,6 +343,41 @@
       {/if}
     </p>
   </section>
+
+  {#if playsMatches(settings.format)}
+    <!-- ADR 0222 §3: the match length, chosen in the lobby and fixed
+         once the first game starts. Not offered where the format plays
+         no matches, which is every Commander table. -->
+    <section class="tsp-field" data-field="best_of" class:locked={lifeLocked}>
+      <div class="tsp-row">
+        <span class="tsp-label" id="tsp-best-of-label">Match length</span>
+        <span class="tsp-control" role="radiogroup" aria-labelledby="tsp-best-of-label">
+          {#each MATCH_LENGTHS as m (m.bestOf)}
+            <label class="tsp-radio">
+              <input
+                type="radio"
+                name="tsp-best-of"
+                disabled={disabled || lifeLocked}
+                checked={bestOfSetting(settings.best_of) === m.bestOf}
+                onchange={() => apply({ best_of: m.bestOf })}
+              />
+              {m.name}
+            </label>
+          {/each}
+        </span>
+      </div>
+      <p class="tsp-hint">
+        {#if lifeLocked}
+          Fixed — the match began with its first game.
+        {:else if bestOfSetting(settings.best_of) === 3}
+          First to two games. Between games each player may swap sideboard cards in, and the loser
+          chooses who plays first.
+        {:else}
+          One game decides it.
+        {/if}
+      </p>
+    </section>
+  {/if}
 
   {#if showPlanechase}
     <!-- ADR 0216 §1: chosen in the lobby, fixed once the game starts, as
@@ -403,6 +458,13 @@
   }
   .tsp-label {
     font-weight: 600;
+  }
+  .tsp-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-inline-start: 12px;
+    font-size: 13px;
   }
   .tsp-control {
     display: inline-flex;

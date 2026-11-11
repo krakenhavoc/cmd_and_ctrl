@@ -90,7 +90,9 @@
     type LobbyPrimaryKind,
   } from "../lib/tablesPage";
   import type { TableSettingsView } from "../lib/protocol";
-  import { settingsSummary, type TableSettingsPatch } from "../lib/tableSettings";
+  import { settingsSummary, settingsTopics, type TableSettingsPatch } from "../lib/tableSettings";
+  import { FORMATS, formatOf, type FormatID } from "../lib/formats";
+  import { MATCH_LENGTHS, matchLengthChip, playsMatches } from "../lib/matchLength";
   import DeckPicker from "../lib/components/DeckPicker.svelte";
   import BotPicker from "../lib/components/BotPicker.svelte";
   import type { PickerCommit, PickerState } from "../lib/deckPicker";
@@ -313,6 +315,16 @@
   // (owner answer 3: cmd-dev until the plane batches land).
   let wantPlanechase = $state(false);
   const planechaseOffered = devFeature("planechase");
+  // ADR 0222 §1: the new table's format. Commander unless the creator
+  // picks another; the last setup is offered only for the format it
+  // was captured at, so the two can never disagree.
+  let newFormat = $state<FormatID>("commander");
+  // ADR 0222 §3: the new table's match length, where its format plays
+  // matches. One game unless the host asks for three.
+  let newBestOf = $state<1 | 3>(1);
+  const setupFits = $derived(
+    lastSetup !== null && formatOf(lastSetup.settings?.format).id === newFormat,
+  );
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -659,13 +671,15 @@
     busy = true;
     createError = "";
     try {
-      const withSetup = useLastSetup && lastSetup !== null;
+      const withSetup = useLastSetup && setupFits;
       const meta = await createGame(newName.trim(), {
         ...(withSetup ? { setup: "last" as const } : {}),
+        format: newFormat,
+        bestOf: playsMatches(newFormat) ? newBestOf : 1,
         voiceRoom: $community.voice && wantVoiceRoom,
         lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
         results: $community.results === true && wantResults,
-        planechase: $planechaseOffered && wantPlanechase,
+        planechase: $planechaseOffered && wantPlanechase && newFormat === "commander",
       });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
@@ -1016,7 +1030,7 @@
     if (canReadSettings(g)) {
       items.push({
         label: settingsFor === g.id ? "Hide table settings" : "Table settings",
-        title: "undos, starting life, commander damage, table pace, spawning",
+        title: settingsTopics(formatOf(g.format).hasCommander),
         onclick: () => toggleTableSettings(g.id),
       });
     }
@@ -1613,7 +1627,31 @@
       <form class="new-table" aria-label={L.createGame} onsubmit={onCreate}>
         <span class="nt-label">New table</span>
         <div class="nt-row"><NewTableRow bind:name={newName} {busy} /></div>
-        {#if lastSetup}
+        <div class="nt-format" role="radiogroup" aria-label={L.tableFormat}>
+          {#each FORMATS as f (f.id)}
+            <label class="format-opt">
+              <input type="radio" name="nt-format" value={f.id} bind:group={newFormat} />
+              <span>
+                {f.name}
+                <span class="format-sum">{f.blurb}</span>
+              </span>
+            </label>
+          {/each}
+        </div>
+        {#if playsMatches(newFormat)}
+          <div class="nt-format" role="radiogroup" aria-label="match length">
+            {#each MATCH_LENGTHS as m (m.bestOf)}
+              <label class="format-opt">
+                <input type="radio" name="nt-best-of" value={m.bestOf} bind:group={newBestOf} />
+                <span>
+                  {m.name}
+                  <span class="format-sum">{m.blurb}</span>
+                </span>
+              </label>
+            {/each}
+          </div>
+        {/if}
+        {#if lastSetup && setupFits}
           <label class="use-setup">
             <input type="checkbox" bind:checked={useLastSetup} />
             <span>
@@ -1657,7 +1695,7 @@
             </span>
           </label>
         {/if}
-        {#if $planechaseOffered}
+        {#if $planechaseOffered && newFormat === "commander"}
           <label class="use-setup">
             <input type="checkbox" bind:checked={wantPlanechase} />
             <span>
@@ -1700,6 +1738,12 @@
               <h3>Bring a deck</h3>
               <p>Check how much of your list plays as printed, and save it.</p>
               <a class="btn ghost sm" href="#/decks">Decks</a>
+            </div>
+            <!-- ADR 0222 §6, #5440: the signed-in way into a draft. -->
+            <div class="card">
+              <h3>{L.homeDraftCard}</h3>
+              <p>Open packs, build a 40-card deck and play three rounds, with bots or friends.</p>
+              <a class="btn ghost sm" href="#/draft">{L.draftNewTitle}</a>
             </div>
             {#if $community.invite_url}
               <div class="card pod">
@@ -1753,6 +1797,21 @@
                   <span class="chip" class:live={chip.live}>
                     {#if chip.live}<i class="dot ok"></i>{/if}{chip.label}
                   </span>
+                  {#if formatOf(g.format).id !== "commander"}
+                    <!-- ADR 0222 §1: a table of another format says so. -->
+                    <span class="chip">{formatOf(g.format).name}</span>
+                  {/if}
+                  {#if matchLengthChip(g.best_of)}
+                    <!-- ADR 0222 §3: a best-of-three says so, and once
+                         it has started, which game it is on and the
+                         score. -->
+                    <span class="chip">
+                      {matchLengthChip(g.best_of)}{#if g.match_game}
+                        · game {g.match_game} · {g.players
+                          .map((p) => p.match_wins ?? 0)
+                          .join("–")}{/if}
+                    </span>
+                  {/if}
                   <span class="ctx">{contextLine(g, { seat: myNo })}</span>
                 </div>
                 {#if lobby}
@@ -1764,7 +1823,7 @@
                       aria-label={L.tableSettingsLine(rulesText ?? "loading")}
                       aria-expanded={settingsFor === g.id}
                       title={canManageTableFor(g)
-                        ? "table settings: undos, starting life, commander damage, table pace, spawning"
+                        ? `table settings: ${settingsTopics(formatOf(g.format).hasCommander)}`
                         : "the table's settings; only the host can change them"}
                       onclick={() => toggleTableSettings(g.id)}
                     >
@@ -1915,7 +1974,7 @@
                       aria-label={L.tableSettingsLine(rulesText ?? "loading")}
                       aria-expanded={settingsFor === g.id}
                       title={canManageTableFor(g)
-                        ? "table settings: undos, starting life, commander damage, table pace, spawning"
+                        ? `table settings: ${settingsTopics(formatOf(g.format).hasCommander)}`
                         : "the table's settings; only the host can change them"}
                       onclick={() => toggleTableSettings(g.id)}
                     >
@@ -1958,6 +2017,7 @@
                     bind:this={botPicker}
                     gameID={g.id}
                     seat={botSeat}
+                    format={g.format}
                     options={botOptions}
                     prebuilt={prebuiltDecks}
                     onchange={(c) => (botCommit = c)}
@@ -1985,6 +2045,7 @@
                     bind:this={deckPicker}
                     gameID={g.id}
                     playerID={$session.playerID}
+                    format={g.format}
                     shopLinks
                     actions="external"
                     onchange={(st) => (pickerState = st)}
@@ -2000,6 +2061,7 @@
                       settings={tableSettings}
                       canManage={canManageTableFor(g)}
                       gameState={g.state}
+                      commanders={formatOf(tableSettings.format).hasCommander}
                       busy={settingsBusy}
                       error={settingsError}
                       onpatch={(patch) => applyTableSettings(g.id, patch)}
@@ -2463,7 +2525,8 @@
   .nt-error {
     flex: 1 0 100%;
   }
-  .use-setup {
+  .use-setup,
+  .format-opt {
     display: flex;
     align-items: flex-start;
     gap: 6px;
@@ -2471,10 +2534,18 @@
     color: var(--fg);
     max-width: 420px;
   }
-  .use-setup input {
+  .use-setup input,
+  .format-opt input {
     margin: 2px 0 0;
   }
-  .setup-sum {
+  /* ADR 0222 §1: the format radios, one row each like the boxes below. */
+  .nt-format {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .setup-sum,
+  .format-sum {
     display: block;
     font-size: 11.5px;
     color: var(--fg-muted);
@@ -2557,7 +2628,9 @@
   }
   .empty-cards {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Three or four start cards (the Discord one shows only with an
+       invite): they share the row at 820px and up. */
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 16px;
   }
   .empty-cards .card {

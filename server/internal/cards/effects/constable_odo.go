@@ -25,7 +25,7 @@ func init() {
 			TargetCreature("target creature an opponent controls", OpponentControls()),
 			trekB23TapAndTwoStunTheModesTarget),
 		ModeDoing("Investigate twice.", nil, func(_ *game.StackItem, ctx *Context, _ int) error {
-			return CreateToken{Template: ClueToken(), N: 2}.Apply(ctx)
+			return Investigate{N: 2}.Apply(ctx)
 		}),
 	)
 	Register(Spec{

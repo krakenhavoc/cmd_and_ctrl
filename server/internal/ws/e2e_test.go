@@ -184,6 +184,11 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// ADR 0216 §9: the planar controller is a seat id, and the face-up
 	// planes are cards.
 	out.Planechase = n.planechase(v.Planechase)
+	// ADR 0222 §3: the pools are cards and their owners seat ids, and
+	// the deadline is a wall-clock time.
+	out.Match = n.match(v.Match)
+	// ADR 0222 slice 1: a bool, nothing to normalise.
+	out.NoCommanders = v.NoCommanders
 	out.SplitSecondActive = v.SplitSecondActive
 	out.DamageCantBePrevented = v.DamageCantBePrevented
 	out.ExileIfCreaturesDie = v.ExileIfCreaturesDie
@@ -350,6 +355,37 @@ func (n *normalizer) planechase(v *protocol.PlanechaseView) *protocol.Planechase
 	for i, c := range v.FaceUp {
 		out.FaceUp[i] = n.card(c)
 	}
+	return &out
+}
+
+func (n *normalizer) match(v *protocol.MatchView) *protocol.MatchView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	if v.Sideboarding == nil {
+		return &out
+	}
+	sb := *v.Sideboarding
+	if sb.Deadline != "" {
+		sb.Deadline = "<deadline>"
+	}
+	sb.SecondsLeft = 0
+	sb.Pools = make([]protocol.MatchPoolView, len(v.Sideboarding.Pools))
+	for i, p := range v.Sideboarding.Pools {
+		pool := protocol.MatchPoolView{Seat: p.Seat, PlayerID: n.id(p.PlayerID)}
+		for _, c := range p.Deck {
+			pool.Deck = append(pool.Deck, n.card(c))
+		}
+		for _, c := range p.Sideboard {
+			pool.Sideboard = append(pool.Sideboard, n.card(c))
+		}
+		for _, id := range p.Registered {
+			pool.Registered = append(pool.Registered, n.id(id))
+		}
+		sb.Pools[i] = pool
+	}
+	out.Sideboarding = &sb
 	return &out
 }
 
@@ -704,6 +740,12 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		}},
 		Planechase: &protocol.PlanechaseView{PlanarController: ownerID, DeckCount: 74,
 			FaceUp: []protocol.CardView{{InstanceID: cardID, Name: "Test Plane", Layout: "planar"}}},
+		Match: &protocol.MatchView{BestOf: 3, Game: 1, Wins: []int{1, 0}, Sideboarding: &protocol.SideboardingView{
+			Deadline: "2026-11-11T00:00:00Z", SecondsLeft: 120, Ready: []int{}, DeckMin: 60, SideboardMax: 15,
+			Pools: []protocol.MatchPoolView{{Seat: 0, PlayerID: ownerID, Registered: []string{cardID},
+				Deck: []protocol.CardView{{InstanceID: cardID, Name: "Pool Card"}}}},
+		}},
+		NoCommanders: true,
 
 		StackItems:      []protocol.StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},
 		PendingTriggers: []protocol.StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: cardID}},

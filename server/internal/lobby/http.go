@@ -26,11 +26,14 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cubes"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckcoverage"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/drafthistory"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -78,7 +81,21 @@ const maxDeckBodyBytes = 2 * 1024 * 1024
 // Lobby itself so main.go can build the HTTP layer without the
 // lobby having to know about auth.
 type Config struct {
-	Lobby      *Lobby
+	Lobby *Lobby
+	// DraftSets is the draftable-set list a draft's set is checked
+	// against and its packs are drawn from (ADR 0222 §4, §5): the same
+	// Lister GET /draft/sets serves. Nil refuses every set.
+	DraftSets *draftpacks.Lister
+	// DraftHub serves the draft's socket (drafts_http.go): *ws.Hub in
+	// production. Nil answers 503 there.
+	DraftHub DraftSockets
+	// DraftHistory is a signed-in person's finished drafts, behind GET
+	// /me/drafts (mydrafts_http.go). Nil lists none.
+	DraftHistory drafthistory.Store
+	// Cubes is a signed-in person's saved cubes, behind /me/cubes
+	// (cubes_http.go) and a cube draft (ADR 0222 §8). Nil lists none
+	// and refuses a save and a cube draft.
+	Cubes      cubes.Store
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
 	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
@@ -806,6 +823,9 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /games/practice/guest",
 		guestPracticeLimit.Middleware(deckLimit.Middleware(createIPGate(createIPLimit, handlerFunc(c, createGuestPractice)))))
 	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
+	// Booster drafts (ADR 0222 §5, #5438): public, like the guest's
+	// practice table. See drafts_http.go.
+	registerDraftRoutes(mux, c, newLimiter, limit, createIPLimit)
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own
 	// auth.Middleware(c.Auth, auth.RoleAdmin) — see botstats.go — so
@@ -847,6 +867,9 @@ func Handler(c Config) http.Handler {
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
 	mux.Handle("GET /me/stats", auth.Middleware(c.Auth)(handlerFunc(c, myStats)))
+	// The caller's finished drafts (ADR 0222 §9, mydrafts_http.go).
+	mux.Handle("GET /me/drafts", auth.Middleware(c.Auth)(handlerFunc(c, myDrafts)))
+	mux.Handle("GET /me/drafts/{id}", auth.Middleware(c.Auth)(handlerFunc(c, myDraft)))
 	// The advanced-stats switch (ADR 0217 §2). Writes share a
 	// per-person bucket of 1 a second, burst 5, as the notifications.
 	statsPrefsLimit := newLimiter(1, 5)
@@ -1112,6 +1135,20 @@ func Handler(c Config) http.Handler {
 	// token of the checker's fetch bucket like a save does.
 	mux.Handle("POST /me/decks/{id}/update", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.previewUpdate))))
 	mux.Handle("POST /me/decks/{id}/update/confirm", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.confirmUpdate))))
+	// ADR 0222 §8, #5441: a signed-in person's saved cubes. Every read
+	// runs the cube's check against the catalog, so they share a 1/s,
+	// burst-5 bucket of their own; a save from a link spends a token of
+	// the checker's fetch bucket like a deck save does. A caller that
+	// is not a signed-in person is a 403 on all five.
+	cubeLimit := newLimiter(1, 5)
+	cubeRoute := func(h lobbyHandler) http.Handler {
+		return cubeLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, h)))
+	}
+	mux.Handle("GET /me/cubes", cubeRoute(myCubes))
+	mux.Handle("POST /me/cubes", cubeRoute(deckChecks.createCube))
+	mux.Handle("GET /me/cubes/{id}", cubeRoute(myCube))
+	mux.Handle("PUT /me/cubes/{id}", cubeRoute(deckChecks.updateCube))
+	mux.Handle("DELETE /me/cubes/{id}", cubeRoute(deleteCube))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
 	bugs := newBugGate(c)
@@ -1295,6 +1332,17 @@ type createGameRequest struct {
 	// /games/{id}/settings would apply it. The host can still change it
 	// there while the table is in the lobby.
 	Planechase bool `json:"planechase,omitempty"`
+	// Format is the table's format (ADR 0222 §1): "commander" (the
+	// default when empty) or "standard". Applied through the engine's
+	// UpdateSettings as soon as the creator has sat down, before any bot
+	// or other person can, so the seat cap and every seat's starting
+	// life are the format's. A format this server does not know is a 400
+	// and no table is made.
+	Format string `json:"format,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3): 1 (the
+	// default when 0) or 3, for a format that plays matches. Anything
+	// else, or a 3 at a Commander table, is a 400 and no table is made.
+	BestOf int `json:"best_of,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1480,6 +1528,22 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			return game.ErrPlanechaseNotOffered
 		}
 
+		format := game.Format(strings.ToLower(strings.TrimSpace(body.Format)))
+		formatSpec, known := game.LookupFormat(format)
+		if !known {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown format %q (want %s)", body.Format, formatNames()))
+		}
+		if formatSpec.DraftOnly {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("a %s table is opened by a draft for its matches; start a draft instead", formatSpec.Name))
+		}
+		// ADR 0222 §3: the match length, checked before a table exists.
+		switch {
+		case body.BestOf != 0 && body.BestOf != 1 && body.BestOf != 3:
+			return httpError(http.StatusBadRequest, fmt.Sprintf("best_of is %d (want 1 or 3)", body.BestOf))
+		case body.BestOf == 3 && !formatSpec.Matches:
+			return httpError(http.StatusBadRequest, fmt.Sprintf("a %s table does not play matches, so it has no best-of-three", formatSpec.Name))
+		}
+
 		if strings.TrimSpace(body.Name) == "" && !server {
 			// A blank name is a surprise (#2630); the creator's own name
 			// lets some templates be personal. The admin token has no
@@ -1518,6 +1582,40 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			// in seat 1 at once, as themselves, before the last setup's
 			// bots and before an #lfg post counts the seats.
 			out.Seat = seatCreator(c, w, r, p, meta)
+		}
+		if formatSpec.Format != game.FormatCommander {
+			// ADR 0222 §1. Before the last setup's bots and before an
+			// #lfg post counts the seats: the seat cap is the format's,
+			// and the creator's seat is reset to its starting life. The
+			// actor is the creator's new seat, so the log names them. A
+			// table that cannot be given the format it was asked for is
+			// not left behind as a Commander table.
+			actor := uuid.Nil
+			if out.Seat != nil {
+				actor = out.Seat.PlayerID
+			}
+			f := formatSpec.Format
+			if _, ferr := c.Lobby.UpdateSettings(meta.ID, actor, game.SettingsPatch{Format: &f}); ferr != nil {
+				_ = c.Lobby.Delete(meta.ID)
+				return ferr
+			}
+			out.Format = string(formatSpec.Format)
+			if formatSpec.MaxSeats != game.MaxPlayers {
+				out.MaxSeats = formatSpec.MaxSeats
+			}
+		}
+		if body.BestOf == 3 {
+			// ADR 0222 §3, after the format it depends on.
+			actor := uuid.Nil
+			if out.Seat != nil {
+				actor = out.Seat.PlayerID
+			}
+			three := 3
+			if _, berr := c.Lobby.UpdateSettings(meta.ID, actor, game.SettingsPatch{BestOf: &three}); berr != nil {
+				_ = c.Lobby.Delete(meta.ID)
+				return berr
+			}
+			out.BestOf = 3
 		}
 		if body.Planechase {
 			// ADR 0216 §1. The actor is the creator's new seat when
@@ -2008,7 +2106,7 @@ func previewGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, previewResponse{
 		Game:     meta,
 		Invite:   kind,
-		MaxSeats: game.MaxPlayers,
+		MaxSeats: maxSeatsOfMeta(meta),
 	})
 }
 
@@ -2766,7 +2864,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// materialised by the pricer, and the spend context is read off
 	// the card type, which a modal DFC's two faces need not share
 	// (ADR 0034).
-	spend := game.ManaSpendForCastParams(price.Card, params)
+	spend := game.ManaSpendForCastParams(price.Card, params).PaidBy(p.PlayerID)
 	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, xValue, spend, phyrexian, excluded)
 	// The cost string reported back is the one this cast PAYS, not
 	// the one in the card's corner — a flashed-back Think Twice reads
@@ -3445,7 +3543,10 @@ func detectDeckFormat(source string) string {
 // returns the installed-ready list and any non-fatal warnings. When
 // `written` is true the handler has already answered the request (a
 // 422 with the violation list) and the caller must return nil.
-func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, format, source string) (*deck.List, []deck.Violation, bool, error) {
+//
+// table is the format of the table the deck is for (ADR 0222 §2): the
+// deck is checked against that format's rules, Commander's when empty.
+func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, table game.Format, format, source string) (*deck.List, []deck.Violation, bool, error) {
 	if format == "" {
 		format = detectDeckFormat(source)
 	}
@@ -3498,6 +3599,10 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 		return nil, nil, false, httpError(http.StatusBadRequest, perr.Error())
 	}
 
+	// ADR 0222 §2: a constructed list's unheaded last block is its
+	// sideboard, not the commander a Commander export puts there.
+	entries = deck.EntriesFor(table, entries)
+
 	list, err := deck.Resolve(c.Cards, deckName, entries)
 	if err != nil {
 		// Resolve failures that carry a per-card Violation list are
@@ -3530,7 +3635,7 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 			Code:    "dev_skip_validation",
 			Message: "CMDCTRL_DEV_SKIP_DECK_VALIDATION is set; deck validation was bypassed",
 		})
-	} else if verr := deck.Validate(list); verr != nil {
+	} else if verr := deck.Validate(list, table); verr != nil {
 		var ve *deck.ValidationError
 		if errors.As(verr, &ve) {
 			for _, v := range ve.Violations {
@@ -3645,7 +3750,16 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err
+	}
+	if deckID != "" {
+		if err := prebuiltFitsTable(deckID, table); err != nil {
+			return err
+		}
+	}
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, format, source)
 	if written || err != nil {
 		return err
 	}
@@ -3672,7 +3786,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	// Save to the caller's deck library (ADR 0051 decision 7, S34
 	// sub-PR 5) — see saveToLibrary for exactly when this does
 	// something and the seats.deck_id it leaves behind.
-	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, id, body.PlayerID, deckID, format, source, list, commanders)
+	libraryDeckID, libraryErr := saveToLibrary(r.Context(), c, p, id, body.PlayerID, table, deckID, format, source, list, commanders)
 	libraryNote := ""
 	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
 		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
@@ -3741,7 +3855,12 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 // plain-text paste carries no name of its own (deck.ParseText has
 // nowhere to put one), so an empty list.Name falls back to the first
 // commander's name rather than saving a blank row every time.
-func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, playerID uuid.UUID, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
+//
+// table is the format of the table the deck was seated at, which is the
+// format it passed the check of, and what the saved deck records (ADR
+// 0222 §2). A deck re-saved under the same name from a table of another
+// format takes that table's.
+func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, playerID uuid.UUID, table game.Format, deckID, format, source string, list *deck.List, commanders []string) (string, error) {
 	if deckID != "" || p.UserID == uuid.Nil || c.DeckLibrary == nil {
 		return "", nil
 	}
@@ -3755,6 +3874,9 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 	name := list.Name
 	if name == "" {
 		name = libraryFallbackName(list)
+		if !table.Spec().CommanderExpected {
+			name = constructedFallbackName(list)
+		}
 	}
 	cardCount := len(list.Commanders) + len(list.Mainboard)
 	var (
@@ -3776,6 +3898,11 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 	if err != nil {
 		logDeckLibraryWarning(c, "save deck to library failed", err, "user_id", p.UserID)
 		return "", err
+	}
+	if want := table.Spec().Format; libraryDeckFormat(saved) != want {
+		if _, ferr := c.DeckLibrary.SetFormat(ctx, p.UserID, saved.ID, string(want)); ferr != nil {
+			logDeckLibraryWarning(c, "recording a saved deck's format failed", ferr, "user_id", p.UserID)
+		}
 	}
 	return saved.ID.String(), nil
 }
@@ -3812,6 +3939,20 @@ func libraryFallbackName(list *deck.List) string {
 			names = append(names, c.Name)
 		}
 		return strings.Join(names, " / ")
+	}
+	return "Untitled deck"
+}
+
+// constructedFallbackName names a pasted deck of a format with no
+// commander (ADR 0222 §2): after its first card that is not a basic
+// land, so two different pasted decks do not both save as "Untitled
+// deck" and overwrite each other under the update rule.
+func constructedFallbackName(list *deck.List) string {
+	for _, c := range list.Mainboard {
+		if !strings.Contains(c.TypeLine, "Basic Land") {
+			name, _, _ := strings.Cut(c.Name, " // ")
+			return name + " deck"
+		}
 	}
 	return "Untitled deck"
 }
@@ -3882,7 +4023,15 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusForbidden, "not your deck")
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, saved.SourceFormat, saved.SourceText)
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err
+	}
+	// ADR 0222 §2: a saved deck is offered at tables of its format.
+	if f := libraryDeckFormat(saved); f != table {
+		return wrongFormatError(saved.Name, f, table)
+	}
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, saved.SourceFormat, saved.SourceText)
 	if written || err != nil {
 		return err
 	}
@@ -3946,8 +4095,11 @@ type myDeckCoverageInfo struct {
 
 // myDeckInfo is one entry in GET /me/decks.
 type myDeckInfo struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Format is the format the deck was built for (ADR 0222 §2):
+	// "standard", or omitted for Commander.
+	Format     string    `json:"format,omitempty"`
 	Commanders []string  `json:"commanders"`
 	CardCount  int       `json:"card_count"`
 	UpdatedAt  time.Time `json:"updated_at"`
@@ -4035,6 +4187,9 @@ func libraryDeckReport(c Config, d decklibrary.Deck, verdicts map[string]catalog
 	}
 	return deckcoverage.BuildWith(c.Cards, deckcoverage.Deck{
 		Name: d.Name, Source: source, SourceURL: d.SourceURL, Entries: entries,
+		// ADR 0222 §2: a saved deck is checked against the format it
+		// was built for.
+		Format: libraryDeckFormat(d),
 	}, verdicts)
 }
 
@@ -4076,6 +4231,7 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 	info := myDeckInfo{
 		ID:         d.ID.String(),
 		Name:       d.Name,
+		Format:     wireFormat(libraryDeckFormat(d)),
 		Commanders: nonNil(d.Commanders),
 		CardCount:  d.CardCount,
 		UpdatedAt:  d.UpdatedAt,
@@ -4542,6 +4698,15 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err
+	}
+	if deckID != "" {
+		if err := botDeckFitsTable(c, deckID, table); err != nil {
+			return err
+		}
+	}
 	tier := strings.ToLower(strings.TrimSpace(body.Tier))
 	var own ownKeySeat
 	if body.OwnKey {
@@ -4564,7 +4729,7 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
+	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, table, format, source)
 	if written || err != nil {
 		return err
 	}
@@ -4874,6 +5039,9 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrGameNotFound):
 		status = http.StatusNotFound
+	case errors.Is(err, ErrDraftNotFound):
+		status = http.StatusNotFound
+		msg = "draft not found"
 	case errors.Is(err, ErrInvalidInvite), errors.Is(err, ErrInvalidReclaim):
 		status = http.StatusUnauthorized
 	case errors.Is(err, ErrGameFull),
@@ -4923,10 +5091,15 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// game's state cannot satisfy (422), which is the documented
 	// rejection and the one a client is expected to pre-empt by
 	// disabling the control.
-	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered):
+	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered),
+		errors.Is(err, game.ErrBestOfFormat):
 		status = http.StatusBadRequest
 	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked),
-		errors.Is(err, game.ErrPlanechaseLocked):
+		errors.Is(err, game.ErrPlanechaseLocked),
+		// ADR 0222 §1: a format change the table's state refuses.
+		errors.Is(err, game.ErrFormatLocked), errors.Is(err, game.ErrFormatSeats),
+		errors.Is(err, game.ErrBestOfLocked),
+		errors.Is(err, ErrFormatDecksLoaded), errors.Is(err, ErrDeckWrongFormat):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
@@ -4994,3 +5167,63 @@ func constantTimeEqual(a, b string) bool {
 // compile-time assertion we haven't dropped context-awareness from
 // critical methods.
 var _ = context.Background
+
+// formatNames lists the formats this server knows, for an error.
+func formatNames() string {
+	var names []string
+	for _, f := range game.Formats() {
+		if f.DraftOnly {
+			continue
+		}
+		names = append(names, string(f.Format))
+	}
+	return strings.Join(names, ", ")
+}
+
+// maxSeatsOfMeta is the seat cap a meta reports: its format's, or the
+// global four when it names none.
+func maxSeatsOfMeta(m GameMeta) int {
+	if m.MaxSeats > 0 {
+		return m.MaxSeats
+	}
+	return game.MaxPlayers
+}
+
+// wrongFormatError refuses a named deck at a table of another format
+// (ADR 0222 §2), before the deck check would refuse it card by card.
+func wrongFormatError(name string, deckFormat, table game.Format) error {
+	return fmt.Errorf("%w: %s is a %s deck, and this is a %s table",
+		ErrDeckWrongFormat, name, deckFormat.Spec().Name, table.Spec().Name)
+}
+
+// botDeckFitsTable is prebuiltFitsTable for the bot deck catalog, whose
+// rows name their format as text ("" is Commander).
+func botDeckFitsTable(c Config, deckID string, table game.Format) error {
+	if c.BotDecks == nil {
+		return nil
+	}
+	info, _, ok := c.BotDecks.Decklist(deckID)
+	if !ok {
+		return nil
+	}
+	if f := game.Format(info.Format).Spec().Format; f != table.Spec().Format {
+		return wrongFormatError(info.Name, f, table)
+	}
+	return nil
+}
+
+// libraryDeckFormat is the format a saved deck was built for (ADR 0222
+// §2). A deck saved before formats existed, and a stored name this
+// build does not know, is a Commander deck.
+func libraryDeckFormat(d decklibrary.Deck) game.Format {
+	return game.Format(d.Format).Spec().Format
+}
+
+// wireFormat is a format as the lobby's JSON carries it: omitted for
+// Commander, so a Commander table, deck and setup read as they did.
+func wireFormat(f game.Format) string {
+	if f = f.Spec().Format; f != game.FormatCommander {
+		return string(f)
+	}
+	return ""
+}

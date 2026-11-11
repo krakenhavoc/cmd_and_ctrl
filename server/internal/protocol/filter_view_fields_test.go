@@ -108,6 +108,13 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		}},
 		Planechase: &PlanechaseView{PlanarController: ownerID, DeckCount: 74,
 			FaceUp: []CardView{{InstanceID: "plane-1", Name: "Test Plane", Layout: "planar", KnownByYou: true}}},
+		// ADR 0222 §3: the score is public; the pool is its owner's.
+		Match: &MatchView{BestOf: 3, Game: 1, Wins: []int{1, 0}, Sideboarding: &SideboardingView{
+			Deadline: "2026-11-11T00:00:00Z", Ready: []int{}, DeckMin: 60, SideboardMax: 15,
+			Pools: []MatchPoolView{{Seat: 0, PlayerID: ownerID, Deck: []CardView{{InstanceID: "pool-1", Name: "Pool Card"}}}},
+		}},
+		// ADR 0222 slice 1: public, the same for every viewer.
+		NoCommanders: true,
 
 		StackItems:      []StackItemView{{ID: "item-1", Kind: "spell", Controller: ownerID, Owner: ownerID, SourceCardID: "card-1"}},
 		PendingTriggers: []StackItemView{{ID: "item-2", Kind: "triggered", Controller: ownerID, Owner: ownerID, SourceCardID: "card-2"}},

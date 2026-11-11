@@ -227,7 +227,7 @@ describe("the Lobby's empty state (§6)", () => {
     } as Session;
   }
 
-  it("has Practice game, Bring a deck and No pod yet?, which links the invite", async () => {
+  it("has Practice game, Bring a deck, Draft a set and No pod yet?, which links the invite", async () => {
     community({ invite_url: INVITE, gate: true });
     setSession(signedIn());
     const { container } = render(Lobby as never, {} as never);
@@ -236,8 +236,11 @@ describe("the Lobby's empty state (§6)", () => {
     expect([...cards.querySelectorAll("h3")].map((h) => h.textContent)).toEqual([
       "Practice game",
       "Bring a deck",
+      // ADR 0222 §6, #5440: the signed-in way into a draft.
+      L.homeDraftCard,
       "No pod yet?",
     ]);
+    expect(linkNamed(cards, L.draftNewTitle)!.getAttribute("href")).toBe("#/draft");
     const pod = linkNamed(cards, L.findAPod)!;
     expect(pod.getAttribute("href")).toBe(INVITE);
     expect(pod.getAttribute("target")).toBe("_blank");
@@ -251,6 +254,7 @@ describe("the Lobby's empty state (§6)", () => {
     expect([...cards.querySelectorAll("h3")].map((h) => h.textContent)).toEqual([
       "Practice game",
       "Bring a deck",
+      L.homeDraftCard,
     ]);
     expect(discordLinks(container)).toHaveLength(0);
   });

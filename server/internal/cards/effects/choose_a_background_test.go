@@ -97,7 +97,7 @@ func cabKarlachGame(t *testing.T) (*game.Game, *game.Player) {
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if err := deck.Validate(list); err != nil {
+	if err := deck.Validate(list, game.FormatCommander); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
 

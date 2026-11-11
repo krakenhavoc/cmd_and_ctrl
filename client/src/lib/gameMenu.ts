@@ -25,6 +25,9 @@ export interface GameMenuOptions {
   seated: boolean;
   // Concede is drawn disabled, not hidden, once it means nothing.
   eliminated?: boolean;
+  // False where no seat has a commander (ADR 0222 slice 1): the Table
+  // settings tooltip then leaves commander damage out. Absent is true.
+  commanders?: boolean;
   // ADR 0167 §4: false while the viewer plays another seat's turn or
   // has theirs played for them. The server refuses every sandbox verb
   // to both players then, so the sandbox tools and the vote launcher
@@ -127,6 +130,10 @@ export interface GameMenuOptions {
   ) => Promise<{ blocked: boolean; spectators: SpectatorLine[] }>;
   // Called once the confirm is accepted. Concede is irreversible.
   onConcede: () => void;
+  // ADR 0222 §3: set at a table playing a best-of-three, whose concede
+  // confirmation offers both: Concede concedes the game in play and the
+  // match goes on; this concedes the whole match.
+  onConcedeMatch?: () => void;
   onStartVote: (topic: string, options: string[]) => void;
 }
 

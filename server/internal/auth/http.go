@@ -81,7 +81,10 @@ func WithPrincipal(ctx context.Context, p Principal) context.Context {
 // invalid / expired one are rejected with 401 and a small JSON body.
 //
 // RequireRoles optionally enforces that the authenticated principal's
-// role is in the allowed list. Empty list = any authenticated role.
+// role is in the allowed list. Empty list = any authenticated role
+// but RoleDrafter: a draft seat's session is good only on a route that
+// names it (see RoleDrafter), so "any session" routes written before
+// drafts existed do not start accepting one.
 func Middleware(a Authenticator, requireRoles ...Role) func(http.Handler) http.Handler {
 	return MiddlewareWith(a, CredentialFromRequest, requireRoles...)
 }
@@ -120,11 +123,9 @@ func MiddlewareWith(a Authenticator, credential func(*http.Request) string, requ
 				writeError(w, status, msg)
 				return
 			}
-			if len(allowed) > 0 {
-				if _, ok := allowed[p.Role]; !ok {
-					writeError(w, http.StatusForbidden, "insufficient role")
-					return
-				}
+			if _, named := allowed[p.Role]; !named && (len(allowed) > 0 || p.Role == RoleDrafter) {
+				writeError(w, http.StatusForbidden, "insufficient role")
+				return
 			}
 			next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
 		})

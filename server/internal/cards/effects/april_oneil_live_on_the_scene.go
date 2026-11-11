@@ -28,7 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, aprilONeilMutantNinjaOrTurtleEntered,
 				"April O'Neil, Live on the Scene — investigate",
-				Do(CreateToken{Template: ClueToken(), N: 1})),
+				Do(Investigate{N: 1})),
 		},
 	})
 }

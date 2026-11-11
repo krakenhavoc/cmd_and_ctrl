@@ -73,6 +73,13 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" {
 			return "a cantBeBlockedByPlayer rule needs Text, the clause the refusal sentence reads"
 		}
+	case ModCantBlockPlayersCreatures:
+		if m.Player == uuid.Nil {
+			return "a cantBlockPlayersCreatures rule needs the Player whose creatures can't be blocked"
+		}
+		if m.Text == "" {
+			return "a cantBlockPlayersCreatures rule needs Text, the clause the refusal sentence reads"
+		}
 	case ModCantBeBlockedByColor:
 		if len(m.Colors) != 1 || !strings.Contains("WUBRG", m.Colors[0]) || len(m.Colors[0]) != 1 {
 			return "a cantBeBlockedByColor rule needs one WUBRG color"
@@ -173,6 +180,14 @@ func CantBeBlockedBySubtypesMod(subtypes []string, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedBySubtypes, Subtypes: copyStrings(subtypes), Text: text}
 }
 
+// CantBlockPlayersCreaturesMod is "<creature> can't block creatures that
+// player controls" (Immortal Obligation): the pinned blocker(s) may not
+// block any creature `player` controls, read live. `text` is the clause as
+// the refusal sentence reads it.
+func CantBlockPlayersCreaturesMod(player uuid.UUID, text string) Mod {
+	return Mod{Kind: ModCantBlockPlayersCreatures, Player: player, Text: text}
+}
+
 // CantBeBlockedByObjectMod is "<creature> can't be blocked by <that
 // creature> this turn", the pairwise form: "target creature can't block
 // this creature this turn" (a Wrinkly Monkey Shenanigans ability sticker,
@@ -231,6 +246,16 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return blocker != nil && blocker.Controller == barred && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBlockPlayersCreatures:
+		affected := affectedPredicate(e.Affected)
+		barred := m.Player
+		return BlockRule{
+			Reason: BlockReasonCantBlockAttacker,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return attacker != nil && attacker.Controller == barred && affected(blocker, g, nil)
 			},
 		}
 	case ModCantBeBlockedByColor:

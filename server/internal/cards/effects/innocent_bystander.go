@@ -29,7 +29,7 @@ func init() {
 			},
 			Key:        "Innocent Bystander — investigate (dealt 3 or more damage)",
 			AtBatchEnd: &game.BatchEndCondition{Total: game.BatchTotalDamage, AtLeast: 3},
-			Effect:     Do(CreateToken{Template: ClueToken(), N: 1}),
+			Effect:     Do(Investigate{N: 1}),
 		}},
 	})
 }

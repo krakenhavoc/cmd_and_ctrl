@@ -28,12 +28,23 @@ import (
 type mayWheel struct {
 	question string
 	answer   game.ConfirmThen
+	// draws is how many cards each yes-sayer draws (seven unless a card says
+	// otherwise: Will of the Jeskai's five), and steps the wheel that draws
+	// them.
+	draws int
+	steps ThenSteps
 }
 
 // newMayWheel registers a card's wheel. answerKey is an on-disk key: never
 // renamed, never reused. Call it once, from a package-level var.
 func newMayWheel(answerKey, question string) *mayWheel {
-	w := &mayWheel{question: question}
+	return newMayWheelDrawing(answerKey, question, 7, mayWheelSteps)
+}
+
+// newMayWheelDrawing is newMayWheel for a card that draws a number other than
+// seven: `steps` is the wheel that draws that many (see mayWheelStepsFor).
+func newMayWheelDrawing(answerKey, question string, draws int, steps ThenSteps) *mayWheel {
+	w := &mayWheel{question: question, draws: draws, steps: steps}
 	// The prompt carries the yes-sayers (the first Word of them), then
 	// the players still to ask.
 	w.answer = MayAnswer(answerKey, func(ctx *Context, r game.ConfirmAnswer) error {
@@ -60,7 +71,7 @@ func (w *mayWheel) ask(ctx *Context, order, yes []uuid.UUID) error {
 			return nil
 		}
 		ctx.RecordStep(mayWheelYesKey, yes)
-		return mayWheelSteps.Run(ctx)
+		return w.steps.Run(ctx)
 	}
 	who, rest := order[0], order[1:]
 	if p := ctx.Game.PlayerByIDForEffect(who); p == nil || p.Eliminated {
@@ -69,7 +80,7 @@ func (w *mayWheel) ask(ctx *Context, order, yes []uuid.UUID) error {
 	return MayChoice{
 		Player:   who,
 		Question: w.question,
-		Draws:    7,
+		Draws:    w.draws,
 		Then:     w.answer,
 		Carry:    append(append([]uuid.UUID(nil), yes...), rest...),
 		Word:     strconv.Itoa(len(yes)),
@@ -81,24 +92,30 @@ const mayWheelYesKey = "each-player-may-wheel-yes"
 
 // mayWheelSteps is the yes-sayers' wheel: every hand is discarded, then
 // each of them draws seven, after any question a discard asked.
-var mayWheelSteps = RegisterThenSteps("then-steps/each-player-may-wheel",
-	Instruction(func(ctx *Context) error {
-		for _, id := range ctx.StepRecord(mayWheelYesKey).IDs {
-			if _, err := discardWholeHand(ctx.Game, id); err != nil {
-				return err
+var mayWheelSteps = mayWheelStepsFor("then-steps/each-player-may-wheel", 7)
+
+// mayWheelStepsFor registers a wheel that draws `draws` cards under key (an
+// on-disk key: never renamed, never reused).
+func mayWheelStepsFor(key string, draws int) ThenSteps {
+	return RegisterThenSteps(key,
+		Instruction(func(ctx *Context) error {
+			for _, id := range ctx.StepRecord(mayWheelYesKey).IDs {
+				if _, err := discardWholeHand(ctx.Game, id); err != nil {
+					return err
+				}
 			}
-		}
-		return nil
-	}),
-	Instruction(func(ctx *Context) error {
-		for _, id := range ctx.StepRecord(mayWheelYesKey).IDs {
-			if p := ctx.Game.PlayerByIDForEffect(id); p == nil || p.Eliminated {
-				continue
+			return nil
+		}),
+		Instruction(func(ctx *Context) error {
+			for _, id := range ctx.StepRecord(mayWheelYesKey).IDs {
+				if p := ctx.Game.PlayerByIDForEffect(id); p == nil || p.Eliminated {
+					continue
+				}
+				if err := ctx.Game.DrawNForEffect(id, draws); err != nil {
+					return err
+				}
 			}
-			if err := ctx.Game.DrawNForEffect(id, 7); err != nil {
-				return err
-			}
-		}
-		return nil
-	}),
-)
+			return nil
+		}),
+	)
+}

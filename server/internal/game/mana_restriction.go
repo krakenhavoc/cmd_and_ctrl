@@ -138,6 +138,13 @@ const (
 	// known (weaker than printed, never stronger). The mirror image of
 	// ManaRestrictNotFromHand, read from the same CastFrom.
 	ManaRestrictCastFromExile = "cast:from-exile"
+	// ManaRestrictCastFromGraveyard is the same POSITIVE clause for the
+	// graveyard — "spend this mana only to cast a spell from your
+	// graveyard" (Lord of the Forsaken, #5368). It admits a spell cast
+	// from a graveyard and nothing else: not an activation, not a cast
+	// from the hand, exile, the command zone or a library, and not a cast
+	// whose zone is not known (weaker than printed, never stronger).
+	ManaRestrictCastFromGraveyard = "cast:from-graveyard"
 	// ManaRestrictMonocolored permits the token only when the object
 	// being paid for is exactly one colour (CR 105.2a) — Throne of
 	// Eldraine's "spend this mana only to cast monocolored spells of
@@ -188,6 +195,14 @@ const (
 	// a turn-face-up never satisfies it; combine it with
 	// ManaRestrictTurnFaceUp through ManaRestrictAnyOf.
 	ManaRestrictFaceDownSpell = "spell:face-down"
+	// ManaRestrictSpellNotOwned permits the token only on a spell its
+	// payer does not own (#5457, CR 106.6, CR 108.3): Thieving Varmint's
+	// "Spend this mana only to cast spells you don't own". It compares
+	// the spell's owner (ManaSpendContext.SpellOwner) with the player
+	// paying (Payer), so an activation never satisfies it, and neither
+	// does a cast whose payer or owner the payment did not name (weaker
+	// than printed, never stronger).
+	ManaRestrictSpellNotOwned = "spell:not-owned"
 )
 
 // ManaRestrictManaValueAtLeast builds "spend this mana only to cast
@@ -427,6 +442,11 @@ type ManaSpendContext struct {
 	// cast.
 	YourCommander bool
 
+	// SpellOwner is the owner of the spell being cast (CR 108.3): what
+	// ManaRestrictSpellNotOwned compares with Payer (#5457). Set by
+	// ManaSpendForCast; zero for every payment that is not a cast.
+	SpellOwner uuid.UUID
+
 	// ManaValue is the mana value of the spell being cast as it is on
 	// the stack, and ManaValueKnown whether the engine could read its
 	// cost: what ManaRestrictManaValueAtLeast reads (#4694, CR 202.3).
@@ -450,7 +470,9 @@ type ManaSpendContext struct {
 	// the any-colour reader fills in before it asks a Covers. Together
 	// they answer Agatha's Soul Cauldron's "to activate abilities of
 	// creatures YOU control" (#3201): an ability any player may activate
-	// on someone else's creature is not covered. Zero for a cast.
+	// on someone else's creature is not covered. Controller is zero for
+	// a cast. A cast's payment names its Payer with PaidBy (#5457), for
+	// ManaRestrictSpellNotOwned.
 	Controller uuid.UUID
 	Payer      uuid.UUID
 
@@ -478,6 +500,15 @@ type ManaSpendContext struct {
 func ManaSpendForAbilityRow(c Card, o AbilityOrigin) ManaSpendContext {
 	ctx := ManaSpendForAbility(c)
 	ctx.AbilityOrigin = o
+	return ctx
+}
+
+// PaidBy is the context with the player paying named (#5457). Every
+// cast payment names its payer, the caster, or the helper of an assist
+// (CR 702.132a), so a restriction that asks whose spell it is
+// (ManaRestrictSpellNotOwned) can answer.
+func (ctx ManaSpendContext) PaidBy(payer uuid.UUID) ManaSpendContext {
+	ctx.Payer = payer
 	return ctx
 }
 
@@ -613,6 +644,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		ManaCostHasX:     strings.Contains(manaCostForValue(c), "{X}"),
 		FaceDownSpell:    c.FaceDown,
 		YourCommander:    c.IsCommander && c.Owner != uuid.Nil && c.Owner == c.Controller,
+		SpellOwner:       c.Owner,
 		wish:             newSpendWish(c),
 	}.withCastManaValue(c)
 }
@@ -696,6 +728,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeCast && ctx.ManaCostHasX
 	case ManaRestrictFaceDownSpell:
 		return ctx.Purpose == SpendPurposeCast && ctx.FaceDownSpell
+	case ManaRestrictSpellNotOwned:
+		return ctx.Purpose == SpendPurposeCast && ctx.Payer != uuid.Nil && ctx.SpellOwner != uuid.Nil && ctx.Payer != ctx.SpellOwner
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
 	case ManaRestrictTurnFaceUp:
@@ -714,6 +748,8 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return false
 	case ManaRestrictCastFromExile:
 		return ctx.Purpose == SpendPurposeCast && ctx.CastFrom == ZoneExile
+	case ManaRestrictCastFromGraveyard:
+		return ctx.Purpose == SpendPurposeCast && ctx.CastFrom == ZoneGraveyard
 	case ManaRestrictNotNonartifactSpell:
 		switch ctx.Purpose {
 		case SpendPurposeActivate:

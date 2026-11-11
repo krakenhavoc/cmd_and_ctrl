@@ -65,6 +65,9 @@ func (g *Game) cloneLocked() *Game {
 		// new game's "then" waiting on the mulligans. Own copies.
 		RestartPending: cloneGameRestart(g.RestartPending),
 		RestartTail:    cloneGameRestart(g.RestartTail),
+		// ADR 0222 §3: the match. Its own copy, so undoing the action
+		// that ended a game takes the score back with it.
+		Match: cloneMatch(g.Match),
 		// #2881: the active player's standing end_turn. Its own
 		// pointer, so a clone never shares the live order.
 		passTurn: clonePassTurnOrder(g.passTurn),
@@ -774,6 +777,8 @@ func clonePlayer(p *Player) *Player {
 		UpkeepsBegun:      p.UpkeepsBegun,
 		EndStepTurn:       p.EndStepTurn,
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:     append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks: append([]AttackRecord(nil), p.LastCombatAttacks...),
 		LastTurnCastOrPut: p.LastTurnCastOrPut,
 		Eliminated:        p.Eliminated,
 		LossCause:         p.LossCause,
@@ -958,6 +963,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		// #3863
 		ExileInsteadOfGraveyard:  s.ExileInsteadOfGraveyard,
@@ -1310,6 +1316,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.TurnEndPending = src.TurnEndPending
 	g.RestartPending = src.RestartPending
 	g.RestartTail = src.RestartTail
+	g.Match = src.Match
 	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
@@ -1489,4 +1496,14 @@ func cloneGameOutcome(in *GameOutcome) *GameOutcome {
 	}
 	out := *in
 	return &out
+}
+
+// clonePermissionCardRefPtr copies an optional object link, so a cloned stack
+// item shares no pointer with its source.
+func clonePermissionCardRefPtr(p *PermissionCardRef) *PermissionCardRef {
+	if p == nil {
+		return nil
+	}
+	c := *p
+	return &c
 }

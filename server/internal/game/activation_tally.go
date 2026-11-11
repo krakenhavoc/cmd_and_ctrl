@@ -129,6 +129,43 @@ type ActivationTally struct {
 	// prefix (sumTally) — a player-keyed entry in that map would be
 	// swept into every prefix sum. Emptied with Turn on the turn advance.
 	OwnCreatureTargeted map[string]int `json:"own_creature_targeted,omitempty"`
+
+	// ArtifactActivated counts, per ACTIVATOR (player ID), the abilities
+	// of artifacts they have activated this turn, mana abilities
+	// included, written at the announce for an activation made at all
+	// (Tezzeret, Betrayer of Flesh's "The first activated ability of an
+	// artifact you activate each turn costs {2} less to activate"). Kept
+	// apart from Turn for OwnCreatureTargeted's reason, and emptied with
+	// it on the turn advance. Additive within the snapshot version.
+	ArtifactActivated map[string]int `json:"artifact_activated,omitempty"`
+}
+
+// noteArtifactActivationLocked records that `activator` just activated an
+// ability of an artifact. `wasArtifact` is read before the costs are paid
+// (activationKey's argument): a cost that sacrifices the artifact ends the
+// object, and the activation still counts. Caller must hold g.mu.
+func (g *Game) noteArtifactActivationLocked(activator uuid.UUID, wasArtifact bool) {
+	if activator == uuid.Nil || !wasArtifact {
+		return
+	}
+	if g.Activations.ArtifactActivated == nil {
+		g.Activations.ArtifactActivated = map[string]int{}
+	}
+	g.Activations.ArtifactActivated[activator.String()]++
+}
+
+// isArtifactOnBattlefieldLocked is "this permanent is an artifact" as the
+// layers have it now. Caller must hold g.mu.
+func (g *Game) isArtifactOnBattlefieldLocked(cardID uuid.UUID) bool {
+	c, ok := g.battlefieldCardLocked(cardID)
+	return ok && c.IsArtifact()
+}
+
+// ArtifactActivationsThisTurn is how many abilities of artifacts `player`
+// has activated this turn. Zero means the next one is the turn's first.
+// Caller must hold g.mu (read or write).
+func (g *Game) ArtifactActivationsThisTurn(player uuid.UUID) int {
+	return g.Activations.ArtifactActivated[player.String()]
 }
 
 // noteOwnCreatureTargetedLocked records that `activator` just made an
@@ -302,6 +339,7 @@ func (g *Game) exhaustedLocked(asker, source uuid.UUID, exhaust bool, label stri
 func (g *Game) resetActivationTurnTallyLocked() {
 	g.Activations.Turn = nil
 	g.Activations.OwnCreatureTargeted = nil
+	g.Activations.ArtifactActivated = nil
 }
 
 // cloneActivationTally deep-copies both maps, so an undo snapshot and
@@ -312,5 +350,6 @@ func cloneActivationTally(t ActivationTally) ActivationTally {
 		Turn: copyStringIntMap(t.Turn),
 
 		OwnCreatureTargeted: copyStringIntMap(t.OwnCreatureTargeted),
+		ArtifactActivated:   copyStringIntMap(t.ArtifactActivated),
 	}
 }

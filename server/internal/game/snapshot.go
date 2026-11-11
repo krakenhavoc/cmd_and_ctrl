@@ -369,6 +369,12 @@ type GameSnapshot struct {
 	// card, never stronger.
 	RestartPending *GameRestart `json:"restartPending,omitempty"`
 	RestartTail    *GameRestart `json:"restartTail,omitempty"`
+	// Match is Game.Match (ADR 0222 §3, match.go): the table's match.
+	// Additive: absent on every Commander table and on every file
+	// written before matches, which restore with no match, as they
+	// played. A table between two games has State "between_games" and
+	// its sideboarding window here, and restores into the window.
+	Match *Match `json:"match,omitempty"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -881,6 +887,12 @@ type playerSnapshot struct {
 	// written before it restores with none, which reads as "nothing
 	// attacked last turn" until the player's next turn ends.
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
+	// CombatAttacks and LastCombatAttacks are Player.CombatAttacks and
+	// Player.LastCombatAttacks (Territorial Hellkite, #5368). Additive
+	// within v9: a file written before them restores with none, which
+	// reads as "nothing attacked in the last combat".
+	CombatAttacks     []AttackRecord `json:"combatAttacks,omitempty"`
+	LastCombatAttacks []AttackRecord `json:"lastCombatAttacks,omitempty"`
 	// LastTurnCastOrPut is Player.LastTurnCastOrPut (#1997, Arboria).
 	// Additive within v9: a file written before it restores with false,
 	// which reads as "did nothing last turn" until the player's next turn
@@ -1149,6 +1161,10 @@ type cardSnapshot struct {
 	// nowhere", the state before the record existed.
 	PutInGraveyardFrom     ZoneKind `json:"putInGraveyardFrom,omitempty"`
 	PutInGraveyardThisTurn bool     `json:"putInGraveyardThisTurn,omitempty"`
+	// Surveilled is Card.Surveilled (#5429, Eye of Duskmantle): the
+	// arrival was a surveil's graveyard leg. Absent from every earlier
+	// file, which restores as "not surveilled".
+	Surveilled bool `json:"surveilled,omitempty"`
 	// SuspendGranted is Card.SuspendGranted (#4455): an exiled card an
 	// effect gave suspend. Absent from every earlier file, which restores as
 	// "has only its printed abilities".
@@ -1753,6 +1769,9 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileLinkedTo is Forger's Foundry's mark: exile the resolving spell,
+	// linked to this object. Carried for the reason ExileWithCounter is.
+	ExileLinkedTo *PermissionCardRef `json:"exileLinkedTo,omitempty"`
 	// ExileInsteadOfGraveyard (#3863) is Torrential Gearhulk's and
 	// Emet-Selch's "if that spell would be put into your graveyard,
 	// exile it instead". Carried: a restore that lost it would let the
@@ -1992,6 +2011,7 @@ type pendingChoiceSnapshot struct {
 	PickExiledWith *PermissionCardRef `json:"pickExiledWith,omitempty"`
 	CopyOptions    []uuid.UUID        `json:"copyOptions,omitempty"`
 	ExchangesText  bool               `json:"exchangesText,omitempty"`
+	CopyUse        string             `json:"copyUse,omitempty"`
 	ExcludedTypes  []string           `json:"excludedTypes,omitempty"`
 	// #1997: Null Chamber's second name and its "other than a basic
 	// land card name". Additive within v9.
@@ -2550,6 +2570,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		TurnEndPending:        g.TurnEndPending,
 		RestartPending:        cloneGameRestart(g.RestartPending),
 		RestartTail:           cloneGameRestart(g.RestartTail),
+		Match:                 cloneMatch(g.Match),
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
@@ -3092,6 +3113,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		Surveilled:               c.Surveilled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsToSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -3205,6 +3227,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:         append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks:     append([]AttackRecord(nil), p.LastCombatAttacks...),
 		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
 		LossCause:             string(p.LossCause),
@@ -3309,6 +3333,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
@@ -3544,6 +3569,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
+		CopyUse:               c.CopyUse,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
 		SecondName:            c.SecondName,
 		NotBasicLandName:      c.NotBasicLandName,
@@ -3805,6 +3831,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.TurnEndPending = s.TurnEndPending
 	g.RestartPending = cloneGameRestart(s.RestartPending)
 	g.RestartTail = cloneGameRestart(s.RestartTail)
+	g.Match = cloneMatch(s.Match)
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
@@ -4230,6 +4257,7 @@ func restoreCard(c *cardSnapshot) Card {
 		SummonedThisTurn:         c.SummonedThisTurn,
 		PutInGraveyardFrom:       c.PutInGraveyardFrom,
 		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
+		Surveilled:               c.Surveilled,
 		SuspendGranted:           c.SuspendGranted,
 		ExileGrants:              exileGrantsFromSnapshot(c.ExileGrants),
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -4375,6 +4403,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
+		CombatAttacks:      append([]AttackRecord(nil), p.CombatAttacks...),
+		LastCombatAttacks:  append([]AttackRecord(nil), p.LastCombatAttacks...),
 		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
 		LossCause:          LossCause(p.LossCause),
@@ -4494,6 +4524,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
@@ -4658,6 +4689,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
+		CopyUse:               c.CopyUse,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
 		SecondName:            c.SecondName,
 		NotBasicLandName:      c.NotBasicLandName,

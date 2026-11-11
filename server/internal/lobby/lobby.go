@@ -36,9 +36,16 @@ import (
 // Errors returned by Lobby methods. Kept as sentinels so HTTP
 // handlers can map them to status codes without string matching.
 var (
-	ErrGameNotFound    = errors.New("lobby: game not found")
-	ErrInvalidInvite   = errors.New("lobby: invalid invite token")
-	ErrGameFull        = errors.New("lobby: game is full")
+	ErrGameNotFound  = errors.New("lobby: game not found")
+	ErrInvalidInvite = errors.New("lobby: invalid invite token")
+	ErrGameFull      = errors.New("lobby: game is full")
+	// ErrFormatDecksLoaded refuses a format change at a table where a
+	// seat already has a deck: the deck was checked against the format
+	// the table had (ADR 0222 §1).
+	ErrFormatDecksLoaded = errors.New("lobby: the format cannot change once a seat has a deck; make a new table for another format")
+	// ErrDeckWrongFormat refuses a built-in deck at a table of another
+	// format.
+	ErrDeckWrongFormat = errors.New("lobby: that deck is built for another format")
 	ErrGameStarted     = errors.New("lobby: game already started")
 	ErrEmptyName       = errors.New("lobby: name is required")
 	ErrSeatTaken       = errors.New("lobby: seat already claimed")
@@ -137,6 +144,9 @@ type GameMeta struct {
 	// POST /games/practice, never listed and never persisted. The
 	// client reads it to know the table it is on is the tutorial's.
 	Practice bool `json:"practice,omitempty"`
+	// DraftID is the draft this table is a match of (draft_matches.go),
+	// "" for any other table. The client offers the way back to it.
+	DraftID string `json:"draft_id,omitempty"`
 	// IsCreator reports, for THIS response's viewer only, whether
 	// they created the game (#1098). Computed by redactMetaFor from
 	// CreatedBy and the requesting principal's UserID; never the raw
@@ -167,6 +177,24 @@ type GameMeta struct {
 	// §1). Public: the table's seats should see that the result of
 	// their game will be posted with their names.
 	Results bool `json:"results,omitempty"`
+	// Format is the table's format (ADR 0222 §1): "standard", or
+	// omitted for Commander, the default. A cache of the engine's
+	// table settings, which are the authority (syncFormatLocked).
+	Format string `json:"format,omitempty"`
+	// MaxSeats is how many seats the table's format has, omitted at a
+	// four-seat table.
+	MaxSeats int `json:"max_seats,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3): 3, or
+	// omitted for a best-of-one and for a table with no match. A cache
+	// of the engine's table settings, like Format. Once a best-of-three
+	// has started, List also gives each seat its games won
+	// (GamePlayer.MatchWins) and the number of the game in play
+	// (MatchGame).
+	BestOf int `json:"best_of,omitempty"`
+	// MatchGame is the number of the game a best-of-three is on, set by
+	// List from the engine. Omitted before the match starts and at
+	// every other table.
+	MatchGame int `json:"match_game,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -281,6 +309,12 @@ type SeatInfo struct {
 	// Public at the table: every seat and spectator sees it.
 	Life *int `json:"life,omitempty"`
 
+	// MatchWins is the games this seat has won in the table's
+	// best-of-three (ADR 0222 §3), set by List once the match has
+	// started and kept after it ends. Nil (omitted) at every other
+	// table, a best-of-one included.
+	MatchWins *int `json:"match_wins,omitempty"`
+
 	// UserID is the users row of the signed-in person holding the seat
 	// (seats.user_id, ADR 0051 sub-PR 4), or "" for a guest, a bot,
 	// and a Discord seat still waiting for its person to sign in again
@@ -342,7 +376,17 @@ type StateBroadcaster interface {
 type Lobby struct {
 	mu    sync.Mutex
 	games map[uuid.UUID]*gameEntry
-	mgr   *ws.RoomManager
+	// drafts is every live booster draft (drafts.go, ADR 0222 §5). A
+	// draft is not a game: it is in memory only and has no entry in
+	// games.
+	drafts map[uuid.UUID]*draftEntry
+	// draftRecorder keeps a signed-in person's finished drafts
+	// (draft_matches.go); nil keeps nothing.
+	draftRecorder DraftRecorder
+	// draftMatchLimits bounds a draft's match tables
+	// (draft_matches.go); the zero value is the defaults.
+	draftMatchLimits DraftMatchLimits
+	mgr              *ws.RoomManager
 	// broadcast, when non-nil, receives the post-mutation view of
 	// every HTTP-side game mutation (join / deck upload / start) so
 	// clients already on the game page see it without waiting for
@@ -541,6 +585,12 @@ type gameEntry struct {
 	practice      bool
 	practiceOwner string
 	practiceHuman uuid.UUID
+
+	// draftMatch marks a limited table a draft opened for one of its
+	// matches (draft_matches.go, ADR 0222 §6). It is also a practice
+	// entry, for everything that means (unlisted, unstored), with no
+	// practice owner or human.
+	draftMatch *draftMatchRef
 
 	// blocks are the identities this table will not seat again (blocks.go,
 	// table_blocks). Guarded by l.mu like meta.
@@ -2053,6 +2103,15 @@ func copyMeta(m GameMeta) GameMeta {
 func glanceAt(e *gameEntry, m *GameMeta) {
 	if e.room == nil || e.room.Game == nil {
 		return
+	}
+	// ADR 0222 §3: the score of a best-of-three, in play or over.
+	if match := e.room.Game.MatchSnapshot(); match != nil && match.BestOf > 1 {
+		m.BestOf = match.BestOf
+		m.MatchGame = match.GameNumber()
+		for i := range m.Players {
+			wins := match.Wins(m.Players[i].PlayerID)
+			m.Players[i].MatchWins = &wins
+		}
 	}
 	glance, ok := e.room.Game.Glance()
 	if !ok {

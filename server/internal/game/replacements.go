@@ -711,6 +711,11 @@ type ReplacementEvent struct {
 	auraHost        TargetRef
 	auraHostFixed   bool
 	auraHostSettled bool
+	// auraHostCreaturesOnly is the putting effect's "only creatures can be
+	// enchanted this way" (Retether): the Aura's host is chosen among the
+	// creatures its enchant clause admits, never a player or another kind of
+	// permanent. Seeded from ZoneEntryOptions.AuraHostsCreaturesOnly.
+	auraHostCreaturesOnly bool
 
 	// entersAsAura is a card that comes back "as an Aura" (returned_aura.go,
 	// ADR 0154's 2026-10-23 amendment): CR 303.4f judges it an Aura with
@@ -1683,6 +1688,19 @@ type ReplacementEffect struct {
 	// one creature are ordered by its controller (CR 616.1) rather than
 	// collapsed by #792's sameModification.
 	ActsOnItsSource bool
+
+	// UmbraArmor marks umbra armor's own replacement (CR 702.89a), on the
+	// Aura that prints it or made for an Aura that was granted it. The
+	// grant below reads it so an Aura never has two.
+	UmbraArmor bool
+
+	// GrantsUmbraArmor declares "Auras attached to [these permanents] have
+	// umbra armor" (Umbra Mystic, #5457). The effect is never applied
+	// itself: AppliesTo says whether the permanent that would be
+	// destroyed is one of "these permanents", and the gather then makes
+	// one umbra armor replacement per Aura attached to it
+	// (gatherGrantedUmbraArmorLocked, umbra_armor.go). Replace is unused.
+	GrantsUmbraArmor bool
 
 	// Then is a prevention static's CR 615.5 additional effect (ADR 0108
 	// §8, #1906): a registered body, run after the prevention with what
@@ -2669,6 +2687,11 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 					// (dredge), gathered below, never from play.
 					continue
 				}
+				if eff.GrantsUmbraArmor {
+					// A grant of umbra armor to Auras, expanded into one
+					// replacement per Aura below (umbra_armor.go).
+					continue
+				}
 				if !eventKindMatches(eff.Watches, ev.Kind) {
 					continue
 				}
@@ -2722,6 +2745,9 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 
 	// Graveyard replacements: dredge (draw_instead.go).
 	out = g.gatherGraveyardReplacementsLocked(ev, applied, serials, out)
+
+	// Umbra armor granted to Auras (Umbra Mystic, umbra_armor.go).
+	out = g.gatherGrantedUmbraArmorLocked(ev, applied, serials, out)
 
 	// Self-replacements — a card replacing its OWN entry ("This land
 	// enters tapped": every Temple, Guildgate and tri-land).
@@ -2902,6 +2928,10 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 	}
 	// Graveyard replacements (dredge).
 	if label, card, ok := g.graveyardReplacementMetaLocked(id); ok {
+		return label, card
+	}
+	// Umbra armor granted to an Aura (umbra_armor.go).
+	if label, card, ok := g.grantedUmbraArmorMetaLocked(id); ok {
 		return label, card
 	}
 	// Catalog — the packed (object serial, slot) range, unpacked by the

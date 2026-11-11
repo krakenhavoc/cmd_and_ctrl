@@ -22,9 +22,8 @@ func init() {
 		PrintedKeywords: []string{"flying", "vigilance"},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Wojek Investigator — investigate once for each opponent with more cards in hand",
-				Do(CreateTokensForEach{
-					Template: ClueToken(),
-					Name:     "opponents with more cards in hand than you",
+				Do(InvestigateForEach{
+					Name: "opponents with more cards in hand than you",
 					Count: func(ctx *Context) int {
 						me := ctx.Game.PlayerByIDForEffect(ctx.Controller())
 						if me == nil {

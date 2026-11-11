@@ -6,18 +6,22 @@ The ADR index and numbering rules are in [decisions/README.md](decisions/README.
 ```
 cmd_and_ctrl/
 ├── PLAN.md              # the charter: what C2 is, who the beta is for, scope, goals
-├── AGENTS.md            # this file
+├── AGENTS.md            # the rules for agents working in the repo
+├── DESIGN.md            # the UI design brief
 ├── Makefile             # top-level dev/test/lint targets
 ├── .devcontainer/       # Go + Node dev environment
 ├── server/              # Go game server (authoritative state, WebSocket + HTTP API)
 │   ├── cmd/
 │   │   ├── server/      # main package — serves :8080 with lobby + hub + cards routes
+│   │   ├── bot/         # the Discord slash-command bot, a second systemd unit beside the server — see docs/discord-bot.md
+│   │   ├── boteval/     # the bot evaluation harness: arena, suite and probe runs that need a model endpoint or the Scryfall dump (ADR 0052) — see docs/bot-testing.md
 │   │   ├── mcpseat/     # local MCP seat: an MCP client plays a guest seat, badged as an AI agent (ADR 0122) — see docs/mcp-seat.md
 │   │   ├── gamecli/     # dev WebSocket client for driving a game via v0 actions
 │   │   ├── cardroles/   # weekly: Scryfall's Oracle Tags bulk file to data/scryfall/card-roles.json, each card's roles for the advanced stats (ADR 0217 §7)
 │   │   ├── playrate/    # catalog coverage by EDHREC rank (top-N) and the missing top-1,000 list, read from the Scryfall dump (#3352)
 │   │   ├── restorecheck/ # restore rehearsal and real-restore step: verify a restored tree, re-apply the account-deletion ledger (#3340)
-│   │   └── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
+│   │   ├── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
+│   │   └── statsbackfill/ # computes game statistics for games that ended before the live hook, from their replays (ADR 0165 §6)
 │   ├── internal/
 │   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations
 │   │   │   └── testdata/snapshots/ # the restore-point fixture corpus: v<N>/ generated and frozen per schema version, real/ scrubbed from cmd-dev (#522)
@@ -28,6 +32,7 @@ cmd_and_ctrl/
 │   │   ├── mcpseat/     # the MCP seat's library: ten tools over stdio, Layer A imported from aiseat/rules, imports no server state (ADR 0122)
 │   │   ├── aiseat/      # AI bot seats (S31): runner goroutine per bot, tiered policies, curated decks, announced improvisation — see docs/bot.md
 │   │   │   └── boardtext/ # the board half of the bot prompt as a pure Render(view, seat, opts): shared with the MCP seat (ADR 0122 §5)
+│   │   ├── botarena/    # headless bot-vs-bot games and their report, behind `boteval arena` (ADR 0052 decision 4); outside aiseat/ because aiseat may not import internal/game
 │   │   ├── auth/        # pluggable Authenticator interface + MemoryAuthenticator + HTTP middleware
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── adminview/   # the admin views' read side: every SQL statement behind /admin/users* and /admin/games* (SELECT only, guarded by a test), their response types, and pure merges with the lobby's live tables; imports no lobby or ws (ADR 0124)
@@ -41,8 +46,21 @@ cmd_and_ctrl/
 │   │   ├── modelkeys/   # a signed-in person's own model key for their AI seats (ADR 0182, migration 0025): provider allowlist, sealed store, the seat client with the owner's limits and fixed failure sentences
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
+│   │   ├── decks/       # the pre-built deck catalog any seat can pick, with each deck's format
+│   │   ├── decklibrary/ # a signed-in person's saved decks, stored as the pasted text (ADR 0051 decision 7)
 │   │   ├── deckcoverage/ # a decklist's coverage report: every card bucketed manual / unreviewed / caveats / automated / no_effect (ADR 0095)
 │   │   ├── deckrequests/ # which GitHub issue tracks each requested deck, and who asked when (ADR 0095, migration 0006)
+│   │   ├── cubes/       # a signed-in person's saved cubes (migration 0039): a named card list read by the deck importers, its check against the catalog (every card Full, singleton unless waived, at most 1,080 cards), the store behind /me/cubes, and ForgetAccount for account deletion; a draft deals one through draft.CubeSource (ADR 0222 §8, ADR 0149, #5441)
+│   │   ├── draft/       # the booster draft: seats, packs from draftpacks on a seed, pick one and pick two, passing left-right-left, the pick timer, the Picker that picks for a seat no person is choosing for, the draft bot behind it (a rating per card from the index and the catalog's declared Purpose in `rating.go` and `facts.go`, `BotPicker` in `picker.go`, `BuildDeck` in `botdeck.go`; ADR 0222 §7, #5439) and the per-seat view that holds only the viewer's own pack and picks; in memory only, registered in lobby/drafts.go (ADR 0222 §5, #5438)
+│   │   ├── drafthistory/ # a signed-in person's finished drafts (migration 0038): the set, the date, their picks, their deck and each round's result, read back at GET /me/drafts; ForgetAccount is account deletion's part (ADR 0222 §9, ADR 0149, #5440)
+│   │   ├── draftpacks/  # a pack for one set, built to the draftable booster of the set's era (play booster or draft booster), from the Scryfall dump, which sets are draftable (every pack card Full in the catalog) and the public GET /draft/sets (ADR 0222 §4, #5437)
+│   │   ├── users/       # people and their identities: a users row minted with our own uuid, an identities row per Discord login (ADR 0051 decision 2)
+│   │   ├── discord/     # Discord sign-in (OAuth and identity fetch), the avatar cache, DMs and the bug-report forum mirror
+│   │   ├── bot/         # the slash-command half of the Discord integration, run by cmd/bot
+│   │   ├── notify/      # Discord DM notifications for an away player (ADR 0162)
+│   │   ├── github/      # a minimal GitHub REST client: file an in-app report as an issue, read and comment on a deck request (ADR 0095)
+│   │   ├── shoplinks/   # the operator's shop link templates, one environment variable per retailer (ADR 0179)
+│   │   ├── supportlinks/ # the operator's optional Ko-fi and Patreon links, served on GET /config (#3558)
 │   │   ├── gamestats/   # a finished game's statistics record (ADR 0165): Compute from the final view + the whole log (protocol.FullLogOf), and the store behind migration 0023's three tables
 │   │   ├── usersettings/ # a signed-in person's synced settings: one JSON object, 32 KiB cap, If-Match revision (ADR 0110 §4, migration 0008)
 │   │   ├── tablesetups/  # the last setup each person started a table with: settings, bots, tablemates (ADR 0110 §5, migration 0008)
@@ -55,16 +73,20 @@ cmd_and_ctrl/
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
 │   │   ├── capacity/    # the server's caps and their defaults: weighted table load, WebSocket connections, creation rates; policy and arithmetic only, the lobby and hub enforce them (ADR 0148)
 │   │   ├── metrics/     # Prometheus metrics on our own registry, served on a loopback-only listener; route-pattern HTTP labels, closed label sets guarded by a test (ADR 0123)
-│   │   └── db/          # persistent SQLite store (ADR 0051): open/WAL/migrate/backup (S34 sub-PR 1); users/games/decks land in later sub-PRs
+│   │   ├── docsguard/   # tests only: ADR numbering, the size of AGENTS.md, the CI shard list and other docs/ guards
+│   │   ├── util/        # small shared helpers: appenv (the dev-only gate), clientip, envflag, ratelimit, redact, token
+│   │   └── db/          # persistent SQLite store (ADR 0051): open, WAL, the migrations runner and the backup timer
 │   ├── Makefile
 │   └── .golangci.yml
-├── client/              # TypeScript + Svelte 5 + Vite (PixiJS arrives in S05)
+├── client/              # TypeScript + Svelte 5 + Vite
 │   ├── src/
 │   │   ├── App.svelte   # router shell
 │   │   ├── main.ts
 │   │   ├── app.css
 │   │   ├── lib/         # protocol types, WebSocket client, session, api, hash router
-│   │   └── routes/      # Login / Lobby / Join / Game views
+│   │   ├── routes/      # one Svelte page per route: FrontPage, Lobby, Join, Game, Decks, Catalog, Roadmap, Stats, Pods, Friends, Draft, DraftSets, MyDrafts, MyCubes, Admin, Privacy, …
+│   │   └── sw/          # the service worker (ADR 0031)
+│   ├── public/          # static files: card backs, fonts, icons, the web manifest, sounds and voices
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── svelte.config.js
@@ -72,7 +94,9 @@ cmd_and_ctrl/
 │   ├── eslint.config.js
 │   └── package.json
 ├── scripts/             # scryfall-refresh.sh (weekly cron), backup-offsite.sh (nightly R2 backup), set-server-env.sh and ensure-monitoring-agent.sh (CD), ci-test-shard.sh (which packages each `server-test` shard runs, #2766) + one-off tools
-├── deploy/monitoring/   # alert rules (+ promtool tests in rules/tests/) and Grafana dashboards the monitoring VM syncs from main (ADR 0123) — see docs/monitoring.md
+├── tests-e2e/           # Playwright end-to-end specs (see its README.md)
+├── deploy/              # Caddyfile and the systemd units for the bot, the backup and the restore rehearsal
+│   └── monitoring/      # alert rules (+ promtool tests in rules/tests/) and Grafana dashboards the monitoring VM syncs from main (ADR 0123) — see docs/monitoring.md
 ├── data/                # runtime state (gitignored): Scryfall cache, snapshots, images
 └── docs/
     ├── protocol.md      # v0 wire format spec

@@ -37,7 +37,7 @@ func init() {
 			if err := (MillCards{N: 3}).Apply(ctx); err != nil {
 				return err
 			}
-			return CreateToken{Template: ClueToken(), N: 1}.Apply(ctx)
+			return Investigate{N: 1}.Apply(ctx)
 		},
 	})
 	Register(Spec{

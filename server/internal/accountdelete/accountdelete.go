@@ -55,7 +55,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cubes"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/drafthistory"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
 )
@@ -95,6 +97,13 @@ type SeatRef struct {
 // Counts is what a deletion removed, for the audit line. It carries no
 // name, no Discord id and nothing else that identifies the person.
 type Counts struct {
+	// ADR 0222 §9: the person's finished drafts, the rounds of them,
+	// and the rounds of other people's drafts that named them.
+	Drafts         int
+	DraftMatches   int
+	DraftOpponents int
+	// ADR 0222 §8: the cubes the person saved.
+	Cubes           int
 	Decks           int
 	Playmats        int
 	DeckRequestAsks int
@@ -377,6 +386,18 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 	}
 	res.Counts.ScheduledPlans, res.Counts.ScheduledCancelled, res.Counts.ScheduledRSVPs = sc.PlansDeleted, sc.PlansCancelled, sc.RSVPs
 	res.ScheduledGames = sc.Games
+	// Finished drafts (ADR 0222 §9, migration 0038): the person's own
+	// records go, and a round of someone else's record that named them
+	// as the opponent names nobody.
+	dc, err := drafthistory.ForgetAccount(ctx, tx, uid)
+	if err != nil {
+		return Result{}, fmt.Errorf("accountdelete: draft history: %w", err)
+	}
+	res.Counts.Drafts, res.Counts.DraftMatches, res.Counts.DraftOpponents = dc.Drafts, dc.Matches, dc.Opponents
+	// Saved cubes (ADR 0222 §8, migration 0039): the person's own lists.
+	if res.Counts.Cubes, err = cubes.ForgetAccount(ctx, tx, uid); err != nil {
+		return Result{}, fmt.Errorf("accountdelete: cubes: %w", err)
+	}
 	// The person's own model key (ADR 0182, migration 0025), sealed
 	// key and all. A bot seat that ran on it keeps pointing at the
 	// tombstone (seats.bot_key_user_id), which carries no identity and

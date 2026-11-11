@@ -8,6 +8,7 @@
 // fallback — for a view with state "ended" and no outcome: a replay
 // written before the engine recorded one, or a table an admin closed.
 
+import { matchOf, matchOverText } from "./match";
 import type { GameView, PlayerView } from "./protocol";
 
 /**
@@ -17,6 +18,12 @@ import type { GameView, PlayerView } from "./protocol";
 export function winnerOf(view: GameView | null | undefined): PlayerView | null {
   if (!view || view.state !== "ended") return null;
   const seats = view.seats ?? [];
+  // ADR 0222 §3: a finished best-of-three's winner is the match's, who
+  // need not have won its last game.
+  const match = matchOf(view);
+  if (match?.over) {
+    return seats.find((s) => s.seat === match.winner_seat) ?? null;
+  }
   const outcome = view.outcome;
   if (outcome) {
     if (outcome.kind !== "win" || !outcome.winner) return null;
@@ -36,6 +43,7 @@ export function winnerOf(view: GameView | null | undefined): PlayerView | null {
  *   "The game is a draw — Flow Engine's loop
  *    can't be stopped."                           a mandatory loop (CR 732.4)
  *   "Game ended — no survivors."                 an ended view with nobody to name
+ *   "Alice wins the match 2–1."                  a finished best-of-three (match.ts)
  *
  * The winner's name is left to the caller, which renders it in bold
  * beside the seat colour; this returns the text AFTER the name, or the
@@ -47,6 +55,12 @@ export function gameOverText(view: GameView | null | undefined): {
 } {
   const winner = winnerOf(view);
   const outcome = view?.outcome;
+  // ADR 0222 §3: a finished best-of-three is a match won, with its
+  // score: "Alice wins the match 2–1."
+  const match = matchOf(view);
+  if (view && match?.over) {
+    return { winner, text: matchOverText(match, view.seats ?? []) };
+  }
   if (winner) {
     if (outcome?.cause === "effect" && outcome.source_name) {
       return { winner, text: `wins the game — ${outcome.source_name}` };

@@ -103,8 +103,9 @@ func CoverageOf(idx *cards.Index, d Deck) Coverage {
 // a single catalog build. This is what the picker route serves.
 func Coverages(idx *cards.Index) map[string]Coverage {
 	byOracle := catalogByOracle(idx)
-	out := make(map[string]Coverage, len(all))
-	for _, d := range all {
+	every := Every()
+	out := make(map[string]Coverage, len(every))
+	for _, d := range every {
 		out[d.ID] = coverage(byOracle, d)
 	}
 	return out

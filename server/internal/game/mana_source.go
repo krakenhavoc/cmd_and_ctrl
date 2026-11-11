@@ -94,6 +94,11 @@ const (
 	// about ("for each mana from a Cave spent to cast it", #4452). The subtype
 	// at mint time, read through manaSourceKindsOf like every other kind.
 	ManaSourceCave
+
+	// ManaSourceDesert is the DESERT subtype (CR 205.3i), the kind
+	// Cataclysmic Prospecting asks about ("for each mana from a Desert
+	// spent to cast this spell"). The subtype at mint time, like Cave.
+	ManaSourceDesert
 )
 
 // Has reports whether every bit in `want` is set. The zero `want` is
@@ -147,6 +152,9 @@ func manaSourceKindsOf(c Card) ManaSourceKinds {
 	}
 	if c.HasSubtype("Cave") {
 		k |= ManaSourceCave
+	}
+	if c.HasSubtype("Desert") {
+		k |= ManaSourceDesert
 	}
 	return k
 }

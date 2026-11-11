@@ -301,6 +301,17 @@ const (
 	// the voter's seat and what they voted for ("nothing" for a vote
 	// for nothing).
 	LogVotesRevealed LogKind = "votes_revealed"
+	// LogClash — a player clashed (CR 701.30, #5424). `Seat` clashed,
+	// `TargetSeat` is the player they clashed with, `CardID` the card
+	// whose effect said to, and `Cause` where their revealed card went:
+	// "bottom", "top", or absent when their library was empty and they
+	// revealed none. One line per clashing player, once the cards have
+	// moved; the reveal itself is the `reveal` line before it.
+	LogClash LogKind = "clash"
+	// LogClashWon — a player won a clash (CR 701.30d). `Seat` won,
+	// `TargetSeat` is the player they clashed with and `CardID` the card
+	// whose effect said to clash. No line for a clash nobody won.
+	LogClashWon LogKind = "clash_won"
 	// LogAnyPlayerPaid / LogAnyPlayerDeclined — one player's answer to
 	// an "unless any player pays" offer (ADR 0150 §5). `Seat` answered,
 	// `CardID` is the card whose effect it was and `Label` the payment
@@ -655,6 +666,14 @@ const (
 	// a new object in the new one and the old lines could only say
 	// "a card".
 	LogGameRestarted LogKind = "game_restarted"
+	// LogMatchGame — the next game of a match began (ADR 0222 §3).
+	// `seat` is the player who chose who plays first (CR 103.1: the
+	// loser of the previous game), `target_seat` the starting player,
+	// `amount` the game's number in the match and `label` what the
+	// chooser chose, "play" or "draw". Like a restart's line it is
+	// always the FIRST line of the log: the log begins again with each
+	// game of a match, and the games before it are in match.games.
+	LogMatchGame LogKind = "match_game"
 	// LogPlayerControlScheduled — a player will control another during
 	// that player's next turn (CR 723.1, ADR 0167: Emrakul, the Promised
 	// End). `seat` is the controller, `target_seat` the controlled
@@ -1337,7 +1356,8 @@ func (f *logFold) feed(events []game.Event) int {
 			continue
 		case game.EventLoopReplayed:
 			f.replaying = false
-		case game.EventGameRestarted:
+		case game.EventGameRestarted, game.EventMatchGame:
+			// ADR 0222 §3: and with each game of a match.
 			// CR 727 (#3856): the log begins again with the new game.
 			// Its restart line is the first entry, and nothing the
 			// fold remembers about the old game's lines carries over.
@@ -2024,6 +2044,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventClashed, game.EventClashWon:
+		// #5424, CR 701.30. Actor clashed (or won), Target is the other
+		// clasher, Source the card whose effect said to clash. Not
+		// setTarget, for EventPlayerChosen's reason: the other clasher is
+		// always a seat. Label says where the revealed card went.
+		base.Kind = LogClash
+		if ev.Kind == game.EventClashWon {
+			base.Kind = LogClashWon
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Cause = ev.Label
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventVoteCast:
 		// ADR 0146. Actor voted, Source called the vote, Label is the
 		// option. The option's label is public: a word printed on the
@@ -2558,6 +2594,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 	case game.EventTurnEnded:
 		base.Kind = LogTurnEnded
 		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
+	case game.EventMatchGame:
+		base.Kind = LogMatchGame
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		base.Label = ev.Label
+		base.Amount = ev.Amount
 		return base, true
 
 	case game.EventGameRestarted:
@@ -3303,6 +3348,19 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		default:
 			return fmt.Sprintf("%s chose %d cards for %s", actor, e.Amount, target)
 		}
+	case LogClash:
+		// #5424. `target` is the seat name (or "a player"). The revealed
+		// card is not named: the `reveal` line before this one did.
+		switch e.Cause {
+		case game.ClashPutOnBottom:
+			return fmt.Sprintf("%s clashed with %s and put the revealed card on the bottom of their library (%s)", actor, target, card)
+		case game.ClashKeptOnTop:
+			return fmt.Sprintf("%s clashed with %s and left the revealed card on top of their library (%s)", actor, target, card)
+		default:
+			return fmt.Sprintf("%s clashed with %s and had no card to reveal (%s)", actor, target, card)
+		}
+	case LogClashWon:
+		return fmt.Sprintf("%s won the clash with %s (%s)", actor, target, card)
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
 	case LogVoteSecret:
@@ -3486,6 +3544,12 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s's turn ends", actor)
 		}
 		return fmt.Sprintf("%s's turn ends (%s)", actor, card)
+	case LogMatchGame:
+		// ADR 0222 §3, CR 103.1.
+		if e.Label == game.MatchChoseDraw {
+			return fmt.Sprintf("Game %d. %s chose to draw, so %s plays first", e.Amount, actor, target)
+		}
+		return fmt.Sprintf("Game %d. %s chose to play first", e.Amount, actor)
 	case LogGameRestarted:
 		line := fmt.Sprintf("%s restarted the game and goes first", actor)
 		if cardName != "" {
@@ -3656,6 +3720,15 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s turned on Planechase", who)
 		}
 		return fmt.Sprintf("%s turned off Planechase", who)
+	case game.SettingFormat:
+		// ADR 0222 §1.
+		return fmt.Sprintf("%s set the format to %s", who, game.Format(e.Choice).Spec().Name)
+	case game.SettingBestOf:
+		// ADR 0222 §3.
+		if e.Choice == "3" {
+			return fmt.Sprintf("%s made the match best-of-three", who)
+		}
+		return fmt.Sprintf("%s made the match best-of-one", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

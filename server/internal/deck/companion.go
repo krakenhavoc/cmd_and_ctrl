@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // companion.go — the companion deck check (CR 702.139, ADR 0172 §2).
@@ -40,7 +41,7 @@ type companionCondition struct {
 	// returns why the starting deck fails, or "" when it passes. The
 	// one violation it produces names the companion. Exactly one of
 	// Offenders and Unmet is set.
-	Unmet func(starting []cards.Card) string
+	Unmet func(starting []cards.Card, spec game.FormatSpec) string
 }
 
 // companionConditions is the registry. One entry per supported
@@ -73,7 +74,14 @@ const yorionExtraCards = 20
 // yorionUnmet is Yorion's condition. The starting deck is the
 // commanders plus the mainboard; the validator holds that to exactly
 // commanderDeckSize, so the count here can only fall short.
-func yorionUnmet(starting []cards.Card) string {
+func yorionUnmet(starting []cards.Card, spec game.FormatSpec) string {
+	if !spec.Deck.ExactCards {
+		// A constructed deck has a minimum and no maximum (CR 100.2a).
+		if want := spec.Deck.MinCards + yorionExtraCards; len(starting) < want {
+			return fmt.Sprintf("the deck has %d cards and needs at least %d", len(starting), want)
+		}
+		return ""
+	}
 	if len(starting) >= commanderDeckSize+yorionExtraCards {
 		return ""
 	}
@@ -159,7 +167,7 @@ func companionManaCosts(c cards.Card) []string {
 
 // companionViolations judges the list's companion (ADR 0172 §2). Nil
 // when the list has none.
-func companionViolations(list *List) []Violation {
+func companionViolations(list *List, spec game.FormatSpec) []Violation {
 	var vs []Violation
 	for _, name := range list.extraCompanions {
 		vs = append(vs, Violation{
@@ -196,11 +204,11 @@ func companionViolations(list *List) []Violation {
 			break
 		}
 	}
-	if legal := c.Legalities["commander"]; legal != "legal" {
+	if legal := c.Legalities[spec.Deck.Legality]; legal != "legal" {
 		vs = append(vs, Violation{
 			Code:    CodeCompanionNotLegal,
 			Card:    c.Name,
-			Message: fmt.Sprintf("%q is not legal in the commander format (status: %q)", c.Name, legal),
+			Message: fmt.Sprintf("%q is not legal in the %s format (status: %q)", c.Name, spec.Deck.Legality, legal),
 		})
 	}
 	if len(list.Commanders) == 1 || len(list.Commanders) == 2 {
@@ -230,7 +238,7 @@ func companionViolations(list *List) []Violation {
 		})
 	}
 	if cond.Unmet != nil {
-		if why := cond.Unmet(allCards(list)); why != "" {
+		if why := cond.Unmet(allCards(list), spec); why != "" {
 			vs = append(vs, Violation{
 				Code:    CodeCompanionConditionNotMet,
 				Card:    c.Name,

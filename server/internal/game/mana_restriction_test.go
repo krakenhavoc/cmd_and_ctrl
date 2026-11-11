@@ -276,3 +276,28 @@ func TestRestrictionsFuncWinsOverDeclaredRestrictions(t *testing.T) {
 		t.Error("an empty subtype tag was treated as no restriction")
 	}
 }
+
+// ManaRestrictSpellNotOwned (#5457, Thieving Varmint): the mana pays a
+// spell its payer does not own, and nothing a payment did not name.
+func TestManaRestrictSpellNotOwnedComparesThePayerWithTheOwner(t *testing.T) {
+	tags := []string{ManaRestrictSpellNotOwned}
+	me, opp := uuid.New(), uuid.New()
+	theirs := Card{ManaCost: "{1}{R}", TypeLine: "Creature — Bear", Owner: opp}
+	mine := Card{ManaCost: "{1}{R}", TypeLine: "Creature — Bear", Owner: me}
+	if !ManaSpendForCast(theirs).PaidBy(me).allows(tags) {
+		t.Error("refused a spell the payer does not own")
+	}
+	if ManaSpendForCast(mine).PaidBy(me).allows(tags) {
+		t.Error("admitted a spell the payer owns")
+	}
+	if ManaSpendForCast(theirs).allows(tags) {
+		t.Error("admitted a cast with no payer named")
+	}
+	if ManaSpendForCast(Card{ManaCost: "{1}"}).PaidBy(me).allows(tags) {
+		t.Error("admitted a spell with no owner")
+	}
+	ability := ManaSpendForAbility(Card{TypeLine: "Artifact", Owner: opp, Controller: me})
+	if ability.PaidBy(me).allows(tags) {
+		t.Error("admitted an activation")
+	}
+}

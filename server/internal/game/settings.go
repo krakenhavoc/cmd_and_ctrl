@@ -91,6 +91,7 @@ const (
 	SettingFreeMulligans   = "free_mulligans"
 	SettingAwayAfter       = "away_after"
 	SettingPlanechase      = "planechase"
+	// SettingFormat is declared in format.go.
 )
 
 // TableSettings is one table's configuration (ADR 0075 §2.2). The JSON
@@ -139,6 +140,18 @@ type TableSettings struct {
 	// Start builds the planar deck. omitempty keeps every snapshot of a
 	// table without it byte-identical.
 	Planechase bool `json:"planechase,omitempty"`
+	// Format is the table's format (ADR 0222 §1, format.go). Read it
+	// only through EffectiveFormat or FormatSpec: the stored zero value
+	// is Commander, which is what a snapshot written before the field
+	// existed holds, and omitempty keeps every Commander table's
+	// snapshot byte-identical. Fixed once the game is active.
+	Format Format `json:"format,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3,
+	// match.go). Read it only through EffectiveBestOf: the stored zero
+	// value is best-of-one, and 3 is a best-of-three in a format that
+	// plays matches. omitempty keeps every other table's snapshot
+	// byte-identical. Fixed once the game is active.
+	BestOf int `json:"bestOf,omitempty"`
 }
 
 // EffectiveAwayAfter is the away time in minutes, 0 for never.
@@ -188,6 +201,15 @@ type SettingsPatch struct {
 	AwayAfter *int `json:"away_after,omitempty"`
 	// Planechase is refused after Start (ErrPlanechaseLocked).
 	Planechase *bool `json:"planechase,omitempty"`
+	// Format is refused after Start (ErrFormatLocked), and when more
+	// seats are taken than the format has (ErrFormatSeats). A change
+	// with no StartingLife beside it also sets the format's own
+	// starting life.
+	Format *Format `json:"format,omitempty"`
+	// BestOf is 1 or 3. Refused after Start (ErrBestOfLocked), and a 3
+	// is refused in a format that plays no matches (ErrBestOfFormat).
+	// A change of format to one that plays none sets it back to 1.
+	BestOf *int `json:"best_of,omitempty"`
 }
 
 // Validate range-checks every present field. It does not know the
@@ -227,6 +249,16 @@ func (p SettingsPatch) Validate() error {
 		return fmt.Errorf("%w: %s %d (want 0 for never, or 1..%d minutes)",
 			ErrInvalidSetting, SettingAwayAfter, *p.AwayAfter, MaxAwayAfter)
 	}
+	if p.Format != nil {
+		if err := validateFormat(*p.Format); err != nil {
+			return err
+		}
+	}
+	if p.BestOf != nil {
+		if err := validateBestOf(*p.BestOf); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -238,8 +270,9 @@ func (p SettingsPatch) Validate() error {
 // The whole patch is validated before anything is applied, so a patch
 // with one bad field changes nothing. A StartingLife change after
 // Start is refused with ErrStartingLifeLocked, a FreeMulligans
-// change with ErrFreeMulliganLocked and a Planechase change with
-// ErrPlanechaseLocked; a StartingLife in the
+// change with ErrFreeMulliganLocked, a Planechase change with
+// ErrPlanechaseLocked and a Format change with ErrFormatLocked; a
+// StartingLife in the
 // lobby also resets every already-seated player's life, because that
 // is the value Start would otherwise have stamped.
 //
@@ -275,6 +308,39 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	}
 	old := g.Settings
 	next := old
+	if patch.Format != nil {
+		spec := patch.Format.Spec()
+		if spec.Format != old.EffectiveFormat() {
+			if g.State != StateLobby {
+				return ErrFormatLocked
+			}
+			// A draft's table is opened as one (OpenLimited) and stays
+			// one; no other table becomes one (FormatSpec.DraftOnly).
+			if spec.DraftOnly || old.FormatSpec().DraftOnly {
+				return fmt.Errorf("%w: %s %q is set by a draft, not chosen", ErrInvalidSetting, SettingFormat, FormatLimited)
+			}
+			if len(g.Seats) > spec.MaxSeats {
+				return ErrFormatSeats
+			}
+			next.Format = storedFormat(spec.Format)
+			// The format's own starting life, unless the patch names
+			// one (a saved setup's complete patch does).
+			next.StartingLife = spec.StartingLife
+		}
+	}
+	if patch.BestOf != nil && *patch.BestOf != next.EffectiveBestOf() {
+		if g.State != StateLobby {
+			return ErrBestOfLocked
+		}
+		if *patch.BestOf > 1 && !next.FormatSpec().Matches {
+			return ErrBestOfFormat
+		}
+		next.BestOf = storedBestOf(*patch.BestOf)
+	}
+	if !next.FormatSpec().Matches {
+		// A format with no matches has no match length to keep.
+		next.BestOf = 0
+	}
 	if patch.UndoLimit != nil {
 		next.UndoLimit = *patch.UndoLimit
 	}
@@ -335,6 +401,10 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 			SettingNew: to,
 		})
 	}
+	// The format first: its line explains the starting life line that
+	// a format change brings with it.
+	emit(SettingFormat, string(old.EffectiveFormat()), string(next.EffectiveFormat()))
+	emit(SettingBestOf, strconv.Itoa(old.EffectiveBestOf()), strconv.Itoa(next.EffectiveBestOf()))
 	emit(SettingUndoLimit, strconv.Itoa(old.UndoLimit), strconv.Itoa(next.UndoLimit))
 	emit(SettingUndoScope, string(old.UndoScope), string(next.UndoScope))
 	emit(SettingStartingLife, strconv.Itoa(old.StartingLife), strconv.Itoa(next.StartingLife))

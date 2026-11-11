@@ -19,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Novice Inspector — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WhenThisEnters("Novice Inspector — investigate", Do(Investigate{N: 1})),
 		},
 	})
 }

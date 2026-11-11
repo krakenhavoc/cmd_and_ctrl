@@ -11,6 +11,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // triage_manual_test.go — "how much of THIS deck does the engine
@@ -254,7 +255,7 @@ func report(t *testing.T, byOracle map[string]catalog.Entry, name string, list *
 	t.Logf("  caveats       %4d   (registered, skips at least one printed clause)", caveated)
 	t.Logf("  unreviewed    %4d   (registered, nobody has graded it)", unreviewed)
 	t.Logf("  UNREGISTERED  %4d   (no implementation — moved by hand)", unregd)
-	if err := deck.Validate(list); err != nil {
+	if err := deck.Validate(list, game.FormatCommander); err != nil {
 		t.Logf("  note: not a legal Commander deck as written: %v", err)
 	}
 

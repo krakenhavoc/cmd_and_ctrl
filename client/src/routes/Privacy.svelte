@@ -50,10 +50,10 @@
     {
       what: "Your decks",
       details:
-        "Each saved deck’s name, the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown with the deck’s name when you seat it at a table).",
+        "Each saved deck’s name, the format it is for (Commander or Standard), the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown with the deck’s name when you seat it at a table).",
       why: "So you can seat a deck without pasting it again.",
       howLong: "Until you delete the deck or your account.",
-      source: "migrations 0005, 0008, 0027",
+      source: "migrations 0005, 0008, 0027, 0036",
     },
     {
       what: "Your settings and last table",
@@ -99,6 +99,27 @@
         "migration 0033 pods, pod_members, pod_invites, pod_suggestion_dismissals; pods/pods.go InviteTTL, MaxMembers, ForgetAccount",
     },
     {
+      // ADR 0222 §9, #5440: drafthistory/drafthistory.go, lobby/draft_matches.go.
+      what: "Your drafts",
+      details:
+        "A draft runs in the server’s memory: your seat, the packs, your picks, the deck you build and your matches are held there while it runs, and are gone when it closes or the server restarts. If you are signed in, we keep a record of a draft once its picks are done, for you to look back at: the draft’s name, the set, the date, the cards you picked, the deck you built from them, and for each round whether you won, lost or drew and the games of the match. For a round against another signed-in person the record points at their account, so the page can show the name they have now; it never stores their name. Only you can open your drafts. If you draft without signing in, nothing about your draft is kept after it closes. A match of a draft is not a table in your history and writes no game statistics.",
+      why: "So you can look back at what you drafted and how it went.",
+      howLong:
+        "A signed-in person’s record is kept until they delete their account. Deleting your account deletes your drafts, and where someone else’s draft names you as their opponent, that round no longer names anyone. A guest’s draft is kept only while it runs.",
+      source:
+        "migration 0038 draft_history, draft_history_matches; drafthistory/drafthistory.go Save, ForgetAccount; lobby/draft_matches.go recordDraft",
+    },
+    {
+      // ADR 0222 §8, #5441: cubes/store.go, lobby/cubes_http.go.
+      what: "Your cubes",
+      details: `If you save a cube, a list of cards to draft, we keep the name you gave it, the card list, whether it is singleton, and when you made and last changed it. You can keep up to ${F.cubesPerPerson} cubes of at most ${F.cubeMaxCards} cards each. If you make a cube from a deck link, the server fetches that link to read its cards and does not store the link. Only you can open, change or draft your cubes. When you start a draft from one, the people at that draft see the cube’s name and the cards they are dealt, and a signed-in person’s record of that draft (“Your drafts”) keeps the name. A cube needs an account, so nothing is kept for someone who is not signed in.`,
+      why: "So you can draft your own list of cards again without pasting it each time.",
+      howLong:
+        "Until you delete the cube or your account. Deleting your account deletes every cube you saved. The name of a cube you drafted with other people stays in their records of that draft.",
+      source:
+        "migration 0039 cubes; cubes/cubes.go MaxCubes, MaxCards; cubes/store.go ForgetAccount; lobby/cubes_http.go",
+    },
+    {
       // ADR 0215 privacy section, slice 2: schedule/schedule.go, lobby/scheduled_http.go.
       what: "Scheduled tables",
       details: `When you schedule a table or reserve a seat, we keep the plan and the list of people with seats or on the waitlist, in the order they reserved, until ${F.scheduledKeepHours} hours after the start. The host and the people on the list see the names on it; everyone else sees how many seats are open. A plan holds its name, its start and the host’s time zone, the number of players and the host’s table options.`,
@@ -135,12 +156,12 @@
     {
       what: "Game statistics",
       details:
-        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. For every game we also work out, from its replay, how each seat used its lands and mana, which cards it held and cast, and how it attacked. It is part of the game’s record, kept with the game, and shown only to you. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
+        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. For every game we also work out, from its replay, how each seat used its lands and mana, which cards it held and cast, and how it attacked. For a best-of-three match we also keep, for each game of it, which seat won, why it ended, who went first and how many turns it took. It is part of the game’s record, kept with the game, and shown only to you. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
       why: "So you can see how your decks and games go, on your Stats page.",
       howLong:
         "As long as the game’s record is kept. Deleting the table deletes them. Deleting your account turns your seat into “Deleted player”, and these numbers then belong to that seat, as the rest of the game does.",
       source:
-        "migration 0023 game_stats, seat_stats, seat_card_stats; migration 0029 seat_turn_stats, seat_target_stats, seat_card_seen; gamestats/gamestats.go Compute",
+        "migration 0023 game_stats, seat_stats, seat_card_stats; migration 0029 seat_turn_stats, seat_target_stats, seat_card_seen; migration 0037 match_games; gamestats/gamestats.go Compute",
     },
     {
       what: "Results post in Discord",
@@ -345,10 +366,10 @@
       <h2 id="delete-info-title">Deleting your account</h2>
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
-        decks, deck-request history, playmats, settings, last table setup, notification settings,
-        stats settings and Discord sign-in, signs you out everywhere, and turns your seat in every
-        table that has ended into “Deleted player”, so the other players keep their games. It is
-        refused while you hold a seat at a table that has not ended.
+        decks, drafts, cubes, deck-request history, playmats, settings, last table setup,
+        notification settings, stats settings and Discord sign-in, signs you out everywhere, and
+        turns your seat in every table that has ended into “Deleted player”, so the other players
+        keep their games. It is refused while you hold a seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

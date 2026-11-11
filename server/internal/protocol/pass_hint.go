@@ -44,7 +44,8 @@ func passHintFor(v GameView, viewerID string) string {
 	if viewerID == "" || viewerID == SpectatorViewerID {
 		return ""
 	}
-	if v.State != "active" || v.MulligansOpen || v.OpeningRoll != nil || v.Turn.BetweenTurns {
+	if v.State != "active" || v.MulligansOpen || v.OpeningRoll != nil || v.Turn.BetweenTurns ||
+		(v.Match != nil && v.Match.Sideboarding != nil) {
 		return ""
 	}
 	seat := -1

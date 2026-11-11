@@ -36,7 +36,6 @@ func TestProtectionGrammarParsesManaValueAndRingBearers(t *testing.T) {
 	}
 	// Shapes outside the closed grammar mint nothing.
 	for _, bad := range []string{
-		"protection from mana value 3 or greater",
 		"protection from mana value 3 or more",
 		"protection from mana value or less",
 		"protection from mana value X or less",
@@ -305,5 +304,21 @@ func TestRingBearerProtectionAcrossTheFourChecks(t *testing.T) {
 	// controller does not control matches nothing (CR 701.54e).
 	if IsRingBearerOf(*card(bearer), opp.ID) {
 		t.Error("IsRingBearerOf must read the controller")
+	}
+}
+
+func TestProtectionGrammarParsesManaValueAtLeast(t *testing.T) {
+	q, ok := ParseProtectionQuality("protection from mana value 3 or greater")
+	if !ok || q.Kind != ProtectionQualityManaValueAtLeast || q.Value != "3" || q.Kind.String() != "mana_value_at_least" {
+		t.Fatalf("parse = (%+v, %v)", q, ok)
+	}
+	for _, mv := range []int{2, 3, 4} {
+		got := q.Matches(&Characteristic{SourceManaValue: mv, SourceManaValueKnown: true})
+		if got != (mv >= 3) {
+			t.Errorf("mv %d matches = %v", mv, got)
+		}
+	}
+	if q.Matches(&Characteristic{SourceManaValue: 9}) {
+		t.Error("an unreadable cost matched")
 	}
 }

@@ -119,6 +119,15 @@ type AbilityCost struct {
 	// bundle itself.
 	ManaFromSource bool
 
+	// ManaValueFromSource is "{X}, where X is its mana value" (#5429,
+	// Graywater's Fixer's encore): the mana component is generic mana equal
+	// to the mana value (CR 202.3) of the card that has the row. Only in an
+	// ability bundle granted to a card, as ManaFromSource is: the row
+	// builder (activatedAbilityRows) writes "{N}" into Mana, so every
+	// reader of a granted row sees a plain string. Mana stays empty on the
+	// bundle itself.
+	ManaValueFromSource bool
+
 	// SpendOnly is the ability's printed "spend only <colour> mana"
 	// clause (#1600, spend_only.go) — Throne of Eldraine's "Spend only
 	// mana of the chosen color to activate this ability", Crypt Rats'
@@ -1701,6 +1710,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// The same key is read now and written below, so the gate and the
 	// record cannot address different things.
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
+	sourceWasArtifact := g.isArtifactOnBattlefieldLocked(cardID)
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
@@ -1750,6 +1760,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// a client that sends an X for Krenko is confused about which
 	// ability it is firing, and silently dropping the field would
 	// hide that from whoever has to debug it.
+	if ec := ab.Cost.ExileCards; ec != nil && ec.CountIsX && ab.Cost.DemandsX() {
+		// "{X}, Exile X cards from your graveyard" (Necropolis Fiend, #5368):
+		// the cards named ARE the announced X (CR 107.3a, 602.2b), so the
+		// {X} of the mana cost is the number of cards the cost exiles. The
+		// count the activator names decides X; an X sent beside it is
+		// ignored rather than refused, so a client or a bot that prices the
+		// mana from its own X and names a different number of cards still
+		// pays exactly the X the cards say.
+		params.XValue = len(params.ExileIDs)
+	}
 	if !ab.Cost.DemandsX() {
 		if params.XValue != 0 {
 			return ErrInvalidParam
@@ -2536,7 +2556,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// door: nothing here is discarded. Recorded on the payment so an
 	// effect that reads "the card exiled this way" can find it in exile
 	// by instance ID, where this just put it.
-	if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
+	if ab.Cost.ExileCards.Processes() {
+		// #5457: "Put a card an opponent owns from exile into that
+		// player's graveyard" (Void Attendant). The picks leave exile,
+		// so nothing is recorded as exiled.
+		if _, err := g.payProcessCostLocked(playerID, cardID, exiles); err != nil {
+			return err
+		}
+		exiles = nil
+	} else if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
 		return err
 	}
 	paid.Exiled = exiles
@@ -2682,6 +2710,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taken above, before the costs ran, so a sacrifice-this cost has
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
+	g.noteArtifactActivationLocked(playerID, sourceWasArtifact)
 	// #4475: "the first equip ability you activate each turn" counts
 	// every equip announce, either row, resolved or not.
 	if ab.Equip {

@@ -140,7 +140,8 @@ triage. When a goal misses, the next sprint is planned around it.
 ## 8. Where the details are
 
 - [AGENTS.md](AGENTS.md): how to work in this repo (branches, commit and PR
-  format, tiers, commands, environment variables).
+  format, tiers). Commands and environment variables are in
+  [docs/commands.md](docs/commands.md) and [docs/env.md](docs/env.md).
 - [docs/sprints.md](docs/sprints.md): every sprint, its scope and status.
 - [docs/decisions/](docs/decisions/): the ADRs. Read the relevant ones before
   proposing architecture.

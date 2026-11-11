@@ -24,6 +24,13 @@ func DiscardCost(n int) *game.AdditionalCost {
 	return &game.AdditionalCost{DiscardCards: n, Label: discardLabel(n)}
 }
 
+// DiscardLandCost is "As an additional cost to cast this spell, discard
+// a land card." (Magmatic Insight, #5457): DiscardCost(1) whose one
+// card must be a land card.
+func DiscardLandCost() *game.AdditionalCost {
+	return &game.AdditionalCost{DiscardCards: 1, DiscardLand: true, Label: "Discard a land card"}
+}
+
 // discardLabel spells the clause the way the card prints it, since
 // the client shows it verbatim above the picker.
 func discardLabel(n int) string {
@@ -574,8 +581,8 @@ func checkReplicateTapCost(spec Spec) bool {
 			continue
 		}
 		switch {
-		case oc.Key != game.ReplicateKey && oc.Key != game.ConspireKey:
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot, a replicate cost and conspire may (#3868, #4092, #4690)", spec.Name, oc.Key))
+		case oc.Key != game.ReplicateKey && oc.Key != game.ConspireKey && oc.Key != cmdr2B11FlashByTappingKey:
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot, a replicate cost, conspire and a flash-by-tapping cost may (#3868, #4092, #4690, #5368)", spec.Name, oc.Key))
 		case tc.UpTo || tc.AnyNumber || tc.ExcludeSource || tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc):
 			panic(fmt.Sprintf("effects.Register: %q replicate cost taps no fixed number of permanents — build it with ReplicateTapping (#4092)", spec.Name))
 		case tc.Label == "":
@@ -618,7 +625,13 @@ func checkTapListAlone(spec Spec) {
 // And, outside a branch, the two components that exist only for one:
 // a fixed PayLife in an optional cost and a mandatory mana cost.
 func checkEitherCost(spec Spec) {
+	if ac := spec.AdditionalCost; ac != nil && ac.DiscardLand && ac.DiscardCards <= 0 {
+		panic(fmt.Sprintf("effects.Register: %q narrows a discard to land cards but discards nothing (DiscardLandCost)", spec.Name))
+	}
 	for _, oc := range spec.OptionalCosts {
+		if oc.DiscardLand {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q discards a land card — only the mandatory slot may (#5457)", spec.Name, oc.Key))
+		}
 		if oc.ExileFromHand != nil {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from hand — only the mandatory slot may (#3175); the count is the caster's choice, zero included", spec.Name, oc.Key))
 		}
@@ -745,6 +758,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q %s beholds and exiles — only the mandatory slot may (BeholdAndExileCost, #4687)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):
 			panic(fmt.Sprintf("effects.Register: %q %s reveals a card of no creature type, or one narrowed by colour — a cast's reveal branch names a creature type only", spec.Name, where))
+		case b.DiscardLand:
+			panic(fmt.Sprintf("effects.Register: %q %s discards a land card — only the mandatory slot may (#5457)", spec.Name, where))
 		case b.Blight < 0 || b.PayLife < 0 || b.DiscardCards < 0:
 			panic(fmt.Sprintf("effects.Register: %q %s has a negative component", spec.Name, where))
 		}

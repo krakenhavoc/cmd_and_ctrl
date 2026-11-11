@@ -28,7 +28,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return evidenceExaminerEvidence.Ask(NewContext(g, item), "Evidence Examiner — collect evidence 4 (exile cards with total mana value 4 or more from your graveyard)? Choose none to decline.")
 				}),
-			WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
+			WheneverYouCollectEvidence("Evidence Examiner — investigate", Do(Investigate{N: 1})),
 		},
 	})
 }

@@ -65,6 +65,18 @@ export interface GameMeta {
   spectator_invite?: string;
   players: SeatInfo[];
   state: "lobby" | "active" | "ended";
+  // The table's format (ADR 0222 §1): "standard", or absent for
+  // Commander, the default. Read it through formatOf (formats.ts).
+  format?: string;
+  // How many seats the table's format has; absent at a four-seat table.
+  // Read it through tableSeats (formats.ts).
+  max_seats?: number;
+  // The length of the table's match (ADR 0222 §3): 3, or absent for a
+  // best-of-one and for a table with no match. Once a best-of-three has
+  // started the list also gives match_game, the number of the game it
+  // is on, and each seat's match_wins.
+  best_of?: number;
+  match_game?: number;
   // Set when an admin has archived the table: it drops out of the
   // default listing (GET /games) and appears under GET
   // /games?archived=1 instead. Nothing is deleted — unarchiving puts
@@ -139,6 +151,10 @@ export interface SeatInfo {
   // The seat's life total while the game is in play (ADR 0158 §1 item
   // 4). GET /games only; absent in the lobby and once the game ends.
   life?: number;
+  // The seat's games won in the table's best-of-three (ADR 0222 §3).
+  // GET /games only, once the match has started; absent at every other
+  // table.
+  match_wins?: number;
   // The seated deck's commanders (ADR 0212 phase B2), in the shape a
   // saved deck's are (GET /me/decks), resolved by the same server code:
   // a printing to draw through /cards/{id}/image, never an image URL,
@@ -177,6 +193,9 @@ export interface BotDeckInfo {
   description?: string;
   colors?: string[];
   commander?: string;
+  // The format the deck is built for (ADR 0222 §2): "standard", or
+  // absent for Commander.
+  format?: string;
   // The commander's printing to draw and its identity (ADR 0212 phase
   // B1), as GET /decks gives a pre-built deck's. Absent when the server
   // has no card index, and an older server never sends it.
@@ -369,7 +388,8 @@ export interface CreateGameResponse extends GameMeta {
 // posts it to the Discord's #lfg board (ADR 0161 §1), and `results` opts
 // it in to a results post when its game ends (ADR 0174 §1), and
 // `planechase` makes it a Planechase table (ADR 0216 §1; a server that
-// does not offer it answers 400).
+// does not offer it answers 400), and `format` picks the table's format
+// (ADR 0222 §1; Commander is the default and is not sent).
 export async function createGame(
   name: string,
   opts: {
@@ -378,6 +398,9 @@ export async function createGame(
     lfg?: boolean;
     results?: boolean;
     planechase?: boolean;
+    format?: string;
+    // ADR 0222 §3: 3 for a best-of-three, at a format that plays matches.
+    bestOf?: number;
   } = {},
 ): Promise<CreateGameResponse> {
   const body: {
@@ -387,12 +410,16 @@ export async function createGame(
     lfg?: boolean;
     results?: boolean;
     planechase?: boolean;
+    format?: string;
+    best_of?: number;
   } = { name };
   if (opts.setup) body.setup = opts.setup;
   if (opts.voiceRoom) body.voice_room = true;
   if (opts.lfg) body.lfg = true;
   if (opts.results) body.results = true;
   if (opts.planechase) body.planechase = true;
+  if (opts.format && opts.format !== "commander") body.format = opts.format;
+  if (opts.bestOf === 3) body.best_of = 3;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),

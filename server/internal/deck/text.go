@@ -111,6 +111,7 @@ func trailingCommanderBlock(entries []Entry, blocks []int, headed map[int]bool) 
 	}
 	for i := first; i < len(entries); i++ {
 		entries[i].IsCommander = true
+		entries[i].CommanderInferred = true
 		entries[i].IsSideboard = false
 		entries[i].IsCompanion = false
 	}

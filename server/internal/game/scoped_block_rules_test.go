@@ -17,14 +17,16 @@ import (
 
 func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 	bad := []Mod{
-		{Kind: ModCantBeBlockedExceptBy, Keywords: []string{"haste"}},    // no Text
-		{Kind: ModCantBeBlockedExceptBy, Text: "creatures with haste"},   // no keyword or subtype
-		{Kind: ModLimitBlockersPerDefender, Amount: 0},                   // amount below 1
-		{Kind: ModCantBeBlockedByPlayer, Text: "creatures Bob controls"}, // no player
-		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New()},             // no text
-		{Kind: ModCantBeBlockedByPower, Amount: 2},                       // no text
-		{Kind: ModCantBeBlockedBySubtypes, Text: "Walls"},                // no subtype
-		{Kind: ModCantBeBlockedBySubtypes, Subtypes: []string{"Wall"}},   // no text
+		{Kind: ModCantBeBlockedExceptBy, Keywords: []string{"haste"}},        // no Text
+		{Kind: ModCantBeBlockedExceptBy, Text: "creatures with haste"},       // no keyword or subtype
+		{Kind: ModLimitBlockersPerDefender, Amount: 0},                       // amount below 1
+		{Kind: ModCantBeBlockedByPlayer, Text: "creatures Bob controls"},     // no player
+		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New()},                 // no text
+		{Kind: ModCantBlockPlayersCreatures, Text: "creatures Bob controls"}, // no player
+		{Kind: ModCantBlockPlayersCreatures, Player: uuid.New()},             // no text
+		{Kind: ModCantBeBlockedByPower, Amount: 2},                           // no text
+		{Kind: ModCantBeBlockedBySubtypes, Text: "Walls"},                    // no subtype
+		{Kind: ModCantBeBlockedBySubtypes, Subtypes: []string{"Wall"}},       // no text
 	}
 	for _, m := range bad {
 		if blockRuleModProblem(m) == "" {

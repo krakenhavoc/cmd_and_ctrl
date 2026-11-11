@@ -156,21 +156,14 @@ func TestBatch20CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The remaining declared skip must NOT be registered: Arboreal
-	// Grazer's put-a-land-from-hand prompt. A spec for it would ship
-	// the card stronger than printed.
+	// Arboreal Grazer was the last declared skip here: its put-a-land-from-hand
+	// prompt (#654) now exists, so the card is built (cmdr2 batch 16, #5368)
+	// and is asserted in cmdr2_b16_cards_test.go instead.
 	//
 	// Quirion Ranger LEFT this list in #1213: her return-a-Forest cost
 	// is a component now and her "Activate only once each turn" reads
 	// the activation tally, so nothing about her is stronger than
 	// printed any more.
-	for _, skipped := range []string{
-		"d18a0815-59d3-4667-b52b-9acda741215e", // Arboreal Grazer
-	} {
-		if _, ok := Lookup(skipped); ok {
-			t.Errorf("%s is a declared skip and must not be registered", skipped)
-		}
-	}
 }
 
 // --- the lands -----------------------------------------------------
