@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"github.com/google/uuid"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -161,5 +162,71 @@ func TestCmdr2B27EpharasDispersalCostsTwoLessAgainstAnAttacker(t *testing.T) {
 	card2 := game.Card{Name: "Ephara's Dispersal", TypeLine: "Instant", ManaCost: "{2}{U}", OracleID: cmdr2B27DispersalOracle}
 	if err := socB19CastWithPool(g, victim, card2, "U", 1, game.CastSpellParams{Targets: cardRefs(idle)}); err == nil {
 		t.Fatal("cast for {U} at a non-attacking creature")
+	}
+}
+
+const cmdr2B27MasterOracle = "3a16bdda-8499-47e4-b870-b9576f4c1a83"
+
+func cmdr2B27MasterInGraveyard(g *game.Game, owner *game.Player) uuid.UUID {
+	id := uuid.New()
+	owner.Graveyard.PushTop(game.Card{
+		InstanceID: id, Name: "Master of Death", TypeLine: "Creature — Zombie Wizard", ManaCost: "{1}{U}{B}",
+		OracleID: cmdr2B27MasterOracle, Power: 3, Toughness: 1, Owner: owner.ID, Controller: owner.ID,
+	})
+	return id
+}
+
+func TestCmdr2B27MasterOfDeathSurveilsTwoWhenItEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	seedLibrary(me, "A", "B", "C")
+	castCatalogSpell(t, g, "Master of Death", "Creature — Zombie Wizard", cmdr2B27MasterOracle, nil)
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+	c := surveilChoiceFor(g, me.ID)
+	if c == nil || len(c.ScryCards) != 2 {
+		t.Fatalf("want a surveil 2 prompt, got %+v", c)
+	}
+}
+
+func TestCmdr2B27MasterOfDeathReturnsFromTheGraveyardForALife(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	id := cmdr2B27MasterInGraveyard(g, me)
+	life := me.Life
+	advanceToUpkeepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	answerPayUnless(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if me.Life != life-1 {
+		t.Errorf("life %d → %d, want 1 paid", life, me.Life)
+	}
+	if !me.Hand.Contains(id) || me.Graveyard.Contains(id) {
+		t.Error("Master of Death did not return to hand")
+	}
+}
+
+func TestCmdr2B27MasterOfDeathStaysIfYouDeclineToPay(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	id := cmdr2B27MasterInGraveyard(g, me)
+	life := me.Life
+	advanceToUpkeepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	answerPayUnless(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if me.Life != life || !me.Graveyard.Contains(id) || me.Hand.Contains(id) {
+		t.Error("declining should leave the card in the graveyard and the life untouched")
+	}
+}
+
+func TestCmdr2B27MasterOfDeathDoesNothingFromTheBattlefield(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Master of Death", "Creature — Zombie Wizard", cmdr2B27MasterOracle, 3, 1)
+	advanceToUpkeepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if hasPayUnlessFor(g, me.ID) {
+		t.Error("the graveyard trigger fired from the battlefield")
 	}
 }
