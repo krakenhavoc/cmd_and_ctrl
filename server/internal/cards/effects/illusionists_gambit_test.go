@@ -31,7 +31,7 @@ type gambitScene struct {
 	me, caster, third    *game.Player
 	atCaster, atThird    uuid.UUID
 	home, planeswalker   uuid.UUID
-	firstCombat, gambits int
+	firstCombat          int
 }
 
 func newGambitScene(t *testing.T) *gambitScene {
