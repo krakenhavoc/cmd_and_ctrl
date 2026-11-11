@@ -1956,6 +1956,30 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 	if rc == nil {
 		return []counterChoice{{}}
 	}
+	if rc.Among && rc.Variable && rc.OnePermanent {
+		// Every counter off ONE permanent, whatever its kinds: one payment
+		// per permanent that can pay, the largest first (the policy's pick
+		// is the permanent holding the most).
+		var out []counterChoice
+		for _, o := range opts {
+			var parts []counterPart
+			total, best := 0, 0
+			for _, k := range o.Kinds {
+				parts = append(parts, counterPart{cardID: o.CardID, kind: k.Kind, n: k.Count})
+				total += k.Count
+				if k.Count > best {
+					best = k.Count
+				}
+			}
+			if total < rc.N || total < 1 {
+				continue
+			}
+			out = append(out, counterChoice{parts: parts, total: total, count: total,
+				fromOther: true, anyKind: true, explicitCounts: true})
+		}
+		sort.SliceStable(out, func(i, j int) bool { return out[i].count > out[j].count })
+		return out
+	}
 	if rc.Among && rc.Variable {
 		// #3276: a variable among cost is printed on cards that turn
 		// counters into mana, so, as for the single-permanent

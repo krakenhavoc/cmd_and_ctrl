@@ -1635,6 +1635,13 @@ type Spec struct {
 	// Not combined with AdditionalLandPlaysNeedsAnother.
 	AdditionalLandPlaysForEachPlayer bool
 
+	// AdditionalLandPlaysAtCharge makes AdditionalLandPlays count only
+	// while the permanent has this many charge counters: a station card's
+	// "3+ | You may play an additional land on each of your turns"
+	// (Exploration Broodship). Read live by EffectiveLandDropsLocked.
+	// Not combined with the other two conditions.
+	AdditionalLandPlaysAtCharge int
+
 	// CastPermissions declares the STANDING cast and play permissions
 	// this permanent grants its controller while it is on the
 	// battlefield (ADR 0066) — "each nonland card in your graveyard

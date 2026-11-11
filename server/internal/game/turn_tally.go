@@ -131,6 +131,16 @@ type PlayerTurnTally struct {
 	// land that dies counts. The Lady of Otaria's end-step "if" reads it
 	// through Game.LandToGraveyardThisTurn. Additive within schema v7.
 	LandsToGraveyard int `json:"landsToGraveyard,omitempty"`
+	// CardsToGraveyardFromHandOrLibrary counts the cards put into this
+	// player's graveyard from their hand or their library this turn:
+	// discarded, milled, or put there by any other route (Welcome the
+	// Dead's "cards that were put into your graveyard from your hand or
+	// library this turn"). Keyed on the card's OWNER, whose graveyard it
+	// lands in (CR 400.3). A card that goes somewhere else instead, or
+	// that comes from the battlefield, the stack or another zone, does
+	// not count. Read through Game.CardsToGraveyardFromHandOrLibraryThisTurn.
+	// Additive within the schema version.
+	CardsToGraveyardFromHandOrLibrary int `json:"cardsToGraveyardFromHandOrLibrary,omitempty"`
 	// LifeLow / LifeLowSet are this player's lowest life total this
 	// turn, and PoisonHigh their highest poison count: the CR 732 loop
 	// breaker's progress marks (#2450, ADR 0055's 2026-10-07 amendment,
@@ -253,6 +263,12 @@ type TurnTally struct {
 	Players map[uuid.UUID]PlayerTurnTally `json:"players,omitempty"`
 	// CreaturesDied is the table-wide count, any controller.
 	CreaturesDied int `json:"creaturesDied,omitempty"`
+	// NontokenCreaturesDied is the table-wide count of the creatures among
+	// CreaturesDied that were cards, not tokens (Gadrak, the Crown-Scourge's
+	// "a Treasure for each nontoken creature that died this turn", #5368).
+	// Additive within the current schema: a file without it restores zero
+	// (weaker, never stronger).
+	NontokenCreaturesDied int `json:"nontokenCreaturesDied,omitempty"`
 	// NonlandPermanentsLeft is the table-wide count of nonland
 	// permanents that left the battlefield this turn, by any route, to
 	// any zone, whoever controlled them (void, CR 207.2c; #2128): a
@@ -1095,6 +1111,11 @@ func (g *Game) SacrificedWithSubtypeThisTurn(playerID uuid.UUID, subtype string)
 	return subtypeTallyCount(g.TurnTally.SacrificedSubtypes, playerID, subtype)
 }
 
+// SacrificedNontokenKey is the pseudo card type under which
+// TurnTally.SacrificedCardTypes counts the nontoken permanents a player
+// sacrificed this turn: SacrificedWithCardTypeThisTurn(p, SacrificedNontokenKey).
+const SacrificedNontokenKey = "nontoken"
+
 // SacrificedWithCardTypeThisTurn reports how many permanents playerID
 // sacrificed this turn having card type `cardType` (any case) as they
 // were sacrificed — SacrificedWithSubtypeThisTurn's reading, for a card
@@ -1842,7 +1863,7 @@ func (g *Game) resetTurnTallyLocked() {
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
 func cloneTurnTally(t TurnTally) TurnTally {
-	out := TurnTally{CreaturesDied: t.CreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
+	out := TurnTally{CreaturesDied: t.CreaturesDied, NontokenCreaturesDied: t.NontokenCreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
 	if len(t.Players) > 0 {
 		out.Players = make(map[uuid.UUID]PlayerTurnTally, len(t.Players))
 		for k, v := range t.Players {
@@ -1991,6 +2012,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 	case EventDrawCard:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDrawn++ })
 	case EventDiscardCard:
+		g.noteHandOrLibraryToGraveyardLocked(ev)
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.CardsDiscarded++ })
 		// #4628, CR 702.187b: mayhem's "you discarded this card this
 		// turn". Written for the card that landed in a graveyard, under
@@ -2001,6 +2023,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if ev.NewZone == ZoneGraveyard && ev.CardID != uuid.Nil {
 			g.NoteDoneThisTurn(ev.CardID, discardedThisTurnLabel)
 		}
+	case EventZoneMove, EventMill:
+		// Welcome the Dead: a card put into its owner's graveyard from a
+		// hand or a library, whatever moved it. A routed move emits one of
+		// EventZoneMove, EventMill or EventDiscardCard, never two.
+		g.noteHandOrLibraryToGraveyardLocked(ev)
 	case EventTokenCreated:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.TokensCreated++ })
 	case EventSacrifice:
@@ -2014,6 +2041,14 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			if c := g.findCardByIDLocked(ev.CardID); c != nil {
 				g.recordSacrificedSubtypesLocked(ev.Actor, c)
 				recordCardTypeTally(&g.TurnTally.SacrificedCardTypes, ev.Actor, c)
+				// "Sacrificed a nontoken permanent this turn" (Evendo
+				// Brushrazer): the same map, under a key no card type uses.
+				if !c.IsToken() {
+					if g.TurnTally.SacrificedCardTypes == nil {
+						g.TurnTally.SacrificedCardTypes = map[string]int{}
+					}
+					g.TurnTally.SacrificedCardTypes[subtypeTallyKey(ev.Actor, SacrificedNontokenKey)]++
+				}
 				if c.IsArtifact() || c.IsCreature() {
 					g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.ArtifactsOrCreaturesSacrificed++ })
 				}
@@ -2029,6 +2064,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// tapping a tapped permanent does nothing), so each one is a
 		// real change of state.
 		g.noteBecameTappedLocked(ev.CardID)
+	case EventStepBegan:
+		// #5368: a new combat phase of the active player's turn.
+		if ev.Step == StepBeginCombat {
+			g.rotateCombatAttacksLocked()
+		}
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
 		// #4576: declaring an attacker taps it unless it has vigilance
@@ -2071,6 +2111,8 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			attacks := make([]AttackRecord, len(g.TurnTally.Attacks), len(g.TurnTally.Attacks)+1)
 			copy(attacks, g.TurnTally.Attacks)
 			g.TurnTally.Attacks = append(attacks, rec)
+			// #5368: and under the combat phase in progress.
+			g.recordCombatAttackLocked(rec)
 		}
 		g.notePlayerDecisionLocked()
 	case EventCast, EventBlock:
@@ -2194,6 +2236,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			return
 		}
 		g.TurnTally.CreaturesDied++
+		if !c.IsToken() {
+			g.TurnTally.NontokenCreaturesDied++
+		}
 		g.recordDiedPowerLocked(ev)
 		// #1682 / CR 603.10a: "died under your control" is the
 		// controller the permanent had as it left, which the exit
@@ -2421,4 +2466,23 @@ func (g *Game) PermanentReturnedToHandThisTurn(playerID uuid.UUID) bool {
 // Caller must hold g.mu.
 func (g *Game) LandToGraveyardThisTurn(playerID uuid.UUID) bool {
 	return g.TurnTallyFor(playerID).LandsToGraveyard > 0
+}
+
+// CardsToGraveyardFromHandOrLibraryThisTurn is how many cards were put into
+// playerID's graveyard from their hand or library this turn (Welcome the
+// Dead). Caller must hold g.mu.
+func (g *Game) CardsToGraveyardFromHandOrLibraryThisTurn(playerID uuid.UUID) int {
+	return g.TurnTallyFor(playerID).CardsToGraveyardFromHandOrLibrary
+}
+
+// noteHandOrLibraryToGraveyardLocked counts one card put into its owner's
+// graveyard from a hand or a library (CardsToGraveyardFromHandOrLibrary).
+// Caller must hold g.mu.
+func (g *Game) noteHandOrLibraryToGraveyardLocked(ev Event) {
+	if ev.NewZone != ZoneGraveyard || ev.CardID == uuid.Nil || (ev.OldZone != ZoneHand && ev.OldZone != ZoneLibrary) {
+		return
+	}
+	if c := g.findCardByIDLocked(ev.CardID); c != nil && c.Owner != uuid.Nil {
+		g.bumpPlayerTally(c.Owner, func(p *PlayerTurnTally) { p.CardsToGraveyardFromHandOrLibrary++ })
+	}
 }

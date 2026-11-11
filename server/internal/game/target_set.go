@@ -153,6 +153,13 @@ const (
 	// value — it meets no total, as it meets no "mana value N or
 	// less" (ManaValueLE).
 	TargetTotalManaValue
+
+	// TargetTotalPower is each pick's power where it is now, read by
+	// Game.PowerAnywhereForEffect: a card in a graveyard counts what its
+	// characteristic-defining ability says, so a `*` power is judged as it
+	// would be on the battlefield (Reunion of the House's ruling). Added
+	// after TargetTotalManaValue; the value is never renumbered.
+	TargetTotalPower
 )
 
 // valueOf is the number a card contributes to the total, or false
@@ -169,6 +176,8 @@ func (r *TargetTotal) valueOf(g *Game, c Card) (int, bool) {
 		// so neither this total nor the view that ships its values can
 		// tell what the permanent hides.
 		return g.ManaValueForEffect(c)
+	case TargetTotalPower:
+		return g.PowerAnywhereForEffect(c), true
 	}
 	return 0, false
 }

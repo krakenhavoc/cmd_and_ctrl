@@ -53,6 +53,10 @@ const (
 	// and the activation's other mana readers are the ordinary ones; the rest
 	// of the cost must have no mana of its own (effects.Register checks it).
 	AbilityCostBranchMana AbilityCostBranchKind = "mana"
+	// AbilityCostBranchRemoveCounters removes Count counters of kind
+	// Counter from the ability's source. Folded into RemoveCounters, so
+	// the payer, the validator and the enumerator are the plain cost's.
+	AbilityCostBranchRemoveCounters AbilityCostBranchKind = "remove_counters"
 )
 
 // AbilityCostBranch is one way to pay an either/or part of an activated
@@ -74,6 +78,9 @@ type AbilityCostBranch struct {
 	Nonland bool
 	// Mana is a mana branch's cost ("{3}"). Unused by every other kind.
 	Mana string
+	// Counter is the kind of counter a remove-counters branch takes
+	// from the source ("charge").
+	Counter string
 }
 
 // ErrAbilityCostBranch is returned when an activation names no branch
@@ -119,6 +126,8 @@ func ChosenAbilityCost(c AbilityCost, branch *int) (AbilityCost, error) {
 			return c, ErrAbilityCostBranch
 		}
 		out.Mana = b.Mana
+	case AbilityCostBranchRemoveCounters:
+		out.RemoveCounters = &CounterRemovalCost{Counter: b.Counter, N: b.count()}
 	default:
 		return c, ErrAbilityCostBranch
 	}
@@ -173,6 +182,8 @@ func (b AbilityCostBranch) BranchLabel() string {
 		return "Exile " + b.Label + " from your graveyard"
 	case AbilityCostBranchMana:
 		return "Pay " + b.Mana
+	case AbilityCostBranchRemoveCounters:
+		return "Remove " + b.Label
 	}
 	return b.Label
 }

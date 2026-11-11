@@ -20,12 +20,7 @@ func init() {
 		XMatters:     true,
 		Targets:      TargetAny(),
 		OnResolve: ResolveSteps(
-			Instruction(func(ctx *Context) error {
-				for _, t := range ctx.LegalTargets() {
-					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: ctx.X()}.Apply(ctx)
-				}
-				return nil
-			}),
+			Instruction(func(ctx *Context) error { return cmdrB19DealXToTheTarget(ctx) }),
 			Instruction(func(ctx *Context) error {
 				return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 2, 1, "")
 			}),
