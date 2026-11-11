@@ -115,6 +115,24 @@ func GiftATreasure() *Gift {
 	}}
 }
 
+// GiftAnOctopus is CR 702.174i: "The chosen player creates an 8/8 blue
+// Octopus creature token." The catalog's 8/8 blue Octopus (Fisher's
+// Talent's level-3 token).
+func GiftAnOctopus() *Gift {
+	return &Gift{Label: "Gift an Octopus", give: func(ctx *Context, to uuid.UUID) error {
+		return CreateToken{Controller: to, Template: TokenCard("8/8 blue Octopus"), N: 1}.Apply(ctx)
+	}}
+}
+
+// GiftAnExtraTurn is CR 702.174g: "The chosen player takes an extra turn
+// after this one." The one TakeExtraTurn primitive (CR 500.7), so the
+// turn is queued under the extra-turn stack's ordering.
+func GiftAnExtraTurn() *Gift {
+	return &Gift{Label: "Gift an extra turn", give: func(ctx *Context, to uuid.UUID) error {
+		return TakeExtraTurn{Player: to}.Apply(ctx)
+	}}
+}
+
 // giftCost is the cost half as the engine reads it: an optional
 // additional cost keyed game.GiftKey whose payment is choosing an
 // opponent. Appended LAST to the card's optional costs by buildDef, so

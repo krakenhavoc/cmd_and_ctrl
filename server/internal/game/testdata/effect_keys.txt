@@ -83,6 +83,7 @@ body copy/the-ability-you-just-activated
 body copy/the-spell-per-commander-cast
 body copy/the-spell-you-just-cast
 body copy/the-spell-you-just-cast-twice
+body copy/token-copy-of-the-payload
 body cornered-crook/damage
 body counter/plus-one-and-haste-for-the-payload
 body counter/plus-one-on-the-payload-creature
@@ -1037,6 +1038,7 @@ condition dies/the-listed-object
 condition discard/opponent-caused-yours
 condition earthbend/this-object-left
 condition etb/each-creature-you-control
+condition etb/each-nontoken-creature-an-opponent-controls
 condition fra-creature-c/lyra-combat-damage-to-a-player
 condition good-king-mog/you-cast-a-noncreature-spell
 condition havengul-lich/you-cast-it
@@ -1050,6 +1052,7 @@ condition stolen-uniform/lost-control-of-the-equipment
 condition tap/a-creature-becomes-tapped
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
+confirm bloomburrow-commander/fishers-talent-reveal
 confirm brazen-bluff/exile-or-free-cast
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
@@ -2084,6 +2087,7 @@ tail brass-tunnel-grinder/transform
 tail bre-of-clan-stoutarm/after-exile
 tail breach-the-multiverse/phyrexians
 tail breaching-dragonstorm/after-exile
+tail brenard-ginger-sculptor/copy
 tail bring-to-light/cast
 tail bristlebud-farmer/after-mill
 tail brudiclad/choose-a-token
@@ -2476,6 +2480,7 @@ tail mill-then-take/temporal-anomaly
 tail mill-then/lluwen-imperfect-naturalist
 tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
+tail mimic-vat/return-others
 tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
 tail misfortune-teller/exiled-card-clause
@@ -2503,6 +2508,7 @@ tail nesting-grounds/remove
 tail nezumi-graverobber/after-exile
 tail nick-fury-spymaster/indestructible
 tail nicol-bolas-god-pharaoh/after-mill
+tail nightmare-shepherd/copy
 tail nita-forum-conciliator/after-exile
 tail noctis/entered-unblockable
 tail now-for-wrath/vigilance-and-temptation
