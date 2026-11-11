@@ -813,6 +813,7 @@ var landwalkLand = []struct {
 	{"swampwalk", "swamp", false},
 	{"mountainwalk", "mountain", false},
 	{"forestwalk", "forest", false},
+	{"desertwalk", "desert", false},
 	{"nonbasic landwalk", "", true},
 }
 
