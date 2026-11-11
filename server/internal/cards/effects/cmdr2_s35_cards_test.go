@@ -133,7 +133,7 @@ func TestS35BroodhatchNantukoMakesThatManyInsects(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(uuid.Nil, id, 3) })
 	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
-	answerOptional(t, g, me, true)
+	s35AnswerYes(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if n := len(battlefieldIDsNamed(g, "Insect")); n != 3 {
 		t.Fatalf("insects = %d, want 3", n)
@@ -169,7 +169,7 @@ func TestS35RootElementalPutsACreatureFromHand(t *testing.T) {
 	me.Hand.PushTop(game.Card{InstanceID: bear, Name: "Hand Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
 	s35TurnUp(t, g, id, "G", "G", "C", "C", "C", "C", "C")
 	passPriorityAroundTable(t, g)
-	answerOptional(t, g, me, true)
+	s35AnswerYes(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if _, ok := battlefieldCard(g, bear); !ok {
 		answerSearchByID(t, g, me.ID, bear)
@@ -187,8 +187,33 @@ func TestS35NantukoVigilanteDestroysAnArtifactOrEnchantment(t *testing.T) {
 	id := s35CastFaceDown(t, g, "Nantuko Vigilante", "Creature — Insect Druid Mutant", s35VigilanteOracle)
 	s35TurnUp(t, g, id, "G", "C")
 	_ = me
+	answerFirstPickTarget(t, g)
 	passPriorityAroundTable(t, g)
 	if _, ok := battlefieldCard(g, rock); ok {
 		t.Fatal("the artifact survived")
 	}
+}
+
+// s35AnswerYes says yes to the open "you may" prompt, whichever kind
+// the engine raised (a trigger prompt, or a confirm from the effect).
+func s35AnswerYes(t *testing.T, g *game.Game, chooser uuid.UUID) {
+	t.Helper()
+	for _, c := range g.PendingChoices {
+		if c == nil || c.Chooser != chooser {
+			continue
+		}
+		switch c.Kind {
+		case game.PendingChoiceTriggerPrompt:
+			if err := g.ResolveTriggerPrompt(c.ID, chooser, true); err != nil {
+				t.Fatalf("ResolveTriggerPrompt: %v", err)
+			}
+			return
+		case game.PendingChoiceConfirm:
+			if err := g.ResolveConfirm(c.ID, chooser, true); err != nil {
+				t.Fatalf("ResolveConfirm: %v", err)
+			}
+			return
+		}
+	}
+	t.Fatalf("no yes/no prompt for %s: %+v", chooser, g.PendingChoices)
 }
