@@ -39,6 +39,44 @@ func (g *Game) QueueSecretChoiceForEffect(chooser, source uuid.UUID, question st
 
 // secretChoiceThen stamps the answer on the permanent without announcing
 // it. An on-disk key: never renamed, never reused.
+// QueueSecretPlayerChoiceForEffect is QueueSecretChoiceForEffect over
+// players: "secretly choose an opponent" (Stalking Leonin). The buttons
+// read the players' names; what is stored on the source is the chosen
+// player's ID as text (SecretChosenPlayerOf reads it back), so two players
+// with the same name stay distinct. Returns uuid.Nil when nothing was
+// queued (no player to choose).
+func (g *Game) QueueSecretPlayerChoiceForEffect(chooser, source uuid.UUID, question string, players []uuid.UUID) uuid.UUID {
+	eligible := g.eligibleChosenPlayersLocked(players)
+	if len(eligible) == 0 {
+		return uuid.Nil
+	}
+	words := make([]string, len(eligible))
+	for i, id := range eligible {
+		words[i] = id.String()
+	}
+	return g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question,
+		Options:  g.seatChoiceOptionsLocked(eligible),
+		ThenKey:  secretChoiceThen,
+		Carry:    []uuid.UUID{source, chooser},
+		Words:    words,
+	})
+}
+
+// SecretChosenPlayerOf is the player a QueueSecretPlayerChoiceForEffect
+// stored on the permanent, and who chose them; uuid.Nil for both when
+// nothing of the kind was chosen.
+func (g *Game) SecretChosenPlayerOf(sourceID uuid.UUID) (chosen, by uuid.UUID) {
+	word, by := g.SecretChoiceOf(sourceID)
+	id, err := uuid.Parse(word)
+	if err != nil {
+		return uuid.Nil, uuid.Nil
+	}
+	return id, by
+}
+
 var secretChoiceThen OptionPickThen
 
 func init() {
@@ -49,10 +87,16 @@ func secretChoiceAnswered(g *Game, r OptionPicked) error {
 	if len(r.Carry) < 2 || r.Index < 0 || r.Index >= len(r.Words) {
 		return nil
 	}
+	word := r.Words[r.Index]
+	if r.Option != nil && r.Option.Player != uuid.Nil {
+		// A player choice reads the option's own seat, not an index that a
+		// departed seat's pruning (#994) may have shifted.
+		word = r.Option.Player.String()
+	}
 	// The permanent is located live: a Case that has left by the time the
 	// player answers has nowhere to keep the choice (CR 608.2).
 	if i := findCardOnBattlefield(g, r.Carry[0]); i >= 0 {
-		g.Battlefield.Cards[i].SecretChoice = r.Words[r.Index]
+		g.Battlefield.Cards[i].SecretChoice = word
 		g.Battlefield.Cards[i].SecretChoiceBy = r.Carry[1]
 	}
 	return nil
@@ -98,6 +142,10 @@ func (g *Game) payRevealSecretChoiceCostLocked(playerID, sourceID uuid.UUID, cos
 	word, _ := g.SecretChoiceOf(sourceID)
 	if word == "" {
 		return
+	}
+	if id, err := uuid.Parse(word); err == nil {
+		// A secretly chosen player is revealed by name.
+		word = g.seatLabelLocked(id)
 	}
 	g.EmitEvent(Event{Kind: EventCreatureTypeChosen, Actor: playerID, CardID: sourceID, Label: word})
 }
