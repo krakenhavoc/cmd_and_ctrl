@@ -483,6 +483,8 @@ choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
+choose choose-cards/cmdr2-b27-take-rest-top-and-bottom
+choose choose-cards/cmdr2-b27-take-rest-top-any-order
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -523,6 +525,7 @@ choose choose-cards/discard-two-unless-artifact
 choose choose-cards/discard-two-unless-basic-land
 choose choose-cards/discard-two-unless-creature
 choose choose-cards/discard-two-unless-creature-identity
+choose choose-cards/discard-two-unless-enchantment
 choose choose-cards/disturbing-mirth-sacrifice
 choose choose-cards/doomfall-exile
 choose choose-cards/doomsday-search
@@ -1233,6 +1236,7 @@ drawthen discard-two-unless-artifact
 drawthen discard-two-unless-basic-land
 drawthen discard-two-unless-creature
 drawthen discard-two-unless-creature-identity
+drawthen discard-two-unless-enchantment
 drawthen discard-unless-attacked
 drawthen discard-unless-three-lessons
 drawthen discard-unless-threshold
@@ -1572,6 +1576,7 @@ payunless pay-unless/lorthos-tap-and-freeze
 payunless pay-unless/mana-vault-untap
 payunless pay-unless/marchesa-dealer-of-death-look
 payunless pay-unless/marooned-tap-enchanted-permanent
+payunless pay-unless/master-of-death-return
 payunless pay-unless/matt-murdock-justice-seeker-counter
 payunless pay-unless/maulfist-doorbuster-cant-block
 payunless pay-unless/meathook-massacre-ii-opponent-declined
@@ -2744,6 +2749,7 @@ tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
 tail then/elesh-norn-argent-etchings-flicker
 tail then/end-blaze-epiphany-choose
+tail then/epharas-dispersal-surveil
 tail then/expose-the-culprit-cloak
 tail then/expressive-iteration-exile
 tail then/face-down-piles-to-hand
@@ -2795,6 +2801,7 @@ tail then/mindbreak-trap-exile-rest
 tail then/mob-verdict-next-strike
 tail then/mondo-gecko-color-chosen
 tail then/northampton-farm-rest-to-hand
+tail then/notion-rain-draw-and-damage
 tail then/one-ring-to-rule-them-all-mill
 tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered
