@@ -23,6 +23,7 @@ func init() {
 		OracleID:     "5e7586dd-d42e-4ac6-adb8-d46b6cdef923",
 		Name:         "Disorder in the Court",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		Targets:      targetsCountedByX(TargetCreature("X target creatures")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := exileTargetsThenScheduleReturnBody(ctx, "Disorder in the Court — return the exiled cards tapped", returnExiledToOwnersTappedBody); err != nil {

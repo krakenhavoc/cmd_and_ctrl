@@ -27,7 +27,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{G}, Exile a creature card from your graveyard: Investigate. You gain 2 life.",
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Tokens: 1, Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{1}{G}"), ExileFromGraveyard(1, "a creature card", MatchCreature)),
 			Effect:  Do(Investigate{N: 1}, GainLife{Amount: 2}),
 		}},
