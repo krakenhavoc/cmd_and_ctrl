@@ -945,3 +945,14 @@ func matchRNGKey(old [32]byte) [32]byte {
 	copy(out[:], h.Sum(nil))
 	return out
 }
+
+// SetSideboardingDeadlineForTest moves the open sideboarding window's
+// deadline, so a test of the table's timer does not wait out
+// SideboardingTime. A no-op when no window is open.
+func (g *Game) SetSideboardingDeadlineForTest(deadline time.Time) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State == StateBetweenGames && g.Match != nil && g.Match.Between != nil {
+		g.Match.Between.Deadline = deadline
+	}
+}
