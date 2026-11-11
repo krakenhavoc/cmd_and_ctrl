@@ -938,3 +938,52 @@ func TestCompanionOnlyWithTheRegisteredDeck(t *testing.T) {
 		t.Error("a card taken out is not stamped for the sideboard")
 	}
 }
+
+// The list the lobby keeps for a rematch is the registered one, whole:
+// at a table that plays matches it carries the sideboard, so the match
+// after this one starts from the same seventy-five. A Commander table's
+// kept list is the library and the command zone, as it always was.
+func TestLobbyDecksKeepTheSideboardForARematch(t *testing.T) {
+	g := NewGame()
+	setFormat(t, g, FormatStandard)
+	for _, name := range []string{"Alice", "Bob"} {
+		if _, err := g.AddPlayer(name, buildMatchDeck(name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for id, deck := range g.LobbyDecks() {
+		main, side := 0, 0
+		for _, c := range deck {
+			if c.IsSideboard {
+				side++
+			} else {
+				main++
+			}
+		}
+		if main != 60 || side != 15 {
+			t.Errorf("%s's kept list is %d and %d, want 60 and 15", id, main, side)
+		}
+		// It seats again as it did the first time.
+		again := NewGame()
+		setFormat(t, again, FormatStandard)
+		p, err := again.AddPlayer("Again", deck)
+		if err != nil {
+			t.Fatalf("seating the kept list: %v", err)
+		}
+		if p.Library.Size() != 60 || len(p.SideboardCards()) != 15 {
+			t.Errorf("seated again: %d in the library, %d in the sideboard", p.Library.Size(), len(p.SideboardCards()))
+		}
+	}
+
+	c := NewGame()
+	deck := buildTestDeck("C")
+	wish := NewCard("Wish Target", uuid.Nil)
+	wish.IsSideboard = true
+	p, err := c.AddPlayer("Carol", append(deck, wish))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(c.LobbyDecks()[p.ID]), len(deck); got != want {
+		t.Errorf("a Commander table's kept list has %d cards, want %d: the library and the command zone", got, want)
+	}
+}
