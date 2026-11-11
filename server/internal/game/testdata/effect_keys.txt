@@ -483,6 +483,7 @@ choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
+choose choose-cards/cmdr2-b19-liberated-livestock-aura
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -2058,6 +2059,7 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail cmdr2-b19/liberated-livestock-next
 tail coalstoke-gearhulk/entered
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search

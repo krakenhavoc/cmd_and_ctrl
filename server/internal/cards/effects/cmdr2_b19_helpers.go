@@ -20,16 +20,24 @@ func cmdr2B19AttachedCantAttackYou() game.StaticAbility {
 		Layer:     game.Layer6Ability,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			if source == nil {
-				return
-			}
-			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, game.AttackTargetRestriction{
-				Source:     source.InstanceID,
-				SourceName: source.Name,
-				NotPlayer:  source.Controller,
-			})
+			cmdr2B19BarAttackingSourcesController(c, source)
 		},
 	}
+}
+
+// cmdr2B19BarAttackingSourcesController writes "can't attack you or
+// planeswalkers you control" onto a creature's characteristic, "you" being
+// the controller of the permanent whose static this is (CR 508.1c). Eriette
+// of the Charmed Apple's and the Vows' statics share it.
+func cmdr2B19BarAttackingSourcesController(c *game.Characteristic, source *game.Card) {
+	if source == nil {
+		return
+	}
+	c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, game.AttackTargetRestriction{
+		Source:     source.InstanceID,
+		SourceName: source.Name,
+		NotPlayer:  source.Controller,
+	})
 }
 
 // cmdr2B19HumanMonkToken is Careful Cultivation's 1/1 green Human Monk

@@ -36,7 +36,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Channel — {1}{G}, Discard this card: Create a 1/1 green Human Monk creature token with \"{T}: Add {G}.\"",
-			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1, CreatureTokens: 1},
 			Cost:    game.AbilityCost{Mana: "{1}{G}", DiscardSelf: true},
 			Zones:   []game.ZoneKind{game.ZoneHand},
 			Effect: func(g *game.Game, item *game.StackItem) error {
