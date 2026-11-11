@@ -30,7 +30,7 @@ func init() {
 			Label:     "{2}{W}, Remove four hoofprint counters from this enchantment: Create a 4/4 white Elemental creature token with flying. Activate only during your turn.",
 			Cost:      Plus(ManaCost("{2}{W}"), RemoveCountersFromThis("hoofprint", 4)),
 			Condition: DuringYourTurn(),
-			Purpose:   game.Purpose{Tokens: 1},
+			Purpose:   game.Purpose{Tokens: 1, Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: TokenCard("4/4 white Elemental with flying"), N: 1}.Apply(NewContext(g, item))
 			},
