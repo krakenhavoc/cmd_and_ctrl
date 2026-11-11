@@ -117,6 +117,13 @@ func powerOrToughnessAtMost(c *Card, n int) bool {
 	return r.known && (r.power <= n || r.toughness <= n)
 }
 
+// powerAtLeast is the filter's clause: c is a creature whose power is n or
+// more, judged on the face c shows.
+func powerAtLeast(c *Card, n int) bool {
+	r := ptForFilter(c)
+	return r.known && r.power >= n
+}
+
 // powerAtMost is the PowerCapped clause: c is a creature whose power is n
 // or less, judged on the face c shows.
 func powerAtMost(c *Card, n int) bool {
@@ -155,7 +162,7 @@ func ptForFilter(c *Card) ptReading {
 //
 // Caller must hold g.mu.
 func (g *Game) lendPTLocked(p *CastPermission, c Card) Card {
-	if p == nil || (!p.Filter.PowerOrToughnessCapped && !p.Filter.PowerCapped) {
+	if p == nil || (!p.Filter.PowerOrToughnessCapped && !p.Filter.PowerCapped && !p.Filter.PowerAtLeastCapped) {
 		return c
 	}
 	return g.withPTAnywhereLocked(c)

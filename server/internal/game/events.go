@@ -44,7 +44,9 @@ const (
 	// reason it has to: the card is on the stack by the time the
 	// event fires and carries no memory of where it came from.
 	// Added in S22 alongside StackItem.CastFromZone, which is the
-	// same fact recorded on the stack item.
+	// same fact recorded on the stack item. Amount is the spell's mana
+	// value as it was cast, X included (CR 202.3e); zero for a face-down
+	// spell.
 	EventCast EventKind = "cast"
 
 	// EventResolve — a stack item successfully resolved. For a SPELL,

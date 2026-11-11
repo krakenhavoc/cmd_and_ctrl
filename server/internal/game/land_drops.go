@@ -76,6 +76,11 @@ type ConditionalLandPlays struct {
 	// "each player may play an additional land on each of their turns".
 	// Another is empty with it.
 	EachPlayer bool
+	// AtCharge, when positive, makes Plays count only while the
+	// permanent has that many charge counters (a station card's
+	// "3+ | You may play an additional land on each of your turns",
+	// CR 721.2a). Another is empty with it.
+	AtCharge int
 }
 
 // CatalogConditionalLandPlays returns a battlefield permanent's
@@ -127,6 +132,10 @@ func (g *Game) EffectiveLandDropsLocked(p *Player) int {
 			if CatalogConditionalLandPlays != nil {
 				if cp := CatalogConditionalLandPlays(key); cp.EachPlayer {
 					n += cp.Plays
+				} else if cp.Plays > 0 && cp.AtCharge > 0 {
+					if c.Counters[CounterCharge] >= cp.AtCharge {
+						n += cp.Plays
+					}
 				} else if cp.Plays > 0 && g.controlsAnotherSubtypeLocked(p.ID, c.InstanceID, cp.Another) {
 					n += cp.Plays
 				}

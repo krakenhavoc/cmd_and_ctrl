@@ -76,6 +76,20 @@ func abilityCostBranchViews(g *game.Game, caster, sourceID uuid.UUID, cost game.
 			b.DiscardCostOptions = cardIDStrings(g.DiscardCostOptionsForEffect(caster, sourceID, dc))
 			b.Payable = b.Payable && len(b.DiscardCostOptions) >= dc.N
 		}
+		if rc := folded.RemoveCounters; rc != nil && rc.From == nil && !rc.Among && !rc.Variable {
+			// A remove-counters branch is payable while the source holds
+			// the counters; read live like the other branches' options.
+			if src, ok := g.LookupCardForEffect(sourceID); ok {
+				have := src.Counters[rc.Counter]
+				if rc.Counter == "" { // "a counter": any kind
+					have = 0
+					for _, n := range src.Counters {
+						have += n
+					}
+				}
+				b.Payable = b.Payable && have >= rc.N
+			}
+		}
 		if ec := folded.ExileCards; ec != nil && ec.N > 0 {
 			b.ExileCostN = ec.N
 			b.ExileCostLabel = ec.Label

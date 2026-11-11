@@ -153,6 +153,14 @@ type CounterRemovalCost struct {
 	// removed this way" be a fact about the announcement rather than
 	// a re-read of a board that no longer holds those counters.
 	Variable bool
+
+	// OnePermanent makes an Among cost take every counter from a SINGLE
+	// permanent (of whatever kinds it holds, one part per kind): Moxite
+	// Refinery's "Remove X counters from an artifact or creature you
+	// control". It is the any-kind among form with the parts all on one
+	// permanent, so a payment that names two permanents is refused
+	// (ErrInvalidParam). Only meaningful with Among and From; additive.
+	OnePermanent bool
 }
 
 // CounterAddCost is a cost that PUTS a counter on the source —
@@ -516,6 +524,16 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 	} else if !rc.Among && len(ids) != 1 {
 		// Only an among cost is paid by more than one permanent.
 		return counterPayment{}, ErrInvalidParam
+	}
+
+	if rc.OnePermanent {
+		// "from an artifact or creature you control": every part comes
+		// off the same permanent.
+		for _, id := range ids {
+			if id != ids[0] {
+				return counterPayment{}, ErrInvalidParam
+			}
+		}
 	}
 
 	// --- the split -----------------------------------------------

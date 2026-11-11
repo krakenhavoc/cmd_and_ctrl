@@ -105,10 +105,12 @@ func declaresTargetEntry(s effects.Spec) bool {
 // reviewedNotAWipe is every catalog card the sweep reading flags that
 // declares no Sweep, with why. Each was read.
 var reviewedNotAWipe = map[string]string{
-	"Ill-Timed Explosion": "damages each creature only if its controller discards two cards, for the greatest mana value among them: no fixed amount a sweep can declare, and none at all when declined",
-	"Abyssal Harvester":   "exiles only the Nightmare tokens its controller controls, not a board",
-	"Hex Magic":           "exiles the cards in its caster's own hand, not a board",
-	"Armageddon":          "destroys lands, which no sweep class holds alone",
+	"Druid of Purification": "each player may choose one artifact or enchantment its controller doesn't control: at most one permanent a player, not a board",
+	"Kaya, Geist Hunter":    "its -6 exiles the cards in graveyards, not permanents",
+	"Ill-Timed Explosion":   "damages each creature only if its controller discards two cards, for the greatest mana value among them: no fixed amount a sweep can declare, and none at all when declined",
+	"Abyssal Harvester":     "exiles only the Nightmare tokens its controller controls, not a board",
+	"Hex Magic":             "exiles the cards in its caster's own hand, not a board",
+	"Armageddon":            "destroys lands, which no sweep class holds alone",
 	// #1997: its end-step and leaves triggers destroy only the Tombspawn
 	// it created itself, every player's, never another permanent.
 	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",

@@ -506,7 +506,7 @@ func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID
 // AdditionalLandPlaysForEachPlayer has none of those, its plays are
 // ConditionalLandPlays.
 func unconditionalLandPlays(spec Spec) int {
-	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer {
+	if spec.AdditionalLandPlaysNeedsAnother != "" || spec.AdditionalLandPlaysForEachPlayer || spec.AdditionalLandPlaysAtCharge > 0 {
 		return 0
 	}
 	return spec.AdditionalLandPlays
@@ -518,6 +518,9 @@ func unconditionalLandPlays(spec Spec) int {
 func conditionalLandPlays(spec Spec) game.ConditionalLandPlays {
 	if spec.AdditionalLandPlaysForEachPlayer {
 		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, EachPlayer: true}
+	}
+	if spec.AdditionalLandPlaysAtCharge > 0 {
+		return game.ConditionalLandPlays{Plays: spec.AdditionalLandPlays, AtCharge: spec.AdditionalLandPlaysAtCharge}
 	}
 	if spec.AdditionalLandPlaysNeedsAnother == "" {
 		return game.ConditionalLandPlays{}
