@@ -18,6 +18,8 @@ const (
 	s33ApothecaryOracle    = "09ecb8df-2a17-4e5a-814c-474bce54794d"
 	s33StockpileOracle     = "feaf9dcb-d845-4cf9-b35d-cd58175162e7"
 	s33RetreatOracle       = "0158634a-08a3-4eb8-8216-bf85161fd168"
+	s33VihaanOracle        = "0613a0d8-f6bc-41ca-8070-b2506f756fc8"
+	s33SunriseOracle       = "949a02ad-7530-4b2b-a1e3-0c70324e23d6"
 	s33LifeInsuranceOracle = "50779f73-c538-4364-aca4-4ab069a00814"
 )
 
@@ -25,6 +27,8 @@ func TestS33CardsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		s33BackInTownOracle:    "Back in Town",
 		s33LifeInsuranceOracle: "Life Insurance",
+		s33SunriseOracle:       "Dead Before Sunrise",
+		s33VihaanOracle:        "Vihaan, Goldwaker",
 		s33RetreatOracle:       "Discreet Retreat",
 		s33StockpileOracle:     "Glittering Stockpile",
 		s33ApothecaryOracle:    "Bloodroot Apothecary",
@@ -433,5 +437,100 @@ func TestS33DiscreetRetreatDrawsOnTheFirstOutlawSpellEachTurnOnly(t *testing.T) 
 	cast(warlock)
 	if me.Hand.Size() != hand-3+1 || me.Life != life-1 {
 		t.Errorf("the second outlaw spell triggered it: hand %d, life %d", me.Hand.Size(), me.Life)
+	}
+}
+
+func TestS33VihaanGivesOtherOutlawsYouControlVigilanceAndHaste(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	vihaan := b12Push(g, me.ID, "Vihaan, Goldwaker", "Legendary Creature — Dwarf Warlock", s33VihaanOracle, 3, 3)
+	pirate := b12Creature(g, me.ID, "Pirate", "Creature — Human Pirate", 2, 2)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Rogue", "Creature — Human Rogue", 2, 2)
+	for _, kw := range []string{"vigilance", "haste"} {
+		if !hasEffectiveKeyword(t, g, pirate, kw) {
+			t.Errorf("your other outlaw lacks %s", kw)
+		}
+		if hasEffectiveKeyword(t, g, vihaan, kw) {
+			t.Errorf("Vihaan gave itself %s", kw)
+		}
+		if hasEffectiveKeyword(t, g, bear, kw) || hasEffectiveKeyword(t, g, theirs, kw) {
+			t.Errorf("a non-outlaw or an opponent's outlaw has %s", kw)
+		}
+	}
+}
+
+func TestS33VihaanAnimatesTreasuresAtBeginningOfCombat(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	b12Push(g, me.ID, "Vihaan, Goldwaker", "Legendary Creature — Dwarf Warlock", s33VihaanOracle, 3, 3)
+	if err := (CreateToken{Controller: me.ID, Template: TreasureToken(), N: 1}).Apply(ctxFor(g, &game.StackItem{Controller: me.ID})); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	treasure := findBattlefieldByName(g, "Treasure")
+	advanceTo(t, g, game.StepBeginCombat)
+	settle := func() {
+		for i := 0; i < 8; i++ {
+			if p := assistCardTriggerPrompt(g, me.ID); p != nil {
+				if err := g.ResolveTriggerPrompt(p.ID, p.Chooser, true); err != nil {
+					t.Fatalf("ResolveTriggerPrompt: %v", err)
+				}
+				continue
+			}
+			if stackFullyEmpty(g) {
+				return
+			}
+			passPriorityAroundTable(t, g)
+		}
+	}
+	settle()
+	if p, tough := effectivePower(t, g, treasure), effectiveToughness(t, g, treasure); p != 3 || tough != 3 {
+		t.Fatalf("the Treasure is %d/%d, want 3/3", p, tough)
+	}
+	g.WithWriteLock(func() { g.RecomputeLayersIfStaleLocked() })
+	c, _ := g.LookupCardForEffect(treasure)
+	if !c.IsCreature() || !c.IsArtifact() || !c.HasSubtypeWord("Construct") || !c.HasSubtypeWord("Assassin") || !c.HasSubtypeWord("Treasure") {
+		t.Errorf("the Treasure's type line is %q", c.TypeLine)
+	}
+	if !hasEffectiveKeyword(t, g, treasure, "haste") || !hasEffectiveKeyword(t, g, treasure, "vigilance") {
+		t.Error("an Assassin Treasure should have vigilance and haste from Vihaan")
+	}
+}
+
+func TestS33DeadBeforeSunriseGivesOutlawCreaturesYouControlPlusOneAndATapPing(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pirate := b12Creature(g, me.ID, "Pirate", "Creature — Human Pirate", 3, 3)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Rogue", "Creature — Human Rogue", 2, 2)
+	victim := b12Creature(g, opp.ID, "Victim", "Creature — Ox", 6, 6)
+	advanceToMain(t, g)
+	castCatalogSpell(t, g, "Dead Before Sunrise", "Instant", s33SunriseOracle, nil)
+	passPriorityAroundTable(t, g)
+	if p := effectivePower(t, g, pirate); p != 4 {
+		t.Errorf("your outlaw's power %d, want 4", p)
+	}
+	if effectivePower(t, g, bear) != 2 || effectivePower(t, g, theirs) != 2 {
+		t.Error("a non-outlaw or an opponent's outlaw got +1/+0")
+	}
+	// A creature that arrives afterwards is not in the set (CR 611.2c).
+	late := b12Creature(g, me.ID, "Late Rogue", "Creature — Human Rogue", 2, 2)
+	if effectivePower(t, g, late) != 2 {
+		t.Error("an outlaw that entered after resolution got +1/+0")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, bear, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Error("a non-outlaw activated the granted ability")
+	}
+	if err := g.ActivateCatalogAbility(me.ID, pirate, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: victim}}}); err != nil {
+		t.Fatalf("the outlaw's granted ability: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c, ok := g.LookupCardForEffect(pirate); !ok || !c.Tapped {
+		t.Error("the {T} cost did not tap the outlaw")
+	}
+	if c, ok := g.LookupCardForEffect(victim); !ok || c.DamageMarked != 4 {
+		t.Errorf("the target took %d damage, want 4 (the outlaw's power)", c.DamageMarked)
 	}
 }
