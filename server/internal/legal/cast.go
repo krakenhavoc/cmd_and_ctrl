@@ -921,7 +921,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// #2575: off the announcement, which names the offer, so an
 	// alternative cost's own "spend only mana produced by …" (Security
 	// Rhox) is read as CastSpell reads it.
-	spend := game.ManaSpendForCastParams(card, announce)
+	spend := game.ManaSpendForCastParams(card, announce).PaidBy(e.seat)
 	// #3860: and a permanent that adds life to the cost of a spell that
 	// targets it (Terror of the Peaks) makes the price a function of the
 	// targets too, so each set is solved against the life it leaves the

@@ -2300,7 +2300,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// placed by the runStateChecksLocked at the bottom of the cast,
 	// above the spell.
 	// #4694: with the spell's mana value at its announced X (CR 202.3e).
-	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue), card)
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue).PaidBy(playerID), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
@@ -2827,14 +2827,14 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// any color" (Chromatic Orrery) widens what may pay the cost — read
 	// here, after convoke and delve have taken their share and before
 	// the Phyrexian strike, exactly as applyAutoTapLocked reads it.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCastParams(card, params).PaidBy(p.ID), cost, params.XValue)
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
 	// is paid below — after the mana half is known to be payable, so a
 	// rejected cast never costs a point. Validated in every mode,
 	// because an over-claim is a malformed announce rather than a
 	// mana-gate failure.
-	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params), params.PhyrexianLife, &paid)
+	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params).PaidBy(p.ID), params.PhyrexianLife, &paid)
 	if err != nil {
 		return paid, note, err
 	}
@@ -2845,7 +2845,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// restriction.
 	// #3853: stamped so the pool spend can tell mana whose rider fires on
 	// this spell from mana it would be wasted on (an ORDER, never a test).
-	spendCtx := g.stampRiderVerdictsLocked(ManaSpendForCastParams(card, params), p.ID)
+	spendCtx := g.stampRiderVerdictsLocked(ManaSpendForCastParams(card, params).PaidBy(p.ID), p.ID)
 	canPay := p.ManaPool.CanPayFor(cost, params.XValue, spendCtx)
 	if params.ForceCast || (!params.Strict && !canPay) {
 		strategy := spendStrategyForCast(card)
@@ -2989,7 +2989,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if cost.SpendOnly != nil && cost.SpendOnly.Distinct {
 		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
 	}
-	cost = g.costAsPaidByExcludingLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue, excluded)
+	cost = g.costAsPaidByExcludingLocked(p.ID, ManaSpendForCastParams(card, params).PaidBy(p.ID), cost, params.XValue, excluded)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -3008,7 +3008,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// can reach it today. Once the plan exists the two agree: it funds
 	// every symbol it did not strike, so the payment's own pass ranks
 	// the struck one unpayable and strikes it again.
-	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params), params.PhyrexianLife, nil)
+	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params).PaidBy(p.ID), params.PhyrexianLife, nil)
 	if err != nil {
 		return nil
 	}
@@ -3017,7 +3017,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// restricted mana this cast cannot legally spend. The top-up below
 	// takes the same shortcut; this one keeps the exclusion list from
 	// being built for a cast that needs no plan.
-	spendCtx := ManaSpendForCastParams(card, params)
+	spendCtx := ManaSpendForCastParams(card, params).PaidBy(p.ID)
 	if p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
 		return nil
 	}

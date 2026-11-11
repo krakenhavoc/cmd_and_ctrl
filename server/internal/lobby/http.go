@@ -2845,7 +2845,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// materialised by the pricer, and the spend context is read off
 	// the card type, which a modal DFC's two faces need not share
 	// (ADR 0034).
-	spend := game.ManaSpendForCastParams(price.Card, params)
+	spend := game.ManaSpendForCastParams(price.Card, params).PaidBy(p.PlayerID)
 	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, xValue, spend, phyrexian, excluded)
 	// The cost string reported back is the one this cast PAYS, not
 	// the one in the card's corner — a flashed-back Think Twice reads
