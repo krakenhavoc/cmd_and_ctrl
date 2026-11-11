@@ -197,7 +197,7 @@ func (d *Draft) beginBuilding(now time.Time) {
 		}
 	}
 	d.seq++
-	d.afterBuild(now)
+	d.afterBuild()
 }
 
 // autoBuild gives a seat the DeckBuilder's deck. A builder whose deck
@@ -272,7 +272,7 @@ const maxBasicsOfOne = 99
 // the seat's pool; a deck that fails is refused and changes nothing.
 // A person may submit again until the rounds begin, which is when the
 // last person has submitted.
-func (d *Draft) SubmitDeck(seatID uuid.UUID, built LimitedDeck, now time.Time) error {
+func (d *Draft) SubmitDeck(seatID uuid.UUID, built LimitedDeck, _ time.Time) error {
 	if d.Phase() != PhaseBuilding {
 		return ErrNotBuilding
 	}
@@ -287,7 +287,7 @@ func (d *Draft) SubmitDeck(seatID uuid.UUID, built LimitedDeck, now time.Time) e
 	d.play.built[i] = true
 	d.play.auto[i] = false
 	d.seq++
-	d.afterBuild(now)
+	d.afterBuild()
 	return nil
 }
 
@@ -304,11 +304,11 @@ func (d *Draft) ExpireBuild(now time.Time) {
 		}
 	}
 	d.seq++
-	d.afterBuild(now)
+	d.afterBuild()
 }
 
 // afterBuild begins the rounds once every seat has a deck.
-func (d *Draft) afterBuild(now time.Time) {
+func (d *Draft) afterBuild() {
 	if d.Phase() != PhaseBuilding {
 		return
 	}
@@ -324,7 +324,7 @@ func (d *Draft) afterBuild(now time.Time) {
 	d.play.phase = PhaseRounds
 	d.play.buildDeadline = time.Time{}
 	d.seq++
-	d.nextRound(now)
+	d.nextRound()
 }
 
 func (d *Draft) finish() {
@@ -398,7 +398,7 @@ const (
 // nextRound pairs the next round, tosses its bot matches, and moves on
 // again if that left nothing to play. After the last round the draft
 // is finished.
-func (d *Draft) nextRound(now time.Time) {
+func (d *Draft) nextRound() {
 	for d.Phase() == PhaseRounds {
 		if d.Humans() == 0 || len(d.play.rounds) >= MatchRounds {
 			d.finish()
@@ -640,7 +640,7 @@ func (d *Draft) SetTable(round, index int, table uuid.UUID) error {
 // (NoSeat for a draw) and the games each seat won. A result for a
 // match that already has one changes nothing. When it was the round's
 // last, the next round begins.
-func (d *Draft) ReportMatch(round, index, winner, winsA, winsB int, now time.Time) error {
+func (d *Draft) ReportMatch(round, index, winner, winsA, winsB int, _ time.Time) error {
 	p := d.pairing(round, index)
 	if p == nil || p.Bye() || (winner != NoSeat && !p.has(winner)) {
 		return ErrNoSuchMatch
@@ -651,7 +651,7 @@ func (d *Draft) ReportMatch(round, index, winner, winsA, winsB int, now time.Tim
 	p.Done, p.Winner, p.WinsA, p.WinsB = true, winner, winsA, winsB
 	d.seq++
 	if round == len(d.play.rounds) && d.roundDone() {
-		d.nextRound(now)
+		d.nextRound()
 	}
 	return nil
 }
@@ -660,13 +660,13 @@ func (d *Draft) ReportMatch(round, index, winner, winsA, winsB int, now time.Tim
 // a bot now. During the build it is built for; during the rounds a
 // match it had not sat down to is tossed for if a bot is all that is
 // left of it. With nobody left the draft is finished.
-func (d *Draft) afterLeave(seat int, now time.Time) {
+func (d *Draft) afterLeave(seat int) {
 	switch d.Phase() {
 	case PhaseBuilding:
 		if !d.play.built[seat] {
 			d.autoBuild(seat)
 		}
-		d.afterBuild(now)
+		d.afterBuild()
 	case PhaseRounds:
 		if d.Humans() == 0 {
 			d.finish()
@@ -674,7 +674,7 @@ func (d *Draft) afterLeave(seat int, now time.Time) {
 		}
 		d.settleBots()
 		if d.roundDone() {
-			d.nextRound(now)
+			d.nextRound()
 		}
 	}
 }

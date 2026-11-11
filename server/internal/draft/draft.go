@@ -415,10 +415,11 @@ func (d *Draft) Leave(seatID uuid.UUID, now time.Time) error {
 		}
 	}
 	d.seq++
-	if d.state == StatePicking {
+	switch d.state {
+	case StatePicking:
 		d.advance(now)
-	} else if d.state == StateDone {
-		d.afterLeave(i, now)
+	case StateDone:
+		d.afterLeave(i)
 	}
 	return nil
 }
