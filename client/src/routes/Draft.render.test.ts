@@ -20,7 +20,7 @@ import {
 } from "../lib/draft";
 import { PACKS_ARE_APPROXIMATIONS } from "../lib/draftSets";
 import { L } from "../lib/labels";
-import { currentSession, setSession } from "../lib/session";
+import { currentSession, sessionFromOAuth, setSession } from "../lib/session";
 import { cleanup, flushSync, render } from "../lib/test/render.svelte";
 
 const ID = "6f1c2a9e-0000-4000-8000-000000000000";
@@ -420,6 +420,259 @@ describe("the create form", () => {
       text(a).includes(L.draftReturn),
     );
     expect(back?.getAttribute("href")).toBe(`#/draft/${ID}`);
+  });
+});
+
+// ---- A cube as the pack source (ADR 0222 §8, #5441) ----
+
+describe("the create form, for a cube", () => {
+  const USER = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
+  const BIG = "11111111-0000-4000-8000-000000000000";
+  const SMALL = "22222222-0000-4000-8000-000000000000";
+  const BLOCKED = "33333333-0000-4000-8000-000000000000";
+  const cubeCheck = (cards: number, over: Record<string, unknown> = {}) => ({
+    cards,
+    unknown: [],
+    not_full: [],
+    repeated: [],
+    too_large: false,
+    ready: true,
+    max_seats: Math.min(8, Math.floor(cards / 45)),
+    ...over,
+  });
+  const CUBES = {
+    cubes: [
+      {
+        id: BLOCKED,
+        name: "Blocked cube",
+        singleton: true,
+        check: cubeCheck(400, { ready: false, not_full: ["Not Built"] }),
+        updated_at: "2026-11-11T19:02:11Z",
+      },
+      {
+        id: SMALL,
+        name: "Small cube",
+        singleton: true,
+        check: cubeCheck(200),
+        updated_at: "2026-11-11T19:02:11Z",
+      },
+      {
+        id: BIG,
+        name: "Vintage cube",
+        singleton: true,
+        check: cubeCheck(540),
+        updated_at: "2026-11-11T19:02:11Z",
+      },
+    ],
+    max_cubes: 20,
+    max_cards: 1080,
+    max_name_length: 60,
+    pack_size: 15,
+    min_pack_size: 9,
+    max_pack_size: 20,
+    packs_per_seat: 3,
+  };
+  const made = {
+    status: 201,
+    body: {
+      token: "seat-token",
+      expires_at: "2099-01-01T00:00:00Z",
+      draft: view({
+        state: "lobby",
+        set: "",
+        set_name: "Vintage cube",
+        booster: "cube",
+        cube: true,
+      }),
+    },
+  };
+  const signIn = (): void =>
+    setSession({
+      ...sessionFromOAuth({ token: "tok", expiresAt: "2099-01-01T00:00:00Z", userID: USER }),
+    });
+  const pick = (el: HTMLSelectElement, value: string): void => {
+    el.value = value;
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+  };
+  const radio = (c: HTMLElement, value: string): HTMLInputElement =>
+    c.querySelector<HTMLInputElement>(`input[name="draft-source"][value="${value}"]`)!;
+
+  afterEach(() => setSession(null));
+
+  it("gives a visitor a set and no cube, whatever the link says", async () => {
+    serve({ "GET /draft/sets": { body: SETS }, "POST /draft": made });
+    const { container } = render(Draft as never, { cube: BIG } as never);
+    await settle();
+    expect(sent("GET", "/me/cubes")).toHaveLength(0);
+    expect(radio(container, "cube")).toBeNull();
+    expect(container.querySelector("#draft-cube")).toBeNull();
+    expect(container.querySelector<HTMLSelectElement>("#draft-set")!.value).toBe("blb");
+    expect(text(container.querySelector('[data-testid="cube-needs-sign-in"]'))).toBe(
+      "Signed in, you can also draft a cube: your own list of cards.",
+    );
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await settle();
+    expect(sent("POST", "/draft")[0].body).toEqual({ set: "blb", mode: "pick_one", seats: 8 });
+  });
+
+  it("offers a signed-in person a set or one of their cubes, a set first", async () => {
+    signIn();
+    serve({ "GET /draft/sets": { body: SETS }, "GET /me/cubes": { body: CUBES } });
+    const { container } = render(Draft as never, {} as never);
+    await settle();
+    expect(radio(container, "set").checked).toBe(true);
+    expect(radio(container, "cube").checked).toBe(false);
+    expect(text(radio(container, "cube").closest("label"))).toContain(L.draftSourceCube);
+    expect(container.querySelector("#draft-set")).not.toBeNull();
+    expect(container.querySelector("#draft-cube")).toBeNull();
+    expect(container.querySelector('[data-testid="packs-approximate"]')).not.toBeNull();
+
+    radio(container, "cube").checked = true;
+    radio(container, "cube").dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    expect(container.querySelector("#draft-set")).toBeNull();
+    const cube = container.querySelector<HTMLSelectElement>("#draft-cube")!;
+    // The first cube that can be drafted is chosen; one that cannot is listed, disabled.
+    expect(cube.value).toBe(SMALL);
+    const options = [...cube.options];
+    expect(options.map((o) => o.disabled)).toEqual([true, false, false]);
+    expect(text(options[0])).toBe("Blocked cube (400 cards, 1 card blocks it)");
+    expect(container.querySelector<HTMLSelectElement>("#draft-pack-size")!.value).toBe("15");
+    // A cube's packs approximate no retail product.
+    expect(container.querySelector('[data-testid="packs-approximate"]')).toBeNull();
+  });
+
+  it("posts the cube and the pack size, and opens the draft", async () => {
+    signIn();
+    serve({
+      "GET /draft/sets": { body: SETS },
+      "GET /me/cubes": { body: CUBES },
+      "POST /draft": made,
+    });
+    const { container } = render(Draft as never, { cube: BIG } as never);
+    await settle();
+    // The My cubes page's link chose the cube.
+    expect(radio(container, "cube").checked).toBe(true);
+    expect(container.querySelector<HTMLSelectElement>("#draft-cube")!.value).toBe(BIG);
+    pick(container.querySelector<HTMLSelectElement>("#draft-pack-size")!, "12");
+    pick(container.querySelector<HTMLSelectElement>("#draft-seats")!, "4");
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await settle();
+    const post = sent("POST", "/draft");
+    expect(post).toHaveLength(1);
+    expect(post[0].body).toEqual({ cube: BIG, pack_size: 12, mode: "pick_two", seats: 4 });
+    expect(location.hash).toBe(`#/draft/${ID}`);
+  });
+
+  it("says so before the server would when the cube is too small for the seats", async () => {
+    signIn();
+    serve({
+      "GET /draft/sets": { body: SETS },
+      "GET /me/cubes": { body: CUBES },
+      "POST /draft": made,
+    });
+    const { container } = render(Draft as never, { cube: SMALL } as never);
+    await settle();
+    // 8 seats x 3 packs x 15 cards is 360; the cube has 200.
+    expect(text(container.querySelector('[data-testid="cube-too-small"]'))).toBe(
+      "Small cube has 200 cards. 8 seats with packs of 15 need 360: choose fewer seats or smaller packs.",
+    );
+    expect(button(container, L.draftCreate).disabled).toBe(true);
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await settle();
+    expect(sent("POST", "/draft")).toHaveLength(0);
+
+    pick(container.querySelector<HTMLSelectElement>("#draft-seats")!, "4");
+    expect(container.querySelector('[data-testid="cube-too-small"]')).toBeNull();
+    expect(button(container, L.draftCreate).disabled).toBe(false);
+  });
+
+  it("lets a signed-in person draft a cube when no set is ready", async () => {
+    signIn();
+    serve({
+      "GET /draft/sets": { body: { sets: [SETS.sets[0]], draftable: 0 } },
+      "GET /me/cubes": { body: CUBES },
+    });
+    const { container } = render(Draft as never, {} as never);
+    await settle();
+    expect(container.querySelector("form")).not.toBeNull();
+    expect(text(container.querySelector('[data-testid="no-sets"]'))).toContain(
+      "No set can be drafted yet.",
+    );
+    expect(button(container, L.draftCreate).disabled).toBe(true);
+    radio(container, "cube").checked = true;
+    radio(container, "cube").dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    pick(container.querySelector<HTMLSelectElement>("#draft-seats")!, "4");
+    expect(button(container, L.draftCreate).disabled).toBe(false);
+  });
+
+  it("points at My cubes when the person has none", async () => {
+    signIn();
+    serve({
+      "GET /draft/sets": { body: SETS },
+      "GET /me/cubes": { body: { ...CUBES, cubes: [] } },
+    });
+    const { container } = render(Draft as never, { cube: BIG } as never);
+    await settle();
+    const none = container.querySelector('[data-testid="no-cubes"]')!;
+    expect(text(none)).toContain("You have no cubes yet.");
+    expect(none.querySelector("a")?.getAttribute("href")).toBe("#/cubes");
+    expect(button(container, L.draftCreate).disabled).toBe(true);
+  });
+
+  it("shows the server's sentence when it refuses the cube", async () => {
+    signIn();
+    serve({
+      "GET /draft/sets": { body: SETS },
+      "GET /me/cubes": { body: CUBES },
+      "POST /draft": {
+        status: 422,
+        body: {
+          error: '"Vintage cube" cannot be drafted yet. Open it in My cubes and drop or fix: X.',
+          code: "cube_not_ready",
+        },
+      },
+    });
+    const { container } = render(Draft as never, { cube: BIG } as never);
+    await settle();
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await settle();
+    expect(text(main(container).querySelector('[role="alert"]'))).toContain(
+      "cannot be drafted yet. Open it in My cubes",
+    );
+  });
+});
+
+describe("a cube draft's lobby", () => {
+  it("names the cube, and says how its packs are made in place of the retail note", async () => {
+    const c = await room(
+      view({ state: "lobby", set: "", set_name: "Vintage cube", booster: "cube", cube: true }),
+    );
+    const chips = [...c.querySelectorAll(".chips .chip")].map(text);
+    expect(chips).toContain("Vintage cube");
+    expect(chips).toContain("cube");
+    expect(c.querySelector('[data-testid="packs-approximate"]')).toBeNull();
+    expect(text(c.querySelector('[data-testid="packs-cube"]'))).toContain(
+      "The packs are cut from Vintage cube",
+    );
+  });
+
+  it("keeps the retail note for a set's draft", async () => {
+    const c = await room(view({ state: "lobby" }));
+    expect(text(c.querySelector('[data-testid="packs-approximate"]'))).toBe(
+      PACKS_ARE_APPROXIMATIONS,
+    );
+    expect(c.querySelector('[data-testid="packs-cube"]')).toBeNull();
   });
 });
 

@@ -30,6 +30,11 @@ export function draftNewHash(set?: string): string {
   return set ? `${DRAFT_NEW_HASH}?set=${encodeURIComponent(set)}` : DRAFT_NEW_HASH;
 }
 
+/** The create form's hash with one of the caller's cubes chosen already. */
+export function draftNewCubeHash(cube: string): string {
+  return `${DRAFT_NEW_HASH}?cube=${encodeURIComponent(cube)}`;
+}
+
 /** The full link a host shares. */
 export function draftInviteURL(id: string, invite: string): string {
   return `${location.origin}${location.pathname}${draftHash(id, invite)}`;
@@ -149,9 +154,13 @@ export interface DraftPlay {
 export interface DraftView {
   id: string;
   name: string;
+  /** The set's code; empty for a cube draft. */
   set: string;
+  /** The set's name, or the cube's. */
   set_name?: string;
   booster?: string;
+  /** A draft of a saved card list (ADR 0222 §8), not of a set's packs. */
+  cube?: boolean;
   mode: DraftMode;
   seats: number;
   solo?: boolean;
@@ -195,6 +204,7 @@ export interface DraftPreview {
   name: string;
   set: string;
   set_name?: string;
+  cube?: boolean;
   mode: DraftMode;
   seats: number;
   taken: number;
@@ -210,7 +220,12 @@ export interface DraftSession {
 }
 
 export interface CreateDraftInput {
-  set: string;
+  /** A draftable set's code. Exactly one of `set` and `cube`. */
+  set?: string;
+  /** One of the caller's own cubes, by id (ADR 0222 §8); needs a sign-in. */
+  cube?: string;
+  /** The cards in a cube's packs; the server's default when absent. A set takes none. */
+  pack_size?: number;
   mode: DraftMode;
   seats: number;
   name?: string;
@@ -294,7 +309,13 @@ const draftPath = (id: string, rest = ""): string => `/draft/${encodeURIComponen
 
 /** `POST /draft`. The caller keeps the token (rememberDraftSeat). */
 export async function createDraft(input: CreateDraftInput): Promise<DraftSession> {
-  const body: Record<string, unknown> = { set: input.set, mode: input.mode, seats: input.seats };
+  const body: Record<string, unknown> = { mode: input.mode, seats: input.seats };
+  if (input.cube) {
+    body.cube = input.cube;
+    if (input.pack_size !== undefined) body.pack_size = input.pack_size;
+  } else {
+    body.set = input.set ?? "";
+  }
   const name = input.name?.trim();
   if (name) body.name = name;
   if (input.pick_seconds !== undefined) body.pick_seconds = input.pick_seconds;

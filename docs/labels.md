@@ -383,6 +383,25 @@ registered, or when this file is stale.
 | `draftRecords` | `Win-loss table` | heading | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's table of every seat's wins and losses; the draft's only standings |
 | `draftBackToDraft` | `Back to the draft` | button | text | `routes/Game.svelte` | the way out of a draft match's table: the game-over corner button and the leave control go to the draft, not the lobby |
 | `myDrafts` | `My drafts` | link | text | `routes/MyDrafts.svelte`<br>`lib/components/draft/DraftCreate.svelte`<br>`lib/components/draft/DraftRounds.svelte` | a signed-in person's finished drafts at #/drafts: the page's title, and the link to it from the draft pages |
+| `myCubes` | `My cubes` | link | text | `routes/MyCubes.svelte`<br>`lib/components/draft/DraftCreate.svelte` | a signed-in person's saved cubes at #/cubes: the page's title, and the link to it from the create-draft form |
+| `cubeNew` | `Add a cube` | heading | text | `routes/MyCubes.svelte` | the My cubes page's form for a new cube: a name, a pasted list or a deck link, and the singleton box |
+| `cubeNameField` | `Cube name` | textbox | text | `routes/MyCubes.svelte` | the new-cube form's name; with a deck link it may be left empty and the deck's own name is used |
+| `cubeListField` | `Card list` | textbox | text | `routes/MyCubes.svelte` | the new-cube form's pasted list, one card a line, and the same field when a saved cube's list is edited |
+| `cubeLinkField` | `Deck link` | textbox | text | `routes/MyCubes.svelte` | the new-cube form's link to a list on a supported deck site, in place of a pasted list |
+| `cubeSingleton` | `Singleton: one copy of each card` | checkbox | text | `routes/MyCubes.svelte` | a cube's singleton setting, on by default: off, the list may repeat a card; basic lands are never limited |
+| `cubeSave` | `Save cube` | button | text | `routes/MyCubes.svelte` | the new-cube form's primary: POST /me/cubes, then the cube appears in the list with its check |
+| `cubeCheck` | `Check cube` | button | text | `routes/MyCubes.svelte` | a saved cube's check: GET /me/cubes/{id}, then the cards that block it are named under the cube |
+| `cubeDropBlockers` | `Drop the cards that are not ready` | button | text | `routes/MyCubes.svelte` | under a checked cube with cards that are unknown or not fully built: saves the list without them (PUT /me/cubes/{id}) |
+| `cubeEditList` | `Edit list` | button | text | `routes/MyCubes.svelte` | under a checked cube: opens its list in a text field to change and save |
+| `cubeSaveList` | `Save list` | button | text | `routes/MyCubes.svelte` | saves an edited cube list (PUT /me/cubes/{id}) and shows the new check |
+| `cubeDelete` | `Delete cube` | button | text | `routes/MyCubes.svelte` | a saved cube's delete; it asks once before DELETE /me/cubes/{id} |
+| `cubeDeleteConfirm` | `Delete it for good` | button | text | `routes/MyCubes.svelte` | the second step of deleting a cube |
+| `cubeDraft` | `Draft this cube` | link | text | `routes/MyCubes.svelte` | a ready cube's link to the create-draft form with that cube chosen (#/draft?cube=<id>) |
+| `draftSource` | `What to draft` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's choice between a set's packs and one of the caller's cubes; signed-in people only |
+| `draftSourceSet` | `A set` | radio | text | `lib/components/draft/DraftCreate.svelte` | the create form's source: packs of one draftable set |
+| `draftSourceCube` | `One of my cubes` | radio | text | `lib/components/draft/DraftCreate.svelte` | the create form's source: packs cut from a saved cube |
+| `draftCubeField` | `Cube to draft` | combobox | text | `lib/components/draft/DraftCreate.svelte` | the create form's cube picker: the caller's cubes, the ones that cannot be drafted disabled with the reason |
+| `draftPackSize` | `Cards in a pack` | combobox | text | `lib/components/draft/DraftCreate.svelte` | the create form's pack size for a cube draft, 9 to 20, 15 by default; a set's packs have their own size |
 | `homeDraftCard` | `Draft a set` | heading | text | `routes/Lobby.svelte` | the signed-in Home's start card for a booster draft, beside Practice game and Bring a deck; opens #/draft |
 | `draftGone` | `This draft is gone` | heading | text | `routes/Draft.svelte`<br>`lib/components/draft/DraftJoin.svelte`<br>`lib/components/draft/DraftRoom.svelte` | a draft that closed, or a seat that is no longer the viewer's: a plain message and the way to a new draft |
 | `draftNewDraft` | `Start another draft` | link | text | `routes/Draft.svelte`<br>`lib/components/draft/DraftJoin.svelte`<br>`lib/components/draft/DraftRoom.svelte` | the link to the create form from a finished or closed draft |

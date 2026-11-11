@@ -8,8 +8,25 @@
   //
   // Public: a visitor with no sign-in gets a solo draft, every other
   // seat a bot. A signed-in person gets an invite link.
+  //
+  // A signed-in person may draft one of their own cubes in place of a
+  // set (ADR 0222 §8, #5441): the form then asks which cube and how
+  // many cards a pack holds, and says so before the server would when
+  // the cube is too small for the seats. A visitor drafts a set.
   import { onMount } from "svelte";
 
+  import {
+    CUBE_LIMITS,
+    cubeCards,
+    cubeFits,
+    cubeStatus,
+    cubeTooSmallText,
+    fetchMyCubes,
+    MY_CUBES_HASH,
+    packSizeChoices,
+    type Cube,
+    type CubeLimits,
+  } from "../../cubes";
   import {
     createDraft,
     DEFAULT_SEATS,
@@ -43,8 +60,10 @@
   interface Props {
     /** ?set=<code>: the set the sets page's link chose. */
     set?: string;
+    /** ?cube=<id>: the cube the My cubes page's link chose. */
+    cube?: string;
   }
-  const { set: wanted }: Props = $props();
+  const { set: wanted, cube: wantedCube }: Props = $props();
 
   let sets = $state<DraftSet[] | null>(null);
   let loadError = $state("");
@@ -65,6 +84,25 @@
 
   const ready = $derived(readySets(sets ?? []));
   const signedIn = $derived(signedInUserID($session) !== null);
+
+  // What the packs are made from: a set's, or one of the caller's cubes.
+  // svelte-ignore state_referenced_locally
+  let source = $state<"set" | "cube">(wantedCube ? "cube" : "set");
+  let cubes = $state<Cube[] | null>(null);
+  let cubeLimits = $state<CubeLimits>(CUBE_LIMITS);
+  let cubesError = $state("");
+  // svelte-ignore state_referenced_locally
+  let cubeID = $state(wantedCube ?? "");
+  let packSize = $state(CUBE_LIMITS.pack_size);
+  // A visitor drafts a set, whatever the link said.
+  const fromCube = $derived(signedIn && source === "cube");
+  const cube = $derived((cubes ?? []).find((c) => c.id === cubeID) ?? null);
+  const cubeShort = $derived(
+    fromCube && cube?.check.ready ? cubeTooSmallText(cube, seats, packSize) : "",
+  );
+  const canSubmit = $derived(
+    fromCube ? cube !== null && cubeFits(cube, seats, packSize) : setCode !== "",
+  );
   // The set the link asked for, when it cannot be drafted (or is unknown).
   const wantedMissing = $derived(
     Boolean(wanted) && sets !== null && !ready.some((s) => s.code === wanted?.toLowerCase()),
@@ -87,8 +125,30 @@
       .finally(() => {
         loading = false;
       });
+    if (signedIn) {
+      fetchMyCubes(ctrl.signal)
+        .then((r) => {
+          cubes = r.cubes;
+          cubeLimits = r;
+          packSize = r.pack_size;
+          // The link's cube when it is theirs, else the first that can be drafted.
+          if (!r.cubes.some((c) => c.id === cubeID)) {
+            cubeID =
+              (r.cubes.find((c) => c.check.ready && c.check.max_seats > 0) ?? r.cubes[0])?.id ?? "";
+          }
+        })
+        .catch((err: unknown) => {
+          if (ctrl.signal.aborted) return;
+          cubes = [];
+          cubesError = err instanceof Error ? err.message : "couldn’t load your cubes";
+        });
+    }
     return () => ctrl.abort();
   });
+
+  function cubeLabel(c: Cube): string {
+    return `${c.name} (${cubeCards(c.check.cards)}, ${cubeStatus(c.check).toLowerCase()})`;
+  }
 
   function setLabel(s: DraftSet): string {
     const bits = [s.code.toUpperCase(), releaseYear(s.released), boosterName(s.booster)];
@@ -97,12 +157,16 @@
 
   async function submit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
-    if (busy || !setCode) return;
+    if (busy || !canSubmit) return;
     busy = true;
     error = "";
     notDraftable = false;
     try {
-      const made = await createDraft({ set: setCode, mode, seats, name, best_of: bestOf });
+      const made = await createDraft(
+        fromCube
+          ? { cube: cubeID, pack_size: packSize, mode, seats, name, best_of: bestOf }
+          : { set: setCode, mode, seats, name, best_of: bestOf },
+      );
       rememberDraftSeat(made.draft.id, made);
       navigate(draftHash(made.draft.id));
     } catch (err) {
@@ -117,7 +181,7 @@
 <Page
   eyebrow="Draft"
   title={L.draftNewTitle}
-  lede="Open packs of one set, take a card, pass the rest on. Three packs each, and the cards you take are your pool: build a 40-card deck from it and play three rounds."
+  lede="Open packs of one set, or of a cube of your own, take a card, pass the rest on. Three packs each, and the cards you take are your pool: build a 40-card deck from it and play three rounds."
   width="prose"
 >
   <div class="stack">
@@ -142,7 +206,7 @@
         <Icon name="x" size={14} />
         <span>Couldn’t load the sets ({loadError}). Reload the page to try again.</span>
       </p>
-    {:else if ready.length === 0}
+    {:else if ready.length === 0 && !signedIn}
       <div class="card">
         <p class="help strong">No set can be drafted yet.</p>
         <p class="help">
@@ -152,7 +216,7 @@
       </div>
     {:else}
       <form class="card form" onsubmit={submit}>
-        {#if wantedMissing}
+        {#if wantedMissing && !fromCube}
           <p class="notice warn" role="status">
             <Icon name="warn" size={14} />
             <span>
@@ -162,18 +226,96 @@
           </p>
         {/if}
 
-        <div class="field">
-          <label for="draft-set">{L.draftSetField}</label>
-          <select id="draft-set" bind:value={setCode} disabled={busy}>
-            {#each ready as s (s.code)}
-              <option value={s.code}>{setLabel(s)}</option>
-            {/each}
-          </select>
-          <p class="hint">
-            Only sets that are ready to draft are listed.
-            <a href={DRAFT_SETS_HASH}>{L.draftSeeSets}</a>.
-          </p>
-        </div>
+        {#if signedIn}
+          <fieldset class="field modes" disabled={busy}>
+            <legend>{L.draftSource}</legend>
+            <label class="mode" class:on={source === "set"}>
+              <input type="radio" name="draft-source" value="set" bind:group={source} />
+              <span class="mode-text">
+                <span class="mode-name">{L.draftSourceSet}</span>
+                <span class="mode-what">Packs of one set, with its rarities.</span>
+              </span>
+            </label>
+            <label class="mode" class:on={source === "cube"}>
+              <input type="radio" name="draft-source" value="cube" bind:group={source} />
+              <span class="mode-text">
+                <span class="mode-name">{L.draftSourceCube}</span>
+                <span class="mode-what"
+                  >Your own list of cards, shuffled and dealt into packs of one size.</span
+                >
+              </span>
+            </label>
+          </fieldset>
+        {/if}
+
+        {#if fromCube}
+          {#if cubes === null}
+            <p class="help" aria-live="polite">Loading your cubes…</p>
+          {:else if cubes.length === 0}
+            <div class="field" data-testid="no-cubes">
+              <p class="help strong">
+                {cubesError
+                  ? `Couldn’t load your cubes (${cubesError}).`
+                  : "You have no cubes yet."}
+              </p>
+              <p class="help">
+                A cube is a list of cards you save. <a href={MY_CUBES_HASH}>{L.myCubes}</a> is where you
+                add one.
+              </p>
+            </div>
+          {:else}
+            <div class="field">
+              <label for="draft-cube">{L.draftCubeField}</label>
+              <select id="draft-cube" bind:value={cubeID} disabled={busy}>
+                {#each cubes as c (c.id)}
+                  <option value={c.id} disabled={!c.check.ready}>{cubeLabel(c)}</option>
+                {/each}
+              </select>
+              <p class="hint">
+                A cube with a card that is not ready can’t be drafted.
+                <a href={MY_CUBES_HASH}>{L.myCubes}</a> names the cards and lets you drop them.
+              </p>
+            </div>
+            <div class="field">
+              <label for="draft-pack-size">{L.draftPackSize}</label>
+              <select id="draft-pack-size" bind:value={packSize} disabled={busy}>
+                {#each packSizeChoices(cubeLimits) as n (n)}
+                  <option value={n}>{n}</option>
+                {/each}
+              </select>
+              <p class="hint">
+                Three packs a seat, cut from the shuffled cube. No card is dealt twice, and there
+                are no rarity slots.
+              </p>
+            </div>
+          {/if}
+        {:else if ready.length === 0}
+          <div class="field" data-testid="no-sets">
+            <p class="help strong">No set can be drafted yet.</p>
+            <p class="help">
+              A set opens for drafting once every card its packs can contain is fully built.
+              <a href={DRAFT_SETS_HASH}>{L.draftSeeSets}</a>.
+            </p>
+          </div>
+        {:else}
+          <div class="field">
+            <label for="draft-set">{L.draftSetField}</label>
+            <select id="draft-set" bind:value={setCode} disabled={busy}>
+              {#each ready as s (s.code)}
+                <option value={s.code}>{setLabel(s)}</option>
+              {/each}
+            </select>
+            <p class="hint">
+              Only sets that are ready to draft are listed.
+              <a href={DRAFT_SETS_HASH}>{L.draftSeeSets}</a>.
+              {#if !signedIn}
+                <span data-testid="cube-needs-sign-in"
+                  >Signed in, you can also draft a cube: your own list of cards.</span
+                >
+              {/if}
+            </p>
+          </div>
+        {/if}
 
         <div class="field">
           <label for="draft-seats">{L.draftSeatsField}</label>
@@ -191,6 +333,12 @@
               the <a href="#/">front page</a> to invite people.
             {/if}
           </p>
+          {#if cubeShort}
+            <p class="notice warn" role="status" data-testid="cube-too-small">
+              <Icon name="warn" size={14} />
+              <span>{cubeShort}</span>
+            </p>
+          {/if}
         </div>
 
         <fieldset class="field modes" disabled={busy}>
@@ -284,14 +432,23 @@
         {/if}
 
         <div class="frow">
-          <button type="submit" class="btn primary" disabled={busy || !setCode}>
+          <button type="submit" class="btn primary" disabled={busy || !canSubmit}>
             {busy ? "Creating…" : L.draftCreate}
           </button>
         </div>
       </form>
     {/if}
 
-    <p class="approx" data-testid="packs-approximate">{PACKS_ARE_APPROXIMATIONS}</p>
+    {#if signedIn}
+      <p class="held">
+        <span>Keep a list of cards of your own to draft.</span>
+        <a class="link-arrow" href={MY_CUBES_HASH}>{L.myCubes}</a>
+      </p>
+    {/if}
+
+    {#if !fromCube}
+      <p class="approx" data-testid="packs-approximate">{PACKS_ARE_APPROXIMATIONS}</p>
+    {/if}
   </div>
 </Page>
 

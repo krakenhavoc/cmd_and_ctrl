@@ -103,7 +103,7 @@
       {#if preview}
         <dl class="card facts" data-testid="draft-preview">
           <div>
-            <dt>Set</dt>
+            <dt>{preview.cube ? "Cube" : "Set"}</dt>
             <dd>{preview.set_name ?? preview.set.toUpperCase()}</dd>
           </div>
           <div>

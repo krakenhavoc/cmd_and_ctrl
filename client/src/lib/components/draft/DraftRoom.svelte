@@ -349,6 +349,7 @@
     <div class="chips">
       <span class="chip">{view.set_name ?? view.set.toUpperCase()}</span>
       {#if boosterName(view.booster)}<span class="chip">{boosterName(view.booster)}</span>{/if}
+      {#if view.cube}<span class="chip">cube</span>{/if}
       <span class="chip">{pickModeName(view.mode)}</span>
       <span class="chip">{view.seats} seats</span>
       {#if view.state === "done"}<span class="chip">{matchLengthName(view.best_of)}</span>{/if}
@@ -512,7 +513,15 @@
             {:else}
               <p class="help">{hostName} starts the draft. This page moves on by itself.</p>
             {/if}
-            <p class="approx" data-testid="packs-approximate">{PACKS_ARE_APPROXIMATIONS}</p>
+            {#if view.cube}
+              <p class="approx" data-testid="packs-cube">
+                The packs are cut from {view.set_name ?? "the host’s cube"}, a list of cards the
+                host saved: it is shuffled and dealt, with no rarity slots, and no card is dealt
+                twice.
+              </p>
+            {:else}
+              <p class="approx" data-testid="packs-approximate">{PACKS_ARE_APPROXIMATIONS}</p>
+            {/if}
           </section>
         </div>
       {:else if view.state === "picking"}
