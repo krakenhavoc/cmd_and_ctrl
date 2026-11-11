@@ -62,6 +62,10 @@ type PermanentQuery struct {
 	// HasPowerAtLeast is the other direction: "power 3 or greater".
 	HasPowerAtLeast bool `json:",omitempty"`
 	PowerAtLeast    int  `json:",omitempty"`
+	// Names asks for a permanent with one of these names ("creatures named
+	// Lightning Rager", Rite of the Raging Storm), compared case-folded
+	// against its effective name (CR 201.2).
+	Names []string `json:",omitempty"`
 }
 
 // WithPowerAtMost is q that also asks for power n or less.
@@ -85,6 +89,7 @@ func (q PermanentQuery) Equal(o PermanentQuery) bool {
 		slices.Equal(q.Subtypes, o.Subtypes) &&
 		slices.Equal(q.Supertypes, o.Supertypes) &&
 		slices.Equal(q.Colors, o.Colors) &&
+		slices.Equal(q.Names, o.Names) &&
 		q.Keyword == o.Keyword &&
 		q.Enchanted == o.Enchanted &&
 		q.HasPowerAtMost == o.HasPowerAtMost && q.PowerAtMost == o.PowerAtMost &&
@@ -120,6 +125,9 @@ func (q PermanentQuery) matchesLocked(g *Game, c *Card) bool {
 		return false
 	}
 	if q.Keyword != "" && !HasKeyword(c, q.Keyword) {
+		return false
+	}
+	if len(q.Names) > 0 && !slices.ContainsFunc(q.Names, func(n string) bool { return strings.EqualFold(n, c.Effective().Name) }) {
 		return false
 	}
 	if q.Enchanted && !g.isEnchantedLocked(c.InstanceID) {
@@ -241,6 +249,9 @@ func (q PermanentQuery) Noun() string {
 		words = append(words, "permanent")
 	}
 	s := strings.Join(words, " ")
+	if len(q.Names) > 0 {
+		s += " named " + strings.Join(q.Names, " or ")
+	}
 	var with []string
 	if q.Keyword != "" {
 		with = append(with, q.Keyword)

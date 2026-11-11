@@ -1742,6 +1742,7 @@ run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/cmdr2-s34-each-player-may-put-counters
 run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
@@ -2094,6 +2095,8 @@ tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
 tail cmdr-b9/gain-haste-until-eot
 tail cmdr-b9/then-proliferate
+tail cmdr2-s34/goad-then-next-player-bird
+tail cmdr2-s34/goad-tokens-for-rest-of-game
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
@@ -2357,6 +2360,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
 tail incubate/next-round

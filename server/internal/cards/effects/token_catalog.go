@@ -352,6 +352,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
 
+	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
+	// Nettling Nuisance's Pirate that can't block.
+	printedCmdr2S34LightningRagerToken,
+	printedCmdr2S34PirateToken,
+
 	// Thousand Moons Smithy's Gnome Soldier: a */* artifact creature whose
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,

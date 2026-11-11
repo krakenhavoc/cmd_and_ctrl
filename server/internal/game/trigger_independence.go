@@ -1430,7 +1430,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true, ModCantAttackPlayer: true, ModCantAttackOwner: true, ModWaiveDefender: true, ModDamageByToughness: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
-	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
+	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
 	ModLoseAllCreatureTypes: true, ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true, ModCantBeBlockedByPowerAtLeast: true,
 	ModCantBeBlockedByMoreThan: true,

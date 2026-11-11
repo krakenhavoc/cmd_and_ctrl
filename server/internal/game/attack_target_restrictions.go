@@ -163,6 +163,12 @@ type AttackTargetRestriction struct {
 	// you" (Storm, Windrider, #4601) says "you", not "or planeswalkers you
 	// control", so a flier may still attack one.
 	NotPlayerOnly bool `json:",omitempty"`
+	// NotPlayerBattles widens NotPlayer to every permanent the player
+	// controls that can be attacked: "can't attack you or a permanent you
+	// control" (Immortal Obligation) also closes a battle that player
+	// CONTROLS, whoever protects it (CR 310.9b). Meaningless with
+	// NotPlayerOnly.
+	NotPlayerBattles bool `json:",omitempty"`
 	// OnlyAttackersMatching, when set, makes the whole restriction bind
 	// only an attacker that matches ANY of these queries, judged on its
 	// effective characteristics at the moment of declaration (CR 508.1c):
@@ -196,7 +202,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
 		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
 		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn && r.NotPlayer == o.NotPlayer &&
-		r.NotPlayerOnly == o.NotPlayerOnly &&
+		r.NotPlayerOnly == o.NotPlayerOnly && r.NotPlayerBattles == o.NotPlayerBattles &&
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn
@@ -415,6 +421,12 @@ func (r AttackTargetRestriction) notPlayerRefuses(g *Game, target uuid.UUID) boo
 		}
 		pw := findBattlefieldCard(g, target)
 		return pw != nil && pw.Controller == r.NotPlayer
+	case AttackTargetBattle:
+		if !r.NotPlayerBattles {
+			return false
+		}
+		b := findBattlefieldCard(g, target)
+		return b != nil && b.Controller == r.NotPlayer
 	}
 	return false
 }
