@@ -244,6 +244,21 @@ func (c *draftConn) next() draft.View {
 	}
 }
 
+// drain reads and discards every frame from here on, until the socket
+// closes. A test that only needs a seat to stay connected calls it: a
+// socket nobody reads from can hit the TCP buffers, and the hub drops a
+// client whose send buffer fills (#5696). It must be the only reader:
+// do not call next or until after it.
+func (c *draftConn) drain() {
+	go func() {
+		for {
+			if _, _, err := c.conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+}
+
 // until reads views until one satisfies ok. Views only move forward,
 // so this is a wait on a monotone condition.
 func (c *draftConn) until(what string, ok func(draft.View) bool) draft.View {
