@@ -34,7 +34,7 @@ func init() {
 					return false
 				}
 				dealer, ok := g.LookupCardForEffect(ev.Source)
-				return ok && game.ThroughTextOf(source, dealer).HasSubtype("Dog")
+				return ok && dealer.HasSubtype(source.TextSubtype("Dog"))
 			}, "Sophia, Dogged Detective — create a Food token, then investigate",
 				Do(CreateToken{Template: FoodToken(), N: 1}, Investigate{N: 1})),
 		},
