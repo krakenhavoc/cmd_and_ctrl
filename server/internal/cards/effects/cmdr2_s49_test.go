@@ -123,16 +123,23 @@ func s49Hands(g *game.Game) []int {
 	return out
 }
 
-func TestS49SelvalaParleyIsAManaAbility(t *testing.T) {
+func TestS49SelvalaParleyUsesTheStack(t *testing.T) {
 	g := newCatalogGame(t)
+	advanceToMain(t, g)
 	s49Library(g, 4)
 	s49TopCards(g, 0, 2)
 	me := g.Seats[0]
 	selvala := pushCatalogPermanent(g, me.ID, "Selvala, Explorer Returned", "Legendary Creature — Elf Scout", s49Selvala, false)
 	hands, life := s49Hands(g), me.Life
-	if err := g.ActivateManaAbility(me.ID, selvala, 0, game.ManaAbilityParams{}); err != nil {
-		t.Fatalf("ActivateManaAbility: %v", err)
+	if err := g.ActivateCatalogAbility(me.ID, selvala, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
 	}
+	// Not a mana ability (CR 605.1a: its effect draws from a library): it
+	// waits on the stack with nothing in the pool yet.
+	if got := batch01PoolColors(me); len(got) != 0 || stackFullyEmpty(g) {
+		t.Fatalf("pool %v, stack empty %v: the ability must use the stack", got, stackFullyEmpty(g))
+	}
+	passPriorityAroundTable(t, g)
 	if got := batch01PoolColors(me); len(got) != 2 || got[0] != "G" || got[1] != "G" {
 		t.Errorf("pool = %v, want two {G} (two nonland cards revealed)", got)
 	}
@@ -144,21 +151,20 @@ func TestS49SelvalaParleyIsAManaAbility(t *testing.T) {
 			t.Errorf("seat %d hand %d, want %d (each player draws)", i, h, hands[i]+1)
 		}
 	}
-	if !stackFullyEmpty(g) {
-		t.Error("a mana ability must not use the stack")
-	}
 }
 
 func TestS49SelvalaWithOnlyLandsAddsNothing(t *testing.T) {
 	g := newCatalogGame(t)
+	advanceToMain(t, g)
 	s49Library(g, 4)
 	s49TopCards(g)
 	me := g.Seats[0]
 	selvala := pushCatalogPermanent(g, me.ID, "Selvala, Explorer Returned", "Legendary Creature — Elf Scout", s49Selvala, false)
 	life := me.Life
-	if err := g.ActivateManaAbility(me.ID, selvala, 0, game.ManaAbilityParams{}); err != nil {
-		t.Fatalf("ActivateManaAbility: %v", err)
+	if err := g.ActivateCatalogAbility(me.ID, selvala, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
 	}
+	passPriorityAroundTable(t, g)
 	if got := batch01PoolColors(me); len(got) != 0 || me.Life != life {
 		t.Errorf("pool %v life %d→%d, want nothing", got, life, me.Life)
 	}
