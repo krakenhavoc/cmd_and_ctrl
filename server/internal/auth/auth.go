@@ -52,6 +52,17 @@ const (
 	RoleAdmin      Role = "admin"
 	RoleSpectator  Role = "spectator"
 	RoleIdentified Role = "identified"
+	// RoleDrafter is a seat in a booster draft (ADR 0222 §5, #5438): a
+	// DraftID and the seat as PlayerID, no GameID. It is good for that
+	// draft's routes and its socket and for nothing else. Middleware
+	// refuses it on every route that does not name it, and the game
+	// socket's authorizer refuses it as an unrecognised role, so the
+	// token can be handed to page script (the client keeps it in
+	// localStorage, not in the session cookie) without that script
+	// gaining anything a draft seat does not have. It may carry the
+	// UserID of the sign-in it was minted from, which is what makes it
+	// revocable with that sign-in.
+	RoleDrafter Role = "drafter"
 )
 
 // Principal is the canonical authenticated identity. It is the only
@@ -89,7 +100,10 @@ type Principal struct {
 	AdminID  uuid.UUID `json:"admin_id,omitempty"`
 	GameID   uuid.UUID `json:"game_id,omitempty"`
 	PlayerID uuid.UUID `json:"player_id,omitempty"`
-	Name     string    `json:"name,omitempty"`
+	// DraftID is the draft a RoleDrafter session is a seat of; the seat
+	// is PlayerID. Zero for every other role.
+	DraftID uuid.UUID `json:"draft_id,omitempty"`
+	Name    string    `json:"name,omitempty"`
 	// SpectatorID names ONE spectator session, minted at POST
 	// /games/{id}/spectate (#3113). It is what lets a table report,
 	// remove or block a spectator, who holds no seat and so has no

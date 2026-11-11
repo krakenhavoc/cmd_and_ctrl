@@ -37,6 +37,12 @@ func NewSetSource(idx *cards.Index, set string, isFull draftpacks.IsFull) (*SetS
 	return &SetSource{pool: pool, idx: idx}, nil
 }
 
+// NewPoolSource is the pack source of a pool the caller has already
+// found draftable (draftpacks.Lister.DraftablePool).
+func NewPoolSource(idx *cards.Index, pool draftpacks.Pool) *SetSource {
+	return &SetSource{pool: pool, idx: idx}
+}
+
 // Booster is the kind of booster the set's packs approximate.
 func (s *SetSource) Booster() string { return string(s.pool.Recipe.Kind) }
 

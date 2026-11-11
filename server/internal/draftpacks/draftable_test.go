@@ -449,3 +449,75 @@ func TestListerRecomputesOnlyWhenTheIndexChanges(t *testing.T) {
 		t.Fatalf("after the index grew: %d sets, want 2", len(got.Sets))
 	}
 }
+
+// The Lister hands a draft the pool of a draftable set only, with the
+// verdict GET /draft/sets shows, and knows which printings those pools
+// hold (#5438).
+func TestListerHandsOutDraftablePoolsOnly(t *testing.T) {
+	idx := cards.NewIndex()
+	synthSet(idx, "aaa", 20, 20, 10, 5, true)
+	synthSet(idx, "bbb", 20, 20, 10, 5, false)
+	l := NewListerWith(idx, allFullExcept("bbb Common 03"))
+
+	pool, status, ok := l.DraftablePool(" AAA ")
+	if !ok || !status.Draftable || status.Code != "aaa" || pool.Set != "aaa" || !pool.CanFill() {
+		t.Fatalf("a draftable set: ok %v, status %+v", ok, status)
+	}
+	if _, _, ok := l.DraftablePool("bbb"); ok {
+		t.Fatal("a set with a card that is not Full was handed out")
+	}
+	if _, _, ok := l.DraftablePool("zzz"); ok {
+		t.Fatal("an unknown set was handed out")
+	}
+	var nilLister *Lister
+	if _, _, ok := nilLister.DraftablePool("aaa"); ok || nilLister.IsDraftPrinting(uuid.New()) {
+		t.Fatal("a nil lister hands something out")
+	}
+
+	// Every card of the draftable pool is a draft printing, basic lands
+	// included; no card of the blocked set is.
+	for _, c := range pool.Contents() {
+		if !l.IsDraftPrinting(c.ID) {
+			t.Fatalf("%s is in a draftable pool but is not a draft printing", c.Name)
+		}
+	}
+	for _, c := range PoolFor(idx, "bbb").Contents() {
+		if l.IsDraftPrinting(c.ID) {
+			t.Fatalf("%s is a draft printing, but its set cannot be drafted", c.Name)
+		}
+	}
+	if l.IsDraftPrinting(uuid.New()) {
+		t.Fatal("an unknown id is a draft printing")
+	}
+}
+
+// GET /draft/image/{id} is public, so it is scoped: a printing outside
+// every draftable pool is a 404 whether or not the dump holds it, and
+// the scope is checked before the image cache is.
+func TestDraftImageRouteServesOnlyDraftPrintings(t *testing.T) {
+	idx := cards.NewIndex()
+	synthSet(idx, "aaa", 20, 20, 10, 5, true)
+	synthSet(idx, "bbb", 20, 20, 10, 5, false)
+	l := NewListerWith(idx, allFullExcept("bbb Common 03"))
+	h := ImageHandler(l, idx, nil)
+	get := func(path string) int {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		return rec.Code
+	}
+	in := PoolFor(idx, "aaa").Contents()[0].ID
+	out := PoolFor(idx, "bbb").Contents()[0].ID
+	if got := get("/draft/image/" + out.String()); got != http.StatusNotFound {
+		t.Errorf("a card of a set that cannot be drafted: %d, want 404", got)
+	}
+	if got := get("/draft/image/" + uuid.NewString()); got != http.StatusNotFound {
+		t.Errorf("an unknown card: %d, want 404", got)
+	}
+	if got := get("/draft/image/not-an-id"); got != http.StatusBadRequest {
+		t.Errorf("a malformed id: %d, want 400", got)
+	}
+	// In scope, with no image cache on this deployment: 503, not 404.
+	if got := get("/draft/image/" + in.String()); got != http.StatusServiceUnavailable {
+		t.Errorf("a draft printing with no cache: %d, want 503", got)
+	}
+}

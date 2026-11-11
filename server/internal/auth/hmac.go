@@ -102,6 +102,7 @@ type hmacClaims struct {
 	Name     string `json:"n,omitempty"`
 
 	SpectatorID string `json:"sp,omitempty"`
+	DraftID     string `json:"dr,omitempty"`
 
 	DiscordID         string `json:"di,omitempty"`
 	DiscordUsername   string `json:"du,omitempty"`
@@ -134,6 +135,7 @@ func claimsFor(p Principal) hmacClaims {
 		GameID:            uuidClaim(p.GameID),
 		PlayerID:          uuidClaim(p.PlayerID),
 		SpectatorID:       uuidClaim(p.SpectatorID),
+		DraftID:           uuidClaim(p.DraftID),
 		Name:              p.Name,
 		DiscordID:         p.DiscordID,
 		DiscordUsername:   p.DiscordUsername,
@@ -169,6 +171,9 @@ func (c hmacClaims) principal() (Principal, error) {
 		return Principal{}, err
 	}
 	if p.SpectatorID, err = parseUUIDClaim(c.SpectatorID); err != nil {
+		return Principal{}, err
+	}
+	if p.DraftID, err = parseUUIDClaim(c.DraftID); err != nil {
 		return Principal{}, err
 	}
 	return p, nil

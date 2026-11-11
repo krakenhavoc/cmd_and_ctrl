@@ -2015,6 +2015,115 @@ state; no partial merge is needed.
 
 ---
 
+## The draft socket (`/draft/{id}/ws`)
+
+A booster draft ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §5, #5438) has its own socket. It is
+not a game socket: it carries no `snapshot`, `action` or `chat`, and a game
+session cannot open it. The HTTP side is in
+[lobby.md](lobby.md#drafts-post-draft-get-draftid-post-draftidjoin-start-leave).
+
+Open `GET /draft/<draft id>/ws?token=<seat token>`. The token is the
+one `POST /draft` or `POST /draft/{id}/join` returned. 401 without a
+valid token, 403 for a token of another draft or a session that is not a
+draft seat, 404 once the draft is gone. Frames use the
+[envelope](#frame-envelope) above, with `v: 0`. `ping` and `pong` work as on
+`/ws`.
+
+A seat may hold several sockets (two tabs); each gets every frame. A seat
+with no socket is **away**: its picks are made for it (below), and it comes
+back to its seat and its picks by opening the socket again.
+
+### `draft` (server → client)
+
+The whole draft **as this seat may see it**. Sent first on connect and
+again after every change. Treat each one as the new state; `seq` only
+rises.
+
+```json
+{
+  "v": 0, "kind": "draft", "id": "…",
+  "payload": {
+    "id": "…", "name": "Friday draft",
+    "set": "blb", "set_name": "Bloomburrow", "booster": "play",
+    "mode": "pick_one", "seats": 8, "solo": false,
+    "state": "picking", "seq": 12,
+    "round": 1, "rounds": 3, "pick": 3, "picks_in_round": 14,
+    "take": 1, "passing": "left",
+    "pick_seconds": 60, "deadline": "2026-11-11T19:00:45Z", "now": "2026-11-11T19:00:02Z",
+    "you": 0,
+    "players": [
+      { "seat": 0, "name": "Ian", "host": true, "connected": true, "picking": true, "picked": 2 },
+      { "seat": 1, "name": "Bot 1", "bot": true, "connected": true, "picking": false, "picked": 3 }
+    ],
+    "pack": [ { "id": "c41", "scryfall_id": "…", "oracle_id": "…", "name": "Shoreline Looter",
+                "set": "blb", "collector_number": "70", "rarity": "uncommon",
+                "colors": ["U"], "mana_cost": "{1}{U}", "mana_value": 2,
+                "type_line": "Creature — Rat Rogue" } ],
+    "picks": [ ]
+  }
+}
+```
+
+- `state` is `lobby` (seats are being taken), `picking`, or `done`.
+- `mode` is `pick_one` or `pick_two`. `take` is how many cards the seat
+  must take from the pack it holds now: 1, or 2 in pick two (1 when one
+  card is left). 0 when the seat holds no pack.
+- `round` is 1 to `rounds` (0 in the lobby), `pick` the pick number within
+  the round, from 1, and `picks_in_round` how many picks the round has.
+- `passing` is the direction packs pass this round: `left` in rounds one
+  and three, `right` in round two (CR 905.1b). The player to a seat's left
+  is the next higher `seat`, wrapping round.
+- `deadline` is when the pick timer runs out, `now` the server's clock when
+  the frame was built (count down from the difference, not from the
+  viewer's own clock). Both absent outside `picking`.
+- `you` is the viewer's seat. `players` has one entry per taken seat in
+  the lobby and one per seat after the start. `picking` is true while that
+  seat has not yet picked from the pack it holds; `picked` is how many
+  cards it has drafted (a count, never the cards). `bot`, `host` are absent
+  when false.
+- `pack` is the pack the viewer holds, absent once they have picked from
+  it and are waiting for the others. `picks` is the viewer's own picks in
+  the order taken.
+- `pool` appears when `state` is `done`: the viewer's whole card pool
+  (CR 905.1d). Deckbuilding is slice 6 (#5440); until then `done` is where
+  a draft stops.
+- `invite` appears for the host while `state` is `lobby` and the draft is
+  not `solo`: the code for `#/draft/<id>?invite=<code>`.
+- A card's `id` names one card of this draft (two copies of a card have
+  two ids). `scryfall_id` is the printing the image routes take.
+  `mana_value` is computed from `mana_cost`; `basic` marks a basic land.
+
+**Hidden information (CR 905.1c).** No frame ever carries another seat's
+pack or picks. The view is built per seat on the server; there is nothing
+to filter on the client.
+
+### `draft_pick` (client → server)
+
+```json
+{ "v": 0, "kind": "draft_pick", "id": "…", "payload": { "cards": ["c41"] } }
+```
+
+`cards` holds exactly `take` different card ids from the viewer's `pack`.
+On success the seat's next `draft` frame shows the pick in `picks` and no
+`pack`; when the last seat has picked, every pack passes and every seat
+gets a new `draft` frame. A refusal is an `error` frame echoing the `id`,
+with code `draft_pick_refused` (not picking, already picked, a card not in
+the pack, the wrong number of cards) or `bad_request`.
+
+### The pick timer and away seats
+
+Each pick has `pick_seconds`. When it runs out, every seat that has not
+picked takes the placeholder bot's pick for the pack it holds: a random
+card. A seat with no socket is not waited on for the whole timer: it is
+picked for 10 seconds into the pick. A bot seat picks at once.
+
+### Closing
+
+When a draft closes (idle, or its last person left the lobby) its sockets
+are closed with code 1000 and reason `draft closed`. Do not redial.
+
+---
+
 ## Connection lifecycle (v0)
 
 1. Client opens WebSocket to `/ws`, authenticated as described under
