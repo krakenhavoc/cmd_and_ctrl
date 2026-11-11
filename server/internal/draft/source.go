@@ -76,6 +76,13 @@ func (s *SetSource) card(c draftpacks.Card) Card {
 	if !ok {
 		return out
 	}
+	fillPrinted(&out, full)
+	return out
+}
+
+// fillPrinted fills a draft card's colours, mana cost, mana value and
+// type line from its printing.
+func fillPrinted(out *Card, full cards.Card) {
 	out.TypeLine = full.TypeLine
 	out.ManaCost = full.ManaCost
 	if len(full.Colors) > 0 {
@@ -96,7 +103,88 @@ func (s *SetSource) card(c draftpacks.Card) Card {
 		}
 	}
 	out.ManaValue = ManaValue(out.ManaCost)
-	return out
+}
+
+// A cube's packs (ADR 0222 §8, #5441).
+const (
+	// DefaultCubePackSize is the pack a cube draft deals unless its
+	// host chooses another; MinCubePackSize and MaxCubePackSize bound
+	// the choice. Nine is the fewest that leaves a seat a deck's worth
+	// of cards after three packs (27 picks, 23 played).
+	DefaultCubePackSize = 15
+	MinCubePackSize     = 9
+	MaxCubePackSize     = 20
+)
+
+// ErrCubeTooSmall is a cube asked for more packs than its list fills.
+var ErrCubeTooSmall = errors.New("draft: the cube has too few cards for this draft")
+
+// CubeSource is a Source that deals a saved card list (ADR 0222 §8):
+// the list is shuffled once, from the draft's seed, and cut into packs
+// of one size. There are no rarity slots, and no card is dealt twice:
+// a draft's packs are a partition of the front of the shuffle. Cards
+// the draft does not need stay undealt.
+//
+// It implements Dealer, which is how Start draws a whole draft from it.
+type CubeSource struct {
+	list []Card
+	size int
+}
+
+// NewCubeSource is the pack source of a card list, dealing packs of
+// size cards. The caller has checked the list (cubes.Check): a draft
+// never hands someone a card that does not work.
+func NewCubeSource(list []cards.Card, size int) (*CubeSource, error) {
+	if size < MinCubePackSize || size > MaxCubePackSize {
+		return nil, fmt.Errorf("%w: a pack of %d cards (want %d to %d)", ErrBadConfig, size, MinCubePackSize, MaxCubePackSize)
+	}
+	out := make([]Card, 0, len(list))
+	for _, c := range list {
+		card := Card{
+			ScryfallID:  c.ID,
+			OracleID:    c.OracleID,
+			Name:        c.Name,
+			Set:         c.SetCode,
+			CollectorNo: c.CollectorNo,
+			Rarity:      c.Rarity,
+			Colors:      []string{},
+			Basic:       strings.HasPrefix(c.TypeLine, "Basic ") && strings.Contains(c.TypeLine, "Land"),
+		}
+		fillPrinted(&card, c)
+		out = append(out, card)
+	}
+	return &CubeSource{list: out, size: size}, nil
+}
+
+// Size is the cards in one pack; Cards is the cards in the list.
+func (s *CubeSource) Size() int  { return s.size }
+func (s *CubeSource) Cards() int { return len(s.list) }
+
+// Deal shuffles the list and cuts the first n packs from it.
+func (s *CubeSource) Deal(rng *rand.Rand, n int) ([][]Card, error) {
+	if n <= 0 || n*s.size > len(s.list) {
+		return nil, fmt.Errorf("%w: %d packs of %d need %d cards and it has %d", ErrCubeTooSmall, n, s.size, n*s.size, len(s.list))
+	}
+	order := rng.Perm(len(s.list))
+	packs := make([][]Card, n)
+	for p := range packs {
+		pack := make([]Card, s.size)
+		for i := range pack {
+			pack[i] = s.list[order[p*s.size+i]]
+		}
+		packs[p] = pack
+	}
+	return packs, nil
+}
+
+// Pack deals one pack from a fresh shuffle. A draft does not call it:
+// it takes all its packs from one shuffle (Deal).
+func (s *CubeSource) Pack(rng *rand.Rand) ([]Card, error) {
+	packs, err := s.Deal(rng, 1)
+	if err != nil {
+		return nil, err
+	}
+	return packs[0], nil
 }
 
 // ManaValue is the mana value of a printed mana cost ("{2}{W}{W}" is

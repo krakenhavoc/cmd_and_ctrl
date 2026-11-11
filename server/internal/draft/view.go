@@ -28,11 +28,14 @@ type View struct {
 	Set     string    `json:"set"`
 	SetName string    `json:"set_name"`
 	Booster string    `json:"booster,omitempty"`
-	Mode    Mode      `json:"mode"`
-	Seats   int       `json:"seats"`
-	Solo    bool      `json:"solo"`
-	State   State     `json:"state"`
-	Seq     uint64    `json:"seq"`
+	// Cube is true for a draft of a saved card list (ADR 0222 §8): Set
+	// is then empty and SetName is the cube's name.
+	Cube  bool   `json:"cube,omitempty"`
+	Mode  Mode   `json:"mode"`
+	Seats int    `json:"seats"`
+	Solo  bool   `json:"solo"`
+	State State  `json:"state"`
+	Seq   uint64 `json:"seq"`
 
 	Round        int `json:"round"`
 	Rounds       int `json:"rounds"`
@@ -172,6 +175,7 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		Set:          d.cfg.Set,
 		SetName:      d.cfg.SetName,
 		Booster:      d.cfg.Booster,
+		Cube:         d.cfg.Cube,
 		Mode:         d.cfg.Mode,
 		Seats:        d.cfg.Seats,
 		Solo:         d.cfg.Solo,
@@ -222,6 +226,7 @@ type Preview struct {
 	Name    string    `json:"name"`
 	Set     string    `json:"set"`
 	SetName string    `json:"set_name"`
+	Cube    bool      `json:"cube,omitempty"`
 	Mode    Mode      `json:"mode"`
 	Seats   int       `json:"seats"`
 	Taken   int       `json:"taken"`
@@ -233,7 +238,7 @@ type Preview struct {
 func (d *Draft) Preview() Preview {
 	p := Preview{
 		ID: d.ID, Name: d.cfg.Name, Set: d.cfg.Set, SetName: d.cfg.SetName,
-		Mode: d.cfg.Mode, Seats: d.cfg.Seats, State: d.state,
+		Cube: d.cfg.Cube, Mode: d.cfg.Mode, Seats: d.cfg.Seats, State: d.state,
 	}
 	for _, s := range d.seats {
 		if !s.Bot {
