@@ -88,6 +88,9 @@ function whereItStays(declineLabel: string | undefined): string {
     case "Keep it in your hand":
     case "Cast no more":
       return "it stays in your hand";
+    // #5457: a card in another player's hand (Silent-Blade Oni).
+    case "Leave it in their hand":
+      return "it stays in their hand";
     default:
       return "it stays in exile";
   }
