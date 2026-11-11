@@ -182,3 +182,14 @@ func cmdr2S33YouCastYourFirstOutlawSpellEachTurn(ev game.Event, source *game.Car
 	}
 	return true
 }
+
+// cmdr2S33ReturnTargetedCardsTogether is "return the targets to the
+// battlefield": every target still legal as the spell resolves comes back
+// together under its controller's control (CR 608.2b, CR 603.6a). Back in
+// Town's whole resolution.
+func cmdr2S33ReturnTargetedCardsTogether(_ *game.StackItem, ctx *Context) error {
+	return ReturnFromGraveyardTogether{
+		Targets:    legalTargetCardIDs(ctx),
+		Controller: ctx.Controller(),
+	}.Apply(ctx)
+}

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Back in Town — Sorcery {X}{2}{B} (Outlaws of Thunder Junction Commander,
 // #5368):
 //
@@ -22,11 +20,6 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: targetsCountedByX(TargetCardInGraveyard("X target outlaw creature cards from your graveyard",
 			YouOwn(), Creature(), b40Outlaw())),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ReturnFromGraveyardTogether{
-				Targets:    legalTargetCardIDs(ctx),
-				Controller: ctx.Controller(),
-			}.Apply(ctx)
-		},
+		OnResolve: cmdr2S33ReturnTargetedCardsTogether,
 	})
 }

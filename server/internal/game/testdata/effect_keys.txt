@@ -2454,6 +2454,7 @@ tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
 tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
+tail misfortune-teller/exiled-card-clause
 tail mistbreath-elder/after-bounce
 tail mister-negative/draw
 tail model-of-unity/ask-next

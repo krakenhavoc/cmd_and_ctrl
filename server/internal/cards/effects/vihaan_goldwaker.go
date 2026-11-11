@@ -47,9 +47,11 @@ func init() {
 // Treasure its controller controls as it resolves.
 func vihaanTreasuresBecomeCreatures(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	// The creature types are words of Vihaan's text (CR 612.2), read through it.
+	reader := g.TextReaderForEffect(item)
 	mods := []game.Mod{
 		game.AddTypesMod("Artifact", "Creature"),
-		game.AddSubtypesMod("Construct", "Assassin"),
+		game.AddSubtypesMod(reader.TextSubtype("Construct"), reader.TextSubtype("Assassin")),
 	}
 	mods = append(mods, game.SetBasePTMods(3, 3)...)
 	return ScopedEffectFor{
