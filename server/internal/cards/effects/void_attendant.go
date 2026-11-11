@@ -29,7 +29,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{G}, Put a card an opponent owns from exile into that player's graveyard: Create a 1/1 colorless Eldrazi Scion creature token. It has \"Sacrifice this token: Add {C}.\"",
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Tokens: 1, Answers: game.AnswerMakesBlocker},
 			Cost:    Plus(ManaCost("{1}{G}"), ProcessCards(1, "a card an opponent owns from exile", nil)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: b28EldraziScionToken(), N: 1}.Apply(NewContext(g, item))
