@@ -209,6 +209,8 @@ export function settingsSummary(s: TableSettingsView): string {
   if (s.bot_pace !== d.bot_pace) rest.push(`${s.bot_pace} pace`);
   if (s.allow_spawn) rest.push("spawning on");
   if (s.planechase) rest.push("Planechase");
+  // ADR 0222 §3.
+  if (s.best_of === 3) rest.push("best of three");
   // ADR 0222 §1: another format leads with its name, and has no
   // "standard rules" filler, which would read as the format's name.
   if (format.id !== "commander") {
@@ -350,6 +352,14 @@ export function settingsPatchError(
   // fixed from then on, like free mulligans.
   if (patch.planechase !== undefined && startingLifeLocked(state)) {
     return "The game has already started, so Planechase is fixed.";
+  }
+  // ADR 0222 §3: the match length is fixed once its first game starts.
+  if (patch.best_of !== undefined) {
+    if (patch.best_of !== 1 && patch.best_of !== 3)
+      return "A match is best of one or best of three.";
+    if (startingLifeLocked(state)) {
+      return "The game has already started, so the match length is fixed.";
+    }
   }
   // ADR 0222 §1: the format is chosen when the table is made.
   if (patch.format !== undefined && startingLifeLocked(state)) {

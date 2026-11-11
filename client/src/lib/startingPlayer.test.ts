@@ -139,3 +139,45 @@ describe("firstTurnHeadline", () => {
     expect(firstTurnHeadline(gave, 1)).toBe("Carol goes first");
   });
 });
+
+// ADR 0222 §3, CR 103.1: a later game of a match has no roll. The loser
+// of the game before chose, and the log begins with that line.
+describe("a later game of a match", () => {
+  it("names the loser who chose to play first", () => {
+    const log: LogEvent[] = [
+      {
+        seq: 40,
+        kind: "match_game",
+        seat: 1,
+        target_seat: 1,
+        amount: 2,
+        label: "play",
+        text: "Game 2. B chose to play first",
+      },
+    ];
+    const winner = openingRollWinner({ starting_seat: 1, seats, log });
+    expect(winner).toEqual({ seat: 1, name: "B", matchGame: { game: 2, drew: false } });
+    expect(openingRollText(winner!)).toBe("Game 2: B chose to play first");
+    expect(firstTurnHeadline(winner!, 1)).toBe("You go first");
+    expect(firstTurnHeadline(winner!, 0)).toBe("B goes first");
+  });
+
+  it("names the opponent as going first when the loser chose to draw", () => {
+    const log: LogEvent[] = [
+      {
+        seq: 40,
+        kind: "match_game",
+        seat: 1,
+        target_seat: 0,
+        amount: 3,
+        label: "draw",
+        text: "Game 3. B chose to draw, so A plays first",
+      },
+    ];
+    const winner = openingRollWinner({ starting_seat: 0, seats, log });
+    expect(winner?.chosen).toEqual({ seat: 0, name: "A" });
+    expect(openingRollText(winner!)).toBe("Game 3: B chose to draw");
+    expect(firstTurnHeadline(winner!, 0)).toBe("You go first");
+    expect(firstTurnHeadline(winner!, 1)).toBe("A goes first");
+  });
+});
