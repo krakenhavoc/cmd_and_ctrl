@@ -24,7 +24,7 @@ func init() {
 			Cost:    Plus(ManaCost("{4}"), TapCost()),
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				return cmdr2S43ExileUntilInstantOrSorcery(g, item, cmdr2S43TargetOpponent(NewContext(g, item)))
+				return cmdr2S43ExileUntilInstantOrSorcery(g, item, targetedPlayerOf(NewContext(g, item)))
 			},
 		}},
 	})

@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			victim := cmdr2S43TargetOpponent(ctx)
+			victim := targetedPlayerOf(ctx)
 			if victim == uuid.Nil {
 				return nil
 			}

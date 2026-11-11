@@ -27,6 +27,7 @@ func init() {
 		OracleID:     "08bc10fd-8901-4836-ad4d-a867e1bcba77",
 		Name:         "Epic Experiment",
 		Completeness: CompletenessFull,
+		XMatters:     true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.X()
 			if x <= 0 {

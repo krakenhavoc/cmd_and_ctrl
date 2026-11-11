@@ -9,17 +9,6 @@ import (
 // cmdr2_s43_helpers.go — helpers of the S43 Commander-deck batch (impulse
 // play, cast-from-top and life-for-mana costs). Names start cmdr2S43.
 
-// cmdr2S43TargetOpponent is the player a "target opponent" ability resolved
-// against, or uuid.Nil when the target is gone (CR 608.2b).
-func cmdr2S43TargetOpponent(ctx *Context) uuid.UUID {
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetPlayer {
-			return t.ID
-		}
-	}
-	return uuid.Nil
-}
-
 // cmdr2S43ExileUntilInstantOrSorcery is "target opponent exiles cards from
 // the top of their library until they exile an instant or sorcery card. You
 // may cast that card without paying its mana cost. Then put the exiled cards
