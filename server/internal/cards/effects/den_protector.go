@@ -18,15 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	up := WhenThisIsTurnedFaceUp("Den Protector — return target card from your graveyard to your hand",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetCard {
-					return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
-				}
-			}
-			return nil
-		})
+		returnTargetGraveyardCardToHand)
 	up.Targets = TargetCardInGraveyard("target card from your graveyard", YouOwn())
 	Register(Spec{
 		OracleID:         "59324efc-65b7-4b31-89c5-17aed5c7eeb1",

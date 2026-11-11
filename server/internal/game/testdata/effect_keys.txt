@@ -1435,6 +1435,7 @@ option option-pick/rejoinder-tap-or-untap
 option option-pick/remove-a-counter-of-your-choice
 option option-pick/reselect-attack
 option option-pick/resolution-exit
+option option-pick/return-this-face-up-or-face-down
 option option-pick/rhys-the-evermore-remove
 option option-pick/rottenmouth-viper-punisher
 option option-pick/sacrifice-this-unless-you-sacrifice-a-land
