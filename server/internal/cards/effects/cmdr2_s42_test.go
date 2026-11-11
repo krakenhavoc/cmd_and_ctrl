@@ -226,3 +226,37 @@ func TestMissionBriefingSurveilsThenLetsYouCastAChosenInstantOrSorceryThisTurn(t
 		t.Errorf("the spell was not exiled instead of put into the graveyard")
 	}
 }
+
+const haloForagerOracle = "210d1077-6e60-4f06-a8a4-10b842979ac5"
+
+func TestHaloForagerPaysXThenCastsAnInstantOrSorceryOfThatManaValueFromAnyGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	two := gyCard(opp, "Two Instant", "Instant", "{1}{R}", "")
+	three := gyCard(me, "Three Sorcery", "Sorcery", "{2}{R}", "")
+	bear := gyCard(me, "Two Bear", "Creature — Bear", "{1}{G}", "")
+	advanceToMain(t, g)
+	fillPool(me, 2)
+	castHoldCreature(t, g, "Halo Forager", "Creature — Faerie Rogue", haloForagerOracle, 3, 1)
+	passPriorityAroundTable(t, g)
+	pa := answerNumber(t, g, me.ID, 2)
+	if pa.Min != 0 {
+		t.Fatalf("X prompt = %+v", pa)
+	}
+	answerPayUnless(t, g, me.ID, true)
+	ch := pickTargetPrompt(t, g)
+	if !slices.Contains(ch.PickTargetCards, two) || slices.Contains(ch.PickTargetCards, three) || slices.Contains(ch.PickTargetCards, bear) {
+		t.Fatalf("only an instant or sorcery with mana value exactly 2: %v", ch.PickTargetCards)
+	}
+	answerPickTarget(t, g, two)
+	passPriorityAroundTable(t, g)
+	if err := g.CastSpell(me.ID, two, game.CastSpellParams{FromZone: "graveyard", Strict: true,
+		AlternativeCost: game.AltCostKeyGrantedCost, Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("cast it free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if z := g.FindCardZoneForEffect(two); z == nil || z.Kind != game.ZoneExile {
+		t.Errorf("the spell was not exiled instead of put into a graveyard")
+	}
+}

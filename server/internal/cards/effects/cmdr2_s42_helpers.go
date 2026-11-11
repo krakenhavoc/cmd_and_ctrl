@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"fmt"
@@ -83,3 +85,25 @@ func cmdr2S42FreeGraveyardCasts(ctx *Context, name string, spell freeCastSpell, 
 	}
 	g.OfferResolutionCastForEffect(offer)
 }
+
+// cmdr2S42HaloForagerCastBody is Halo Forager's reflexive trigger: "you may
+// cast target instant or sorcery card with mana value X from a graveyard
+// without paying its mana cost. If that spell would be put into a graveyard,
+// exile it instead." X rides Params.Amount, fixed when the trigger was made
+// (CR 603.12); the clause is rebuilt from it on a restore.
+var cmdr2S42HaloForagerCastBody = game.ReflexiveBody("halo-forager/cast",
+	func(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
+		ctx := NewContext(g, item)
+		var ids []uuid.UUID
+		for _, t := range ctx.LegalTargets() {
+			if t.Kind == game.TargetCard {
+				ids = append(ids, t.ID)
+			}
+		}
+		cmdr2S42FreeGraveyardCast(ctx, "Halo Forager", freeInstantOrSorcery(), true, ids)
+		return nil
+	},
+	func(_ uuid.UUID, p game.EffectParams) *game.TargetSpec {
+		return TargetCardInGraveyard("target instant or sorcery card with mana value "+strconv.Itoa(p.Amount)+" from a graveyard",
+			Or(Instant(), Sorcery()), ManaValueLE(p.Amount), ManaValueGE(p.Amount))
+	})
