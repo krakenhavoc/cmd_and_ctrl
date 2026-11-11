@@ -44,6 +44,8 @@
     startingLifeLocked,
     type TableSettingsPatch,
   } from "../tableSettings";
+  import { bestOfSetting } from "../match";
+  import { MATCH_LENGTHS, playsMatches } from "../matchLength";
   import type { TableSettingsView } from "../protocol";
   import { DEFAULT_AWAY_AFTER, describeAwayAfter } from "../away";
   import { devFeature } from "../env";
@@ -342,6 +344,41 @@
     </p>
   </section>
 
+  {#if playsMatches(settings.format)}
+    <!-- ADR 0222 §3: the match length, chosen in the lobby and fixed
+         once the first game starts. Not offered where the format plays
+         no matches, which is every Commander table. -->
+    <section class="tsp-field" data-field="best_of" class:locked={lifeLocked}>
+      <div class="tsp-row">
+        <span class="tsp-label" id="tsp-best-of-label">Match length</span>
+        <span class="tsp-control" role="radiogroup" aria-labelledby="tsp-best-of-label">
+          {#each MATCH_LENGTHS as m (m.bestOf)}
+            <label class="tsp-radio">
+              <input
+                type="radio"
+                name="tsp-best-of"
+                disabled={disabled || lifeLocked}
+                checked={bestOfSetting(settings.best_of) === m.bestOf}
+                onchange={() => apply({ best_of: m.bestOf })}
+              />
+              {m.name}
+            </label>
+          {/each}
+        </span>
+      </div>
+      <p class="tsp-hint">
+        {#if lifeLocked}
+          Fixed — the match began with its first game.
+        {:else if bestOfSetting(settings.best_of) === 3}
+          First to two games. Between games each player may swap sideboard cards in, and the loser
+          chooses who plays first.
+        {:else}
+          One game decides it.
+        {/if}
+      </p>
+    </section>
+  {/if}
+
   {#if showPlanechase}
     <!-- ADR 0216 §1: chosen in the lobby, fixed once the game starts, as
          free mulligans are. -->
@@ -421,6 +458,13 @@
   }
   .tsp-label {
     font-weight: 600;
+  }
+  .tsp-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-inline-start: 12px;
+    font-size: 13px;
   }
   .tsp-control {
     display: inline-flex;

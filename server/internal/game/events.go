@@ -1254,6 +1254,16 @@ const (
 	// belongs to the new game, and the public log begins again here.
 	EventGameRestarted EventKind = "game_restarted"
 
+	// EventMatchGame — the next game of a match began (ADR 0222 §3,
+	// match.go). Actor is the player who chose who plays first (CR
+	// 103.1: the loser of the previous game), Target the starting
+	// player, Amount the game's number in the match, and Label what the
+	// chooser chose (MatchChosePlay or MatchChoseDraw). Emitted once,
+	// as the game begins and before its hands are dealt: every event
+	// after it belongs to that game, and the public log begins again
+	// here, as it does for a restarted game.
+	EventMatchGame EventKind = "match_game"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,
 	// Round the table-facing rotation, and Label the step name. Emitted

@@ -369,6 +369,12 @@ type GameSnapshot struct {
 	// card, never stronger.
 	RestartPending *GameRestart `json:"restartPending,omitempty"`
 	RestartTail    *GameRestart `json:"restartTail,omitempty"`
+	// Match is Game.Match (ADR 0222 §3, match.go): the table's match.
+	// Additive: absent on every Commander table and on every file
+	// written before matches, which restore with no match, as they
+	// played. A table between two games has State "between_games" and
+	// its sideboarding window here, and restores into the window.
+	Match *Match `json:"match,omitempty"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -2560,6 +2566,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		TurnEndPending:        g.TurnEndPending,
 		RestartPending:        cloneGameRestart(g.RestartPending),
 		RestartTail:           cloneGameRestart(g.RestartTail),
+		Match:                 cloneMatch(g.Match),
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
@@ -3818,6 +3825,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.TurnEndPending = s.TurnEndPending
 	g.RestartPending = cloneGameRestart(s.RestartPending)
 	g.RestartTail = cloneGameRestart(s.RestartTail)
+	g.Match = cloneMatch(s.Match)
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen

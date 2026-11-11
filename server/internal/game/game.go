@@ -95,6 +95,13 @@ type Game struct {
 	RestartPending *GameRestart
 	RestartTail    *GameRestart
 
+	// Match is the table's match (ADR 0222 §3, match.go): its length,
+	// its finished games, each seat's pool and the sideboarding window
+	// between two games. Nil at a table of a format that plays no
+	// matches, which is every Commander table. Plain data, carried by
+	// Clone, RestoreFrom and the snapshot.
+	Match *Match
+
 	// passTurn is the active player's standing end_turn (#2881,
 	// pass_turn.go): priority is passed for them whenever they hold it
 	// until their turn ends. Carried by Clone and RestoreFrom so an undo
@@ -1640,6 +1647,9 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 	if g.Settings.Planechase {
 		g.installPlanarDeckLocked(planar)
 	}
+	// ADR 0222 §3: a format that plays matches has one from here, read
+	// from the decks as they were registered.
+	g.openMatchLocked()
 	g.beginPregameLocked()
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
 	// NOT fire at Start — the cursor sits idle on Untap until the
@@ -1718,6 +1728,15 @@ func (g *Game) End() {
 		// runs, on the other door out of an active game — an admin
 		// ending the table, and every caller that ends it outright.
 		g.revealForetoldAtGameEndLocked()
+	}
+	if g.State == StateBetweenGames {
+		// ADR 0222 §3: a match closed between two games has no result.
+		// The outcome on the board is its last game's, and must not
+		// read as the table's.
+		g.Outcome = nil
+		if g.Match != nil {
+			g.Match.Between = nil
+		}
 	}
 	g.State = StateEnded
 	// ADR 0121 §1: a table ended mid-roll has no roll left to finish.
@@ -2871,6 +2890,13 @@ func (g *Game) populateDiscardPendingLocked() {
 func (g *Game) CurrentState() State {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
+	// ADR 0222 §3: a table between two games of a match is in play to
+	// everything outside the engine: its lobby row stays active, its
+	// bot runners stay up, and it ends once, when the match does.
+	// SideboardingOpen tells the two apart.
+	if g.State == StateBetweenGames {
+		return StateActive
+	}
 	return g.State
 }
 
@@ -2888,6 +2914,14 @@ func (g *Game) WinnerSeat() (seat int, ok bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	if g.State != StateEnded {
+		return 0, false
+	}
+	// ADR 0222 §3: a finished best-of-three's winner is the match's,
+	// who need not have won its last game.
+	if kind, winner, ok := g.matchResultLocked(); ok {
+		if p := g.playerByIDLocked(winner); kind == OutcomeWin && p != nil {
+			return p.Seat, true
+		}
 		return 0, false
 	}
 	if g.Outcome != nil {

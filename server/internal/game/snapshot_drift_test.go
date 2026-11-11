@@ -98,6 +98,11 @@ var gameFields = plan(
 	// point taken in either gap must still finish the restart.
 	"RestartPending", carried, "",
 	"RestartTail", carried, "",
+	// ADR 0222 §3: the table's match (the score, each seat's pool and
+	// the sideboarding window), in the snapshot's `match` object.
+	// Carried: a restore in the middle of a match, or of sideboarding,
+	// goes on from there.
+	"Match", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
@@ -1498,6 +1503,9 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		CastPermission{},
 		// ADR 0121 §1: the opening roll is embedded by value.
 		OpeningRoll{}, OpeningRollRound{}, OpeningRollDie{},
+		// ADR 0222 §3: the match's finished games and its sideboarding
+		// window are embedded by value.
+		Match{}, MatchDeck{}, MatchGame{}, MatchBetween{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)

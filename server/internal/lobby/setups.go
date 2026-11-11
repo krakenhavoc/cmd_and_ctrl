@@ -98,6 +98,7 @@ func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 	free := ts.EffectiveFreeMulligans()
 	away := ts.EffectiveAwayAfter()
 	format := ts.EffectiveFormat()
+	bestOf := ts.EffectiveBestOf()
 	return game.SettingsPatch{
 		UndoLimit:       &ts.UndoLimit,
 		UndoScope:       &ts.UndoScope,
@@ -114,6 +115,10 @@ func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 		// table was. A setup saved before formats names none and is
 		// read as Commander (applySetupSettings).
 		Format: &format,
+		// ADR 0222 §3: and the match length, 1 at a table with no
+		// match, which is a no-op there. A setup saved before matches
+		// names none and leaves the new table's best-of-one alone.
+		BestOf: &bestOf,
 	}
 }
 

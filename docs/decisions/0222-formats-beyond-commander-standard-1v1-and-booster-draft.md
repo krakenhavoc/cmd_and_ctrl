@@ -136,6 +136,26 @@ Open to change in review.
 - **A draft keeps a person's picks** after it ends. If the owner would rather store nothing, the look-back page goes and section 9's privacy work with it.
 - **Outside draft data for bot ratings is not used** until the owner decides it may be.
 
+### Matches as built (slice 2, #5436)
+
+Section 3 says what a match is. These are the calls its build made, each open to change in review like the ones above.
+
+- **Where the match lives.** `Game.Match`, on the engine, for every table of a format whose row says `Matches` (Standard). A Commander table has none, and nothing of the match code runs for it. The match length is a table setting, `best_of` (1 or 3), fixed at Start.
+- **The match is the table.** One `games` row, one room, one invite and one finished table. The match id is the table's id, and a game of it is that id plus its number. The lobby sees the table end once, when the match does, so the "games reach an end" goal and each seat's result count a match once, with the match's winner. `match_games` (migration 0037) keeps each game: who won it by seat, why it ended, who went first and how many turns it took. It is read from the final view, so a replay backfill writes it too.
+- **Between games is a state of the engine.** `StateBetweenGames`: the finished game stays on the board, every door that asks for an active game refuses, and the sideboarding window is open. `CurrentState` and the wire report it as `active`, because to the lobby, the bot runners and the table list the table is still in play; `match.sideboarding` on the view says where it is. The alternative, rebuilding the board the moment a game ends, would have hidden the final board and run inside whatever ended the game.
+- **The next game begins the way a restart does** ([ADR 0201](0201-restarting-the-game.md) §2): a fresh `NewGame` adopted in place, so every game-scoped field starts clean. Each seat's deck is seated from a pool of pristine cards kept from registration, with new instance ids, so nothing a game did to a card reaches the next. The pool is kept as the snapshot's own card records, so the match adds no route from `Game` to a closure and the ADR 0041 ratchet does not move.
+- **One window, one timer, three minutes.** Sideboarding and the play-or-draw choice share it. The choice is the loser's (CR 103.1), defaults to playing first, and is shown to the chooser alone until the game starts, so the opponent sideboards without knowing it. After a drawn game the player who chose for that game chooses again, as CR 103.1 says.
+- **Drawn games.** A drawn game counts for nobody. The match is won by the first player to win two games, and after three games by the player with more wins, or is drawn. This is the reading of "one or three games"; a tournament would play on until someone had two wins.
+- **The deck check between games** is the format's `DeckRules` row: the deck's size, the sideboard's size and the four-card limit counted across both (CR 100.2a, 100.4a). Card legality is not asked again, because no card joins or leaves a pool. A deck that fails is refused and the last legal one stands.
+- **A companion is revealed only by the deck it was registered with.** Its deck-building condition was checked against that list. A deck changed between games keeps the card as a plain sideboard card: weaker than the rules allow, never stronger.
+- **A deck returns to its registered list when the match ends** by never having left it anywhere else: sideboarding changes the match's pool, not the saved deck and not the list a rematch seats.
+- **Conceding.** `concede` concedes the game in play. `concede_match` concedes the match, during a game or between two. A seat an admin removes, or one the table moves on without ([ADR 0177](0177-away-players-and-moving-the-table-on.md)), concedes the match: that player is not coming back for the next game.
+- **Undo stops at a game's end.** The room empties its undo history when a game of a match ends and when the next begins, so nobody undoes back into sideboarding having seen an opening hand. This also means the action that ended a game of a match cannot be taken back, by anyone.
+- **Bots** do not sideboard and are always ready, and a bot that chooses plays first. An agent seat is treated the same, because its client has no sideboarding verb yet.
+- **A restart during sideboarding** restores into the window and gives the players at least a minute to come back.
+
+Not built here: per-game detail in the statistics record (the casts, damage and turn tables describe the match's last game, because the log begins again with each game; a per-game record needs a game number on seven tables and a `gamestats.Version` bump), a sideboarding verb for the MCP seat, and bot sideboarding.
+
 ## Consequences
 
 - The catalog's "Full" now carries more weight: a draftable set is a promise that every card in its packs works unaided.

@@ -140,6 +140,20 @@ func (s *SQLStore) Put(ctx context.Context, g Game) (err error) {
 			}
 		}
 	}
+	// ADR 0222 §3: the games of a best-of-three. The rows of an earlier
+	// record went with its game_stats row above (ON DELETE CASCADE);
+	// the delete here is for a database opened without foreign keys.
+	if _, err = tx.ExecContext(ctx, `DELETE FROM match_games WHERE game_id = ?`, id); err != nil {
+		return fmt.Errorf("gamestats: clear match games: %w", err)
+	}
+	for _, mg := range g.MatchGames {
+		if _, err = tx.ExecContext(ctx,
+			`INSERT INTO match_games (game_id, game_no, outcome, winner_seat, cause, starting_seat, turns)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			id, mg.No, mg.Outcome, nullInt(mg.WinnerSeat), mg.Cause, mg.StartingSeat, mg.Turns); err != nil {
+			return fmt.Errorf("gamestats: put match game %d: %w", mg.No, err)
+		}
+	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("gamestats: commit: %w", err)
 	}

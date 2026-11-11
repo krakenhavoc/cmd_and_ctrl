@@ -1398,6 +1398,26 @@ the column, and every deck reads as a Commander deck until it is saved
 from a Standard table again. `TestMigration0036RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0037 (ADR 0222 §3, the games of a match, #5436) adds one table,
+`match_games`: a row for each game of a best-of-three, keyed by the table
+and the game's number. An older binary refuses the v37 schema. Drop it by
+hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE match_games; DELETE FROM schema_migrations WHERE version = 37;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs the per-game results of every best-of-three played so far. Each
+match keeps its own result, which is on the `games` and `seat_stats` rows.
+Rolling forward recreates the table empty; `cmd/statsbackfill` writes a
+match's games again when it recomputes that table's record from its
+replay. `TestMigration0037RollbackByHand` runs exactly this sequence and
+then rolls forward.
+
 Migration 0029 (ADR 0217 §1, game statistics version 2, #4880) adds three
 tables, `seat_turn_stats`, `seat_target_stats` and `seat_card_seen`, and
 new nullable columns on `game_stats` (`frames_complete`, `win_kind`,
