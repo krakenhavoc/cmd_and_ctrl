@@ -169,6 +169,11 @@ type Card struct {
 	TypeLine  string `json:"type_line"`
 	// Basic marks a basic land.
 	Basic bool `json:"basic,omitempty"`
+	// Rating is what a screen shows beside the card: 17Lands' number
+	// where it has one, the in-house rating otherwise (ratings.go). The
+	// draft's own cards carry none; ViewFor fills it into the copies it
+	// sends, so it never enters the draft's state.
+	Rating *CardRating `json:"rating,omitempty"`
 }
 
 // Source makes the packs of a draft. Each call returns one new pack; the

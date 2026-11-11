@@ -1,0 +1,196 @@
+{
+  "about": "One short label per colour pair per draftable set, written for this repository from the set's own gold uncommons and the mechanics printed on its cards in those colours (ADR 0222, #5703). A pair with no entry has no gold uncommon in the set and no label. The owner reviews every label; change one here and nothing else.",
+  "sets": {
+    "trk": {
+      "WU": "Stun and spacecraft",
+      "UB": "Dilemmas and surveil",
+      "BR": "Klingon tokens",
+      "RG": "Landfall tokens",
+      "WG": "Plus-one counters",
+      "WB": "Artifact creatures",
+      "UR": "Noncreature spell payoffs",
+      "BG": "Graveyard and surveil",
+      "WR": "Power 8 attackers",
+      "UG": "Land variety"
+    },
+    "fra": {
+      "WU": "Surveil payoffs",
+      "UB": "Recursion and Cadets",
+      "BR": "Charms and recursion",
+      "RG": "Counters and trample",
+      "WG": "Lifegain and counters",
+      "WB": "Sacrifice and counters",
+      "UR": "Thopters and spells",
+      "BG": "Mill and graveyard payoffs",
+      "WR": "Counters and equipment",
+      "UG": "Planeswalkers and Jace"
+    },
+    "hob": {
+      "WU": "Auras and flyers",
+      "BR": "Amass Goblins",
+      "BG": "Ferocious attackers",
+      "WR": "Legends and artifacts",
+      "UG": "Landfall Elves"
+    },
+    "msh": {
+      "WU": "Flash tappers",
+      "UB": "Connive and evasion",
+      "BR": "Villain tokens",
+      "RG": "Power-up Gammas",
+      "WG": "Heroes and tokens",
+      "WB": "Lone attackers and equipment",
+      "UR": "Artifact Heroes",
+      "BG": "Sacrifice removal",
+      "WR": "Flyers and prowess",
+      "UG": "Counters and tokens"
+    },
+    "sos": {
+      "WB": "Repartee and drain",
+      "UR": "Opus spells",
+      "BG": "Pests and lifegain",
+      "WR": "Graveyard casting",
+      "UG": "Increment and counters"
+    },
+    "tmt": {
+      "WB": "Sneak attacks",
+      "UR": "Robots and artifacts",
+      "BG": "Food and disappear",
+      "WR": "Alliance and flicker",
+      "UG": "Mutants and Mutagen"
+    },
+    "tla": {
+      "WU": "Airbending flyers",
+      "UB": "Mill and Spirits",
+      "BR": "Firebending aggro",
+      "RG": "Big attackers and Lessons",
+      "WG": "Ally tokens",
+      "WB": "Sacrifice and Clues",
+      "UR": "Spells and looting",
+      "BG": "Earthbend counters",
+      "WR": "Go-wide firebending",
+      "UG": "Lesson ramp"
+    },
+    "spm": {
+      "WU": "Heroes and equipment",
+      "UB": "Villains and connive",
+      "BR": "Discard and mayhem",
+      "RG": "Big threats and fight",
+      "WG": "Web-slinging and tokens"
+    },
+    "fin": {
+      "WU": "Artifacts and Heroes",
+      "UB": "Loot and surveil",
+      "BR": "Noncreature spell payoffs",
+      "RG": "Landfall and Sagas",
+      "WG": "Sagas and counters",
+      "WB": "Death counters and tokens",
+      "UR": "Big noncreature spells",
+      "BG": "Graveyard payoffs",
+      "WR": "Equipment and Dwarves",
+      "UG": "Ramp and stun"
+    },
+    "tdm": {
+      "WB": "Attackers and tokens",
+      "UR": "Spells and Monks",
+      "BG": "Counters matter",
+      "WR": "Flurry and tokens",
+      "UG": "Renew and recursion"
+    },
+    "dft": {
+      "WU": "Artifact affinity",
+      "UB": "Thopters and drain",
+      "BR": "Speed aggro",
+      "RG": "Exhaust and Treasure",
+      "WG": "Mounts and Vehicles",
+      "WB": "Speed and recursion",
+      "UR": "Loot and Vehicles",
+      "BG": "Surveil and recursion",
+      "WR": "Vehicles and Pilots",
+      "UG": "Exhaust ramp"
+    },
+    "fdn": {
+      "WU": "Flyers matter",
+      "UB": "Loot and threshold",
+      "BR": "Raid aggro",
+      "RG": "Big hasty attackers",
+      "WG": "Plus-one counters",
+      "WB": "Lifegain and recursion",
+      "UR": "Spells and flyers",
+      "BG": "Morbid value",
+      "WR": "Token swarm",
+      "UG": "Landfall value"
+    },
+    "dsk": {
+      "WU": "Cheap enchantments",
+      "UB": "Eerie flyers",
+      "BR": "Sacrifice value",
+      "RG": "Delirium aggro",
+      "WG": "Survival and equipment",
+      "WB": "Reanimation and drain",
+      "UR": "Room sacrifice",
+      "BG": "Delirium graveyard",
+      "WR": "Small-creature swarm",
+      "UG": "Manifest dread"
+    },
+    "blb": {
+      "WU": "Birds and flyers",
+      "UB": "Surveil and threshold",
+      "BR": "Life loss payoffs",
+      "RG": "Expend ramp",
+      "WG": "Go-wide creatures",
+      "WB": "Bats and life swings",
+      "UR": "Spells and prowess",
+      "BG": "Food and forage",
+      "WR": "Valiant aggro",
+      "UG": "Frogs and blink"
+    },
+    "otj": {
+      "WU": "Plot and flash",
+      "UB": "Crime payoffs",
+      "BR": "Outlaw aggro",
+      "RG": "Power-4 attackers",
+      "WG": "Mounts and Saddle",
+      "WB": "Tokens and sacrifice",
+      "UR": "Two spells a turn",
+      "BG": "Graveyard recursion",
+      "WR": "Mercenary tokens",
+      "UG": "Plot and recast"
+    },
+    "mkm": {
+      "WU": "Detective tempo",
+      "UB": "Clue sacrifice",
+      "BR": "Suspect aggro",
+      "RG": "Disguise mana",
+      "WG": "Disguise counters",
+      "WB": "Vampire drain",
+      "UR": "Artifact Clues",
+      "BG": "Evidence and plants",
+      "WR": "Go-wide attackers",
+      "UG": "Collect evidence"
+    },
+    "lci": {
+      "WU": "Craft artifacts",
+      "UB": "Descend recursion",
+      "BR": "Descend attrition",
+      "RG": "Dinosaurs and bite",
+      "WG": "Pumped attackers",
+      "WB": "Sacrifice and counters",
+      "UR": "Pirates and artifacts",
+      "BG": "Descend growth",
+      "WR": "Discover and artifacts",
+      "UG": "Explore ramp"
+    },
+    "woe": {
+      "WU": "Stun and tempo",
+      "UB": "Faerie flyers",
+      "BR": "Rat tokens",
+      "RG": "Big hasty attackers",
+      "WG": "Knights and Roles",
+      "WB": "Enchantment recursion",
+      "UR": "Instants and sorceries",
+      "BG": "Food and counters",
+      "WR": "Celebration aggro",
+      "UG": "Ramp and X spells"
+    }
+  }
+}

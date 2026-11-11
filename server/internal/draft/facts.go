@@ -238,10 +238,15 @@ func UseCards(idx *cards.Index) {
 	cardFacts.Store(&f)
 }
 
-// defaultRater is the Rater over whatever UseCards last set.
+// defaultRater is the Rater over whatever UseCards and UseRatings last
+// set.
 func defaultRater() Rater {
+	r := Rater{}
 	if f := cardFacts.Load(); f != nil {
-		return Rater{Facts: *f}
+		r.Facts = *f
 	}
-	return Rater{}
+	if b := ratingBook.Load(); b != nil {
+		r.Overrides = BookOverrides(b)
+	}
+	return r
 }
