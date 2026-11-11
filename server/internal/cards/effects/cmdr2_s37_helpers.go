@@ -30,18 +30,6 @@ func cmdr2S37WhisperwoodGrant(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// cmdr2S37CreaturesYouControl counts the creatures `player` controls, read
-// through the layered view.
-func cmdr2S37CreaturesYouControl(g *game.Game, player uuid.UUID) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && c.IsCreature() {
-			n++
-		}
-	}
-	return n
-}
-
 // cmdr2S37TurnedUpCreatureFights is Temur War Shaman's "you may have it
 // fight target creature you don't control": the permanent that was turned
 // face up (the trigger's event card) fights the announced target, when it
@@ -66,7 +54,7 @@ func cmdr2S37TurnedUpCreatureFights(g *game.Game, item *game.StackItem) error {
 // cmdr2S37GainLifePerCreature is Mastery of the Unseen's "you gain 1 life
 // for each creature you control", counted as the ability resolves.
 func cmdr2S37GainLifePerCreature(g *game.Game, item *game.StackItem) error {
-	return GainLife{Amount: cmdr2S37CreaturesYouControl(g, item.Controller)}.Apply(NewContext(g, item))
+	return GainLife{Amount: b14CreaturesControlled(g, item.Controller)}.Apply(NewContext(g, item))
 }
 
 // cmdr2S37ColorlessCreatureSpellCastByYou is Ugin's Mastery's "whenever you
