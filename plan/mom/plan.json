@@ -1,0 +1,553 @@
+{
+ "set": "mom",
+ "mechanics": [
+  {
+   "name": "Battle — Siege (defense, protector, defeated → cast transformed)",
+   "exists": true,
+   "evidence": "game/battle.go (PendingChoiceChooseProtector, stampBattleEntryLocked), cards/effects/battles.go (BattleSpec, DefeatedTrigger, SiegeDefeated); 4 Sieges in catalog: invasion_of_innistrad/karsus/new_phyrexia/tarkir.go. Attack on a battle: game/attack_target.go AttackTargetBattle. TargetAny already admits battles (targets.go:449)."
+  },
+  {
+   "name": "Backup",
+   "exists": true,
+   "evidence": "grep -ri backup cards/effects: Backup(name,n,grantKey,keywords...) in soc_b6_helpers.go, used by guardian_scalelord.go. No tag on the stack item says 'this is a backup ability' (grep IsBackup|AbilityTag|AbilityKeyword in game: 0) — see seam s5."
+  },
+  {
+   "name": "Incubate / Incubator tokens",
+   "exists": true,
+   "evidence": "cards/effects/incubate.go and incubate_cards_a_helpers.go; 'transform target Incubator token' in elvish_vatkeeper.go, progenitor_exarch.go."
+  },
+  {
+   "name": "Convoke",
+   "exists": false,
+   "evidence": "Partly: effects.Convoke() (tap_cost.go), PaidCost.Convoked (game/paid_cost.go:360, read by lethal_scheme.go), SpellsYouCastHaveConvoke (convoke_grant.go). Missing: NextSpellPromise has Improvise but no Convoke (game/next_spell_promise.go), and nothing answers 'a spell that has convoke' (grep 'has convoke|spell with convoke' in effects: 0) — seam s1."
+  },
+  {
+   "name": "Transforming double-faced cards with a Phyrexian-mana transform ability",
+   "exists": true,
+   "evidence": "'{N}: Transform this creature. Activate only as a sorcery' in concealing_curtains.go; 21 files with 'transforms into' triggers; Phyrexian mana in activated costs (grep '/p}:' : dismember.go, norns_annex.go, 6 files; ADR 0131)."
+  },
+  {
+   "name": "Praetor → Saga ('exile, then return transformed'; chapter III returns front face up)",
+   "exists": true,
+   "evidence": "elesh_norn_mother_of_machines.go + elesh_norn_the_argent_etchings.go, jin_gitaxias_progress_tyrant.go + _the_great_synthesis.go, sheoldred_the_true_scriptures.go; saga.go."
+  },
+  {
+   "name": "Kicker with a non-mana cost",
+   "exists": true,
+   "evidence": "'Kicker—Sacrifice' in additional_cost.go, falling_timber.go, eject_the_warp_core.go."
+  },
+  {
+   "name": "Cycling / basic landcycling",
+   "exists": true,
+   "evidence": "grep Landcycling cards/effects: 28 files; Typecycling 46."
+  },
+  {
+   "name": "Stun counters, prowess, proliferate, ward, surveil, bolster, dash, parley, horsemanship, flashback grant",
+   "exists": true,
+   "evidence": "Stun 180 files; Prowess 85; Proliferate 75; bolster.go; dash in ragavan_nimble_pilferer.go; parley in selvala_explorer_returned.go, cmdr2_s49_helpers.go; horsemanship in lu_xun_scholar_general.go; 'gains flashback until end of turn' 10 files (flashback.go)."
+  },
+  {
+   "name": "Will of the Planeswalkers / planeswalk / chaos ensues / planar dice (MOC)",
+   "exists": false,
+   "evidence": "Partly: Planechase is in the engine (ADR 0216: game/planeswalk.go PlaneswalkForEffect, game/planechase_die.go RollPlanarDieForEffect, effects_planechase.go; voting ADR 0146). planes_b1_helpers.go says 'No card of the catalog yet says \"chaos ensues\" as an effect; the batch that adds one widens this shape'. No planar-die 'roll one more and ignore one' static (grep 'plus one and ignore': 0; game/dice_roll.go has only the one-shot ModRollExtraDieIgnoreOne) — seam s2."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Make 'has convoke' a readable property and let a next-spell promise grant convoke",
+   "clause": "\"The next spell you cast this turn has convoke.\" / \"Whenever you cast a spell that has convoke, …\" / \"Whenever you cast another spell that has convoke, …\"",
+   "why": "game.NextSpellPromise carries Improvise but no Convoke (game/next_spell_promise.go improvisePromiseCostLocked); add the convoke twin. No predicate tells a trigger that the spell being cast has convoke, whether printed (Spec tap cost effects.Convoke()), granted by a static (game.GrantedTapCost / SpellsYouCastHaveConvoke) or granted by a promise; expect one engine read on the cast event or stack item plus a CastTrigger filter in cards/effects. Caetus's static itself is the existing SpellsYouCastHaveConvoke(SpellIs(noncreature)); it is here because its spells must count as 'having convoke' for the three triggers.",
+   "checked": "grep 'next spell you cast this turn has convoke' effects: 0 (archway_of_innovation.go does improvise via GrantNextSpellPromise{Improvise:true}); grep -i convoke game/next_spell_promise.go: 0; grep 'has convoke', 'cast a spell that has convoke', 'spell with convoke' effects: 0; grep HasConvoke|hasConvoke game+effects: 0.",
+   "size": "medium",
+   "cards": [
+    "3d175a59-c1b4-43b8-8a1f-f7cbcefe130e",
+    "6471335e-e054-4e68-b02e-052d65a2fdfc",
+    "39867856-c1f3-442a-abe9-53f8f73777d0",
+    "b2d4ce3c-00b1-4a72-b652-4c129475080f",
+    "3a1be8b3-16e2-4fae-bea7-3a98f2f9db38",
+    "7b3c0d89-55ed-43d7-a00a-7b060857ec4e"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Let a spell planeswalk or make chaos ensue after a vote, and add the planar-die extra roll",
+   "clause": "\"Will of the Planeswalkers — Starting with you, each player votes for planeswalk or chaos. If planeswalk gets more votes, planeswalk. If chaos gets more votes or the vote is tied, chaos ensues.\" / \"If you would roll one or more planar dice, instead roll that many planar dice plus one and ignore one.\"",
+   "why": "'Chaos ensues' exists only as the planar die's chaos face (WheneverChaosEnsues watches EventRollDie with PlanarFaceChaos); a resolving spell saying 'chaos ensues' (CR 311.7, 901.9b) has no emitter, so chaos abilities cannot be triggered by an effect. PlaneswalkForEffect exists (game/planeswalk.go) and voting exists (ADR 0146), so the vote is composition. Ichor Elixir needs a static replacement on planar-die rolls; game/dice_roll.go has only the one-shot ModRollExtraDieIgnoreOne. Also decide and state what these clauses do in a game with no planar deck (expected: nothing).",
+   "checked": "grep -i 'chaos ensues|ChaosEnsue' game/*.go: only the die comment in planechase_die.go; planes_b1_helpers.go comment 'No card of the catalog yet says chaos ensues as an effect'; grep 'will of the planeswalkers' effects: 0; grep 'plus one and ignore' effects: 0; 'planeswalk.' as an effect only in bad_wolf_bay.go / effects_planechase.go.",
+   "size": "medium",
+   "cards": [
+    "85ccae95-92c4-41ff-96fd-dcb515dc568e",
+    "602f3203-91ae-423c-8a19-c6c1a5034f27",
+    "b79c3ae8-ac25-4a16-a981-a41721040fad",
+    "b908fad9-25a6-441b-bba8-0d7fc12ee2dc",
+    "9cdb1cf6-2bf1-401b-83ae-6f3f7512e5a6",
+    "81b06e8d-ed30-4f90-b729-0aa93b0d870f"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Record and expose that a creature attacked a battle",
+   "clause": "\"This creature has indestructible as long as it attacked a battle this turn.\" / \"Whenever this creature attacks a battle, …\" / \"If it's attacking a battle, put a +1/+1 counter on it instead.\"",
+   "why": "The turn tally knows that a creature attacked and which players (game/turn_tally.go AttackedThisTurn, AttackedPlayersThisTurn) but not that the attack target was a battle; War Historian's static needs that fact after combat. 'Attacks a battle' and 'is attacking a battle' can be read today from Card.AttackingTarget + ClassifyAttackTargetForEffect (game/attack_target.go), but no card does it, so the same worker should add the one shared predicate/trigger shape and the tally field together.",
+   "checked": "grep 'attacks a battle', 'attacked a battle', 'as long as it attacked', \"if it's attacking a\" effects: 0 each; 'attacking a battle' appears only in comments excluding battles (mage_slayer.go, soc_b14_helpers.go); grep 'func (g \\*Game) Attacked' game: no battle variant.",
+   "size": "small",
+   "cards": [
+    "2676d0c3-0a24-4e93-ae80-8f3fe03da483",
+    "e75f1834-10b8-4362-adbe-847ad9909dee",
+    "bc89face-92b1-47d3-8cdb-360b7334d3b8",
+    "e536e0d2-7117-4ca8-bdb4-e7dd380113c6"
+   ]
+  },
+  {
+   "id": "s4",
+   "title": "Add protection from colorless as a quality and as a choice",
+   "clause": "\"Target creature or planeswalker you control gains protection from colorless or from the color of your choice until end of turn.\"",
+   "why": "game/protection.go's ProtectionQualityKind has Color, AnyColor, Monocolored, multicolored, card type, subtype, mana value … but no colorless quality (CR 702.16a allows any characteristic value); parseQuality mints no token for a quality it cannot parse. The choose-a-colour prompt (color_choice.go protectionFromChosenColor, center_soul.go) needs a sixth option.",
+   "checked": "grep -i colorless game/protection.go: 0; grep 'protection from colorless', 'from colorless' effects: 0; 9 files with 'protection from the color of your choice' (center_soul.go, blessed_breath.go, emerge_unscathed.go).",
+   "size": "small",
+   "cards": [
+    "3d036f68-5f3a-4182-88f0-cdd685817dd0"
+   ]
+  },
+  {
+   "id": "s5",
+   "title": "Mark backup abilities on the stack so a trigger can see one targeting a creature",
+   "clause": "\"Whenever a creature you control becomes the target of a backup ability, copy that ability. You may choose new targets for the copy. This ability triggers only once each turn.\"",
+   "why": "EventBecomesTarget carries StackItemID and TargeterKind (spell / activated / triggered) but nothing identifies the triggered ability as backup; Backup() in soc_b6_helpers.go is an ordinary WhenThisEnters whose only mark is its label text. Expect a keyword tag on TriggeredAbility/StackItem set by Backup(), then CopyAbility{ItemID} (ability_copy.go) does the copy; the copy must still grant the ORIGINAL source's abilities.",
+   "checked": "grep 'becomes the target of a backup ability', 'backup ability' effects: 0; grep IsBackup|AbilityTag|AbilityKeyword game: 0; ability copy exists (ability_copy.go, 8 files with 'copy that ability. You may choose new targets'); once-per-turn: docs/adding-cards.md 'This ability triggers only once' (#5245).",
+   "size": "small",
+   "cards": [
+    "23f01235-b5a5-4b2e-a90b-b49fc0c7b18d"
+   ]
+  },
+  {
+   "id": "s6",
+   "title": "Track whether a player was dealt combat damage since their last turn",
+   "clause": "\"At the beginning of your upkeep, if you haven't been dealt combat damage since your last turn, you draw a card and you lose 1 life.\" (Marchesa, Resolute Monarch, back of Invasion of Fiora)",
+   "why": "Per-turn tallies reset each turn; the nearest cross-turn memory is game/last_turn_attacks.go (attacks during a player's last turn). A per-player 'dealt combat damage since your last turn began/ended' flag is needed, snapshot-additive. The front face (choose one or both — destroy all legendary / nonlegendary creatures) needs no engine work but declares its Sweep.",
+   "checked": "grep 'since your last turn', \"haven't been dealt\" effects: 0; 'was dealt combat damage' 6 files, all this-turn (blitzball.go, freerunning.go); game/last_turn_attacks.go covers attacks only.",
+   "size": "small",
+   "cards": [
+    "7209f2b6-8851-42ab-bac6-5cf06e211e46"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Vanilla, keyword and one-line creatures",
+   "shared": "No new helpers. Sacrifice-as-cost outlets (Akki Scrapchomper, Dreg Recycler) use the existing sacrifice cost in activated.go; Phyrexian Archivist targets a card in any graveyard (TargetCardInGraveyard). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "ad172d4e-febf-4844-9544-861d03e27ab5",
+    "6971eac1-afd0-46c3-a37f-4a26d50ef656",
+    "142d2063-d692-42a6-b828-42d998914589",
+    "5e1fd76b-46c8-41b5-87b3-e078f7a47535",
+    "d99efecd-1419-434b-9de6-5fbb04f57dda",
+    "e5c6bbee-5e6c-4a59-bc5d-285c5f5cf228",
+    "baea7cc5-15ec-4229-ad8b-d4b34c2e21e8",
+    "556c4dad-002e-41a8-8ba3-8b4eda70232f",
+    "e2bc064e-4739-4eb1-ba44-1fd92b2829d7",
+    "a70ffefb-840c-48c3-a59d-e12306086bb6",
+    "399770b9-eab7-4512-aa1d-65c5bd81094f",
+    "cdef800d-033e-4095-964d-9b6066f9fd36"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Landcycling, Auras, Equipment and small artifacts",
+   "shared": "Typecycling/cycling precedents (28 Landcycling files). 'Exile target creature an opponent controls until this leaves' is the O-Ring shape (conditional_exile.go). Flash Equipment that attaches on entering: attachments.go. Stasis Field: 'loses all other abilities' (darksteel_mutation.go); Realmbreaker's Grasp: faiths_fetters.go. Watch: Flywheel Racer's 'Activate only if this permanent is a creature' (activation_conditions.go) and Tidal Terror's 'you may tap two other untapped creatures you control. If you do' at resolution (aziza_mage_tower_captain.go) — stop and report if they do not fit. Backup cyclers (Cragsmasher Yeti, Gloomfang Mauler) are in batch 3 and print the same landcycling sentence. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "d1d719e9-9c02-40cf-8849-91a5c120a516",
+    "fea60c45-cc36-4dd1-8475-23a9361e370d",
+    "e71eca6f-388c-4750-b70e-3ee1832931f0",
+    "e7866ce6-d507-4221-bb19-d3e6fd7b57d8",
+    "06a6130f-f27b-4db0-915d-decd9a7d3c15",
+    "450e84c7-afbe-4b30-a3e9-1dff968a5200",
+    "c4614b6c-5e77-465f-996f-504121ea8eff",
+    "aeaf3ce8-6bdf-4a90-8b81-cdbce0f3bb12",
+    "420290d9-7bb9-4e5a-82ec-c777152ccc72",
+    "0399b932-2a59-471c-828e-2b16614e0dae",
+    "83633ea1-a8d5-4351-9047-625d6905386d",
+    "f2baa0b9-ab0b-4ae9-b5f0-d5b3fcd9cf37"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Backup granting keywords only",
+   "shared": "Backup(name, n, \"\", keywords...) from soc_b6_helpers.go; precedent guardian_scalelord.go. Do not change the helper (batches 4 and 5 use it too; seam s5 may add a tag to it). Death-Greeter's Champion adds dash (ragavan_nimble_pilferer.go); the two cyclers add landcycling (same sentence as batch 2). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "8652d88f-edca-4235-b942-6e7467608de8",
+    "4d472308-5bc7-4a3c-81b5-0a757f00d9e2",
+    "f055a941-8b83-464e-a57f-8f188dc69aaa",
+    "d388080d-5ad4-4e27-b361-340f410423a7",
+    "d2134b68-d73f-4090-aaec-b2ee5c9f9f04",
+    "15f89b06-5025-4c9f-bf51-e25bc5c2dd6b",
+    "66a131ae-dbb2-4e7b-b6ce-7695f47c8f87",
+    "79c90a68-1c31-4e16-be53-1304132da80f",
+    "57120486-0316-4591-abca-438ab8283d3f",
+    "5437f560-7f61-4326-be8e-15d74bf4e6ec",
+    "81abb451-5ee0-4f90-bacc-a8ff69726a27"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Backup granting a triggered ability",
+   "shared": "Backup(name, n, grantKey, keywords...) with a Spec.Grants bundle holding the trigger (ADR 0093; guardian_scalelord.go). 'Combat damage to a player or battle': reuse thisDealtCombatDamageToAPlayerOrBattle (bilbo_unexpected_adventurer.go), do not copy it. Conclave Sledge-Captain has three backup instances, each its own trigger. Bright-Palm: 'double the number of +1/+1 counters' (ornery_tumblewagg.go). Watch: the granted trigger must refer to the creature that HAS it (the backed-up creature), not the source — stop and report if the grant bundle resolves 'this creature' to the wrong object. Same Backup helper as batches 3 and 5: reuse, do not fork. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "7b03910a-2ca7-40cb-9c71-1c2cc856a287",
+    "6ff995f9-080d-4316-8fbe-39bf195db91b",
+    "f74888ee-5086-49a6-ae74-fd9894f46332",
+    "e09e7bb8-2665-4081-b75a-628a8bc0a3cd",
+    "7ac00312-8963-4fee-8561-1a54e533adbb",
+    "a74e41b4-6284-453c-a586-d575735dca65",
+    "d1b74fb9-8ef3-40be-bc79-45ffb4c597eb"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Backup granting static, activated and dies abilities; +1/+1 counter cards",
+   "shared": "Backup with a Spec.Grants bundle for a block rule (Chomping Kavu), a dies trigger (Enduring Bondwarden; 'put its counters on target creature' in broodguard_elite.go), an activated ability that sacrifices the holder (Scorn-Blade Berserker, Voldaren Thrillseeker) and a static (Streetwise Negotiator: 'assigns combat damage equal to its toughness', bark_of_doran.go). Watch: granting a BlockRule or a damage-assignment static through a grant bundle — stop and report if GrantAbilitiesFor cannot carry it. 'First time counters are put on it this turn': docs/adding-cards.md #4463 (Axgard Artisan, Botanical Brawler). Storm the Seedcore: distribute counters among targets. Same Backup helper as batches 3 and 4. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "20a362c3-d278-437f-881c-e7d9fe78fc2d",
+    "c17d4818-5825-4bff-8fc5-5fd740cc0c70",
+    "93107139-b743-4d62-b0ac-9997202e0562",
+    "74b631c5-9420-496e-8845-3b050d3d5340",
+    "b3cc2ed9-1da3-4ad2-a9a7-de7665d800ff",
+    "ce8ec966-ecff-425e-944c-36dc8d4aef23",
+    "d8d5d0a4-9a56-404c-b459-a37dc5ae6bc1",
+    "ae7643ea-ef1c-43a3-9605-4e8585239ea3",
+    "e9ece3c6-81c2-441a-acce-c109aaa9026b",
+    "e2da8c3e-6ffc-41dd-a68a-62e64f7e9c60"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Convoke: plain creatures and spells",
+   "shared": "effects.Convoke() tap cost (tap_cost.go); 68 precedent files. Transcendent Message is {X} with convoke: check the legal probe casts it. Shatter the Source targets 'creature, planeswalker, or battle' — the same target clause batch 12 uses; build it inline from existing predicates (b35Battle in batch35_helpers.go), do not add a shared helper here. Needs nothing from seam s1. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "f48d30ee-bba6-4449-8c50-caf0d7f06528",
+    "bf7f5e9d-de3d-4a29-af25-f0b56336cecb",
+    "d74d6f6a-aff0-4a36-9a99-8b2281f5e29d",
+    "e14532e9-ecc2-4028-b99e-3629533962bc",
+    "74d9331b-832b-420b-9249-f2a58253a361",
+    "a054b6ed-f6ca-4436-a433-89771ffdd2d6",
+    "d7fa5c42-7cd5-42e7-a42e-724c1a3df96a",
+    "9c0073d7-a12a-45ba-8ac3-9e2230e2fb06",
+    "fa7b7db2-c830-405c-a5e6-e5431d573ed3",
+    "3b91dc3e-46ef-4a68-829f-ef7d79598cf7",
+    "1f7f7765-aeb9-4e47-a6b9-ce823bb29e33",
+    "d8b3bcf2-1be1-46ed-9531-ca4ce98e3b3c",
+    "8c53a177-c8c8-4b9f-a221-f205da67daa5"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Convoke: creatures that convoked it, and rules-heavier convoke spells",
+   "shared": "'Each creature that convoked it': PaidCost.Convoked (game/paid_cost.go), precedent lethal_scheme.go / connive.go. Watch: Ancient Imperiosaur ENTERS with counters per convoking creature, an entry replacement reading the cast's paid cost ('As you cast this spell' values, ADR 0021 amendment #3781) — stop and report if the paid cost is not readable as it enters. Knight-Errant of Eos: X = number of convoking creatures. Wildfire Awakener: {X} plus convoke, token with a becomes-tapped trigger (#4534). Complete the Circuit: 'cast sorcery spells as though they had flash' (cast_timing.go) and 'when you next cast an instant or sorcery spell this turn, copy that spell' twice (doublecast.go, delayed_on_event.go). Cut Short: watch 'planeswalker that was activated this turn' (game/activation_tally.go ActivatedThisTurn is per source and label) — stop and report if it does not fit. Wicked Slumber: two stun counters split by choice. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "3fe95820-cd7f-4f28-82bf-eb4350ea4179",
+    "4bd20d79-0861-494a-a8f2-f6ddb5088004",
+    "1800ae74-0b54-4547-ab8f-ea61418d73e8",
+    "d22196b5-b111-45ce-ae51-a06ca02533b6",
+    "402506fa-6bd5-4814-8353-90c148dd576c",
+    "428d131c-b0fa-4e96-9c02-e2e6714357b9",
+    "5b27b794-580c-472d-b63e-99b271eb115d",
+    "ff192482-3808-4291-a31e-3dfaeb49cda2"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Simple instants",
+   "shared": "No new helpers. Final Flourish: 'Kicker—Sacrifice an artifact or creature' (falling_timber.go, additional_cost.go). Mirrodin Avenged: 'that was dealt damage this turn' (bitter_downfall.go). Moment of Truth: one to hand, one to graveyard, one to the bottom — a three-way split of looked-at cards. Scrollshift: flicker 'up to one'. Seed of Hope: choose among the milled cards. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "042cc9d9-ad13-401f-b2f5-c2f1558d7e44",
+    "aba7e9e2-8df8-454e-a332-9abae1d95b6f",
+    "9666729d-3a06-43f9-a957-d5cc4d25b974",
+    "4b74d2d9-d75b-496e-bbb4-2b95b3d3ba55",
+    "63a85361-56bc-4209-aea8-b49319bc7b92",
+    "ec83f398-31af-484d-b6d2-8c7add142260",
+    "ef61fb5c-2ea6-4f82-92c5-c4713dee45fa",
+    "9f762b9f-7525-4ff8-bc1d-fbab66fd4013",
+    "863d6607-912b-4186-9874-87d5473ec481",
+    "b3ea71d2-6298-452a-9c54-7c880b7e9cc0",
+    "cf459f47-e565-4bbb-89e4-ed54da8adae1"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Knights and the 2/2 Knight token",
+   "shared": "The 2/2 white and blue Knight with vigilance exists (chivalric_alliance.go): reuse its token row; all three makers are in this batch. Knight is read through source.TextSubtype / ctx.TextSubtype. Herald of Hoofbeats: horsemanship keyword (lu_xun_scholar_general.go) granted to other Knights. Swordsworn Cavalier: 'as long as another Knight entered the battlefield under your control this turn' (bristlebane_outrider.go). Xerex Strobe-Knight: activation condition on spells cast this turn (CastTallyFor). Exsanguinator Cavalry: Blood token. Invasion of Belenon is a Siege: Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "30ab812f-a055-4c68-ad81-9dd23e38827f",
+    "2e150f97-5688-4559-94b8-86c33fda28a0",
+    "e462e78d-2d26-4a2d-8d8f-5f31abe5c924",
+    "9ad01fb2-2ba7-447a-a5ef-e57d46421635",
+    "ac935fad-2fa7-4afc-9db4-3cd30ec4aabd",
+    "18aa69d5-9611-49fe-8aa4-7b91d5980dbc",
+    "5adcd0cb-9305-4e77-a117-31e9dca5c96d",
+    "c9b40f24-c08e-4e05-a141-0a8a670d37c9",
+    "a9baa117-ab06-4af5-9a09-4be423d7cbbd",
+    "a867be6f-46ce-4a12-a827-9429bd94243f",
+    "148145ef-a368-4caf-921d-e3809adf03de"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "The 1/1 blue-red Elemental token and red spells",
+   "shared": "The 1/1 blue and red Elemental token exists (prismari_pianist.go): reuse its row. Joyful Stormsculptor (seam s1) makes the same token, hence after s1. Glistening Deluge and Into the Fire declare a Sweep; Into the Fire's first mode also damages each battle. Lithomantic Barrage: 'can't be countered', colour-conditional damage (invasive_maneuvers.go). Vengeant Earth: land or creature becomes a 4/4 Elemental creature with haste until end of turn and must be blocked (block_requirements.go, phantom_train.go). Furnace Reins grants a quoted trigger using the player-or-battle predicate in bilbo_unexpected_adventurer.go. Bloodfeather Phoenix triggers from the graveyard on spell damage 'to an opponent or battle'. Invasion of Mercadia is a Siege: Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [
+    "s1"
+   ],
+   "cards": [
+    "e1c458ca-10f6-4da8-a93d-3adfb86fe97d",
+    "e7fa2fc2-8542-4069-b75f-5520dd30f74d",
+    "dd5a9ea5-0f27-4492-97d1-1a9970094c19",
+    "706833f7-af50-45bf-8f1d-d3a5a31cf2c8",
+    "5e414dc2-d0ff-43e5-9aa2-cd9d96de6d89",
+    "237b8528-a199-45f4-8efc-96d67119f738",
+    "b623e61a-cdb9-46b0-a443-547be05db877",
+    "e7f735ce-e53b-40c0-b449-1f28fdfb2484",
+    "f4490b09-dc55-47ed-a573-4ae0b95725b1",
+    "dc8c6803-dd87-4f00-8a92-9613dbe90549"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Phyrexians, Incubator tokens and graveyard counters",
+   "shared": "Incubator transform: incubate.go, elvish_vatkeeper.go (Attentive Skywarden, Seedpod Caretaker). Phyrexian is read through TextSubtype. Darksteel Splicer: 3/3 Phyrexian Golem token (blade_splicer.go), X = number of opponents. Phyrexian Censor: add a subtype-filtered sibling of EachPlayerMaxNoncreatureSpellsPerTurn in cast_restriction.go — watch: CastTallyFor counts totals and noncreature only, so 'one non-Phyrexian spell each turn' needs a filtered count; stop and report if the tally cannot give it. Its second line is Thalia's replacement (thalia_heretic_cathar.go). Terror of Towashi: reflexive pay, returned creature is a Phyrexian in addition (portal_to_phyrexia.go). 'Eight or more cards in their graveyard': blackbloom_rogue.go (also used by Expedition Lookout in batch 13 — read it inline, no new helper). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "896213bb-28a0-45a4-abbd-35af51f1d9aa",
+    "257fbe05-b2cb-493c-a116-49f9000b2384",
+    "6c4a0e3d-c63c-4acf-8386-b51f1ec37463",
+    "63a0f0a2-bafc-4cd0-a4ed-42ce58cd3e9b",
+    "cc5e3a21-4911-49f8-8e3c-ab23812c4004",
+    "4c77de57-29fd-45ba-b2c7-eef231c6b7c7",
+    "30236ff8-f6d5-462d-9a2f-846b2d8a1ca6",
+    "083ea8b0-ff2a-406e-90f1-668f33443747",
+    "b2bdccf1-857b-48f8-a9aa-8ef999ef0632",
+    "7fb837d7-e2c9-40f8-8a7d-156b3aa86830",
+    "c4b6dd8f-cdef-413a-a820-ec47e168b3bd",
+    "44b90948-e85a-4f69-a9e2-aba63775ba40"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Battle-matters: protector, battle targets and battle cards",
+   "shared": "Card.ProtectorPlayerID is a public field (game/card.go:1143); defense counters are ordinary counters. One helper for this batch: 'Choose target battle. If an opponent protects it, remove N defense counters from it. Otherwise, put N on it' (Etched Host Doombringer, Portent Tracker) — no precedent, new here and nowhere else. 'Planeswalker that player controls or battle that player protects': cmdr2_b19_helpers.go / soc_b3_helpers.go. 'Target creature, planeswalker, or battle' and 'creature or battle card' predicates: b35Battle (batch35_helpers.go); the same target clause is printed on Shatter the Source (batch 6), built inline there. Nahiri's Warcrafting: excess damage (overwhelming_victory.go) — watch that excess is reported for a battle and a planeswalker, stop and report if not. Onakke Javelineer is 'target player or battle'. Wildwood Escort: 'if this would die, exile it instead'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "85c799e9-74d5-459e-b168-b95ed78cd4e9",
+    "ca49d6ad-97b1-4fd4-b1cf-fecd9cafee6d",
+    "450a07f5-709c-48a6-aaa8-ddbd7da4fd2e",
+    "fe84ce0b-cd25-41ee-82c1-8ab03df5791b",
+    "e8b0edb8-6a69-4760-9bcd-969c6c898a16",
+    "10426070-2e6f-47a5-bc8d-16dcfb058b26",
+    "22677153-bd87-4ff8-af92-ced4da2aac6c",
+    "48838239-bec4-4a57-9858-425f0a937dc9",
+    "e834b281-279f-4df3-9c0e-764502b809c5",
+    "24dbddad-998b-4755-b356-4c8aca3592b1",
+    "d7dcd1a3-3163-4e26-94e8-f4072e477e6a",
+    "ce807ee3-a27c-4f3b-92a4-37faaca42aa1"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Dig, loot and graveyard utility creatures and Auras",
+   "shared": "No new helpers. 'Look at the top N, may reveal a <kind> card' is the standard dig. Sandstalker Moloch: 'if an opponent cast a blue and/or black spell this turn' (veil_of_summer.go). Expedition Lookout: defender waiver (docs/adding-cards.md #1936) plus the eight-cards threshold (blackbloom_rogue.go; also batch 11). Omen Hawker: mana only for abilities (pit_automaton.go). Scrappy Bruiser: return at end of combat (arthur_marigold_knight.go). Disturbing Conversion: -X/-0 by the controller's graveyard. Deeproot Wayfinder uses the player-or-battle predicate in bilbo_unexpected_adventurer.go. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "f8ad2f88-72ae-4e47-beb5-25a6dacc709b",
+    "3ec767f2-40ba-46c9-b7cd-5821986dda0c",
+    "f2a6dc8d-3c98-44ae-aff0-b838d7aee0b7",
+    "502f8beb-0132-492f-bbfb-acf1ea532967",
+    "17e74c4b-435c-469e-a9a4-32bf0cb7634c",
+    "f88e1616-a7c7-4122-b626-bfa799cccaa4",
+    "215fd0b4-5817-4335-a0ed-1694e44bde41",
+    "2976f47b-9626-4934-bcee-7ee7f57944c3",
+    "d1a77708-7ddf-4645-bf1e-1d8147a57f23",
+    "13c4437e-48a9-4c51-9b76-9e83e3ec362f",
+    "adde6737-516c-4d6f-9363-388ad37d4114",
+    "e0930791-72b0-4d8b-b242-7b4094fed14e"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Commander-deck utility: blink, parley, artifact tokens",
+   "shared": "One new helper for this batch only: the number of differently named artifact tokens you control (Gimbal, Sandsteppe War Riders; grep found no precedent). Bolster: bolster.go. Parley: cmdr2_s49_helpers.go / selvala_explorer_returned.go. Blink until the next end step: Guardian of Ghirapur, Mistmeadow Vanisher (becomes-tapped trigger, #4534). Seal from Existence: O-Ring with ward. Infernal Sovereign: 'skip your draw step' (necropotence.go). Conjurer's Mantle: dig for a card sharing a creature type with the equipped creature (adaptive_omnitool.go for the trigger) — read types through TextSubtype. Pain Distributor: 'whenever a player casts their first spell each turn' (the_lord_of_pain.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "2553ab57-ceb6-4654-a59d-bc61735da908",
+    "5d11ada1-6459-4a91-bd10-66673dc1ad3c",
+    "72c4c682-df97-4408-997b-e849f54aba39",
+    "b08cb220-34fe-4c54-b654-64a3c24dba44",
+    "af14101a-9cc0-4bd3-a9f9-2726353e40ff",
+    "461c0c37-7213-4ece-91f7-934e6a1a8d64",
+    "e7441404-71ff-449e-812b-18cd52eabb98",
+    "21b520c6-c94a-475a-a824-dd96394ea55b",
+    "435df16b-3dd4-446e-a643-f9478aaa47c0"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Phyrexian transformers I: simple back faces",
+   "shared": "Each front face has '{N}{C/P}: Transform this creature. Activate only as a sorcery.' Write that activated row INLINE as concealing_curtains.go does, with the Phyrexian-mana cost of ADR 0131 (docs/adding-cards.md 'Paying life for coloured mana'); do NOT add a shared helper, because batch 16 prints the same sentence and two batches must not add the same helper. Back faces register under '<oracle_id>#1'. 'When this creature transforms into <back>': 21 precedents (ashling_rekindled.go, brutal_cathar.go). Khenra Spellspear's back has prowess twice (thor_odinson.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "80ecb069-36e2-490d-9f6c-ef553c00e997",
+    "ea405cb4-a21b-4a26-98f3-251e65ea2aef",
+    "b06067e7-330e-47de-be59-c2874eedba1d",
+    "ac5487ba-6d6e-47ee-ae29-776e186789cc",
+    "3bafc004-1c90-4939-9dcb-72667c170e39",
+    "c4e51cba-e5f7-4f44-9ae9-9223a2efd004",
+    "bf0ff4b9-3543-4cfa-bfcd-f9504d27f00f",
+    "f08d8fc5-c7fb-4913-92fc-06a0d4311d71",
+    "d849be9d-0447-4f0b-a382-3f4ceb98f9a5",
+    "f810e185-4498-483b-ab37-0c583dae0eaf"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Phyrexian transformers II: legends and heavier back faces",
+   "shared": "Same transform sentence as batch 15: write the activated row inline (concealing_curtains.go + ADR 0131), no shared helper. Sun-Blessed Guardian's back: tapped-and-attacking copy token with counters (calamity_galloping_inferno.go). Ayara: X is the sacrificed permanent's mana value; back face reanimates with haste and exiles at the next end step. Heliod's back: flash for your spells (cast_timing.go) and a cost reduction per card opponents have drawn this turn (draw tallies: cmdr2_s22_helpers.go) — watch, stop and report if opponents' draws are not tallied. Rona's back: damage trigger, the source's controller exiles a card at random, land onto the battlefield under your control or free cast — watch (random effects #744, copy_and_cast.go). Polukranos: two different 3/3 Phyrexian Hydra tokens. Nezumi Freewheeler's back reanimates from any graveyard (bilbo_unexpected_adventurer.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "c554ae68-0201-4958-aa63-8159911acb50",
+    "08574d1b-4b76-42dd-884b-29c5a61cfdda",
+    "29e96c47-94ad-4740-ba86-66dc2cf9ae2f",
+    "e6fd0c7c-b164-4cf1-8910-0f8e680b2213",
+    "0b34581e-66df-4e2f-91fb-dddba632d203",
+    "f9ef90b9-a2b4-4a5b-92fb-2268ea7d709f",
+    "c27c6ba9-8d72-4101-b3a5-1e8d81755568",
+    "7a9fa906-b43e-4d98-b134-5936d3085851",
+    "cf5bd3a4-3899-4c25-ad1f-f1778c1d9c60"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Sieges I: simple enters effect, simple back face",
+   "shared": "Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). No new helpers. Prickle Faeries (each opponent's upkeep, two or fewer cards), Winnowing Forces and Vertex Paladin (characteristic-defining P/T), Awakened Skyclave ('it's a land in addition to its other types' as a type-adding static: ashaya_soul_of_the_wild.go — watch, stop and report if a self type-adding static on a cast back face does not fit). Rooftop Saboteurs and Truga Cliffcharger ('land or battle card' search) use existing predicates. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "dcbd8b15-e5fd-4f0d-ba2d-06f018b64fb3",
+    "329fcb1e-7066-46c5-ba27-20ed2b18c1ba",
+    "fe84933e-d98f-4cbc-b272-387a80894e31",
+    "462fa2a4-651b-4fc1-b73b-1bd4508c8f75",
+    "a9855326-8958-4b03-b81b-1f9e4d1335b1",
+    "f1acb469-9d02-44e6-8c09-8b4157551b2c",
+    "8b5add91-2e82-4430-bfc5-f4a6366dbbdb",
+    "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+    "1abcdddd-0022-4dfe-8c15-eb1fa86de614",
+    "c877a430-75bc-45ac-b11d-2365d11ed341"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Sieges II: tokens, Equipment, Vehicle and sorcery back faces",
+   "shared": "Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). Kylem's back is a sorcery (pattern of invasion_of_innistrad.go + deluge_of_the_dead.go); its 3/2 Warrior token carries a trigger. Kaladesh's back is a legendary Vehicle with power = artifacts you control (bronze_guardian.go). New Capenna's back is an Equipment cast from exile: it enters unattached. Regatha: 'another target battle or opponent' and a +2 damage replacement for noncreature sources (torbran_thane_of_red_fell.go; needs a Label). Tolvada: W/B 1/1 flying Spirit token, anthem for creature tokens (gideons_memorial.go). Muraganda's back: 'loses all abilities until end of turn'. Theros: search for Aura, God or Demigod. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "fee0aa18-5103-4814-94e3-87ad3eaf5a6f",
+    "2e0d12dc-55fa-4363-b28f-612e7cfa12c6",
+    "530dc119-e266-4525-abe9-7fab599e9de2",
+    "4f0bcfe5-7e52-4249-a26a-482619716f18",
+    "ba5f7f37-352a-4b9c-b648-0ba5c8d842fc",
+    "7f8dad7f-a573-469f-9095-4ba3886b4f0b",
+    "b5fe62f0-d914-4789-afd3-3831dcdbed7b",
+    "bc6f4f73-e10c-44ae-926d-9e5f6ddc14be"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "Planeswalkers, token copies and free casts from graveyards",
+   "shared": "Chandra: static copy trigger once each turn (#5245), mana in any combination of colours, −X to each of up to two targets (loyalty −X: ADR 0032 amendment, #1944). Archangel Elspeth: type-adding and flying with no duration; −6 mass return. Schema Thief / Orthion / Mirror-Style Master: token copies (copy_effects.go; 'modified' in context.go, 17 precedents; exile or sacrifice at end step / end of combat). Deluxe Dragster and Sword of Once and Future share 'cast … from a graveyard without paying its mana cost. If that spell would be put into a graveyard, exile it instead' (diluvian_primordial.go; 15 precedents such as daring_waverider.go) — both are here, keep one shape. Dragster: 'can't be blocked except by Vehicles' block rule (new, local). Invasion of Vryn's back copies a spell you control (spell_copy.go): Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "53231b31-fb3c-4b30-bfe9-0ee8e754247b",
+    "0b2481d6-97a0-4f92-b7e5-3451863fd7fb",
+    "9495b2b4-21bf-488b-a64e-74592bb277d9",
+    "31895957-5fa8-46dc-a76e-37bbdc6072ad",
+    "6a871d70-a46d-4357-8c7d-876f7a004eb7",
+    "56ba8fe5-8693-4783-8406-9ced99de0b2a",
+    "1e0cf860-6be6-4b4b-9a67-0c19b6018ae1",
+    "73c7fdb3-4742-4d08-8658-daa4435c49b1"
+   ]
+  },
+  {
+   "n": 20,
+   "theme": "Team-up legends I: combat, sacrifice and recursion",
+   "shared": "Rankle and Torbran: 'choose any number —' (rankle_master_of_pranks.go) and a this-turn +2 damage replacement created on resolution (taii_wakeen_perfect_shot.go) — needs a Label. Goro-Goro and Satoru: batched combat-damage trigger filtered to creatures that entered this turn (alela_cunning_conqueror.go for the batch shape; drownyard_behemoth.go for 'entered this turn') — watch. Zurgo and Ojutai: batched Dragon damage 'to a player or battle', then may return one of THOSE Dragons — watch that the batch names its sources, stop and report if not. Kroxa and Kunoros: optional exile of five as a reflexive cost. Moira and Teshar: 'if it would leave the battlefield, exile it instead' (exile_instead_of_leaving.go). Kogla and Yidaro: discard-this activated ability from hand (boseiju_who_endures.go) that then shuffles this card from the graveyard. Borborygmos and Fblthp: 'third from the top' (batch22_helpers.go), discard any number of lands with a reflexive trigger. Thalia and The Gitrog Monster: thalia_heretic_cathar.go. Ghalta and Mavren: tapped-and-attacking X/X Dinosaur. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "56679f06-982b-4f33-9e48-ecc64c802393",
+    "5a6f4181-f5ad-4ecf-9566-e52870af14d0",
+    "445ad01c-c899-424d-8666-ee7bb2a6e535",
+    "fe8c2b7e-f80d-4acb-a976-edcf436a78a9",
+    "756042c5-e444-45d7-8dc6-ae7c83c98438",
+    "854bdd4a-d549-41d5-af43-0e2154ed017e",
+    "941c9acd-2773-456a-88d5-0537735f93c6",
+    "80d918b2-3a28-49ad-a485-496658bd7ac3",
+    "422a76e1-97a2-4a90-b07d-f487a2d8c236",
+    "22d9eef5-0f86-4d1a-bde0-65b990d4be75"
+   ]
+  },
+  {
+   "n": 21,
+   "theme": "Team-up legends II: casting from elsewhere, draws and mana",
+   "shared": "Errant and Giada: look at the top card any time plus a cast-from-top permission filtered to spells with flash or flying (bolass_citadel.go, augur_of_autumn.go; PermissionFilter) — watch the keyword filter. Djeru and Hazoret, Hidetsugu and Kairi, Rashmi and Ragavan: exile then cast free / this turn (copy_and_cast.go, resolution_cast prompt). Katilda and Lier: flashback until end of turn (flashback.go, granted_permissions.go); Human via TextSubtype. Elenda and Azor: 'you may pay {X}' (may_pay_x.go), cards drawn this turn (duelist_of_the_mind.go). Zimone and Dina: second draw each turn (55 precedents), 'repeat this process once'. Inga and Esika: mana from creatures — game.ManaSourceCreature already exists for this card (game/mana_source.go:63) — and a creature-only spend restriction (beastcaller_savant.go). Omnath, Locus of All: 'if you would lose unspent mana, that mana becomes black instead' (kruphix_god_of_horizons.go, omnath_locus_of_the_void.go — watch that the colour is a parameter), {B/P} in its cost, three mana in any combination of the revealed card's colours. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "2c0061ab-4123-4b0c-8286-3207e8f9497d",
+    "24697554-02fa-48ba-b51d-6bba3f85c293",
+    "18591d9e-c9f5-4ae8-aee1-8580bc8fa600",
+    "bdef246c-cf66-40a1-aae4-a591846e73ca",
+    "1990012e-2a92-4e76-917a-f90fb7a4ed66",
+    "4b9f463f-3786-4374-bf77-739ae162b3ba",
+    "5bc66b18-22ac-4138-b527-fa711116e298",
+    "3431ee42-c34a-4972-9488-41b83ba5f943",
+    "26445dc7-8363-4205-aee8-1cafeb4ba4c0"
+   ]
+  },
+  {
+   "n": 22,
+   "theme": "Praetor Sagas and transformed-permanent cards",
+   "shared": "Urabrask and Vorinclex follow elesh_norn_mother_of_machines.go + elesh_norn_the_argent_etchings.go and jin_gitaxias_progress_tyrant.go (exile, return transformed; chapter III returns it front face up; saga.go). Urabrask: activation only after three instants/sorceries this turn; The Great Work III lets you cast instants and sorceries from ANY graveyard this turn with exile-instead (12 'from any graveyard' precedents, e.g. ardyn_the_usurper.go) — watch. The Grand Evolution: put up to two creature cards from among the ten milled onto the battlefield; III grants every creature you control an activated fight ability until end of turn (grants: ADR 0093) — watch. 'Transformed permanent' (Mutagen Connoisseur, Oculus Whelp, Gargantuan Slabhorn on Invasion of Pyrulea) has no card precedent (grep 'transformed permanents? you control': 0): one local predicate for this batch only, a permanent with its back face up; stop and report if the face is not readable for tokens such as transformed Incubators. 'Double-faced card' (Overgrown Pest, Invasion of Pyrulea): 60 precedents. Sieges: Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "4b1da9aa-a30c-44b8-a10e-f9dc3fe70b6f",
+    "166e5680-b8cf-47da-bcae-3591367c5fb4",
+    "07b4f5b5-47ef-43a5-af71-51693d775d4b",
+    "89ff1b0a-0cf3-455e-a381-1d93ef86a41b",
+    "323437f5-cc6c-4579-b591-499476dffb3c",
+    "1e5a5a7d-2c34-4e56-96e9-ebcf7745a03c",
+    "ce84891f-07e1-4c72-a7b8-93b6afd1293e"
+   ]
+  },
+  {
+   "n": 23,
+   "theme": "Sieges III: rules-heavy, and Begin the Invasion",
+   "shared": "Battle rules are engine behaviour keyed on the card type (game/battle.go): defense counters, protector prompt, defeat. Each Siege declares Battle: &BattleSpec{Defense, Subtype: BattleSubtypeSiege} and DefeatedTrigger(..., SiegeDefeated()); the back face registers under '<oracle_id>#1' (battles.go, invasion_of_karsus.go, invasion_of_tarkir.go; a sorcery back face: invasion_of_innistrad.go + deluge_of_the_dead.go). Invasion of Alara: exile until two nonland cards with mana value 4 or less, cast one free, one to hand; Awaken the Maelstrom is a five-part sorcery back face that 'is all colors' (leyline_of_the_guildpact.go) with a token copy and distributed counters. Invasion of Amonkhet's back, Lazotep Convert, is CAST transformed and enters as a copy of a creature card in a graveyard (body_double.go, copy_effects.go) — watch: a copy effect on a back face cast from exile; stop and report if the copy does not apply. Invasion of Arcavios: 'library, graveyard, and/or outside the game' (52 outside-the-game precedents: follow them). Invasion of Gobakhan: zero_incorporeal_sensate.go is the same sentence. Invasion of Ikoria: {X} battle, search library and/or graveyard; Zilortha's 'assign its combat damage as though it weren't blocked' for each non-Human creature (cmdr2_b19_helpers.go, indomitable_might.go) — watch the group form. Invasion of Kaldheim: exile hand, play until end of next turn. Invasion of Ravnica: 'exactly two colors' (niv_mizzet_guildpact.go). Begin the Invasion: search for up to X battle cards with different names (29 'with different names' precedents); each Siege entering asks for its protector — watch several protector prompts from one resolution, and that the {X} spell is castable by the legal probe. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint; a board wipe declares its Sweep; an 'X target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "8faa4330-07bb-4b65-810a-bbce29d3cd42",
+    "fd9b8889-a78a-4cda-9a6b-39f5536c3a0b",
+    "9794e31f-e73d-4aa0-a421-dc496080c987",
+    "86c32a56-3272-4738-b0b3-a8aa49a17ce4",
+    "21d90735-5e04-4a8c-a546-ff26d4d5998d",
+    "66914a34-59b3-48a0-9305-ebd956d34f02",
+    "78da7a38-0f08-4371-bda3-38f079f7724d",
+    "4feca1da-dcc8-440c-8933-bab91782b015"
+   ]
+  }
+ ]
+}
