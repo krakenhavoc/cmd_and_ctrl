@@ -6,7 +6,9 @@
 // drafted with: the DRAFTABLE booster of the set's own era (a play
 // booster for a set of 2024 or later, a draft booster before that; see
 // Eras), in slots by rarity at the slot rates below, drawn from the
-// cards the dump marks as found in the set's boosters. Set boosters and
+// cards the dump marks as found in the set's boosters (or, for a set
+// Scryfall has flagged nowhere, the printings of its main run: see
+// collect, #5689). Set boosters and
 // collector boosters were sold beside draft boosters and were never the
 // draft product, so they are not modelled at all. It does not model print sheets, foils,
 // showcase or other treatments, tokens or ad cards. One printing stands
