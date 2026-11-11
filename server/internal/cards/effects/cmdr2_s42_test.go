@@ -150,3 +150,79 @@ func TestDiluvianPrimordialCastsFromEachOpponentsGraveyardAndExilesThem(t *testi
 		}
 	}
 }
+
+const direFleetDaredevilOracle = "7a3e50a5-c163-4c41-b62d-d52c233c55b7"
+
+func TestDireFleetDaredevilExilesAndLetsYouCastWithAnyManaThenExilesIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	mineGY := gyCard(me, "My Instant", "Instant", "{U}", "")
+	bolt := gyCard(opp, "Opp Bolt", "Instant", "{R}", "")
+	creature := gyCard(opp, "Opp Bear", "Creature — Bear", "{1}{G}", "")
+	castHoldCreature(t, g, "Dire Fleet Daredevil", "Creature — Human Pirate", direFleetDaredevilOracle, 2, 1)
+	ch := pickTargetPrompt(t, g)
+	if slices.Contains(ch.PickTargetCards, mineGY) || slices.Contains(ch.PickTargetCards, creature) ||
+		!slices.Contains(ch.PickTargetCards, bolt) {
+		t.Fatalf("only an opponent's instant or sorcery: %v", ch.PickTargetCards)
+	}
+	answerPickTarget(t, g, bolt)
+	passPriorityAroundTable(t, g)
+	if z := g.FindCardZoneForEffect(bolt); z == nil || z.Kind != game.ZoneExile {
+		t.Fatal("the card was not exiled")
+	}
+	// Not free: a pool that cannot pay refuses. Mana of any type pays {R}.
+	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{FromZone: "exile", Strict: true, AlternativeCost: game.AltCostKeyGrantedCost,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err == nil {
+		t.Fatal("cast it for free with an empty pool")
+	}
+	floatForTest(g, me, "U")
+	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{FromZone: "exile", Strict: true, AlternativeCost: game.AltCostKeyGrantedCost,
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}}); err != nil {
+		t.Fatalf("cast it with blue mana: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if z := g.FindCardZoneForEffect(bolt); z == nil || z.Kind != game.ZoneExile {
+		t.Errorf("the spell was not exiled instead of put into a graveyard: %v", z)
+	}
+}
+
+const missionBriefingOracle = "c3a68018-9eff-47e6-a612-182886d28fe3"
+
+func TestMissionBriefingSurveilsThenLetsYouCastAChosenInstantOrSorceryThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ids := seedLibrary(me, "Bin Me", "Keep Me", "Third")
+	old := gyCard(me, "Old Bolt", "Instant", "{R}", lightningBoltOracle)
+	creature := gyCard(me, "Old Bear", "Creature — Bear", "{1}{G}", "")
+	castCatalogSpell(t, g, "Mission Briefing", "Instant", missionBriefingOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := surveilChoiceFor(g, me.ID)
+	if c == nil || len(c.ScryCards) != 2 {
+		t.Fatalf("surveil prompt %+v, want one over two cards", c)
+	}
+	if err := g.ResolveSurveil(c.ID, me.ID, []uuid.UUID{ids[0]}, []uuid.UUID{ids[1]}); err != nil {
+		t.Fatalf("ResolveSurveil: %v", err)
+	}
+	answerChooseCards(t, g, me.ID, old)
+	passPriorityAroundTable(t, g)
+
+	cast := func(id uuid.UUID) error {
+		return g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "graveyard", Strict: true,
+			AlternativeCost: game.AltCostKeyGrantedCost, Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: g.Seats[1].ID}}})
+	}
+	if err := cast(creature); err == nil {
+		t.Error("an unchosen card was cast")
+	}
+	if err := cast(old); err == nil {
+		t.Fatal("cast the chosen card without paying its mana cost")
+	}
+	floatForTest(g, me, "R")
+	if err := cast(old); err != nil {
+		t.Fatalf("cast the chosen card: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if z := g.FindCardZoneForEffect(old); z == nil || z.Kind != game.ZoneExile {
+		t.Errorf("the spell was not exiled instead of put into the graveyard")
+	}
+}
