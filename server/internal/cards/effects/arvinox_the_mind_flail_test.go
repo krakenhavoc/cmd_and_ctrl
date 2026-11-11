@@ -11,8 +11,8 @@ import (
 const arvinoxOracle = "9abecd23-a2d9-43c7-8d01-f8afdc53026e"
 
 // arvinoxStolen puts a permanent `owner` owns under `controller`'s control.
-func arvinoxStolen(g *game.Game, owner, controller uuid.UUID, name string) uuid.UUID {
-	return pushBattlefieldCardWithTimestamp(g, game.Card{
+func arvinoxStolen(g *game.Game, owner, controller uuid.UUID, name string) {
+	pushBattlefieldCardWithTimestamp(g, game.Card{
 		InstanceID: uuid.New(), Name: name, TypeLine: "Artifact",
 		Owner: owner, Controller: controller,
 	})

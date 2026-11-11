@@ -16,24 +16,24 @@ func hazelPush(g *game.Game, owner uuid.UUID) uuid.UUID {
 	return blbB1Push(g, owner, "Hazel of the Rootbloom", "Legendary Creature — Squirrel Druid", hazelOracle, 3, 5)
 }
 
-// hazelSquirrels makes n Squirrel tokens for owner and returns their ids.
-func hazelSquirrels(t *testing.T, g *game.Game, owner uuid.UUID, n int) []uuid.UUID {
+// hazelSquirrel makes a Squirrel token for owner and returns its id.
+func hazelSquirrel(t *testing.T, g *game.Game, owner uuid.UUID) uuid.UUID {
 	t.Helper()
 	before := map[uuid.UUID]bool{}
 	for _, c := range g.Battlefield.Cards {
 		before[c.InstanceID] = true
 	}
-	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(owner, TokenCard("1/1 green Squirrel"), n) })
+	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(owner, TokenCard("1/1 green Squirrel"), 1) })
 	var ids []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
 		if !before[c.InstanceID] && IsToken(c) && c.Controller == owner {
 			ids = append(ids, c.InstanceID)
 		}
 	}
-	if len(ids) != n {
-		t.Fatalf("made %d tokens, want %d", len(ids), n)
+	if len(ids) != 1 {
+		t.Fatalf("made %d tokens, want 1", len(ids))
 	}
-	return ids
+	return ids[0]
 }
 
 func hazelPoolTotal(p *game.Player) int {
@@ -156,7 +156,7 @@ func TestHazelCopiesATokenTwiceIfItIsASquirrel(t *testing.T) {
 		var token uuid.UUID
 		name, want := "Rabbit", 2
 		if squirrel {
-			token, name, want = hazelSquirrels(t, g, me.ID, 1)[0], "Squirrel", 3
+			token, name, want = hazelSquirrel(t, g, me.ID), "Squirrel", 3
 		} else {
 			token = blbBC2Tokens(t, g, me.ID, 1)[0]
 		}

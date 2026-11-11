@@ -583,6 +583,7 @@ choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expose-the-culprit-exile
 choose choose-cards/expressive-iteration-bottom
 choose choose-cards/expressive-iteration-take
+choose choose-cards/extract-brain-chosen
 choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take

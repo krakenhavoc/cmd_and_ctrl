@@ -962,6 +962,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// a live miracle grant does not make a hard-cast sorcery an
 	// instant. A no-op for every other zone. See CastPermission.ForClaim.
 	grant = grant.ForClaim(alt)
+	// #5457: a card in ANOTHER player's hand has no ordinary cast. The
+	// permission that reached it (foreignHandForCastLocked) is the whole
+	// reason the cast exists, so a cast that does not claim its offer is
+	// refused as the lookup would have refused a card nothing covers.
+	if src.Kind == ZoneHand && src != p.Hand && grant == nil {
+		return ErrCardNotFound
+	}
 	// #1729: a permission good for a set number of spells ("you may
 	// cast A spell from among ...") is spent by a cast it is the reason
 	// for. Decided here, of the card as it sits in its source zone and
@@ -4126,6 +4133,18 @@ func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string
 	}
 	switch kind {
 	case ZoneHand:
+		// #5457: "look at that player's hand. You may cast a spell from
+		// among those cards" (Silent-Blade Oni) is a permission over a
+		// card in ANOTHER seat's hand, the graveyard's and the library's
+		// exception below. A stored permission the caster holds over that
+		// card object is the only key (foreignHandForCastLocked); every
+		// other lookup answers with the caster's own hand, as it always
+		// has.
+		if p.Hand == nil || !p.Hand.Contains(cardID) {
+			if pile := g.foreignHandForCastLocked(p, cardID); pile != nil {
+				return pile, nil
+			}
+		}
 		return p.Hand, nil
 	case ZoneCommand:
 		return p.Command, nil
@@ -4248,6 +4267,34 @@ func (g *Game) foreignPileForCastLocked(p *Player, cardID uuid.UUID, kind ZoneKi
 		}
 	}
 	return nil, ErrCardNotFound
+}
+
+// foreignHandForCastLocked is foreignPileForCastLocked for a HAND
+// (#5457): the hand of another seat that holds cardID, when p holds a
+// stored permission naming that card object there, or nil. A hand is
+// hidden and nothing derives a rule over one, so only a stored
+// ScopeCards permission (storedHandPermissionLocked) opens it; and the
+// cast it opens is the one that claims the permission's offer and no
+// other, which castSpellLocked enforces once the claim is known
+// (a hand permission prices only its own claim, CastPermission.ForClaim).
+//
+// Caller must hold g.mu.
+func (g *Game) foreignHandForCastLocked(p *Player, cardID uuid.UUID) *Zone {
+	for _, other := range g.Seats {
+		if other == nil || other == p || other.Hand == nil {
+			continue
+		}
+		for _, card := range other.Hand.Cards {
+			if card.InstanceID != cardID {
+				continue
+			}
+			if g.storedHandPermissionLocked(p, card) == nil {
+				return nil
+			}
+			return other.Hand
+		}
+	}
+	return nil
 }
 
 // SorcerySpeedOpenLocked reports whether the sorcery-speed gate is

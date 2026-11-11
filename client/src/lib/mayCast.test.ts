@@ -61,6 +61,9 @@ describe("keywordCastWords (#4243, #4250)", () => {
       many: "a spell from your hand",
     });
     expect(keywordCastWords("free_cast", "Leave it in exile")?.ifNot).toBe("it stays in exile");
+    expect(keywordCastWords("free_cast", "Leave it in their hand")?.ifNot).toBe(
+      "it stays in their hand",
+    );
     expect(keywordCastWords("free_cast", "Leave it in the graveyard")?.ifNot).toBe(
       "it stays in the graveyard",
     );
