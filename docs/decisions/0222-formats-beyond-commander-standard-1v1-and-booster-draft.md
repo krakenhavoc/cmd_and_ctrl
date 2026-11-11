@@ -259,6 +259,16 @@ Section 4 says a pack is made from "the cards the dump marks as found in booster
 - **The Universes Beyond marker is not a treatment.** Scryfall puts `promo_types: ["universesbeyond"]` on every printing of such a set, plain ones included, so the plain-frame test ignores that one value.
 - **One rule in one place.** `draftpacks.collect` applies it, so the list, `PoolFor`, a draft's pools and the image scope cannot disagree.
 
+### Timed or untimed deck building (amendment 2026-11-11, #5700)
+
+Section 5 and the build call of slice 6 say the build runs on a timer, 15 minutes by default. After the owner's first test draft on production, the person who creates a draft chooses: a timer of 2 to 30 minutes as before, or none.
+
+- **The choice is the create request's** (`build_untimed`, beside `build_seconds`; the two together are refused), and a cube draft takes it the same way. An absent choice is the 15-minute timer, so a client that knows nothing of it behaves as before. It is a setting of the live draft only: the stored record (migration 0038) does not hold it, so no ADR 0149 change.
+- **Untimed means no deadline.** The build view has no `deadline`, `seconds` is 0 and `untimed` is true; nothing is built for a person on time; the rounds begin when the last person has submitted. Bots are built at once, as ever. People may submit again until then.
+- **A person who has left for good must not hold the draft.** The rule is the pick timer's away rule (a seat with no socket is picked for after `AwayGrace`) in a longer measure, because a build takes minutes where a pick takes seconds and a person may leave the tab for a short while: **a person with no socket for `UntimedBuildAwayGrace` (10 minutes) gets the `DeckBuilder`'s deck, and the rounds begin if theirs was the last the build waited for.** The 10 minutes run from the build's start, or from when the person's last socket went if that was later (a seat that never connected counts from the build's start), and coming back starts them again. A person whose page is open is never built for: the draft waits for them, and the lobby's idle close (ADR 0211: a draft nobody has touched for `IdleGameAfter`, and one with no one connected for `IdleBotsAfter`) is the end of a draft left open and forgotten. A person who leaves the draft is replaced by a bot at once, and a deck is built for the seat if they had not submitted one (`afterLeave`), so leaving by hand never waits on the grace.
+- **Tests** inject the clock (`fakeTime`), so none of this sleeps.
+- **Not built here:** a way for the host to end an untimed build by hand, and a warning to the others of who is still building. The build screen says the rounds begin when everyone has submitted.
+
 ## Consequences
 
 - The catalog's "Full" now carries more weight: a draftable set is a promise that every card in its packs works unaided.

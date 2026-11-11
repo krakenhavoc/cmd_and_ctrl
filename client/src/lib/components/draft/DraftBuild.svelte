@@ -149,8 +149,12 @@
     </div>
     <p class="help">
       Play at least {deckMin} cards: the ones you drafted, plus as many basic lands as you like. The rest
-      of what you drafted is your sideboard. When the timer ends, a deck is built for anyone who has not
-      submitted one.
+      of what you drafted is your sideboard.
+      {#if view.build?.untimed}
+        There is no timer: the rounds begin when everyone has submitted a deck.
+      {:else}
+        When the timer ends, a deck is built for anyone who has not submitted one.
+      {/if}
     </p>
 
     <dl class="counts" data-testid="draft-deck-count">

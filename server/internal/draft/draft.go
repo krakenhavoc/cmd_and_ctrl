@@ -247,6 +247,12 @@ type Config struct {
 	// BuildTimeout is the deckbuilding timer. Zero is
 	// DefaultBuildTimeout.
 	BuildTimeout time.Duration
+	// BuildUntimed has the build run with no timer (#5700): there is
+	// no deadline, nobody is built for on time, and the rounds begin
+	// when the last person has submitted, or a person who has been
+	// away for UntimedBuildAwayGrace is built for (Room). It
+	// overrides BuildTimeout.
+	BuildUntimed bool
 	// BestOf is the length of the draft's matches, 1 or 3. Zero is 1.
 	BestOf int
 	// Builder builds a deck for a bot seat and for a person whose build

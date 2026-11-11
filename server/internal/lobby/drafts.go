@@ -91,6 +91,9 @@ type DraftSpec struct {
 	// the draft's matches (1 or 3); zero is the default of each.
 	BuildTimeout time.Duration
 	BestOf       int
+	// BuildUntimed has the build run with no timer (#5700); it
+	// overrides BuildTimeout.
+	BuildUntimed bool
 
 	// HostName is the creator's seat name, HostUser their account
 	// (uuid.Nil for a visitor).
@@ -142,6 +145,7 @@ func (l *Lobby) CreateDraft(spec DraftSpec) (draftID, seatID uuid.UUID, err erro
 		PickTimeout:  spec.PickTimeout,
 		Solo:         spec.Solo,
 		BuildTimeout: spec.BuildTimeout,
+		BuildUntimed: spec.BuildUntimed,
 		BestOf:       spec.BestOf,
 	}, time.Now())
 	if err != nil {

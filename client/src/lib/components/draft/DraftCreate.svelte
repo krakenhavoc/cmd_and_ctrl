@@ -28,7 +28,9 @@
     type CubeLimits,
   } from "../../cubes";
   import {
+    buildMinuteChoices,
     createDraft,
+    DEFAULT_BUILD_MINUTES,
     DEFAULT_SEATS,
     defaultPickMode,
     draftErrorMessage,
@@ -78,6 +80,10 @@
   let name = $state("");
   // The length of the draft's matches (#5440): one game, or best of three.
   let bestOf = $state<1 | 3>(1);
+  // How deck building after the last pick runs (#5700): on a timer of
+  // buildMinutes (the server's own default is 15), or untimed.
+  let buildUntimed = $state(false);
+  let buildMinutes = $state(DEFAULT_BUILD_MINUTES);
   let busy = $state(false);
   let error = $state("");
   let notDraftable = $state(false);
@@ -162,10 +168,17 @@
     error = "";
     notDraftable = false;
     try {
+      // The server's own default is the 15 minutes, so that choice is
+      // not sent: an untouched form posts what it always did.
+      const timer = buildUntimed
+        ? { build_untimed: true }
+        : buildMinutes === DEFAULT_BUILD_MINUTES
+          ? {}
+          : { build_seconds: buildMinutes * 60 };
       const made = await createDraft(
         fromCube
-          ? { cube: cubeID, pack_size: packSize, mode, seats, name, best_of: bestOf }
-          : { set: setCode, mode, seats, name, best_of: bestOf },
+          ? { cube: cubeID, pack_size: packSize, mode, seats, name, best_of: bestOf, ...timer }
+          : { set: setCode, mode, seats, name, best_of: bestOf, ...timer },
       );
       rememberDraftSeat(made.draft.id, made);
       navigate(draftHash(made.draft.id));
@@ -408,6 +421,52 @@
           </label>
         </fieldset>
 
+        <fieldset class="field modes" disabled={busy}>
+          <legend>{L.draftBuildTime}</legend>
+          <label class="mode" class:on={!buildUntimed}>
+            <input
+              type="radio"
+              name="draft-build-time"
+              value="timed"
+              checked={!buildUntimed}
+              onchange={() => (buildUntimed = false)}
+            />
+            <span class="mode-text">
+              <span class="mode-name">{L.draftBuildTimed}</span>
+              <span class="mode-what"
+                >After the last pick you have a set time to build your deck. When it ends, a deck is
+                built for anyone who has not submitted one.</span
+              >
+            </span>
+          </label>
+          <label class="mode" class:on={buildUntimed}>
+            <input
+              type="radio"
+              name="draft-build-time"
+              value="untimed"
+              checked={buildUntimed}
+              onchange={() => (buildUntimed = true)}
+            />
+            <span class="mode-text">
+              <span class="mode-name">{L.draftBuildUntimed}</span>
+              <span class="mode-what"
+                >No timer. The rounds begin when everyone has submitted a deck. Anyone who has been
+                away for 10 minutes has a deck built for them.</span
+              >
+            </span>
+          </label>
+          {#if !buildUntimed}
+            <div class="minutes">
+              <label for="draft-build-minutes">{L.draftBuildMinutes}</label>
+              <select id="draft-build-minutes" bind:value={buildMinutes} disabled={busy}>
+                {#each buildMinuteChoices() as n (n)}
+                  <option value={n}>{n}</option>
+                {/each}
+              </select>
+            </div>
+          {/if}
+        </fieldset>
+
         <div class="field">
           <label for="draft-name">{L.draftNameField} <span class="opt">optional</span></label>
           <input
@@ -499,8 +558,16 @@
     margin: 0;
     box-sizing: border-box;
   }
-  #draft-seats {
+  #draft-seats,
+  #draft-build-minutes {
     max-width: 10ch;
+  }
+  .minutes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding-left: 2px;
   }
   .hint,
   .help {
