@@ -161,31 +161,26 @@ func TestIllusionistsGambitANewerAddedCombatRunsFirstAndIsNotBound(t *testing.T)
 	if len(s.g.PhaseEffects) != 1 {
 		t.Fatalf("in the newer combat %d rules wait, want the spell's one", len(s.g.PhaseEffects))
 	}
-	if err := s.g.PassPriority(); err != nil {
-		t.Fatalf("pass with nothing attacking in the newer combat: %v", err)
-	}
-	// Back to its declare attackers step is not possible; a fresh scene
-	// shows the attack at the caster is legal there.
-	s2 := newGambitScene(t)
-	s2.castGambit(t)
-	s2.g.WithWriteLock(func() {
-		s2.g.AddPhasesForEffect(uuid.Nil, game.PhaseAnchor{Kind: game.AnchorThisPhase}, game.PhaseKindCombat)
-	})
-	s2.toNextDeclareAttackers(t)
-	if err := s2.g.DeclareAttacker(s2.atCaster, s2.caster.ID); err != nil {
+	// One removed creature attacks the caster and the other stays home:
+	// neither is restricted or required here.
+	if err := s.g.DeclareAttacker(s.atCaster, s.caster.ID); err != nil {
 		t.Fatalf("in the newer combat a removed creature could not attack the caster: %v", err)
 	}
-	// The spell's own combat comes next and binds the creature that
-	// stayed home in the newer one.
-	s2.toNextDeclareAttackers(t)
-	if len(s2.g.PhaseEffects) != 0 {
-		t.Fatalf("in the spell's combat %d rules still wait", len(s2.g.PhaseEffects))
+	if err := s.g.PassPriority(); err != nil {
+		t.Fatalf("pass in the newer combat with a removed creature home: %v", err)
 	}
-	if err := s2.g.DeclareAttacker(s2.atThird, s2.caster.ID); err == nil {
+
+	// The spell's own combat comes next and binds the creature that
+	// stayed home, which is still untapped.
+	s.toNextDeclareAttackers(t)
+	if len(s.g.PhaseEffects) != 0 {
+		t.Fatalf("in the spell's combat %d rules still wait", len(s.g.PhaseEffects))
+	}
+	if err := s.g.DeclareAttacker(s.atThird, s.caster.ID); err == nil {
 		t.Error("in the spell's combat a removed creature attacked the caster")
 	}
 	var re *game.AttackRequirementError
-	if err := s2.g.PassPriority(); !errors.As(err, &re) || re.Attacker != s2.atThird {
+	if err := s.g.PassPriority(); !errors.As(err, &re) || re.Attacker != s.atThird {
 		t.Errorf("pass in the spell's combat with the untapped removed creature home = %v, want a refusal naming it", err)
 	}
 }
