@@ -481,8 +481,8 @@
             <h3>{L.draftDeckbuildingNext}</h3>
             <p class="help">
               Building a deck from this pool and playing it is not ready yet. It is the next part of
-              drafting to arrive. For now this is where a draft stops, and the pool is not saved
-              once you leave this page.
+              drafting to arrive. For now this is where a draft stops. The pool is not saved to your
+              account: it is here while the draft stays open, and gone once it closes.
             </p>
           </div>
           {#if closed}

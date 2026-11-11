@@ -78,8 +78,14 @@ export default defineConfig({
       // The booster draft's routes (ADR 0222 §5, #5438) live under it too:
       // POST /draft, /draft/{id}…, card art at /draft/image/{id}, and the
       // draft socket at /draft/{id}/ws, which is why this entry forwards
-      // WebSocket upgrades.
-      "/draft": { target: goServer, ws: true, changeOrigin: true },
+      // WebSocket upgrades, with the Origin override /ws has above and
+      // for the same reason: the hub's origin check runs on it too.
+      "/draft": {
+        target: goServer,
+        ws: true,
+        changeOrigin: true,
+        headers: { origin: goServer },
+      },
       // The public deck coverage checker + deck requests (ADR 0095
       // §5, #1631). Same silent failure as /catalog above without
       // these: Vite answers with index.html, the JSON parse throws,

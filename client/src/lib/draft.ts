@@ -15,6 +15,7 @@
 import type { CardImageSize } from "./cardImage";
 import { L } from "./labels";
 import { costWords } from "./manaSymbol";
+import { currentSession } from "./session";
 
 export const DRAFT_NEW_HASH = "#/draft";
 
@@ -178,8 +179,12 @@ export function draftErrorMessage(err: unknown, fallback: string): string {
 
 // Plain `fetch`, not `authFetch`: these routes are public, and authFetch
 // reads any 401 as an expired sign-in and clears it. A 401 here is about
-// the seat token, which is not the session. `credentials` lets the server
-// recognise a signed-in person by their cookie on create and join.
+// the seat token, which is not the session. On create and join the server
+// recognises a signed-in person by their cookie (`credentials`) or, when
+// the cookie has lapsed but the session in memory is still good, by that
+// session as a Bearer (signedInBearer), as every authFetch call sends it.
+// A session the server no longer accepts is ignored there: the caller is
+// then a visitor.
 async function draftFetch(
   path: string,
   init: { method?: string; body?: unknown; token?: string; signal?: AbortSignal } = {},
@@ -207,6 +212,11 @@ async function draftFetch(
   throw new DraftApiError(res.status, message, code);
 }
 
+/** The caller's own session token, if they have one: who is asking. */
+function signedInBearer(): string | undefined {
+  return currentSession()?.token || undefined;
+}
+
 const draftPath = (id: string, rest = ""): string => `/draft/${encodeURIComponent(id)}${rest}`;
 
 /** `POST /draft`. The caller keeps the token (rememberDraftSeat). */
@@ -215,7 +225,7 @@ export async function createDraft(input: CreateDraftInput): Promise<DraftSession
   const name = input.name?.trim();
   if (name) body.name = name;
   if (input.pick_seconds !== undefined) body.pick_seconds = input.pick_seconds;
-  const res = await draftFetch("/draft", { method: "POST", body });
+  const res = await draftFetch("/draft", { method: "POST", body, token: signedInBearer() });
   return (await res.json()) as DraftSession;
 }
 
@@ -234,7 +244,11 @@ export async function previewDraft(
 export async function joinDraft(id: string, invite: string, name?: string): Promise<DraftSession> {
   const body: Record<string, unknown> = { invite };
   if (name?.trim()) body.name = name.trim();
-  const res = await draftFetch(draftPath(id, "/join"), { method: "POST", body });
+  const res = await draftFetch(draftPath(id, "/join"), {
+    method: "POST",
+    body,
+    token: signedInBearer(),
+  });
   return (await res.json()) as DraftSession;
 }
 
