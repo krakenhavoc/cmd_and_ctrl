@@ -37,6 +37,10 @@ export type Route =
   // automates today, what's partial, what's missing, and what's next.
   // Public, like the catalogue (ADR 0092).
   | { name: "roadmap" }
+  // Which sets can be drafted (ADR 0222 §4, #5437), at #/draft/sets.
+  // Public: it is card data, like the catalogue. #/draft itself is left
+  // for the draft (#5438).
+  | { name: "draftSets" }
   // The privacy notice (#2983, ADR 0149): what is stored, why, for how
   // long, who it is shared with, and how a signed-in person deletes
   // their account. Public: a stranger deciding whether to sign in has
@@ -178,6 +182,10 @@ export function parseHash(hash: string): Route {
         : { name: "requestAccess" };
     case "roadmap":
       return { name: "roadmap" };
+    case "draft":
+      // Only #/draft/sets exists so far; anything else under #/draft is
+      // an unknown page, as it was.
+      return parts[1] === "sets" ? { name: "draftSets" } : defaultRoute;
     case "privacy":
       return { name: "privacy" };
     case "terms":

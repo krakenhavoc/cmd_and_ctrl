@@ -73,6 +73,9 @@ export default defineConfig({
       // The public engine roadmap (ADR 0092). The SPA's own #/roadmap
       // is a hash route requested as `/`, so this never shadows it.
       "/roadmap": { target: goServer, changeOrigin: true },
+      // Which sets can be drafted (ADR 0222 §4, #5437). The SPA's own
+      // #/draft/sets is a hash route requested as `/`, same as /roadmap.
+      "/draft": { target: goServer, changeOrigin: true },
       // The public deck coverage checker + deck requests (ADR 0095
       // §5, #1631). Same silent failure as /catalog above without
       // these: Vite answers with index.html, the JSON parse throws,

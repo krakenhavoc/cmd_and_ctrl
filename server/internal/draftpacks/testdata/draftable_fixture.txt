@@ -1,0 +1,6 @@
+# Sets recorded as draftable (ADR 0222 §4, #5437). GENERATED: do not edit.
+# Source: the made-up sets of fixture_dump.json
+# TestDraftableLedger fails when a set listed here stops being draftable.
+# Regenerate on purpose only; see testdata/README.md.
+# <set code> <pack cards> <name>
+c2a 26 C2 Fixture Alpha

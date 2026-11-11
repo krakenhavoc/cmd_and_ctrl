@@ -530,6 +530,18 @@ jobs:
         working-directory: server
         run: go test ./internal/cards/coverage/ -run TestOracleFixtureIsCurrent -v
 
+      # The draftable-set ledger (ADR 0222 §4, #5437). PR CI has no
+      # dump, so it checks a made-up fixture set against the catalog;
+      # this is where the real sets recorded in
+      # internal/draftpacks/testdata/draftable_sets.txt are checked. It
+      # fails when a recorded set has a pack card that is no longer Full
+      # in the catalog, and names the cards. A set that became draftable
+      # is logged, not failed: add it with -update-draftable.
+      - name: Draftable sets — match the ledger against the real Scryfall dump
+        if: ${{ !cancelled() }}
+        working-directory: server
+        run: go test ./internal/draftpacks/ -run TestDraftableLedger -v
+
   # S31's two standing gates that nothing ran (#685, #89 exit criteria
   # 2 and 4 of the ORIGINAL list — see docs/sprints.md § S31):
   #

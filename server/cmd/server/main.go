@@ -216,6 +216,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
@@ -1135,6 +1136,16 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 	// "GET /roadmap" pattern answers a POST with 405 rather than the
 	// lobby catch-all below answering it.
 	mux.Handle("/roadmap", roadmap.Handler())
+	// Which sets can be drafted (ADR 0222 §4, #5437): set names and the
+	// names of the cards that keep a set from being drafted, computed
+	// from the dump and the catalog. Read-only.
+	//
+	// Deliberately NOT behind auth.Middleware, like /catalog: it is card
+	// data, which never sits behind a sign-in or a Discord gate (PLAN.md
+	// §3), and a visitor can draft against bots without signing in (ADR
+	// 0222 §9). Mounted on the exact path, every method, so the
+	// handler's own "GET /draft/sets" answers a POST with 405.
+	mux.Handle("/draft/sets", draftpacks.Handler(cardIdx))
 	// The lobby: everything not routed above. Its own mux records its
 	// own patterns, so a lobby route is labelled as itself, not "/".
 	mux.Handle("/", lobbyHandler)

@@ -199,7 +199,7 @@ func TestMetricsIsAbsentFromThePublicMux(t *testing.T) {
 // handler, every series in the registry keeps the closed-set rule.
 func TestPublicHandlerKeepsLabelsClosed(t *testing.T) {
 	srv, _ := publicStack(t)
-	for _, p := range []string{"/healthz", "/games", "/me", "/cards/x", "/catalog", "/roadmap", "/no/such/path", "/metrics"} {
+	for _, p := range []string{"/healthz", "/games", "/me", "/cards/x", "/catalog", "/roadmap", "/draft/sets", "/no/such/path", "/metrics"} {
 		do(t, srv, "GET", p, "")
 	}
 	do(t, srv, "BREW", "/healthz", "")

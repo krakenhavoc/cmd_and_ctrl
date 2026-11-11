@@ -93,6 +93,9 @@ describe("service worker routing", () => {
     // The public engine roadmap (ADR 0092). Same reasoning as /decks:
     // a cached copy would show last deploy's roadmap.
     "/roadmap",
+    // Which sets can be drafted (ADR 0222 §4, #5437): the verdict moves
+    // with every deploy that builds a card.
+    "/draft/sets",
     "/admin/games",
     "/auth/discord/callback",
     "/avatars/123.png",
