@@ -1,0 +1,5 @@
+You CONTINUE the work of an earlier cloud session on cmd_and_ctrl (GitHub krakenhavoc/cmd_and_ctrl) that stopped part-way when it ran out of usage. Its instructions are still yours: run `git fetch origin work/cmdr-cards` and read `git show FETCH_HEAD:cmdr2/prompts/leftovers-a.md` in full and follow it, with these differences:
+
+1. The branch already exists with finished work on it. Do NOT create it from develop. `git fetch origin && git switch -c feat/5457-leftovers-a origin/feat/5457-leftovers-a`, then `git merge origin/develop` (generated files that conflict, such as server/internal/game/testdata/effect_keys.txt and snapshot_shape/v*.txt: take origin/develop's side and re-record them with the update commands the brief names). Read `git log origin/develop..HEAD` and the diff to see exactly what is done; do not redo it, but do check it still builds and its tests pass after the merge.
+2. What is left: Umbra Mystic, Extract Brain, Arvinox the Mind Flail and Hazel of the Rootbloom (Thieving Varmint and Magmatic Insight are done on the branch).
+3. Push after every finished piece. Finish as the original instructions say.

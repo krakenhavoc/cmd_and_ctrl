@@ -1,0 +1,148 @@
+{
+ "batch": 53,
+ "theme": "Six cards the plan missed",
+ "reuse": "Each stands alone: grep origin/develop for a precedent with the same clause before writing anything (flashback: Siphon Insight; an X spell that exiles from the top of a library and lets you cast for free: Villainous Wealth, see the theft cards of batches 44 and 45 now on develop; bounce plus draw: Repulse; evoke and a graveyard shuffle: Endurance; a token doubler: Adrix and Nev, see other doublers; an extra combat on combat damage with an attack restriction: Port Razer, see Aggravated Assault and the attack-restriction mods).",
+ "pair": 53,
+ "cards": [
+  {
+   "name": "Siphon Insight",
+   "oracle_id": "aee82122-d13e-4175-b499-9dde718e4da9",
+   "layout": "normal",
+   "mana_cost": "{U}{B}",
+   "cmc": 2.0,
+   "type_line": "Instant",
+   "oracle_text": "Look at the top two cards of target opponent's library. Exile one of them face down and put the other on the bottom of that library. You may play the exiled card for as long as it remains exiled, and you may spend mana as though it were mana of any color to cast that spell.\nFlashback {1}{U}{B}",
+   "colors": [
+    "B",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "U"
+   ],
+   "keywords": [
+    "Flashback"
+   ],
+   "collector_number": "242",
+   "set": "otc"
+  },
+  {
+   "name": "Villainous Wealth",
+   "oracle_id": "f2fae95d-074b-4c0c-99cd-f9385a424c05",
+   "layout": "normal",
+   "mana_cost": "{X}{B}{G}{U}",
+   "cmc": 3.0,
+   "type_line": "Sorcery",
+   "oracle_text": "Target opponent exiles the top X cards of their library. You may cast any number of spells with mana value X or less from among them without paying their mana costs.",
+   "colors": [
+    "B",
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "B",
+    "G",
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "249",
+   "set": "otc"
+  },
+  {
+   "name": "Repulse",
+   "oracle_id": "6f7ef1d1-c441-41ba-b7d6-6b7727ffcf04",
+   "layout": "normal",
+   "mana_cost": "{2}{U}",
+   "cmc": 3.0,
+   "type_line": "Instant",
+   "oracle_text": "Return target creature to its owner's hand.\nDraw a card.",
+   "colors": [
+    "U"
+   ],
+   "color_identity": [
+    "U"
+   ],
+   "keywords": [],
+   "collector_number": "107",
+   "set": "woc"
+  },
+  {
+   "name": "Endurance",
+   "oracle_id": "c85d824b-c190-4d04-ab99-918ad0e6516c",
+   "layout": "normal",
+   "mana_cost": "{1}{G}{G}",
+   "cmc": 3.0,
+   "type_line": "Creature — Elemental Incarnation",
+   "oracle_text": "Flash\nReach\nWhen this creature enters, up to one target player puts all the cards from their graveyard on the bottom of their library in a random order.\nEvoke—Exile a green card from your hand.",
+   "power": "3",
+   "toughness": "4",
+   "colors": [
+    "G"
+   ],
+   "color_identity": [
+    "G"
+   ],
+   "keywords": [
+    "Reach",
+    "Evoke",
+    "Flash"
+   ],
+   "collector_number": "51",
+   "set": "ecc"
+  },
+  {
+   "name": "Adrix and Nev, Twincasters",
+   "oracle_id": "12a6cad9-eb42-43bd-9e68-aaf862cd83db",
+   "layout": "normal",
+   "mana_cost": "{2}{G}{U}",
+   "cmc": 4.0,
+   "type_line": "Legendary Creature — Merfolk Wizard",
+   "oracle_text": "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nIf one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+   "power": "2",
+   "toughness": "2",
+   "colors": [
+    "G",
+    "U"
+   ],
+   "color_identity": [
+    "G",
+    "U"
+   ],
+   "keywords": [
+    "Ward"
+   ],
+   "collector_number": "198",
+   "set": "mkc",
+   "related": [
+    {
+     "component": "token",
+     "name": "Copy",
+     "type_line": "Token",
+     "oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+     "colors": [],
+     "keywords": []
+    }
+   ]
+  },
+  {
+   "name": "Port Razer",
+   "oracle_id": "653e4b68-3184-4352-ac91-127f7e6d7c12",
+   "layout": "normal",
+   "mana_cost": "{3}{R}{R}",
+   "cmc": 5.0,
+   "type_line": "Creature — Orc Pirate",
+   "oracle_text": "Whenever this creature deals combat damage to a player, untap each creature you control. After this phase, there is an additional combat phase.\nThis creature can't attack a player it has already attacked this turn.",
+   "power": "4",
+   "toughness": "4",
+   "colors": [
+    "R"
+   ],
+   "color_identity": [
+    "R"
+   ],
+   "keywords": [],
+   "collector_number": "230",
+   "set": "lcc"
+  }
+ ]
+}
