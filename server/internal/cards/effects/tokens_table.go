@@ -431,6 +431,10 @@ var tokenTable = map[string]game.Card{
 	"3/3 blue Robot Warrior artifact": {Name: "Robot Warrior", TypeLine: "Token Artifact Creature — Robot Warrior", Power: 3, Toughness: 3, Colors: []string{"U"}},
 	"2/2 black Horror":                {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
 
+	// #5368: Duskmourn's Horror (Phenomenon Investigators) and Demon (Demonic Covenant).
+	"2/2 black Horror enchantment": {Name: "Horror", TypeLine: "Token Enchantment Creature — Horror", Power: 2, Toughness: 2, Colors: []string{"B"}},
+	"5/5 black Demon with flying":  {Name: "Demon", TypeLine: "Token Creature — Demon", Power: 5, Toughness: 5, Colors: []string{"B"}, Keywords: []string{"flying"}},
+
 	// #4465: Foundations' Ninja (Kaito, Cunning Infiltrator).
 	"2/1 blue Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 2, Toughness: 1, Colors: []string{"U"}},
 	// #5368: Tarkir: Dragonstorm Commander's First Mate Ragavan (Baral and Kari Zev).
