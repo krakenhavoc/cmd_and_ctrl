@@ -25,7 +25,7 @@ func init() {
 			Label:   "Channel — {2}{G}, Discard this card: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
 			Cost:    game.AbilityCost{Mana: "{2}{G}", DiscardSelf: true},
 			Zones:   []game.ZoneKind{game.ZoneHand},
-			Purpose: game.Purpose{Lands: 1},
+			Purpose: game.Purpose{Lands: 1, Answers: game.AnswerValue},
 			Effect:  cmdr2B15SearchBasicLand("Greater Tanuki — a basic land card, onto the battlefield tapped", true),
 		}},
 	})

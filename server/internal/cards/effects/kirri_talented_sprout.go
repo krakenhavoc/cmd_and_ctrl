@@ -43,6 +43,6 @@ func init() {
 // cmdr2B15PlantTreefolkOrLand is "a Plant, Treefolk, or land card".
 func cmdr2B15PlantTreefolkOrLand() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.IsLand() || c.HasSubtype("Plant") || c.HasSubtype("Treefolk")
+		return c.IsLand() || c.HasSubtypeWord("Plant") || c.HasSubtypeWord("Treefolk")
 	}
 }
