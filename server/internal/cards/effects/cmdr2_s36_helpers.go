@@ -88,3 +88,49 @@ var cmdr2S36FaceUpOrFaceDownAnswer = OptionPickThen("option-pick/return-this-fac
 	}
 	return nil
 })
+
+// cmdr2S36CardsExiledWithThis lists the cards in exile linked to the
+// source OBJECT (CR 607.2a): the same card and the same epoch, so a
+// source that left and came back has no claim on them (CR 400.7).
+func cmdr2S36CardsExiledWithThis(g *game.Game, source *game.Card) []*game.Card {
+	return g.ExiledWithForEffect(game.PermissionCardRef{ID: source.InstanceID, Epoch: source.ObjectEpoch})
+}
+
+// cmdr2S36CondCardExiledWithThis is "if a card is exiled with it",
+// declared as an intervening if (InterveningIf, CR 603.4). It reads the
+// source (FootprintCondSource).
+type cmdr2S36CondCardExiledWithThis struct{}
+
+func (cmdr2S36CondCardExiledWithThis) Holds(ctx *Context) bool {
+	if ctx.Item == nil {
+		return false
+	}
+	src, ok := ctx.Game.LookupCardForEffect(ctx.Item.SourceCardID)
+	return ok && len(cmdr2S36CardsExiledWithThis(ctx.Game, &src)) > 0
+}
+
+func (cmdr2S36CondCardExiledWithThis) condition() (game.FootprintStep, bool) {
+	return condStep(game.FootprintCondSource, 0), true
+}
+
+// cmdr2S36ThisAttackedWithAnExiledCard is the trigger-time half of the
+// intervening if: this creature attacked and a card is exiled with it.
+func cmdr2S36ThisAttackedWithAnExiledCard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return attackDeclared(ev, source) && len(cmdr2S36CardsExiledWithThis(g, source)) > 0
+}
+
+// cmdr2S36CastExiledWithThisFree is "you may cast the exiled card without
+// paying its mana cost": the card most recently exiled with this
+// creature, offered as part of the resolution (CR 608.2g), declining
+// leaving it in exile.
+func cmdr2S36CastExiledWithThisFree(g *game.Game, item *game.StackItem) error {
+	src, ok := g.LookupCardForEffect(item.SourceCardID)
+	if !ok {
+		return nil
+	}
+	linked := cmdr2S36CardsExiledWithThis(g, &src)
+	if len(linked) == 0 {
+		return nil
+	}
+	return g.CastExiledFreeKeepingForEffect(item.Controller, item.SourceCardID, linked[len(linked)-1].InstanceID)
+}

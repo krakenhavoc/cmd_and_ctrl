@@ -308,3 +308,145 @@ func TestCmdr2S36DeathmistRaptorMayDecline(t *testing.T) {
 		t.Error("the Raptor returned although I declined")
 	}
 }
+
+const (
+	s36KheruOracle       = "c01411e0-77b2-4e65-a369-5dbe13745769"
+	s36SpelljackerOracle = "b23c28ec-dc4d-4072-8fd8-6640a104335a"
+)
+
+func TestCmdr2S36KheruSpellsnatcherExilesASpellAndLetsYouCastItFree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	id := s36CastFaceDown(t, g, "Kheru Spellsnatcher", "Creature — Snake Wizard", s36KheruOracle, "morph", 3, 3)
+	life := opp.Life
+	bolt := castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
+	s36TurnUp(t, g, me, id, "U", "U", "C", "C", "C", "C")
+	b04WaitForPick(t, g, me.ID)
+	pickCard(t, g, me.ID, bolt)
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(bolt) {
+		t.Fatal("the Bolt was not exiled")
+	}
+	if me.Graveyard.Contains(bolt) {
+		t.Error("the Bolt went to the graveyard")
+	}
+	if opp.Life != life {
+		t.Fatalf("the countered Bolt dealt damage: %d → %d", life, opp.Life)
+	}
+	// "for as long as it remains exiled": cast later, for no mana.
+	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{playerTarget(opp.ID)}, Strict: true, FromZone: "exile",
+	}); err != nil {
+		t.Fatalf("cast the exiled Bolt for free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != life-3 {
+		t.Errorf("opponent at %d, want %d", opp.Life, life-3)
+	}
+}
+
+func TestCmdr2S36KheruSpellsnatcherDoesNothingFaceDown(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	s36CastFaceDown(t, g, "Kheru Spellsnatcher", "Creature — Snake Wizard", s36KheruOracle, "morph", 3, 3)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Error("entering face down triggered the Spellsnatcher")
+	}
+}
+
+// s36SpelljackerOverTheirBolt: the opponent is the active player and
+// casts a Bolt at me; I flash in the Spelljacker and target it.
+func s36SpelljackerOverTheirBolt(t *testing.T, g *game.Game) (spelljacker, bolt uuid.UUID) {
+	t.Helper()
+	me, opp := g.Seats[0], g.Seats[1]
+	g.WithWriteLock(func() { g.Turn.ActiveSeat = 1; g.Turn.PriorityHolder = 1 })
+	bolt = castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(me.ID)})
+	g.WithWriteLock(func() { g.Turn.PriorityHolder = 0 })
+	spelljacker = castFromSeat(t, g, me, "Smirking Spelljacker", "Creature — Djinn Wizard Rogue", s36SpelljackerOracle, nil)
+	passUntilOnBattlefield(t, g, spelljacker)
+	pickCard(t, g, me.ID, bolt)
+	passPriorityAroundTable(t, g)
+	_ = opp
+	return spelljacker, bolt
+}
+
+func TestCmdr2S36SmirkingSpelljackerExilesTheirSpellLinkedToIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	life := me.Life
+	spelljacker, bolt := s36SpelljackerOverTheirBolt(t, g)
+	if !g.Exile.Contains(bolt) {
+		t.Fatal("the Bolt was not exiled")
+	}
+	if me.Life != life {
+		t.Errorf("the exiled Bolt still resolved: life %d → %d", life, me.Life)
+	}
+	src, _ := g.LookupCardForEffect(spelljacker)
+	linked := cmdr2S36CardsExiledWithThis(g, &src)
+	if len(linked) != 1 || linked[0].InstanceID != bolt {
+		t.Errorf("cards exiled with the Spelljacker = %v, want the Bolt", linked)
+	}
+}
+
+func TestCmdr2S36SmirkingSpelljackerCastsTheExiledCardWhenItAttacks(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	spelljacker, bolt := s36SpelljackerOverTheirBolt(t, g)
+	// It is their turn and the Spelljacker is new: play on to my next
+	// turn's declare-attackers step.
+	for i := 0; i < 80 && !(g.Turn.ActiveSeat == 0 && g.Turn.Step == game.StepDeclareAttackers); i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	if g.Turn.ActiveSeat != 0 || g.Turn.Step != game.StepDeclareAttackers {
+		t.Fatalf("never reached my declare-attackers step (seat %d, %s)", g.Turn.ActiveSeat, g.Turn.Step)
+	}
+	oppLife := opp.Life
+	if err := g.DeclareAttacker(spelljacker, opp.ID); err != nil {
+		t.Fatalf("attack: %v", err)
+	}
+	lockInAttacks(t, g)
+	for i := 0; i < 8 && resolutionCastOfferFor(g, me.ID) == nil; i++ {
+		if err := g.PassPriority(); err != nil {
+			break
+		}
+	}
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordExileUntil, bolt)
+	if err := castThroughResolutionCast(t, g, me.ID, bolt, game.CastSpellParams{
+		Targets: []game.TargetRef{playerTarget(opp.ID)}, Strict: true,
+	}); err != nil {
+		t.Fatalf("free cast of the exiled Bolt: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life > oppLife-3 {
+		t.Errorf("opponent at %d, want at most %d", opp.Life, oppLife-3)
+	}
+}
+
+func TestCmdr2S36SmirkingSpelljackerWithNothingExiledDoesNotTrigger(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	sj := b12Push(g, me.ID, "Smirking Spelljacker", "Creature — Djinn Wizard Rogue", s36SpelljackerOracle, 3, 3)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	triggers := func() (n int) {
+		for _, ev := range g.Events {
+			if ev.Kind == game.EventTrigger {
+				n++
+			}
+		}
+		return n
+	}
+	before := triggers()
+	if err := g.DeclareAttacker(sj, opp.ID); err != nil {
+		t.Fatalf("attack: %v", err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	if got := triggers(); got != before {
+		t.Errorf("the attack trigger fired with nothing exiled with it (%d new)", got-before)
+	}
+	if resolutionCastOfferFor(g, me.ID) != nil {
+		t.Error("a cast offer opened with nothing exiled")
+	}
+}
