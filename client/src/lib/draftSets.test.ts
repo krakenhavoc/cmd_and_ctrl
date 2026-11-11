@@ -79,9 +79,11 @@ describe("the route", () => {
     expect(isPublicRoute({ name: "draftSets" })).toBe(true);
   });
 
-  it("leaves the rest of #/draft for the draft itself", () => {
-    expect(parseHash("#/draft")).toEqual(parseHash("#/no-such-page"));
-    expect(parseHash("#/draft/abc")).toEqual(parseHash("#/no-such-page"));
+  it("leaves the rest of #/draft for the draft itself (#5438)", () => {
+    expect(parseHash("#/draft")).toEqual({ name: "draftNew" });
+    expect(parseHash("#/draft/abc")).toEqual({ name: "draft", id: "abc" });
+    // "sets" is this page, never a draft's id.
+    expect(parseHash("#/draft/sets?invite=x")).toEqual({ name: "draftSets" });
   });
 });
 

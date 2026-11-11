@@ -19,13 +19,22 @@ export type Kind =
   | "ack"
   | "legal_moves_request"
   | "legal_moves"
-  | "visibility";
+  | "visibility"
+  // The draft socket's two frames (/draft/{id}/ws, ADR 0222 §5, #5438):
+  // the per-seat view, and a seat's pick. Neither travels on a game
+  // socket; lib/draftSocket.ts sends and reads them.
+  | "draft"
+  | "draft_pick";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
   BadJSON: "bad_json",
   BadRequest: "bad_request",
   Internal: "internal",
+  // #5438 (ADR 0222 §5): a draft_pick the draft would not take (not
+  // picking, already picked, a card not in the pack, the wrong number
+  // of cards). Only ever sent on the draft socket.
+  DraftPickRefused: "draft_pick_refused",
   // S15 sub-PR 3: the strict-mode mana-cost gate rejected a
   // cast_spell. The error payload carries `missing` (brace-formatted
   // unpaid symbols) and `card_id` (the rejected cast's instance) so

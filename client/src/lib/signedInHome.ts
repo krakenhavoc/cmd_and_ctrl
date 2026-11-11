@@ -41,6 +41,11 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // Which sets can be drafted (ADR 0222 §4, #5437): set and card names,
   // card data that never sits behind a sign-in (PLAN.md §3).
   "draftSets",
+  // A booster draft (ADR 0222 §5, #5438): its create form and the draft
+  // itself. The server's routes are public, so a visitor drafts against
+  // bots with no sign-in, as they play a practice game.
+  "draftNew",
+  "draft",
   // The card catalogue (ADR 0042), public like its server route: with
   // sign-up gated on a Discord role (ADR 0156), a gate here would put
   // Scryfall data behind a chat server (S70, #2985).

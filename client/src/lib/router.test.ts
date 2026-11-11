@@ -130,3 +130,36 @@ describe("pods routes (ADR 0220 §11)", () => {
     expect(parseHash("#/pods/join")).toEqual({ name: "pods" });
   });
 });
+
+describe("draft routes (ADR 0222 §5, #5438)", () => {
+  it("keeps #/draft/sets, the sets page", () => {
+    expect(parseHash("#/draft/sets")).toEqual({ name: "draftSets" });
+  });
+
+  it("parses the create form, with and without a chosen set", () => {
+    expect(parseHash("#/draft")).toEqual({ name: "draftNew" });
+    expect(parseHash("#/draft/new")).toEqual({ name: "draftNew" });
+    expect(parseHash("#/draft?set=blb")).toEqual({ name: "draftNew", set: "blb" });
+    expect(parseHash("#/draft/new?set=blb")).toEqual({ name: "draftNew", set: "blb" });
+  });
+
+  it("parses a draft, and the invite on a shared link", () => {
+    const id = "6f1c2a9e-0000-4000-8000-000000000000";
+    expect(parseHash(`#/draft/${id}`)).toEqual({ name: "draft", id });
+    expect(parseHash(`#/draft/${id}?invite=AbC-123`)).toEqual({
+      name: "draft",
+      id,
+      invite: "AbC-123",
+    });
+    // An empty invite is no invite: the page then looks for a stored seat.
+    expect(parseHash(`#/draft/${id}?invite=`)).toEqual({ name: "draft", id });
+  });
+
+  it("opens both to a signed-out visitor", async () => {
+    const { isPublicRoute, routeRedirect } = await import("./signedInHome");
+    expect(isPublicRoute({ name: "draftNew" })).toBe(true);
+    expect(isPublicRoute({ name: "draft", id: "x" })).toBe(true);
+    expect(routeRedirect({ name: "draftNew" }, null)).toBeNull();
+    expect(routeRedirect({ name: "draft", id: "x", invite: "y" }, null)).toBeNull();
+  });
+});

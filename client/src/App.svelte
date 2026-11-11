@@ -58,6 +58,7 @@
   const loadDecks = () => import("./routes/Decks.svelte");
   const loadCatalog = () => import("./routes/Catalog.svelte");
   const loadRoadmap = () => import("./routes/Roadmap.svelte");
+  const loadDraft = () => import("./routes/Draft.svelte");
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
@@ -189,6 +190,26 @@
   {/await}
 {:else if $route.name === "draftSets"}
   <DraftSets />
+{:else if $route.name === "draftNew"}
+  {#await loadDraft()}
+    <RouteLoading />
+  {:then { default: Draft }}
+    <Draft set={$route.set} />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
+{:else if $route.name === "draft"}
+  <!-- Keyed like the table: draft A → draft B is a fresh page with a
+       fresh socket, never the old one with a swapped prop. -->
+  {#key $route.id}
+    {#await loadDraft()}
+      <RouteLoading />
+    {:then { default: Draft }}
+      <Draft id={$route.id} invite={$route.invite} />
+    {:catch}
+      <RouteLoading failed />
+    {/await}
+  {/key}
 {:else if $route.name === "privacy"}
   <Privacy />
 {:else if $route.name === "terms"}

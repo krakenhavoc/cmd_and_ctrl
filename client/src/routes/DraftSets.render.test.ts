@@ -126,12 +126,20 @@ describe("the draftable sets page", () => {
     expect(note()).toBe(PACKS_ARE_APPROXIMATIONS);
   });
 
-  it("offers no draft and no pack to open", async () => {
+  it("links a ready set to the create form with that set chosen, and opens no pack", async () => {
     serve(LIST);
     const { container } = render(DraftSets as never, {} as never);
     await settle();
     const main = container.querySelector("main")!;
+    // #5438: the draft starts from the create form, not from this page.
     expect(main.querySelectorAll("button, form, input")).toHaveLength(0);
+    const links = [...main.querySelectorAll<HTMLAnchorElement>('[data-testid="ready-sets"] a')];
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#/draft?set=rdy"]);
+    expect(text(links[0])).toContain(L.draftThisSet);
+    // The link says which set, for someone hearing a list of links.
+    expect(text(links[0])).toContain("Ready Set");
+    // A set that is not ready offers no draft.
+    expect(main.querySelectorAll('[data-testid="blocked-sets"] a')).toHaveLength(0);
   });
 
   it("says so when no set is ready", async () => {

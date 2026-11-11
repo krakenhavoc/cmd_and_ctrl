@@ -6,7 +6,8 @@
   // other set names the cards it is waiting on. Public on purpose
   // (lib/signedInHome.ts), like the catalogue: it is card data.
   //
-  // There is no draft and no pack to open here. That is #5438.
+  // A ready set links to the create form with that set chosen (#5438).
+  // No pack is opened here.
   import { onMount } from "svelte";
 
   import Icon from "../lib/components/Icon.svelte";
@@ -22,6 +23,8 @@
     releaseYear,
     type DraftSet,
   } from "../lib/draftSets";
+  import { draftNewHash } from "../lib/draft";
+  import { L } from "../lib/labels";
 
   let sets = $state<DraftSet[] | null>(null);
   let loading = $state(true);
@@ -60,7 +63,7 @@
 <Page
   eyebrow="Draft"
   title={DRAFT_SETS_TITLE}
-  lede="A set can be drafted once every card its packs can contain is fully built, so a draft never hands you a card that doesn’t work. Drafting itself is not open yet; this page shows which sets are ready for it."
+  lede="A set can be drafted once every card its packs can contain is fully built, so a draft never hands you a card that doesn’t work. This page shows which sets are ready, and which cards the others are waiting on."
   width="prose"
 >
   <div class="stack">
@@ -88,7 +91,12 @@
         {:else}
           <ul class="sets" data-testid="ready-sets">
             {#each ready as s (s.code)}
-              <li class="set">{@render setHead(s)}</li>
+              <li class="set">
+                {@render setHead(s)}
+                <a class="link-arrow go" href={draftNewHash(s.code)}
+                  >{L.draftThisSet}<span class="sr-only">: {s.name}</span> →</a
+                >
+              </li>
             {/each}
           </ul>
         {/if}
@@ -249,6 +257,21 @@
   }
   .code {
     text-transform: uppercase;
+  }
+  .go {
+    margin-left: auto;
+    font-size: 13px;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   .togo {
     margin-left: auto;
