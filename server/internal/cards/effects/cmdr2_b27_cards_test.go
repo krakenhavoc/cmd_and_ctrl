@@ -2,6 +2,7 @@ package effects
 
 import (
 	"github.com/google/uuid"
+	"reflect"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -228,5 +229,82 @@ func TestCmdr2B27MasterOfDeathDoesNothingFromTheBattlefield(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if hasPayUnlessFor(g, me.ID) {
 		t.Error("the graveyard trigger fired from the battlefield")
+	}
+}
+
+const (
+	cmdr2B27TellingTimeOracle = "192f3c8a-1120-4f7f-ae0f-fe9bde59cd08"
+	cmdr2B27VisionOracle      = "6b7b1a71-812d-4ff5-b38b-94d1cf634143"
+)
+
+func TestCmdr2B27TellingTimeSplitsThreeCardsHandTopBottom(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ids := seedLibrary(me, "One", "Two", "Three", "Four")
+	hand := me.Hand.Size()
+	castCatalogSpell(t, g, "Telling Time", "Instant", cmdr2B27TellingTimeOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestChooseCards(g, me.ID)
+	if pick == nil || len(pick.ChooseCards) != 3 || pick.ChooseMin != 1 || pick.ChooseMax != 1 {
+		t.Fatalf("want a mandatory pick of one of three, got %+v", pick)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{ids[1]}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if !me.Hand.Contains(ids[1]) || me.Hand.Size() != hand+1 {
+		t.Fatal("Two did not reach the hand")
+	}
+	order := putInLibraryChoiceFor(g, me.ID)
+	if order == nil {
+		t.Fatal("no top/bottom prompt for the other two")
+	}
+	// Three goes on top, One on the bottom.
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, []uuid.UUID{ids[0]}, []uuid.UUID{ids[2]}); err != nil {
+		t.Fatalf("ResolvePutInLibrary: %v", err)
+	}
+	if got := me.Library.Cards[me.Library.Size()-1].InstanceID; got != ids[2] {
+		t.Errorf("top of library is %v, want Three", got)
+	}
+	if got := me.Library.Cards[0].InstanceID; got != ids[0] {
+		t.Errorf("bottom of library is %v, want One", got)
+	}
+	// Both on top is refused: exactly one goes on top.
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, []uuid.UUID{ids[0], ids[2]}); err == nil {
+		t.Error("two cards on top were accepted")
+	}
+}
+
+func TestCmdr2B27DiabolicVisionTakesOneOfFiveAndReordersTheRest(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ids := seedLibrary(me, "A", "B", "C", "D", "E", "F")
+	hand := me.Hand.Size()
+	castCatalogSpell(t, g, "Diabolic Vision", "Sorcery", cmdr2B27VisionOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := latestChooseCards(g, me.ID)
+	if pick == nil || len(pick.ChooseCards) != 5 || pick.ChooseMin != 1 || pick.ChooseMax != 1 {
+		t.Fatalf("want a mandatory pick of one of five, got %+v", pick)
+	}
+	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{ids[3]}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if !me.Hand.Contains(ids[3]) || me.Hand.Size() != hand+1 {
+		t.Fatal("D did not reach the hand")
+	}
+	order := putInLibraryChoiceFor(g, me.ID)
+	if order == nil {
+		t.Fatal("no order prompt for the rest")
+	}
+	// Nothing may go to the bottom.
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, []uuid.UUID{ids[0]}, []uuid.UUID{ids[1], ids[2], ids[4]}); err == nil {
+		t.Error("a card was put on the bottom")
+	}
+	// Top-first order: E, C, B, A.
+	if err := g.ResolvePutInLibrary(order.ID, me.ID, nil, []uuid.UUID{ids[4], ids[2], ids[1], ids[0]}); err != nil {
+		t.Fatalf("ResolvePutInLibrary: %v", err)
+	}
+	want := []string{"E", "C", "B", "A", "F"}
+	if got := libraryTopNames(me, 5); !reflect.DeepEqual(got, want) {
+		t.Errorf("library top %v, want %v", got, want)
 	}
 }
