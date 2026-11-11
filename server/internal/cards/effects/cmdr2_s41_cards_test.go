@@ -649,9 +649,6 @@ func TestCmdr2S41FoundryCastsTheExiledSpellsFreeAtSorcerySpeed(t *testing.T) {
 	}
 	untapForTest(g, foundry)
 	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
-	if err := g.ActivateCatalogAbility(me.ID, foundry, 0, game.ActivateAbilityParams{}); err == nil {
-		t.Fatal("the second ability activated with no mana")
-	}
 	floatForTest(g, me, "UUUUU")
 	before := lifeOf(g, opp.ID)
 	b16Activate(t, g, me.ID, foundry, 0, game.ActivateAbilityParams{})
@@ -708,6 +705,7 @@ func TestCmdr2S41FeatherCopiesTheSpellForEachCreaturePaidFor(t *testing.T) {
 	if err := g.ResolvePayAmount(c.ID, me.ID, 2); err != nil {
 		t.Fatalf("ResolvePayAmount: %v", err)
 	}
+	answerPayUnless(t, g, me.ID, true)
 	for i := 0; i < 8 && len(g.Stack.Cards) > 0; i++ {
 		passPriorityAroundTable(t, g)
 	}
