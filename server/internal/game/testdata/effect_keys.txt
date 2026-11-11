@@ -567,6 +567,7 @@ choose choose-cards/feral-encounter
 choose choose-cards/finale-of-revelation-untap-lands
 choose choose-cards/fireglass-mentor-play
 choose choose-cards/forbidden-alchemy-take
+choose choose-cards/foreboding-steamboat-grave
 choose choose-cards/formidable-speaker-search
 choose choose-cards/fortune-loyal-steed-saddler
 choose choose-cards/gandalf-party-guest-cast
@@ -1786,6 +1787,7 @@ run prompt-run/fatal-grudge-draw
 run prompt-run/felothar-sacrifice
 run prompt-run/final-showdown-indestructible
 run prompt-run/fire-lord-ozai-add-red
+run prompt-run/foreboding-steamboat-exile
 run prompt-run/forgotten-ancient-move
 run prompt-run/frantic-scapegoat-suspect
 run prompt-run/garruk-the-veil-cursed-tutor
