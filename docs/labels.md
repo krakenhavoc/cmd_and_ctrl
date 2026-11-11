@@ -339,3 +339,42 @@ registered, or when this file is stale.
 | `holdShiftToFlip` | `Hold Shift to flip` | note | text | `lib/components/board/HoverZoomOverlay.svelte` | the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big |
 | `draftPlayBooster` | `Play booster` | generic | text | `lib/draftSets.ts` | the draftable sets page: a set whose packs are modelled on a play booster (sets released from February 2024 on) |
 | `draftDraftBooster` | `Draft booster` | generic | text | `lib/draftSets.ts` | the draftable sets page: a set whose packs are modelled on a draft booster (sets before play boosters) |
+| `draftThisSet` | `Draft this set` | link | text | `routes/DraftSets.svelte` | the draftable sets page: a ready set's link to the create form with that set chosen (#/draft?set=<code>) |
+| `draftAgainstBots` | `Draft against bots` | link | text | `routes/FrontPage.svelte` | the front page's way into a draft without an account: #/draft, a solo draft against bots when signed out |
+| `draftNewTitle` | `Start a draft` | heading | text | `lib/components/draft/DraftCreate.svelte` | the create form's page title, at #/draft |
+| `draftSetField` | `Set to draft` | combobox | text | `lib/components/draft/DraftCreate.svelte` | the create form's set picker: the draftable sets only, newest first |
+| `draftPickMode` | `Pick mode` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's pick mode group: pick one or pick two |
+| `draftPickOne` | `Pick one` | radio | text | `lib/draft.ts` | a draft's pick mode: one card from each pack (the create form's option, the join page, the draft's head) |
+| `draftPickTwo` | `Pick two` | radio | text | `lib/draft.ts` | a draft's pick mode: two cards from each pack, offered first at four seats |
+| `draftSeatsField` | `Seats` | combobox | text | `lib/components/draft/DraftCreate.svelte` | the create form's number of seats, 2 to 8; a seat no person takes is a bot |
+| `draftNameField` | `Draft name` | textbox | text | `lib/components/draft/DraftCreate.svelte` | the create form's optional name for the draft |
+| `draftCreate` | `Create draft` | button | text | `lib/components/draft/DraftCreate.svelte` | the create form's primary: POST /draft, then the draft's own page |
+| `draftReturn` | `Return to your draft` | link | text | `lib/components/draft/DraftCreate.svelte` | the create form's link back to a draft this browser still holds a seat in |
+| `draftSeeSets` | `See which sets can be drafted` | link | text | `lib/components/draft/DraftCreate.svelte` | the create form's link to #/draft/sets |
+| `draftGuestName` | `Name at the draft` | textbox | text | `lib/components/draft/DraftJoin.svelte` | the join page's name field, shown to a visitor who is not signed in |
+| `draftJoin` | `Join draft` | button | text | `lib/components/draft/DraftJoin.svelte` | the join page's primary: POST /draft/{id}/join with the link's invite |
+| `draftStart` | `Start draft` | button | text | `lib/components/draft/DraftRoom.svelte` | the draft lobby's primary, for the host: every open seat becomes a bot and the first pack is dealt |
+| `draftLeave` | `Leave draft` | button | text | `lib/components/draft/DraftRoom.svelte` | leave a draft: frees the seat in the lobby; once picking has begun it asks first, because a bot takes the seat |
+| `draftLeaveConfirm` | `Leave and let a bot draft` | button | text | `lib/components/draft/DraftRoom.svelte` | the second step of leaving a draft that is picking: the seat becomes a bot for the rest of the draft |
+| `draftStay` | `Keep drafting` | button | text | `lib/components/draft/DraftRoom.svelte` | the way back from the leave question in a draft that is picking |
+| `draftCopyInvite` | `Copy draft invite` | button | text | `lib/components/draft/DraftRoom.svelte` | the draft lobby's copy button beside the host's invite link; never shown in a solo draft |
+| `draftInviteLink` | `draft invite link` | textbox | aria | `lib/components/draft/DraftRoom.svelte` | the read-only field that holds the host's invite link in the draft lobby |
+| `draftSeats` | `seats at this draft` | list | aria | `lib/components/draft/DraftSeats.svelte` | the draft's seat list: each seat's name and status (host, bot, picking, picked, away) and how many cards it has drafted, never the cards |
+| `draftPack` | `the pack you hold` | group | aria | `lib/components/draft/DraftPack.svelte` | the pick screen's pack: one toggle button per card, named for the card |
+| `draftConfirmPick` | `Pick <n> card(s)` (starts with `Pick `) | button | text | `lib/draft.ts` | the pick screen's primary: sends draft_pick with the chosen cards, enabled only when exactly that many are chosen |
+| `draftTimer` | `pick timer` | timer | aria | `lib/components/draft/DraftRoom.svelte` | the pick screen's countdown, run from the server's clock; urgent in the last 10 seconds |
+| `draftWaiting` | `Waiting for the others` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen after the viewer has picked, above the names of the seats still picking |
+| `draftYourPicks` | `Your picks` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen's list of the viewer's own picks so far, grouped by colour and mana value |
+| `draftYourPool` | `Your pool` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's card pool, grouped by colour and mana value |
+| `draftFinished` | `The draft is finished` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's headline |
+| `draftDeckbuildingNext` | `Deckbuilding comes next` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's note that building a deck from the pool is coming (#5440) and is not offered yet |
+| `draftGone` | `This draft is gone` | heading | text | `routes/Draft.svelte`<br>`lib/components/draft/DraftJoin.svelte`<br>`lib/components/draft/DraftRoom.svelte` | a draft that closed, or a seat that is no longer the viewer's: a plain message and the way to a new draft |
+| `draftNewDraft` | `Start another draft` | link | text | `routes/Draft.svelte`<br>`lib/components/draft/DraftJoin.svelte`<br>`lib/components/draft/DraftRoom.svelte` | the link to the create form from a finished or closed draft |
+| `draftGroupWhite` | `White` | heading | text | `lib/draft.ts` | a drafted pool's group of white cards |
+| `draftGroupBlue` | `Blue` | heading | text | `lib/draft.ts` | a drafted pool's group of blue cards |
+| `draftGroupBlack` | `Black` | heading | text | `lib/draft.ts` | a drafted pool's group of black cards |
+| `draftGroupRed` | `Red` | heading | text | `lib/draft.ts` | a drafted pool's group of red cards |
+| `draftGroupGreen` | `Green` | heading | text | `lib/draft.ts` | a drafted pool's group of green cards |
+| `draftGroupMulticolour` | `Multicolour` | heading | text | `lib/draft.ts` | a drafted pool's group of cards of two or more colours |
+| `draftGroupColourless` | `Colourless` | heading | text | `lib/draft.ts` | a drafted pool's group of colourless cards that are not lands |
+| `draftGroupLands` | `Lands` | heading | text | `lib/draft.ts` | a drafted pool's lands, kept apart from the colours |

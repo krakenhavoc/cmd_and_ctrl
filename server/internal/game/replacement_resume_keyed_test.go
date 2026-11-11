@@ -68,7 +68,7 @@ func keyedFrameSample() *ReplacementEvent {
 		entryRefused: true, EntersUnlocked: DoorMask(3), EntersAttacking: id("defender"),
 		FaceDown: FaceDownKind("morph"), FaceDownListed: &FaceDownListing{Types: []string{"Creature"}, Subtypes: []string{"Elf"}, Power: 2, Toughness: 3},
 		EntersAsCopyOf: &PrintedValues{Name: "Copied"}, copySourceID: id("copy"), copyUntilEndOfTurn: true,
-		auraHost: TargetRef{Kind: TargetCard, ID: id("host")}, auraHostFixed: true, auraHostSettled: true,
+		auraHost: TargetRef{Kind: TargetCard, ID: id("host")}, auraHostFixed: true, auraHostSettled: true, auraHostCreaturesOnly: true,
 		entersAsAura: true, exchangeTextWith: id("xt"),
 		entersAs: &EntersAs{Types: []string{"Artifact"}, Subtypes: []string{"Food"}, Grants: []string{"test/food"}, Label: "test",
 			AddTypes: []string{"Creature"}, AddSubtypes: []string{"Spirit"}, Keywords: []string{"flying"}, BasePT: &EntersAsPT{Power: 1, Toughness: 1}},

@@ -283,8 +283,8 @@ export function resetArtFailureReports(): void {
 
 // describeArtURL renders an art URL as the card id, face and size a
 // bug triager needs, e.g. "id=abc face=1 size=small". Covers both the
-// session route (/cards/{id}/image) and the public catalogue's
-// (/catalog/image/{id}). A face-0 URL carries no `face` parameter
+// session route (/cards/{id}/image), the public catalogue's
+// (/catalog/image/{id}) and a draft's (/draft/image/{id}). A face-0 URL carries no `face` parameter
 // (cardImage.ts explains why), so absence reads as face 0. Anything
 // unrecognised comes back verbatim rather than being dropped.
 export function describeArtURL(url: string): string {
@@ -296,7 +296,7 @@ export function describeArtURL(url: string): string {
   }
   const m =
     /^\/cards\/([^/]+)\/image$/.exec(parsed.pathname) ??
-    /^\/catalog\/image\/([^/]+)$/.exec(parsed.pathname);
+    /^\/(?:catalog|draft)\/image\/([^/]+)$/.exec(parsed.pathname);
   if (!m) return url;
   const face = parsed.searchParams.get("face") ?? "0";
   const size = parsed.searchParams.get("size") ?? "normal";

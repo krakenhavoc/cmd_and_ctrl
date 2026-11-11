@@ -135,6 +135,15 @@
         >
       </p>
 
+      <!-- A booster draft against bots (ADR 0222 §5, #5438): public like
+           the practice game, so it sits on the same line under it. -->
+      <p class="practice draft rise" style="--d: 250ms">
+        <a class="btn ghost" href="#/draft"
+          ><Icon name="library" size={15} /> {L.draftAgainstBots}</a
+        >
+        <span>No account needed: open packs of one set and pick your cards.</span>
+      </p>
+
       <p class="fine rise" style="--d: 280ms">
         {#if discordEnabled}
           Your Discord name and avatar become your seat, and your tables, games and decks follow you
@@ -329,6 +338,9 @@
     font-size: 16px;
     line-height: 1.5;
     color: var(--fg-muted);
+  }
+  .practice.draft {
+    margin-top: 12px;
   }
   .practice span {
     flex: 1 1 24ch;

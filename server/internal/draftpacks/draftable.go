@@ -114,6 +114,14 @@ func Sets(idx *cards.Index) Response {
 
 // sets is Sets with the catalog verdict and the override table injected.
 func sets(idx *cards.Index, isFull IsFull, table map[string]Override) Response {
+	resp, _ := setsAndPools(idx, isFull, table)
+	return resp
+}
+
+// setsAndPools is sets, and the pool of every draftable set by code:
+// what a draft draws its packs from (#5438).
+func setsAndPools(idx *cards.Index, isFull IsFull, table map[string]Override) (Response, map[string]Pool) {
+	pools := map[string]Pool{}
 	found := collect(idx, nil)
 	out := make([]SetStatus, 0, 64)
 	for code, main := range found {
@@ -146,6 +154,9 @@ func sets(idx *cards.Index, isFull IsFull, table map[string]Override) Response {
 			s.Blockers = append(s.Blockers, b.Name)
 		}
 		s.Draftable = len(s.Blockers) == 0
+		if s.Draftable {
+			pools[code] = pool
+		}
 		out = append(out, s)
 	}
 	sort.Slice(out, func(a, b int) bool {
@@ -160,7 +171,7 @@ func sets(idx *cards.Index, isFull IsFull, table map[string]Override) Response {
 			resp.Draftable++
 		}
 	}
-	return resp
+	return resp, pools
 }
 
 // commonDate is the most frequent release date among a set's printings,
@@ -178,14 +189,24 @@ func commonDate(dates map[string]int) string {
 // Lister serves Sets for one index and remembers the answer until the
 // index is reloaded. The catalog is fixed for the life of the binary, so
 // the dump's load time is the only thing the list depends on.
+//
+// It also remembers the pool of every draftable set, which is what a
+// draft draws its packs from (DraftablePool), and which printings those
+// pools hold, which is what the public image route serves
+// (IsDraftPrinting).
 type Lister struct {
 	idx *cards.Index
+	// isFull, when set, replaces the catalog's verdict. Tests only.
+	isFull IsFull
 
-	mu     sync.Mutex
-	at     time.Time
-	count  int
-	cached Response
-	have   bool
+	mu        sync.Mutex
+	at        time.Time
+	count     int
+	cached    Response
+	pools     map[string]Pool
+	status    map[string]SetStatus
+	printings map[uuid.UUID]bool
+	have      bool
 }
 
 // NewLister returns a Lister over idx. A nil idx lists no sets.
@@ -193,17 +214,70 @@ func NewLister(idx *cards.Index) *Lister {
 	return &Lister{idx: idx}
 }
 
+// NewListerWith is NewLister with the catalog's verdict replaced, for a
+// test that drafts a made-up set.
+func NewListerWith(idx *cards.Index, isFull IsFull) *Lister {
+	return &Lister{idx: idx, isFull: isFull}
+}
+
+// refreshLocked recomputes the list when the index has been reloaded.
+func (l *Lister) refreshLocked() {
+	at, count := l.idx.LoadedAt(), l.idx.Count()
+	if l.have && at.Equal(l.at) && count == l.count {
+		return
+	}
+	isFull := l.isFull
+	if isFull == nil {
+		isFull = CatalogIsFull(l.idx)
+	}
+	l.cached, l.pools = setsAndPools(l.idx, isFull, overrides)
+	l.status = make(map[string]SetStatus, len(l.cached.Sets))
+	for _, s := range l.cached.Sets {
+		l.status[s.Code] = s
+	}
+	l.printings = map[uuid.UUID]bool{}
+	for _, p := range l.pools {
+		for _, c := range p.Contents() {
+			l.printings[c.ID] = true
+		}
+	}
+	l.at, l.count, l.have = at, count, true
+}
+
 // Sets is Sets(idx), computed at most once per load of the index.
 func (l *Lister) Sets() Response {
 	if l == nil || l.idx == nil {
 		return Response{Sets: []SetStatus{}}
 	}
-	at, count := l.idx.LoadedAt(), l.idx.Count()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if !l.have || !at.Equal(l.at) || count != l.count {
-		l.cached = Sets(l.idx)
-		l.at, l.count, l.have = at, count, true
-	}
+	l.refreshLocked()
 	return l.cached
+}
+
+// DraftablePool is the pool of a set a draft may hand out, with its row
+// of the list. ok is false for a set that is not in the list or is not
+// draftable: the same verdict GET /draft/sets shows.
+func (l *Lister) DraftablePool(set string) (Pool, SetStatus, bool) {
+	if l == nil || l.idx == nil {
+		return Pool{}, SetStatus{}, false
+	}
+	set = strings.ToLower(strings.TrimSpace(set))
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.refreshLocked()
+	p, ok := l.pools[set]
+	return p, l.status[set], ok
+}
+
+// IsDraftPrinting reports whether id is a printing some draftable set's
+// packs can contain: the scope of GET /draft/image/{id}.
+func (l *Lister) IsDraftPrinting(id uuid.UUID) bool {
+	if l == nil || l.idx == nil {
+		return false
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.refreshLocked()
+	return l.printings[id]
 }

@@ -314,15 +314,24 @@ func (h *Hub) admit(c *Client) bool {
 
 func (h *Hub) unregister(c *Client) {
 	h.mu.Lock()
-	if _, ok := h.clients[c]; ok {
+	_, ok := h.clients[c]
+	if ok {
 		delete(h.clients, c)
 		close(c.send)
-		if !c.hidden {
-			h.markLeftLocked(c)
+		c.feedGone = true
+		if c.feed == nil {
+			if !c.hidden {
+				h.markLeftLocked(c)
+			}
+			h.markOfflineLocked(c)
 		}
-		h.markOfflineLocked(c)
 	}
 	h.mu.Unlock()
+	// Outside the hub's lock: the feed takes its own, and sends under
+	// it take the hub's read lock (sendFeed).
+	if ok && c.feedDetach != nil {
+		c.feedDetach()
+	}
 }
 
 // MetricsSockets lists every live connection for the metrics tables
@@ -334,6 +343,10 @@ func (h *Hub) MetricsSockets() []metrics.Socket {
 	defer h.mu.RUnlock()
 	out := make([]metrics.Socket, 0, len(h.clients))
 	for c := range h.clients {
+		if c.feed != nil {
+			// A feed socket (the draft) is at no table.
+			continue
+		}
 		out = append(out, metrics.Socket{
 			Game:   metrics.Key(c.gameID),
 			Player: metrics.Key(c.playerID),
@@ -385,6 +398,11 @@ func (h *Hub) LiveSockets() []LiveSocket {
 	defer h.mu.RUnlock()
 	out := make([]LiveSocket, 0, len(h.clients))
 	for c := range h.clients {
+		if c.feed != nil {
+			// Live now lists who is at which table; a draft socket is
+			// at none.
+			continue
+		}
 		out = append(out, LiveSocket{
 			GameID:      c.gameID,
 			PlayerID:    c.playerID,
@@ -982,11 +1000,23 @@ type Client struct {
 	// presence.go): true while the client's tab is hidden. False until
 	// the client says otherwise. Guarded by hub.mu.
 	hidden bool
+
+	// feed is set on a socket bound to a feed instead of a game (the
+	// draft, feed.go); feedDetach is what tells the feed it has gone.
+	// feedGone is set under hub.mu when the send channel closes, so a
+	// feed's own goroutine never sends on a closed channel.
+	feed       Feed
+	feedDetach func()
+	feedGone   bool
 }
 
 // role is the connection's role label (ADR 0123 §3): seat, spectator
 // or admin.
 func (c *Client) role() string {
+	if c.feed != nil {
+		// A draft socket is always a seat of its draft.
+		return metrics.RoleSeat
+	}
 	return metrics.WSRole(c.playerID != uuid.Nil, c.readOnly)
 }
 
@@ -1050,6 +1080,11 @@ func (c *Client) handleFrame(raw []byte) {
 	if frame.V != protocol.Version {
 		c.sendError(frame.ID, protocol.CodeBadVersion,
 			"unsupported protocol version")
+		return
+	}
+
+	if c.feed != nil {
+		c.handleFeedFrame(frame)
 		return
 	}
 

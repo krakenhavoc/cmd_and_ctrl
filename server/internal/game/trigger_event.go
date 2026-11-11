@@ -175,6 +175,16 @@ type ObjectSnapshot struct {
 	// was not on the battlefield when the event was harvested.
 	AltCost        string      `json:",omitempty"`
 	AltCostObjects []ObjectRef `json:",omitempty"`
+
+	// Counters are the counters the object had, by kind, as it left the
+	// battlefield (CR 603.10a), written down while the departure record is
+	// still there: MoveCard clears a permanent's counters on the way out, and
+	// the record is deleted as soon as the harvest finishes. "The number of
+	// counters on that creature" in a dies trigger's target clause reads it
+	// (Puca's Covenant), where the clause is built as the trigger goes on the
+	// stack. Empty for an object with none and for one that was not on the
+	// battlefield when the event was harvested.
+	Counters map[string]int `json:",omitempty"`
 }
 
 // Ref names the object the snapshot describes, for PermanentForEffect.
@@ -416,6 +426,12 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 		// 708.2a, 202.3a). The record was read off the permanent before
 		// it moved (#4762).
 		out.ManaValue = last.ManaValue
+	}
+	if counters := g.lastKnownCounters[cardID]; len(counters) > 0 {
+		out.Counters = make(map[string]int, len(counters))
+		for kind, n := range counters {
+			out.Counters[kind] = n
+		}
 	}
 	out.Types = copyStrings(ch.Types)
 	out.Subtypes = copyStrings(ch.Subtypes)

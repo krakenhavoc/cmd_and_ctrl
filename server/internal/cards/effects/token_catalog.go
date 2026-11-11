@@ -329,6 +329,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// when he attacks.
 	printedGalactusToken,
 
+	// Careful Cultivation's Human Monk (Commander wave 2, #5368): a 1/1
+	// green Human Monk with "{T}: Add {G}."
+	printedCmdr2B19HumanMonkToken,
+
 	// Dora Milaje Elite's Vibranium: indestructible, restricted {C}.
 	printedVibraniumToken,
 

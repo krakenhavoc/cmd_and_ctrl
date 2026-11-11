@@ -96,6 +96,17 @@ describe("service worker routing", () => {
     // Which sets can be drafted (ADR 0222 §4, #5437): the verdict moves
     // with every deploy that builds a card.
     "/draft/sets",
+    // A booster draft (ADR 0222 §5, #5438), all under /draft: the invite
+    // page's preview changes as people sit down, and the socket is its
+    // own path.
+    "/draft",
+    "/draft/6f1c2a9e-0000-4000-8000-000000000000",
+    "/draft/6f1c2a9e-0000-4000-8000-000000000000?invite=AbC",
+    "/draft/6f1c2a9e-0000-4000-8000-000000000000/join",
+    "/draft/6f1c2a9e-0000-4000-8000-000000000000/ws?token=t",
+    // Not card art: the image route with no id, or with more after it.
+    "/draft/image",
+    "/draft/image/4f1b/extra",
     "/admin/games",
     "/auth/discord/callback",
     "/avatars/123.png",
@@ -168,6 +179,14 @@ describe("service worker routing", () => {
   it("caches catalogue art the same way as card art", () => {
     expect(kind("/catalog/image/4f1b?size=normal")).toBe("card-image");
     expect(kind("/catalog/image/4f1b?size=small&face=1")).toBe("card-image");
+  });
+
+  // A draft's cards (ADR 0222 §5, #5438): public for the same reason, and
+  // "draft" in the API deny list must not swallow them.
+  it("caches draft card art the same way", () => {
+    expect(kind("/draft/image/4f1b?size=normal")).toBe("card-image");
+    expect(kind("/draft/image/4f1b?size=small&face=1")).toBe("card-image");
+    expect(kind("/draft/image/4f1b?size=normal", "POST")).toBe("bypass");
   });
 
   it("does not mistake the catalogue JSON for card art", () => {

@@ -212,6 +212,9 @@ func (l *Lobby) RunIdle(ctx context.Context) {
 // SetIdleClock as TickAway is driven.
 func (l *Lobby) TickIdle() {
 	now := l.idleNow()
+	// Drafts first: they are not tables and have their own, simpler
+	// turn of the sweep (drafts.go).
+	l.tickDraftsIdle(now)
 	p := l.awayHub()
 
 	l.mu.Lock()

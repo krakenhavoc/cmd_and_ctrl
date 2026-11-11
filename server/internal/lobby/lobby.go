@@ -373,7 +373,11 @@ type StateBroadcaster interface {
 type Lobby struct {
 	mu    sync.Mutex
 	games map[uuid.UUID]*gameEntry
-	mgr   *ws.RoomManager
+	// drafts is every live booster draft (drafts.go, ADR 0222 §5). A
+	// draft is not a game: it is in memory only and has no entry in
+	// games.
+	drafts map[uuid.UUID]*draftEntry
+	mgr    *ws.RoomManager
 	// broadcast, when non-nil, receives the post-mutation view of
 	// every HTTP-side game mutation (join / deck upload / start) so
 	// clients already on the game page see it without waiting for

@@ -31,6 +31,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -78,7 +79,14 @@ const maxDeckBodyBytes = 2 * 1024 * 1024
 // Lobby itself so main.go can build the HTTP layer without the
 // lobby having to know about auth.
 type Config struct {
-	Lobby      *Lobby
+	Lobby *Lobby
+	// DraftSets is the draftable-set list a draft's set is checked
+	// against and its packs are drawn from (ADR 0222 §4, §5): the same
+	// Lister GET /draft/sets serves. Nil refuses every set.
+	DraftSets *draftpacks.Lister
+	// DraftHub serves the draft's socket (drafts_http.go): *ws.Hub in
+	// production. Nil answers 503 there.
+	DraftHub   DraftSockets
 	Auth       auth.Authenticator
 	AdminToken string // shared admin token; empty disables admin flow
 	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
@@ -806,6 +814,9 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /games/practice/guest",
 		guestPracticeLimit.Middleware(deckLimit.Middleware(createIPGate(createIPLimit, handlerFunc(c, createGuestPractice)))))
 	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
+	// Booster drafts (ADR 0222 §5, #5438): public, like the guest's
+	// practice table. See drafts_http.go.
+	registerDraftRoutes(mux, c, newLimiter, limit, createIPLimit)
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own
 	// auth.Middleware(c.Auth, auth.RoleAdmin) — see botstats.go — so
@@ -4999,6 +5010,9 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrGameNotFound):
 		status = http.StatusNotFound
+	case errors.Is(err, ErrDraftNotFound):
+		status = http.StatusNotFound
+		msg = "draft not found"
 	case errors.Is(err, ErrInvalidInvite), errors.Is(err, ErrInvalidReclaim):
 		status = http.StatusUnauthorized
 	case errors.Is(err, ErrGameFull),
