@@ -39,7 +39,7 @@ func cmdr2S51GarrukLoyalty(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	for _, c := range ids {
-		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterLoyalty, N: 1}).Apply(ctx); err != nil {
+		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterLoyalty, N: 1}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

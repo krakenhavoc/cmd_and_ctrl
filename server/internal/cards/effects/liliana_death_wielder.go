@@ -40,15 +40,7 @@ func init() {
 				Label:   "−3: Destroy target creature with a -1/-1 counter on it.",
 				Cost:    LoyaltyCost(-3),
 				Targets: TargetCreature("target creature with a -1/-1 counter on it", CreatureWithCounter(game.CounterMinusOne)),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetCard {
-							return DestroyTarget{Target: t.ID}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:  destroyFirstLegalCardTarget,
 			},
 			{
 				Label: "−10: Return all creature cards from your graveyard to the battlefield.",

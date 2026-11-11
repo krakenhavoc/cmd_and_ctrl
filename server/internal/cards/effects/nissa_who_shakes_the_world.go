@@ -59,7 +59,7 @@ func init() {
 					}
 					return SearchLibrary{
 						Player:        item.Controller,
-						Predicate:     func(c game.Card) bool { return c.IsLand() && c.HasSubtype("Forest") },
+						Predicate:     func(c game.Card) bool { return c.IsLand() && c.HasSubtypeWord("Forest") },
 						Dest:          game.ZoneBattlefield,
 						TappedOnEntry: true,
 						Unbounded:     true,

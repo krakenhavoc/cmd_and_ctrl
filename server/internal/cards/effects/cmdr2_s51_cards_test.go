@@ -26,11 +26,11 @@ func init() {
 	noop := func(*game.Game, *game.StackItem) error { return nil }
 	Register(Spec{
 		OracleID: s51ArtifactProbeOracle, Name: "S51 Artifact Probe",
-		Activated: []ActivatedAbility{{Label: "{2}: Do nothing.", Cost: ManaCost("{2}"), Effect: noop}},
+		Activated: []ActivatedAbility{{Label: "{2}: Do nothing.", Cost: ManaCost("{2}"), Purpose: game.Purpose{Answers: game.AnswerValue}, Effect: noop}},
 	})
 	Register(Spec{
 		OracleID: s51CreatureProbeOracle, Name: "S51 Creature Probe",
-		Activated: []ActivatedAbility{{Label: "{2}: Do nothing.", Cost: ManaCost("{2}"), Effect: noop}},
+		Activated: []ActivatedAbility{{Label: "{2}: Do nothing.", Cost: ManaCost("{2}"), Purpose: game.Purpose{Answers: game.AnswerValue}, Effect: noop}},
 	})
 }
 
