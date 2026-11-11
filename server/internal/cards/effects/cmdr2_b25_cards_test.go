@@ -246,7 +246,7 @@ func TestCmdr2B25ChannelerInitiatePutsThreeOnYourCreatureAndMakesMana(t *testing
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b12Creature(g, me.ID, "Mine", "Creature — Elf", 5, 5)
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Elf", 5, 5)
-	initiate := c25CastCreature(t, g, "Channeler Initiate", "Creature — Human Druid", c25ChannelerOracle, 3, 4)
+	_ = c25CastCreature(t, g, "Channeler Initiate", "Creature — Human Druid", c25ChannelerOracle, 3, 4)
 	passPriorityAroundTable(t, g)
 	if p := latestPickTarget(g, me.ID); p != nil {
 		if hasID(p.PickTargetCards, theirs) {
@@ -265,7 +265,7 @@ func TestCmdr2B25ChannelerInitiatePutsThreeOnYourCreatureAndMakesMana(t *testing
 	// turn began pays {T}.
 	vet := b12Push(g, me.ID, "Channeler Initiate", "Creature — Human Druid", c25ChannelerOracle, 3, 4)
 	addCountersForTest(g, vet, game.CounterMinusOne, 1)
-	initiate = vet
+	initiate := vet
 	if err := g.ActivateManaAbility(me.ID, initiate, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("mana ability: %v", err)
 	}
