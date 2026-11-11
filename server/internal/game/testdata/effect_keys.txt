@@ -484,6 +484,7 @@ choose choose-cards/chandra-flameshaper-play
 choose choose-cards/chandra-legacy-of-fire-remove
 choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
+choose choose-cards/charnel-serenade-return
 choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
@@ -2086,6 +2087,7 @@ tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
 tail chandra-flameshaper/choose-exiled
 tail charming-prince/after-exile
+tail charnel-serenade/then
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
 tail city-of-the-daleks/bind-tagged-tokens
@@ -2094,6 +2096,7 @@ tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
 tail cmdr-b9/gain-haste-until-eot
 tail cmdr-b9/then-proliferate
+tail cmdr2-s40/time-counters
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
