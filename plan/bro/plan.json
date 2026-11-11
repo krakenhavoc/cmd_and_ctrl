@@ -1,0 +1,496 @@
+{
+ "set": "bro",
+ "mechanics": [
+  {
+   "name": "Prototype",
+   "exists": false,
+   "evidence": "grep -rni prototype in server/internal/cards, server/internal/game, docs/adding-cards.md, client/src/lib: only the card names Prodigy's Prototype, Bladegriff Prototype, U.S.S. Prometheus, Prototype. No keyword, no alternative-characteristics cast, no Layout=='prototype' handling. CR 702.160 / CR 718."
+  },
+  {
+   "name": "Powerstone tokens (restricted colourless mana)",
+   "exists": true,
+   "evidence": "effects/tokens.go:332 PowerstoneToken(); game/mana_restriction.go:121 \"can't be spent to cast a nonartifact spell\" (#1727); CreateToken has Tapped. Used by cityscape_leveler.go, splitting_the_powerstone.go, gixs_caress.go."
+  },
+  {
+   "name": "Unearth",
+   "exists": true,
+   "evidence": "effects/unearth.go Unearth(cost) / UnearthPaying; game/scoped_replacements.go exileInsteadOfLeaving (CR 702.84a). Granted to graveyard cards: sedris_the_traitor_king.go, solemn_doomguide.go."
+  },
+  {
+   "name": "Meld",
+   "exists": true,
+   "evidence": "game/meld.go + effects/meld.go MeldWith / YouOwnAndControlThisAndANamed (ADR 0145, docs/adding-cards.md 'Meld'); urza_lord_protector.go is built; meld.go's header already names Mishra, Claimed by Gix's 'both attacking' condition."
+  },
+  {
+   "name": "Artifact offering (BRC, Blast-Furnace Hellkite)",
+   "exists": false,
+   "evidence": "grep -rnE '702\\.48|[Oo]ffering \\(|(artifact|fox|rat|snake|goblin|moonfolk) offering|difference in mana costs' in effects and game: nothing (no Kamigawa Patron is in the catalog). Nearest: Emerge (effects/alternative_cost.go:515) reduces by mana VALUE, gives no flash timing."
+  },
+  {
+   "name": "Encore, granted to graveyard cards (BRC, Wire Surgeons)",
+   "exists": true,
+   "evidence": "effects/encore.go Encore(cost); graywaters_fixer.go grants encore to cards in a graveyard; effects/activated.go:769 ItsManaCost."
+  },
+  {
+   "name": "Overload (BRC, March of Progress)",
+   "exists": true,
+   "evidence": "effects/alternative_cost.go:38 Overload(cost); 22 cards."
+  },
+  {
+   "name": "Affinity / Metalcraft / Fear / Goad (BRC returning words)",
+   "exists": true,
+   "evidence": "effects/self_cost_modifier.go:52 AffinityFor(label, match); metalcraft in 13 card files (ability word, a count check); fear in game/ (10 files); goad in 19 game files."
+  },
+  {
+   "name": "Stun counters",
+   "exists": true,
+   "evidence": "'stun counter' in 98 effects files and 3 game files."
+  },
+  {
+   "name": "Mana spent to cast ({C}{C} spent, colours spent, amount spent)",
+   "exists": true,
+   "evidence": "game/paid_cost.go SpentOfColor / ColorsSpentCount / ManaSpentCount; deceit.go deceitSpent(c) reads source.ManaSpentToCast().Count(c) >= 2; cast_trigger_entry_counters.go; aberrant_manawurm.go."
+  },
+  {
+   "name": "Phasing / 'Permanents can't phase in' (BRC)",
+   "exists": true,
+   "evidence": "game/phasing.go:345 PermanentsCantPhaseIn; trek_b23_helpers.go:55."
+  },
+  {
+   "name": "End the turn",
+   "exists": true,
+   "evidence": "docs/adding-cards.md 'Ending the turn (#2165, CR 724.1)'; 6 effects files."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Add prototype: cast a card with its alternative mana cost, colour, power and toughness",
+   "clause": "Prototype {2}{R} — 3/2 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)",
+   "why": "CR 702.160 / CR 718: a cast-time choice that gives the SPELL and the PERMANENT it becomes a second mana cost, power, toughness and (from the cost's coloured symbols) colour; the choice is part of the copiable values (CR 718.2a, 718.3c-d) and ends when the object leaves the stack or battlefield (CR 718.4). Nothing in the engine carries a second set of printed characteristics on one face. Expect: a prototype declaration on the Spec (cost, P/T) beside AlternativeCosts in effects/alternative_cost.go; a cast offer and CastProvenance flag in game (cast path, PaidCost); the layered view / copiable values in game reading the alternative mana cost, mana value, colour and base P/T while prototyped; the snapshot field (additive); protocol + client: the cast choice prompt and showing the prototyped cost and P/T on the stack item and the permanent (Scryfall layout 'prototype' is one face, the inset is only in oracle_text). Affinity/cost reducers, 'mana value' readers, colour readers and 'its power' readers must all see the prototyped values. The seam worker builds the eleven plain prototype cards; batch 21 holds the seven whose other text is rules-heavy.",
+   "checked": "grep -rni 'prototype' server/internal/cards server/internal/game docs/adding-cards.md client/src/lib -> only three unrelated card names. grep 'AltCostKey' effects/alternative_cost.go -> emerge, evoke etc., none changes P/T or colour. game/card.go:535 Layout is copied from Scryfall but nothing reads 'prototype'. Bestow (ADR 0141) changes types on the stack, not cost/P-T, so is a design reference only.",
+   "size": "large",
+   "cards": [
+    "19f344ee-031d-4346-9553-c5d32b02df43",
+    "02457c7f-eced-4bf3-9b61-309b4ceab2d5",
+    "61df991d-32e7-4b6b-b8e6-700ba915c3f2",
+    "82caf3e2-da42-4851-b4db-546e2403c4bf",
+    "0c460bdd-460b-4312-9ed2-32f3809a7d36",
+    "225f53ef-da42-47a0-b773-d2aad3338c72",
+    "f376f4c6-4526-4ae3-a84a-e8ea50fe78b6",
+    "dc8cca38-df2a-4cef-973c-a482505be66f",
+    "ccf13531-60bd-4ebd-9a5b-68e2d05ce620",
+    "b04f45de-cb35-45a4-b039-0bf008c3ca56",
+    "3afdc98e-aeeb-43e9-bdcd-0c51da44d2f8"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Add offering: sacrifice a permanent as you cast, reduce by its mana cost, cast at instant speed",
+   "clause": "Artifact offering (You may cast this spell as though it had flash by sacrificing an artifact and paying the difference in mana costs between this and the sacrificed artifact. Mana cost includes color.)",
+   "why": "CR 702.48a-c: an OPTIONAL additional cost chosen at CR 601.2b that (a) reduces the total cost by the sacrificed permanent's MANA COST symbol by symbol (coloured reduces the same colour, excess reduces generic), and (b) grants instant timing only when it is paid. Emerge (effects/alternative_cost.go:515) is the nearest: it is an alternative cost, reduces generic by mana value, and has no timing leg. Expect an Offering(match) helper beside Emerge, a cost-reduction-by-mana-cost step in game's cast cost computation, and the legal-timing probe in server/internal/legal offering the flash cast only with a sacrifice chosen.",
+   "checked": "grep -rnE '702\\.48|[Oo]ffering \\(|(artifact|fox|rat|snake|goblin|moonfolk) offering|difference in mana costs' effects game -> no hit. grep 'offering' game/keywords.go -> one unrelated comment. No Patron of the Orochi/Kitsune/etc. in the catalog. The rest of the card (\"Creatures attacking your opponents have double strike\") is an ordinary static.",
+   "size": "medium",
+   "cards": [
+    "c13079d5-6749-43e5-a8ee-ef3af31ff679"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Keyword creatures and plain pump/draw activations",
+   "shared": "No new helper. Ward: effects/ward.go WardMana / WardLife (Dwarven Forge-Chanter). Prowess, flash, defender are keywords. Coastal Bulwark: surveil primitive + 'as long as you control an Island' static (TextSubtype guard). Clay Revenant: graveyard-activated return to hand, copy any 'Return this card from your graveyard to your hand' card. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "0ed811b7-6ead-4906-9e40-9096b735e271",
+    "d218b9ad-3a6f-4bda-90c6-3f869c6c4e6d",
+    "b68cf4e6-205e-40b6-b28b-f4b7d8af7017",
+    "423c8465-82cd-4f54-b5ac-022b7ebcf3e4",
+    "e69a8970-3ead-479d-860a-26ed65f9c846",
+    "cb690399-0fb8-4bd8-a73d-5e0e594ff2ae",
+    "2a6a1e58-85a9-436e-b1a0-373baa44d6f2",
+    "6024cb2d-a6e7-4adc-8b34-7f4e0cac16ce",
+    "cd583365-27cc-4170-b138-4b3dd0d842b6",
+    "0dbcc5d8-9533-48fd-a69d-bbc6c72aaac5",
+    "e7c06af6-8d96-4bfa-8baf-9e80f741e8cb",
+    "c183186b-d92c-45a2-92d1-42e0df2b441f",
+    "449ed4b4-9e1e-4181-9090-af91802eba49"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Plain instants and sorceries",
+   "shared": "No new helper. Precedents: pumpAndGrantFirstTarget (adamant_will.go) for Gaea's Gift, Whirling Strike, Moment of Defiance; 'top or bottom of their library' aetherspouts.go / plan_for_all_outcomes.go for Desynchronize; Scatter Ray is a counter-unless-pays. Machine Over Matter's self cost reduction: effects/self_cost_modifier.go. Lay Down Arms counts Plains (TextSubtype guard) and its 'X target' must be castable by the server/internal/legal probe. Raze to the Ground: can't be countered + last-known mana value. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "2cb95721-56c8-4008-8055-579a5a97fc8b",
+    "37069c66-c17a-40ac-80f4-14ef49d18008",
+    "257f81fb-b3c9-4ebe-9889-dd0ef960bba3",
+    "b515dfc6-1a1e-46d6-a7a3-0e3af8279f49",
+    "4492c329-174a-44aa-be4d-9f018173b9a7",
+    "9eaca93d-6c3d-4489-8652-b575a4cd931f",
+    "db3b294a-87b1-4dda-b1f6-ea63a9722faf",
+    "6b37b0ef-7e89-447f-a189-b3ea7b42143f",
+    "efe24eed-e1e2-4807-ae61-2e5be529ae3c",
+    "2a89feeb-9e66-4539-bd75-7d9d53f52d49",
+    "aa91d092-7f4a-4e4d-85db-e200692f3d9d",
+    "c24e34e7-0ac6-451a-b73b-31c7f96d123f",
+    "dae81b1b-28dd-4f7f-9bcb-65e72eaa37e2"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Powerstone makers I: enters, dies, or resolves and makes tapped Powerstones",
+   "shared": "effects/tokens.go PowerstoneToken() with CreateToken{Tapped:true}; precedents cityscape_leveler.go, splitting_the_powerstone.go. The sentence \"create a tapped Powerstone token\" is also printed on cards in batches 8, 12, 16, 17 and 20: all use PowerstoneToken(), nobody adds a second row or wrapper. Horned Stoneseeker: 'sacrifice a Powerstone' picks by token subtype (TextSubtype guard). Great Desert Prospector counts OTHER creatures. Sibling Rivalry: any Threaten precedent. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "31d9a771-09ae-4cd4-bd19-6012f839a9e8",
+    "cc9d3868-9814-4506-80b3-660bc462ff98",
+    "0956c0f5-ff1d-43d5-88de-4c2d603cf798",
+    "f2ffc999-609f-4424-8d40-ebc042357a40",
+    "78d74d6a-e1aa-4d70-92c3-b5338959d2fb",
+    "68d4d753-5e53-48a6-8ba2-56020893c239",
+    "37278877-e7d8-47b6-a65f-37c7f85e3a0a",
+    "c7c1352a-0332-4495-a384-8d6fed01f91b",
+    "4bb75182-6dd4-42f7-9541-d484d0b57897",
+    "b13c91be-079a-46f1-8a99-b7dba99bb9c0",
+    "7fa1430f-cd2e-4071-a161-e32a61e33714",
+    "4f42517b-e62e-4b8c-8c56-cb32fb62c478",
+    "fd809587-773c-47ec-8676-cefef6d1e38f"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Unearth I: artifact creatures with unearth and one plain ability",
+   "shared": "effects/unearth.go Unearth(cost) for every card; no engine work. Scrapwork Cohort uses TokenCard(\"1/1 colorless Soldier artifact\") (tokens_table.go:144, also used by batches 5, 14). Tocasia's Onulet is a leaves-the-battlefield trigger (fires on the unearth exile too). Heavyweight Demolisher: 'tap this unless you pay {3}' upkeep, MayPay precedent. Ashnod's Harvester: attack trigger exiling a target card from any graveyard. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "9ea87566-43da-4ebd-a904-ae8b8830c3a2",
+    "54d32245-c796-4e8e-b61e-c218e3902565",
+    "fa6fa2f5-eb9b-402e-82f4-e0a8d30df245",
+    "c87ff8e8-a3da-4848-9881-fbc896acf7c5",
+    "149694e6-5cf0-4983-9546-a4bd579b2ade",
+    "5906b378-c7a7-44fd-a63b-55a347d97854",
+    "552867ec-5741-4e34-813f-4aaf185661f7",
+    "77eb44ca-53e9-4924-b19f-31732f14ef14",
+    "150dd67b-4de2-4fcd-b753-e4096de911a2",
+    "cd39e485-71ba-40cb-8608-f5a0dfb7ef5f",
+    "fe71ada0-ac86-4035-9b6b-4c24ae65034c",
+    "4284ff9f-4085-4874-abc7-95467cb759a5"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Soldiers I: Soldier tokens and Soldier-matters commons and uncommons",
+   "shared": "Token: TokenCard(\"1/1 colorless Soldier artifact\") (tokens_table.go:144; third_path_iconoclast.go, urza_planeswalker.go). Every 'Soldier' in rules text is read through source.TextSubtype / ctx.TextSubtype. Veteran's Powerblade 'Equip Soldier {W}': grep 'equip (legendary|knight|human)' has 7 precedent files for typed equip. Fortified Beachhead: copy a 'reveal a <type> card from your hand or enters tapped' land (effects/enters_tapped.go). Rescue Retriever's prevention static returns a ReplacementEffect: needs a Label. Siege Veteran: 'another nontoken Soldier you control dies'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "153292f9-e0d1-43a7-a083-275c49d0554a",
+    "59b2edf0-00e4-4cd4-88ac-6dd74e9b1b14",
+    "cf0f3aee-78b6-4a98-8e09-8861b73c2e74",
+    "86b0e978-5b4e-4bb7-bfda-be899c632d8e",
+    "20150b58-a442-472c-8191-b44581322eeb",
+    "3684edb5-bbf1-4ed7-b5b7-f24b452dbd64",
+    "da0b4e01-b312-4f37-a034-824ce58db02e",
+    "0d9d7f04-6319-4596-8b74-de5a794936e5",
+    "dcddd143-a7d9-4a38-a2da-dd6bd2e48205",
+    "387fe395-e4a0-4fb2-8d6c-88a1a21d2ed8",
+    "86f9897f-84aa-4c8d-8335-cfdb2f565311",
+    "4d4fc571-a859-4460-a3c7-3f76a671ab1b"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Mill-three-take-one cycle and creature-cards-in-graveyard counts",
+   "shared": "ONE helper for the five-card cycle \"mill three cards. You may put a <filter> card from among the cards milled this way into your hand. If you don't, put a +1/+1 counter on this creature\" (Airlift Chaplain, Blanchwood Prowler, Fallaji Archaeologist, Ravenous Gigamole, Tomakul Scrapsmith), parameterised by predicate; Wasteful Harvest is the same pick without the counter. Precedents for 'milled this way': cache_grab.go, first_contact.go, avatar_destiny.go. One count helper for \"creature cards in your graveyard\" (Gaea's Courser, Gixian Skullflayer, Gnarlroot Pallbearer, Battlefield Butcher, Deathbloom Ritualist, Overwhelming Remorse); check helpers.go before adding one. Battlefield Butcher is an ABILITY cost reduction (game/ability_own_cost_modifier). Airlift Chaplain says 'Plains card' (TextSubtype guard). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "719aeb50-c8cf-4cd8-b74c-d2cef408b52e",
+    "8d1a367a-542e-4b94-b466-c922c5fb717b",
+    "bf037457-82e3-45fd-bc17-5bc25e66c15e",
+    "68f4e3e5-2f0d-4d2d-84f6-d1e824a0dcf0",
+    "d1559911-6621-4fd6-8b3e-16e82baf849e",
+    "d44627c0-1617-4706-bbeb-0169745364c7",
+    "8551e1df-47eb-419e-8dd2-e96b9a450912",
+    "5d13aa6a-5a04-45e0-bb33-daa707ffaf9f",
+    "0b2a59a3-cf87-48fe-99e2-4c2063119b55",
+    "18da85d4-2a51-45c0-a18c-bce9bc39fa64",
+    "2978ba77-c0ce-4411-99c7-ef05dd602c8d",
+    "b52148c3-fe97-4cc0-a814-a5a0f5d426f6",
+    "bb4507c1-1e5d-48b5-8fc0-1d26bd1c9e72"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Second-card-each-turn and artifact-enters triggers",
+   "shared": "\"Whenever you draw your second card each turn\" has 64 precedent files (Lat-Nam Adept, Thopter Mechanic, Gurgling Anointer); \"drawn two or more cards this turn\" has 3 (Evangel of Synthesis, Trench Stalker). One shared trigger \"Whenever an artifact you control enters\" for Perimeter Patrol, Phalanx Vanguard, Thopter Architect, Yotian Dissident, Sarinth Steelseeker, Teething Wurmlet (use the existing WheneverAnotherEnters-style helper in triggers_common.go; do not write a new one). Teething Wurmlet: 'first time this ability has resolved this turn' precedents belladonna_took.go, vito_fanatic_of_aclazotz.go. Symmetry Matrix needs a 'power equal to its toughness' predicate read at entry (none exists; local to the card). Gurgling Anointer's target filter 'mana value <= this creature's power' uses last-known power. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "0d5a1870-6d26-47e7-a86c-f3ff15cb0707",
+    "a7e7be75-646d-4c99-8388-15bb422c8e25",
+    "22fa5324-ed3b-4b97-89b4-31c1f86d6ead",
+    "dc0bc051-2d5c-4b7f-9902-4f9d5ef8f19d",
+    "5a0c215a-2164-4cb8-89ff-2558b6b42dca",
+    "ef625caf-c5d3-47f4-b1fb-bd040c5d864c",
+    "265f461e-d076-4119-8ea4-96360305f3a0",
+    "3194fe3d-57d3-4dab-ab39-3778b75150fa",
+    "6ad61622-a70f-423c-99e3-b1ef6ead0b31",
+    "dacf7f0d-9ce2-4e28-98a5-e7ec270a4c83",
+    "a44ceede-9934-4d4e-8b8c-e087b3ef74d4",
+    "2f6d129c-e6ad-4f35-b8b1-56a101fdd5db"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Sacrifice themes, the 3/3 Zombie artifact token and Scrap",
+   "shared": "New token rows, owned by this batch only: \"3/3 colorless Zombie artifact\" (Transmogrant Altar, Ashnod, Flesh Mechanist: tapped on Ashnod) and the colourless artifact token named Scrap (Farid; grep 'named Scrap' and tokens_table.go: no row). 'Whenever you sacrifice another permanent' has 5 precedent files (Gixian Infiltrator); 'sacrificed a permanent this turn' has 1 (Goblin Blast-Runner). Transmogrant's Crown 'Equip {2} or {B}': game/equip_cost_alternative.go. Sardian Avenger and Farid: 'artifact ... is put into a graveyard from the battlefield'. Farid's goad mode uses the goad primitive. Ashnod makes a tapped Powerstone: PowerstoneToken(). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "2497926c-b253-4400-b540-776ee2cd807c",
+    "8b69da01-3ba5-4a61-9e26-e879b6d8b63e",
+    "7c3982c5-6af3-4937-8d1f-e006f4e89342",
+    "01cf689c-5a64-4ecf-b45d-3f385c9b212b",
+    "a4e34111-aefd-4c61-a6e3-ac8895799c3f",
+    "f13baf38-27fc-4c5d-8fee-459eefdb32da",
+    "239fea8d-c49d-40bc-96e1-b84d328a0e1e",
+    "7dfae95e-f67e-49e3-b68a-40ea7e5099dd",
+    "767c82a7-ed42-4ef3-9d79-dd95e48f4326",
+    "9594b8e0-a176-447a-a52e-e1a77175b748",
+    "83cb9ab7-6a8f-40b5-b076-6fa669ff15f2",
+    "6db90f86-205a-4e0b-944b-74742bc4e59d"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Auras, an Equipment and exile-until-leaves enchantments",
+   "shared": "Aura statics from the attachments helpers (effects/attachments_batch3.go and siblings); each returned StaticAbility needs a Label. Draconic Destiny grants an activated ability and a subtype (ADR 0093 'Granting an ability to another permanent'); Take Flight grants a triggered ability. Prison Sentence: 'activated abilities can't be activated' Arrest precedent. Weakstone's Subjugation / Involuntary Cooldown: doesn't-untap static and stun counters (98 precedent files). In the Trenches: exile-until-leaves + 'Activate only as a sorcery and only once'. Ashnod's Intervention: batch22_helpers.go:70 'dies or is put into exile from the battlefield' for the SOURCE; here it is granted to a target until end of turn, stop and report if the helper does not fit a granted ability. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "e3bad2e2-1024-4261-b3d7-82a6998416fd",
+    "4eb8d877-ee46-4bbe-99da-fee9e238ca58",
+    "f034137e-c19f-48af-a2f2-f767bf87a275",
+    "c910c1c0-2b78-4e0f-bb55-e0581b2e07e8",
+    "ede2354a-64b0-402c-8fbe-9da90f811a9b",
+    "6d9f2fe0-5657-45b4-9431-36e0f6c8eba2",
+    "b4cf61e5-b2b7-4fb9-addf-db84dec49681",
+    "4c3745ff-6e1e-4660-abe6-1a30611ec00c",
+    "4640ce0e-f82f-4bfd-93fc-2d865863fc2e",
+    "1612a08f-fc1f-45cf-ae03-5f021a46869d",
+    "c1a7d108-8073-42a5-ade0-a0643d078268"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "Graveyard hate, recursion and reanimation",
+   "shared": "One shared effect \"put (up to one) target card from a graveyard on the bottom of its owner's library\" for Swiftgear Drake, Hoarding Recluse, Keeper of the Cadence. Reanimation with a mana-value cap: Hero of the Dunes, Recommission ('enters with an additional +1/+1 counter' = the counters argument of the return-to-battlefield API), No One Left Behind (cost reduction that depends on the chosen target: 'Targeting costs and bars (#3860)' in docs/adding-cards.md; stop and report if a target-dependent reduction does not fit). Dreams of Steel and Oil: 'Reveals their hand. You choose a card from it' (ADR 0116) plus a second pick from the graveyard. Disciples of Gix: search up to three into the graveyard (Buried Alive shape). Loran: 'this or another legendary creature you control enters'. Tocasia, Dig Site Mentor: grants '{T}: Surveil 1' to creatures you control (ADR 0093) and, exiled from the graveyard, returns any number of target artifact cards with total mana value 10 or less (56 precedent files for a total-mana-value pick; stop and report if none is a TARGET set with a total cap). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "04e5ecda-9646-4bc3-addf-cca471553fbe",
+    "33ef3d51-845d-460b-97a0-95e7591cf466",
+    "5fc09704-56cf-4e47-bd96-27ac34434941",
+    "b7618312-6835-4851-9651-b5402001b3b0",
+    "3b3c5fc6-6c4a-4e23-9625-5954d1986160",
+    "cb7e451b-a9d2-4f50-9651-b5df34e34d99",
+    "eb6f936e-8dba-49da-84fc-de240b11b8e4",
+    "e43e8c00-f1e7-49d2-bb27-f1c16d85cc22",
+    "afe8fd01-f0c7-46a5-9e9c-e8b9599cd19a",
+    "8c308ebf-df5e-4f47-9b97-5c31944fe91c",
+    "9d1f232c-e904-46f6-a4b7-24ca2ede711c",
+    "e790f7e6-45f5-45df-b8e5-bcbda4f69f8a"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Assembly-Workers and things that become creatures",
+   "shared": "One helper \"If you control creatures named A and B\" for Mine Worker, Power Plant Worker, Tower Worker (name checks on permanents, like YouOwnAndControlThisAndANamed in effects/meld.go but control only). Tower Worker's bonus is a mana ability with a conditional amount. Animation precedents: any manland for Mishra's Foundry ('target attacking Assembly-Worker': TextSubtype guard; Autonomous Assembler in seam s1 also says Assembly-Worker); Levitating Statue is a NONCREATURE artifact with flying; Alloy Animist, Mightstone's Animation, Tawnos's Tinkering set type and base P/T in layers 4 and 7b. Argivian Avenger: 'your choice of' keyword prompt, gideon_blackblade.go:135. Surge Engine: three abilities with activation conditions, effects with NO duration ('loses defender', 'becomes blue'), 'only once' (docs: 'This ability triggers only once' is the trigger form; grep 'Activate only once' for the activated form). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "4de71245-9d9b-44ca-9c13-37dc3dfbbcd5",
+    "054c6250-ac96-42f6-931d-925761ab7764",
+    "2f995678-c315-4afe-845b-8c8ae863de6e",
+    "b43e9772-6ad4-49c7-9557-b18ee1e4587d",
+    "259ca16d-7753-402b-bcd0-2425500dee99",
+    "4acacdd2-a736-43a2-ad67-891b9bd124f8",
+    "de68a69a-0c4e-43b9-821d-2fe2269b5e48",
+    "bd101a9b-4c1e-44c8-b9ef-cd79c4d28f36",
+    "d215cd4a-412c-4632-ab2d-de51103e6a7d",
+    "864d9db7-34ca-4440-8d6d-096f9eddedd4"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Powerstone makers II: conditional and counted Powerstones",
+   "shared": "PowerstoneToken() throughout (see batch 3). One shared trigger \"Whenever you discard one or more artifact cards ... This ability triggers only once each turn\" for Urza, Powerstone Prodigy and Mishra, Excavation Prodigy (docs/adding-cards.md 'This ability triggers only once', #5245). Battery Bearer grants the Powerstone mana ability to creatures: the restriction is game/mana_restriction.go:121, granted through ADR 0093. Watch items, stop and report if they do not fit: Slagstone Refinery's \"put into a graveyard from the battlefield or is put into exile from the battlefield\" for OTHER nontoken artifacts (the only precedent, batch22_helpers.go:70, is self-only); Visions of Phyrexia's \"if you didn't play a card from exile this turn\" (batch20_helpers.go aCardWasPlayedFromExile reads an event, not a per-turn fact); Wreck Hunter's count of cards 'put there from the battlefield this turn' (brought_back.go, continue.go use it as a target filter). Terisiare's Devastation is an X spell and reads as a wipe: declare its Sweep and check the legal probe. Arbalest Engineers is a three-mode ETB. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "06bea0b2-1d0f-4d64-a13e-723d08042e83",
+    "78d710ea-fbf5-4855-b874-b53478bf4a87",
+    "5b5b9390-bb3a-4f71-809a-cfe2a6566b59",
+    "3f285781-ee03-4a58-a85e-a33f5efffc9d",
+    "a23c4378-9242-46a0-9f62-ca91f0baa428",
+    "08dcda8e-704d-444e-a7ca-34586a7f42a7",
+    "03c1e376-1410-4321-90fe-a6997e8db85a",
+    "634b46a6-ec8b-41f0-8eb6-1e9144035847",
+    "de6fd93e-16d8-4855-a655-1cc0755c5d15",
+    "8ad7fdd2-bff5-4434-a3f9-1f5ce0ed573b",
+    "4eba0e29-985b-4763-9a70-0946ba044b43"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Unearth II: granted unearth and encore, play-one-of-the-exiled, enters-from-graveyard",
+   "shared": "Granted graveyard keywords: sedris_the_traitor_king.go (Mishra, Tamer of Mak Fawa's unearth {1}{B}{R} for artifact cards) and graywaters_fixer.go + activated.go:769 ItsManaCost (Wire Surgeons: 'Its encore cost is equal to its mana cost'; stop and report if ItsManaCost is only wired for flashback/emerge grants). Mishra's ward: effects/ward.go has sacrifice wards (vein_ripper.go) and a grant to permanents you control. One shared effect \"Exile the top N cards of your library. Choose one of them. Until the end of your next turn, you may play that card\" for Mishra's Research Desk and Feldon: std_b15_helpers.go:54, cmdr2_s43_helpers.go:143, tectonic_giant.go. Dredging Claw: 'a creature enters from your graveyard' (oscorp_industries.go, celes_rune_knight.go read the from-zone). Thran Vigil: 30 precedent files for 'one or more creature cards leave your graveyard' (chalk_outline.go); here artifact and/or creature, during your turn. Terror Ballista: reflexive 'When you do'. Meticulous Excavation: 'If it has unearth' must see a GRANTED unearth: stop and report if there is no keyword query for a permanent's unearth. Terisian Mindbreaker: helpers.go:1591 / batch22_helpers.go:186 mill half, here rounded UP. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "d16fcb45-7fe7-4640-a325-badb64cadd62",
+    "3044a00d-7f88-47e8-9110-2e898b20416c",
+    "339c39d9-7e10-458e-b602-4f0550840436",
+    "3be40d81-9be5-4f39-8ce4-920c26cf2748",
+    "c51078d9-a53a-49ae-9658-2bc00cce2b81",
+    "6dff1d15-604f-4eea-9b7a-0c0ba6afbbac",
+    "95ac482c-c6ad-49b4-937e-460241ae355f",
+    "76c97e3d-a9be-4ed7-a2ef-f97870d8f58a",
+    "3808afb9-962f-48ba-94c5-6b3eae7053d0",
+    "01c179aa-533e-47e1-b6e5-c35587a39680"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Soldiers II: tap-three costs, attack triggers and legends",
+   "shared": "One cost shape \"Tap three untapped <types> you control: Draw a card\" for Skystrike Officer and The Archimandrite (and Citanul Stalwart's tap-another cost): reuse the existing tap-N-untapped cost in effects/activated.go, do not add one. Soldier words through TextSubtype. Harbin: 'Whenever you attack with five or more Soldiers'. Myrel: 'During your turn, your opponents can't cast spells or activate abilities of ...' is the Grand Abolisher shape (docs 'Adding a \"can't\" card'); its static needs a Label. The Archimandrite: 'Whenever you gain life' with the amount. Recruitment Officer: look at four, take a creature with mana value 3 or less. Soldier token from tokens_table.go:144. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "862798c6-1c38-4bb9-b4a1-3ef1fcf8f7f7",
+    "e5e8368d-43af-4f83-8565-25d03da64360",
+    "d827575f-e364-4a20-887e-3091e5501a4f",
+    "503094aa-6f8f-42c1-ad5a-9305934e5f0c",
+    "97dfc025-afc2-42d8-a20a-f29d60754a2e",
+    "ca7a25f4-c280-48b8-9e04-b15f4c13e569",
+    "63584001-7f58-42ee-b072-914baa66c78a",
+    "e60b23ba-2258-4da1-b873-452ee215846b",
+    "ce291948-125d-493d-8770-8b3aac515f9b"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Library digs, piles and play-from-exile",
+   "shared": "Look/reveal-N-and-take primitives for Forging the Anchor, Kayla's Reconstruction (X spell: legal probe), Smelting Vat ('total mana value <= the sacrificed artifact's mana value': Context.SacrificedPermanents + a total-mana-value pick, 56 precedent files), Glint Raker, Sanwell ('becomes tapped': docs 'A creature becoming tapped'). Hurkyl, Master Wizard: april_oneil_hacktivist.go counts card types among spells cast this turn; here noncreature spells only and one pick per type. Hostile Negotiations: abstract_performance.go is the face-down-pile precedent. The Temporal Anchor: EventScry.Amount is the number put on the bottom (game/events.go:455); the card says 'whenever you CHOOSE to put ... on the bottom': stop and report if Amount also counts forced bottoms. Queen Kayla bin-Kroog: three picks by mana value from the cards discarded this way; a one-off, Completeness honest. Arms Race: Sneak Attack shape for an artifact. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "17c5b5c9-5c58-46dc-b0a7-a635b9997bb8",
+    "43bae4b3-57e8-4d9a-9d1b-9805b0e0fff5",
+    "71d2a0fe-5426-4fa3-85a4-564c37184996",
+    "e0a95a8e-5867-481b-9e85-e2d5386362b8",
+    "957df9f4-73e9-4540-b838-52f65d0c62ee",
+    "4884ad6c-2290-44fc-ab9e-6e6b75b2d69a",
+    "c5cbd852-c42f-4592-a0bb-a8bffa2dd2f4",
+    "168f2fbb-8cf7-43e0-8bb6-5e4cc3c1e363",
+    "10c2428f-6e4a-4b92-9087-720242a5c25c",
+    "e801c5bd-68e6-4a74-bed3-addd18db3b2b"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Commands, sweepers and stack control",
+   "shared": "Choose-two Commands: copy titanias_command.go (same cycle, already built). Token rows owned by this batch: the 0/0 Construct with \"This token gets +1/+1 for each artifact you control\" (urzas_saga.go:51 builds it; Urza's Command makes it TAPPED, Urza, Chief Artificer at end step: lift ONE shared template) and \"2/2 colorless Construct artifact\" (Kayla's Command, new row). Urza, Chief Artificer: AffinityFor(label, artifact creature) in self_cost_modifier.go. Declare a Sweep on Gix's Command (destroy each creature with power 2 or less), Fade from History, The Fall of Kroog and Hurkyl's Final Meditation. Hurkyl's Final Meditation: 'Ending the turn (#2165)' + a cost increase on other players' turns. Calamity's Wake: 4 precedent files for 'can't cast noncreature spells'; it exiles itself. Defabricate: effects/ability_copy.go AbilityOnStack target + exile-if-countered. Over the Top: every player at once, permanents enter simultaneously. Gix's Command 'up to one creature' and Kayla's 'a creature you control' are NOT targets. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "f5c30dec-072c-4f02-b5d8-5eccfd1cffcf",
+    "3d937cd9-b1e1-406d-9e29-3b9d3ceea3be",
+    "9270eb03-4600-40cc-83a5-ea987d5d4978",
+    "9deced63-80d0-419e-a5ac-71b06ba1459e",
+    "533767ca-7208-4c88-b160-375479b68285",
+    "bfd8d447-7253-40d0-a153-78e9700045d7",
+    "a6436330-f35a-4d31-9230-03e0c62f9e7e",
+    "60fc5eb0-95d6-49b0-a538-945ef599e484",
+    "b82d8bdf-e292-490a-aee7-d830cc2c29df",
+    "a2099033-42d9-47ac-90c7-b41b55b7dadd"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Mana spent to cast, and the legendary artifacts",
+   "shared": "Payment readers: game/paid_cost.go SpentOfColor / ColorsSpentCount / ManaSpentCount, deceit.go deceitSpent. Bladecoil Serpent and Clay Champion need 'for EACH {C}{C} spent' = SpentOfColor(c)/2: one shared helper in this batch, and both Specs set ReadsManaSpent (see catharsis.go). Clay Champion's entry counters: cast_trigger_entry_counters.go. Steel Exemplar: ColorsSpentCount >= 2. Liberator: aberrant_manawurm.go reads the mana spent on a cast trigger; flash for colourless and artifact spells: blur_of_heroism.go. Su-Chi Cave Guard: 20 precedent files for mana that persists until end of turn. The Stasis Coffin: teferis_protection.go / the_one_ring.go. The Stone Brain: extraction_family.go + a card-name choice (16 precedent files). Urza's Sylex: planetary_annihilation.go (each player chooses six lands) then destroy the rest: declare its Sweep; its second ability triggers on being exiled FROM THE BATTLEFIELD by its own cost (stop and report if a self exile-from-battlefield trigger cannot see an exile paid as a cost). Soul Partition: zero_incorporeal_sensate.go is the same sentence, but the {2} tax here applies only to an OPPONENT's cast. Fateful Handoff: an opponent of your choice gains control (ADR 0102). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "e469bb22-57f1-4555-b3c0-9ea108e6cc12",
+    "80920ac0-2bbe-4439-a937-282f63e23141",
+    "ab3b72e3-9a49-4c95-8016-22fa02ad7663",
+    "798a4a6f-7443-4e8e-afcb-0a694fdfcbb3",
+    "28264920-9d14-4661-83b8-56f950fbff39",
+    "a46bfaf5-e631-4603-850a-f0074395b2f5",
+    "b28dcb41-5e47-4719-892f-da009a5d50b4",
+    "fb4d99c2-daec-430a-9ca2-5a178a96618b",
+    "2cfd5c18-47d0-4549-aacc-2428db21df2f",
+    "1ecde43f-e418-437b-8b8f-efe120f96cb3"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Commander-deck and leftover one-offs",
+   "shared": "Independent cards, no shared new helper. Keyword counters (20 precedent files for 'flying counter'): Hexavus, Scavenged Brawler. Watch items, stop and report if they do not fit: Rootpath Purifier \"Lands you control and land cards in your library are basic\": game.StaticAbility.AffectsZones (#3862, zone_layer_statics.go, maskwood_nexus.go) covers layer-4 statics over library cards, but helpers.go:108 IsBasicLand's comment says off-battlefield supertypes are the printed ones, so prove a basic-land search finds a nonbasic land before shipping; Disciple of Caelus Nin: each player chooses up to five permanents in turn order (planetary_annihilation.go prompt) and the rest phase out at once, with PermanentsCantPhaseIn (trek_b23_helpers.go:55). Urza's Workshop: 'Urza's' land type count (TextSubtype guard) behind a metalcraft activation condition. Misery's Shadow: dies-replacement for opponents' creatures (docs 'Adding a replacement effect'; needs a Label). Sardian Cliffstomper counts Mountains (TextSubtype). Spectrum Sentinel: protection from multicolored. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "ba48a1a6-a53f-4e7e-881a-472637a3a007",
+    "d895863e-a3c5-4e1f-bd28-e47a8717bbd0",
+    "2e5440ef-6887-4c79-98f5-49db82406d71",
+    "442d06e6-8cf6-4980-b2bf-73cfb4d3a468",
+    "71099427-e110-488f-ab29-7867241fc7f0",
+    "928c62fe-9c4d-4e89-bd7a-0d3b6a81f393",
+    "20f3bc44-c7fa-4d5a-adb9-2dd1d2d66ffe",
+    "7c13d0ad-1235-41f7-8f9a-f39d7c544b74"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "Copy effects",
+   "shared": "docs/adding-cards.md 'Adding a copy effect' and 'Copying a card and casting the copy (#3258)'. Permanent-spell copies: lithoform_engine.go (Drafna), iron_man_bleeding_edge.go / the_clone_saga.go for 'copy it, except' (Tawnos, the Toymaker: Beast or Bird through TextSubtype). Token copies with an exception: Urza, Prince of Kroog (1/1 Soldier creature in addition), Tawnos, Solemn Survivor (artifact in addition; its second cost combines sacrificing two artifact tokens with exiling a card from the graveyard). March of Progress: Overload(cost) with 'for each creature chosen this way'. Wondrous Crucible: exile a nonland card at random, cast a copy free. Watch item: Ashnod the Uncaring: rings_of_brighthearth.go watches EventActivateAbility and reads the stack item; 'if one or more permanents were sacrificed to activate it' should be that item's PaidCost.Sacrificed (game/paid_cost.go:121), which excludes sacrifices made for mana; stop and report if an ability's stack item does not carry its PaidCost. Thopter Shop is a plain batched dies trigger, here only because it is the BRC artifact-token card. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "dd45c284-c34c-4085-8066-dbeee223fb6e",
+    "871fbbd6-76a0-4f79-b89f-afee6ebe5a59",
+    "48cce741-cfbd-4ed9-a7ac-38880867a286",
+    "ed2e8718-4b20-4310-96ce-05a29a24ef32",
+    "6a448862-e8d8-4a08-8e3d-5460afa29b4d",
+    "d0e80414-abde-4f5e-9539-3efc83aa507f",
+    "dcd5ab1b-adc5-486e-a1e0-636af6ee9470",
+    "b2f9e07b-64b7-40b3-9a5e-5f1d59b35af7"
+   ]
+  },
+  {
+   "n": 20,
+   "theme": "Meld pairs, the Saga and the planeswalker",
+   "shared": "Meld exists (ADR 0145; game/meld.go, effects/meld.go MeldWith + YouOwnAndControlThisAndANamed; urza_lord_protector.go and the Hanweir/Graf Rats pairs are the examples; read docs/adding-cards.md 'Meld' first). Both pairs here are three oracle ids each: two fronts and the melded back. Watch items, stop and report if they do not fit: Mishra, Claimed by Gix melds 'tapped and attacking' (meld.go:106 has tapped-and-attacking for TOKENS, not for the melded permanent); Mishra, Lost to Phyrexia's 'enters or attacks, choose three' of six modes with targets; Titania, Voice of Gaea's 'one or more land cards are put into your graveyard from anywhere' (descend.go tracks the fact, a batched trigger on it was not found). Phyrexian Dragon Engine: 'enters from your graveyard' (oscorp_industries.go) + Unearth. Titania, Gaea Incarnate and Argoth make/animate lands; Bear is TokenCard(\"2/2 green Bear\"). The Brothers' War: chapter II 'each creature they control attacks the other chosen player each combat if able' until your next turn: game/attack_requirements.go MustAttack (#3172) is per-creature for a turn, maximum_carnage.go is the until-your-next-turn form; stop and report if a requirement cannot name a player for creatures that enter later. Saheeli: emblem with a static and a cost reduction ('Emblems (#623)'). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [],
+   "cards": [
+    "022b42a6-ee0f-4080-b973-c1b68938c3be",
+    "26a623a1-60c9-47e3-af96-616e29551865",
+    "3989308a-4c0f-493a-b38f-cb4f5019dfe7",
+    "42bccda5-1754-4619-b94f-7a72f934a718",
+    "62648946-1708-48f4-ba40-c057563ab11b",
+    "43230d70-4d60-4ceb-bb45-fbc043280652",
+    "43040c34-acad-4d62-893d-fd606fa9d8fe",
+    "68cf7415-b434-4284-89b4-c7d44a003eb8"
+   ]
+  },
+  {
+   "n": 21,
+   "theme": "Prototype II: prototype cards whose other text is rules-heavy",
+   "shared": "Needs seam s1; every 'its power' here must read the prototyped value. Arcane Proxy: 'if you cast it' + 'Copying a card and casting the copy (#3258)' with mana value <= its power. Hulking Metamorph: clone with an exception that keeps THIS card's power and toughness, prototyped or not ('Adding a copy effect', the clone gate). Skitterbeam Battalion: token copies of a prototyped permanent are prototyped (CR 718.3d). Woodcaller Automaton: land animation with base P/T equal to its power and toughness. Phyrexian Fleshgorger: effects/ward.go:202 WardLifeEqualToPower(). Steel Seraph: gideon_blackblade.go 'your choice of' prompt. Token row owned by this batch: the X/X colourless Golem artifact creature (Rootwire Amalgam: X is three times its power; Mask of the Jadecrafter: X paid, plus Unearth), not in tokens_table.go. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label/RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build a one-sentence trigger from effects.Do primitives with a footprint. ",
+   "after": [
+    "s1"
+   ],
+   "cards": [
+    "792f8235-f23b-4858-bdd4-c7a186b7a470",
+    "b2b09dc3-8239-4f3b-91d2-e7cbbdc062f7",
+    "ff1dd9c1-d1e5-49dd-b8b2-df3e4a41d3e5",
+    "124c3af4-8545-479a-b44c-446da1c8b535",
+    "d3a5a830-cd14-49da-9412-c50049c74c92",
+    "7ff8940f-d798-41eb-b82e-a1eba2163fe7",
+    "7644148f-3b26-447d-9f52-28c94c111b69",
+    "b1870fff-b87e-434e-8d4c-d9e60f7f4284"
+   ]
+  }
+ ]
+}
