@@ -24,9 +24,14 @@ const (
 
 func TestCmdr2S32EveryBuiltCardIsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
-		cmdr2S32RansomNoteOracle: "Ransom Note",
-		cmdr2S32KelpOracle:       "Tangletrove Kelp",
-		cmdr2S32ArmedOracle:      "Armed with Proof",
+		cmdr2S32RansomNoteOracle:   "Ransom Note",
+		cmdr2S32KelpOracle:         "Tangletrove Kelp",
+		cmdr2S32ArmedOracle:        "Armed with Proof",
+		cmdr2S32SophiaOracle:       "Sophia, Dogged Detective",
+		cmdr2S32SereneSleuthOracle: "Serene Sleuth",
+		cmdr2S32SteamboatOracle:    "Foreboding Steamboat",
+		cmdr2S32EscortOracle:       "Otherworldly Escort",
+		cmdr2S32ForagersOracle:     "Bronzebeak Foragers",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -210,5 +215,328 @@ func TestCmdr2S32ArmedWithProofInvestigatesTwiceAndEquips(t *testing.T) {
 	}
 	if p := effectivePower(t, g, bear); p != 2 {
 		t.Errorf("the bear's power is %d, want 2", p)
+	}
+}
+
+// --- Sophia, Dogged Detective -------------------------------------------
+
+func TestCmdr2S32SophiaCreatesTinyAndFeedsOnDogDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	castHoldCreature(t, g, "Sophia, Dogged Detective", "Legendary Creature — Human Detective", cmdr2S32SophiaOracle, 3, 4)
+	var tiny uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Tiny" && c.Controller == me.ID {
+			tiny = c.InstanceID
+		}
+	}
+	if tiny == uuid.Nil {
+		t.Fatal("Sophia did not create Tiny")
+	}
+	c := tmtB1Card(t, g, tiny)
+	if !c.IsLegendary() || !c.HasSubtype("Dog") || !c.HasSubtype("Detective") {
+		t.Errorf("Tiny is %q , want a legendary Dog Detective", c.TypeLine)
+	}
+	assertKeywords(t, g, tiny, "trample")
+	if p, tough := mkmB1PT(t, g, tiny); p != 2 || tough != 2 {
+		t.Errorf("Tiny is %d/%d, want 2/2", p, tough)
+	}
+
+	// A Dog connecting makes a Food, then a Clue; a non-Dog does nothing.
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	dealCombatDamageToPlayer(g, bear, opp.ID, 2)
+	passPriorityAroundTable(t, g)
+	if tmtB1Count(g, me.ID, "Food") != 0 || tmtB1Count(g, me.ID, "Clue") != 0 {
+		t.Fatal("a Bear triggered Sophia")
+	}
+	dealCombatDamageToPlayer(g, tiny, opp.ID, 2)
+	passPriorityAroundTable(t, g)
+	if got := tmtB1Count(g, me.ID, "Food"); got != 1 {
+		t.Errorf("%d Foods, want 1", got)
+	}
+	if got := tmtB1Count(g, me.ID, "Clue"); got != 1 {
+		t.Errorf("%d Clues, want 1", got)
+	}
+}
+
+func TestCmdr2S32SophiaSacrificesAnArtifactTokenForDogCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	sophia := b12Push(g, me.ID, "Sophia, Dogged Detective", "Legendary Creature — Human Detective", cmdr2S32SophiaOracle, 3, 4)
+	dog := b12Creature(g, me.ID, "Good Dog", "Creature — Dog", 1, 1)
+	rock := b12Permanent(g, me.ID, "Rock", "Artifact")
+	clue := pushToken(g, me.ID, ClueToken())
+	mkmAC2AddMana(t, g, me, "{C}")
+	if err := g.ActivateCatalogAbility(me.ID, sophia, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{rock}}); err == nil {
+		t.Fatal("a nontoken artifact paid the cost")
+	}
+	p7Activate(t, g, me, sophia, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{clue}})
+	if g.Battlefield.Contains(clue) {
+		t.Error("the Clue was not sacrificed")
+	}
+	if p, _ := mkmB1PT(t, g, dog); p != 2 {
+		t.Errorf("the Dog's power is %d, want 2", p)
+	}
+	if p, _ := mkmB1PT(t, g, sophia); p != 3 {
+		t.Errorf("Sophia (not a Dog) has power %d, want 3", p)
+	}
+}
+
+// --- Serene Sleuth ------------------------------------------------------
+
+func TestCmdr2S32SereneSleuthInvestigatesOnEntering(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castHoldCreature(t, g, "Serene Sleuth", "Creature — Human Detective", cmdr2S32SereneSleuthOracle, 2, 2)
+	if got := tmtB1Count(g, me.ID, "Clue"); got != 1 {
+		t.Errorf("%d Clues on entering, want 1", got)
+	}
+}
+
+func TestCmdr2S32SereneSleuthInvestigatesPerGoadedCreatureAndUngoads(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	b12Push(g, me.ID, "Serene Sleuth", "Creature — Human Detective", cmdr2S32SereneSleuthOracle, 2, 2)
+	a := b12Creature(g, me.ID, "Goaded A", "Creature — Bear", 2, 2)
+	b := b12Creature(g, me.ID, "Goaded B", "Creature — Bear", 2, 2)
+	c := b12Creature(g, me.ID, "Free C", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Goaded", "Creature — Bear", 2, 2)
+	g.WithWriteLock(func() {
+		g.GoadForEffect(a, opp.ID)
+		g.GoadForEffect(b, g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)].ID)
+		g.GoadForEffect(theirs, me.ID)
+	})
+	advanceToStepInTurn(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if got := tmtB1Count(g, me.ID, "Clue"); got != 2 {
+		t.Errorf("%d Clues, want 2 (one per goaded creature I control)", got)
+	}
+	for _, id := range []uuid.UUID{a, b, c} {
+		if tmtB1Card(t, g, id).IsGoaded() {
+			t.Errorf("%s is still goaded", id)
+		}
+	}
+	if !tmtB1Card(t, g, theirs).IsGoaded() {
+		t.Error("an opponent's goaded creature stopped being goaded")
+	}
+}
+
+// --- Otherworldly Escort ------------------------------------------------
+
+func cmdr2S32Sacrifice(t *testing.T, g *game.Game, id uuid.UUID) {
+	t.Helper()
+	g.WithWriteLock(func() {
+		if err := g.SacrificePermanentForEffect(id); err != nil {
+			t.Fatalf("sacrifice: %v", err)
+		}
+	})
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+}
+
+func TestCmdr2S32EscortReturnsOnceAsASpiritWithFourCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	escort := b12Push(g, me.ID, "Otherworldly Escort", "Creature — Human Detective", cmdr2S32EscortOracle, 4, 3)
+	cmdr2S32Sacrifice(t, g, escort)
+	if !g.Battlefield.Contains(escort) {
+		t.Fatal("the Escort did not return")
+	}
+	c := tmtB1Card(t, g, escort)
+	if c.HasSubtype("Human") || !c.HasSubtype("Spirit") || !c.HasSubtype("Detective") || !c.IsCreature() {
+		t.Errorf("the Escort came back as %q, want a Spirit Detective creature and no Human", c.TypeLine)
+	}
+	if got := counterCountOn(g, escort, "charge"); got != 4 {
+		t.Errorf("%d charge counters, want 4", got)
+	}
+	// A Spirit that dies stays dead.
+	cmdr2S32Sacrifice(t, g, escort)
+	if g.Battlefield.Contains(escort) {
+		t.Error("a Spirit Escort returned a second time")
+	}
+}
+
+func TestCmdr2S32EscortDestroysACreatureThatDamagedYou(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	escort := b12Push(g, me.ID, "Otherworldly Escort", "Creature — Human Detective", cmdr2S32EscortOracle, 4, 3)
+	g.WithWriteLock(func() {
+		g.AddCounterForEffect(escort, "charge", 2)
+	})
+	hitter := b12Creature(g, opp.ID, "Their Hitter", "Creature — Ogre", 3, 3)
+	idle := b12Creature(g, opp.ID, "Their Idler", "Creature — Ogre", 3, 3)
+	mkmAC2AddMana(t, g, me, "{C}{W}")
+	if err := g.ActivateCatalogAbility(me.ID, escort, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: hitter}}}); err == nil {
+		t.Fatal("a creature that dealt no damage to me was a legal target")
+	}
+	dealCombatDamageToPlayer(g, hitter, me.ID, 3)
+	_ = idle
+	p7Activate(t, g, me, escort, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: hitter}}})
+	if g.Battlefield.Contains(hitter) {
+		t.Error("the creature that dealt damage to me survived")
+	}
+	if got := counterCountOn(g, escort, "charge"); got != 1 {
+		t.Errorf("%d charge counters left, want 1", got)
+	}
+}
+
+// --- Bronzebeak Foragers ------------------------------------------------
+
+func TestCmdr2S32ForagersExilesPerOpponentUntilItLeavesAndBinsForX(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp1 := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	opp2 := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+	rock := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Their Rock", TypeLine: "Artifact",
+		ManaCost: "{3}", Owner: opp1.ID, Controller: opp1.ID})
+	bear := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Their Bear", TypeLine: "Creature — Bear",
+		ManaCost: "{1}{G}", Power: 2, Toughness: 2, Owner: opp2.ID, Controller: opp2.ID})
+	land := b12Permanent(g, opp1.ID, "Their Land", "Land")
+	foragers := castHoldCreature(t, g, "Bronzebeak Foragers", "Creature — Dinosaur", cmdr2S32ForagersOracle, 3, 4)
+	answerPickTarget(t, g, rock)
+	answerPickTarget(t, g, bear)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(rock) || g.Battlefield.Contains(bear) {
+		t.Fatal("the Foragers did not exile the chosen permanents")
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Error("an unchosen land was exiled")
+	}
+	mkmAC2AddMana(t, g, me, "{C}{C}{W}")
+	life := me.Life
+	if err := g.ActivateCatalogAbility(me.ID, foragers, 0, game.ActivateAbilityParams{XValue: 2,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: rock}}}); err == nil {
+		t.Fatal("a mana value 3 card was a legal target for X = 2")
+	}
+	p7Activate(t, g, me, foragers, 0, game.ActivateAbilityParams{XValue: 2,
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bear}}})
+	if !opp2.Graveyard.Contains(bear) {
+		t.Error("the Bear is not in its owner's graveyard")
+	}
+	if got := me.Life - life; got != 2 {
+		t.Errorf("gained %d life, want 2", got)
+	}
+	// The Foragers leave: the card still held comes back, the binned one does not.
+	cmdr2S32Sacrifice(t, g, foragers)
+	if got := tmtB1Count(g, opp1.ID, "Their Rock"); got != 1 {
+		t.Errorf("%d Rocks on the battlefield after the Foragers left, want 1", got)
+	}
+	if g.Battlefield.Contains(bear) {
+		t.Error("the Bear returned from the graveyard")
+	}
+}
+
+// --- Foreboding Steamboat -----------------------------------------------
+
+func TestCmdr2S32SteamboatExilesTwoPerPlayerAndBinsOneOnAttack(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	var mine, theirs []uuid.UUID
+	for i := 0; i < 3; i++ {
+		mine = append(mine, b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2))
+	}
+	tokenBear := pushToken(g, me.ID, TokenCard("2/2 white Soldier"))
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	for i := 0; i < 2; i++ {
+		theirs = append(theirs, b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2))
+	}
+	boat := castHoldCreature(t, g, "Foreboding Steamboat", "Artifact — Vehicle", cmdr2S32SteamboatOracle, 5, 7)
+	// each player was asked in turn; answer each with the first two candidates.
+	answered := 0
+	for i := 0; i < 8; i++ {
+		var c *game.PendingChoice
+		g.ReadSnapshot(func() {
+			for _, pc := range g.PendingChoices {
+				if pc != nil && pc.Kind == game.PendingChoiceOwnPermanents {
+					c = pc
+					return
+				}
+			}
+		})
+		if c == nil {
+			break
+		}
+		pool := mine
+		if c.Chooser == opp.ID {
+			pool = theirs
+		}
+		if err := g.ResolveOwnPermanents(c.ID, c.Chooser, pool[:2]); err != nil {
+			t.Fatalf("answering: %v", err)
+		}
+		answered++
+		passPriorityAroundTable(t, g)
+	}
+	if answered < 2 {
+		t.Fatalf("only %d players were asked", answered)
+	}
+	for _, id := range append(append([]uuid.UUID(nil), mine[:2]...), theirs...) {
+		if g.Battlefield.Contains(id) {
+			t.Errorf("%s was not exiled", id)
+		}
+	}
+	if !g.Battlefield.Contains(mine[2]) || !g.Battlefield.Contains(tokenBear) {
+		t.Error("an unchosen creature or a token was exiled")
+	}
+	// Crew it with the creature left, then attack: a card goes to its
+	// owner's graveyard and I investigate.
+	advanceToMain(t, g)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == boat {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	if err := g.ActivateCatalogAbility(me.ID, boat, 0, game.ActivateAbilityParams{Strict: true, CrewIDs: []uuid.UUID{mine[2]}}); err != nil {
+		t.Fatalf("Crew 2: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	declareAttack(t, g, opp.ID, boat)
+	passPriorityAroundTable(t, g)
+	inYards := 0
+	for _, id := range append(append([]uuid.UUID(nil), mine[:2]...), theirs...) {
+		if me.Graveyard.Contains(id) || opp.Graveyard.Contains(id) {
+			inYards++
+		}
+	}
+	if len(g.PendingChoices) > 0 {
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoiceChooseCards && len(c.ChooseCards) > 0 {
+				if err := g.ResolveChooseCards(c.ID, me.ID, c.ChooseCards[:1]); err != nil {
+					t.Fatalf("ResolveChooseCards: %v", err)
+				}
+				break
+			}
+		}
+		passPriorityAroundTable(t, g)
+		inYards = 0
+		for _, id := range append(append([]uuid.UUID(nil), mine[:2]...), theirs...) {
+			if me.Graveyard.Contains(id) || opp.Graveyard.Contains(id) {
+				inYards++
+			}
+		}
+	}
+	if inYards != 1 {
+		t.Errorf("%d exiled cards in graveyards, want 1", inYards)
+	}
+	if got := tmtB1Count(g, me.ID, "Clue"); got != 1 {
+		t.Errorf("%d Clues, want 1", got)
+	}
+	// The Steamboat leaves: the three still held return, the binned one does not.
+	cmdr2S32Sacrifice(t, g, boat)
+	back := tmtB1Count(g, me.ID, "Mine") - 1 + tmtB1Count(g, opp.ID, "Theirs")
+	if back != 3 {
+		t.Errorf("%d creatures returned, want 3", back)
 	}
 }
