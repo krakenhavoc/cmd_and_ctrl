@@ -37,7 +37,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{5}, {T}, Sacrifice this artifact: Create X tapped 2/2 colorless Scarecrow artifact creature tokens, where X is the number of charge counters on this artifact.",
 			Cost:    Plus(ManaCost("{5}"), TapCost(), SacrificeThis()),
-			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1},
+			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1, Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				info, ok := g.LastKnownPermanentForEffect(item.SourceCardID)
 				if !ok || info.Counters[game.CounterCharge] <= 0 {

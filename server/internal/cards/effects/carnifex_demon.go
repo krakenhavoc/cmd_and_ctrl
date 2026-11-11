@@ -21,14 +21,14 @@ func init() {
 		Name:            "Carnifex Demon",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1}},
 		Replacements: []game.ReplacementEffect{
 			b10EntersWithCounters(game.CounterMinusOne, 2, "Carnifex Demon: enters with two -1/-1 counters"),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{B}, Remove a -1/-1 counter from this creature: Put a -1/-1 counter on each other creature.",
-			Cost:   Plus(ManaCost("{B}"), RemoveCountersFromThis(game.CounterMinusOne, 1)),
-			Effect: cmdr2B25CountersOnEach(true, nil),
+			Label:   "{B}, Remove a -1/-1 counter from this creature: Put a -1/-1 counter on each other creature.",
+			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1}, Answers: game.AnswerRemove},
+			Cost:    Plus(ManaCost("{B}"), RemoveCountersFromThis(game.CounterMinusOne, 1)),
+			Effect:  cmdr2B25CountersOnEach(true, nil),
 		}},
 	})
 }
