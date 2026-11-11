@@ -47,6 +47,10 @@ const (
 	CodeDraftFull       = "draft_full"
 )
 
+// CubeBooster is the booster label of a cube draft: its packs are cut
+// from the cube and approximate no retail product.
+const CubeBooster = "cube"
+
 // DraftSockets is the part of *ws.Hub the draft socket needs.
 type DraftSockets interface {
 	ServeFeed(w http.ResponseWriter, r *http.Request, feed ws.Feed, b ws.FeedBinding)
@@ -54,8 +58,14 @@ type DraftSockets interface {
 
 type createDraftRequest struct {
 	Name string `json:"name"`
-	// Set is a set code GET /draft/sets lists as draftable.
-	Set string `json:"set"`
+	// Set is a set code GET /draft/sets lists as draftable. Cube is one
+	// of the caller's own cubes (GET /me/cubes), by id, and needs a
+	// sign-in. Exactly one of the two.
+	Set  string `json:"set"`
+	Cube string `json:"cube,omitempty"`
+	// PackSize is the cards in a cube's packs, 9 to 20; zero is 15. A
+	// set's packs are its own size and take none.
+	PackSize int `json:"pack_size,omitempty"`
 	// Mode is "pick_one" (the default) or "pick_two".
 	Mode string `json:"mode"`
 	// Seats is 2 to 8; zero is 8.
@@ -254,26 +264,10 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 			return httpError(http.StatusBadRequest, fmt.Sprintf("best_of is %d (want 1 or 3)", body.BestOf))
 		}
 
-		// The set: only one the draftable check passes (ADR 0222 §4), by
-		// the same list GET /draft/sets serves. A draft never hands
-		// someone a card that does not work.
-		set := strings.ToLower(strings.TrimSpace(body.Set))
-		if set == "" {
-			return httpError(http.StatusBadRequest, "set is required: a set code from GET /draft/sets")
-		}
-		pool, status, ok := c.DraftSets.DraftablePool(set)
-		if !ok {
-			return writeCoded(w, http.StatusUnprocessableEntity, CodeSetNotDraftable,
-				fmt.Sprintf("%q cannot be drafted yet: every card its packs can contain has to be fully built first", body.Set))
-		}
-
 		identity, source := draftCaller(c, r)
+		signedIn := source != nil && identity.Populated()
 		spec := DraftSpec{
 			Name:         body.Name,
-			Set:          status.Code,
-			SetName:      status.Name,
-			Booster:      string(status.Booster),
-			Source:       draft.NewPoolSource(c.Cards, pool),
 			Mode:         mode,
 			Seats:        seats,
 			PickTimeout:  timeout,
@@ -282,7 +276,41 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 			HostName:     "Player",
 			Solo:         true,
 		}
-		if source != nil && identity.Populated() {
+		set := strings.ToLower(strings.TrimSpace(body.Set))
+		cubeID := strings.TrimSpace(body.Cube)
+		switch {
+		case set != "" && cubeID != "":
+			return httpError(http.StatusBadRequest, "send set or cube, not both")
+		case cubeID != "":
+			// A cube (ADR 0222 §8): the caller's own saved list, so it
+			// needs their account. A visitor drafts a set.
+			if !signedIn {
+				return writeCoded(w, http.StatusForbidden, CodeCubeNeedsSignIn,
+					"Sign in with Discord to draft a cube. You can draft a set without signing in.")
+			}
+			cube, handled, err := cubeForDraft(c, w, r, source.UserID, cubeID, seats, body.PackSize)
+			if handled || err != nil {
+				return err
+			}
+			spec.SetName, spec.Booster, spec.Cube, spec.Source = cube.Name, CubeBooster, true, cube.Source
+		case set == "":
+			return httpError(http.StatusBadRequest, "set is required: a set code from GET /draft/sets, or cube: one of your cubes")
+		default:
+			if body.PackSize != 0 {
+				return httpError(http.StatusBadRequest, "pack_size is for a cube: a set's packs have their own size")
+			}
+			// The set: only one the draftable check passes (ADR 0222
+			// §4), by the same list GET /draft/sets serves. A draft
+			// never hands someone a card that does not work.
+			pool, status, ok := c.DraftSets.DraftablePool(set)
+			if !ok {
+				return writeCoded(w, http.StatusUnprocessableEntity, CodeSetNotDraftable,
+					fmt.Sprintf("%q cannot be drafted yet: every card its packs can contain has to be fully built first", body.Set))
+			}
+			spec.Set, spec.SetName, spec.Booster = status.Code, status.Name, string(status.Booster)
+			spec.Source = draft.NewPoolSource(c.Cards, pool)
+		}
+		if signedIn {
 			// A signed-in person: an invite link, and others may join.
 			spec.Solo = false
 			spec.HostName = identity.DisplayName()
@@ -313,7 +341,7 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 			return err
 		}
 		if c.Log != nil {
-			c.Log.Info("draft created", "draft_id", draftID.String(), "set", spec.Set, "mode", string(mode), "seats", seats, "solo", spec.Solo)
+			c.Log.Info("draft created", "draft_id", draftID.String(), "set", spec.Set, "cube", spec.Cube, "mode", string(mode), "seats", seats, "solo", spec.Solo)
 		}
 		return writeJSON(w, http.StatusCreated, out)
 	}

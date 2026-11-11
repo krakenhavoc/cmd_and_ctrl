@@ -206,7 +206,9 @@ type Lister struct {
 	pools     map[string]Pool
 	status    map[string]SetStatus
 	printings map[uuid.UUID]bool
-	have      bool
+	// full is the catalog verdict the list was computed with.
+	full IsFull
+	have bool
 }
 
 // NewLister returns a Lister over idx. A nil idx lists no sets.
@@ -230,6 +232,7 @@ func (l *Lister) refreshLocked() {
 	if isFull == nil {
 		isFull = CatalogIsFull(l.idx)
 	}
+	l.full = isFull
 	l.cached, l.pools = setsAndPools(l.idx, isFull, overrides)
 	l.status = make(map[string]SetStatus, len(l.cached.Sets))
 	for _, s := range l.cached.Sets {
@@ -280,4 +283,35 @@ func (l *Lister) IsDraftPrinting(id uuid.UUID) bool {
 	defer l.mu.Unlock()
 	l.refreshLocked()
 	return l.printings[id]
+}
+
+// IsFull is the catalog verdict the list is computed with, by oracle
+// ID: what a cube's cards are checked against (ADR 0222 §8), so a cube
+// and a set are held to one answer. It is computed at most once per
+// load of the index. A Lister with no index calls nothing Full.
+func (l *Lister) IsFull() IsFull {
+	if l == nil || l.idx == nil {
+		return func(uuid.UUID) bool { return false }
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.refreshLocked()
+	return l.full
+}
+
+// IsCubePrinting reports whether id is a printing a cube draft can hand
+// out: any printing of a card the catalog holds as Full, or of a basic
+// land (ADR 0222 §8). A cube names its own printings, so they are not
+// in a draftable set's pool; like that scope, this one is fixed by the
+// dump and the catalog and holds no card the public catalogue does not
+// already show.
+func (l *Lister) IsCubePrinting(id uuid.UUID) bool {
+	if l == nil || l.idx == nil {
+		return false
+	}
+	c, ok := l.idx.Get(id)
+	if !ok {
+		return false
+	}
+	return isBasicLand(c) || l.IsFull()(c.OracleID)
 }

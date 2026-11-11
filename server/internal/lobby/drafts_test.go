@@ -83,6 +83,13 @@ func newDraftStack(t *testing.T) *draftStack {
 
 func newDraftStackLimited(t *testing.T) *draftStack {
 	t.Helper()
+	return newDraftStackWith(t, nil)
+}
+
+// newDraftStackWith is newDraftStackLimited with the lobby's Config
+// adjusted before the handler is built.
+func newDraftStackWith(t *testing.T, adjust func(*Config)) *draftStack {
+	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := NewLobby(mgr)
@@ -95,6 +102,9 @@ func newDraftStackLimited(t *testing.T) *draftStack {
 		Lobby: l, Auth: a, AdminToken: "shared-admin-token", Cards: idx,
 		DraftSets: draftpacks.NewListerWith(idx, func(id uuid.UUID) bool { return id != draftNotFull }),
 		DraftHub:  hub,
+	}
+	if adjust != nil {
+		adjust(&cfg)
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", hub.ServeWS)

@@ -79,9 +79,12 @@ type DraftSpec struct {
 	Set     string
 	SetName string
 	Booster string
-	Source  draft.Source
-	Mode    draft.Mode
-	Seats   int
+	// Cube marks a draft of a saved card list (ADR 0222 §8): Set is
+	// empty, SetName is the cube's name and Source deals it.
+	Cube   bool
+	Source draft.Source
+	Mode   draft.Mode
+	Seats  int
 	// PickTimeout is the pick timer; zero is the default.
 	PickTimeout time.Duration
 	// BuildTimeout is the deckbuilding timer and BestOf the length of
@@ -132,6 +135,7 @@ func (l *Lobby) CreateDraft(spec DraftSpec) (draftID, seatID uuid.UUID, err erro
 		Set:          spec.Set,
 		SetName:      spec.SetName,
 		Booster:      spec.Booster,
+		Cube:         spec.Cube,
 		Mode:         spec.Mode,
 		Seats:        spec.Seats,
 		Seed:         seed,

@@ -491,9 +491,11 @@ func TestListerHandsOutDraftablePoolsOnly(t *testing.T) {
 	}
 }
 
-// GET /draft/image/{id} is public, so it is scoped: a printing outside
-// every draftable pool is a 404 whether or not the dump holds it, and
-// the scope is checked before the image cache is.
+// GET /draft/image/{id} is public, so it is scoped: a printing of a
+// card that is not Full is a 404 whether or not the dump holds it, and
+// the scope is checked before the image cache is. A Full card outside
+// every draftable pool is in scope, because a cube can hold it (ADR
+// 0222 §8).
 func TestDraftImageRouteServesOnlyDraftPrintings(t *testing.T) {
 	idx := cards.NewIndex()
 	synthSet(idx, "aaa", 20, 20, 10, 5, true)
@@ -506,9 +508,35 @@ func TestDraftImageRouteServesOnlyDraftPrintings(t *testing.T) {
 		return rec.Code
 	}
 	in := PoolFor(idx, "aaa").Contents()[0].ID
-	out := PoolFor(idx, "bbb").Contents()[0].ID
+	var out, cube, basic uuid.UUID
+	for _, c := range PoolFor(idx, "bbb").Contents() {
+		switch {
+		case c.Name == "bbb Common 03":
+			out = c.ID
+		case cube == uuid.Nil:
+			cube = c.ID
+		}
+	}
+	for _, c := range PoolFor(idx, "aaa").Contents() {
+		if c.Basic {
+			basic = c.ID
+		}
+	}
+	if out == uuid.Nil || cube == uuid.Nil || basic == uuid.Nil {
+		t.Fatal("the fixture set has no card that is not Full, no other card or no basic land")
+	}
 	if got := get("/draft/image/" + out.String()); got != http.StatusNotFound {
-		t.Errorf("a card of a set that cannot be drafted: %d, want 404", got)
+		t.Errorf("a card that is not Full: %d, want 404", got)
+	}
+	if l.IsCubePrinting(out) || !l.IsCubePrinting(cube) || !l.IsCubePrinting(basic) || l.IsCubePrinting(uuid.New()) {
+		t.Error("a cube printing is any printing of a Full card or a basic land, and nothing else")
+	}
+	// A Full card of a set that cannot be drafted, and a basic land: a
+	// cube may hold either, so both are in scope.
+	for name, id := range map[string]uuid.UUID{"a Full card outside every pool": cube, "a basic land": basic} {
+		if got := get("/draft/image/" + id.String()); got != http.StatusServiceUnavailable {
+			t.Errorf("%s with no cache: %d, want 503", name, got)
+		}
 	}
 	if got := get("/draft/image/" + uuid.NewString()); got != http.StatusNotFound {
 		t.Errorf("an unknown card: %d, want 404", got)

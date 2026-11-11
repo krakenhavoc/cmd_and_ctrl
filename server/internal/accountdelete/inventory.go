@@ -188,6 +188,8 @@ var Inventory = join(
 		"draft_id", "user_id", "round", "opponent_kind", "result", "games_won", "games_lost"),
 	cols("draft_history_matches", Deleted, "",
 		"opponent_user_id"),
+	cols("cubes", Deleted, "every cube the person saved (ADR 0222 §8, migration 0039): its name, its card list and its singleton setting",
+		"id", "user_id", "name", "singleton", "list", "card_count", "created_at", "updated_at"),
 	cols("match_games", Kept, "each game of a best-of-three (ADR 0222 §3): who won it by seat number, why it ended, who went first and how many turns it took; part of the game record the other player keeps, with no name or user id",
 		"game_id", "game_no", "outcome", "winner_seat", "cause", "starting_seat", "turns"),
 	cols("game_stats", Kept, "version 2 (ADR 0217): how the game was won and whether its replay was read; part of the game record the other players keep, with no name or user id",

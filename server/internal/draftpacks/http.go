@@ -54,7 +54,8 @@ func ListerHandler(lister *Lister) http.Handler {
 // ImageHandler serves the art of the cards a draft hands out:
 //
 //	GET /draft/image/{id}   — a printing some draftable set's packs can
-//	                          contain; ?size= and ?face= as /cards/
+//	                          contain, or a cube can; ?size= and ?face=
+//	                          as /cards/
 //
 // # This route is public
 //
@@ -68,8 +69,12 @@ func ListerHandler(lister *Lister) http.Handler {
 // It is scoped the way /catalog/image is, and for the same reason: it
 // answers only for the printings in the pools of draftable sets, a set
 // of IDs fixed by the dump and the catalog and already published by GET
-// /draft/sets, so it is not a general image proxy. Anything else is a
-// 404, the answer an unknown card gets. It shares the one ImageCache
+// /draft/sets, so it is not a general image proxy. A cube draft (ADR
+// 0222 §8) hands out the printings its list names, so the route also
+// answers for any printing of a card the catalog holds as Full and for
+// basic lands (Lister.IsCubePrinting): still a set fixed by the dump
+// and the catalog, of cards the public catalogue shows. Anything else
+// is a 404, the answer an unknown card gets. It shares the one ImageCache
 // and its guarded fetch.
 func ImageHandler(lister *Lister, idx *cards.Index, cache *cards.ImageCache) http.Handler {
 	mux := metrics.NewServeMux()
@@ -81,7 +86,7 @@ func ImageHandler(lister *Lister, idx *cards.Index, cache *cards.ImageCache) htt
 		}
 		// The scope check runs before the availability check, so an
 		// out-of-scope ID does not learn whether there is a cache.
-		if !lister.IsDraftPrinting(id) {
+		if !lister.IsDraftPrinting(id) && !lister.IsCubePrinting(id) {
 			writeErr(w, http.StatusNotFound, "not a draft card")
 			return
 		}
