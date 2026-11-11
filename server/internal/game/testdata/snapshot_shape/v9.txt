@@ -1903,6 +1903,8 @@ followUpParks[].then.asked.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Object.Colors	array
 followUpParks[].then.asked.trigger.Object.Colors[]	string
 followUpParks[].then.asked.trigger.Object.Controller	custom(uuid.UUID)
+followUpParks[].then.asked.trigger.Object.Counters	map:string
+followUpParks[].then.asked.trigger.Object.Counters{}	number:int
 followUpParks[].then.asked.trigger.Object.Epoch	number:int
 followUpParks[].then.asked.trigger.Object.ID	custom(uuid.UUID)
 followUpParks[].then.asked.trigger.Object.ManaValue	number:int
@@ -2546,6 +2548,8 @@ frozenEntries[].event.counterTail.then.asked.trigger.Object.AltCostObjects[].id	
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.counterTail.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.counterTail.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.counterTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.counterTail.then.asked.trigger.Object.ManaValue	number:int
@@ -3167,6 +3171,8 @@ frozenEntries[].event.damageTail.each.each.asked.trigger.Object.AltCostObjects[]
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Colors	array
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.each.asked.trigger.Object.ManaValue	number:int
@@ -3779,6 +3785,8 @@ frozenEntries[].event.damageTail.each.then.asked.trigger.Object.AltCostObjects[]
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.damageTail.each.then.asked.trigger.Object.ManaValue	number:int
@@ -4565,6 +4573,8 @@ frozenEntries[].event.damageTail.then.asked.trigger.Object.AltCostObjects[].id	c
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.damageTail.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.damageTail.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.damageTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.damageTail.then.asked.trigger.Object.ManaValue	number:int
@@ -5297,6 +5307,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Alt
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.discard.legs.then.asked.trigger.Object.ManaValue	number:int
@@ -5985,6 +5997,8 @@ frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.AltCostObjects[]
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.entryTail.batch.then.asked.trigger.Object.ManaValue	number:int
@@ -6597,6 +6611,8 @@ frozenEntries[].event.entryTail.keyed.asked.trigger.Object.AltCostObjects[].id	c
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Colors	array
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.entryTail.keyed.asked.trigger.Object.ManaValue	number:int
@@ -7242,6 +7258,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.AltCos
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Colors	array
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -7874,6 +7892,8 @@ frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.AltCostObjects[
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.entryTail.tokens.then.asked.trigger.Object.ManaValue	number:int
@@ -8916,6 +8936,8 @@ frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.AltCostObjects
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.then.asked.trigger.Object.ManaValue	number:int
@@ -9551,6 +9573,8 @@ frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.AltCostObjects[].i
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.each.then.asked.trigger.Object.ManaValue	number:int
@@ -10166,6 +10190,8 @@ frozenEntries[].event.lifeTail.then.asked.trigger.Object.AltCostObjects[].id	cus
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.lifeTail.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.lifeTail.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.lifeTail.then.asked.trigger.Object.ManaValue	number:int
@@ -11596,6 +11622,8 @@ frozenEntries[].event.millTail.run.then.asked.trigger.Object.AltCostObjects[].id
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.millTail.run.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.then.asked.trigger.Object.ManaValue	number:int
@@ -12206,6 +12234,8 @@ frozenEntries[].event.millTail.then.asked.trigger.Object.AltCostObjects[].id	cus
 frozenEntries[].event.millTail.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.millTail.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.millTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.millTail.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.millTail.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.millTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.millTail.then.asked.trigger.Object.ManaValue	number:int
@@ -13181,6 +13211,8 @@ frozenEntries[].event.stackItem.trigger.Object.AltCostObjects[].id	custom(uuid.U
 frozenEntries[].event.stackItem.trigger.Object.Colors	array
 frozenEntries[].event.stackItem.trigger.Object.Colors[]	string
 frozenEntries[].event.stackItem.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.stackItem.trigger.Object.Counters	map:string
+frozenEntries[].event.stackItem.trigger.Object.Counters{}	number:int
 frozenEntries[].event.stackItem.trigger.Object.Epoch	number:int
 frozenEntries[].event.stackItem.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.stackItem.trigger.Object.ManaValue	number:int
@@ -13777,6 +13809,8 @@ frozenEntries[].event.tokenTail.then.asked.trigger.Object.AltCostObjects[].id	cu
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.tokenTail.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.tokenTail.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.tokenTail.then.asked.trigger.Object.ManaValue	number:int
@@ -15642,6 +15676,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.AltCost
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.ManaValue	number:int
@@ -16287,6 +16323,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.A
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Colors	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -16897,6 +16935,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.AltCostObjec
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -17527,6 +17567,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.AltCostObj
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.discardLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -18223,6 +18265,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.AltCostOb
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Colors	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Colors[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Counters	map:string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Counters{}	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Epoch	number:int
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.faceDownLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -20441,6 +20485,8 @@ lastKnownStack[].item.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Object.Colors	array
 lastKnownStack[].item.trigger.Object.Colors[]	string
 lastKnownStack[].item.trigger.Object.Controller	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Object.Counters	map:string
+lastKnownStack[].item.trigger.Object.Counters{}	number:int
 lastKnownStack[].item.trigger.Object.Epoch	number:int
 lastKnownStack[].item.trigger.Object.ID	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Object.ManaValue	number:int
@@ -20750,6 +20796,8 @@ movesAwaitingTokens[].counterTail.then.asked.trigger.Object.AltCostObjects[].id	
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].counterTail.then.asked.trigger.Object.ManaValue	number:int
@@ -21371,6 +21419,8 @@ movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.AltCostObjects[]
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.each.asked.trigger.Object.ManaValue	number:int
@@ -21983,6 +22033,8 @@ movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.AltCostObjects[]
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.each.then.asked.trigger.Object.ManaValue	number:int
@@ -22769,6 +22821,8 @@ movesAwaitingTokens[].damageTail.then.asked.trigger.Object.AltCostObjects[].id	c
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].damageTail.then.asked.trigger.Object.ManaValue	number:int
@@ -23501,6 +23555,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Alt
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.asked.trigger.Object.ManaValue	number:int
@@ -24189,6 +24245,8 @@ movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.AltCostObjects[]
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.batch.then.asked.trigger.Object.ManaValue	number:int
@@ -24801,6 +24859,8 @@ movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.AltCostObjects[].id	c
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.keyed.asked.trigger.Object.ManaValue	number:int
@@ -25446,6 +25506,8 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.AltCos
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.search.spec.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -26078,6 +26140,8 @@ movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.AltCostObjects[
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].entryTail.tokens.then.asked.trigger.Object.ManaValue	number:int
@@ -27120,6 +27184,8 @@ movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.AltCostObjects
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.then.asked.trigger.Object.ManaValue	number:int
@@ -27755,6 +27821,8 @@ movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.AltCostObjects[].i
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.each.then.asked.trigger.Object.ManaValue	number:int
@@ -28370,6 +28438,8 @@ movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.AltCostObjects[].id	cus
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].lifeTail.then.asked.trigger.Object.ManaValue	number:int
@@ -29800,6 +29870,8 @@ movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.AltCostObjects[].id
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.then.asked.trigger.Object.ManaValue	number:int
@@ -30410,6 +30482,8 @@ movesAwaitingTokens[].millTail.then.asked.trigger.Object.AltCostObjects[].id	cus
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].millTail.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.then.asked.trigger.Object.ManaValue	number:int
@@ -31385,6 +31459,8 @@ movesAwaitingTokens[].stackItem.trigger.Object.AltCostObjects[].id	custom(uuid.U
 movesAwaitingTokens[].stackItem.trigger.Object.Colors	array
 movesAwaitingTokens[].stackItem.trigger.Object.Colors[]	string
 movesAwaitingTokens[].stackItem.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].stackItem.trigger.Object.Counters	map:string
+movesAwaitingTokens[].stackItem.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].stackItem.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].stackItem.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.trigger.Object.ManaValue	number:int
@@ -31981,6 +32057,8 @@ movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.AltCostObjects[].id	cu
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].tokenTail.then.asked.trigger.Object.ManaValue	number:int
@@ -33846,6 +33924,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.AltCost
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.trigger.Object.ManaValue	number:int
@@ -34491,6 +34571,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.A
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -35101,6 +35183,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.AltCostObjec
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -35731,6 +35815,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.AltCostObj
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.discardLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -36427,6 +36513,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.AltCostOb
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Colors	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Colors[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Counters	map:string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Counters{}	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.Epoch	number:int
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -37663,6 +37751,8 @@ pausedModeWalk.item.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Object.Colors	array
 pausedModeWalk.item.trigger.Object.Colors[]	string
 pausedModeWalk.item.trigger.Object.Controller	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Object.Counters	map:string
+pausedModeWalk.item.trigger.Object.Counters{}	number:int
 pausedModeWalk.item.trigger.Object.Epoch	number:int
 pausedModeWalk.item.trigger.Object.ID	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Object.ManaValue	number:int
@@ -38004,6 +38094,8 @@ pausedResolutionTail.item.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Object.Colors	array
 pausedResolutionTail.item.trigger.Object.Colors[]	string
 pausedResolutionTail.item.trigger.Object.Controller	custom(uuid.UUID)
+pausedResolutionTail.item.trigger.Object.Counters	map:string
+pausedResolutionTail.item.trigger.Object.Counters{}	number:int
 pausedResolutionTail.item.trigger.Object.Epoch	number:int
 pausedResolutionTail.item.trigger.Object.ID	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Object.ManaValue	number:int
@@ -38339,6 +38431,8 @@ pausedStepWalk.item.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Object.Colors	array
 pausedStepWalk.item.trigger.Object.Colors[]	string
 pausedStepWalk.item.trigger.Object.Controller	custom(uuid.UUID)
+pausedStepWalk.item.trigger.Object.Counters	map:string
+pausedStepWalk.item.trigger.Object.Counters{}	number:int
 pausedStepWalk.item.trigger.Object.Epoch	number:int
 pausedStepWalk.item.trigger.Object.ID	custom(uuid.UUID)
 pausedStepWalk.item.trigger.Object.ManaValue	number:int
@@ -38529,6 +38623,8 @@ pendingChoices[].asked.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Object.Colors	array
 pendingChoices[].asked.trigger.Object.Colors[]	string
 pendingChoices[].asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].asked.trigger.Object.Counters	map:string
+pendingChoices[].asked.trigger.Object.Counters{}	number:int
 pendingChoices[].asked.trigger.Object.Epoch	number:int
 pendingChoices[].asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].asked.trigger.Object.ManaValue	number:int
@@ -39718,6 +39814,8 @@ pendingChoices[].attackSplit.tail.asked.trigger.Object.AltCostObjects[].id	custo
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Colors	array
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Colors[]	string
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].attackSplit.tail.asked.trigger.Object.Counters	map:string
+pendingChoices[].attackSplit.tail.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Object.Epoch	number:int
 pendingChoices[].attackSplit.tail.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].attackSplit.tail.asked.trigger.Object.ManaValue	number:int
@@ -40938,6 +41036,8 @@ pendingChoices[].copyWalk.item.trigger.Object.AltCostObjects[].id	custom(uuid.UU
 pendingChoices[].copyWalk.item.trigger.Object.Colors	array
 pendingChoices[].copyWalk.item.trigger.Object.Colors[]	string
 pendingChoices[].copyWalk.item.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].copyWalk.item.trigger.Object.Counters	map:string
+pendingChoices[].copyWalk.item.trigger.Object.Counters{}	number:int
 pendingChoices[].copyWalk.item.trigger.Object.Epoch	number:int
 pendingChoices[].copyWalk.item.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.trigger.Object.ManaValue	number:int
@@ -41764,6 +41864,8 @@ pendingChoices[].diceRoll.then.asked.trigger.Object.AltCostObjects[].id	custom(u
 pendingChoices[].diceRoll.then.asked.trigger.Object.Colors	array
 pendingChoices[].diceRoll.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].diceRoll.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].diceRoll.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].diceRoll.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].diceRoll.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].diceRoll.then.asked.trigger.Object.ManaValue	number:int
@@ -42759,6 +42861,8 @@ pendingChoices[].divideShield.walk.each.asked.trigger.Object.AltCostObjects[].id
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Colors	array
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Colors[]	string
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.each.asked.trigger.Object.Counters	map:string
+pendingChoices[].divideShield.walk.each.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.Epoch	number:int
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.each.asked.trigger.Object.ManaValue	number:int
@@ -43371,6 +43475,8 @@ pendingChoices[].divideShield.walk.then.asked.trigger.Object.AltCostObjects[].id
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Colors	array
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].divideShield.walk.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].divideShield.walk.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].divideShield.walk.then.asked.trigger.Object.ManaValue	number:int
@@ -43989,6 +44095,8 @@ pendingChoices[].libraryOrder.then.asked.trigger.Object.AltCostObjects[].id	cust
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Colors	array
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].libraryOrder.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].libraryOrder.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].libraryOrder.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].libraryOrder.then.asked.trigger.Object.ManaValue	number:int
@@ -44658,6 +44766,8 @@ pendingChoices[].nameThen.asked.trigger.Object.AltCostObjects[].id	custom(uuid.U
 pendingChoices[].nameThen.asked.trigger.Object.Colors	array
 pendingChoices[].nameThen.asked.trigger.Object.Colors[]	string
 pendingChoices[].nameThen.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].nameThen.asked.trigger.Object.Counters	map:string
+pendingChoices[].nameThen.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].nameThen.asked.trigger.Object.Epoch	number:int
 pendingChoices[].nameThen.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].nameThen.asked.trigger.Object.ManaValue	number:int
@@ -45277,6 +45387,8 @@ pendingChoices[].ordered.asked.trigger.Object.AltCostObjects[].id	custom(uuid.UU
 pendingChoices[].ordered.asked.trigger.Object.Colors	array
 pendingChoices[].ordered.asked.trigger.Object.Colors[]	string
 pendingChoices[].ordered.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].ordered.asked.trigger.Object.Counters	map:string
+pendingChoices[].ordered.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].ordered.asked.trigger.Object.Epoch	number:int
 pendingChoices[].ordered.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].ordered.asked.trigger.Object.ManaValue	number:int
@@ -45747,6 +45859,8 @@ pendingChoices[].pickTail.asked.trigger.Object.AltCostObjects[].id	custom(uuid.U
 pendingChoices[].pickTail.asked.trigger.Object.Colors	array
 pendingChoices[].pickTail.asked.trigger.Object.Colors[]	string
 pendingChoices[].pickTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].pickTail.asked.trigger.Object.Counters	map:string
+pendingChoices[].pickTail.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].pickTail.asked.trigger.Object.Epoch	number:int
 pendingChoices[].pickTail.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].pickTail.asked.trigger.Object.ManaValue	number:int
@@ -46404,6 +46518,8 @@ pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.A
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.counterTail.then.asked.trigger.Object.ManaValue	number:int
@@ -47025,6 +47141,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Obje
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.each.asked.trigger.Object.ManaValue	number:int
@@ -47637,6 +47755,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Obje
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.each.then.asked.trigger.Object.ManaValue	number:int
@@ -48423,6 +48543,8 @@ pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Al
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.then.asked.trigger.Object.ManaValue	number:int
@@ -49155,6 +49277,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.asked.trigger.Object.ManaValue	number:int
@@ -49843,6 +49967,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Obje
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.batch.then.asked.trigger.Object.ManaValue	number:int
@@ -50455,6 +50581,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Al
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.ManaValue	number:int
@@ -51100,6 +51228,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.tr
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -51732,6 +51862,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Obj
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.entryTail.tokens.then.asked.trigger.Object.ManaValue	number:int
@@ -52774,6 +52906,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Ob
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.then.asked.trigger.Object.ManaValue	number:int
@@ -53409,6 +53543,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.each.then.asked.trigger.Object.ManaValue	number:int
@@ -54024,6 +54160,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.AltC
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeTail.then.asked.trigger.Object.ManaValue	number:int
@@ -55454,6 +55592,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.then.asked.trigger.Object.ManaValue	number:int
@@ -56064,6 +56204,8 @@ pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.AltC
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.then.asked.trigger.Object.ManaValue	number:int
@@ -57039,6 +57181,8 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Object.AltCostObjects
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.stackItem.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.stackItem.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.ManaValue	number:int
@@ -57635,6 +57779,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Alt
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenTail.then.asked.trigger.Object.ManaValue	number:int
@@ -59500,6 +59646,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.tri
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.trigger.Object.ManaValue	number:int
@@ -60145,6 +60293,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.ask
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -60755,6 +60905,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -61385,6 +61537,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigge
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -62081,6 +62235,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigg
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Colors	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Colors[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Counters	map:string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.Epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.asked.trigger.Object.ManaValue	number:int
@@ -63129,6 +63285,8 @@ pendingChoices[].scryThen.asked.trigger.Object.AltCostObjects[].id	custom(uuid.U
 pendingChoices[].scryThen.asked.trigger.Object.Colors	array
 pendingChoices[].scryThen.asked.trigger.Object.Colors[]	string
 pendingChoices[].scryThen.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].scryThen.asked.trigger.Object.Counters	map:string
+pendingChoices[].scryThen.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].scryThen.asked.trigger.Object.Epoch	number:int
 pendingChoices[].scryThen.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].scryThen.asked.trigger.Object.ManaValue	number:int
@@ -63787,6 +63945,8 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.AltCostObjects[
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Colors	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Colors[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Counters	map:string
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Counters{}	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.Epoch	number:int
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.ManaValue	number:int
@@ -65225,6 +65385,8 @@ pendingChoices[].targetWalk.frame.trigger.Object.AltCostObjects[].id	custom(uuid
 pendingChoices[].targetWalk.frame.trigger.Object.Colors	array
 pendingChoices[].targetWalk.frame.trigger.Object.Colors[]	string
 pendingChoices[].targetWalk.frame.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.trigger.Object.Counters	map:string
+pendingChoices[].targetWalk.frame.trigger.Object.Counters{}	number:int
 pendingChoices[].targetWalk.frame.trigger.Object.Epoch	number:int
 pendingChoices[].targetWalk.frame.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.trigger.Object.ManaValue	number:int
@@ -65978,6 +66140,8 @@ pendingChoices[].triggerFrame.trigger.Object.AltCostObjects[].id	custom(uuid.UUI
 pendingChoices[].triggerFrame.trigger.Object.Colors	array
 pendingChoices[].triggerFrame.trigger.Object.Colors[]	string
 pendingChoices[].triggerFrame.trigger.Object.Controller	custom(uuid.UUID)
+pendingChoices[].triggerFrame.trigger.Object.Counters	map:string
+pendingChoices[].triggerFrame.trigger.Object.Counters{}	number:int
 pendingChoices[].triggerFrame.trigger.Object.Epoch	number:int
 pendingChoices[].triggerFrame.trigger.Object.ID	custom(uuid.UUID)
 pendingChoices[].triggerFrame.trigger.Object.ManaValue	number:int
@@ -66321,6 +66485,8 @@ pendingTriggers[].trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 pendingTriggers[].trigger.Object.Colors	array
 pendingTriggers[].trigger.Object.Colors[]	string
 pendingTriggers[].trigger.Object.Controller	custom(uuid.UUID)
+pendingTriggers[].trigger.Object.Counters	map:string
+pendingTriggers[].trigger.Object.Counters{}	number:int
 pendingTriggers[].trigger.Object.Epoch	number:int
 pendingTriggers[].trigger.Object.ID	custom(uuid.UUID)
 pendingTriggers[].trigger.Object.ManaValue	number:int
@@ -67993,6 +68159,8 @@ promptRuns[].asked.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 promptRuns[].asked.trigger.Object.Colors	array
 promptRuns[].asked.trigger.Object.Colors[]	string
 promptRuns[].asked.trigger.Object.Controller	custom(uuid.UUID)
+promptRuns[].asked.trigger.Object.Counters	map:string
+promptRuns[].asked.trigger.Object.Counters{}	number:int
 promptRuns[].asked.trigger.Object.Epoch	number:int
 promptRuns[].asked.trigger.Object.ID	custom(uuid.UUID)
 promptRuns[].asked.trigger.Object.ManaValue	number:int
@@ -68759,6 +68927,8 @@ resolving.item.trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 resolving.item.trigger.Object.Colors	array
 resolving.item.trigger.Object.Colors[]	string
 resolving.item.trigger.Object.Controller	custom(uuid.UUID)
+resolving.item.trigger.Object.Counters	map:string
+resolving.item.trigger.Object.Counters{}	number:int
 resolving.item.trigger.Object.Epoch	number:int
 resolving.item.trigger.Object.ID	custom(uuid.UUID)
 resolving.item.trigger.Object.ManaValue	number:int
@@ -74120,6 +74290,8 @@ stackMeta[].trigger.Object.AltCostObjects[].id	custom(uuid.UUID)
 stackMeta[].trigger.Object.Colors	array
 stackMeta[].trigger.Object.Colors[]	string
 stackMeta[].trigger.Object.Controller	custom(uuid.UUID)
+stackMeta[].trigger.Object.Counters	map:string
+stackMeta[].trigger.Object.Counters{}	number:int
 stackMeta[].trigger.Object.Epoch	number:int
 stackMeta[].trigger.Object.ID	custom(uuid.UUID)
 stackMeta[].trigger.Object.ManaValue	number:int

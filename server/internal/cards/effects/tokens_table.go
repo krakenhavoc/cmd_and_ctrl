@@ -137,6 +137,8 @@ var tokenTable = map[string]game.Card{
 	"1/1 colorless Sliver":                                             {Name: "Sliver", TypeLine: "Token Creature — Sliver", Power: 1, Toughness: 1},
 	"1/1 black Assassin with deathtouch and haste":                     {Name: "Assassin", TypeLine: "Token Creature — Assassin", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch", "haste"}},
 	"1/1 black Snake with deathtouch":                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
+	"1/1 green Snake with deathtouch":                                  {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"deathtouch"}},
+	"2/2 colorless Scarecrow artifact":                                 {Name: "Scarecrow", TypeLine: "Token Artifact Creature — Scarecrow", Power: 2, Toughness: 2},
 	"1/1 black Wolf with deathtouch":                                   {Name: "Wolf", TypeLine: "Token Creature — Wolf", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"deathtouch"}},
 	"1/1 colorless Servo artifact":                                     {Name: "Servo", TypeLine: "Token Artifact Creature — Servo", Power: 1, Toughness: 1},
 	"1/1 colorless Soldier artifact":                                   {Name: "Soldier", TypeLine: "Token Artifact Creature — Soldier", Power: 1, Toughness: 1},
