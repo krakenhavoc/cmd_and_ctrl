@@ -37,9 +37,10 @@ func init() {
 			Text: "When this creature dies, manifest the top card of your library.",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice this creature: Until end of turn, face-up nontoken creatures you control gain \"When this creature dies, manifest the top card of your library.\"",
-			Cost:   SacrificeThis(),
-			Effect: cmdr2S37WhisperwoodGrant,
+			Label:   "Sacrifice this creature: Until end of turn, face-up nontoken creatures you control gain \"When this creature dies, manifest the top card of your library.\"",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerProtect | game.AnswerSurvive},
+			Cost:    SacrificeThis(),
+			Effect:  cmdr2S37WhisperwoodGrant,
 		}},
 	})
 }

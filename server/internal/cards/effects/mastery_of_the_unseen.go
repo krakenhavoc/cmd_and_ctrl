@@ -25,9 +25,10 @@ func init() {
 				cmdr2S37GainLifePerCreature),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{W}: Manifest the top card of your library.",
-			Cost:   ManaCost("{3}{W}"),
-			Effect: func(g *game.Game, item *game.StackItem) error { return Manifest{N: 1}.Apply(NewContext(g, item)) },
+			Label:   "{3}{W}: Manifest the top card of your library.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{3}{W}"),
+			Effect:  func(g *game.Game, item *game.StackItem) error { return Manifest{N: 1}.Apply(NewContext(g, item)) },
 		}},
 	})
 }
