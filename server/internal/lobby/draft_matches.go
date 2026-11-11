@@ -48,7 +48,10 @@ import (
 // and the games each seat won go to the draft, which begins the next
 // round when it was the last result of this one. A table nobody
 // touches for draftMatchIdle is recorded as a draw and closed, so one
-// person walking away does not hold a draft's round open for ever. A
+// person walking away does not hold a draft's round open for ever. If
+// that was the draft's only match in play and nobody is on the draft's
+// own page either, the draft is closed instead: everyone has walked
+// away, and the next round would only seat a bot to wait for them. A
 // finished table stays up for draftMatchLinger, for the two players
 // to look at the board, and is then dropped.
 //
@@ -72,6 +75,33 @@ const (
 	// draftMatchLinger is how long a finished match's table stays up.
 	draftMatchLinger = 10 * time.Minute
 )
+
+// DraftMatchLimits bounds a draft's match tables. A zero field means
+// its default. Tests shrink them; production keeps the defaults.
+type DraftMatchLimits struct {
+	Idle, MaxAge, Linger time.Duration
+}
+
+func (d DraftMatchLimits) withDefaults() DraftMatchLimits {
+	if d.Idle <= 0 {
+		d.Idle = draftMatchIdle
+	}
+	if d.MaxAge <= 0 {
+		d.MaxAge = draftMatchMaxAge
+	}
+	if d.Linger <= 0 {
+		d.Linger = draftMatchLinger
+	}
+	return d
+}
+
+// SetDraftMatchLimits replaces the bounds of the match tables opened
+// from now on.
+func (l *Lobby) SetDraftMatchLimits(d DraftMatchLimits) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.draftMatchLimits = d
+}
 
 // DraftRecorder keeps a signed-in person's finished drafts
 // (drafthistory.Store). Nil keeps nothing.
@@ -358,7 +388,7 @@ func (l *Lobby) openDraftMatch(draftID uuid.UUID, e *draftEntry, draftName strin
 	l.syncStateLocked(entry)
 	l.syncHostLocked(entry)
 	l.startWatchLocked(entry)
-	go l.watchDraftMatch(entry)
+	go l.watchDraftMatch(entry, l.draftMatchLimits.withDefaults())
 	if start := l.botStartLocked(entry); start != nil {
 		after = append(after, start)
 	}
@@ -368,12 +398,12 @@ func (l *Lobby) openDraftMatch(draftID uuid.UUID, e *draftEntry, draftName strin
 // watchDraftMatch follows a match's table: it reports the result to
 // the draft when the match ends, records a draw for a table nobody
 // touches, and drops the table once it is no longer needed.
-func (l *Lobby) watchDraftMatch(entry *gameEntry) {
+func (l *Lobby) watchDraftMatch(entry *gameEntry, limits DraftMatchLimits) {
 	wake, unsubscribe := entry.room.Subscribe()
 	defer unsubscribe()
-	idle := time.NewTimer(draftMatchIdle)
+	idle := time.NewTimer(limits.Idle)
 	defer idle.Stop()
-	age := time.NewTimer(draftMatchMaxAge)
+	age := time.NewTimer(limits.MaxAge)
 	defer age.Stop()
 	reported := false
 	for {
@@ -381,7 +411,7 @@ func (l *Lobby) watchDraftMatch(entry *gameEntry) {
 			reported = true
 			l.reportDraftMatch(entry, false)
 			// The board stays up for a while, then the table goes.
-			idle.Reset(draftMatchLinger)
+			idle.Reset(limits.Linger)
 		}
 		var why string
 		select {
@@ -389,7 +419,7 @@ func (l *Lobby) watchDraftMatch(entry *gameEntry) {
 			return
 		case <-wake:
 			if !reported {
-				idle.Reset(draftMatchIdle)
+				idle.Reset(limits.Idle)
 			}
 			continue
 		case <-idle.C:
@@ -398,6 +428,13 @@ func (l *Lobby) watchDraftMatch(entry *gameEntry) {
 			why = "max_age"
 		}
 		if !reported {
+			if l.draftAbandoned(entry) {
+				// Nobody is at this table, at another, or on the draft's
+				// page: closing the draft saves what its people drafted
+				// and takes this table with it.
+				l.closeDraft(entry.draftMatch.draft)
+				return
+			}
 			l.reportDraftMatch(entry, true)
 		} else {
 			why = "finished"
@@ -405,6 +442,29 @@ func (l *Lobby) watchDraftMatch(entry *gameEntry) {
 		l.dropDraftMatch(entry.meta.ID, why)
 		return
 	}
+}
+
+// draftAbandoned reports whether a stalled match's draft has nobody
+// left at it: no socket on the draft's own page, and no other match of
+// it still in play.
+func (l *Lobby) draftAbandoned(entry *gameEntry) bool {
+	ref := entry.draftMatch
+	if ref == nil {
+		return false
+	}
+	l.mu.Lock()
+	e, ok := l.drafts[ref.draft]
+	others := false
+	for id, g := range l.games {
+		if id != entry.meta.ID && g.draftMatch != nil && g.draftMatch.draft == ref.draft && g.meta.State != string(game.StateEnded) {
+			others = true
+		}
+	}
+	l.mu.Unlock()
+	if !ok || others {
+		return false
+	}
+	return e.room.Status().Connected == 0
 }
 
 // reportDraftMatch tells the draft how a match's table ended. abandoned

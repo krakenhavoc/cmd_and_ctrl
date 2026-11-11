@@ -652,3 +652,81 @@ func TestALimitedTableIsOnlyOpenedByADraft(t *testing.T) {
 		t.Fatalf("the Commander table's settings = %+v", settings)
 	}
 }
+
+// A match nobody plays does not hold its round open: the table is
+// recorded as a draw and closed, and the draft moves on, as long as a
+// person is still on the draft's page.
+func TestAStalledDraftMatchIsADraw(t *testing.T) {
+	s := newDraftStack(t)
+	s.withRealBots(t)
+	s.lobby.SetDraftMatchLimits(DraftMatchLimits{Idle: 150 * time.Millisecond})
+	_, out := s.call(t, http.MethodPost, "/draft", "", `{"set":"syn","seats":2}`)
+	id := out.Draft.ID
+	seat := s.draftSeatOf(t, out.Token)
+	conn := s.dial(t, id, out.Token)
+	conn.next()
+	s.call(t, http.MethodPost, "/draft/"+id.String()+"/start", out.Token, "")
+	room := s.lobby.DraftRoom(id)
+	pickEverything(t, room, seat)
+	if err := room.SubmitDeck(seat, deckOf(t, room, seat)); err != nil {
+		t.Fatal(err)
+	}
+	// Nobody sits down. Each round's table stalls, and is a draw.
+	draftEventually(t, "the draft finishes on draws", func() bool {
+		_, phase := s.roundOf(room, seat)
+		return phase == draft.PhaseFinished
+	})
+	v, _ := room.View(seat)
+	if st := v.Play.Standings[v.You]; st.Draws != draft.MatchRounds || st.Wins+st.Losses != 0 {
+		t.Fatalf("the record after three stalled matches = %+v, want three draws", st)
+	}
+	draftEventually(t, "the stalled tables are closed", func() bool {
+		s.lobby.mu.Lock()
+		defer s.lobby.mu.Unlock()
+		return len(s.lobby.games) == 0
+	})
+}
+
+// With nobody on the draft's page either, a stalled match means
+// everyone has walked away: the draft is closed, not played on by its
+// bots, and what a signed-in person drafted is saved first.
+func TestAnAbandonedDraftClosesWhenItsMatchStalls(t *testing.T) {
+	s := newDraftStack(t)
+	bots := s.withRealBots(t)
+	d, err := db.Open(context.Background(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	s.lobby.SetDraftRecorder(drafthistory.NewSQLStore(d))
+	s.lobby.SetDraftMatchLimits(DraftMatchLimits{Idle: 150 * time.Millisecond})
+
+	tok, user := s.signIn(t, "Ian")
+	if _, err := d.Exec(`INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES (?, 'Ian', 1, 1)`, user.String()); err != nil {
+		t.Fatal(err)
+	}
+	host := s.create(t, tok, `{"set":"syn","seats":2}`)
+	id := host.Draft.ID
+	seat := s.draftSeatOf(t, host.Token)
+	s.call(t, http.MethodPost, "/draft/"+id.String()+"/start", host.Token, "")
+	room := s.lobby.DraftRoom(id)
+	pickEverything(t, room, seat)
+	if err := room.SubmitDeck(seat, deckOf(t, room, seat)); err != nil {
+		t.Fatal(err)
+	}
+	entry, _ := s.matchTable(t, id, seat, 1)
+	table := entry.meta.ID
+	draftEventually(t, "the abandoned draft closes", func() bool { return s.lobby.DraftCount() == 0 })
+	draftEventually(t, "its table and its bot go with it", func() bool {
+		s.lobby.mu.Lock()
+		defer s.lobby.mu.Unlock()
+		return len(s.lobby.games) == 0
+	})
+	if n := len(bots.Runners(table)); n != 0 {
+		t.Fatalf("%d bot runners are left on the closed table", n)
+	}
+	var n int
+	if err := d.QueryRow(`SELECT COUNT(*) FROM draft_history WHERE user_id = ?`, user.String()).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("the person's draft was not saved before it closed: %d rows (%v)", n, err)
+	}
+}

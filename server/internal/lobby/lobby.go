@@ -383,7 +383,10 @@ type Lobby struct {
 	// draftRecorder keeps a signed-in person's finished drafts
 	// (draft_matches.go); nil keeps nothing.
 	draftRecorder DraftRecorder
-	mgr           *ws.RoomManager
+	// draftMatchLimits bounds a draft's match tables
+	// (draft_matches.go); the zero value is the defaults.
+	draftMatchLimits DraftMatchLimits
+	mgr              *ws.RoomManager
 	// broadcast, when non-nil, receives the post-mutation view of
 	// every HTTP-side game mutation (join / deck upload / start) so
 	// clients already on the game page see it without waiting for

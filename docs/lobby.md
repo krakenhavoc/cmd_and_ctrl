@@ -814,8 +814,10 @@ holding the deck its draft seat built. Like the practice table, it has no
 invite, is not in `GET /games`, is never written to the database (so it is
 not in `GET /me/games` and writes no statistics record), and ends with its
 draft. Its `GameMeta` carries `draft_id`. A table nobody touches for 20
-minutes is recorded as a draw and closed; a finished one stays up 10
-minutes. A `limited` table cannot be made with `POST /games` (400) or
+minutes is recorded as a draw and closed, and the draft moves on; if it was
+the draft's only match in play and nobody is on the draft's own page
+either, the draft is closed instead, after saving what its signed-in
+people drafted. A finished table stays up 10 minutes. A `limited` table cannot be made with `POST /games` (400) or
 chosen with a settings patch.
 
 #### `POST /draft/{id}/match` *(a seat token)*

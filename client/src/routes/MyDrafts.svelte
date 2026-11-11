@@ -168,6 +168,9 @@
     font-family: var(--font-display);
     font-size: 19px;
     font-weight: 800;
+    /* a .card's h2 is a mono eyebrow by default; these are headings */
+    letter-spacing: -0.005em;
+    text-transform: none;
     color: var(--fg);
   }
   .n {

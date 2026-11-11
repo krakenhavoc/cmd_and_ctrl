@@ -289,6 +289,9 @@
     flex-direction: column;
     gap: 22px;
     min-width: 0;
+    /* Two zones share the page with the panel, so their tiles are a
+       step smaller than a finished pool's: three across at 820px. */
+    --pool-tile: 100px;
   }
   /* A zone a card is being dragged over: the hairline thickens to the
      accent, and nothing moves. */
@@ -315,6 +318,9 @@
     font-family: var(--font-display);
     font-size: 19px;
     font-weight: 800;
+    /* a .card's h2 is a mono eyebrow by default; these are headings */
+    letter-spacing: -0.005em;
+    text-transform: none;
     color: var(--fg);
   }
   .head h2 {

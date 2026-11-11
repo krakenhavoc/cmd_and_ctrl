@@ -221,7 +221,7 @@
   .imgs {
     display: grid;
     /* the catalogue's tile width: six across at the 1200px page */
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--pool-tile, 128px), 1fr));
     gap: 14px;
   }
 </style>
