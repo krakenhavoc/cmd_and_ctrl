@@ -32,3 +32,24 @@ func cmdr2S52CombatDamageToPlayerDoubler(name string) game.TriggerDoubler {
 		},
 	}
 }
+
+// cmdr2S52OpponentsBelowHalfStarting counts the source controller's living
+// opponents whose life total is less than half their starting life total
+// (Anya, Merciless Angel). The table's starting total is read through
+// startingLifeOf; the comparison is life*2 < starting so an odd starting
+// total has no rounding.
+func cmdr2S52OpponentsBelowHalfStarting(g *game.Game, source *game.Card) int {
+	if g == nil || source == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range g.Seats {
+		if p == nil || p.ID == source.Controller || p.Eliminated {
+			continue
+		}
+		if p.Life*2 < startingLifeOf(g) {
+			n++
+		}
+	}
+	return n
+}
