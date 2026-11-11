@@ -199,6 +199,7 @@ body hylda-of-the-icy-crown/modes
 body icewrought-sentry/tap
 body ill-timed-explosion/damage
 body immortal-coil/exile-per-prevented
+body incandescent-soulstoke/sacrifice
 body incinerator-of-the-guilty/damage
 body initiative/take
 body initiative/venture
@@ -2375,6 +2376,7 @@ tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
+tail incandescent-soulstoke/entered
 tail incubate/next-round
 tail incubate/transform-all-incubators
 tail infernal-vessel/demon
