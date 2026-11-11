@@ -547,3 +547,199 @@ func TestCmdr2S41MurmurationMakesNothingWithoutASpellAndPumpsOnlyYourBirds(t *te
 		t.Errorf("%d Storm Crows with no spell cast, want 0", n)
 	}
 }
+
+// --- Forger's Foundry ----------------------------------------------------------
+
+// cmdr2S41CastWithFoundryMana taps the Foundry for {U} and casts a one-mana
+// spell with it, strictly.
+func cmdr2S41CastWithFoundryMana(t *testing.T, g *game.Game, me *game.Player, foundry uuid.UUID, typeLine, cost string) uuid.UUID {
+	t.Helper()
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	activateManaFor(t, g, me.ID, foundry, 0, game.ManaAbilityParams{})
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Cheap Spell", TypeLine: typeLine, ManaCost: cost,
+		Owner: me.ID, Controller: me.ID})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast with the Foundry's mana: %v", err)
+	}
+	return id
+}
+
+func cmdr2S41InExile(g *game.Game, id uuid.UUID) *game.Card {
+	for i := range g.Exile.Cards {
+		if g.Exile.Cards[i].InstanceID == id {
+			return &g.Exile.Cards[i]
+		}
+	}
+	return nil
+}
+
+func TestCmdr2S41FoundryExilesACheapSpellItPaidForAndLinksIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	foundry := pushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	c := cmdr2S41InExile(g, spell)
+	if c == nil {
+		t.Fatal("the spell was not exiled as it resolved")
+	}
+	if c.ExiledWith.ID != foundry {
+		t.Errorf("the exiled spell is linked to %v, want the Foundry", c.ExiledWith.ID)
+	}
+}
+
+func TestCmdr2S41FoundryDeclinedOrOverThreeOrASorceryOfCreatureGoesToTheGraveyard(t *testing.T) {
+	// Declined.
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	foundry := pushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if cmdr2S41InExile(g, spell) != nil || !me.Graveyard.Contains(spell) {
+		t.Error("a declined exile still exiled the spell")
+	}
+	// A creature spell asks nothing.
+	g2 := newCatalogGame(t)
+	me2 := g2.Seats[g2.Turn.ActiveSeat]
+	advanceToMain(t, g2)
+	f2 := pushCatalogPermanent(g2, me2.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	cmdr2S41CastWithFoundryMana(t, g2, me2, f2, "Creature — Bear", "{U}")
+	passPriorityAroundTable(t, g2)
+	if latestConfirmFor(g2, me2.ID) != nil {
+		t.Error("a creature spell paid with the Foundry's mana asked about exiling")
+	}
+	// Mana value 4 is too much; the Foundry's mana pays only one of it.
+	g3 := newCatalogGame(t)
+	me3 := g3.Seats[g3.Turn.ActiveSeat]
+	advanceToMain(t, g3)
+	f3 := pushCatalogPermanent(g3, me3.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	g3.WithWriteLock(func() { me3.ManaPool.EmptyPool() })
+	activateManaFor(t, g3, me3.ID, f3, 0, game.ManaAbilityParams{})
+	floatForTest(g3, me3, "CCC")
+	big := uuid.New()
+	me3.Hand.PushTop(game.Card{InstanceID: big, Name: "Big Spell", TypeLine: "Sorcery", ManaCost: "{3}{U}",
+		Owner: me3.ID, Controller: me3.ID})
+	if err := g3.CastSpell(me3.ID, big, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g3)
+	if latestConfirmFor(g3, me3.ID) != nil {
+		t.Error("a mana value 4 spell asked about exiling")
+	}
+}
+
+func TestCmdr2S41FoundryCastsTheExiledSpellsFreeAtSorcerySpeed(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
+	advanceToMain(t, g)
+	foundry := pushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if cmdr2S41InExile(g, spell) == nil {
+		t.Fatal("setup: the spell was not exiled")
+	}
+	untapForTest(g, foundry)
+	g.WithWriteLock(func() { me.ManaPool.EmptyPool() })
+	if err := g.ActivateCatalogAbility(me.ID, foundry, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Fatal("the second ability activated with no mana")
+	}
+	floatForTest(g, me, "UUUUU")
+	before := lifeOf(g, opp.ID)
+	b16Activate(t, g, me.ID, foundry, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	if got := countMayCastPrompts(g); got != 1 {
+		t.Fatalf("%d free-cast offers, want 1", got)
+	}
+	answerAllMayCast(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	_ = before
+	if cmdr2S41InExile(g, spell) != nil {
+		t.Error("the spell is still in exile after it was cast")
+	}
+}
+
+func TestCmdr2S41FoundryLosesItsLinkWhenItLeaves(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	foundry := pushCatalogPermanent(g, me.ID, "Forger's Foundry", "Artifact", cmdr2S41FoundryOracle, false)
+	spell := cmdr2S41CastWithFoundryMana(t, g, me, foundry, "Instant", "{U}")
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	// The Foundry leaves before the spell resolves: it goes to the graveyard.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == foundry {
+				g.Battlefield.Cards[i].ObjectEpoch++
+			}
+		}
+	})
+	passPriorityAroundTable(t, g)
+	if cmdr2S41InExile(g, spell) != nil {
+		t.Error("a spell whose Foundry is a different object was exiled")
+	}
+}
+
+// --- Feather, Radiant Arbiter --------------------------------------------------
+
+func TestCmdr2S41FeatherCopiesTheSpellForEachCreaturePaidFor(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	feather := b12Push(g, me.ID, "Feather, Radiant Arbiter", "Legendary Creature — Angel", cmdr2S41FeatherOracle, 4, 3)
+	a := b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	castCatalogSpell(t, g, "Giant Growth", "Instant", socB8GiantGrowthOracle, cardTarget(feather))
+	floatForTest(g, me, "CCCC")
+	passPriorityAroundTable(t, g)
+	c := payAmountPrompt(g, me.ID)
+	if c == nil {
+		t.Fatal("no pay prompt for the Feather trigger")
+	}
+	if err := g.ResolvePayAmount(c.ID, me.ID, 2); err != nil {
+		t.Fatalf("ResolvePayAmount: %v", err)
+	}
+	for i := 0; i < 8 && len(g.Stack.Cards) > 0; i++ {
+		passPriorityAroundTable(t, g)
+	}
+	for _, id := range []uuid.UUID{feather, a, theirs} {
+		if p := effectivePower(t, g, id); p < 5 {
+			t.Errorf("creature %v has power %d, want it pumped by Giant Growth", id, p)
+		}
+	}
+}
+
+func TestCmdr2S41FeatherPayingNothingCopiesNothingAndAnotherTargetDoesNotTrigger(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	feather := b12Push(g, me.ID, "Feather, Radiant Arbiter", "Legendary Creature — Angel", cmdr2S41FeatherOracle, 4, 3)
+	a := b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	castCatalogSpell(t, g, "Giant Growth", "Instant", socB8GiantGrowthOracle, cardTarget(a))
+	if n := triggersOnStackFrom(g, feather); n != 0 {
+		t.Errorf("a spell targeting another creature triggered Feather %d times", n)
+	}
+	passPriorityAroundTable(t, g)
+	castCatalogSpell(t, g, "Giant Growth", "Instant", socB8GiantGrowthOracle, cardTarget(feather))
+	passPriorityAroundTable(t, g)
+	if c := payAmountPrompt(g, me.ID); c != nil {
+		if err := g.ResolvePayAmount(c.ID, me.ID, 0); err != nil {
+			t.Fatalf("ResolvePayAmount: %v", err)
+		}
+	}
+	for i := 0; i < 8 && len(g.Stack.Cards) > 0; i++ {
+		passPriorityAroundTable(t, g)
+	}
+	if p := effectivePower(t, g, a); p != 5 {
+		t.Errorf("Bear A has power %d, want 5 (one Giant Growth, no copies)", p)
+	}
+}
