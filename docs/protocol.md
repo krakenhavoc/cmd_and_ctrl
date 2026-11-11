@@ -2057,12 +2057,19 @@ rises.
     ],
     "pack": [ { "id": "c41", "scryfall_id": "…", "oracle_id": "…", "name": "Shoreline Looter",
                 "set": "blb", "collector_number": "70", "rarity": "uncommon",
-                "colors": ["U"], "mana_cost": "{1}{U}", "mana_value": 2,
+                "colors": ["U"], "color_identity": ["U"],
+                "mana_cost": "{1}{U}", "mana_value": 2,
                 "type_line": "Creature — Rat Rogue" } ],
     "picks": [ ]
   }
 }
 ```
+
+- A card's `color_identity` (#5704, additive, `omitempty`) is the printing's
+  colour identity, W U B R G; it is absent when the identity is colourless.
+  It is what colours a land, whose own `colors` are empty. The client draws
+  a slight edge on each card from it, falling back to `colors` when it is
+  absent.
 
 - `cube` is `true` for a draft of a saved card list ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §8,
   #5441) and absent otherwise. `set` is then `""`, `set_name` is the cube's

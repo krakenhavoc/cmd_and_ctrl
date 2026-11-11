@@ -162,8 +162,12 @@ type Card struct {
 	Rarity      string `json:"rarity"`
 	// Colors is the card's colours as Scryfall spells them (W, U, B, R,
 	// G), empty for a colourless card.
-	Colors   []string `json:"colors"`
-	ManaCost string   `json:"mana_cost"`
+	Colors []string `json:"colors"`
+	// ColorIdentity is the card's colour identity, W U B R G, from the
+	// printing. It is what colours a land, whose own colours are none
+	// (#5704). Absent for a colourless identity.
+	ColorIdentity []string `json:"color_identity,omitempty"`
+	ManaCost      string   `json:"mana_cost"`
 	// ManaValue is computed from ManaCost (ManaValue).
 	ManaValue int    `json:"mana_value"`
 	TypeLine  string `json:"type_line"`

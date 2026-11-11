@@ -85,6 +85,9 @@ func (s *SetSource) card(c draftpacks.Card) Card {
 func fillPrinted(out *Card, full cards.Card) {
 	out.TypeLine = full.TypeLine
 	out.ManaCost = full.ManaCost
+	if len(full.ColorIdentity) > 0 {
+		out.ColorIdentity = append(out.ColorIdentity, full.ColorIdentity...)
+	}
 	if len(full.Colors) > 0 {
 		out.Colors = append(out.Colors, full.Colors...)
 	}

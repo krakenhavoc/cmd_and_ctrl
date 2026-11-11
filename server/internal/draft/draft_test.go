@@ -39,6 +39,7 @@ func synthIndex(set, released string) *cards.Index {
 				TypeLine: "Creature — Test", BorderColor: "black", ReleasedAt: released,
 				Rarity: rarity, Booster: true,
 				Colors: []string{colors[i%5]}, ManaCost: fmt.Sprintf("{%d}{%s}", i%5, colors[i%5]),
+				ColorIdentity: []string{colors[i%5]},
 			})
 			n++
 		}
@@ -776,6 +777,10 @@ func TestTheViewOfEachState(t *testing.T) {
 	}
 	if c := v.Pack[0]; c.ID == "" || c.ScryfallID == uuid.Nil || c.Name == "" || c.Set != "syn" || c.Rarity == "" || c.TypeLine == "" {
 		t.Fatalf("a pack card is missing a field: %+v", c)
+	}
+	// The colour identity is on the wire for the colour edge (#5704).
+	if c := v.Pack[0]; len(c.ColorIdentity) != 1 || c.ColorIdentity[0] != c.Colors[0] {
+		t.Fatalf("a pack card's colour identity: %+v", c)
 	}
 	// Having picked, the seat holds no pack and waits.
 	if err := d.Pick(seats[0], firstCards(d, seats[0]), t0); err != nil {
