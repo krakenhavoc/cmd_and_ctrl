@@ -42,6 +42,17 @@ type AdditionalCost struct {
 	// are paid, so it is no longer in hand.
 	DiscardCards int
 
+	// DiscardLand narrows DiscardCards to land cards: "As an additional
+	// cost to cast this spell, discard a land card" (Magmatic Insight,
+	// #5457). Data, not a predicate, so it adds no route from Game to a
+	// func; every reader goes through DiscardAccepts, which keeps the
+	// cards offered (the view, the legal enumerator) and the cards
+	// accepted (validateAdditionalCostsLocked) the same set. The card is
+	// read as it sits in the hand, the read retrace's land discard makes
+	// (RetraceDiscardSpec). effects.Register allows it only on a
+	// mandatory cost or an either/or branch that discards.
+	DiscardLand bool
+
 	// Sacrifice is "sacrifice a creature" (Village Rites, Altar's
 	// Reap) or "sacrifice an artifact or creature" (Deadly Dispute),
 	// as a spec matched against the caster's permanents. The caster
@@ -929,6 +940,13 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 			if !p.Hand.Contains(id) {
 				return ErrCardNotFound
 			}
+			if cost.DiscardLand {
+				for _, hc := range p.Hand.Cards {
+					if hc.InstanceID == id && !cost.DiscardAccepts(hc) {
+						return ErrInvalidParam
+					}
+				}
+			}
 		}
 		di += cost.DiscardCards
 		if cost.Sacrifice == nil {
@@ -1114,6 +1132,34 @@ func (g *Game) AnyAdditionalCostBranchPayableLocked(playerID uuid.UUID, card Car
 	return false
 }
 
+// DiscardAccepts reports whether `c`, a card in the caster's hand, may
+// pay this cost's discard: any card, or a land card when the clause
+// says so (DiscardLand). The one reader of the clause's filter.
+func (c *AdditionalCost) DiscardAccepts(card Card) bool {
+	return c == nil || !c.DiscardLand || card.IsLand()
+}
+
+// AdditionalDiscardOptionsForEffect lists the cards in `playerID`'s hand
+// that may pay `cost`'s discard, in hand order, without the spell being
+// cast (CR 601.2a has moved it to the stack by the time the cost is
+// paid). The view ships it for a filtered clause, so the cards a picker
+// offers are the ones the validator accepts.
+//
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) AdditionalDiscardOptionsForEffect(playerID, castID uuid.UUID, cost *AdditionalCost) []uuid.UUID {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Hand == nil || cost == nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for i := range p.Hand.Cards {
+		if c := p.Hand.Cards[i]; c.InstanceID != castID && cost.DiscardAccepts(c) {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
+}
+
 // additionalCostPayableLocked is the per-cost half of the two
 // predicates above. Caller must hold g.mu.
 func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *AdditionalCost) bool {
@@ -1127,7 +1173,7 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	if cost.DiscardCards > 0 {
 		have := 0
 		for _, c := range p.Hand.Cards {
-			if c.InstanceID != castID {
+			if c.InstanceID != castID && cost.DiscardAccepts(c) {
 				have++
 			}
 		}

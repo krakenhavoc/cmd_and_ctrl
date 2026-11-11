@@ -1600,6 +1600,13 @@ type AdditionalCostView struct {
 	// DiscardCards is how many cards the caster must discard. The
 	// picked instance IDs ride back on cast_spell's discard_ids.
 	DiscardCards int `json:"discard_cards,omitempty"`
+	// DiscardOptions lists the cards in the caster's hand that may pay
+	// a discard the clause narrows: "discard a land card" (Magmatic
+	// Insight, #5457). min / max are the clause's count. Absent when
+	// any card pays (every other discard); present with fewer cards
+	// than `min` means the cost cannot be paid right now, which makes
+	// the spell uncastable (CR 118.3).
+	DiscardOptions *LegalTargetsView `json:"discard_options,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
 	// caster's own board (CR 701.21a). Its min / max are how many
@@ -8779,6 +8786,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		Label:        ac.Label,
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
+	}
+	if ac.DiscardLand && ac.DiscardCards > 0 {
+		out.DiscardOptions = &LegalTargetsView{
+			Min:   ac.DiscardCards,
+			Max:   ac.DiscardCards,
+			Cards: cardIDStrings(g.AdditionalDiscardOptionsForEffect(caster, castID, ac)),
+		}
 	}
 	if ac.Sacrifice != nil {
 		// SpecCandidatesForEffect, not LegalTargetsForEffect: an

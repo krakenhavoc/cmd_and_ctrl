@@ -342,6 +342,16 @@ describe("canCastFromHand — denial reasons", () => {
     expect(canCastFromHand(rites, s, "p0").reason).toBe("Needs 2 permanents to sacrifice");
   });
 
+  it("additional cost: a narrowed discard counts only the listed cards (#5457)", () => {
+    const c = card("Magmatic Insight", "Sorcery", {
+      additional_cost: { discard_cards: 1, discard_options: { cards: [], min: 1, max: 1 } },
+    });
+    const other = card("Shock", "Instant");
+    const s = snap({ moves: [passMove] });
+    s.seats[0].hand = { ...emptyZone("hand", "p0"), count: 2, cards: [c, other] };
+    expect(canCastFromHand(c, s, "p0").reason).toBe("No card that can be discarded");
+  });
+
   it("additional cost: no card to discard", () => {
     const c = card("Thrill", "Sorcery", { additional_cost: { discard_cards: 1 } });
     const s = snap({ moves: [passMove] });

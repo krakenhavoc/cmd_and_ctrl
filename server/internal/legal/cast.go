@@ -705,12 +705,18 @@ func optionalCostLabel(optional []game.AdditionalCost, chosen []int) string {
 //
 // `ok` is false when the plan carries TWO sacrifice clauses, which
 // this package does not enumerate — see the call site.
-func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (discards int, sacrifice *game.TargetSpec, ok bool) {
+//
+// `discardLand` is the clause whose discard takes only land cards
+// (game.AdditionalCost.DiscardLand, #5457), nil when no clause filters.
+func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.AdditionalCost, chosen []int) (discards int, sacrifice *game.TargetSpec, discardLand *game.AdditionalCost, ok bool) {
 	add := func(c *game.AdditionalCost) bool {
 		if c == nil || c.Empty() {
 			return true
 		}
 		discards += c.DiscardCards
+		if c.DiscardLand && c.DiscardCards > 0 {
+			discardLand = c
+		}
 		if c.Sacrifice == nil {
 			return true
 		}
@@ -721,17 +727,17 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 		return true
 	}
 	if !add(mandatory) {
-		return 0, nil, false
+		return 0, nil, nil, false
 	}
 	for _, i := range chosen {
 		if i < 0 || i >= len(optional) {
 			continue
 		}
 		if !add(&optional[i]) {
-			return 0, nil, false
+			return 0, nil, nil, false
 		}
 	}
-	return discards, sacrifice, true
+	return discards, sacrifice, discardLand, true
 }
 
 // castMovesPayingOptional is castMovesForCard for ONE announced set
@@ -1024,7 +1030,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// Gatekeeper of Malakir expands its kicker's sacrifice exactly as
 	// a mandatory one would. The wire lists are flat and the engine
 	// walks them in the same order.
-	discards, sacrifice, ok := costPaymentDemands(addCost, optional, chosen)
+	discards, sacrifice, discardLand, ok := costPaymentDemands(addCost, optional, chosen)
+	// #5457: a land-only discard clause beside another discard (a second
+	// clause, escalate's) needs two pools walked in the engine's order.
+	// No printed card has both, so it is not enumerated.
+	if discardLand != nil && (discards != discardLand.DiscardCards || (modeSpec != nil && extra > 0 && modeSpec.Escalate.DiscardCards > 0)) {
+		return
+	}
 	// CR 702.120a: escalate's card-shaped half, once per extra mode.
 	var escalate *game.EscalateCost
 	if modeSpec != nil && extra > 0 {
@@ -1154,7 +1166,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if discards > 0 {
 		var pool []uuid.UUID
 		for _, h := range p.Hand.Cards {
-			if h.InstanceID != card.InstanceID {
+			if h.InstanceID != card.InstanceID && discardLand.DiscardAccepts(h) {
 				pool = append(pool, h.InstanceID)
 			}
 		}

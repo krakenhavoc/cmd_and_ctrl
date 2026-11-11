@@ -3264,6 +3264,11 @@ export interface EscalateView {
 // them.
 export interface AdditionalCostView {
   discard_cards?: number;
+  // #5457: the cards in the viewer's hand that may pay a discard the
+  // clause narrows ("discard a land card", Magmatic Insight). Absent
+  // when any card pays. Fewer cards than `min` means the cost cannot be
+  // paid right now, so the spell is uncastable.
+  discard_options?: LegalTargetsView;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.

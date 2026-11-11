@@ -790,7 +790,12 @@
     const card = discardPromptCard;
     if (!card || !viewerID) return [];
     const me = view.seats.find((s) => s.id === viewerID);
-    return (me?.hand.cards ?? []).filter((c) => c.instance_id !== card.instance_id);
+    // #5457: a narrowed clause ("discard a land card") offers only the
+    // cards the server listed for it.
+    const only = discardPromptCost?.discard_options?.cards;
+    return (me?.hand.cards ?? []).filter(
+      (c) => c.instance_id !== card.instance_id && (!only || only.includes(c.instance_id)),
+    );
   });
 
   function confirmDiscardCost(ids: string[]): void {
