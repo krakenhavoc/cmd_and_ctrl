@@ -33,12 +33,7 @@ func init() {
 			}, "Klaw, Master of Sound — Klaw gains indestructible until end of turn",
 				thisGainsKeywordUntilEndOfTurn("indestructible", "Klaw, Master of Sound — indestructible until end of turn")),
 			WheneverThisDealsCombatDamageToAPlayer("Klaw, Master of Sound — look at the top card of that player's library, then exile it face down; you may play it",
-				func(g *game.Game, item *game.StackItem) error {
-					if item.Trigger == nil {
-						return nil
-					}
-					return gontiExileTopForPlay(NewContext(g, item), item.Trigger.Event.Target, item.Controller, 1)
-				}),
+				cmdr2S45ExileTopFaceDownToPlay),
 		},
 	})
 }
