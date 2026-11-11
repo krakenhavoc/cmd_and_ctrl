@@ -1,6 +1,9 @@
 package draft
 
-import "math/rand/v2"
+import (
+	"math"
+	"math/rand/v2"
+)
 
 // PickRequest is what a Picker is asked: the pack the seat holds, what
 // it has drafted so far and the pick mode.
@@ -90,6 +93,10 @@ const (
 	// CommitPacks is how many packs' worth of picks it takes for the
 	// colour commitment to become firm: one.
 	CommitPacks = 1.0
+	// CommitCurve bends the commitment's growth: above 1, the first
+	// picks commit the bot to less than their share, so it stays open
+	// while it has taken little.
+	CommitCurve = 1.5
 	// OffColourPenalty is what a fully committed bot takes from a card
 	// outside its two colours. It is more than any rating, so a firm bot
 	// takes an off-colour card only when the pack has nothing else.
@@ -352,7 +359,7 @@ func newPickState(have []rated, packSize int) pickState {
 	st := pickState{first: -1, second: -1}
 	n := len(have)
 	if packSize > 0 {
-		st.commit = min(float64(n)/(CommitPacks*float64(packSize)), 1)
+		st.commit = math.Pow(min(float64(n)/(CommitPacks*float64(packSize)), 1), CommitCurve)
 		st.progress = min(float64(n+1)/float64(Rounds*packSize), 1)
 	}
 	for _, c := range have {

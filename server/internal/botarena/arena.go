@@ -433,6 +433,15 @@ type Config struct {
 	ReplayDir string
 	// Log is where the harness and the runners log. Nil discards.
 	Log *slog.Logger
+	// Lists are decks that exist for this run only, by the deck id a
+	// seat names: the decks a draft bot built (#5439). A list is called
+	// once a game and returns fresh cards. An id here wins over a
+	// synthetic or curated deck of the same name.
+	Lists map[string]func() []game.Card
+	// StartingLife, when positive, is each seat's starting life: 20 for
+	// a two-player game of drafted decks (#5439). Zero leaves the
+	// engine's default, which every run before it used.
+	StartingLife int
 	// Note is free-form text recorded in the report — the model's
 	// quantisation, what was being tested, whatever the next reader
 	// will wish somebody had written down.
@@ -501,7 +510,7 @@ func (c Config) Validate() error {
 		if s.Tier.NeedsModel() && c.Client == nil {
 			return fmt.Errorf("botarena: seat %d is %s, which needs a model endpoint: set --endpoint or $CMDCTRL_OPENAI_ENDPOINT (an %s seat with no client silently plays the heuristic)", i, s.Tier, s.Tier)
 		}
-		if !IsSynthetic(s.Deck) && c.Index == nil {
+		if c.Lists[s.Deck] == nil && !IsSynthetic(s.Deck) && c.Index == nil {
 			return fmt.Errorf("botarena: seat %d plays %q, which needs a Scryfall dump: set --dump or $CMDCTRL_SCRYFALL_DUMP", i, s.Deck)
 		}
 	}
@@ -770,6 +779,9 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 			return GameResult{}, fmt.Errorf("botarena: add player %s: %w", name, err)
 		}
 	}
+	if err := setStartingLife(g, cfg.StartingLife); err != nil {
+		return GameResult{}, err
+	}
 	// The same two-stream seeding the whole-game tests use, so an
 	// arena game and a test game on the same seed deal the same
 	// cards.
@@ -914,6 +926,22 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	}
 	res.Seats = seats
 	return res, nil
+}
+
+// setStartingLife applies Config.StartingLife to a game still in its
+// lobby. Zero changes nothing: the table keeps the engine's default
+// settings, a Commander table's, as every arena run before #5439 did.
+func setStartingLife(g *game.Game, life int) error {
+	if life <= 0 {
+		return nil
+	}
+	if len(g.Seats) == 0 {
+		return errors.New("botarena: starting life: no seat to set it")
+	}
+	if err := g.UpdateSettings(g.Seats[0].ID, game.SettingsPatch{StartingLife: &life}); err != nil {
+		return fmt.Errorf("botarena: starting life: %w", err)
+	}
+	return nil
 }
 
 // isNilObserver reports whether an observer slot is empty — nil, or a
@@ -1081,6 +1109,9 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 }
 
 func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
+	if list := cfg.Lists[spec.Deck]; list != nil {
+		return list(), nil
+	}
 	switch spec.Deck {
 	case "":
 		return BattleDeck(uuid.Nil), nil

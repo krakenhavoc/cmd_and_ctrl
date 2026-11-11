@@ -2,6 +2,7 @@ package draft
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -64,24 +65,13 @@ func loadBotFixture(t testing.TB) *botFixture {
 	fx := &botFixture{idx: idx, src: src, rater: Rater{Facts: CatalogFacts(idx)}, byName: map[string]Card{}}
 	for i, c := range pool.Contents() {
 		card := src.card(c)
-		card.ID = "f" + itoa(i)
+		card.ID = "f" + strconv.Itoa(i)
 		fx.byName[card.Name] = card
 		fx.all = append(fx.all, card)
 	}
 	sort.Slice(fx.all, func(i, j int) bool { return fx.all[i].Name < fx.all[j].Name })
 	botFixtureCache = fx
 	return fx
-}
-
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var b []byte
-	for ; i > 0; i /= 10 {
-		b = append([]byte{byte('0' + i%10)}, b...)
-	}
-	return string(b)
 }
 
 // card is a fixture card by name, with a fresh ID.
@@ -100,11 +90,39 @@ func (fx *botFixture) rating(t testing.TB, name string) float64 {
 	return fx.rater.Rating(fx.card(t, name, "x"))
 }
 
-func TestRatingTablePrint(t *testing.T) {
+// cards is fixture cards by name, with the IDs prefix1, prefix2, ...
+func (fx *botFixture) cards(t testing.TB, prefix string, names ...string) []Card {
+	t.Helper()
+	out := make([]Card, 0, len(names))
+	for i, n := range names {
+		out = append(out, fx.card(t, n, prefix+strconv.Itoa(i+1)))
+	}
+	return out
+}
+
+// TestTheFixtureSetIsWhatItsReadmeSays pins the fixture: every real
+// card of it is in the catalog as Full (loadBotFixture fails on one
+// that is not), every invented one is a vanilla creature, and each
+// colour has the same commons.
+func TestTheFixtureSetIsWhatItsReadmeSays(t *testing.T) {
 	fx := loadBotFixture(t)
-	all := append([]Card(nil), fx.all...)
-	sort.SliceStable(all, func(i, j int) bool { return fx.rater.Rating(all[i]) > fx.rater.Rating(all[j]) })
-	for _, c := range all {
-		t.Logf("%5.2f  %-28s %-10s %-9s", fx.rater.Rating(c), c.Name, c.ManaCost, c.Rarity)
+	invented, basics := 0, 0
+	for _, c := range fx.all {
+		switch {
+		case c.Basic:
+			basics++
+		case strings.HasPrefix(c.Name, botFixtureVanilla):
+			invented++
+			full, _ := fx.idx.Get(c.ScryfallID)
+			if full.OracleText != "" || !strings.HasPrefix(c.TypeLine, "Creature") {
+				t.Errorf("%s is invented and must be a vanilla creature; it is %q with text %q", c.Name, c.TypeLine, full.OracleText)
+			}
+		}
+	}
+	if invented != 30 || basics != 5 {
+		t.Errorf("%d invented creatures and %d basic lands, want 30 and 5", invented, basics)
+	}
+	if len(fx.all) != 114 {
+		t.Errorf("the fixture set holds %d cards, want 114", len(fx.all))
 	}
 }

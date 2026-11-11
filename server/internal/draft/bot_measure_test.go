@@ -1,6 +1,7 @@
 package draft
 
 import (
+	"flag"
 	"fmt"
 	"testing"
 
@@ -20,7 +21,16 @@ const (
 	measureDrafts = 20
 	measurePass   = 19
 	measureSeed   = 5439
+	// measureOutRate is the share of seats whose rated deck must be
+	// worth more than the random-pick deck of the same seat.
+	measureOutRate = 0.75
 )
+
+// -draft-wide runs the measure over this many drafts from other seeds,
+// at eight, four and two seats, and logs the rates. It gates nothing: it
+// is how the numbers in docs/bot.md were taken and how a change to a
+// weight is checked against more than the twenty seeds CI holds.
+var draftWide = flag.Int("draft-wide", 0, "also measure the draft bot over this many drafts of other seeds and log the rates")
 
 // botDraft runs one whole draft with no person in it: every seat picks
 // with `pickers[seat]`. It returns each seat's pool.
@@ -135,35 +145,117 @@ func (rep deckReport) sane() (bool, string) {
 	return true, ""
 }
 
-func TestMeasureExplore(t *testing.T) {
+// measured is one run of the measure.
+type measured struct {
+	drafts, saneDrafts int
+	decks, saneDecks   int
+	// outRated is the seats whose bot deck is worth more, by total
+	// rating, than the random-pick deck of the same seat and seed.
+	outRated            int
+	botRating, rndTotal float64
+	why                 []string
+}
+
+// measure drafts `drafts` times with eight bots and, from the same
+// seeds and so the same packs, eight random pickers, and builds every
+// pool with BuildDeck.
+func measure(t testing.TB, fx *botFixture, mode Mode, seats, drafts int, seed0, step uint64) measured {
+	t.Helper()
+	var m measured
+	for i := range drafts {
+		seed := seed0 + uint64(i)*step
+		pools := botDraft(t, fx, mode, seats, seed, BotPicker{Seed: seed, Rater: &fx.rater})
+		random := botDraft(t, fx, mode, seats, seed, RandomPicker{Seed: seed})
+		sane := true
+		for seat, pool := range pools {
+			main, lands := fx.rater.BuildDeck(pool, nil, seed)
+			rep := reportDeck(fx.rater, pool, main, lands)
+			rmain, rlands := fx.rater.BuildDeck(random[seat], nil, seed)
+			rnd := reportDeck(fx.rater, random[seat], rmain, rlands)
+			m.decks++
+			if ok, why := rep.sane(); ok {
+				m.saneDecks++
+			} else {
+				sane = false
+				m.why = append(m.why, fmt.Sprintf("seed %d seat %d: %s (colours %v, splash %v, curve %v)", seed, seat, why, rep.Main, rep.Splash, rep.Curve[1:]))
+			}
+			if rep.Rating > rnd.Rating {
+				m.outRated++
+			}
+			m.botRating += rep.Rating
+			m.rndTotal += rnd.Rating
+		}
+		m.drafts++
+		if sane {
+			m.saneDrafts++
+		}
+	}
+	return m
+}
+
+func (m measured) String() string {
+	return fmt.Sprintf("every deck two colours with a sane curve in %d of %d drafts (%d of %d decks); "+
+		"the rated deck out-rates the random-pick deck in %d of %d seats; mean deck rating %.1f against %.1f",
+		m.saneDrafts, m.drafts, m.saneDecks, m.decks, m.outRated, m.decks,
+		m.botRating/float64(m.decks), m.rndTotal/float64(m.decks))
+}
+
+// TestTheDraftBotMeasure is ADR 0222 §7's measure, the half that needs
+// no engine: over twenty seeded eight-bot drafts of the fixture set,
+// every bot's deck is two colours (plus at most a splash) with a sane
+// curve in at least nineteen, and a rated deck is worth more than the
+// random-pick deck built from the same packs. Both pick modes.
+func TestTheDraftBotMeasure(t *testing.T) {
 	fx := loadBotFixture(t)
 	for _, mode := range []Mode{PickOne, PickTwo} {
-		bad, decks := 0, 0
-		var botTotal, randTotal float64
-		for i := range measureDrafts {
-			seed := uint64(measureSeed + i)
-			pools := botDraft(t, fx, mode, 8, seed, BotPicker{Seed: seed, Rater: &fx.rater})
-			rpools := botDraft(t, fx, mode, 8, seed, RandomPicker{Seed: seed})
-			for s, pool := range pools {
-				main, lands := fx.rater.BuildDeck(pool, nil, seed)
-				rep := reportDeck(fx.rater, pool, main, lands)
-				ok, why := rep.sane()
-				decks++
-				if !ok {
-					bad++
-					t.Logf("%s seed %d seat %d: %s", mode, seed, s, why)
-				}
-				botTotal += rep.Rating
-				rmain, rlands := fx.rater.BuildDeck(rpools[s], nil, seed)
-				rrep := reportDeck(fx.rater, rpools[s], rmain, rlands)
-				randTotal += rrep.Rating
-				if i == 0 {
-					t.Logf("%s seat %d: %v+%v sp %d cr %d rm %d curve %v avg %.2f lands %v rating %.1f | random %v+%v sp %d cr %d rating %.1f",
-						mode, s, rep.Main, rep.Splash, rep.Spells, rep.Creatures, rep.Removal, rep.Curve[1:], rep.Average, lands, rep.Rating,
-						rrep.Main, rrep.Splash, rrep.Spells, rrep.Creatures, rrep.Rating)
-				}
+		m := measure(t, fx, mode, 8, measureDrafts, measureSeed, 1)
+		t.Logf("%s, 8 bots, seeds %d to %d: %s", mode, measureSeed, measureSeed+measureDrafts-1, m)
+		for _, why := range m.why {
+			t.Logf("%s: %s", mode, why)
+		}
+		if m.saneDrafts < measurePass {
+			t.Errorf("%s: every deck is sane in %d of %d drafts, want at least %d", mode, m.saneDrafts, m.drafts, measurePass)
+		}
+		if float64(m.outRated) < measureOutRate*float64(m.decks) {
+			t.Errorf("%s: the rated deck out-rates the random-pick deck in %d of %d seats, want at least %.0f%%",
+				mode, m.outRated, m.decks, 100*measureOutRate)
+		}
+		if m.botRating <= m.rndTotal {
+			t.Errorf("%s: the rated decks are worth %.1f in all and the random-pick decks %.1f", mode, m.botRating, m.rndTotal)
+		}
+	}
+	if *draftWide > 0 {
+		for _, mode := range []Mode{PickOne, PickTwo} {
+			for _, seats := range []int{8, 4, 2} {
+				t.Logf("wide: %s, %d bots, %d drafts: %s", mode, seats, *draftWide, measure(t, fx, mode, seats, *draftWide, 90000, 7))
 			}
 		}
-		t.Logf("%s: %d of %d decks not sane; mean rating bot %.1f random %.1f", mode, bad, decks, botTotal/float64(decks), randTotal/float64(decks))
+	}
+}
+
+// What "sane" refuses, so the measure is not passed by a reading that
+// accepts anything.
+func TestTheMeasureRefusesABadDeck(t *testing.T) {
+	good := deckReport{Cards: 40, Spells: 23, Lands: 17, Creatures: 15, Main: []string{"W", "R"},
+		Curve: [7]int{0, 2, 6, 5, 4, 4, 2}, Average: 3.1}
+	if ok, why := good.sane(); !ok {
+		t.Fatalf("a good deck is refused: %s", why)
+	}
+	for name, change := range map[string]func(*deckReport){
+		"39 cards":          func(r *deckReport) { r.Cards = 39 },
+		"three colours":     func(r *deckReport) { r.Main = []string{"W", "U", "R"} },
+		"two splashes":      func(r *deckReport) { r.Splash = []string{"U", "G"} },
+		"16 lands":          func(r *deckReport) { r.Lands = 16 },
+		"19 lands":          func(r *deckReport) { r.Lands = 19 },
+		"nine creatures":    func(r *deckReport) { r.Creatures = 9 },
+		"a heavy deck":      func(r *deckReport) { r.Average = 4.1 },
+		"no early plays":    func(r *deckReport) { r.Curve = [7]int{0, 1, 3, 4, 6, 5, 4} },
+		"a top-heavy curve": func(r *deckReport) { r.Curve = [7]int{0, 2, 5, 4, 3, 5, 4} },
+	} {
+		bad := good
+		change(&bad)
+		if ok, _ := bad.sane(); ok {
+			t.Errorf("%s passes as sane", name)
+		}
 	}
 }

@@ -216,6 +216,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draft"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
@@ -883,6 +884,9 @@ func main() {
 	// One draftable-set list for GET /draft/sets, the draft's own set
 	// check and the draft image route (ADR 0222 §4, §5).
 	draftSets := draftpacks.NewLister(cardIdx)
+	// The draft bots rate cards from this index and the catalog
+	// (ADR 0222 §7, #5439).
+	draft.UseCards(cardIdx)
 	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		DraftSets:   draftSets,
