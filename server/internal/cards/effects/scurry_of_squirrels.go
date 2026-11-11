@@ -26,14 +26,7 @@ func init() {
 			GrantedMyriad("Scurry of Squirrels"),
 			second,
 			Targeting(WheneverThisDealsCombatDamageToAPlayer("Scurry of Squirrels — put a +1/+1 counter on target creature you control",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					t, ok := ctx.ClauseTarget(0)
-					if !ok {
-						return nil
-					}
-					return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-				}),
+				cmdr2S46PlusOneCounterOnClauseTarget),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})
