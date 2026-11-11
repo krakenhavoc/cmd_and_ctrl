@@ -39,7 +39,7 @@ func init() {
 			if err := returnLegalGraveyardTargetsToHand(ctx); err != nil {
 				return err
 			}
-			if item.IsCopy {
+			if item.IsCopy || sourceIsNewObject(ctx.Game, item) {
 				return nil
 			}
 			return ctx.Game.ExileCardForEffect(item.SourceCardID)

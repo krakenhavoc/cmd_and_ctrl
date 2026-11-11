@@ -37,6 +37,9 @@ func init() {
 			}).Apply(ctx); err != nil {
 				return err
 			}
+			if sourceIsNewObject(ctx.Game, item) {
+				return nil
+			}
 			return ctx.Game.ExileCardForEffect(item.SourceCardID)
 		},
 	})

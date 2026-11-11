@@ -46,6 +46,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Condition: GraveyardAtLeast(6, func(c game.Card) bool { return c.IsCreature() }),
 			Effect: func(g *game.Game, item *game.StackItem) error {
