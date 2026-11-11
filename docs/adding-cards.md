@@ -11203,8 +11203,40 @@ as the next turn begins. The scope is read live (CR 611.2c: "can't
 attack" changes no characteristic) and judged as attackers are declared
 (CR 508.1c). `game.ScopeCreaturesThatArentLands` is "creatures that
 aren't lands". Like `ScopeCreaturesWithoutFlying` it reads a layer
-result, so it carries only restriction bits. Only a scope can be bound,
-never affected objects, for the reason ADR 0188 Decision 3b gives.
+result, so it carries only restriction bits. A live scope is the form
+for a rule about a kind of creature.
+
+**"Each of those creatures ... that combat" (Illusionist's Gambit,
+ADR 0188 Decision 14, #5685):** a requirement or restriction on
+creatures the card fixed as it resolved, in force only in the combat it
+adds, is `AddPhases.ThoseCreaturesThatCombat`, a `*CombatObjectsRule`.
+Build it in `OnResolve`, because the creatures are known only then:
+
+```go
+those := AttackingCreatures(ctx.Game)
+// ... remove them from combat, untap them ...
+extra := ExtraCombatAfterThisPhase()
+extra.ThoseCreaturesThatCombat = &CombatObjectsRule{
+    Objects: those,
+    Mods: []game.Mod{
+        game.AddAttackRequirementMod(uuid.Nil),    // "attacks that combat if able"
+        game.CantAttackPlayerMod(item.Controller), // "can't attack you or planeswalkers you control"
+    },
+    Label: "Illusionist's Gambit — ...",
+}
+return extra.Apply(ctx)
+```
+
+The engine (`Game.DuringCombatPhaseObjectsEffectForEffect`,
+`game/phase_effects.go`) pins each creature as the object it is now,
+under its current controller, and holds the record on
+`Game.PhaseEffects` as `DuringThatCombat` does. A creature whose
+controller changes before that combat begins, or that has left the
+battlefield by then, is dropped, and stays free even if it comes back.
+Only `ModAddAttackRequirement`, `ModCantAttackPlayer` and
+`ModAddRestrictions` are taken; any other kind panics. A mod that
+changes a characteristic can't wait this way (CR 611.2c fixes its set
+when the effect begins), so give it an ordinary scoped effect instead.
 
 ### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
 
