@@ -40,6 +40,7 @@ func TestCmdr2S29EveryBuiltCardIsRegisteredFull(t *testing.T) {
 		s29IshkanahOracle:  "Ishkanah, Grafwidow",
 		s29UrsineOracle:    "Ursine Monstrosity",
 		s29SkinnerOracle:   "Obsessive Skinner",
+		s29WinterOracle:    "Winter, Cynical Opportunist",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -471,5 +472,112 @@ func TestCmdr2S29UrsineMonstrosityMillsAndGetsStrongerAtBeginningOfCombat(t *tes
 	})
 	if len(must) != 1 || must[0] == me.ID {
 		t.Errorf("must attack %v; want exactly one opponent", must)
+	}
+}
+
+// --- Winter, Cynical Opportunist -----------------------------------------------------
+
+func TestCmdr2S29WinterMillsThreeWhenItAttacks(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	winter := b12Push(g, me.ID, "Winter, Cynical Opportunist", "Legendary Creature — Human Warlock", s29WinterOracle, 2, 5)
+	for i := 0; i < 3; i++ {
+		seedLibraryTop(me, "Milled", "Land", "")
+	}
+	grave := me.Graveyard.Size()
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(winter, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := me.Graveyard.Size(); got != grave+3 {
+		t.Errorf("graveyard %d, want %d (three cards milled)", got, grave+3)
+	}
+}
+
+func s29WinterEndStep(t *testing.T, seed int) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Winter, Cynical Opportunist", "Legendary Creature — Human Warlock", s29WinterOracle, 2, 5)
+	b24SeedTypes(me, seed)
+	// A 2/2 bear, so it stays on the battlefield after it enters.
+	me.Graveyard.Cards[0].Power, me.Graveyard.Cards[0].Toughness = 2, 2
+	advanceToEndStep(t, g)
+	passPriorityAroundTable(t, g)
+	return g, me
+}
+
+func TestCmdr2S29WinterAsksNothingWithFewerThanFourTypesInTheGraveyard(t *testing.T) {
+	g, me := s29WinterEndStep(t, 3)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("a prompt with only three card types in the graveyard")
+	}
+}
+
+func TestCmdr2S29WinterExilesFourTypesAndReturnsAPermanentWithAFinalityCounter(t *testing.T) {
+	g, me := s29WinterEndStep(t, 4)
+	var all, three []uuid.UUID
+	for i, c := range me.Graveyard.Cards {
+		all = append(all, c.InstanceID)
+		if i < 3 {
+			three = append(three, c.InstanceID)
+		}
+	}
+	prompt := chooseCardsChoiceFor(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no prompt with four card types in the graveyard")
+	}
+	// Three of the four types are not a set the prompt accepts.
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, three); err == nil {
+		t.Fatal("three card types were accepted")
+	}
+	answerChooseCards(t, g, me.ID, all...)
+	if me.Graveyard.Size() != 0 {
+		t.Errorf("graveyard %d after exiling all four, want 0", me.Graveyard.Size())
+	}
+	// The permanent cards among them: the creature and the land.
+	second := chooseCardsChoiceFor(g, me.ID)
+	if second == nil {
+		t.Fatal("no prompt for the permanent card")
+	}
+	// The cards are new objects in exile (CR 400.7): pick the bear by name.
+	var exiledBear uuid.UUID
+	for _, c := range g.Exile.Cards {
+		if c.Name == "Old Bear" {
+			exiledBear = c.InstanceID
+		}
+	}
+	answerChooseCards(t, g, me.ID, exiledBear)
+	passPriorityAroundTable(t, g)
+	var bfBear uuid.UUID
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Old Bear" {
+				bfBear = c.InstanceID
+			}
+		}
+	})
+	if bfBear == uuid.Nil {
+		t.Fatal("Old Bear is not on the battlefield")
+	}
+	if n := countersOn(g, bfBear, game.CounterFinality); n != 1 {
+		t.Errorf("%d finality counters, want 1", n)
+	}
+	if got := len(g.Exile.Cards); got != 3 {
+		t.Errorf("%d cards left in exile, want 3", got)
+	}
+}
+
+func TestCmdr2S29WinterMayDeclineTheExile(t *testing.T) {
+	g, me := s29WinterEndStep(t, 4)
+	answerChooseCards(t, g, me.ID)
+	if me.Graveyard.Size() != 4 || len(g.Exile.Cards) != 0 {
+		t.Errorf("graveyard %d, exile %d: declining must change nothing", me.Graveyard.Size(), len(g.Exile.Cards))
+	}
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("a second prompt after declining")
 	}
 }
