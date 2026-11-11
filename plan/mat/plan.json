@@ -1,0 +1,161 @@
+{
+ "set": "mat",
+ "mechanics": [
+  {
+   "name": "(no new set mechanic)",
+   "exists": true,
+   "evidence": "March of the Machine: The Aftermath (40 cards in the input, all layout=normal, all set=mat) prints no keyword or keyword action of its own; it reuses the ones below."
+  },
+  {
+   "name": "Convoke",
+   "exists": true,
+   "evidence": "grep 'func Convoke(' in server/internal/cards/effects/ -> helper exists; many catalog cards (adept_watershaper.go, appeal_to_eirdu.go)."
+  },
+  {
+   "name": "Madness",
+   "exists": true,
+   "evidence": "grep -i Madness in server/internal/cards/effects/ -> alternative_cost.go and cards; game.AltCostKeyMadness in server/internal/game/cast_permission.go."
+  },
+  {
+   "name": "Affinity (for Equipment)",
+   "exists": true,
+   "evidence": "grep 'func AffinityFor(' -> exists; used for artifacts, creatures, Vulcans, Daleks. No 'Affinity for Equipment' card yet, but the helper takes the counted kind."
+  },
+  {
+   "name": "Ward (printed and granted)",
+   "exists": true,
+   "evidence": "grep 'func Ward' -> Ward, WardMana, WardGranted, WardAttached; 'have ward' granted in flowering_of_the_white_tree.go, bronze_guardian.go."
+  },
+  {
+   "name": "Hexproof from monocolored",
+   "exists": true,
+   "evidence": "grep 'hexproof from monocolored|multicolored' -> niv_mizzet_guildpact.go, dragonfire_blade.go."
+  },
+  {
+   "name": "Prowess granted to creatures you control",
+   "exists": true,
+   "evidence": "grep 'ha(s|ve) prowess' -> bria_riptide_rogue.go, wizards_staff.go."
+  },
+  {
+   "name": "Constellation / Landfall / Undergrowth (ability words)",
+   "exists": true,
+   "evidence": "grep 'func Landfall(' exists; 'Undergrowth' in necrotic_wound.go; enchantment-enters triggers are ordinary ETB triggers."
+  },
+  {
+   "name": "Jump-start on the card itself",
+   "exists": true,
+   "evidence": "grep -i jump-start -> radical_idea.go, cmdr2S39JumpStart in cmdr2_s39_helpers.go (flashback offer plus a discard)."
+  },
+  {
+   "name": "Jump-start GRANTED to cards in a graveyard (Niv-Mizzet, Supreme)",
+   "exists": false,
+   "evidence": "grep 'JumpStart|jump-start' in server/internal/game -> nothing. Lier grants flashback through CastPermission{AltCostKey:\"flashback\"}; cast_permission.go has no branch for a granted jump-start (discard as an additional cost) and PermissionFilter has ColorsAny but no 'exactly two colours'. Seam s2."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Carry the amount of mana a mana ability produced on its event",
+   "clause": "Each creature you control has \"Whenever a mana ability of this creature resolves, put a number of +1/+1 counters on it equal to the amount of mana this creature produced. This ability triggers only once each turn.\"",
+   "why": "game.EventManaAbilityActivated (server/internal/game/mutations.go, emitted by both the clicked activation and the auto-tapper) carries Actor, Source, CardID, Label and Exhaust but no amount, and it is emitted before the slots are minted. A trigger needs the count of mana that ability actually produced (after CR 106.12b-style replacements such as tripling, not counting other permanents' triggered mana). Expect an additive Amount (or a new 'mana ability resolved' event) in mutations.go / produce_mana.go, then a granted trigger with the existing once-each-turn guard (docs/adding-cards.md '\"This ability triggers only once\"', #5245). The 'Elves attack, they gain deathtouch' half is ordinary.",
+   "checked": "grep -rliE 'Whenever a mana ability of|amount of mana .* produced|tap(s|ped)? .* for mana, put' in server/internal/cards/effects/ -> no file. grep 'ManaAbilityResolved|ManaProduced|EventManaAdded|EventManaAbilityActivated' in server/internal/game -> the event exists (manaActivationPing in mana_rider_helpers.go watches it for Zhur-Taa Druid) but neither it nor ManaProduced (mana_trigger.go: Source, Controller, Colors) is delivered to an ordinary trigger with a total. EventManaAdded is one event per unit with no ability grouping.",
+   "size": "small",
+   "cards": [
+    "a21d321b-2172-4577-a05b-399a019e3448"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Grant jump-start to graveyard cards that are exactly two colours",
+   "clause": "Each instant and sorcery card in your graveyard that's exactly two colors has jump-start.",
+   "why": "A granted graveyard keyword is a game.CastPermission with an AltCostKey (Lier: \"flashback\"). server/internal/game/cast_permission.go resolves granted keys case by case (miracle, sneak, mayhem, madness, harmonize, flashback) and has none for jump-start, whose price is the card's mana cost PLUS discarding a card (CR 702.133a) and exile on leaving the stack; and PermissionFilter can say ColorsAny but not 'exactly two colours' of the card in the zone. Both are additive fields/branches in cast_permission.go; the offer itself can reuse cmdr2S39JumpStart's shape. Hexproof from monocolored already exists.",
+   "checked": "grep -rliE 'ha(s|ve) jump-start|ha(s|ve) flashback|ha(s|ve) escape' -> lier_disciple_of_the_drowned.go, underworld_breach.go, iroh_grand_lotus.go (flashback/escape only). grep -i 'jump-start' in server/internal/cards/effects/ -> radical_idea.go and cmdr2_s39_helpers.go (the card's OWN alternative cost, not a grant). grep 'jump-start|JumpStart' in server/internal/game -> nothing. Read PermissionFilter's fields: no colour-count filter.",
+   "size": "small",
+   "cards": [
+    "4c3a865a-88b1-43e0-b326-17c45670da54"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Replace damage that would remove a planeswalker's last loyalty counter",
+   "clause": "As long as you control a creature, if damage dealt to a planeswalker you control of the chosen type would result in all loyalty counters on it being removed, instead all but one of those counters are removed.",
+   "why": "Damage to a planeswalker removes loyalty inside applyDamageToPermanentLocked (server/internal/game/damage_tail.go, the CR 120.3c / 306.8 split) with no window that can change the RESULT of the damage for a planeswalker; the nearest hook is damageResultAsThoughLocked (damage_as_though.go, wither as-though). The damage is still dealt in full (lifelink, 'dealt damage' triggers), only the counter removal is capped, so it is not a prevention. Needs a static-declared cap read as the damage lands, keyed on the chosen planeswalker type and 'you control a creature'. The 'choose a planeswalker type' prompt and the hexproof static have precedent (leori_sparktouched_hunter.go, game.PlaneswalkerTypes).",
+   "checked": "grep -rliE 'would result in all loyalty counters|all but one of those counters' in server/internal/cards/effects/ -> no file. grep 'loyalty' in server/internal/game/damage*.go -> only the CR 120.3 comment in damage_tail.go. grep 'choose a planeswalker type' -> leori_sparktouched_hunter.go (the choice exists). Replacement event kinds in replacements.go cover Move, Mill, ETB, CreateTokens, Counter (placement), ProduceMana, Discard, Draw, Life, Damage: none for counters REMOVED by damage.",
+   "size": "small",
+   "cards": [
+    "8c8f93d7-d89a-401b-8764-76be71ad16e3"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Granted ward, entered-this-turn, simple spells and bodies",
+   "shared": "Granted ward: WardGranted / WardAttached (flowering_of_the_white_tree.go for 'legendary ... have ward', bronze_guardian.go, attachments_batch3.go) for Coppercoat Vanguard, Gold-Forged Thopteryx and Leyline Immersion; one shared helper if a new one is needed. Leyline Immersion's mana: cascading_cataracts.go ('five mana in any combination of colors') plus game.ManaRestrictCast (troyan_gutsy_explorer.go, ashling_rekindled.go); watch item: a GRANTED five-mana combination ability with a spend restriction is unproven, stop and report if it does not fit. 'Entered this turn' (Drannith Ruins' target filter, Samut's intervening if): batch06_helpers.go, activation_timing.go. Animist's Might: 'less to cast if it targets' (bitter_downfall.go, brush_off.go) and 'damage equal to twice its power' (punishing_punch.go); an 'X target'-style spell must be castable by the probe in server/internal/legal. Blot Out: 'greatest mana value among' (discovery_dispersal.go, summon_valefor.go). Filter Out: mass bounce (rivers_rebuke.go, flood_of_tears.go) and it declares its Sweep. Markov Baron: Convoke() plus madness (alternative_cost.go). Ayara's Oathsworn: plain combat-damage trigger and tutor. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "9f6fc734-4935-42d9-93a0-1b5ad8d8d277",
+    "c27e2d6f-498c-42d8-aa1a-ac6402bf3f9a",
+    "aa6c4079-72e1-4b2e-bd26-9399298c6105",
+    "d1f10cca-8dfa-4ea5-b227-4446cd8514a8",
+    "178b3fdf-dbee-4245-a811-b21ff8a24f66",
+    "4940783f-2534-41c1-b614-5dabb0dff405",
+    "9609cd5c-b537-4cb2-9dde-4b12795531f7",
+    "8c95d823-6bbd-4484-8f38-b1bb20403085",
+    "ff3936bb-3281-4260-84de-1f65dbfbe993",
+    "bafc2e11-5f1c-46f1-a852-2330e099b8e2"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Graveyard returns, died-this-turn counts, distributed counters, resolution choices",
+   "shared": "'Return target artifact or enchantment card from your graveyard to the battlefield' is printed on Campus Renovation and Harnessed Snubhorn: one helper. Campus Renovation's 'until the end of your next turn, you may play those cards': batch19_helpers.go, atsushi_the_blazing_sky.go. Creatures that died this turn (Death-Rattle Oni's cost reduction, Feast of the Victorious Dead's count): b11CreaturesDiedThisTurn in batch11_helpers.go, canopy_stalker.go, mahadi_emporium_master.go; one counter for both cards. Oni's 'creatures that were dealt damage this turn': DealtDamageThisTurn() in disturb_batch_c_helpers.go; it reads as a board wipe, so it declares its Sweep. Distributing +1/+1 counters: lathielDistributeCounters (lathiel_the_bounteous_dawn.go) for Feast (no targets, chosen on resolution), abzan_charm.go / biogenic_upgrade.go for Undercity Upheaval (targets; X is locked 'as you cast this spell', docs/adding-cards.md '\"As you cast this spell\" values', and the spell must be castable by the probe in server/internal/legal). Tolarian Contempt: perOpponentClauses in opponent_clauses.go ('for each opponent, up to one target'), 'top or bottom of their library' in plan_for_all_outcomes.go / endless_detour.go; a 'rejection' counter kind is new (grep found none) but counter kinds are plain strings. Tranquil Frillback: hawkeye_master_marksman.go is the same sentence ('pay {1} up to three times. When you do, choose up to that many') - reuse its body with {G}; watch item: stop and report if Hawkeye's helper cannot take three different targeted modes. Nahiri's Resolve: 'exile any number ... you control' chosen on resolution then 'return those cards ... at the beginning of your next upkeep' (elrond_moon_reader.go, artful_maneuver.go); watch item: any-number choice feeding a delayed return of exactly those cards, stop and report if it does not fit. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "add60aad-2532-4f59-bfb9-f0168c2adda6",
+    "d34a3b58-a905-4e90-b35c-9f5c21149b04",
+    "e1dd9dca-cb5f-46b4-b16d-a61ae651d653",
+    "bea40c67-73ca-4b5e-b902-5de07f21585c",
+    "7e4e1d13-db1a-48e5-9b5f-f3e71d10c23e",
+    "c19f4a43-85bb-4070-a237-171597c94ec3",
+    "831623c9-8279-439e-a42b-ac47cacdb058",
+    "e87a4461-f3d1-443f-ad4c-dba91a993809",
+    "12bd2051-297b-4bab-ac64-6eb26a42e3e2"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Casting and playing from library, graveyard and exile; legends that put cards into play",
+   "shared": "Cast permissions (game.CastPermission, server/internal/game/cast_permission.go). Sigarda: vizier_of_the_menagerie.go, conspicuous_snoop.go (look at top, cast creature types from top; PermissionFilter.CreatureTypesAny). Danitha: gisa_and_geralf.go, granted_alternative_cost.go ('once during each of your turns', PermissionFilter.AuraOrEquipmentOnly). Nahiri, Forged in Fury: AffinityFor (Equipment) plus impulse (exileTopCardYouMayPlayThisTurn in impulse_exile.go); watch item: 'You may cast Equipment spells this way without paying their mana costs' has no catalog precedent (grep 'spells this way without paying' -> none) - try a second permission on the same card with Cost and Filter.Subtype, stop and report if it does not fit. Kiora: cast-from-hand trigger (taigam_ojutai_master.go, goliath_daydreamer.go), 'where X is that spell's mana value' (chrome_host_seedshark.go), free cast from looked-at cards (free_library_cast.go: registerFreeLibraryCastOffer, lookAtTopAndOfferFreeCast); the four creature types are read through TextSubtype. Kolaghan Warmonger: 'look at the top six, may reveal a ... card' (dragonologist.go). Nissa: Landfall, mana on resolution, 'second time this ability has resolved this turn' (harvestrite_host.go, ms_bumbleflower.go), reveal-until (identity_echo.go). Pia Nalaar: 'play a land from exile or cast a spell from exile' (quintorius_kand.go, fire_lord_zuko.go, batch20_helpers.go); the Thopter token and 'Thopters you control have' (saheeli_jewel_of_avishkar.go). The Kenriths' Royal Funeral: 'for each card exiled with' (severance_priest.go) feeding a cost reduction for legendary spells; watch item: a reduction counted from cards exiled with the source, stop and report if it does not fit. Arni Metalbrow: 'onto the battlefield tapped and attacking' from hand (hero_of_bladehold.go, chorale_of_the_void.go); watch item: 'attacks or enters attacking' has no trigger precedent (grep 'EntersAttacking' in server/internal/cards/effects/ -> none; game.Event has no entered-attacking field, only ReplacementEvent does) - a second EventETB trigger reading the entered card's AttackingTarget may do, stop and report if it does not. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "5fe07a76-f261-4f16-8a15-571bed707261",
+    "971b30a8-4ab4-4e96-9d50-597da4d52994",
+    "87966759-206a-4a2d-bf78-86f727c29972",
+    "95df54e2-0196-4e54-8144-de5982ce07f5",
+    "4c7e6520-d179-4590-afdc-92eb2c0740a6",
+    "c1fc5923-c3cd-448a-98d1-c154661c2812",
+    "65d4ebdb-8757-4e5e-9411-d78597e20d57",
+    "b4b0a4b7-b36f-4c96-b07b-a86c1efd333e",
+    "d799e58a-0032-4df8-a77f-0d824ec15214"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Copies, animation and layer work (rules-heavy)",
+   "shared": "Copy a card and cast the copy (CopyAndCast in copy_and_cast.go, kaervek_the_punisher.go, docs/adding-cards.md 'Copying a card and casting the copy'): Narset (free, noncreature only, 'mana value less than Narset's power' as in alesha_who_laughs_at_fate.go) and Nashi (paying costs; the copy may be a PERMANENT spell, which becomes a token, CR 707.10f) share one helper; watch item: confirm CopyAndCast handles a permanent-card copy, stop and report if not. Narset also grants prowess (bria_riptide_rogue.go). Token copies with exceptions: Rebuild the City (applied_geometry.go, the_jolly_balloon_man.go: 'except ... in addition to its other types') and Calix (ondu_spiritdancer.go, court_of_vantress.go; 'Do this only once each turn', 'an enchanted creature you control deals combat damage' in ellivere_of_the_wild_court.go). Vesuvan Drifter: 'becomes a copy of that card' (dimir_doppelganger.go, lazav_dimir_mastermind.go, game.ModBecomeCopy); watch item: copying a card in the LIBRARY until end of turn with a flying exception, stop and report if it does not fit. Jolrael: land animation until end of turn (awaken.go, creeping_tar_pit.go, destiny_spinner.go), X locked from hand size; 'land creature you control' (bumi_eclectic_earthbender.go). Spark Rupture: no class-animation static exists (grep 'creature with power and toughness each equal to' -> none) but game.StaticAbility takes AppliesTo/Apply funcs: three statics over planeswalkers with a loyalty counter (layer 4 add Creature, layer 6 RemovesAbilities as in LoseAllAbilities in attachments.go, layer 7b base P/T from the counter count, the SetAttachedBasePTPer shape in aettir_and_priwen.go); watch item: cache invalidation on counter change and damage to a creature-planeswalker, stop and report if it does not fit. Urborg Scavengers: 'The same is true for' keyword lists (soulflayer.go, altar_of_the_wretched.go) read from cards exiled with it. Tazri: 'abilities of creature sources' spend restriction exists (grep 'only to activate abilities of creature sources'), granted tap-for-mana rows as in cryptolith_rite.go, the non-mana-activated-ability predicate in ravager_wurm.go; watch items: 'one mana of any of this creature's colors' and 'Activate only if this creature has another activated ability' have no precedent (grep found none), stop and report if they do not fit. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "d92725de-ead0-4a6c-83db-55ec3acc7184",
+    "ffa6c14e-3d8e-47a2-b102-d37538d60ef6",
+    "2aac0ddc-1005-4049-a337-fe86e092b461",
+    "1bcc8ca6-5fd0-4fc9-8f0c-f81d8abf9249",
+    "727ef984-1643-4a09-8283-a665508e85dd",
+    "65e4fbd1-4935-495e-9897-bad5a0cfd935",
+    "82e5642a-0803-432c-85d3-091fca75c82f",
+    "d27f3338-4900-49eb-9d8b-994afd524abe",
+    "13a3e61d-c9ff-447d-9016-09a183b7af1d"
+   ]
+  }
+ ]
+}
