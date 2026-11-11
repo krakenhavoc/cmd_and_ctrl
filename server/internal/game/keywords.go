@@ -89,6 +89,7 @@ var canonicalKeywords = map[string]bool{
 	"swampwalk":         true,
 	"mountainwalk":      true,
 	"forestwalk":        true,
+	"desertwalk":        true,
 	"nonbasic landwalk": true,
 	"fear":              true,
 	"intimidate":        true,

@@ -42,3 +42,16 @@ func MiracleForInstantAndSorceryCardsInYourHand(cost string) game.GrantedAlterna
 	return grantedMiracleInYourHand(cost, game.PermissionFilter{InstantOrSorceryOnly: true},
 		"Each instant and sorcery card in your hand")
 }
+
+// MiracleForEnchantmentCardsInYourHandReducedBy is Aminatou, Veil Piercer's
+// static: "Each enchantment card in your hand has miracle. Its miracle cost
+// is equal to its mana cost reduced by {N}." The price is the card's own
+// mana cost (PricedAtManaCost) less `n` generic mana, so a coloured symbol
+// is never reduced and the price floors at {0} (CR 118.7).
+func MiracleForEnchantmentCardsInYourHandReducedBy(n int) game.GrantedAlternativeCost {
+	g := grantedMiracleInYourHand("", game.PermissionFilter{CardType: "Enchantment"},
+		"Each enchantment card in your hand")
+	g.PricedAtManaCost = true
+	g.ManaCostReducedBy = n
+	return g
+}

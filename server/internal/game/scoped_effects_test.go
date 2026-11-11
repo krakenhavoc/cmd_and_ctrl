@@ -305,7 +305,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// layer applies either. Their cases are in
 		// scoped_block_rules_test.go here and in cards/effects.
 		ModCantBeBlockedExceptBy: true, ModLimitBlockersPerDefender: true,
-		ModCantBeBlockedByPlayer: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
+		ModCantBeBlockedByPlayer: true, ModCantBlockPlayersCreatures: true, ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true,
 		ModCantBeBlockedBySubtypes:     true, // #4100
 		ModCantBeBlockedByPowerAtLeast: true, // Squeak By, cases in scoped_block_rules_test.go
 		ModCantBeBlockedByObject:       true, // #4307, cases in scoped_block_rules_object_test.go

@@ -574,8 +574,8 @@ func checkReplicateTapCost(spec Spec) bool {
 			continue
 		}
 		switch {
-		case oc.Key != game.ReplicateKey && oc.Key != game.ConspireKey:
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot, a replicate cost and conspire may (#3868, #4092, #4690)", spec.Name, oc.Key))
+		case oc.Key != game.ReplicateKey && oc.Key != game.ConspireKey && oc.Key != cmdr2B11FlashByTappingKey:
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot, a replicate cost, conspire and a flash-by-tapping cost may (#3868, #4092, #4690, #5368)", spec.Name, oc.Key))
 		case tc.UpTo || tc.AnyNumber || tc.ExcludeSource || tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc):
 			panic(fmt.Sprintf("effects.Register: %q replicate cost taps no fixed number of permanents — build it with ReplicateTapping (#4092)", spec.Name))
 		case tc.Label == "":

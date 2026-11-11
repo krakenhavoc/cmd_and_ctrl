@@ -30,14 +30,7 @@ func socB5EnchantedByYourAuraCantAttackYou() game.StaticAbility {
 			return false
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			if source == nil {
-				return
-			}
-			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, game.AttackTargetRestriction{
-				Source:     source.InstanceID,
-				SourceName: source.Name,
-				NotPlayer:  source.Controller,
-			})
+			cmdr2B19BarAttackingSourcesController(c, source)
 		},
 	}
 }

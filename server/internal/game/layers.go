@@ -1315,6 +1315,7 @@ func (g *Game) recordBasePowerLocked() {
 		c := &g.Battlefield.Cards[i]
 		if c.effective != nil {
 			c.basePower = c.effective.Power
+			c.baseToughness = c.effective.Toughness
 		}
 	}
 }

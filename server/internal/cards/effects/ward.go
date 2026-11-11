@@ -127,6 +127,12 @@ type WardCost struct {
 	// std_b43_ward_evidence.go.
 	CollectEvidence int
 
+	// Blight is "Ward—Blight N" (Auntie Ool, Cursewretch, #5368, CR 701.68a):
+	// counter it unless that player blights N, putting N -1/-1 counters on
+	// a creature they control. A payer with no creature to blight can't pay
+	// (CR 701.68b).
+	Blight int
+
 	// Either is a ward with two ways to pay (#4566): Titania, Rugged
 	// Rumbler's "Ward—Discard a card or pay {2}". Each branch is a ward
 	// cost of its own — mana, life, or a chosen discard — and the payer
@@ -201,6 +207,10 @@ func WardLifeEqualToPower() WardCost { return WardCost{LifeEqualToPower: true} }
 // pay", since a player can always get counters (the tenth loses the game,
 // CR 704.5c).
 func WardPoison(n int) WardCost { return WardCost{Poison: n} }
+
+// WardBlight builds "Ward—Blight N" (#5368): the payer puts N -1/-1 counters
+// on a creature they control, or the spell or ability is countered.
+func WardBlight(n int) WardCost { return WardCost{Blight: n} }
 
 // WardSacrifice builds the "ward—sacrifice <label>" cost, where every
 // predicate must pass: WardSacrifice("a creature", Creature()).
@@ -310,6 +320,9 @@ func (c WardCost) validate() {
 		n++
 	}
 	if c.CollectEvidence > 0 {
+		n++
+	}
+	if c.Blight > 0 {
 		n++
 	}
 	compound := n == 2 && c.Mana != "" && c.Life > 0
@@ -508,6 +521,8 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return wardPoisonOrCounter(g, item.SourceCardID, payer, cost.Poison, targetingItem)
 	case cost.CollectEvidence > 0:
 		return wardCollectEvidenceOrCounter(g, item.SourceCardID, payer, cost.CollectEvidence, targetingItem)
+	case cost.Blight > 0:
+		return wardBlightOrCounter(NewContext(g, item), payer, cost.Blight, targetingItem)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with
@@ -967,4 +982,32 @@ func wardSacrificePickComplete(g *game.Game, payer uuid.UUID, sac WardSacrificeC
 		seen[id] = true
 	}
 	return true
+}
+
+// wardBlightAfter is the rest of a "Ward—Blight N": the payer either chose a
+// creature, and the counters went on it as the cost, or chose none and the
+// targeting spell or ability is countered. An on-disk key.
+var wardBlightAfter = RegisterBlighted("blight/ward-blight", func(ctx *Context, d BlightDone) error {
+	if d.Did() || len(d.Carry) == 0 {
+		return nil
+	}
+	return wardCounter(ctx.Game, d.Carry[0])
+})
+
+// wardBlightOrCounter is "counter it unless that player blights N": the
+// payer may choose a creature they control to take the counters, or nothing.
+// With no creature that can take them they can't pay (CR 701.68b) and it is
+// countered at once.
+func wardBlightOrCounter(ctx *Context, payer uuid.UUID, n int, targetingItem uuid.UUID) error {
+	if len(ctx.Game.BlightOptionsForEffect(payer)) == 0 {
+		return wardCounter(ctx.Game, targetingItem)
+	}
+	return Blight{
+		N:        n,
+		Players:  []uuid.UUID{payer},
+		May:      true,
+		Question: fmt.Sprintf("Ward — blight %d, or it is countered", n),
+		Then:     wardBlightAfter,
+		Carry:    []uuid.UUID{targetingItem},
+	}.Apply(ctx)
 }
