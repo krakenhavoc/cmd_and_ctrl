@@ -27,9 +27,7 @@ func init() {
 			Ward(WardMana("{3}"), "Watcher of Hours — ward {3}"),
 			WheneverACounterIsRemovedFromThis(game.CounterTime,
 				"Watcher of Hours — surveil 1",
-				func(g *game.Game, item *game.StackItem) error {
-					return Surveil{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				}, game.ZoneExile),
+				Do(Surveil{N: 1}), game.ZoneExile),
 		},
 	})
 }
