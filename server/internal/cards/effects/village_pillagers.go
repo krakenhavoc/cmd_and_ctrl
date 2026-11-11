@@ -21,8 +21,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:        "54b44499-398b-47ad-b790-bd5b5994d1a6",
-		Name:            "Village Pillagers",
+		OracleID: "54b44499-398b-47ad-b790-bd5b5994d1a6",
+		Name:     "Village Pillagers",
+		// Its enters damage has wither, so each opposing creature takes a
+		// -1/-1 counter rather than marked damage: a -1/-1 sweep.
+		Purpose:         game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, OpponentsOnly: true}},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordWither},
 		Triggered: []game.TriggeredAbility{
