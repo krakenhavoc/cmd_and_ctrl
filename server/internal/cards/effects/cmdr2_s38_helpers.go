@@ -57,23 +57,12 @@ func cmdr2S38PutCountersEqualToPower(g *game.Game, item *game.StackItem) error {
 	return AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}.Apply(NewContext(g, item))
 }
 
-// cmdr2S38CreaturesYouControl counts the creatures `player` controls.
-func cmdr2S38CreaturesYouControl(g *game.Game, player uuid.UUID) int {
-	n := 0
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && c.IsCreature() {
-			n++
-		}
-	}
-	return n
-}
-
 // cmdr2S38OozeFromFaceUp is Printlifter Ooze's trigger body: a 0/0 green
 // Ooze with trample that enters with a +1/+1 counter for each other
 // creature the controller controls. The token is not on the battlefield
 // yet, so every creature counted is "other" than it.
 func cmdr2S38OozeFromFaceUp(g *game.Game, item *game.StackItem) error {
-	x := cmdr2S38CreaturesYouControl(g, item.Controller)
+	x := b14CreaturesControlled(g, item.Controller)
 	ctx := NewContext(g, item)
 	_, err := g.CreateTokensForEffect(item.Controller,
 		ctx.TextToken(TokenCard("0/0 green Ooze with trample")), 1,

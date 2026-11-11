@@ -166,7 +166,7 @@ func TestCmdr2S38ShowstoppingSurpriseTurnsUpThenDealsItsPower(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	mine := mkmB1CastFaceDown(t, g, "Bubble Smuggler", "Creature — Octopus Fish", mkmBubbleSmugglerOracle, 2, 1)
 	theirs := b12Creature(g, g.Seats[1].ID, "Their Bear", "Creature — Bear", 2, 2)
-	bystander := b12Creature(g, me.ID, "Bystander", "Creature — Bear", 5, 5)
+	bystander := b12Creature(g, me.ID, "Bystander", "Creature — Bear", 7, 7)
 	floatForTest(g, me, "CCCRR")
 	castCatalogSpell(t, g, "Showstopping Surprise", "Instant", s38ShowstopperOracle, []game.TargetRef{{Kind: game.TargetCard, ID: mine}})
 	passPriorityAroundTable(t, g)
@@ -177,8 +177,11 @@ func TestCmdr2S38ShowstoppingSurpriseTurnsUpThenDealsItsPower(t *testing.T) {
 	if g.Battlefield.Contains(theirs) {
 		t.Error("their Bear survived 6 damage")
 	}
+	if !g.Battlefield.Contains(mine) {
+		t.Error("the target damaged itself")
+	}
 	if !g.Battlefield.Contains(bystander) {
-		t.Error("the 5/5 died to 6 damage? it should (6>=5)")
+		t.Error("the 7/7 died to 6 damage")
 	}
 }
 
@@ -223,4 +226,39 @@ func TestCmdr2S38VeiledAscensionGivesFaceDownCreaturesFlyingCounters(t *testing.
 		t.Errorf("a face-down creature entering later has %d flying counters, want 1", n)
 	}
 	_ = me
+}
+
+func TestCmdr2S38KaustTurnsAnAttackerUpAndDrawsWhenItConnects(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	kaust := pushCatalogPermanent(g, me.ID, "Kaust, Eyes of the Glade", "Legendary Creature — Dryad Detective", s38KaustOracle, false)
+	pushLibraryCardForTest(me, game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Creature — Bear", Owner: me.ID, Controller: me.ID})
+	id := mkmB1CastFaceDown(t, g, "Bubble Smuggler", "Creature — Octopus Fish", mkmBubbleSmugglerOracle, 2, 1)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == id {
+				g.Battlefield.Cards[i].SummonedThisTurn = false
+			}
+		}
+	})
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(id, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+	before := me.Hand.Size()
+	if err := g.ActivateCatalogAbility(me.ID, kaust, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: id}},
+	}); err != nil {
+		t.Fatalf("activate Kaust: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if findCardAnywhere(t, g, id).FaceDown {
+		t.Fatal("Kaust did not turn the attacker face up")
+	}
+	advanceTo(t, g, game.StepCombatDamage)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != before+1 {
+		t.Errorf("hand = %d, want %d after the turned-up creature connected", me.Hand.Size(), before+1)
+	}
 }

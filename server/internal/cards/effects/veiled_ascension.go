@@ -38,7 +38,7 @@ func init() {
 						}
 					}
 					for _, id := range ids {
-						if err := (AddCounter{Target: id, Kind: game.CounterFlying, N: 1}).Apply(ctx); err != nil {
+						if err := (AddCounter{Target: id, Kind: game.CounterFlying, N: 1}).Apply(ctx.asGroupMember()); err != nil {
 							return err
 						}
 					}
