@@ -370,11 +370,24 @@ registered, or when this file is stale.
 | `draftFinished` | `The draft is finished` | heading | text | `lib/components/draft/DraftRounds.svelte` | a finished draft's headline, once its rounds are over or every person has left |
 | `draftBuildDeck` | `Build your deck` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's headline, once a draft's last pick is made |
 | `draftBuildTimer` | `build timer` | timer | aria | `lib/components/draft/DraftRoom.svelte` | the deckbuilding screen's countdown, run from the server's clock; when it ends a deck is built for anyone who has not submitted one |
-| `draftDeckZone` | `Your deck` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's deck: the pool cards chosen to play, each a button that moves it to the sideboard, and a drop target |
-| `draftSideboardZone` | `Sideboard` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's sideboard: every pool card not in the deck, each a button that adds it, and a drop target |
+| `draftDeckZone` | `Main` | heading | text | `lib/components/draft/DraftSplit.svelte` | #5699: the picks' main area, beside the pack and on the deckbuilding screen: the cards to play, each a button that moves it to the sideboard, and a drop target; also the stats' heading for the main cards |
+| `draftSideboardZone` | `Sideboard` | heading | text | `lib/components/draft/DraftSplit.svelte` | #5699: the picks' sideboard, beside the pack and on the deckbuilding screen: every pick not in main, each a button that moves it back, and a drop target |
 | `draftBasicLands` | `Basic lands` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's steppers, one per basic land type; any number may be added |
 | `draftBasicStepper` | `how many <basic land>` (starts with `how many `) | group | aria | `lib/components/draft/DraftBuild.svelte` | one basic land's stepper on the deckbuilding screen: a fewer button, the count and a more button |
-| `draftCurve` | `mana curve of your deck` | img | aria | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's curve: the deck's cards that are not lands, counted by mana value from 0 to 6 and more |
+| `draftCurve` | `mana curve of your deck` | img | aria | `lib/components/draft/DraftStats.svelte` | the stats' curve of the main cards (#5702), on the pick and deckbuilding screens: the cards that are not lands, counted by mana value from 0 to 6 and more |
+| `draftCurvePool` | `mana curve of your pool` | img | aria | `lib/components/draft/DraftStats.svelte` | the stats' curve of the whole pool (#5702): main and sideboard together, lands left out, counted by mana value from 0 to 6 and more |
+| `draftStats` | `Draft stats` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the area on the pick and deckbuilding screens that tallies the picks: creatures against the rest, card types, the mana curve and the colours, for main and for the whole pool |
+| `draftStatsPool` | `Whole pool` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' heading for every card picked, main and sideboard together |
+| `draftStatNonCreatures` | `Non-creatures` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' count of cards that are not creatures, beside the creature count |
+| `draftStatTypes` | `Card types` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' count for each card type; a card with two types is in both counts |
+| `draftStatCurve` | `Mana curve` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the heading above a stats curve |
+| `draftStatColours` | `Colours` | heading | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' count for each colour, then several colours and none; a card of two colours is in both counts |
+| `draftTypeCreature` | `Creatures` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' creature count |
+| `draftTypeInstant` | `Instants` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' instant count |
+| `draftTypeSorcery` | `Sorceries` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' sorcery count |
+| `draftTypeArtifact` | `Artifacts` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' artifact count |
+| `draftTypeEnchantment` | `Enchantments` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' enchantment count |
+| `draftTypePlaneswalker` | `Planeswalkers` | term | text | `lib/components/draft/DraftStats.svelte` | #5702: the stats' planeswalker count |
 | `draftUseSuggestion` | `Use the suggested lands` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's button that sets the basic land steppers to the land-count suggestion |
 | `draftSubmitDeck` | `Submit deck` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's primary: sends draft_deck; disabled below the 40-card minimum |
 | `draftMatchLength` | `Matches` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's choice of the draft's match length: best of one (the default) or best of three |

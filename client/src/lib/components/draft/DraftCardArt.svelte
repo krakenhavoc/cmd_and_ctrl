@@ -9,6 +9,7 @@
   // picked.
   import { cardArt } from "../../cardArt";
   import { draftImageURL, type DraftCard } from "../../draft";
+  import { cardEdge } from "../../draftEdge";
   import ManaCost from "../board/ManaCost.svelte";
 
   interface Props {
@@ -19,12 +20,16 @@
   const { card, alt = "" }: Props = $props();
 
   const src = $derived(draftImageURL(card, "normal"));
+  // The colour edge (#5704): a slight band round the card, from its
+  // colour identity. Decoration only: the cost, the art and the words
+  // say the same thing.
+  const edge = $derived(cardEdge(card));
   // The image is hidden once it has failed, so the words under it show;
   // a retry that loads brings it back.
   let failed = $state(false);
 </script>
 
-<span class="art" data-card={card.id}>
+<span class="art" data-card={card.id} data-identity={edge.key} style:--edge={edge.background}>
   <span class="words" aria-hidden={src && !failed ? "true" : undefined}>
     <span class="w-name">{card.name}</span>
     {#if card.mana_cost}<ManaCost cost={card.mana_cost} size={13} />{/if}
@@ -56,8 +61,14 @@
     aspect-ratio: 488 / 680;
     border-radius: 4.75% / 3.5%;
     overflow: hidden;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
+    /* The edge is the border: the gradient shows through a transparent
+       border and the card keeps its own ground inside it. A hairline
+       outside keeps a light edge (white) readable on a light page. */
+    border: 3px solid transparent;
+    background:
+      linear-gradient(var(--surface-sunken), var(--surface-sunken)) padding-box,
+      var(--edge, none) border-box;
+    box-shadow: 0 0 0 1px var(--border);
     box-sizing: border-box;
   }
   .words {

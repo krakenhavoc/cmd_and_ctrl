@@ -31,6 +31,7 @@
     secondsLeft,
     SERVER_FULL_CODE,
     startDraft,
+    storedDraftIDs,
     takeOf,
     timerAnnouncement,
     viewAnnouncement,
@@ -38,6 +39,15 @@
     type DraftView,
   } from "../../draft";
   import { buildSecondsLeft } from "../../draftBuild";
+  import {
+    forgetSplit,
+    loadSplit,
+    moveTo,
+    pruneSide,
+    pruneSplits,
+    saveSplit,
+    type Zone,
+  } from "../../draftSplit";
   import { matchLengthName, roundsAnnouncement } from "../../draftRounds";
   import { boosterName, PACKS_ARE_APPROXIMATIONS } from "../../draftSets";
   import {
@@ -57,6 +67,8 @@
   import DraftRounds from "./DraftRounds.svelte";
   import DraftPool from "./DraftPool.svelte";
   import DraftSeats from "./DraftSeats.svelte";
+  import DraftSplit from "./DraftSplit.svelte";
+  import DraftStats from "./DraftStats.svelte";
 
   interface Props {
     id: string;
@@ -109,6 +121,28 @@
   let waitingEl = $state<HTMLElement | null>(null);
 
   let sock: DraftSocket | null = null;
+
+  // The picks split into Main and the Sideboard (#5699) is this browser's
+  // own state, kept under the draft's id so a reload or a reconnect
+  // finds it again. It holds the Sideboard; every other pick is in Main.
+  // svelte-ignore state_referenced_locally
+  let side = $state<string[]>(loadSplit(id));
+  const picks = $derived(view?.picks ?? []);
+  const sideIDs = $derived(pruneSide(picks, side));
+
+  function setSide(next: string[]): void {
+    side = next;
+    saveSplit(id, next);
+  }
+  function moveCard(card: string, to: Zone): void {
+    setSide(moveTo(sideIDs, card, to));
+  }
+  // The splits of drafts this browser no longer holds a seat in go.
+  onMount(() => pruneSplits([...storedDraftIDs(), id]));
+  // A draft that is over has no use for its split.
+  $effect(() => {
+    if (view?.state === "done" && view.phase && view.phase !== "building") forgetSplit(id);
+  });
 
   const take = $derived(view ? takeOf(view) : 0);
   const host = $derived(view ? isHost(view) : false);
@@ -525,44 +559,57 @@
           </section>
         </div>
       {:else if view.state === "picking"}
-        <section aria-labelledby="draft-pick-h">
-          <h2 class="progress" id="draft-pick-h" data-testid="draft-progress">
-            {progressLine(view)}{#if target}{" "}<span class="to">to {target.name}</span>{/if}
-          </h2>
-
-          {#if pickError}
-            <p class="notice err" role="alert">
-              <Icon name="x" size={14} />
-              <span>{pickError}</span>
-            </p>
-          {/if}
-
-          {#if view.pack && view.pack.length > 0 && take > 0}
-            <DraftPack
-              pack={view.pack}
-              {take}
-              busy={pendingPick !== null || !live}
-              blocked={!live ? "Reconnecting…" : pendingPick !== null ? "Sending your pick…" : ""}
-              onpick={pick}
-              {timer}
-            />
-          {:else}
-            <div class="card waiting" data-testid="draft-waiting">
-              <h3 tabindex="-1" bind:this={waitingEl}>{L.draftWaiting}</h3>
-              <p class="help">{waitingLine(view)}</p>
-              {@render timer()}
-            </div>
-          {/if}
-        </section>
-
-        <div class="cols under">
-          <section class="card" aria-labelledby="draft-picks-h">
-            <h2 id="draft-picks-h">
-              {L.draftYourPicks} <span class="n">{view.picks?.length ?? 0}</span>
+        <!-- The pack, and the picks beside it when there is room (#5699). -->
+        <div class="pickgrid">
+          <section class="packarea" aria-labelledby="draft-pick-h">
+            <h2 class="progress" id="draft-pick-h" data-testid="draft-progress">
+              {progressLine(view)}{#if target}{" "}<span class="to">to {target.name}</span>{/if}
             </h2>
-            <DraftPool cards={view.picks ?? []} />
+
+            {#if pickError}
+              <p class="notice err" role="alert">
+                <Icon name="x" size={14} />
+                <span>{pickError}</span>
+              </p>
+            {/if}
+
+            {#if view.pack && view.pack.length > 0 && take > 0}
+              <DraftPack
+                pack={view.pack}
+                {take}
+                busy={pendingPick !== null || !live}
+                blocked={!live ? "Reconnecting…" : pendingPick !== null ? "Sending your pick…" : ""}
+                onpick={pick}
+                {timer}
+              />
+            {:else}
+              <div class="card waiting" data-testid="draft-waiting">
+                <h3 tabindex="-1" bind:this={waitingEl}>{L.draftWaiting}</h3>
+                <p class="help">{waitingLine(view)}</p>
+                {@render timer()}
+              </div>
+            {/if}
           </section>
-          <section class="card side" aria-labelledby="draft-seats-h">
+
+          <aside class="picksarea" aria-labelledby="draft-picks-h">
+            <h2 id="draft-picks-h">
+              {L.draftYourPicks} <span class="n">{picks.length}</span>
+            </h2>
+            <DraftSplit
+              cards={picks}
+              side={sideIDs}
+              onmove={moveCard}
+              ids={{ main: "draft-picks-main", side: "draft-picks-side" }}
+              emptyMain="No picks yet."
+              emptySide="Drag a card here, or click it, to set it aside."
+            />
+          </aside>
+
+          <div class="statsarea">
+            <DraftStats main={picks.filter((c) => !sideIDs.includes(c.id))} pool={picks} />
+          </div>
+
+          <section class="card side seatsarea" aria-labelledby="draft-seats-h">
             <h2 id="draft-seats-h">Seats</h2>
             <DraftSeats {view} />
           </section>
@@ -574,6 +621,8 @@
           pending={pendingDeck !== null}
           error={deckError}
           onsubmit={submitDeck}
+          side={sideIDs}
+          onside={setSide}
           {timer}
         />
       {:else}
@@ -745,8 +794,61 @@
     align-items: flex-start;
     gap: 10px;
   }
-  .under {
-    margin-top: 22px;
+  /* The pick screen (#5699): the pack, with the picks to its right on a
+     wide screen and below it on a narrow one. Named areas keep the
+     reading order: pack, picks, stats, seats. */
+  .pickgrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    grid-template-areas:
+      "pack picks"
+      "stats picks"
+      "seats picks";
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .packarea {
+    grid-area: pack;
+    min-width: 0;
+  }
+  .statsarea {
+    grid-area: stats;
+    min-width: 0;
+  }
+  .seatsarea {
+    grid-area: seats;
+    min-width: 0;
+  }
+  .picksarea {
+    grid-area: picks;
+    min-width: 0;
+    /* Stays beside the pack while it scrolls, and scrolls on its own when
+       the picks outgrow the window. It sits below the sticky site
+       header (z 30, about 56px tall). */
+    position: sticky;
+    top: 72px;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+  }
+  .picksarea h2 {
+    margin: 0 0 12px;
+  }
+  @media (max-width: 819px) {
+    .pickgrid {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "pack"
+        "picks"
+        "stats"
+        "seats";
+      grid-template-rows: none;
+    }
+    .picksarea {
+      position: static;
+      max-height: none;
+      overflow-y: visible;
+    }
   }
   .notice {
     display: flex;

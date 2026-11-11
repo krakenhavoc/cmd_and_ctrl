@@ -66,6 +66,8 @@ export interface DraftCard {
   rarity?: string;
   /** W, U, B, R, G; empty or absent for a colourless card. */
   colors?: string[];
+  /** The printing's colour identity; absent when colourless. A land's colour (#5704). */
+  color_identity?: string[];
   /** Brace notation, "{1}{U}"; absent for a land. */
   mana_cost?: string;
   mana_value?: number;
