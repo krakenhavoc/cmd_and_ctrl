@@ -354,6 +354,7 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 		if b.opts.AttachedTo.Kind != "" {
 			ev.auraHost, ev.auraHostFixed = b.opts.AttachedTo, true
 		}
+		ev.auraHostCreaturesOnly = b.opts.AuraHostsCreaturesOnly
 		if m.token {
 			// The fields createdTokenEntryEvent gives a token entering on
 			// its own, so a creation entering together (#4867) asks every

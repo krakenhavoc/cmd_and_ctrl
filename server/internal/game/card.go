@@ -1359,6 +1359,11 @@ type Card struct {
 	// snapshotted, rebuilt by the recompute a restore forces.
 	basePower int
 
+	// baseToughness is basePower's twin for toughness: the toughness after
+	// layer 7b (CR 208.4b), read through BaseToughness. A derived cache like
+	// basePower: never snapshotted.
+	baseToughness int
+
 	// stackGranted is the keyword abilities the stack step of the layer
 	// pass gave this SPELL (CR 613.1f, ADR 0107 §3, #1854): "that spell
 	// gains rebound", "instant and sorcery spells you control have
@@ -2092,6 +2097,17 @@ func (c Card) BasePower() int {
 		return c.basePower
 	}
 	return printedShared(&c).Power
+}
+
+// BaseToughness is the toughness the layer pass had after layer 7b, the twin
+// of BasePower (CR 208.4b): the printed value as changed by a copy effect or an
+// effect that sets toughness, and not by a pump, an anthem or a counter. Off
+// the battlefield no layer pass has run and it is the printed toughness.
+func (c Card) BaseToughness() int {
+	if c.effective != nil {
+		return c.baseToughness
+	}
+	return printedShared(&c).Toughness
 }
 
 // PowerForComparison includes layers and counters without clamping negative
