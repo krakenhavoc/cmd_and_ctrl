@@ -264,3 +264,84 @@ func TestCmdr2B19CarefulCultivationChannelsFromHandIntoAManaMonk(t *testing.T) {
 		}
 	}
 }
+
+const cmdr2IndomitableMight = "069c3c87-81a8-4d2a-ad2f-8d3243d0e3db"
+
+func TestCmdr2B19IndomitableMightLetsABlockedCreatureAssignAllDamageToThePlayer(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	host := apaPush(g, g.Seats[0].ID, g.Seats[0].ID, game.Card{Name: "Host", TypeLine: "Creature — Bear", Power: 1, Toughness: 1})
+	cmdr2B19Attach(g, g.Seats[2].ID, host, "Indomitable Might", cmdr2IndomitableMight)
+	wall := mscWlBlocker(g, "Wall", 1, 8)
+	mscWlBlockedCombat(t, g, []uuid.UUID{host}, map[uuid.UUID]uuid.UUID{wall: host})
+
+	c := mscWlDamagePrompt(t, g)
+	f := c.DamageAssignment
+	if !f.AsThoughUnblocked || len(f.BlockerIDs) != 1 || f.AttackerPower != 4 {
+		t.Fatalf("the prompt is %+v, want one blocker, power 4 (1+3), as-though-unblocked", f)
+	}
+	if err := mscWlAnswer(t, g, c, 4, game.DamageAssignmentEntry{BlockerID: wall, Amount: 0}); err != nil {
+		t.Fatalf("assigning all 4 to the player: %v", err)
+	}
+	if lost := 40 - opp.Life; lost != 4 {
+		t.Errorf("the defender lost %d, want 4", lost)
+	}
+}
+
+func TestCmdr2B19IndomitableMightHasFlash(t *testing.T) {
+	spec, ok := Lookup(cmdr2IndomitableMight)
+	if !ok || len(spec.PrintedKeywords) != 1 || spec.PrintedKeywords[0] != "flash" {
+		t.Fatalf("Indomitable Might's printed keywords = %v, want flash", spec.PrintedKeywords)
+	}
+}
+
+const cmdr2DaybreakCoronet = "0f5ac364-447b-4c43-9aed-6098dc0bab82"
+
+func cmdr2B19CastCoronet(g *game.Game, me *game.Player, host uuid.UUID) (uuid.UUID, error) {
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Daybreak Coronet", TypeLine: "Enchantment — Aura", ManaCost: "{W}{W}",
+			Colors: []string{"W"}, OracleID: cmdr2DaybreakCoronet, Owner: me.ID, Controller: me.ID})
+	})
+	return id, g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, Targets: cardRefs(host)})
+}
+
+func TestCmdr2B19DaybreakCoronetNeedsAnotherAuraAndFallsOffWhenItLeaves(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bare := b12Creature(g, me.ID, "Bare", "Creature — Bear", 2, 2)
+	host := b12Creature(g, me.ID, "Host", "Creature — Bear", 2, 2)
+	other := cmdr2B19Attach(g, me.ID, host, "Other Aura", "")
+	advanceToMain(t, g)
+	floatForTest(g, me, "WW")
+	if _, err := cmdr2B19CastCoronet(g, me, bare); err == nil {
+		t.Fatal("Daybreak Coronet was cast on a creature with no other Aura")
+	}
+	id, err := cmdr2B19CastCoronet(g, me, host)
+	if err != nil {
+		t.Fatalf("Daybreak Coronet on a creature with another Aura: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if c, ok := battlefieldCard(g, id); !ok || !c.IsAttachedTo(host) {
+		t.Fatal("the Coronet did not enter attached to the creature")
+	}
+	if p, tt := ptOf(t, g, host); p != 5 || tt != 5 {
+		t.Errorf("enchanted creature is %d/%d, want 5/5", p, tt)
+	}
+	for _, kw := range []string{"first strike", "vigilance", "lifelink"} {
+		if !hasEffectiveKeyword(t, g, host, kw) {
+			t.Errorf("enchanted creature lacks %s", kw)
+		}
+	}
+	// The other Aura leaves: the Coronet has nothing "another" to enchant with.
+	if err := g.MoveCardByID(game.ZoneRef{Kind: game.ZoneBattlefield}, game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID}, other); err != nil {
+		t.Fatal(err)
+	}
+	g.RunStateChecksForTest()
+	if _, ok := battlefieldCard(g, id); ok {
+		t.Error("the Coronet stayed on a creature with no other Aura attached")
+	}
+	if !me.Graveyard.Contains(id) {
+		t.Error("the Coronet did not go to its owner's graveyard")
+	}
+}

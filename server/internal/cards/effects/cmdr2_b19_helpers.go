@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // cmdr2_b19_helpers.go — shared bodies for Commander wave 2, batches 19
 // and 20 (#5368).
@@ -58,4 +62,57 @@ func printedCmdr2B19HumanMonkToken() tokenTemplate {
 // layers have left it this pass.
 func cmdr2B19AttachedIsCreature(target *game.Card, g *game.Game, source *game.Card) bool {
 	return AttachedToSource(target, g, source) && target.IsCreature()
+}
+
+// cmdr2B19AttachedAssignsAsThoughUnblocked is "Enchanted creature's
+// controller may have it assign its combat damage as though it weren't
+// blocked" (Indomitable Might, CR 510.1c): the creature-side flag Wolverine,
+// Claws Out sets on itself, set here on the attached creature.
+func cmdr2B19AttachedAssignsAsThoughUnblocked() game.StaticAbility {
+	return game.StaticAbility{
+		Label:     "Enchanted creature's controller may have it assign its combat damage as though it weren't blocked.",
+		Layer:     game.Layer6Ability,
+		AppliesTo: AttachedToSource,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.AssignsAsThoughUnblocked = true
+		},
+	}
+}
+
+const cmdr2B19DaybreakCoronetOracle = "0f5ac364-447b-4c43-9aed-6098dc0bab82"
+
+// cmdr2B19HasAnotherAuraAttached is Daybreak Coronet's "Enchant creature
+// with another Aura attached to it". An enchant clause is one predicate on
+// the candidate host that serves both the cast and the CR 704.5m check
+// that reruns it once the Coronet is attached, and neither knows which
+// Aura it is judging. It is answered from the host's attachments instead:
+//
+//   - any attached Aura that is not a Daybreak Coronet is "another Aura" to
+//     every Coronet, so the host is legal;
+//   - with only Coronets attached, each is another Aura to the rest, so two
+//     of them hold each other up and a lone one (the other Aura left) does
+//     not: the host is legal only with two or more.
+//
+// A lone Coronet is the only state where the two readings differ (the
+// Coronet itself is on the host at the check, and is not yet at the cast),
+// and a lone Coronet on an otherwise bare creature is exactly the state
+// the rule removes. Auras are read as they are now (effective types).
+func cmdr2B19HasAnotherAuraAttached() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		if g == nil || g.Battlefield == nil {
+			return false
+		}
+		coronets := 0
+		for i := range g.Battlefield.Cards {
+			a := &g.Battlefield.Cards[i]
+			if !a.IsAura() || !a.IsAttachedTo(c.InstanceID) {
+				continue
+			}
+			if a.OracleID != cmdr2B19DaybreakCoronetOracle {
+				return true
+			}
+			coronets++
+		}
+		return coronets >= 2
+	}
 }
