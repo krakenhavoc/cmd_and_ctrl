@@ -146,8 +146,16 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * how many turns it took. Numbers by game and seat, no names or user
  * ids, kept with the game's statistics; the "Game statistics" row says
  * so.
+ * 38 (#5440, ADR 0222 §9) adds draft_history and draft_history_matches:
+ * a signed-in person's finished drafts (the draft's name, the set, the
+ * date, the cards they picked, the deck they built) and each round's
+ * result, with a pointer to the opponent's account when it was a
+ * signed-in person and never a name. The new "Your drafts" row names
+ * them, and says a guest's draft is kept only while it runs; account
+ * deletion deletes the person's rows and clears the pointer wherever
+ * another person's draft named them.
  */
-export const PRIVACY_SCHEMA_VERSION = 37;
+export const PRIVACY_SCHEMA_VERSION = 38;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
