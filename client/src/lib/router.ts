@@ -48,6 +48,9 @@ export type Route =
   // holds no seat there. Both are public: a visitor drafts against bots
   // with no sign-in, as they play a practice game.
   | { name: "draftNew"; set?: string }
+  // A signed-in person's finished drafts (ADR 0222 §9, #5440): the list
+  // at #/drafts and one draft, read-only, at #/drafts/<id>.
+  | { name: "myDrafts"; id?: string }
   | { name: "draft"; id: string; invite?: string }
   // The privacy notice (#2983, ADR 0149): what is stored, why, for how
   // long, who it is shared with, and how a signed-in person deletes
@@ -201,6 +204,8 @@ export function parseHash(hash: string): Route {
       const invite = params.get("invite");
       return invite ? { name: "draft", id: parts[1], invite } : { name: "draft", id: parts[1] };
     }
+    case "drafts":
+      return parts[1] ? { name: "myDrafts", id: parts[1] } : { name: "myDrafts" };
     case "privacy":
       return { name: "privacy" };
     case "terms":

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // View is a draft as one seat may see it: the JSON payload of a `draft`
@@ -56,9 +58,87 @@ type View struct {
 	// Pool is the viewer's card pool, present once the draft is done.
 	Pool []Card `json:"pool,omitempty"`
 
+	// What follows the picks (limited.go, #5440). None of it holds a
+	// card of another seat: Deck names the viewer's own pool cards by
+	// ID, and a match names seats by number.
+	//
+	// Phase is where the draft is once State is done: building, rounds
+	// or finished.
+	Phase Phase `json:"phase,omitempty"`
+	// BestOf is the length of the draft's matches, 1 or 3.
+	BestOf int `json:"best_of"`
+	// Build is the deckbuilding step, present while it is open.
+	Build *BuildView `json:"build,omitempty"`
+	// Deck is the viewer's own deck, once it has one.
+	Deck *LimitedDeck `json:"deck,omitempty"`
+	// Play is the rounds, present once they have begun.
+	Play *PlayView `json:"play,omitempty"`
+
 	// Invite is the invite code, set by the lobby for the host of a
 	// draft still in its lobby. The draft itself never fills it.
 	Invite string `json:"invite,omitempty"`
+}
+
+// BuildView is the deckbuilding step.
+type BuildView struct {
+	Deadline time.Time `json:"deadline"`
+	Now      time.Time `json:"now"`
+	// Seconds is the whole build timer.
+	Seconds int `json:"seconds"`
+	// DeckMin is the smallest legal deck (CR 100.2b).
+	DeckMin int `json:"deck_min"`
+	// Submitted says the viewer has submitted a deck. They may submit
+	// again until the rounds begin.
+	Submitted bool `json:"submitted"`
+}
+
+// PlayView is the rounds: the round in play, every round's matches and
+// the win-loss table.
+type PlayView struct {
+	// Round is the round in play from 1, and Rounds how many a draft
+	// plays.
+	Round  int `json:"round"`
+	Rounds int `json:"rounds"`
+	// Matches is every round's matches so far, oldest first.
+	Matches [][]MatchView `json:"matches"`
+	// Standings is every seat's record, by seat number.
+	Standings []Standing `json:"standings"`
+	// Yours is the viewer's match in the round in play, absent when it
+	// has none (the draft is finished).
+	Yours *MatchView `json:"yours,omitempty"`
+	// Table is the table the viewer's match is played at, sent to the
+	// two seats of that match only and absent until it is open.
+	Table *uuid.UUID `json:"table,omitempty"`
+}
+
+// MatchView is one match of a round, as every seat may see it.
+type MatchView struct {
+	// A and B are seat numbers. B is absent for a bye.
+	A   int  `json:"a"`
+	B   *int `json:"b,omitempty"`
+	Bye bool `json:"bye,omitempty"`
+	// Done says the match has a result; Winner is the seat that won it,
+	// absent for a draw.
+	Done   bool `json:"done"`
+	Winner *int `json:"winner,omitempty"`
+	WinsA  int  `json:"wins_a"`
+	WinsB  int  `json:"wins_b"`
+	// Coin says two bots did not play the match out: the result was a
+	// coin toss.
+	Coin bool `json:"coin,omitempty"`
+}
+
+func matchView(p *Pairing) MatchView {
+	m := MatchView{A: p.A, Bye: p.Bye(), Done: p.Done, WinsA: p.WinsA, WinsB: p.WinsB, Coin: p.Coin}
+	if !p.Bye() {
+		b := p.B
+		m.B = &b
+	}
+	if p.Done && p.Winner != NoSeat {
+		w := p.Winner
+		m.Winner = &w
+	}
+	return m
 }
 
 // PlayerView is one seat as every seat may see it. It has no card field
@@ -74,6 +154,8 @@ type PlayerView struct {
 	Picking bool `json:"picking"`
 	// Picked is how many cards the seat has drafted.
 	Picked int `json:"picked"`
+	// Built says the seat has a deck for the rounds. A bot always has.
+	Built bool `json:"built,omitempty"`
 }
 
 // ViewFor builds the view of one seat. connected reports whether a seat
@@ -103,6 +185,8 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		You:          you,
 		Players:      make([]PlayerView, 0, len(d.seats)),
 		Picks:        append([]Card{}, me.picks...),
+		Phase:        d.Phase(),
+		BestOf:       d.BestOf(),
 	}
 	for i, s := range d.seats {
 		v.Players = append(v.Players, PlayerView{
@@ -113,6 +197,7 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 			Connected: s.Bot || (connected != nil && connected(s.ID)),
 			Picking:   d.state == StatePicking && !s.picked,
 			Picked:    len(s.picks),
+			Built:     d.play != nil && d.play.built[i],
 		})
 	}
 	switch d.state {
@@ -126,6 +211,7 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		}
 	case StateDone:
 		v.Pool = append([]Card{}, me.picks...)
+		d.playView(&v, you, now)
 	}
 	return v, true
 }
@@ -159,3 +245,59 @@ func (d *Draft) Preview() Preview {
 	}
 	return p
 }
+
+// playView fills in what follows the picks for one seat.
+func (d *Draft) playView(v *View, you int, now time.Time) {
+	p := d.play
+	if p == nil {
+		return
+	}
+	if p.built[you] {
+		own := p.decks[you].clone()
+		v.Deck = &own
+	}
+	if p.phase == PhaseBuilding {
+		v.Build = &BuildView{
+			Deadline:  p.buildDeadline,
+			Now:       now,
+			Seconds:   int(d.buildTimeout() / time.Second),
+			DeckMin:   limitedDeckMin,
+			Submitted: p.built[you] && !p.auto[you],
+		}
+		return
+	}
+	if len(p.rounds) == 0 {
+		return
+	}
+	pv := &PlayView{
+		Round:     len(p.rounds),
+		Rounds:    MatchRounds,
+		Matches:   make([][]MatchView, 0, len(p.rounds)),
+		Standings: d.Standings(),
+	}
+	for _, round := range p.rounds {
+		row := make([]MatchView, 0, len(round))
+		for _, m := range round {
+			row = append(row, matchView(m))
+		}
+		pv.Matches = append(pv.Matches, row)
+	}
+	if p.phase == PhaseRounds {
+		for _, m := range p.rounds[len(p.rounds)-1] {
+			if !m.has(you) {
+				continue
+			}
+			mine := matchView(m)
+			pv.Yours = &mine
+			if m.Table != uuid.Nil && !m.Done {
+				table := m.Table
+				pv.Table = &table
+			}
+		}
+	}
+	v.Play = pv
+}
+
+// limitedDeckMin is the smallest limited deck (CR 100.2b), read from
+// the format's row.
+var limitedDeckMin = game.FormatLimited.Spec().Deck.MinCards

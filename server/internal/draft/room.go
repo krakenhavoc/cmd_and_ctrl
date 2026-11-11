@@ -59,6 +59,9 @@ type Room struct {
 	// decorate lets the lobby add what the draft does not know to a
 	// view (the invite, for the host).
 	decorate func(seat uuid.UUID, v *View)
+	// wake is signalled after every change, for the lobby's watcher: it
+	// opens the tables the rounds need (Wake).
+	wake chan struct{}
 }
 
 // NewRoom wraps a draft. src is what Start draws the packs from.
@@ -69,6 +72,7 @@ func NewRoom(d *Draft, src Source) *Room {
 		subs:   map[uuid.UUID]map[Subscriber]struct{}{},
 		leftAt: map[uuid.UUID]time.Time{},
 		clock:  time.Now,
+		wake:   make(chan struct{}, 1),
 	}
 	r.after = func(wait time.Duration, f func()) func() {
 		t := time.AfterFunc(wait, f)
@@ -110,6 +114,8 @@ type Status struct {
 	Humans    int
 	Connected int
 	Solo      bool
+	// Phase is where the draft is after its picks (limited.go).
+	Phase Phase
 	// LastHuman is the last time a person did something here: took a
 	// seat, picked, or opened or closed a socket.
 	LastHuman time.Time
@@ -125,6 +131,7 @@ func (r *Room) Status() Status {
 		Humans:    r.d.Humans(),
 		Connected: len(r.subs),
 		Solo:      r.d.Config().Solo,
+		Phase:     r.d.Phase(),
 		LastHuman: r.lastHuman,
 		Closed:    r.closed,
 	}
@@ -180,7 +187,16 @@ func (r *Room) changedLocked() {
 		}
 	}
 	r.armLocked()
+	select {
+	case r.wake <- struct{}{}:
+	default:
+	}
 }
+
+// Wake is signalled after every change to the draft. It is how the
+// lobby learns that a round has begun and needs its tables, without
+// the room ever calling the lobby. One receiver.
+func (r *Room) Wake() <-chan struct{} { return r.wake }
 
 // dueLocked is when the Picker should pick for a seat that has not
 // picked: at the deadline, or AwayGrace into the pick (or after its
@@ -208,6 +224,12 @@ func (r *Room) armLocked() {
 	}
 	r.gen++
 	if r.closed {
+		return
+	}
+	if deadline := r.d.BuildDeadline(); !deadline.IsZero() {
+		// The build timer (limited.go).
+		gen := r.gen
+		r.stop = r.after(max(deadline.Sub(r.clock()), 0), func() { r.fire(gen) })
 		return
 	}
 	pending := r.d.Pending()
@@ -247,6 +269,7 @@ func (r *Room) tickLocked() {
 		return
 	}
 	now := r.clock()
+	r.d.ExpireBuild(now)
 	// Each AutoPick can pass the packs and start a new pick, so the
 	// pending list is read again after every one. A seat is picked for
 	// at most once per pick, and a pick that begins at now is not yet
@@ -430,4 +453,58 @@ func (r *Room) Pools() (pools [][]Card, done bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.d.Pools(), r.d.State() == StateDone
+}
+
+// SubmitDeck submits a person's deck for the rounds.
+func (r *Room) SubmitDeck(seat uuid.UUID, built LimitedDeck) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return ErrNotBuilding
+	}
+	if err := r.d.SubmitDeck(seat, built, r.clock()); err != nil {
+		return err
+	}
+	r.lastHuman = r.clock()
+	r.changedLocked()
+	return nil
+}
+
+// SetTable records the table the lobby opened for a match.
+func (r *Room) SetTable(round, index int, table uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return ErrNoSuchMatch
+	}
+	if err := r.d.SetTable(round, index, table); err != nil {
+		return err
+	}
+	r.changedLocked()
+	return nil
+}
+
+// ReportMatch records a played match's result.
+func (r *Room) ReportMatch(round, index, winner, winsA, winsB int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed {
+		return ErrNoSuchMatch
+	}
+	if err := r.d.ReportMatch(round, index, winner, winsA, winsB, r.clock()); err != nil {
+		return err
+	}
+	// A result is a person's doing: the table it came from was played.
+	r.lastHuman = r.clock()
+	r.changedLocked()
+	return nil
+}
+
+// Touch notes that a person is still here, for the idle sweep: they
+// are playing a match at one of the draft's tables, which the draft's
+// own sockets do not see.
+func (r *Room) Touch() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.lastHuman = r.clock()
 }

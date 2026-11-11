@@ -62,6 +62,11 @@ type createDraftRequest struct {
 	Seats int `json:"seats"`
 	// PickSeconds is the pick timer, 15 to 300; zero is 60.
 	PickSeconds int `json:"pick_seconds"`
+	// BuildSeconds is the deckbuilding timer, 120 to 1800; zero is 900.
+	BuildSeconds int `json:"build_seconds"`
+	// BestOf is the length of the draft's matches: 1 (the default) or
+	// 3.
+	BestOf int `json:"best_of"`
 }
 
 type joinDraftRequest struct {
@@ -97,6 +102,8 @@ func registerDraftRoutes(mux interface {
 	mux.Handle("POST /draft/{id}/start", handlerFunc(c, startDraft))
 	mux.Handle("POST /draft/{id}/leave", handlerFunc(c, leaveDraft))
 	mux.Handle("GET /draft/{id}/ws", handlerFunc(c, draftSocket))
+	// The seat at the table of the caller's match (#5440).
+	mux.Handle("POST /draft/{id}/match", handlerFunc(c, seatDraftMatch))
 }
 
 // draftCredential reads a draft seat's token: the Bearer header, then
@@ -235,6 +242,18 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 			}
 		}
 
+		build := time.Duration(0)
+		if body.BuildSeconds != 0 {
+			build = time.Duration(body.BuildSeconds) * time.Second
+			if build < draft.MinBuildTimeout || build > draft.MaxBuildTimeout {
+				return httpError(http.StatusBadRequest, fmt.Sprintf("build_seconds is %d (want %d to %d)", body.BuildSeconds,
+					int(draft.MinBuildTimeout/time.Second), int(draft.MaxBuildTimeout/time.Second)))
+			}
+		}
+		if body.BestOf != 0 && body.BestOf != 1 && body.BestOf != 3 {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("best_of is %d (want 1 or 3)", body.BestOf))
+		}
+
 		// The set: only one the draftable check passes (ADR 0222 §4), by
 		// the same list GET /draft/sets serves. A draft never hands
 		// someone a card that does not work.
@@ -250,16 +269,18 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 
 		identity, source := draftCaller(c, r)
 		spec := DraftSpec{
-			Name:        body.Name,
-			Set:         status.Code,
-			SetName:     status.Name,
-			Booster:     string(status.Booster),
-			Source:      draft.NewPoolSource(c.Cards, pool),
-			Mode:        mode,
-			Seats:       seats,
-			PickTimeout: timeout,
-			HostName:    "Player",
-			Solo:        true,
+			Name:         body.Name,
+			Set:          status.Code,
+			SetName:      status.Name,
+			Booster:      string(status.Booster),
+			Source:       draft.NewPoolSource(c.Cards, pool),
+			Mode:         mode,
+			Seats:        seats,
+			PickTimeout:  timeout,
+			BuildTimeout: build,
+			BestOf:       body.BestOf,
+			HostName:     "Player",
+			Solo:         true,
 		}
 		if source != nil && identity.Populated() {
 			// A signed-in person: an invite link, and others may join.
@@ -426,8 +447,12 @@ func (f *draftFeed) Attach(out ws.FeedSink) (func(), error) {
 	return f.room.Attach(f.seat, draftSub{out})
 }
 
-// Handle takes the one frame a draft seat sends: its pick.
+// Handle takes the frames a draft seat sends: its pick, and the deck it
+// built.
 func (f *draftFeed) Handle(frame protocol.Frame) *protocol.ErrorPayload {
+	if frame.Kind == protocol.KindDraftDeck {
+		return f.handleDeck(frame)
+	}
 	if frame.Kind != protocol.KindDraftPick {
 		return &protocol.ErrorPayload{Code: protocol.CodeBadRequest, Message: "unknown or unsupported kind"}
 	}
@@ -455,4 +480,82 @@ func draftPickMessage(err error) string {
 		return "That pick does not match the pack you are holding."
 	}
 	return "That pick could not be made."
+}
+
+// maxDraftDeckCards bounds a draft_deck frame: no pool is this large.
+const maxDraftDeckCards = 200
+
+// handleDeck takes a seat's deck for the rounds.
+func (f *draftFeed) handleDeck(frame protocol.Frame) *protocol.ErrorPayload {
+	var body protocol.DraftDeckPayload
+	if err := json.Unmarshal(frame.Payload, &body); err != nil {
+		return &protocol.ErrorPayload{Code: protocol.CodeBadRequest, Message: "draft_deck payload is not valid"}
+	}
+	if len(body.Main) > maxDraftDeckCards || len(body.Basics) > len(draft.BasicLandNames) {
+		return &protocol.ErrorPayload{Code: protocol.CodeDraftDeckRefused, Message: "That deck could not be read."}
+	}
+	if err := f.room.SubmitDeck(f.seat, draft.LimitedDeck{Main: body.Main, Basics: body.Basics}); err != nil {
+		return &protocol.ErrorPayload{Code: protocol.CodeDraftDeckRefused, Message: draftDeckMessage(err)}
+	}
+	return nil
+}
+
+// draftDeckMessage is the sentence a player sees for a refused deck.
+func draftDeckMessage(err error) string {
+	switch {
+	case errors.Is(err, draft.ErrDeckIllegal):
+		msg := strings.TrimPrefix(err.Error(), draft.ErrDeckIllegal.Error()+": ")
+		if msg == "" {
+			return "That deck is not legal."
+		}
+		return strings.ToUpper(msg[:1]) + msg[1:] + "."
+	case errors.Is(err, draft.ErrNotBuilding):
+		return "Decks are not being built right now."
+	}
+	return "That deck could not be submitted."
+}
+
+// seatDraftMatch handles POST /draft/{id}/match: it seats the caller at
+// the table of their match in the round in play. The table seat's
+// session is minted from the draft seat's and set as the session
+// cookie, which is what the game page and its socket read, exactly as
+// a join's is. A signed-in person stays signed in: the seat session
+// carries their account, as every table seat's does.
+func seatDraftMatch(c Config, w http.ResponseWriter, r *http.Request) error {
+	p, _, err := draftSeat(c, r)
+	if err != nil {
+		return err
+	}
+	meta, playerID, err := c.Lobby.DraftMatchSeat(p.DraftID, p.PlayerID)
+	if err != nil {
+		if errors.Is(err, ErrDraftNoMatch) {
+			return httpError(http.StatusConflict, "you have no match to play right now")
+		}
+		return err
+	}
+	name := p.Name
+	for _, s := range meta.Players {
+		if s.PlayerID == playerID {
+			name = s.Name
+		}
+	}
+	seat := withIdentity(auth.Principal{
+		Role:     auth.RolePlayer,
+		UserID:   p.UserID,
+		GameID:   meta.ID,
+		PlayerID: playerID,
+		Name:     name,
+	}, principalIdentity(p))
+	tok, issued, err := issueFor(r.Context(), c, seat, &p)
+	if err != nil {
+		return err
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+	return writeJSON(w, http.StatusOK, sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &meta,
+		PlayerID:  playerID,
+	})
 }

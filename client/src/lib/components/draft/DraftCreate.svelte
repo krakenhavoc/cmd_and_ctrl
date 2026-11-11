@@ -57,6 +57,8 @@
   let modeChosen = $state<DraftMode | null>(null);
   const mode = $derived(modeChosen ?? defaultPickMode(seats));
   let name = $state("");
+  // The length of the draft's matches (#5440): one game, or best of three.
+  let bestOf = $state<1 | 3>(1);
   let busy = $state(false);
   let error = $state("");
   let notDraftable = $state(false);
@@ -100,7 +102,7 @@
     error = "";
     notDraftable = false;
     try {
-      const made = await createDraft({ set: setCode, mode, seats, name });
+      const made = await createDraft({ set: setCode, mode, seats, name, best_of: bestOf });
       rememberDraftSeat(made.draft.id, made);
       navigate(draftHash(made.draft.id));
     } catch (err) {
@@ -115,7 +117,7 @@
 <Page
   eyebrow="Draft"
   title={L.draftNewTitle}
-  lede="Open packs of one set, take a card, pass the rest on. Three packs each, and the cards you take are your pool."
+  lede="Open packs of one set, take a card, pass the rest on. Three packs each, and the cards you take are your pool: build a 40-card deck from it and play three rounds."
   width="prose"
 >
   <div class="stack">
@@ -123,6 +125,13 @@
       <p class="held">
         <span>You have a draft open in this browser.</span>
         <a class="link-arrow" href={draftHash(held[held.length - 1])}>{L.draftReturn} →</a>
+      </p>
+    {/if}
+
+    {#if signedIn}
+      <p class="held">
+        <span>The drafts you have finished are kept for you.</span>
+        <a class="link-arrow" href="#/drafts">{L.myDrafts} →</a>
       </p>
     {/if}
 
@@ -211,6 +220,41 @@
               <span class="mode-name">{L.draftPickTwo}</span>
               <span class="mode-what"
                 >Take two cards from each pack: a quicker draft, made for four seats.</span
+              >
+            </span>
+          </label>
+        </fieldset>
+
+        <fieldset class="field modes" disabled={busy}>
+          <legend>{L.draftMatchLength}</legend>
+          <label class="mode" class:on={bestOf === 1}>
+            <input
+              type="radio"
+              name="draft-best-of"
+              value="1"
+              checked={bestOf === 1}
+              onchange={() => (bestOf = 1)}
+            />
+            <span class="mode-text">
+              <span class="mode-name">{L.matchBestOfOne}</span>
+              <span class="mode-what"
+                >After the draft, three rounds of one game each with the deck you build.</span
+              >
+            </span>
+          </label>
+          <label class="mode" class:on={bestOf === 3}>
+            <input
+              type="radio"
+              name="draft-best-of"
+              value="3"
+              checked={bestOf === 3}
+              onchange={() => (bestOf = 3)}
+            />
+            <span class="mode-text">
+              <span class="mode-name">{L.matchBestOfThree}</span>
+              <span class="mode-what"
+                >Each round is first to two games, with sideboarding from the rest of your pool
+                between them.</span
               >
             </span>
           </label>

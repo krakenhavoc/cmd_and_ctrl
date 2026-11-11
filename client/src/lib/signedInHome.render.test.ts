@@ -462,8 +462,9 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     expect(empty.querySelector("p")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
       "You're not at a table yet. Paste an invite code above, or create a table and invite your pod.",
     );
-    // ADR 0156 §6: Practice game and Bring a deck; the No pod yet? card
-    // only with an invite (frontDoor.render.test.ts covers both cases).
+    // ADR 0156 §6: Practice game and Bring a deck, and the draft's card
+    // (ADR 0222 §6, #5440); the No pod yet? card only with an invite
+    // (frontDoor.render.test.ts covers both cases).
     const links = [...container.querySelectorAll(".empty-cards a")].map((a) => [
       a.textContent?.trim(),
       a.getAttribute("href"),
@@ -471,6 +472,7 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     expect(links).toEqual([
       ["Start practice", "#/practice"],
       ["Decks", "#/decks"],
+      ["Start a draft", "#/draft"],
     ]);
     // The join box and + New table are in the head above it.
     expect(container.querySelector('input[aria-label="invite code or link"]')).not.toBeNull();

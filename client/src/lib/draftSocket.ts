@@ -40,6 +40,8 @@ export const DRAFT_CLOSED_REASON = "draft closed";
 
 /** The refusal of a `draft_pick`. */
 export const DRAFT_PICK_REFUSED = ErrorCode.DraftPickRefused;
+/** The code of a deck the draft would not take (#5440). */
+export const DRAFT_DECK_REFUSED = ErrorCode.DraftDeckRefused;
 
 // The same cadence as the game socket's heartbeat (ws.ts, #3047).
 export const DRAFT_HEARTBEAT_INTERVAL_MS = 5_000;
@@ -126,6 +128,14 @@ export class DraftSocket {
    */
   pick(cards: readonly string[]): string | null {
     return this.send("draft_pick", { cards: [...cards] });
+  }
+
+  /**
+   * Sends the viewer's deck for the rounds (#5440). Returns the frame's
+   * id, or null when the socket is not open and nothing was sent.
+   */
+  deck(main: readonly string[], basics: Readonly<Record<string, number>>): string | null {
+    return this.send("draft_deck", { main: [...main], basics: { ...basics } });
   }
 
   private send(kind: Kind, payload: unknown): string | null {

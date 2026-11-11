@@ -23,6 +23,21 @@ const (
 	// FormatStandard is constructed Standard, one against one
 	// (ADR 0222 owner decision 2).
 	FormatStandard Format = "standard"
+	// FormatLimited is limited play with a drafted deck, one against
+	// one (ADR 0222 §2 and §6, #5440). A table of it is opened by a
+	// draft for one of its matches, never made by hand (DraftOnly).
+	//
+	//	CR 100.2b: "In limited play (a way of playing in which each
+	//	player gets the same quantity of unopened Magic product such as
+	//	booster packs and creates their own deck using only this product
+	//	and basic land cards), each deck has a minimum deck size of 40
+	//	cards. A limited deck may contain as many duplicates of a card
+	//	as are included with the product."
+	//
+	//	CR 100.4b: "In limited play involving individual players, all
+	//	cards in a player's card pool not included in their deck are in
+	//	that player's sideboard."
+	FormatLimited Format = "limited"
 )
 
 // DeckRules is a format's deck construction rules, as numbers. The deck
@@ -40,6 +55,15 @@ type DeckRules struct {
 	// SideboardSize is the most cards a sideboard may hold (CR 100.4a),
 	// 0 for a format that uses none (CR 903.5e).
 	SideboardSize int
+	// AnySideboard says the sideboard has no size limit: in limited
+	// play it is whatever of the card pool the deck leaves out (CR
+	// 100.4b), so SideboardSize is not read.
+	AnySideboard bool
+	// FromPool says a deck is built from the player's own card pool
+	// and basic lands (CR 100.2b), not from a format's card pool: the
+	// deck check is deck.ValidateLimited, which takes that pool, and
+	// Legality is not read.
+	FromPool bool
 	// Legality is the key of Scryfall's legalities map the format's
 	// card pool is read from.
 	Legality string
@@ -62,6 +86,11 @@ type FormatSpec struct {
 	// match.go): best-of-one unless the table asks for best-of-three.
 	// False for Commander, whose tables have no match at all.
 	Matches bool
+	// DraftOnly says a table of the format is opened by a draft for one
+	// of its matches (ADR 0222 §6) and cannot be made or chosen by
+	// hand: nobody has a limited deck without a card pool to check it
+	// against.
+	DraftOnly bool
 	// Deck is the format's deck construction rules.
 	Deck DeckRules
 }
@@ -85,11 +114,34 @@ var formats = []FormatSpec{
 		Matches:      true,
 		Deck:         DeckRules{MinCards: 60, MaxCopies: 4, SideboardSize: 15, Legality: "standard"},
 	},
+	{
+		// 20 life (CR 103.4), two seats (ADR 0222 owner decision 5), no
+		// commander. No copy limit beyond the pool's own (CR 100.2b),
+		// which MaxCopies 0 leaves to the pool check.
+		Format:       FormatLimited,
+		Name:         "Limited",
+		StartingLife: 20,
+		MaxSeats:     2,
+		Matches:      true,
+		DraftOnly:    true,
+		Deck:         DeckRules{MinCards: 40, AnySideboard: true, FromPool: true},
+	},
 }
 
 // Formats lists every format in picker order. The slice is a copy.
 func Formats() []FormatSpec {
 	return append([]FormatSpec(nil), formats...)
+}
+
+// SideboardCap is the most sideboard cards a seat of the format may
+// bring to the table: the engine's cap of MaxSideboardSize (ADR 0191
+// §5), or no cap at all in a format whose sideboard is the rest of a
+// card pool (CR 100.4b). ok is false for no cap.
+func (s FormatSpec) SideboardCap() (n int, ok bool) {
+	if s.Deck.AnySideboard {
+		return 0, false
+	}
+	return MaxSideboardSize, true
 }
 
 // LookupFormat is the spec of f. The empty Format is Commander, which
@@ -220,4 +272,24 @@ func (g *Game) hasCommanderLocked() bool {
 		return found
 	})
 	return found
+}
+
+// OpenLimited makes an empty table in its lobby a limited table for one
+// match of a draft (ADR 0222 §6): the format, its starting life and the
+// match length. It is the only way a table gets a DraftOnly format;
+// UpdateSettings refuses one. bestOf is 1 or 3.
+func (g *Game) OpenLimited(bestOf int) error {
+	if err := validateBestOf(bestOf); err != nil {
+		return err
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateLobby || len(g.Seats) > 0 {
+		return ErrGameNotInLobby
+	}
+	spec := FormatLimited.Spec()
+	g.Settings.Format = storedFormat(spec.Format)
+	g.Settings.StartingLife = spec.StartingLife
+	g.Settings.BestOf = storedBestOf(bestOf)
+	return nil
 }

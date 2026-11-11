@@ -1,6 +1,8 @@
 <script lang="ts">
   // DraftRoom — one draft, for a browser that holds a seat in it (ADR
-  // 0222 §5, #5438): the lobby, the picks and the finished pool.
+  // 0222 §5, #5438): the lobby, the picks, and what follows them
+  // (#5440): the deck built from the pool, and the rounds it is played
+  // in.
   //
   // It owns the draft socket. Every `draft` frame is the whole view for
   // this seat and replaces the last one; the page keeps no state of its
@@ -10,7 +12,6 @@
   import { onMount, tick } from "svelte";
 
   import {
-    cardCount,
     DRAFT_NEW_HASH,
     draftErrorMessage,
     draftInviteURL,
@@ -25,6 +26,8 @@
     pickModeName,
     previewDraft,
     progressLine,
+    rememberDraftMatch,
+    seatDraftMatch,
     secondsLeft,
     SERVER_FULL_CODE,
     startDraft,
@@ -34,13 +37,24 @@
     waitingLine,
     type DraftView,
   } from "../../draft";
+  import { buildSecondsLeft } from "../../draftBuild";
+  import { matchLengthName, roundsAnnouncement } from "../../draftRounds";
   import { boosterName, PACKS_ARE_APPROXIMATIONS } from "../../draftSets";
-  import { DraftSocket, type DraftError, type DraftSocketStatus } from "../../draftSocket";
+  import {
+    DRAFT_DECK_REFUSED,
+    DraftSocket,
+    type DraftError,
+    type DraftSocketStatus,
+  } from "../../draftSocket";
   import { L } from "../../labels";
   import { navigate } from "../../router";
+  import { signedInUserID } from "../../myGames";
+  import { session, setSession } from "../../session";
   import Icon from "../Icon.svelte";
   import Page from "../Page.svelte";
+  import DraftBuild from "./DraftBuild.svelte";
   import DraftPack from "./DraftPack.svelte";
+  import DraftRounds from "./DraftRounds.svelte";
   import DraftPool from "./DraftPool.svelte";
   import DraftSeats from "./DraftSeats.svelte";
 
@@ -62,12 +76,26 @@
   // the frame was built, less the time passed here since it arrived.
   let frameAt = $state(0);
   let clock = $state(0);
+  // The build timer (#5440) counts the same way, from `build`.
+  const building = $derived(view?.state === "done" && view.phase === "building");
   const seconds = $derived(
-    view && view.state === "picking" ? secondsLeft(view, clock - frameAt) : null,
+    !view
+      ? null
+      : view.state === "picking"
+        ? secondsLeft(view, clock - frameAt)
+        : building
+          ? buildSecondsLeft(view.build, clock - frameAt)
+          : null,
   );
 
   let pendingPick = $state<string | null>(null);
   let pickError = $state("");
+  // A deck on its way to the server, and the server's sentence for one
+  // it refused (#5440).
+  let pendingDeck = $state<string | null>(null);
+  let deckError = $state("");
+  // A finished draft is kept for a signed-in person (ADR 0222 §9).
+  const kept = $derived(signedInUserID($session) !== null);
   let serverNote = $state("");
   let announce = $state("");
 
@@ -112,7 +140,13 @@
       pendingPick = null;
       pickError = "";
     }
-    const said = viewAnnouncement(prev, next);
+    // A deck that landed, or a build that ended, is no longer on its way.
+    if (pendingDeck !== null && (next.phase !== "building" || next.build?.submitted)) {
+      pendingDeck = null;
+      deckError = "";
+    }
+    // After the picks the news is the build's and the rounds'.
+    const said = next.phase ? roundsAnnouncement(prev, next) : viewAnnouncement(prev, next);
     if (said) announce = said;
     // The pick landed: the pack and its buttons are gone, so focus goes
     // to the line that says what happens next instead of to nowhere.
@@ -123,7 +157,10 @@
 
   function onStatus(next: DraftSocketStatus): void {
     status = next;
-    if (next !== "connected") pendingPick = null;
+    if (next !== "connected") {
+      pendingPick = null;
+      pendingDeck = null;
+    }
     if (next === "gone") {
       forgetDraftSeat(id);
       ongone();
@@ -136,6 +173,11 @@
     if (err.code === SERVER_FULL_CODE) {
       serverNote =
         err.message || "The server is full right now. Please try again in a few minutes.";
+      return;
+    }
+    if (err.code === DRAFT_DECK_REFUSED || (pendingDeck !== null && err.id === pendingDeck)) {
+      pendingDeck = null;
+      deckError = err.message || "That deck was refused. Check it and submit again.";
       return;
     }
     pendingPick = null;
@@ -166,7 +208,8 @@
 
   // The countdown's tick, only while a timer is running.
   $effect(() => {
-    if (!view || view.state !== "picking" || !view.deadline) return;
+    const ticking = view?.state === "picking" ? !!view.deadline : building && !!view?.build;
+    if (!ticking) return;
     const t = setInterval(() => (clock = performance.now()), 250);
     return () => clearInterval(t);
   });
@@ -189,6 +232,40 @@
       return;
     }
     pendingPick = sent;
+  }
+
+  function submitDeck(main: string[], basics: Record<string, number>): void {
+    deckError = "";
+    const sent = sock?.deck(main, basics) ?? null;
+    if (!sent) {
+      deckError = "Not connected. Submit again once the connection is back.";
+      return;
+    }
+    pendingDeck = sent;
+  }
+
+  // Sits the viewer at their match's table and goes there. The server
+  // sets the table seat's session as the cookie the game page reads;
+  // the draft seat token stays in this browser, so the way back is this
+  // page.
+  async function playMatch(): Promise<void> {
+    if (busy) return;
+    busy = true;
+    actionError = "";
+    try {
+      const seat = await seatDraftMatch(id, token);
+      if (!seat.gameID) throw new Error("no table");
+      rememberDraftMatch(seat.gameID, id);
+      setSession(seat);
+      sock?.disconnect();
+      navigate(`#/games/${seat.gameID}`);
+    } catch (err) {
+      actionError = draftErrorMessage(
+        err,
+        "Couldn’t take your seat at the match. Try again in a moment.",
+      );
+      busy = false;
+    }
   }
 
   async function start(): Promise<void> {
@@ -226,10 +303,12 @@
   }
 
   function askLeave(): void {
-    // In the lobby leaving only frees the seat. Once picking has begun
-    // a bot takes it for the rest of the draft, so that asks first.
-    if (view?.state === "picking") confirmLeave = true;
-    else void leave();
+    // In the lobby leaving only frees the seat, and a finished draft
+    // has nothing left to lose. In between a bot takes the seat for the
+    // rest of the draft, so that asks first.
+    if (view?.state === "picking" || (view?.state === "done" && view.phase !== "finished")) {
+      confirmLeave = true;
+    } else void leave();
   }
 
   async function copyInvite(): Promise<void> {
@@ -253,12 +332,14 @@
       class="timer"
       class:urgent={isUrgent(seconds)}
       role="timer"
-      aria-label={L.draftTimer}
+      aria-label={building ? L.draftBuildTimer : L.draftTimer}
       data-seconds={seconds}
     >
       {#if isUrgent(seconds)}<Icon name="warn" size={14} />{/if}
       <span class="t-num">{clockText(seconds)}</span>
-      <span class="t-word">{isUrgent(seconds) ? "left, pick now" : "left"}</span>
+      <span class="t-word"
+        >{!isUrgent(seconds) ? "left" : building ? "left, submit now" : "left, pick now"}</span
+      >
     </span>
   {/if}
 {/snippet}
@@ -270,6 +351,7 @@
       {#if boosterName(view.booster)}<span class="chip">{boosterName(view.booster)}</span>{/if}
       <span class="chip">{pickModeName(view.mode)}</span>
       <span class="chip">{view.seats} seats</span>
+      {#if view.state === "done"}<span class="chip">{matchLengthName(view.best_of)}</span>{/if}
       {#if view.solo}<span class="chip">solo, against bots</span>{/if}
       {#if !closed}
         {#if live}
@@ -283,7 +365,7 @@
 {/snippet}
 
 {#snippet actions()}
-  {#if view && view.state !== "done" && !closed}
+  {#if view && !closed}
     <button type="button" class="btn ghost" disabled={busy} onclick={askLeave}>
       {L.draftLeave}
     </button>
@@ -337,7 +419,12 @@
         <div class="card ask" role="group" aria-label="leave this draft?">
           <p class="help strong">Leave this draft?</p>
           <p class="help">
-            A bot takes your seat for the rest of the draft, and you can’t come back to it.
+            {#if view.state === "done"}
+              A bot takes your seat and plays on with your deck, and you can’t come back to it. If
+              you are in the middle of a match, you concede it.
+            {:else}
+              A bot takes your seat for the rest of the draft, and you can’t come back to it.
+            {/if}
           </p>
           <div class="frow">
             <button type="button" class="btn" disabled={busy} onclick={() => void leave()}>
@@ -409,7 +496,8 @@
                 {view.mode === "pick_two"
                   ? "Three packs each, two cards from every pack."
                   : "Three packs each, one card from every pack."}
-                Each pick has {view.pick_seconds ?? 60} seconds.
+                Each pick has {view.pick_seconds ?? 60} seconds. Then everyone builds a 40-card deck and
+                plays three rounds, {matchLengthName(view.best_of).toLowerCase()}.
               </p>
               <div class="frow">
                 <button
@@ -470,28 +558,25 @@
             <DraftSeats {view} />
           </section>
         </div>
+      {:else if building}
+        <DraftBuild
+          {view}
+          {live}
+          pending={pendingDeck !== null}
+          error={deckError}
+          onsubmit={submitDeck}
+          {timer}
+        />
       {:else}
-        <section class="card done" data-testid="draft-done">
-          <h2 class="headline">{L.draftFinished}</h2>
-          <p class="help">
-            You drafted {cardCount((view.pool ?? view.picks ?? []).length)} from
-            {view.set_name ?? view.set.toUpperCase()}.
-          </p>
-          <div class="next">
-            <h3>{L.draftDeckbuildingNext}</h3>
-            <p class="help">
-              Building a deck from this pool and playing it is not ready yet. It is the next part of
-              drafting to arrive. For now this is where a draft stops. The pool is not saved to your
-              account: it is here while the draft stays open, and gone once it closes.
-            </p>
-          </div>
-          {#if closed}
-            <p class="help">
-              This draft has closed. Your pool stays here until you leave the page.
-            </p>
-          {/if}
-          <a class="link-arrow" href={DRAFT_NEW_HASH}>{L.draftNewDraft} →</a>
-        </section>
+        <DraftRounds
+          {view}
+          {live}
+          {busy}
+          error=""
+          {closed}
+          {kept}
+          onplay={() => void playMatch()}
+        />
 
         <section aria-labelledby="draft-pool-h">
           <h2 id="draft-pool-h">
@@ -561,9 +646,6 @@
   }
   .progress .to {
     color: var(--fg-muted);
-  }
-  h2.headline {
-    font-size: 24px;
   }
   h3 {
     margin: 0 0 6px;
@@ -648,21 +730,11 @@
     font-size: 12px;
   }
   .ask,
-  .waiting,
-  .done {
+  .waiting {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
-  }
-  .done .headline {
-    margin: 0;
-  }
-  .next {
-    padding: 12px 14px;
-    border-radius: var(--radius);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
   }
   .under {
     margin-top: 22px;

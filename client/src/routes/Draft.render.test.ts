@@ -11,9 +11,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tick } from "svelte";
 
 import Draft from "./Draft.svelte";
-import { rememberDraftSeat, storedDraftSeat, type DraftCard, type DraftView } from "../lib/draft";
+import {
+  draftOfMatch,
+  rememberDraftSeat,
+  storedDraftSeat,
+  type DraftCard,
+  type DraftView,
+} from "../lib/draft";
 import { PACKS_ARE_APPROXIMATIONS } from "../lib/draftSets";
 import { L } from "../lib/labels";
+import { currentSession, setSession } from "../lib/session";
 import { cleanup, flushSync, render } from "../lib/test/render.svelte";
 
 const ID = "6f1c2a9e-0000-4000-8000-000000000000";
@@ -914,42 +921,370 @@ describe("another seat's cards (CR 905.1c)", () => {
   });
 });
 
-// ---- Done ----
+// ---- After the picks: the build and the rounds (#5440) ----
+
+const FOREST = card("p9", "Forest", {
+  colors: [],
+  mana_cost: undefined,
+  mana_value: 0,
+  type_line: "Basic Land — Forest",
+  basic: true,
+});
+
+const afterPicks = (over: Partial<DraftView> = {}): DraftView =>
+  view({
+    state: "done",
+    seq: 80,
+    pack: undefined,
+    take: 0,
+    deadline: undefined,
+    now: undefined,
+    picks: PACK,
+    pool: [...PACK, FOREST],
+    best_of: 1,
+    ...over,
+  });
+
+describe("building a deck", () => {
+  const building = (over: Partial<DraftView> = {}): DraftView =>
+    afterPicks({
+      phase: "building",
+      build: {
+        deadline: "2026-11-11T19:15:00Z",
+        now: "2026-11-11T19:00:00Z",
+        seconds: 900,
+        deck_min: 40,
+        submitted: false,
+      },
+      players: [
+        { seat: 0, name: "Ian", host: true, connected: true, picked: 4 },
+        { seat: 1, name: "Bot 1", bot: true, connected: true, picked: 4, built: true },
+        { seat: 2, name: "Sam", connected: true, picked: 4 },
+        { seat: 3, name: "Bot 3", bot: true, connected: true, picked: 4, built: true },
+      ],
+      ...over,
+    });
+  const decks = (): { id: string; payload: { main: string[]; basics: Record<string, number> } }[] =>
+    socket()
+      .sent.map((raw) => JSON.parse(raw))
+      .filter((f) => f.kind === "draft_deck");
+  const zone = (c: HTMLElement, id: "draft-deck" | "draft-side"): HTMLElement =>
+    c.querySelector(`[data-testid="${id}"]`)!;
+
+  it("opens on the whole pool in the sideboard, with the build timer and the count", async () => {
+    const c = await room(building());
+    expect(text(c.querySelector("#draft-build-h"))).toBe(L.draftBuildDeck);
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 0`);
+    expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 4`);
+    const timer = c.querySelector(`[aria-label="${L.draftBuildTimer}"]`)!;
+    expect(timer.getAttribute("data-seconds")).toBe("900");
+    expect(text(timer)).toContain("15:00");
+    expect(c.querySelector(`[aria-label="${L.draftTimer}"]`)).toBeNull();
+    expect(text(c.querySelector('[data-testid="draft-deck-count"]'))).toContain("0/40");
+    // Below the minimum the one primary is disabled and the page says why.
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(true);
+    expect(text(c.querySelector('[data-testid="draft-build-status"]'))).toBe(
+      "Your deck has 0 cards. Add 40 more to reach 40.",
+    );
+    expect(text(c.querySelector('[data-testid="draft-announce"]'))).toBe(
+      "The picks are done. Build your deck.",
+    );
+  });
+
+  it("moves a card with a click, adds basics with the steppers, and submits the deck", async () => {
+    const c = await room(building());
+    // Each card is a button named for what a click does and for the card.
+    const add = [...zone(c, "draft-side").querySelectorAll("button")].find((b) =>
+      b.getAttribute("aria-label")!.startsWith("Add to deck: Shoreline Looter, costs "),
+    )!;
+    expect(add.getAttribute("aria-label")).toContain("Creature — Rat Rogue");
+    expect(add.getAttribute("draggable")).toBe("true");
+    click(add);
+    expect(zone(c, "draft-deck").querySelector("button")!.getAttribute("aria-label")).toMatch(
+      /^Move to sideboard: Shoreline Looter/,
+    );
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 1`);
+    expect(text(zone(c, "draft-deck"))).toContain("Shoreline Looter");
+    expect(text(zone(c, "draft-side"))).not.toContain("Shoreline Looter");
+    // And back again.
+    click(zone(c, "draft-deck").querySelector("button")!);
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 0`);
+    click(zone(c, "draft-side").querySelector("button")!);
+
+    const forest = c.querySelector(`[aria-label="${L.draftBasicStepper("Forest")}"]`)!;
+    expect(
+      forest.querySelector<HTMLButtonElement>('[aria-label="one fewer Forest"]')!.disabled,
+    ).toBe(true);
+    const more = forest.querySelector<HTMLButtonElement>('[aria-label="one more Forest"]')!;
+    for (let i = 0; i < 38; i++) click(more);
+    expect(text(forest.querySelector("output"))).toBe("38");
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(true);
+    click(more);
+    expect(text(c.querySelector('[data-testid="draft-deck-count"]'))).toContain("40/40");
+    expect(text(c.querySelector('[data-testid="draft-build-status"]'))).toBe(
+      "40 cards. Ready to submit.",
+    );
+
+    click(button(c, L.draftSubmitDeck));
+    const sentDecks = decks();
+    expect(sentDecks).toHaveLength(1);
+    expect(sentDecks[0].payload).toEqual({ main: ["c1"], basics: { Forest: 39 } });
+    expect(button(c, "Submitting…").disabled).toBe(true);
+
+    // The server took it: the page says so, and who it is waiting for.
+    socket().frame(
+      "draft",
+      building({
+        seq: 81,
+        deck: { main: ["c1"], basics: { Forest: 39 } },
+        build: {
+          deadline: "2026-11-11T19:15:00Z",
+          now: "2026-11-11T19:02:00Z",
+          seconds: 900,
+          deck_min: 40,
+          submitted: true,
+        },
+      }),
+    );
+    expect(text(c.querySelector('[data-testid="draft-build-status"]'))).toBe(
+      "Deck submitted. Waiting for Sam. You can still change your deck.",
+    );
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(true);
+    // A change after submitting offers the button again.
+    click(more);
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(false);
+    expect(text(c.querySelector('[data-testid="draft-build-status"]'))).toContain(
+      "You changed your deck since you submitted it.",
+    );
+  });
+
+  it("opens on the deck the server already holds, as on a reload", async () => {
+    const c = await room(
+      building({ deck: { main: ["c1", "c2"], basics: { Island: 9, Swamp: 8 } } }),
+    );
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 2`);
+    expect(text(c.querySelector('[data-testid="draft-deck-count"]'))).toContain("19/40");
+    expect(text(c.querySelector(`[aria-label="${L.draftBasicStepper("Island")}"] output`))).toBe(
+      "9",
+    );
+  });
+
+  it("suggests a land count from the deck and sets the steppers to it", async () => {
+    const c = await room(building());
+    for (const b of [...zone(c, "draft-side").querySelectorAll("button")].slice(0, 2)) click(b);
+    // Two cards that are not lands: a blue one and a black one. 38 lands
+    // make 40, split evenly.
+    expect(text(c.querySelector('[data-testid="draft-land-suggestion"]'))).toBe(
+      "Suggested: 38 lands for 2 cards that are not lands: 19 Island, 19 Swamp.",
+    );
+    click(button(c, L.draftUseSuggestion));
+    expect(text(c.querySelector('[data-testid="draft-deck-count"]'))).toContain("40/40");
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(false);
+    expect(main(c).querySelector(`button[aria-label="${L.draftUseSuggestion}"]`)).toBeNull();
+    // The curve is one image with the counts in its name.
+    expect(
+      c
+        .querySelector('[role="img"][aria-label^="mana curve of your deck"]')!
+        .getAttribute("aria-label"),
+    ).toBe(`${L.draftCurve}: 0 at 0, 0 at 1, 1 at 2, 1 at 3, 0 at 4, 0 at 5, 0 at 6 or more`);
+  });
+
+  it("shows the server's sentence for a deck it refused", async () => {
+    const c = await room(building({ deck: { main: ["c1"], basics: { Forest: 39 } } }));
+    click(c.querySelector('[aria-label="one more Forest"]')!);
+    click(button(c, L.draftSubmitDeck));
+    const id = decks()[0].id;
+    socket().frame(
+      "error",
+      { code: "draft_deck_refused", message: "Decks are not being built right now." },
+      id,
+    );
+    expect(text(main(c).querySelector('[role="alert"]'))).toBe(
+      "Decks are not being built right now.",
+    );
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(false);
+  });
+
+  it("asks before leaving, because a bot plays on with the seat", async () => {
+    const c = await room(building());
+    click(button(c, L.draftLeave));
+    expect(text(main(c))).toContain("A bot takes your seat and plays on with your deck");
+    expect(sent("POST", `/draft/${ID}/leave`)).toHaveLength(0);
+  });
+});
+
+describe("the rounds", () => {
+  const TABLE = "0c0ffee0-0000-4000-8000-000000000000";
+  const rounds = (over: Partial<DraftView> = {}): DraftView =>
+    afterPicks({
+      phase: "rounds",
+      deck: { main: ["c1"], basics: { Forest: 39 } },
+      players: [
+        { seat: 0, name: "Ian", host: true, connected: true, picked: 4, built: true },
+        { seat: 1, name: "Bot 1", bot: true, connected: true, picked: 4, built: true },
+        { seat: 2, name: "Sam", connected: true, picked: 4, built: true },
+        { seat: 3, name: "Bot 3", bot: true, connected: true, picked: 4, built: true },
+      ],
+      play: {
+        round: 1,
+        rounds: 3,
+        matches: [
+          [
+            { a: 2, b: 0, done: false, wins_a: 0, wins_b: 0 },
+            { a: 1, b: 3, done: true, winner: 3, wins_a: 0, wins_b: 1, coin: true },
+          ],
+        ],
+        standings: [
+          { seat: 0, wins: 0, losses: 0, draws: 0 },
+          { seat: 1, wins: 0, losses: 1, draws: 0 },
+          { seat: 2, wins: 0, losses: 0, draws: 0 },
+          { seat: 3, wins: 1, losses: 0, draws: 0 },
+        ],
+        yours: { a: 2, b: 0, done: false, wins_a: 0, wins_b: 0 },
+        table: TABLE,
+      },
+      ...over,
+    });
+
+  it("names the opponent, every match and the win-loss table", async () => {
+    const c = await room(rounds());
+    const panel = c.querySelector('[data-testid="draft-rounds"]')!;
+    expect(text(panel.querySelector("h2"))).toBe(L.draftRound(1, 3));
+    expect(text(panel)).toContain("Best of one");
+    expect(text(c.querySelector('[data-testid="draft-your-match"]'))).toBe(
+      "You play Sam. Your table is ready.",
+    );
+    expect(button(c, L.draftPlayMatch).disabled).toBe(false);
+    const lines = [...c.querySelectorAll('[data-round="1"] li')].map(text);
+    expect(lines).toEqual([
+      "Sam against Ian: playing",
+      "Bot 3 beat Bot 1 1–0, decided by a coin toss",
+    ]);
+    const table = [...c.querySelectorAll('[data-testid="draft-records"] tbody tr')].map((tr) =>
+      [...tr.children].map(text).join(" | "),
+    );
+    expect(table).toEqual([
+      "Bot 3 bot | 1 | 0 | 0",
+      "Ian you | 0 | 0 | 0",
+      "Sam | 0 | 0 | 0",
+      "Bot 1 bot | 0 | 1 | 0",
+    ]);
+    expect(text(c.querySelector('[data-testid="draft-announce"]'))).toBe(
+      "Round 1 of 3. You play Sam. Your table is ready.",
+    );
+    // The pool is still there to read.
+    expect(text(c.querySelector("#draft-pool-h"))).toBe(`${L.draftYourPool} 4`);
+  });
+
+  it("waits for the table, and says so, before it can be played", async () => {
+    const v = rounds();
+    const c = await room({ ...v, play: { ...v.play!, table: undefined } });
+    expect(text(c.querySelector('[data-testid="draft-your-match"]'))).toBe(
+      "You play Sam. Your table is being set.",
+    );
+    expect(button(c, L.draftPlayMatch).disabled).toBe(true);
+  });
+
+  it("takes the seat at the match's table and goes there, remembering the way back", async () => {
+    const c = await room(rounds());
+    serve({
+      [`POST /draft/${ID}/match`]: {
+        body: {
+          token: "table-seat",
+          expires_at: "2099-01-01T00:00:00Z",
+          principal: { role: "player", game_id: TABLE, player_id: "pl-1", name: "Ian" },
+          player_id: "pl-1",
+          game: { id: TABLE },
+        },
+      },
+    });
+    click(button(c, L.draftPlayMatch));
+    await settle();
+    const asked = sent("POST", `/draft/${ID}/match`);
+    expect(asked).toHaveLength(1);
+    expect(asked[0].headers.Authorization).toBe("Bearer seat-token");
+    expect(location.hash).toBe(`#/games/${TABLE}`);
+    expect(draftOfMatch(TABLE)).toBe(ID);
+    expect(currentSession()?.token).toBe("table-seat");
+    // The draft seat is still this browser's: the draft page is the way back.
+    expect(storedDraftSeat(ID)?.token).toBe("seat-token");
+    setSession(null);
+  });
+
+  it("says why when the seat cannot be taken", async () => {
+    const c = await room(rounds());
+    serve({
+      [`POST /draft/${ID}/match`]: {
+        status: 409,
+        body: { error: "you have no match to play right now" },
+      },
+    });
+    click(button(c, L.draftPlayMatch));
+    await settle();
+    expect(text(main(c).querySelector('[role="alert"]'))).toBe(
+      "you have no match to play right now",
+    );
+    expect(location.hash).toBe("");
+  });
+
+  it("tells a seat that sits the round out, and one whose match is over", async () => {
+    const v = rounds();
+    const bye = await room({
+      ...v,
+      play: {
+        ...v.play!,
+        yours: { a: 0, bye: true, done: true, wins_a: 0, wins_b: 0 },
+        table: undefined,
+      },
+    });
+    expect(text(bye.querySelector('[data-testid="draft-your-match"]'))).toContain(
+      "You sit this round out",
+    );
+    expect(main(bye).querySelector("button.primary")).toBeNull();
+    cleanup();
+    FakeSocket.opened = [];
+    const won = await room({
+      ...v,
+      play: {
+        ...v.play!,
+        yours: { a: 2, b: 0, done: true, winner: 0, wins_a: 0, wins_b: 1 },
+        table: undefined,
+      },
+    });
+    expect(text(won.querySelector('[data-testid="draft-your-match"]'))).toBe(
+      "You beat Sam. The next round starts when the other matches finish.",
+    );
+  });
+});
 
 describe("a finished draft", () => {
   const done = (): DraftView =>
-    view({
-      state: "done",
-      seq: 80,
-      pack: undefined,
-      take: 0,
-      deadline: undefined,
-      now: undefined,
-      picks: PACK,
-      pool: [
-        ...PACK,
-        card("p9", "Forest", {
-          colors: [],
-          mana_cost: undefined,
-          mana_value: 0,
-          type_line: "Basic Land — Forest",
-          basic: true,
-        }),
-      ],
+    afterPicks({
+      phase: "finished",
+      deck: { main: ["c1"], basics: { Forest: 39 } },
+      play: {
+        round: 3,
+        rounds: 3,
+        matches: [[{ a: 0, b: 1, done: true, winner: 0, wins_a: 1, wins_b: 0 }]],
+        standings: [
+          { seat: 0, wins: 2, losses: 1, draws: 0 },
+          { seat: 1, wins: 1, losses: 2, draws: 0 },
+          { seat: 2, wins: 2, losses: 1, draws: 0 },
+          { seat: 3, wins: 1, losses: 2, draws: 0 },
+        ],
+      },
     });
 
-  it("shows the pool, grouped, and says deckbuilding comes next without faking it", async () => {
+  it("shows the record, the pool and the way to another draft, and says it is not kept for a guest", async () => {
     const c = await room(done());
-    const panel = c.querySelector('[data-testid="draft-done"]')!;
+    const panel = c.querySelector('[data-testid="draft-rounds"]')!;
     expect(text(panel.querySelector("h2"))).toBe(L.draftFinished);
-    expect(text(panel)).toContain(L.draftDeckbuildingNext);
-    expect(text(panel)).toContain("not ready yet");
-    expect(text(panel)).toContain("You drafted 4 cards from Bloomburrow.");
-    // It is coming, not here: nothing on the page pretends to build a deck.
-    expect(main(c).querySelectorAll("button")).toHaveLength(0);
+    expect(text(panel)).toContain("You finished 2–1 with 4 cards from Bloomburrow.");
+    expect(text(panel)).toContain("This draft is not kept");
     const links = [...main(c).querySelectorAll("a")].map(text);
-    expect(links.some((l) => /deck/i.test(l))).toBe(false);
     expect(links.some((l) => l.includes(L.draftNewDraft))).toBe(true);
+    expect(links.some((l) => l.includes(L.myDrafts))).toBe(false);
+    expect(main(c).querySelector("button.primary")).toBeNull();
 
     expect(text(c.querySelector("#draft-pool-h"))).toBe(`${L.draftYourPool} 4`);
     const groups = [...c.querySelectorAll('[data-testid="draft-pool"] section')];
@@ -960,12 +1295,7 @@ describe("a finished draft", () => {
       "land",
     ]);
     const imgs = [...c.querySelectorAll<HTMLImageElement>('[data-testid="draft-pool"] img')];
-    expect(imgs.map((i) => i.alt)).toEqual([
-      "Shoreline Looter",
-      "Bonecache Overseer",
-      "Fountainport Bell",
-      "Forest",
-    ]);
+    expect(imgs[0].alt).toBe("Shoreline Looter");
     expect(imgs[0].getAttribute("src")).toBe("/draft/image/sf-c1?size=normal");
     expect(c.querySelector(`[aria-label="${L.draftTimer}"]`)).toBeNull();
     expect(text(c.querySelector('[data-testid="draft-announce"]'))).toBe(`${L.draftFinished}.`);

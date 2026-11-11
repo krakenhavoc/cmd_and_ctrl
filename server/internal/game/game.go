@@ -1463,7 +1463,7 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 	if countCompanions(deck) > 1 {
 		return nil, ErrTooManyCompanions
 	}
-	if countSideboard(deck) > MaxSideboardSize {
+	if limit, capped := g.Settings.FormatSpec().SideboardCap(); capped && countSideboard(deck) > limit {
 		return nil, ErrSideboardTooLarge
 	}
 
@@ -1510,7 +1510,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	if countCompanions(deck) > 1 {
 		return ErrTooManyCompanions
 	}
-	if countSideboard(deck) > MaxSideboardSize {
+	if limit, capped := g.Settings.FormatSpec().SideboardCap(); capped && countSideboard(deck) > limit {
 		return ErrSideboardTooLarge
 	}
 

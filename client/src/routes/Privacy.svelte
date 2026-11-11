@@ -99,6 +99,17 @@
         "migration 0033 pods, pod_members, pod_invites, pod_suggestion_dismissals; pods/pods.go InviteTTL, MaxMembers, ForgetAccount",
     },
     {
+      // ADR 0222 §9, #5440: drafthistory/drafthistory.go, lobby/draft_matches.go.
+      what: "Your drafts",
+      details:
+        "A draft runs in the server’s memory: your seat, the packs, your picks, the deck you build and your matches are held there while it runs, and are gone when it closes or the server restarts. If you are signed in, we keep a record of a draft once its picks are done, for you to look back at: the draft’s name, the set, the date, the cards you picked, the deck you built from them, and for each round whether you won, lost or drew and the games of the match. For a round against another signed-in person the record points at their account, so the page can show the name they have now; it never stores their name. Only you can open your drafts. If you draft without signing in, nothing about your draft is kept after it closes. A match of a draft is not a table in your history and writes no game statistics.",
+      why: "So you can look back at what you drafted and how it went.",
+      howLong:
+        "A signed-in person’s record is kept until they delete their account. Deleting your account deletes your drafts, and where someone else’s draft names you as their opponent, that round no longer names anyone. A guest’s draft is kept only while it runs.",
+      source:
+        "migration 0038 draft_history, draft_history_matches; drafthistory/drafthistory.go Save, ForgetAccount; lobby/draft_matches.go recordDraft",
+    },
+    {
       // ADR 0215 privacy section, slice 2: schedule/schedule.go, lobby/scheduled_http.go.
       what: "Scheduled tables",
       details: `When you schedule a table or reserve a seat, we keep the plan and the list of people with seats or on the waitlist, in the order they reserved, until ${F.scheduledKeepHours} hours after the start. The host and the people on the list see the names on it; everyone else sees how many seats are open. A plan holds its name, its start and the host’s time zone, the number of players and the host’s table options.`,
@@ -345,10 +356,10 @@
       <h2 id="delete-info-title">Deleting your account</h2>
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
-        decks, deck-request history, playmats, settings, last table setup, notification settings,
-        stats settings and Discord sign-in, signs you out everywhere, and turns your seat in every
-        table that has ended into “Deleted player”, so the other players keep their games. It is
-        refused while you hold a seat at a table that has not ended.
+        decks, drafts, deck-request history, playmats, settings, last table setup, notification
+        settings, stats settings and Discord sign-in, signs you out everywhere, and turns your seat
+        in every table that has ended into “Deleted player”, so the other players keep their games.
+        It is refused while you hold a seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

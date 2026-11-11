@@ -9,7 +9,14 @@
   //
   // `cards` is the viewer's `picks` or `pool`. No other seat's cards
   // exist on the wire (CR 905.1c).
-  import { groupPool, stackCopies, type DraftCard, type PoolGroupKey } from "../../draft";
+  import {
+    cardAccessibleName,
+    DRAG_TYPE,
+    groupPool,
+    stackCopies,
+    type DraftCard,
+    type PoolGroupKey,
+  } from "../../draft";
   import ManaCost from "../board/ManaCost.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
 
@@ -17,8 +24,23 @@
     cards: DraftCard[];
     /** Draw the cards as images (a finished draft) instead of a list. */
     images?: boolean;
+    /**
+     * Makes every card a button (the deckbuilding screen, #5440): a
+     * click calls it with the card, and the card can be dragged. `verb`
+     * begins each button's name ("Add to deck: Lightning Bolt").
+     */
+    onpick?: (card: DraftCard) => void;
+    verb?: string;
+    /** What an empty pool says. */
+    empty?: string;
   }
-  const { cards, images = false }: Props = $props();
+  const { cards, images = false, onpick, verb = "", empty = "No picks yet." }: Props = $props();
+
+  // A dragged card carries its draft id; DraftBuild's zones read it.
+  function dragStart(ev: DragEvent, card: DraftCard): void {
+    ev.dataTransfer?.setData(DRAG_TYPE, card.id);
+    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
+  }
 
   const groups = $derived(groupPool(cards));
 
@@ -37,7 +59,7 @@
 </script>
 
 {#if groups.length === 0}
-  <p class="none">No picks yet.</p>
+  <p class="none">{empty}</p>
 {:else}
   <div class="groups" class:images data-testid="draft-pool">
     {#each groups as g (g.key)}
@@ -50,7 +72,23 @@
         {#if images}
           <ul class="imgs">
             {#each g.cards as card (card.id)}
-              <li><DraftCardArt {card} alt={card.name} /></li>
+              <li>
+                {#if onpick}
+                  <button
+                    type="button"
+                    class="move"
+                    aria-label={`${verb}: ${cardAccessibleName(card)}`}
+                    title={`${verb}: ${card.name}`}
+                    draggable="true"
+                    ondragstart={(ev) => dragStart(ev, card)}
+                    onclick={() => onpick(card)}
+                  >
+                    <DraftCardArt {card} />
+                  </button>
+                {:else}
+                  <DraftCardArt {card} alt={card.name} />
+                {/if}
+              </li>
             {/each}
           </ul>
         {:else}
@@ -162,10 +200,28 @@
     font-size: 11px;
     color: var(--fg-muted);
   }
+  /* A card that moves between the deck and the sideboard. The button
+     is the card: no chrome of its own, a ring on hover and focus. */
+  .move {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    border-radius: 4.75% / 3.5%;
+    cursor: pointer;
+  }
+  .move:hover {
+    box-shadow: 0 0 0 2px var(--border-strong);
+  }
+  .move:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
   .imgs {
     display: grid;
     /* the catalogue's tile width: six across at the 1200px page */
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--pool-tile, 128px), 1fr));
     gap: 14px;
   }
 </style>

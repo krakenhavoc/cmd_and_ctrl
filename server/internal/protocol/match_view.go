@@ -74,6 +74,10 @@ type SideboardingView struct {
 	// is refused.
 	DeckMin      int `json:"deck_min"`
 	SideboardMax int `json:"sideboard_max"`
+	// SideboardAny says the sideboard has no size limit, and
+	// SideboardMax is not to be read: in limited play it is the rest of
+	// the card pool (CR 100.4b).
+	SideboardAny bool `json:"sideboard_any,omitempty"`
 	// Pools is each seat's deck and sideboard as they stand. The full
 	// view carries every seat's; a player's frame carries their own,
 	// and a spectator's none.
@@ -141,6 +145,7 @@ func viewOfMatch(g *game.Game, ids *idStrings) *MatchView {
 		Ready:        []int{},
 		DeckMin:      rules.MinCards,
 		SideboardMax: rules.SideboardSize,
+		SideboardAny: rules.AnySideboard,
 	}
 	if seat := seatOf(b.Chooser); seat != nil {
 		sb.ChooserSeat = *seat

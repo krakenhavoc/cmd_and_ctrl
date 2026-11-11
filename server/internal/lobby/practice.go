@@ -178,7 +178,9 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 	// does not count against the ceiling it is about to free.
 	open := 0
 	for id, e := range l.games {
-		if !e.practice {
+		// A draft's match table is unlisted the same way but is not one
+		// of the tutorial's tables, and does not count against them.
+		if !e.practice || e.draftMatch != nil {
 			continue
 		}
 		if human.Owner != "" && e.practiceOwner == human.Owner {

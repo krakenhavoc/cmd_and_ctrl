@@ -1190,6 +1190,7 @@ export function gameOverRequest(
   onBack: () => void,
   armed = true,
   rematch?: GameOverRematch,
+  backLabel = "Back to lobby",
 ): DockRequest {
   const req: DockRequest = {
     rank: "gameOver",
@@ -1198,7 +1199,7 @@ export function gameOverRequest(
     // already dispatched at the old corner must not get through.
     primary: {
       id: "back",
-      label: "Back to lobby",
+      label: backLabel,
       disabled: !armed,
       onPress: () => {
         if (armed) onBack();
