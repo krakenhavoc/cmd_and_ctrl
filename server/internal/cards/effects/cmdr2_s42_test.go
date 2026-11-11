@@ -305,3 +305,100 @@ func TestBloodthirstyAdversaryPaysThenCountersAndCopiesFromYourGraveyard(t *test
 		t.Errorf("life = %d, want %d", opp.Life, before-3)
 	}
 }
+
+const finaleOfPromiseOracle = "d6fafb50-9531-4fbf-bb1e-ebb4dd39281c"
+
+func castFinaleOfPromise(t *testing.T, g *game.Game, me *game.Player, x int, targets ...uuid.UUID) {
+	t.Helper()
+	advanceToMain(t, g)
+	fillPoolColored(me, "R", 2)
+	fillPool(me, x)
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Finale of Promise", TypeLine: "Sorcery", ManaCost: "{X}{R}{R}",
+		OracleID: finaleOfPromiseOracle, Owner: me.ID, Controller: me.ID})
+	var refs []game.TargetRef
+	for _, tg := range targets {
+		refs = append(refs, game.TargetRef{Kind: game.TargetCard, ID: tg})
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{XValue: x, Targets: refs, Strict: true}); err != nil {
+		t.Fatalf("cast Finale of Promise: %v", err)
+	}
+}
+
+func TestFinaleOfPromiseCastsAnInstantAndASorceryFreeAndExilesThem(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	bolt := gyCard(me, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle)
+	sorc := gyCard(me, "Small Sorcery", "Sorcery", "{1}{R}", "")
+	big := gyCard(me, "Big Sorcery", "Sorcery", "{3}{R}", "")
+	oppBolt := gyCard(opp, "Opp Instant", "Instant", "{R}", lightningBoltOracle)
+	advanceToMain(t, g)
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Finale of Promise", TypeLine: "Sorcery", ManaCost: "{X}{R}{R}",
+		OracleID: finaleOfPromiseOracle, Owner: me.ID, Controller: me.ID})
+	fillPoolColored(me, "R", 2)
+	fillPool(me, 3)
+	for _, bad := range []uuid.UUID{big, oppBolt} {
+		if err := g.CastSpell(me.ID, id, game.CastSpellParams{XValue: 3, Strict: true,
+			Targets: []game.TargetRef{{Kind: game.TargetCard, ID: bad}}}); err == nil {
+			t.Errorf("targeted a card above X or in another graveyard: %v", bad)
+		}
+	}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{XValue: 3, Strict: true, Targets: []game.TargetRef{
+		{Kind: game.TargetCard, ID: bolt}, {Kind: game.TargetCard, ID: sorc}}}); err != nil {
+		t.Fatalf("cast Finale of Promise: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	free := func(card uuid.UUID, targets ...game.TargetRef) error {
+		return g.CastSpell(me.ID, card, game.CastSpellParams{FromZone: "graveyard", Strict: true,
+			AlternativeCost: game.AltCostKeyGrantedCost, Targets: targets})
+	}
+	if err := free(bolt, playerTarget(opp.ID)); err != nil {
+		t.Fatalf("cast the instant free: %v", err)
+	}
+	if err := free(sorc); err != nil {
+		t.Fatalf("cast the sorcery free (its own permission): %v", err)
+	}
+	if err := free(big); err == nil {
+		t.Error("cast an untargeted card")
+	}
+	passPriorityAroundTable(t, g)
+	for _, c := range []uuid.UUID{bolt, sorc} {
+		if z := g.FindCardZoneForEffect(c); z == nil || z.Kind != game.ZoneExile {
+			t.Errorf("a spell cast this way was not exiled instead of put into the graveyard")
+		}
+	}
+}
+
+func TestFinaleOfPromiseCopiesEachSpellTwiceAtXTenOrMore(t *testing.T) {
+	for _, tc := range []struct{ x, wantCopies int }{{9, 0}, {10, 2}} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+		bolt := gyCard(me, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle)
+		castFinaleOfPromise(t, g, me, tc.x, bolt)
+		passPriorityAroundTable(t, g)
+		if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{FromZone: "graveyard", Strict: true,
+			AlternativeCost: game.AltCostKeyGrantedCost, Targets: []game.TargetRef{playerTarget(opp.ID)}}); err != nil {
+			t.Fatalf("X=%d: cast the instant free: %v", tc.x, err)
+		}
+		// Each copy offers new targets (CR 707.10c): keep the opponent.
+		prompts := 0
+		for c := copyPromptFor(g, me.ID); c != nil && prompts < 4; c = copyPromptFor(g, me.ID) {
+			prompts++
+			if err := g.ResolvePickTarget(c.ID, me.ID, playerTarget(opp.ID)); err != nil {
+				t.Fatalf("X=%d: new targets for a copy: %v", tc.x, err)
+			}
+		}
+		if prompts != tc.wantCopies {
+			t.Errorf("X=%d: asked for new targets %d times, want %d", tc.x, prompts, tc.wantCopies)
+		}
+		if got := stackCopies(g); got != tc.wantCopies {
+			t.Errorf("X=%d: %d copies on the stack, want %d", tc.x, got, tc.wantCopies)
+		}
+		before := opp.Life
+		passPriorityAroundTable(t, g)
+		if want := before - 3*(1+tc.wantCopies); opp.Life != want {
+			t.Errorf("X=%d: life %d, want %d", tc.x, opp.Life, want)
+		}
+	}
+}

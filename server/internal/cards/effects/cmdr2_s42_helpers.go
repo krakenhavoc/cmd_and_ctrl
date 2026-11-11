@@ -40,6 +40,12 @@ func cmdr2S42FreeGraveyardCast(ctx *Context, name string, spell freeCastSpell, e
 // one permission per card ("cast each", "for each opponent, cast ..."), so a
 // cast of one leaves the others open.
 func cmdr2S42FreeGraveyardCasts(ctx *Context, name string, spell freeCastSpell, exile, one bool, ids []uuid.UUID) {
+	cmdr2S42FreeGraveyardCastsThen(ctx, name, spell, exile, one, "", ids)
+}
+
+// cmdr2S42FreeGraveyardCastsThen is cmdr2S42FreeGraveyardCasts with a
+// registered follow-up run for each cast made (game.CastPermission.FollowUp).
+func cmdr2S42FreeGraveyardCastsThen(ctx *Context, name string, spell freeCastSpell, exile, one bool, followUp game.CastFollowUpKey, ids []uuid.UUID) {
 	g := ctx.Game
 	perm := spell.on(game.CastPermission{
 		Player:                  ctx.Controller(),
@@ -51,6 +57,7 @@ func cmdr2S42FreeGraveyardCasts(ctx *Context, name string, spell freeCastSpell, 
 		CastOnly:                true,
 		ExileInsteadOfGraveyard: exile,
 		LapseOnPass:             game.LapseStaysInHand,
+		FollowUp:                followUp,
 		Source:                  ctx.Source(),
 		SourceName:              name,
 		Label:                   name + " — cast it without paying its mana cost",
