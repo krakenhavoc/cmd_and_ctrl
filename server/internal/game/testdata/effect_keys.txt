@@ -65,6 +65,7 @@ body bullseye-death-dealer/damage
 body cait-sith/boost
 body campsite-cuisine/boost-attackers
 body cascade/bottom-if-not-cast
+body cascade/the-spell-just-cast
 body casey-jones-vigilante/discard-three-at-random
 body casualty/copy
 body catalog/activated
@@ -489,6 +490,7 @@ choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
 choose choose-cards/cmdr2-b09-florian-exile
+choose choose-cards/cmdr2-s41-feather-radiant-arbiter
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -1048,6 +1050,7 @@ condition tap/a-creature-becomes-tapped
 confirm avatar-b30/bison-whistle-take-creature
 confirm avatar-b30/bison-whistle-to-graveyard
 confirm brazen-bluff/exile-or-free-cast
+confirm cmdr2-s41/forgers-foundry-exile
 confirm confirm/academic-dispute-reach
 confirm confirm/ad-nauseam-repeat
 confirm confirm/agency-outfitter-library
@@ -1529,6 +1532,7 @@ payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
 payunless pay-unless/cmdr2-b05-fathom-fleet-captain-pirate
 payunless pay-unless/cmdr2-b05-surgespanner-bounce
 payunless pay-unless/cmdr2-b09-timothar-exile
+payunless pay-unless/cmdr2-s41-feather-radiant-arbiter
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
