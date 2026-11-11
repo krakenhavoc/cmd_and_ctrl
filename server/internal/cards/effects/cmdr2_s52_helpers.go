@@ -89,3 +89,32 @@ func cmdr2S52KorvoldGrow(g *game.Game, item *game.StackItem) error {
 	}
 	return DrawCards{Player: item.Controller, N: x}.Apply(ctx)
 }
+
+// cmdr2S52DereviTapOrUntapCause is the shared condition of Derevi's one
+// trigger: "When Derevi enters and whenever a creature you control deals
+// combat damage to a player".
+func cmdr2S52DereviTapOrUntapCause(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	if ev.Kind == game.EventETB {
+		return Self(ev, source, lki, g)
+	}
+	return combatDamageToPlayerBy(ev, source.Controller, g)
+}
+
+// cmdr2S52PutThisFromCommandZone is Derevi's "Put Derevi onto the battlefield
+// from the command zone": the ability's own card, if it is still the object
+// whose ability this is (CR 400.7) and still in its owner's command zone, is
+// put onto the battlefield under its owner's control. Putting is not casting,
+// so the commander tax neither applies nor grows (CR 903.8); the commander
+// designation stays with the card.
+func cmdr2S52PutThisFromCommandZone(g *game.Game, item *game.StackItem) error {
+	id := item.SourceCardID
+	z := g.FindCardZoneForEffect(id)
+	if z == nil || z.Owner != item.Controller || z.Kind != game.ZoneCommand {
+		return nil
+	}
+	if c, ok := g.LookupCardForEffect(id); !ok || c.ObjectEpoch != item.SourceEpoch {
+		return nil
+	}
+	_, err := g.PutFromCommandZoneOntoBattlefieldForEffect(id, game.ZoneEntryOptions{Controller: item.Controller})
+	return err
+}

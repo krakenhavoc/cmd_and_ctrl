@@ -223,3 +223,92 @@ func TestCmdr2S52KorvoldGrowsAndDrawsPerPermanentTypeInGraveyard(t *testing.T) {
 		t.Errorf("drew %d, want 3", got)
 	}
 }
+
+const cmdr2S52DereviOracle = "afa49a09-146f-4439-850e-dd1938c93cef"
+
+func cmdr2S52DereviInCommandZone(p *game.Player, casts int) uuid.UUID {
+	id := uuid.New()
+	p.Command.PushTop(game.Card{
+		InstanceID: id, Name: "Derevi, Empyrial Tactician", TypeLine: "Legendary Creature — Bird Wizard",
+		OracleID: cmdr2S52DereviOracle, ManaCost: "{G}{W}{U}", Power: 2, Toughness: 3,
+		Owner: p.ID, Controller: p.ID, IsCommander: true,
+	})
+	if casts > 0 {
+		p.CommanderCasts[id] = casts
+	}
+	return id
+}
+
+func TestCmdr2S52DereviEntersFromTheCommandZoneUntaxedAndTapsOrUntaps(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	derevi := cmdr2S52DereviInCommandZone(me, 2)
+	victim := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	std51Pay(g, me, "{1}{G}{W}{U}")
+	if err := g.ActivateCatalogAbility(me.ID, derevi, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate from the command zone: %v", err)
+	}
+	if !me.Command.Contains(derevi) {
+		t.Error("Derevi left the command zone at activation; she enters on resolution")
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(derevi) {
+		t.Fatal("Derevi is not on the battlefield")
+	}
+	if got := me.CommanderCasts[derevi]; got != 2 {
+		t.Errorf("CommanderCasts = %d, want 2 unchanged (put, not cast)", got)
+	}
+	if c, _ := g.LookupCardForEffect(derevi); !c.IsCommander {
+		t.Error("Derevi lost the commander designation")
+	}
+	// Her enters trigger: tap their Bear.
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt for Derevi's enters trigger")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: victim}}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 0)
+	passPriorityAroundTable(t, g)
+	if !layeredCard(t, g, victim).Tapped {
+		t.Error("the Bear should be tapped")
+	}
+}
+
+func TestCmdr2S52DereviAbilityWorksOnlyFromTheCommandZone(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	derevi := pushCatalogPermanent(g, me.ID, "Derevi, Empyrial Tactician", "Legendary Creature — Bird Wizard", cmdr2S52DereviOracle, false)
+	std51Pay(g, me, "{1}{G}{W}{U}")
+	if err := g.ActivateCatalogAbility(me.ID, derevi, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Error("the put-from-command-zone ability activated from the battlefield")
+	}
+}
+
+func TestCmdr2S52DereviTriggersOnCombatDamageByAnyCreatureYouControl(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Derevi, Empyrial Tactician", "Legendary Creature — Bird Wizard", cmdr2S52DereviOracle, false)
+	bear := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
+	mine := pushVanillaCreature(g, me.ID, "Tapped Thing", 1, 1)
+	g.WithWriteLock(func() { findBattlefieldCardForTest(g, mine).Tapped = true })
+	attackWith(t, g, opp.ID, bear)
+	g.RunStateChecksForTest()
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no target prompt after my creature connected")
+	}
+	if err := g.ResolvePickTargets(p.ID, me.ID, []game.TargetRef{{Kind: game.TargetCard, ID: mine}}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 1) // untap it
+	passPriorityAroundTable(t, g)
+	if layeredCard(t, g, mine).Tapped {
+		t.Error("the permanent should be untapped")
+	}
+}
