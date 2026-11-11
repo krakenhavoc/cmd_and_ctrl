@@ -23,6 +23,7 @@ func TestSkyfisherSpiderSacrificeAnotherCreatureDestroysANonlandPermanent(t *tes
 	fodder := pushVanillaCreature(g, me.ID, "Fodder", 1, 1)
 	theirs := pushTypedCard(g, opp.ID, "Their Anthem", "Enchantment", "{1}{W}{W}")
 	castAndResolveCreature(t, g, "Skyfisher Spider", "Creature — Spider", skyfisherSpiderOracle)
+	passPriorityAroundTable(t, g)
 	answerChooseCardsOrPick(t, g, me.ID, fodder)
 	if pick := latestPickTarget(g, me.ID); pick != nil {
 		pickCard(t, g, me.ID, theirs)
@@ -42,10 +43,13 @@ func TestSkyfisherSpiderDecliningTheSacrificeDestroysNothing(t *testing.T) {
 	fodder := pushVanillaCreature(g, me.ID, "Fodder", 1, 1)
 	theirs := pushTypedCard(g, opp.ID, "Their Anthem", "Enchantment", "{1}{W}{W}")
 	castAndResolveCreature(t, g, "Skyfisher Spider", "Creature — Spider", skyfisherSpiderOracle)
-	if c := sacrificeChoiceFor(g, me.ID); c != nil {
-		if err := g.ResolveChooseCards(c.ID, me.ID, nil); err != nil {
-			t.Fatalf("decline: %v", err)
-		}
+	passPriorityAroundTable(t, g)
+	c := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if c == nil {
+		t.Fatal("no sacrifice offer")
+	}
+	if err := g.ResolveOwnPermanents(c.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(fodder) || !g.Battlefield.Contains(theirs) {
