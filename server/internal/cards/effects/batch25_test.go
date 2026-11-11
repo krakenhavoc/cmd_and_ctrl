@@ -151,7 +151,6 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 	// engine seam needed.
 	for oracle, name := range map[string]string{
 		"61d28182-498f-4bbc-bb7a-c5e1ef872dda": "Murkfiend Liege",
-		"8e356df5-ca92-4be2-871e-8965c2510fbe": "Tempt with Vengeance",
 		"42b9d383-3fe2-4fc8-ab86-f80a288d502b": "Murmuring Bosk",
 		"5b3b5f6a-375e-4479-9384-a942eda83f9b": "Gandalf the White",
 		"8de8027b-072a-474b-b76b-dc49c417cc55": "Primevals' Glorious Rebirth",

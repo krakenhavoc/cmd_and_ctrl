@@ -42691,6 +42691,7 @@ pendingChoices[].councilVote.ballots[].option	number:int
 pendingChoices[].councilVote.ballots[].voter	custom(uuid.UUID)
 pendingChoices[].councilVote.carry	array
 pendingChoices[].councilVote.carry[]	custom(uuid.UUID)
+pendingChoices[].councilVote.choice	bool
 pendingChoices[].councilVote.controller	custom(uuid.UUID)
 pendingChoices[].councilVote.forController	array
 pendingChoices[].councilVote.forController[]	number:int

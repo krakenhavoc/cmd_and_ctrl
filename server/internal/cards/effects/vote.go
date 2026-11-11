@@ -69,6 +69,13 @@ type Vote struct {
 	// every other vote.
 	Abstain string
 
+	// Voters, when set, are the only players asked, in that order
+	// (Prisoner's Dilemma: each opponent); empty is everyone starting
+	// with the controller. Choice makes it a secret "chooses" rather
+	// than a vote, so extra votes and Illusion of Choice do not apply.
+	Voters []uuid.UUID
+	Choice bool
+
 	// SelfBest tells a bot that a voter wants the option naming
 	// themselves (Círdan: the votes you receive draw you cards).
 	SelfBest bool
@@ -112,6 +119,8 @@ func (v Vote) Apply(ctx *Context) error {
 		OthersOnly:    v.OthersOnly,
 		Abstain:       v.Abstain,
 		SelfBest:      v.SelfBest,
+		Voters:        v.Voters,
+		Choice:        v.Choice,
 		Then:          v.Then,
 		Carry:         v.Carry,
 	})

@@ -834,6 +834,7 @@ choose choose-cards/rowans-grim-search-pick
 choose choose-cards/run-leg
 choose choose-cards/ruthless-negotiation-exile
 choose choose-cards/sacrifice-choice
+choose choose-cards/sadistic-shell-game-pick
 choose choose-cards/sage-of-days-rest-to-graveyard
 choose choose-cards/sample-collector-collect-evidence
 choose choose-cards/sanar-innovative-first-year-exile
@@ -1095,6 +1096,7 @@ confirm confirm/daretti-sacrifice
 confirm confirm/deadly-complication-unsuspect
 confirm confirm/delifs-cone-gain-life
 confirm confirm/dire-blunderbuss-sacrifice
+confirm confirm/disorienting-choice-exile
 confirm confirm/dragons-approach-exile
 confirm confirm/draw-cards
 confirm confirm/dwarven-vigilantes-damage
@@ -1129,6 +1131,7 @@ confirm confirm/herigast-exile-hand-draw
 confirm confirm/high-society-hunter-sacrifice
 confirm confirm/ill-timed-explosion-discard
 confirm confirm/incinerator-of-the-guilty-collect-evidence-x
+confirm confirm/innocuous-researcher-untap
 confirm confirm/iroh-tea-master-give
 confirm confirm/jocasta-return
 confirm confirm/katara-draw-discard
@@ -1206,7 +1209,9 @@ confirm confirm/sylvan-library-pay-or-top
 confirm confirm/synth-eradicator-energy-or-play
 confirm confirm/tainted-pact-take
 confirm confirm/tell-me-what-you-see-draw-or-lose
+confirm confirm/tempt-with-bunnies
 confirm confirm/tempt-with-discovery-search
+confirm confirm/tempt-with-vengeance
 confirm confirm/terrapact-intimidator-landers-or-counters
 confirm confirm/the-celestus-loot
 confirm confirm/the-day-of-the-doctor-exile-others
@@ -1398,6 +1403,8 @@ option option-pick/highway-robbery-cost
 option option-pick/hunters-axe-keyword
 option option-pick/indulgent-tormentor-answer
 option option-pick/inspirit-flagship-vessel-counters
+option option-pick/intellectual-offering-draw
+option option-pick/intellectual-offering-untap
 option option-pick/intrude-on-the-mind-chooser
 option option-pick/kharn-the-betrayer-opponent
 option option-pick/kinscaer-sentry-attacks
@@ -3056,6 +3063,7 @@ vote vote/messenger-jays
 vote vote/mob-verdict
 vote vote/orchard-elemental
 vote vote/plea-for-power
+vote vote/prisoners-dilemma
 vote vote/sail-into-the-west
 vote vote/selvalas-stampede
 vote vote/split-decision
