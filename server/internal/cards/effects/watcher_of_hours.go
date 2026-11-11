@@ -22,7 +22,7 @@ func init() {
 		Name:            "Watcher of Hours",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		SpecialActions: []game.SpecialAction{Suspend(6, "{1}{U}")},
+		SpecialActions:  []game.SpecialAction{Suspend(6, "{1}{U}")},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{3}"), "Watcher of Hours — ward {3}"),
 			WheneverACounterIsRemovedFromThis(game.CounterTime,

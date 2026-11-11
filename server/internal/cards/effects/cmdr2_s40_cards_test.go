@@ -527,7 +527,10 @@ func TestS40GhostlyPilfererUntapMayPayTwoToDraw(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	b09AddColorless(me, 2)
 	before := me.Hand.Size()
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	if !hasPayUnlessFor(g, me.ID) {
+		t.Fatal("no pay prompt for the untap trigger")
+	}
+	answerPayUnless(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != before+1 {
 		t.Errorf("hand %d → %d, want one drawn after paying {2}", before, me.Hand.Size())
