@@ -107,3 +107,12 @@ var cmdr2S42HaloForagerCastBody = game.ReflexiveBody("halo-forager/cast",
 		return TargetCardInGraveyard("target instant or sorcery card with mana value "+strconv.Itoa(p.Amount)+" from a graveyard",
 			Or(Instant(), Sorcery()), ManaValueLE(p.Amount), ManaValueGE(p.Amount))
 	})
+
+// cmdr2S42AdversaryBody is Bloodthirsty Adversary's reflexive trigger. The
+// number of payments rides Params.Amount: it is both the counters and the
+// cap of the "up to that many" targets.
+var cmdr2S42AdversaryBody = game.ReflexiveBody("bloodthirsty-adversary/copy", cmdr2S42AdversaryResolve,
+	func(_ uuid.UUID, p game.EffectParams) *game.TargetSpec {
+		return TargetCardInGraveyard("up to "+strconv.Itoa(p.Amount)+" target instant and/or sorcery cards with mana value 3 or less from your graveyard",
+			Or(Instant(), Sorcery()), YouOwn(), ManaValueLE(3)).WithCount(0, p.Amount)
+	})

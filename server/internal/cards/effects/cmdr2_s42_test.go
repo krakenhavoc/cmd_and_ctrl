@@ -260,3 +260,48 @@ func TestHaloForagerPaysXThenCastsAnInstantOrSorceryOfThatManaValueFromAnyGravey
 		t.Errorf("the spell was not exiled instead of put into a graveyard")
 	}
 }
+
+const bloodthirstyAdversaryOracle = "3b943c3e-1f18-4997-b6d0-28ef75aed88e"
+
+func TestBloodthirstyAdversaryPaysThenCountersAndCopiesFromYourGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
+	bolt := gyCard(me, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle)
+	big := gyCard(me, "Big Sorcery", "Sorcery", "{2}{R}{R}", "")
+	oppBolt := gyCard(opp, "Opp Bolt", "Instant", "{R}", lightningBoltOracle)
+	advanceToMain(t, g)
+	fillPoolColored(me, "R", 2)
+	fillPool(me, 4)
+	adv := castHoldCreature(t, g, "Bloodthirsty Adversary", "Creature — Vampire", bloodthirstyAdversaryOracle, 2, 2)
+	passPriorityAroundTable(t, g)
+	pa := answerNumber(t, g, me.ID, 2)
+	if pa.Max != 2 {
+		t.Fatalf("X prompt = %+v, want up to 2 ({2}{R} twice from 6 mana)", pa)
+	}
+	answerPayUnless(t, g, me.ID, true)
+	ch := pickTargetPrompt(t, g)
+	if !slices.Contains(ch.PickTargetCards, bolt) || slices.Contains(ch.PickTargetCards, big) ||
+		slices.Contains(ch.PickTargetCards, oppBolt) || ch.PickTargetMax != 2 || ch.PickTargetMin != 0 {
+		t.Fatalf("up to two of my instants and sorceries with mana value 3 or less: %v (%d..%d)",
+			ch.PickTargetCards, ch.PickTargetMin, ch.PickTargetMax)
+	}
+	answerPickTarget(t, g, bolt)
+	passPriorityAroundTable(t, g)
+
+	c, ok := battlefieldCard(g, adv)
+	if !ok || c.Counters[game.CounterPlusOne] != 2 {
+		t.Errorf("Adversary counters = %v, want two +1/+1 counters", c.Counters)
+	}
+	if !inExile(g, bolt) {
+		t.Fatal("the targeted card was not exiled")
+	}
+	cp := copyOf(t, g, "Lightning Bolt")
+	before := opp.Life
+	if err := castCopy(g, me.ID, cp.InstanceID, true, playerTarget(opp.ID)); err != nil {
+		t.Fatalf("casting the copy free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-3 {
+		t.Errorf("life = %d, want %d", opp.Life, before-3)
+	}
+}
