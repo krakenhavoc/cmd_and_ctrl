@@ -2527,6 +2527,7 @@ tail rottenmouth-viper/punish
 tail rousing-refrain/three-time-counters
 tail roving-actuator/copy-exiled
 tail rowans-grim-search/ordered
+tail ruinous-intrusion/after-exile
 tail sacrificed-one/prompt-run/automated-warfare-system-draw
 tail sacrificed-one/prompt-run/beetle-headed-merchants-draw-and-counter
 tail sacrificed-one/prompt-run/benthic-criminologists-sacrifice
