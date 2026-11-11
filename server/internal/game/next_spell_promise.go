@@ -134,6 +134,16 @@ type NextSpellPromise struct {
 	// that spell IS the next one.
 	WithoutPayingManaCost bool `json:"withoutPayingManaCost,omitempty"`
 
+	// PayLifeEqualToManaValue is "rather than pay the mana cost of the next
+	// spell you cast this turn, you may pay life equal to that spell's mana
+	// value" (Marshland Bloodcaster): while the promise stands, a matching
+	// spell is offered one more alternative cost (CR 118.9), paid in life
+	// (CR 119.4) under GrantedAltCostNextLife. Priced as
+	// GrantedAlternativeCost.LifeEqualToManaValue is: {X} counts as 0 and a
+	// spell with no mana cost costs no life. Spent by the next matching spell
+	// whichever cost it was cast for.
+	PayLifeEqualToManaValue bool `json:"payLifeEqualToManaValue,omitempty"`
+
 	// Improvise is "has improvise" (CR 702.126): the matching spell may be
 	// paid for by tapping artifacts, each paying {1} of generic mana
 	// (Archway of Innovation). Read while the cast is announced and priced,
