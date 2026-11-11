@@ -190,8 +190,9 @@ const (
 	// and stay there if they are not cast.
 	MayCastKeywordHandCast = "hand_cast"
 	// MayCastKeywordFreeCast is "you may cast it without paying its mana
-	// cost" over cards in exile, a graveyard or a library. The decline
-	// label says where an uncast card ends up.
+	// cost" over cards in exile, a graveyard or a library, or (#5457,
+	// Extract Brain) in another player's hand. The decline label says
+	// where an uncast card ends up.
 	MayCastKeywordFreeCast = "free_cast"
 	// MayCastKeywordPaidCast is the same offer at a price: the card's own
 	// mana cost, or the alternative the effect names (energy, a
@@ -334,8 +335,9 @@ func (g *Game) runResolutionCastThenLocked(key string, chooser, source uuid.UUID
 // Aetherworks Marvel), cast from where it sits (#4250); its permission
 // opens the library, so nothing else in a library is ever a candidate.
 // A hand card is one an effect lets its owner cast for free (#4250, part
-// 2); its cast is held to the permission's claim
-// (ResolutionCastClaimLocked). Caller must hold g.mu.
+// 2), or one in another player's hand that an effect lets chooser cast
+// (#5457, foreignHandForCastLocked); either way its cast is held to the
+// permission's claim (ResolutionCastClaimLocked). Caller must hold g.mu.
 func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneKind, bool) {
 	z := g.findCardZoneLocked(id)
 	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard && z.Kind != ZoneLibrary && z.Kind != ZoneHand) {

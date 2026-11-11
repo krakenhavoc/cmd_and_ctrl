@@ -962,6 +962,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// a live miracle grant does not make a hard-cast sorcery an
 	// instant. A no-op for every other zone. See CastPermission.ForClaim.
 	grant = grant.ForClaim(alt)
+	// #5457: a card in ANOTHER player's hand has no ordinary cast. The
+	// permission that reached it (foreignHandForCastLocked) is the whole
+	// reason the cast exists, so a cast that does not claim its offer is
+	// refused as the lookup would have refused a card nothing covers.
+	if src.Kind == ZoneHand && src != p.Hand && grant == nil {
+		return ErrCardNotFound
+	}
 	// #1729: a permission good for a set number of spells ("you may
 	// cast A spell from among ...") is spent by a cast it is the reason
 	// for. Decided here, of the card as it sits in its source zone and
@@ -2300,7 +2307,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// placed by the runStateChecksLocked at the bottom of the cast,
 	// above the spell.
 	// #4694: with the spell's mana value at its announced X (CR 202.3e).
-	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue), card)
+	g.applyManaSpendRidersLocked(g.StackMeta[cardID], ManaSpendForCastFrom(card, src.Kind).WithX(params.XValue).PaidBy(playerID), card)
 	// CR 702.62a (#659): the permanent this cast produces has haste.
 	// Registered here rather than at resolution because the grant that
 	// says so has been consumed by now — the card has left exile and
@@ -2827,14 +2834,14 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// any color" (Chromatic Orrery) widens what may pay the cost — read
 	// here, after convoke and delve have taken their share and before
 	// the Phyrexian strike, exactly as applyAutoTapLocked reads it.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue)
+	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCastParams(card, params).PaidBy(p.ID), cost, params.XValue)
 	// CR 107.4 / CR 601.2b: the Phyrexian symbols the caster announced
 	// they are paying with life leave the mana cost here, and the life
 	// is paid below — after the mana half is known to be payable, so a
 	// rejected cast never costs a point. Validated in every mode,
 	// because an over-claim is a malformed announce rather than a
 	// mana-gate failure.
-	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params), params.PhyrexianLife, &paid)
+	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params).PaidBy(p.ID), params.PhyrexianLife, &paid)
 	if err != nil {
 		return paid, note, err
 	}
@@ -2845,7 +2852,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// restriction.
 	// #3853: stamped so the pool spend can tell mana whose rider fires on
 	// this spell from mana it would be wasted on (an ORDER, never a test).
-	spendCtx := g.stampRiderVerdictsLocked(ManaSpendForCastParams(card, params), p.ID)
+	spendCtx := g.stampRiderVerdictsLocked(ManaSpendForCastParams(card, params).PaidBy(p.ID), p.ID)
 	canPay := p.ManaPool.CanPayFor(cost, params.XValue, spendCtx)
 	if params.ForceCast || (!params.Strict && !canPay) {
 		strategy := spendStrategyForCast(card)
@@ -2989,7 +2996,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if cost.SpendOnly != nil && cost.SpendOnly.Distinct {
 		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
 	}
-	cost = g.costAsPaidByExcludingLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue, excluded)
+	cost = g.costAsPaidByExcludingLocked(p.ID, ManaSpendForCastParams(card, params).PaidBy(p.ID), cost, params.XValue, excluded)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -3008,7 +3015,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// can reach it today. Once the plan exists the two agree: it funds
 	// every symbol it did not strike, so the payment's own pass ranks
 	// the struck one unpayable and strikes it again.
-	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params), params.PhyrexianLife, nil)
+	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params).PaidBy(p.ID), params.PhyrexianLife, nil)
 	if err != nil {
 		return nil
 	}
@@ -3017,7 +3024,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// restricted mana this cast cannot legally spend. The top-up below
 	// takes the same shortcut; this one keeps the exclusion list from
 	// being built for a cast that needs no plan.
-	spendCtx := ManaSpendForCastParams(card, params)
+	spendCtx := ManaSpendForCastParams(card, params).PaidBy(p.ID)
 	if p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
 		return nil
 	}
@@ -4126,6 +4133,18 @@ func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string
 	}
 	switch kind {
 	case ZoneHand:
+		// #5457: "look at that player's hand. You may cast a spell from
+		// among those cards" (Silent-Blade Oni) is a permission over a
+		// card in ANOTHER seat's hand, the graveyard's and the library's
+		// exception below. A stored permission the caster holds over that
+		// card object is the only key (foreignHandForCastLocked); every
+		// other lookup answers with the caster's own hand, as it always
+		// has.
+		if p.Hand == nil || !p.Hand.Contains(cardID) {
+			if pile := g.foreignHandForCastLocked(p, cardID); pile != nil {
+				return pile, nil
+			}
+		}
 		return p.Hand, nil
 	case ZoneCommand:
 		return p.Command, nil
@@ -4248,6 +4267,34 @@ func (g *Game) foreignPileForCastLocked(p *Player, cardID uuid.UUID, kind ZoneKi
 		}
 	}
 	return nil, ErrCardNotFound
+}
+
+// foreignHandForCastLocked is foreignPileForCastLocked for a HAND
+// (#5457): the hand of another seat that holds cardID, when p holds a
+// stored permission naming that card object there, or nil. A hand is
+// hidden and nothing derives a rule over one, so only a stored
+// ScopeCards permission (storedHandPermissionLocked) opens it; and the
+// cast it opens is the one that claims the permission's offer and no
+// other, which castSpellLocked enforces once the claim is known
+// (a hand permission prices only its own claim, CastPermission.ForClaim).
+//
+// Caller must hold g.mu.
+func (g *Game) foreignHandForCastLocked(p *Player, cardID uuid.UUID) *Zone {
+	for _, other := range g.Seats {
+		if other == nil || other == p || other.Hand == nil {
+			continue
+		}
+		for _, card := range other.Hand.Cards {
+			if card.InstanceID != cardID {
+				continue
+			}
+			if g.storedHandPermissionLocked(p, card) == nil {
+				return nil
+			}
+			return other.Hand
+		}
+	}
+	return nil
 }
 
 // SorcerySpeedOpenLocked reports whether the sorcery-speed gate is
@@ -8554,7 +8601,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// respect: a mana ability never uses the stack (CR 605.3b), so
 	// whatever the taps trigger is drained by the state-check pass
 	// on the way out with everything else this activation queued.
-	g.payTapOthersCostLocked(playerID, params.TapIDs)
+	// #5447: what was tapped goes on the record, so an output that counts
+	// it ("Tap X untapped tokens you control: Add X mana", Hazel of the
+	// Rootbloom) reads the number the engine tapped.
+	paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
 	// Life after tap, before sacrifice — the same component order
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
@@ -9383,6 +9433,36 @@ func (g *Game) maxCounterPaymentLocked(playerID, sourceID uuid.UUID, rc *Counter
 	return PaidCost{CountersRemoved: total}
 }
 
+// maxManaPaymentLocked is the LARGEST payment `ab`'s variable cost
+// components could take right now, as a PaidCost: the counter removal
+// (maxCounterPaymentLocked) and, for a "Tap X untapped ..." component
+// (#5447, TapOthersCost.AnyNumber), every permanent that could be tapped
+// for it. What every "what could this source produce" reader hands the
+// output, for the reason maxCounterPaymentLocked gives.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilityShape) PaidCost {
+	if ab == nil {
+		return PaidCost{}
+	}
+	paid := g.maxCounterPaymentLocked(playerID, sourceID, ab.RemoveCounters)
+	if !TapOthersAnyNumber(ab.TapOthers) {
+		return paid
+	}
+	for _, id := range g.TapOthersOptionsForEffect(playerID, sourceID, ab.TapOthers) {
+		if ab.TapCost && id == sourceID {
+			// CR 118.3: the source's own {T} has already spent it.
+			continue
+		}
+		c := findBattlefieldCard(g, id)
+		if c == nil {
+			continue
+		}
+		paid.TappedOthers = append(paid.TappedOthers, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch})
+	}
+	return paid
+}
+
 // MaxCounterPaymentForEffect is the largest number of counters a
 // variable removal could be paid with right now — the ceiling the
 // client's picker bounds its stepper with, from the same walk the
@@ -9427,7 +9507,7 @@ func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilitySh
 	if !ab.NarrowToCommanderIdentity && !computed {
 		return false
 	}
-	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
 	if err != nil {
 		// A broken declaration is not this rule's business.
 		return false

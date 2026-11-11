@@ -618,6 +618,23 @@ func TapXUntapped(label string, preds ...CardPredicate) game.AbilityCost {
 	}}
 }
 
+// TapXUntappedForMana is "Tap X untapped <permanents> you control" as a
+// component of a MANA ability's cost (#5447, Hazel of the Rootbloom's
+// "{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana in any
+// combination of colors"). A mana ability announces no X (CR 605.3b), so
+// X is the number of permanents the activator names, from none up to
+// every one that could pay, and the ability's ProducedForPaid reads it
+// back as len(paid.TappedOthers). Like every tap-others cost it is not
+// the {T} symbol (CR 302.6) and does not target; a source that also pays
+// its own {T} is never one of the X (CR 118.3).
+func TapXUntappedForMana(label string, preds ...CardPredicate) *game.TapOthersCost {
+	return &game.TapOthersCost{
+		Filter:    TargetPermanent(label, preds...),
+		Label:     label,
+		AnyNumber: true,
+	}
+}
+
 // ReturnAPermanentToHand is "Return a <permanent> you control to its
 // owner's hand" as a COST (#1213) — Quirion Ranger's
 //
@@ -993,6 +1010,21 @@ func ExileCardsFromHand(n int, label string, match func(game.Card) bool) *game.E
 // because the component's two owners share one shape.
 func ExileCardsFromGraveyard(n int, label string, match func(game.Card) bool) *game.ExileCost {
 	return &game.ExileCost{N: n, Label: label, From: game.ZoneGraveyard, Match: match}
+}
+
+// ProcessCards is "Put N cards an opponent owns from exile into that
+// player's graveyard" as a CR 602 activated ability's cost (#5457): Void
+// Attendant, and the other Eldrazi Processors' activated abilities. The
+// exile-a-card component read against the shared exile zone
+// (game.ExileCost with From: ZoneExile): the activator names the cards on
+// exile_ids, each one a card an opponent owns, and each goes to its
+// owner's graveyard. `match` narrows the cards (nil is any card); a
+// face-down card has no characteristics, so a clause with a predicate
+// never offers one.
+//
+//	Cost: Plus(Mana("{1}{G}"), ProcessCards(1, "a card an opponent owns from exile", nil)),
+func ProcessCards(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{N: n, Label: label, From: game.ZoneExile, Match: match}}
 }
 
 // ExileFromGraveyard is "Exile N <kind> cards from your graveyard" as

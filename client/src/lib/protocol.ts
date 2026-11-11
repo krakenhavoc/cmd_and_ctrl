@@ -2277,6 +2277,14 @@ export interface PendingChoiceView {
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
   exchanges_text?: boolean;
+  // #5457: what a "copy_target" pick is for when nothing is entering as a
+  // copy. "tokens" (Esix, Fractal Bloom): the creature the tokens being
+  // created will copy; the empty answer creates the tokens as they were.
+  // "exile_copied" then "exile_other" (The Mimeoplasm): the graveyard
+  // card to exile and enter as a copy of, then the other card to exile,
+  // whose power becomes +1/+1 counters; an empty answer to either exiles
+  // nothing. Absent for the ordinary enters-as-a-copy pick.
+  copy_use?: "tokens" | "exile_copied" | "exile_other";
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
@@ -3264,6 +3272,11 @@ export interface EscalateView {
 // them.
 export interface AdditionalCostView {
   discard_cards?: number;
+  // #5457: the cards in the viewer's hand that may pay a discard the
+  // clause narrows ("discard a land card", Magmatic Insight). Absent
+  // when any card pays. Fewer cards than `min` means the cost cannot be
+  // paid right now, so the spell is uncastable.
+  discard_options?: LegalTargetsView;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.
@@ -3926,9 +3939,15 @@ export type ExilePlayUntil =
   | "while_exiled"
   | "until_another";
 
-// #1297: the pile an "Exile N cards from your …" cost reads — always
-// the activator's own. The server stamps it with `exile_cost_n`.
-export type ExileCostZone = "hand" | "graveyard";
+// #1297: the pile an "Exile N cards from your …" cost reads — the
+// activator's own hand or graveyard. The server stamps it with
+// `exile_cost_n`. #5457: "exile" is the other move, "Put a card an
+// opponent owns from exile into that player's graveyard" (Void
+// Attendant): the options are cards in the shared `exile` zone that an
+// opponent owns, and each pick goes to its owner's graveyard. A
+// face-down option stands for its group: the server moves a card chosen
+// at random from the cards exiled face down with it.
+export type ExileCostZone = "hand" | "graveyard" | "exile";
 
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
@@ -5832,8 +5851,10 @@ export interface ManaAbilityView {
   // #758: "Tap an untapped creature you control" on a mana ability
   // (Springleaf Drum). Same fields as an activated ability's
   // TapOthers component; the answer rides activate_mana_ability as
-  // `tap_ids`. This surface is fixed-count: CR 605.3b gives a mana
-  // ability no X announcement, so `count_from_x` is never set here.
+  // `tap_ids`. CR 605.3b gives a mana ability no X announcement, so
+  // `count_from_x` is never set here. #5447: "Tap X untapped tokens you
+  // control: Add X mana" (Hazel of the Rootbloom) ships `min` 0 and `max`
+  // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #1600: "Exile a creature you control" on a mana ability (Food

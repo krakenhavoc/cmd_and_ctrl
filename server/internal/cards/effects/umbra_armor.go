@@ -35,6 +35,30 @@ func UmbraArmor() game.ReplacementEffect {
 			return g.AffectedPermanentControllerForEffect(ev)
 		},
 		ActsOnItsSource: true,
-		Label:           "Umbra armor",
+		UmbraArmor:      true,
+		Label:           game.UmbraArmorLabel,
+	}
+}
+
+// AurasAttachedToPermanentsYouControlHaveUmbraArmor is Umbra Mystic's
+// "Auras attached to permanents you control have umbra armor": a grant
+// the engine turns into one umbra armor replacement per Aura attached to
+// the permanent that would be destroyed (game/umbra_armor.go), so that
+// permanent's controller chooses which Aura is destroyed when it has
+// several (CR 616.1). An Aura with umbra armor of its own gains nothing.
+// "You" is the source's controller; whose Aura it is does not matter.
+func AurasAttachedToPermanentsYouControlHaveUmbraArmor() game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventZoneMove},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if src == nil || ev.Kind != game.RepEventMove || !ev.Destruction {
+				return false
+			}
+			c := g.AffectedPermanentControllerForEffect(ev)
+			return c != uuid.Nil && c == src.Controller
+		},
+		Replace:          func(*game.ReplacementEvent, *game.Game, *game.Card) error { return nil },
+		GrantsUmbraArmor: true,
+		Label:            "Auras attached to permanents you control have umbra armor.",
 	}
 }

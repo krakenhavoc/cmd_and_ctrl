@@ -1,0 +1,6 @@
+---
+title: "Tap X untapped permanents as a mana ability's cost"
+date: 2026-11-11
+issues: [5447, 5457]
+---
+**Tap X untapped permanents as a mana ability's cost** (#5447, CR 605.3b, 302.6, 118.3) — "{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana in any combination of colors" is the tap-others component with the count left to the activator: `effects.TapXUntappedForMana(label, preds...)` (`game.TapOthersCost.AnyNumber`, until now a spell's additional cost only). A mana ability announces no X, so X is the number of permanents named in `tap_ids`, none included, and the output reads it back: the mana path now records what it tapped on `PaidCost.TappedOthers`, and the ability's `ProducedForPaid` counts it (`Register` refuses the form without one). Every "what could this source produce" reader asks with the largest payment (`maxManaPaymentLocked`, the counter removal's rule extended to the taps), so the row is greyed and unoffered with nothing to tap. Such a row publishes no up-front colour list; each mana asks its `mana_pick`. The view ships `tap_others_options` with `min` 0 and `max` every option, the client's mana tap picker takes any number of them, and the enumerator offers one move per count from one up. No snapshot change. **Cards now Full:** Hazel of the Rootbloom.

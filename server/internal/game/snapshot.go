@@ -2011,6 +2011,7 @@ type pendingChoiceSnapshot struct {
 	PickExiledWith *PermissionCardRef `json:"pickExiledWith,omitempty"`
 	CopyOptions    []uuid.UUID        `json:"copyOptions,omitempty"`
 	ExchangesText  bool               `json:"exchangesText,omitempty"`
+	CopyUse        string             `json:"copyUse,omitempty"`
 	ExcludedTypes  []string           `json:"excludedTypes,omitempty"`
 	// #1997: Null Chamber's second name and its "other than a basic
 	// land card name". Additive within v9.
@@ -3568,6 +3569,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
+		CopyUse:               c.CopyUse,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
 		SecondName:            c.SecondName,
 		NotBasicLandName:      c.NotBasicLandName,
@@ -4687,6 +4689,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
+		CopyUse:               c.CopyUse,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
 		SecondName:            c.SecondName,
 		NotBasicLandName:      c.NotBasicLandName,

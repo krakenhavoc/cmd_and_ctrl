@@ -384,11 +384,19 @@ function castClauseDenial(
   // it's the viewer's hand, not the card's — so it's computed once.
   const hand = snap.seats.find((s) => s.id === viewerID)?.hand.cards ?? [];
   const payable = hand.filter((c) => c.instance_id !== card.instance_id).length;
-  const discardOK = (face: CardView): boolean =>
-    payable >= (face.additional_cost?.discard_cards ?? 0);
+  // #5457: a narrowed clause ("discard a land card") counts only the
+  // cards the server listed for it.
+  const discardOK = (face: CardView): boolean => {
+    const cost = face.additional_cost;
+    const have = cost?.discard_options ? (cost.discard_options.cards?.length ?? 0) : payable;
+    return have >= (cost?.discard_cards ?? 0);
+  };
   if (!faces.some(discardOK)) {
     const blocked = faces.find((f) => !discardOK(f)) ?? card;
     const discards = blocked.additional_cost?.discard_cards ?? 0;
+    if (blocked.additional_cost?.discard_options) {
+      return named(blocked, "No card that can be discarded");
+    }
     return named(
       blocked,
       discards > 1 ? `Needs ${discards} cards to discard` : "No card to discard",

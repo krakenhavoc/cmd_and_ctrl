@@ -1,0 +1,6 @@
+---
+title: "Umbra armor granted to Auras"
+date: 2026-11-11
+issues: [5457]
+---
+**Umbra armor granted to Auras** (#5457, CR 702.89a, 616.1, 614.4) — "Auras attached to permanents you control have umbra armor" is `game.ReplacementEffect.GrantsUmbraArmor`, built with `effects.AurasAttachedToPermanentsYouControlHaveUmbraArmor()`. The declared effect is never applied itself: its `AppliesTo` says whether the permanent that would be destroyed is covered, and the gather (`gatherGrantedUmbraArmorLocked`, `game/umbra_armor.go`) makes one umbra armor replacement per Aura attached to that permanent, so its controller chooses which Aura is destroyed when it has several. An Aura with umbra armor of its own (`ReplacementEffect.UmbraArmor`, set by `effects.UmbraArmor()`) gets no second one, and two grants give an Aura one. A granting permanent destroyed in the same event still grants, read off the batch's pre-move copy as every departed source is (#4521). The replacements' IDs are one per Aura by object serial, in a range of their own above the graveyard replacements', and are regathered by ID after a pause. No snapshot change, no wire change. The Aura shows no umbra armor chip of its own; the granting permanent's row says it. **Cards now Full:** Umbra Mystic.

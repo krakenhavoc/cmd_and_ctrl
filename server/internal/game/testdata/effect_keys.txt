@@ -512,6 +512,7 @@ choose choose-cards/cmdr2-s39-dispersal-return
 choose choose-cards/cmdr2-s41-feather-radiant-arbiter
 choose choose-cards/cmdr2-s43-tectonic-giant-play
 choose choose-cards/cmdr2-s45-thief-of-sanity
+choose choose-cards/cmdr2-s53-siphon-insight-exile
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -583,6 +584,7 @@ choose choose-cards/explore-the-vastlands-take
 choose choose-cards/expose-the-culprit-exile
 choose choose-cards/expressive-iteration-bottom
 choose choose-cards/expressive-iteration-take
+choose choose-cards/extract-brain-chosen
 choose choose-cards/extract-from-darkness-reanimate
 choose choose-cards/extrapolate-the-impossible-reveal
 choose choose-cards/extrapolate-the-impossible-take

@@ -29,6 +29,23 @@ export function manaAbilityNeedsPrompt(ability: ManaAbilityView): boolean {
   );
 }
 
+// #5447: whether a mana ability's tap-others cost needs the picker, or
+// has exactly one payment the client can send on its own. A fixed count
+// (`min` equal to `max`, Springleaf Drum) asks only when there are more
+// options than the count. "Tap X untapped tokens you control: Add X
+// mana" (Hazel of the Rootbloom) ships `min` 0 with `max` every option:
+// how many to tap is the player's choice, so it always asks when there
+// is anything to tap.
+export function manaTapNeedsPicker(
+  opts: { cards?: string[]; min?: number; max?: number } | undefined,
+): boolean {
+  if (!opts) return false;
+  const options = opts.cards ?? [];
+  const need = opts.max ?? opts.min ?? 1;
+  const min = opts.min ?? need;
+  return options.length > need || (min < need && options.length > 0);
+}
+
 // The optional payment fragment carried by activate_mana_ability.
 // Kept beside the prompt predicate so both click paths use and test
 // the exact wire name (#758).

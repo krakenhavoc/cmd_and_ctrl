@@ -58,7 +58,13 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 	if g == nil {
 		return nil
 	}
-	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	if TapOthersAnyNumber(ab.TapOthers) {
+		// #5447: how many slots there are is decided by how many
+		// permanents the activator taps, so no list can be published
+		// before the payment is named. Every slot asks its mana_pick.
+		return nil
+	}
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return nil
 	}
@@ -115,7 +121,7 @@ func ManaAbilityAddsDifferentColors(g *Game, playerID, cardID uuid.UUID, ab Mana
 	if g == nil {
 		return false
 	}
-	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
 	if err != nil {
 		return false
 	}
@@ -136,7 +142,11 @@ func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbil
 	if len(colors) == 0 {
 		return nil
 	}
-	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	if TapOthersAnyNumber(ab.TapOthers) {
+		// No list is published for it (ManaAbilityColorOptions).
+		return ErrIllegalManaColor
+	}
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return ErrIllegalManaColor
 	}

@@ -936,6 +936,15 @@ type PendingChoiceView struct {
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
 	// decline; only the wording differs.
 	ExchangesText bool `json:"exchanges_text,omitempty"`
+	// CopyUse says what a "copy_target" pick is for when nothing is
+	// entering as a copy: "tokens" (Esix, Fractal Bloom: the creature
+	// the tokens being created will copy; the empty answer creates the
+	// tokens as they were); "exile_copied" then "exile_other" (The
+	// Mimeoplasm's two graveyard cards: the one to copy, then the one
+	// whose power becomes counters; both are exiled, and an empty answer
+	// to either exiles nothing). Absent for the ordinary
+	// enters-as-a-copy pick. Same answer, same empty decline.
+	CopyUse string `json:"copy_use,omitempty"`
 	// Placement populates the ADR 0088 "put_in_library" kind: which
 	// lanes the answer may use — "top" ({top_order} alone), "bottom"
 	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
@@ -1600,6 +1609,13 @@ type AdditionalCostView struct {
 	// DiscardCards is how many cards the caster must discard. The
 	// picked instance IDs ride back on cast_spell's discard_ids.
 	DiscardCards int `json:"discard_cards,omitempty"`
+	// DiscardOptions lists the cards in the caster's hand that may pay
+	// a discard the clause narrows: "discard a land card" (Magmatic
+	// Insight, #5457). min / max are the clause's count. Absent when
+	// any card pays (every other discard); present with fewer cards
+	// than `min` means the cost cannot be paid right now, which makes
+	// the spell uncastable (CR 118.3).
+	DiscardOptions *LegalTargetsView `json:"discard_options,omitempty"`
 	// SacrificeOptions lists the permanents that may pay a
 	// "sacrifice a creature" clause, already filtered to the
 	// caster's own board (CR 701.21a). Its min / max are how many
@@ -8780,6 +8796,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
 	}
+	if ac.DiscardLand && ac.DiscardCards > 0 {
+		out.DiscardOptions = &LegalTargetsView{
+			Min:   ac.DiscardCards,
+			Max:   ac.DiscardCards,
+			Cards: cardIDStrings(g.AdditionalDiscardOptionsForEffect(caster, castID, ac)),
+		}
+	}
 	if ac.Sacrifice != nil {
 		// SpecCandidatesForEffect, not LegalTargetsForEffect: an
 		// additional sacrifice cost doesn't target, so the hexproof /
@@ -10359,6 +10382,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			AskedByHand:      string(c.AskedByHand),
 			PrivateText:      c.PrivateText(),
 			ExchangesText:    c.ExchangesText,
+			CopyUse:          c.CopyUse,
 		}
 		for _, earlier := range c.EarlierPermanentChoicesForEffect() {
 			entry := EarlierChoiceView{

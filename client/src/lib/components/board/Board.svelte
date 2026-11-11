@@ -252,11 +252,17 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaTapNeedsPicker,
     manaCostBranchPayment,
     manaExilePermanentPayment,
     manaTapPayment,
   } from "../../manaAbilityCost";
-  import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
+  import {
+    exileCostNote,
+    exileCostOptionCards,
+    exileCostVerb,
+    exileCostWhere,
+  } from "../../exileCost";
   import { discardedManaValue } from "../../discardCostX";
   import { exiledTotalManaValue } from "../../exileTotalX";
   import {
@@ -790,7 +796,12 @@
     const card = discardPromptCard;
     if (!card || !viewerID) return [];
     const me = view.seats.find((s) => s.id === viewerID);
-    return (me?.hand.cards ?? []).filter((c) => c.instance_id !== card.instance_id);
+    // #5457: a narrowed clause ("discard a land card") offers only the
+    // cards the server listed for it.
+    const only = discardPromptCost?.discard_options?.cards;
+    return (me?.hand.cards ?? []).filter(
+      (c) => c.instance_id !== card.instance_id && (!only || only.includes(c.instance_id)),
+    );
   });
 
   function confirmDiscardCost(ids: string[]): void {
@@ -2601,6 +2612,7 @@
     return exileCostOptionCards(
       view.seats.find((s) => s.id === viewerID),
       p.ability,
+      view.exile,
     );
   });
 
@@ -3236,8 +3248,7 @@
   function askManaTapCost(card: CardView, ability: ManaAbilityView): void {
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
-      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
-      if (options.length > need) {
+      if (manaTapNeedsPicker(ability.tap_others_options)) {
         manaTapPrompt = { card, ability };
         return;
       }
@@ -4912,7 +4923,7 @@
     symbolColor={abilityExilePrompt?.ability.exile_cost_symbol_color}
     symbolMin={abilityExilePrompt?.ability.exile_cost_symbol_min}
     manaValueMin={abilityExilePrompt?.ability.exile_cost_mana_value_min}
-    verb="Exile"
+    verb={abilityExilePrompt ? exileCostVerb(abilityExilePrompt.ability) : "Exile"}
     note={abilityExilePrompt ? exileCostNote(abilityExilePrompt.ability) : undefined}
     where={abilityExilePrompt ? exileCostWhere(abilityExilePrompt.ability) : undefined}
     onConfirm={confirmAbilityExileCost}
@@ -5092,6 +5103,7 @@
     label={manaTapPrompt?.ability.tap_others_label ?? "an untapped creature you control"}
     options={manaTapOptions}
     count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
+    min={manaTapPrompt?.ability.tap_others_options?.min}
     verb="Tap"
     onConfirm={confirmManaTapCost}
     onCancel={() => {

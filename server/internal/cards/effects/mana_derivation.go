@@ -69,6 +69,9 @@ const (
 	// ManaRestrictCastFromGraveyard — "spend this mana only to cast a
 	// spell from your graveyard" (Lord of the Forsaken).
 	ManaRestrictCastFromGraveyard = game.ManaRestrictCastFromGraveyard
+	// ManaRestrictSpellNotOwned — "spend this mana only to cast spells
+	// you don't own" (Thieving Varmint, #5457).
+	ManaRestrictSpellNotOwned = game.ManaRestrictSpellNotOwned
 	// ManaRestrictMonocolored — spend only on an object of exactly one
 	// colour (Throne of Eldraine, with ManaRestrictColor; #1600).
 	ManaRestrictMonocolored = game.ManaRestrictMonocolored

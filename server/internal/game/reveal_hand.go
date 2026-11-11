@@ -84,3 +84,23 @@ func (g *Game) RevealHandCard(cardID, to uuid.UUID) error {
 	})
 	return nil
 }
+
+// LookAtHandForEffect is "look at <player>'s hand" (CR 701.20e's look,
+// not CR 701.20a's reveal): looker learns every card in owner's hand and
+// nobody else does. It returns those cards in hand order. The knowledge
+// lasts as long as a private show's does (RevealHandCard): until the
+// card moves somewhere that replaces it.
+//
+// Caller must hold g.mu (write).
+func (g *Game) LookAtHandForEffect(looker, owner uuid.UUID) []uuid.UUID {
+	p := g.playerByIDLocked(owner)
+	if p == nil || p.Hand == nil || g.playerByIDLocked(looker) == nil {
+		return nil
+	}
+	ids := make([]uuid.UUID, 0, len(p.Hand.Cards))
+	for i := range p.Hand.Cards {
+		p.Hand.Cards[i].AddKnower(looker)
+		ids = append(ids, p.Hand.Cards[i].InstanceID)
+	}
+	return ids
+}
