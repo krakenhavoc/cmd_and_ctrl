@@ -62,6 +62,7 @@ func TestEventLogIsReplacedOnlyWhereTheGenerationMoves(t *testing.T) {
 		// #3856: the restarted game is built fresh by NewGame and
 		// adopted through RestoreFrom, which bumps the generation.
 		"buildRestartedGameLocked":    "fills a new *Game",
+		"newGameAtThisTableLocked":    "fills a new *Game",
 		"restoreGame":                 "fills a new *Game",
 		"captureSnapshotEventsLocked": "fills a GameSnapshot",
 	}

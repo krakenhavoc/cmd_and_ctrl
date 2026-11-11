@@ -1504,7 +1504,7 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		OpeningRoll{}, OpeningRollRound{}, OpeningRollDie{},
 		// ADR 0222 §3: the match's finished games and its sideboarding
 		// window are embedded by value.
-		MatchGame{}, MatchBetween{},
+		Match{}, MatchDeck{}, MatchGame{}, MatchBetween{},
 	}
 	for _, s := range samples {
 		rt := reflect.TypeOf(s)

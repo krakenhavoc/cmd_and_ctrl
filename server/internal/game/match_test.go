@@ -315,7 +315,7 @@ func TestLoserChoosesWhoPlaysFirst(t *testing.T) {
 	_ = bob
 }
 
-func poolIDs(cs []Card) []uuid.UUID {
+func poolIDs(cs []cardSnapshot) []uuid.UUID {
 	ids := make([]uuid.UUID, len(cs))
 	for i, c := range cs {
 		ids[i] = c.InstanceID
@@ -899,17 +899,19 @@ func TestBestOfSetting(t *testing.T) {
 // A companion is revealed only by the deck it was registered with.
 func TestCompanionOnlyWithTheRegisteredDeck(t *testing.T) {
 	d := MatchDeck{}
+	var main []Card
 	for i := 0; i < 3; i++ {
 		c := NewCard(fmt.Sprintf("Main %d", i), uuid.Nil)
-		d.Main = append(d.Main, c)
+		main = append(main, c)
 		d.Registered = append(d.Registered, c.InstanceID)
 	}
+	d.Main = poolCards(main)
 	sortIDs(d.Registered)
 	comp := NewCard("Companion", uuid.Nil)
 	comp.IsCompanion = true
 	side := NewCard("Side", uuid.Nil)
 	side.IsSideboard = true
-	d.Side = []Card{comp, side}
+	d.Side = poolCards([]Card{comp, side})
 
 	find := func(cs []Card, name string) Card {
 		for _, c := range cs {

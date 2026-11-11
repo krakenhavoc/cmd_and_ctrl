@@ -64,7 +64,8 @@ func recordsAsLoopStep(t Type) bool {
 	switch t {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
 		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit,
-		TypeSetTriggerOrderPreference, TypeSetAutoAnswers, TypeConcede:
+		TypeSetTriggerOrderPreference, TypeSetAutoAnswers, TypeConcede,
+		TypeSetMatchDeck, TypeChoosePlayFirst, TypeSideboardReady, TypeConcedeMatch:
 		return false
 	}
 	return true

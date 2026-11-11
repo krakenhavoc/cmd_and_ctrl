@@ -118,28 +118,29 @@ var (
 )
 
 // Match is a table's match. Plain data: carried by Clone, RestoreFrom
-// and the snapshot (additive).
+// and the snapshot (additive), where it is embedded as it is, so the
+// JSON tags are the snapshot's shape.
 type Match struct {
 	// BestOf is 1 or 3.
-	BestOf int
+	BestOf int `json:"bestOf"`
 	// Games is every finished game, in order.
-	Games []MatchGame
+	Games []MatchGame `json:"games,omitempty"`
 	// Decks is each seat's pool, in seat order. Nil in a best-of-one,
 	// which never seats a second game.
-	Decks []MatchDeck
+	Decks []MatchDeck `json:"decks,omitempty"`
 	// Chooser is the player who chose who took the first turn of the
 	// game in play (CR 103.1), which a drawn game hands the next choice
 	// to. uuid.Nil until the first game's starting player is known.
-	Chooser uuid.UUID
+	Chooser uuid.UUID `json:"chooser,omitempty"`
 	// Between is the open sideboarding window, nil while a game is in
 	// play and once the match is over.
-	Between *MatchBetween
+	Between *MatchBetween `json:"between,omitempty"`
 	// Over says the match is decided, drawn or conceded.
-	Over bool
+	Over bool `json:"over,omitempty"`
 	// Winner is the player who won the match, uuid.Nil for a draw.
-	Winner uuid.UUID
+	Winner uuid.UUID `json:"winner,omitempty"`
 	// ConcededBy is the player who conceded the match, if one did.
-	ConcededBy uuid.UUID
+	ConcededBy uuid.UUID `json:"concededBy,omitempty"`
 }
 
 // MatchGame is one finished game of a match.
@@ -159,21 +160,67 @@ type MatchGame struct {
 
 // MatchDeck is one seat's pool: the cards it registered, split the way
 // the seat has them now. The cards are pristine (never in a game) and
-// their InstanceIDs are the pool's own, stable for the whole match;
+// their instance IDs are the pool's own, stable for the whole match;
 // each game is seated from copies with new IDs.
+//
+// A pool card is kept as the snapshot's card record, not as a Card: it
+// is plain data, so the match adds no route from Game to a closure
+// (the ADR 0041 ratchet), and a card comes out of the pool the way it
+// comes out of a restore point, its abilities read from the catalog.
 type MatchDeck struct {
-	Player uuid.UUID
+	Player uuid.UUID `json:"player"`
 	// Main is the deck and Side the sideboard, as the seat has them for
 	// the next game.
-	Main []Card
-	Side []Card
+	Main []cardSnapshot `json:"main,omitempty"`
+	Side []cardSnapshot `json:"side,omitempty"`
 	// Fixed is what sideboarding never moves: a card that begins the
 	// game in the command zone, in a format that has one.
-	Fixed []Card
+	Fixed []cardSnapshot `json:"fixed,omitempty"`
 	// Registered is the pool IDs of the registered deck, sorted, so the
 	// screen can offer the way back and the engine can tell a deck
 	// that was changed from one that was not.
-	Registered []uuid.UUID
+	Registered []uuid.UUID `json:"registered,omitempty"`
+}
+
+// poolCards is the pool's record of cards that are in no game: nobody
+// knows them but the screen that shows them to their owner.
+func poolCards(cs []Card) []cardSnapshot {
+	if len(cs) == 0 {
+		return nil
+	}
+	var cen ContinuationCensus
+	out := make([]cardSnapshot, len(cs))
+	for i, c := range cs {
+		c = cloneCard(c)
+		c.KnownBy = nil
+		out[i] = snapshotCard(c, &cen)
+	}
+	return out
+}
+
+// cardsOfPool is the pool's cards as cards, each a new value.
+func cardsOfPool(cs []cardSnapshot) []Card {
+	out := make([]Card, len(cs))
+	for i := range cs {
+		out[i] = restoreCard(&cs[i])
+		out[i].stampPrinted()
+	}
+	return out
+}
+
+// MatchPoolLocked is a player's deck and sideboard as they stand for
+// the next game, for the screen that shows them to that player. The
+// cards carry their pool IDs, which SetMatchDeck takes. Nil at a table
+// that keeps no pools. Caller must hold g.mu (read or write).
+func (g *Game) MatchPoolLocked(player uuid.UUID) (main, side []Card, registered []uuid.UUID) {
+	if g.Match == nil {
+		return nil, nil, nil
+	}
+	d := g.Match.deck(player)
+	if d == nil {
+		return nil, nil, nil
+	}
+	return cardsOfPool(d.Main), cardsOfPool(d.Side), append([]uuid.UUID(nil), d.Registered...)
 }
 
 // MatchBetween is the open sideboarding window.
@@ -253,11 +300,14 @@ func cloneMatch(m *Match) *Match {
 	if m.Decks != nil {
 		out.Decks = make([]MatchDeck, len(m.Decks))
 		for i, d := range m.Decks {
+			// A pool card is never written after it is recorded, only
+			// moved between the two lists, so the lists are copied and
+			// the records shared.
 			out.Decks[i] = MatchDeck{
 				Player:     d.Player,
-				Main:       cloneCards(d.Main),
-				Side:       cloneCards(d.Side),
-				Fixed:      cloneCards(d.Fixed),
+				Main:       append([]cardSnapshot(nil), d.Main...),
+				Side:       append([]cardSnapshot(nil), d.Side...),
+				Fixed:      append([]cardSnapshot(nil), d.Fixed...),
 				Registered: append([]uuid.UUID(nil), d.Registered...),
 			}
 		}
@@ -268,17 +318,6 @@ func cloneMatch(m *Match) *Match {
 		out.Between = &b
 	}
 	return &out
-}
-
-func cloneCards(cs []Card) []Card {
-	if cs == nil {
-		return nil
-	}
-	out := make([]Card, len(cs))
-	for i, c := range cs {
-		out[i] = cloneCard(c)
-	}
-	return out
 }
 
 // openMatchLocked gives a table of a format that plays matches its
@@ -297,17 +336,12 @@ func (g *Game) openMatchLocked() {
 				continue
 			}
 			d := MatchDeck{Player: p.ID}
-			d.Fixed = cloneCards(p.Command.Cards)
-			d.Main = cloneCards(p.Library.Cards)
+			d.Fixed = poolCards(p.Command.Cards)
+			d.Main = poolCards(p.Library.Cards)
 			if p.Companion != nil {
-				d.Side = append(d.Side, cloneCards(p.Companion.Cards)...)
+				d.Side = append(d.Side, poolCards(p.Companion.Cards)...)
 			}
-			d.Side = append(d.Side, cloneCards(p.SideboardCards())...)
-			for i := range d.Side {
-				// A pool card is in no game: nobody knows it but the
-				// screen that shows it to its owner.
-				d.Side[i].KnownBy = nil
-			}
+			d.Side = append(d.Side, poolCards(p.SideboardCards())...)
 			for _, c := range d.Main {
 				d.Registered = append(d.Registered, c.InstanceID)
 			}
@@ -439,6 +473,20 @@ func (g *Game) MatchGameNumber() int {
 	return g.Match.GameNumber()
 }
 
+// MatchMark is where the table is in its match: the number of the game
+// in play (or last played) and whether the table is between games. The
+// room compares it across a commit, because a commit that moves it has
+// ended a game of the match or begun the next, and neither is taken
+// back. (0, false) at a table with no match. Takes the read lock.
+func (g *Game) MatchMark() (number int, between bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.Match == nil {
+		return 0, false
+	}
+	return g.Match.GameNumber(), g.State == StateBetweenGames
+}
+
 // MatchSnapshot is a copy of the table's match, nil when it has none.
 // Takes the read lock.
 func (g *Game) MatchSnapshot() *Match {
@@ -540,9 +588,9 @@ func (g *Game) SetMatchDeck(playerID uuid.UUID, main []uuid.UUID) error {
 		}
 		want[id] = true
 	}
-	var newMain, newSide []Card
+	var newMain, newSide []cardSnapshot
 	found := 0
-	for _, c := range append(append([]Card(nil), d.Main...), d.Side...) {
+	for _, c := range append(append([]cardSnapshot(nil), d.Main...), d.Side...) {
 		if want[c.InstanceID] {
 			found++
 			newMain = append(newMain, c)
@@ -561,12 +609,21 @@ func (g *Game) SetMatchDeck(playerID uuid.UUID, main []uuid.UUID) error {
 	// pool, which no card joins or leaves between games.
 	ownText := map[string]bool{}
 	copies := map[string]int{}
-	for _, c := range append(append([]Card(nil), newMain...), newSide...) {
+	for _, c := range append(append([]cardSnapshot(nil), newMain...), newSide...) {
 		if copies[c.Name]++; copies[c.Name] > spec.Deck.MaxCopies {
 			ownText[c.Name] = true
 		}
 	}
-	if err := CheckMatchDeck(spec, newMain, newSide, len(d.Fixed), ownText); err != nil {
+	// The check reads a card's name and type line, which the pool's
+	// record holds as they are.
+	counted := func(cs []cardSnapshot) []Card {
+		out := make([]Card, len(cs))
+		for i, c := range cs {
+			out[i] = Card{Name: c.Name, TypeLine: c.TypeLine}
+		}
+		return out
+	}
+	if err := CheckMatchDeck(spec, counted(newMain), counted(newSide), len(d.Fixed), ownText); err != nil {
 		return err
 	}
 	d.Main, d.Side = newMain, newSide
@@ -854,9 +911,7 @@ func (d *MatchDeck) gameCards() []Card {
 	}
 	out := make([]Card, 0, len(d.Fixed)+len(d.Main)+len(d.Side))
 	add := func(c Card, side bool) {
-		c = cloneCard(c)
 		c.InstanceID = uuid.New()
-		c.KnownBy = nil
 		switch {
 		case !side:
 			c.IsSideboard, c.IsCompanion = false, false
@@ -867,15 +922,14 @@ func (d *MatchDeck) gameCards() []Card {
 		}
 		out = append(out, c)
 	}
-	for _, c := range d.Fixed {
-		c = cloneCard(c)
+	for _, c := range cardsOfPool(d.Fixed) {
 		c.InstanceID = uuid.New()
 		out = append(out, c)
 	}
-	for _, c := range d.Main {
+	for _, c := range cardsOfPool(d.Main) {
 		add(c, false)
 	}
-	for _, c := range d.Side {
+	for _, c := range cardsOfPool(d.Side) {
 		add(c, true)
 	}
 	return out

@@ -435,12 +435,27 @@ func (r *Room) apply(caller uuid.UUID, fn func() error, st *commitStat) (protoco
 	if barrier == barrierNone {
 		pre = r.Game.Clone()
 	}
+	number, between := r.Game.MatchMark()
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
 	r.pushUndoLocked(undoEntry{pre: pre, barrier: barrier, caller: caller})
+	r.dropUndoAcrossMatchGamesLocked(number, between)
 	return r.autoAnswerThenCaptureLocked()
+}
+
+// dropUndoAcrossMatchGamesLocked empties the undo ring when the commit
+// that just ran ended a game of a match or began the next one (ADR 0222
+// §3): number and between are Game.MatchMark from before it. A game of
+// a match that has ended stays ended, as a table's end does (ADR 0057),
+// and no undo reaches from one game back into the sideboarding before
+// it, where a player could change their deck having seen their opening
+// hand. A no-op at a table with no match. Caller MUST hold r.mu.
+func (r *Room) dropUndoAcrossMatchGamesLocked(number int, between bool) {
+	if n, b := r.Game.MatchMark(); n != number || b != between {
+		r.undoStack = nil
+	}
 }
 
 // undoBarrierFor is barrierBot when stamp is a bot seat, whose commits
@@ -703,10 +718,12 @@ func (r *Room) applyExternal(fn func() error, st *commitStat) (protocol.GameView
 	defer r.mu.Unlock()
 	defer st.hold()()
 
+	number, between := r.Game.MatchMark()
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
+	r.dropUndoAcrossMatchGamesLocked(number, between)
 	return r.autoAnswerThenCaptureLocked()
 }
 
