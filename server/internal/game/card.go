@@ -1493,6 +1493,22 @@ type Card struct {
 	// no abilities" (#4464).
 	NoAbilitiesText PrintedFact
 
+	// WarpText records whether the card's printed oracle text has the
+	// warp keyword (CR 702.185a), per WarpInText (#5688). Stamped by the
+	// deck importer beside NoAbilitiesText, for the same reason:
+	// game.Card carries no oracle text, and warp is not a canonical
+	// keyword token, so Keywords does not carry it. PrintedUnknown (the
+	// zero value) on a card that was never imported. Re-derived from the
+	// face that is up by SetFace. Read through HasWarp, for Blade of the
+	// Swarm's "target exiled card with warp" on a card the catalog does
+	// not run.
+	//
+	// Not a copiable value: the one reader asks about a card in exile,
+	// which is never a copy, so a copy effect leaves the card's own
+	// stamp alone and it is right again when the card leaves the
+	// battlefield.
+	WarpText PrintedFact
+
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
 	// object's colour-defining ability (devoid) at all. A copiable
