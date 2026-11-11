@@ -18,8 +18,16 @@ const (
 
 func TestCmdr2B19EveryCardIsRegisteredFull(t *testing.T) {
 	want := map[string]string{
-		cmdr2VowOfDuty:      "Vow of Duty",
-		cmdr2VowOfLightning: "Vow of Lightning",
+		cmdr2VowOfDuty:          "Vow of Duty",
+		cmdr2VowOfLightning:     "Vow of Lightning",
+		cmdr2VerdantEmbrace:     "Verdant Embrace",
+		cmdr2PollenbrightWings:  "Pollenbright Wings",
+		cmdr2WarbriarBlessing:   "Warbriar Blessing",
+		cmdr2SpectralSteel:      "Spectral Steel",
+		cmdr2CarefulCultivation: "Careful Cultivation",
+		cmdr2IndomitableMight:   "Indomitable Might",
+		cmdr2DaybreakCoronet:    "Daybreak Coronet",
+		cmdr2TenuousTruce:       "Tenuous Truce",
 	}
 	for oracle, name := range want {
 		spec, ok := Lookup(oracle)
@@ -343,5 +351,99 @@ func TestCmdr2B19DaybreakCoronetNeedsAnotherAuraAndFallsOffWhenItLeaves(t *testi
 	}
 	if !me.Graveyard.Contains(id) {
 		t.Error("the Coronet did not go to its owner's graveyard")
+	}
+}
+
+const cmdr2TenuousTruce = "f0bf2923-aea2-4bac-b061-64bc84437ef1"
+
+// cmdr2B19Truce puts a Tenuous Truce controlled by me onto the battlefield
+// attached to the player.
+func cmdr2B19Truce(t *testing.T, g *game.Game, me, enchanted *game.Player) uuid.UUID {
+	t.Helper()
+	aura := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Tenuous Truce", TypeLine: auraTypeLine,
+		OracleID: cmdr2TenuousTruce, Owner: me.ID, Controller: me.ID})
+	g.WithWriteLock(func() {
+		if err := g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetPlayer, ID: enchanted.ID}); err != nil {
+			t.Fatalf("attach: %v", err)
+		}
+	})
+	return aura
+}
+
+func TestCmdr2B19TenuousTruceDrawsForBothOnTheEnchantedOpponentsEndStepOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	seedLibrary(me, "a", "b", "c")
+	seedLibrary(opp, "a", "b", "c")
+	seedLibrary(third, "a", "b", "c")
+	cmdr2B19Truce(t, g, me, opp)
+	advanceToMainOf(t, g, 1)
+	mid := [2]int{len(me.Hand.Cards), len(opp.Hand.Cards)}
+	advanceTo(t, g, game.StepEnd)
+	passPriorityAroundTable(t, g)
+	if got := len(me.Hand.Cards) - mid[0]; got != 1 {
+		t.Errorf("I drew %d on the enchanted opponent's end step, want 1", got)
+	}
+	if got := len(opp.Hand.Cards) - mid[1]; got != 1 {
+		t.Errorf("the enchanted opponent drew %d on their end step, want 1", got)
+	}
+}
+
+func TestCmdr2B19TenuousTruceRefusesAnythingButAnOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Tenuous Truce", TypeLine: "Enchantment — Aura", ManaCost: "{1}{W}",
+			Colors: []string{"W"}, OracleID: cmdr2TenuousTruce, Owner: me.ID, Controller: me.ID})
+	})
+	floatForTest(g, me, "WC")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}}}); err == nil {
+		t.Error("enchanting myself was allowed")
+	}
+}
+
+func TestCmdr2B19TenuousTruceIsSacrificedWhenYouAttackTheEnchantedOpponentOrTheyAttackYou(t *testing.T) {
+	type attack struct {
+		name           string
+		attackerSeat   int
+		defenderPlayer int // seat attacked; -1 means the planeswalker named by walkerOf
+		walkerOf       int // seat whose planeswalker is attacked
+		sacrificed     bool
+	}
+	for _, tc := range []attack{
+		{"I attack the enchanted opponent", 0, 1, 0, true},
+		{"the enchanted opponent attacks me", 1, 0, 0, true},
+		{"I attack another opponent", 0, 2, 0, false},
+		{"the enchanted opponent attacks another player", 1, 2, 0, false},
+		{"another opponent attacks the enchanted opponent", 2, 1, 0, false},
+		{"I attack the enchanted opponent's planeswalker", 0, -1, 1, true},
+		{"the enchanted opponent attacks my planeswalker", 1, -1, 0, true},
+		{"I attack another opponent's planeswalker", 0, -1, 2, false},
+	} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		aura := cmdr2B19Truce(t, g, me, opp)
+		attacker := b12Creature(g, g.Seats[tc.attackerSeat].ID, "Attacker", "Creature — Bear", 2, 2)
+		defender := uuid.Nil
+		if tc.defenderPlayer >= 0 {
+			defender = g.Seats[tc.defenderPlayer].ID
+		} else {
+			g.WithWriteLock(func() {
+				defender = pushPermanent(g, g.Seats[tc.walkerOf].ID, game.Card{Name: "Walker", TypeLine: "Legendary Planeswalker — Test",
+					Counters: map[string]int{game.CounterLoyalty: 3}})
+			})
+		}
+		advanceToDeclareAttackersOf(t, g, tc.attackerSeat)
+		if err := g.DeclareAttacker(attacker, defender); err != nil {
+			t.Fatalf("%s: DeclareAttacker: %v", tc.name, err)
+		}
+		lockInAttacks(t, g)
+		passPriorityAroundTable(t, g)
+		_, still := battlefieldCard(g, aura)
+		if still == tc.sacrificed {
+			t.Errorf("%s: Aura on the battlefield = %v, want %v", tc.name, still, !tc.sacrificed)
+		}
 	}
 }
