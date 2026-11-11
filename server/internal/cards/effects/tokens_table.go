@@ -223,6 +223,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 black Zombie Knight with menace":                              {Name: "Zombie Knight", TypeLine: "Token Creature — Zombie Knight", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"2/2 black Zombie Berserker":                                       {Name: "Zombie Berserker", TypeLine: "Token Creature — Zombie Berserker", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Zombie with haste named Tombspawn":                      {Name: "Tombspawn", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"haste"}},
+	"2/2 black Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"2/2 blue Bird with flying":                                        {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Drake with flying":                                       {Name: "Drake", TypeLine: "Token Creature — Drake", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 colorless Assembly-Worker artifact":                           {Name: "Assembly-Worker", TypeLine: "Token Artifact Creature — Assembly-Worker", Power: 2, Toughness: 2},
