@@ -154,3 +154,31 @@ func cmdr2S33StashCounters(g *game.Game, _, source uuid.UUID) int {
 	}
 	return 0
 }
+
+// cmdr2S33OutlawSubtypes is the five creature types the Outlaws of Thunder
+// Junction reminder text calls outlaws, "|"-joined for a mana-restriction
+// subtype tag (an alternation, game.ManaRestrictAnyType's shape).
+const cmdr2S33OutlawSubtypes = "Assassin|Mercenary|Pirate|Rogue|Warlock"
+
+// cmdr2S33YouCastYourFirstOutlawSpellEachTurn is "whenever you cast your
+// first outlaw spell each turn": the cast is an outlaw spell of the source's
+// controller and no earlier cast this turn by that player was one (the event
+// log keeps the order, as Torgal's "first Human" does).
+func cmdr2S33YouCastYourFirstOutlawSpellEachTurn(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	outlaw := b40Outlaw()
+	if !YouCast(outlaw)(ev, source, lki, g) {
+		return false
+	}
+	for _, prev := range g.EventsThisTurn() {
+		if prev.Seq >= ev.Seq {
+			break
+		}
+		if prev.Kind != game.EventCast || prev.Actor != ev.Actor {
+			continue
+		}
+		if c, ok := g.LookupCardForEffect(prev.CardID); ok && outlaw(g, ev.Actor, c) {
+			return false
+		}
+	}
+	return true
+}

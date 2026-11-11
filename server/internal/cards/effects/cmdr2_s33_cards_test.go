@@ -17,6 +17,7 @@ const (
 	s33TellerOracle        = "bd1ccc6f-d281-413e-889e-1e022c3f2a99"
 	s33ApothecaryOracle    = "09ecb8df-2a17-4e5a-814c-474bce54794d"
 	s33StockpileOracle     = "feaf9dcb-d845-4cf9-b35d-cd58175162e7"
+	s33RetreatOracle       = "0158634a-08a3-4eb8-8216-bf85161fd168"
 	s33LifeInsuranceOracle = "50779f73-c538-4364-aca4-4ab069a00814"
 )
 
@@ -24,6 +25,7 @@ func TestS33CardsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		s33BackInTownOracle:    "Back in Town",
 		s33LifeInsuranceOracle: "Life Insurance",
+		s33RetreatOracle:       "Discreet Retreat",
 		s33StockpileOracle:     "Glittering Stockpile",
 		s33ApothecaryOracle:    "Bloodroot Apothecary",
 		s33TellerOracle:        "Misfortune Teller",
@@ -368,5 +370,68 @@ func TestS33GlitteringStockpileBanksStashCountersAndCashesThemIn(t *testing.T) {
 	}
 	if onBattlefield(g, stockpile) {
 		t.Error("the artifact was not sacrificed")
+	}
+}
+
+func s33RetreatTable(t *testing.T) (*game.Game, *game.Player, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Plain Land", TypeLine: "Land", Owner: me.ID, Controller: me.ID})
+	pushAuraOnLand(t, g, me.ID, "Discreet Retreat", s33RetreatOracle, land)
+	return g, me, land
+}
+
+func TestS33DiscreetRetreatMakesTwoManaOfOneColorForOutlawsOnly(t *testing.T) {
+	g, me, land := s33RetreatTable(t)
+	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{Colors: []string{"G"}}); err != nil {
+		t.Fatalf("tap the enchanted land: %v", err)
+	}
+	if me.ManaPool.CountColor("G") != 2 || me.ManaPool.Total() != 2 {
+		t.Fatalf("pool = %v, want {G}{G}", me.ManaPool)
+	}
+	bear := cgBear(me.ID)
+	pirate := cgBear(me.ID)
+	pirate.Name, pirate.TypeLine = "Pirate", "Creature — Human Pirate"
+	g.WithWriteLock(func() { me.Hand.PushTop(bear); me.Hand.PushTop(pirate) })
+	if err := g.CastSpell(me.ID, bear.InstanceID, game.CastSpellParams{Strict: true}); err == nil {
+		t.Fatal("the restricted mana paid for a non-outlaw spell")
+	}
+	if err := g.CastSpell(me.ID, pirate.InstanceID, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the restricted mana did not pay for an outlaw spell: %v", err)
+	}
+}
+
+func TestS33DiscreetRetreatDrawsOnTheFirstOutlawSpellEachTurnOnly(t *testing.T) {
+	g, me, _ := s33RetreatTable(t)
+	outlaw := func(name, subtype string) game.Card {
+		c := cgBear(me.ID)
+		c.Name, c.TypeLine, c.ManaCost = name, "Creature — Human "+subtype, ""
+		return c
+	}
+	plain := cgBear(me.ID)
+	plain.ManaCost = ""
+	rogue, warlock := outlaw("Rogue", "Rogue"), outlaw("Warlock", "Warlock")
+	g.WithWriteLock(func() { me.Hand.PushTop(plain); me.Hand.PushTop(rogue); me.Hand.PushTop(warlock) })
+	cast := func(c game.Card) {
+		t.Helper()
+		if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{Strict: true}); err != nil {
+			t.Fatalf("cast %s: %v", c.Name, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	hand, life := me.Hand.Size(), me.Life
+	cast(plain)
+	if me.Hand.Size() != hand-1 || me.Life != life {
+		t.Fatalf("a non-outlaw spell triggered it: hand %d→%d, life %d→%d", hand, me.Hand.Size(), life, me.Life)
+	}
+	cast(rogue)
+	if me.Hand.Size() != hand-2+1 || me.Life != life-1 {
+		t.Fatalf("the first outlaw spell: hand %d→%d, life %d→%d, want a draw and 1 life", hand, me.Hand.Size(), life, me.Life)
+	}
+	cast(warlock)
+	if me.Hand.Size() != hand-3+1 || me.Life != life-1 {
+		t.Errorf("the second outlaw spell triggered it: hand %d, life %d", me.Hand.Size(), me.Life)
 	}
 }
