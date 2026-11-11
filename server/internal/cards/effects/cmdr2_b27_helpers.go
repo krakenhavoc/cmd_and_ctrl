@@ -61,3 +61,43 @@ func cmdr2B27RestOneTopRestBottom(g *game.Game, res TakeFromLibraryResult) error
 var drawThenDiscardTwoUnlessEnchantment = discardTwoUnlessOne("discard-two-unless-enchantment",
 	"discard two cards, or one enchantment card",
 	func(c game.Card) bool { return c.IsEnchantment() })
+
+// --- batch 28: "whenever you surveil" payoffs --------------------------------
+
+// cmdr2B27WheneverYouSurveil is "Whenever you surveil, <effect>": the
+// payoff trigger of the surveil cards. EventSurveil is emitted once a
+// surveil is complete (CR 701.25), so a surveil that looked at nothing
+// does not trigger it.
+func cmdr2B27WheneverYouSurveil(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventSurveil, ByYou, label, effect)
+}
+
+// cmdr2B27IsYourFirstSurveilThisTurn is "whenever you surveil for the first
+// time each turn": the event is the controller's, and no earlier surveil of
+// theirs is in the turn's log. The tally is the player's, so a permanent that
+// enters after their first surveil of the turn sees no first one.
+func cmdr2B27IsYourFirstSurveilThisTurn(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventSurveil || ev.Actor != source.Controller {
+		return false
+	}
+	for _, prev := range g.EventsThisTurn() {
+		if prev.Seq >= ev.Seq {
+			break
+		}
+		if prev.Kind == game.EventSurveil && prev.Actor == ev.Actor {
+			return false
+		}
+	}
+	return true
+}
+
+// cmdr2B27SurveilPlusTwoMay is "You may look at an additional two cards each
+// time you surveil" (Enhanced Surveillance): SurveilPlusOne's replacement with
+// +2, and a "may" the player answers each time (CR 614.1a).
+func cmdr2B27SurveilPlusTwoMay(label string) game.ReplacementEffect {
+	r := KeywordActionBecomes(game.KeywordActionSurveil, cmdr2B27PlusTwo, label)
+	r.Optional = true
+	return r
+}
+
+func cmdr2B27PlusTwo(n int) int { return n + 2 }

@@ -404,3 +404,12 @@ func TestCmdr2B27KeepWatchDrawsNothingOutsideCombat(t *testing.T) {
 		t.Errorf("drew %d with no attackers", me.Hand.Size()-hand)
 	}
 }
+
+func TestCmdr2B27NightveilSpriteHasFlying(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	sprite := b12Push(g, me.ID, "Nightveil Sprite", "Creature — Faerie Rogue", cmdr2B27SpriteOracle, 1, 2)
+	if !p1g2HasKeyword(g, sprite, "flying") {
+		t.Error("Nightveil Sprite should have flying")
+	}
+}

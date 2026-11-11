@@ -7,15 +7,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Flying
 //	 Whenever this creature attacks, surveil 1."
 //
-// Flying is read off the oracle keywords; the attack trigger is one
-// surveil.
+// Flying rides PrintedKeywords; the attack trigger is one surveil.
 //
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "8ac23863-0aa7-41bc-b9b7-c5f0566172cf",
-		Name:         "Nightveil Sprite",
-		Completeness: CompletenessFull,
+		OracleID:        "8ac23863-0aa7-41bc-b9b7-c5f0566172cf",
+		Name:            "Nightveil Sprite",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Nightveil Sprite — surveil 1", Do(Surveil{N: 1})),
 		},

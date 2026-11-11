@@ -120,6 +120,7 @@ body dragonhawk-fates-tempest/damage-per-exiled
 body draw/controller-one
 body draw/one-card
 body draw/the-inner-light-that-many
+body dream-eater/bounce
 body eagles-are-coming/birds
 body earth-rumble/fight
 body earthbend/return-tapped
@@ -1504,6 +1505,7 @@ payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
 payunless pay-unless/consuls-shieldguard-indestructible
 payunless pay-unless/contract-hero-pump
+payunless pay-unless/copy-catchers-copy
 payunless pay-unless/corpses-of-the-lost-return
 payunless pay-unless/counter-guarded
 payunless pay-unless/counter-guarded-exile
@@ -2744,6 +2746,7 @@ tail then/dragons-approach-search
 tail then/drain-power-add-lost-mana
 tail then/draw-a-card
 tail then/draw-n-cards
+tail then/dream-eater-reflexive-bounce
 tail then/each-land-you-control-becomes-chosen-type
 tail then/each-opponent-loses-n-life
 tail then/echo-of-eons-shuffle-next
