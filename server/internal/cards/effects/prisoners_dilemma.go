@@ -26,6 +26,7 @@ func init() {
 		Name:             "Prisoner's Dilemma",
 		Completeness:     CompletenessFull,
 		Purpose:          game.Purpose{DamageEachOpponent: 4},
+		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{5}{R}{R}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if len(ctx.Opponents()) == 0 {
