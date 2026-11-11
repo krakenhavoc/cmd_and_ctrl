@@ -2792,7 +2792,7 @@ ride `alt_cost_ids`. They are tapped at CR 601.2h with the spell on the
 stack. A cost does not target, so a hexproof creature is listed, and it
 is not the {T} symbol, so a creature that arrived this turn is too (CR
 302.6). A tapped, opponent's or non-matching permanent, the wrong count,
-or a permanent also named in `tap_ids` or `teamwork_ids` on the same cast
+or a permanent also named in `tap_ids`, `teamwork_ids` or `conspire_ids` on the same cast
 (CR 118.3) is refused as `bad_request` with nothing paid. The auto-tapper
 never taps a named permanent for the offer's mana. An offer whose board
 can't pay the count is not stamped. Per viewer, like `pay_options`.
@@ -3039,6 +3039,24 @@ the card unpaid.
   creature, an opponent's creature, a repeat or a creature also in `tap_ids`
   is `bad_request`. The creatures are tapped with the spell on the stack and
   are never spent by `auto_tap`.
+
+- **`cast_spell.conspire_ids`** (`["<uuid>", "<uuid>"]`, #5688, CR 702.78a) are
+  the two untapped creatures tapped for an announced conspire cost (an
+  `optional_costs` entry whose `key` is `conspire`, Raiding Schemes' grant),
+  each sharing a colour with the spell: the cards of that entry's
+  `tap_others_options`. Two per conspire cost announced, so four when two
+  Raiding Schemes give the spell two costs and both are paid (CR 702.78b). It
+  is a list apart from `teamwork_ids`, so a spell whose own cost taps
+  permanents there (New Blood, teamwork, escalate's taps, a replicate cost
+  that taps) can be conspired too, with different permanents: one named on
+  both lists, or also in `tap_ids`, is `bad_request` with nothing paid, as is
+  the list sent without the conspire index. `tap_others_options` on the
+  conspire entry is not narrowed by the spell's own cost; the client leaves
+  out what the cast already taps. The creatures are tapped with the spell on
+  the stack, are never spent by `auto_tap`, and the auto-tap preview accepts
+  `conspire_ids` on its query string. Additive: a cast that pays conspire and
+  nothing else on `teamwork_ids` may still name the two creatures there, as
+  clients before #5688 do.
 
 - **`cast_spell.blight_ids`** (`["<uuid>"]`, exactly one) is the creature an
   announced blight puts its N -1/-1 counters on — a creature the caster

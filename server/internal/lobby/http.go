@@ -2974,6 +2974,10 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
 		return params, err
 	}
+	// #5688: and the two creatures tapped for conspire.
+	if params.ConspireIDs, err = uuidListParam(q.Get("conspire_ids"), "conspire_ids"); err != nil {
+		return params, err
+	}
 	// #3402: and the permanents an exile-a-permanent cost takes.
 	if params.ExilePermanentIDs, err = uuidListParam(q.Get("exile_permanent_ids"), "exile_permanent_ids"); err != nil {
 		return params, err
