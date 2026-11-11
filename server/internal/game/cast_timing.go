@@ -191,6 +191,24 @@ type CastTimingRule struct {
 	// covered only for the opponent's own cards. Declaration-only, like
 	// FirstCreatureSpellThisTurn: a stored grant never carries it.
 	OwnedByCaster bool `json:"ownedByCaster,omitempty"`
+
+	// SourcePowerEven and SourcePowerOdd narrow a DECLARATION to the time
+	// its source permanent's power is an even (or odd) number: Kianne,
+	// Corrupted Memory's "as long as Kianne's power is even, you may cast
+	// noncreature spells as though they had flash" and its odd twin. The
+	// power is read live, through the layers and counters, on every query
+	// (CR 613), so the grant flips as the power does. Zero is even and a
+	// negative power keeps its sign's parity (-3 is odd). Declaration-only,
+	// like SourceTapped: a stored grant never carries them.
+	SourcePowerEven bool `json:"sourcePowerEven,omitempty"`
+	SourcePowerOdd  bool `json:"sourcePowerOdd,omitempty"`
+
+	// DuringOpponentsEndStep narrows a DECLARATION to an end step (CR 513)
+	// of a turn some opponent of the source's controller is taking: Final-Word
+	// Phantom's "during each opponent's end step, you may cast spells as
+	// though they had flash". Read live on every query. Declaration-only,
+	// like SourceTapped: a stored grant never carries it.
+	DuringOpponentsEndStep bool `json:"duringOpponentsEndStep,omitempty"`
 }
 
 // Grants reports whether this statement OPENS the instant-speed
@@ -262,6 +280,9 @@ func (g *Game) GrantCastTimingForEffect(player uuid.UUID, rule CastTimingRule, l
 	rule.FirstCreatureSpellThisTurn = false
 	rule.OpponentCastASpellThisTurn = false
 	rule.SourceTapped = false
+	rule.SourcePowerEven = false
+	rule.SourcePowerOdd = false
+	rule.DuringOpponentsEndStep = false
 	p.Statics = append(p.Statics, PlayerStatic{
 		Timing:   rule,
 		Source:   source,
@@ -373,6 +394,12 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 			if t.OwnedByCaster && card.Owner != playerID {
 				continue
 			}
+			if (t.SourcePowerEven || t.SourcePowerOdd) && (src.PowerForComparison()%2 == 0) != t.SourcePowerEven {
+				continue
+			}
+			if t.DuringOpponentsEndStep && !g.opponentsEndStepLocked(src.Controller) {
+				continue
+			}
 			// A creature type the filter names is a word of the
 			// granting permanent's text (CR 612.2, #4005): Blur of
 			// Heroism's "Hero spells".
@@ -381,6 +408,17 @@ func (g *Game) castTimingVerdictLocked(playerID uuid.UUID, card Card, zone ZoneK
 		}
 	}
 	return v
+}
+
+// opponentsEndStepLocked reports whether it is the end step of a turn
+// taken by an opponent of `you` who is still in the game. Caller must hold
+// g.mu.
+func (g *Game) opponentsEndStepLocked(you uuid.UUID) bool {
+	if g.Turn.Step != StepEnd || g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
+		return false
+	}
+	active := g.Seats[g.Turn.ActiveSeat]
+	return active != nil && active.ID != you && !active.Eliminated
 }
 
 // opponentCastASpellThisTurnLocked reports whether any opponent of `you`

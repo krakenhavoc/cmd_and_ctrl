@@ -536,6 +536,9 @@ func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
 	if q.Keyword != "" && !slices.Contains(ch.Abilities, q.Keyword) {
 		return false
 	}
+	if len(q.Names) > 0 && !fold(q.Names)(ch.Name) {
+		return false
+	}
 	return true
 }
 

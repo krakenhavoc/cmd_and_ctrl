@@ -123,6 +123,13 @@ type GrantedAlternativeCost struct {
 	// no mana cost for the price to equal.
 	PricedAtManaCost bool
 
+	// ManaCostReducedBy is Aminatou, Veil Piercer's "its miracle cost is
+	// equal to its mana cost reduced by {4}" (CR 118.7): with
+	// PricedAtManaCost, the generic mana taken off the spell's mana cost
+	// to make the offer's price, never below {0} and never touching a
+	// coloured symbol. Zero is no reduction.
+	ManaCostReducedBy int
+
 	// ActiveWhen gates the static on a designation of its source: a
 	// Room door (CR 709.5, #3174). A locked half has no rules text, so
 	// Access Maze and Warped Space offer nothing until their door is
@@ -349,7 +356,12 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 				// ADR 0135 PR 6: the price is the spell's own mana cost,
 				// shown in the label ("Emerge {4}{G}{G}").
 				offer.ManaCost = card.ManaCost
-				offer.Label += " " + card.ManaCost
+				if gr.ManaCostReducedBy > 0 {
+					if pc, err := ParseCost(card.ManaCost); err == nil {
+						offer.ManaCost = reduceGeneric(pc, gr.ManaCostReducedBy).String()
+					}
+				}
+				offer.Label += " " + offer.ManaCost
 			}
 			if gr.LifeEqualToManaValue {
 				// #3174: Bolas's Citadel's price (CastPermission.

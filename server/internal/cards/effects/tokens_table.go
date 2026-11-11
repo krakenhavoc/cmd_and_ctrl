@@ -226,6 +226,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 black Zombie Knight with menace":                              {Name: "Zombie Knight", TypeLine: "Token Creature — Zombie Knight", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"2/2 black Zombie Berserker":                                       {Name: "Zombie Berserker", TypeLine: "Token Creature — Zombie Berserker", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 black Zombie with haste named Tombspawn":                      {Name: "Tombspawn", TypeLine: "Token Creature — Zombie", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"haste"}},
+	"2/2 black Bird with flying":                                       {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"2/2 blue Bird with flying":                                        {Name: "Bird", TypeLine: "Token Creature — Bird", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 blue Drake with flying":                                       {Name: "Drake", TypeLine: "Token Creature — Drake", Power: 2, Toughness: 2, Colors: []string{"U"}, Keywords: []string{"flying"}},
 	"2/2 colorless Assembly-Worker artifact":                           {Name: "Assembly-Worker", TypeLine: "Token Artifact Creature — Assembly-Worker", Power: 2, Toughness: 2},
@@ -312,6 +313,7 @@ var tokenTable = map[string]game.Card{
 	"4/1 black Skeleton with menace":                                   {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 4, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"4/4 white and blue Elemental":                                     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"W", "U"}}, // #4471: Hylda of the Icy Crown
 	"4/4 blue and red Elemental":                                       {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"U", "R"}},
+	"4/4 white Elemental with flying":                                  {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}}, // cmdr2 S22: Hoofprints of the Stag
 	"4/4 blue Giant Wizard":                                            {Name: "Giant Wizard", TypeLine: "Token Creature — Giant Wizard", Power: 4, Toughness: 4, Colors: []string{"U"}},
 	"2/2 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"4/4 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 4, Toughness: 4, Colors: []string{"G"}},
@@ -327,6 +329,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Legendary Dog named Mowu":                               {Name: "Mowu", TypeLine: "Token Legendary Creature — Dog", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Legendary Dog named Porthos":                            {Name: "Porthos", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green and white Legendary Dog named Angelo":                   {Name: "Angelo", TypeLine: "Token Legendary Creature — Dog", Power: 1, Toughness: 1, Colors: []string{"G", "W"}},
+	"2/2 green Legendary Dog Detective named Tiny with trample":        {Name: "Tiny", TypeLine: "Token Legendary Creature — Dog Detective", Power: 2, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"2/2 white and black Legendary Dog named Darkstar":                 {Name: "Darkstar", TypeLine: "Token Legendary Creature — Dog", Power: 2, Toughness: 2, Colors: []string{"W", "B"}},
 	"3/3 colorless Illusion artifact":                                  {Name: "Illusion", TypeLine: "Token Artifact Creature — Illusion", Power: 3, Toughness: 3},
 	"3/3 white Angel with flying":                                      {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 3, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -335,6 +338,8 @@ var tokenTable = map[string]game.Card{
 	"4/4 white Angel Warrior with flying":                              {Name: "Angel Warrior", TypeLine: "Token Creature — Angel Warrior", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Avatar with flying":                                     {Name: "Avatar", TypeLine: "Token Creature — Avatar", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"4/4 white Angel with flying and vigilance":                        {Name: "Angel", TypeLine: "Token Creature — Angel", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying", "vigilance"}},
+	"4/2 green Plant Warrior with reach":                               {Name: "Plant Warrior", TypeLine: "Token Creature — Plant Warrior", Power: 4, Toughness: 2, Colors: []string{"G"}, Keywords: []string{"reach"}},
+	"1/1 red and green and white Sand Warrior":                         {Name: "Sand Warrior", TypeLine: "Token Creature — Sand Warrior", Power: 1, Toughness: 1, Colors: []string{"R", "G", "W"}},
 	"5/3 green Elemental":                                              {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 3, Colors: []string{"G"}},
 	"5/5 red Dragon Spirit with flying":                                {Name: "Dragon Spirit", TypeLine: "Token Creature — Dragon Spirit", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 white Horse":                                                  {Name: "Horse", TypeLine: "Token Creature — Horse", Power: 5, Toughness: 5, Colors: []string{"W"}},

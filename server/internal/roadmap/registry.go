@@ -193,11 +193,11 @@ var items = []Item{
 		Summary: "A creature with landwalk (islandwalk, forestwalk and the rest) can't be blocked while the defending player controls a land of that kind.",
 		Rules:   []string{"702.14"},
 		Keywords: []string{
-			"plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "nonbasic landwalk",
+			"plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "desertwalk", "nonbasic landwalk",
 		},
-		Probe:   hasKeyword("plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "nonbasic landwalk"),
-		Printed: `(?im)^(?:[a-z' -]+, )*(?:plains|island|swamp|mountain|forest|nonbasic land)walk\b`,
-		Phrases: []string{"landwalk", "snow swampwalk", "desertwalk"},
+		Probe:   hasKeyword("plainswalk", "islandwalk", "swampwalk", "mountainwalk", "forestwalk", "desertwalk", "nonbasic landwalk"),
+		Printed: `(?im)^(?:[a-z' -]+, )*(?:plains|island|swamp|mountain|forest|desert|nonbasic land)walk\b`,
+		Phrases: []string{"landwalk", "snow swampwalk"},
 	},
 	{
 		Slug: "fear", Name: "Fear", Kind: KindKeyword, Status: StatusImplemented,

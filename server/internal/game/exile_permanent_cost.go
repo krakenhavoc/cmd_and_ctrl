@@ -193,6 +193,14 @@ type ExilePermanentsCost struct {
 	//     beside any other claimant on the announced X.
 	TotalManaValueX bool
 
+	// FaceDown is "a face-down permanent you control": a material is a
+	// face-down permanent (CR 708.2), however it came to be one. It is
+	// exiled like any other, and a face-down permanent that leaves the
+	// battlefield is revealed (CR 708.9). Primordial Mist's "Exile a
+	// face-down permanent you control face up". Additive, never read
+	// from a stored cost.
+	FaceDown bool
+
 	// Label is the clause as printed, without the verb — "a creature
 	// you control" — shown above the client's picker.
 	Label string
@@ -353,6 +361,9 @@ func (c *ExilePermanentsCost) matches(text *TextWords, card *Card) bool {
 		return false
 	}
 	if c.Nonland && card.HasCardType("land") {
+		return false
+	}
+	if c.FaceDown && !card.FaceDownIsPermanent() {
 		return false
 	}
 	if c.WithActivatedAbilities && !hasActivatedAbility(card) {
