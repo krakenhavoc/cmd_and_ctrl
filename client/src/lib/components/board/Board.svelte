@@ -252,6 +252,7 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaTapNeedsPicker,
     manaCostBranchPayment,
     manaExilePermanentPayment,
     manaTapPayment,
@@ -790,7 +791,12 @@
     const card = discardPromptCard;
     if (!card || !viewerID) return [];
     const me = view.seats.find((s) => s.id === viewerID);
-    return (me?.hand.cards ?? []).filter((c) => c.instance_id !== card.instance_id);
+    // #5457: a narrowed clause ("discard a land card") offers only the
+    // cards the server listed for it.
+    const only = discardPromptCost?.discard_options?.cards;
+    return (me?.hand.cards ?? []).filter(
+      (c) => c.instance_id !== card.instance_id && (!only || only.includes(c.instance_id)),
+    );
   });
 
   function confirmDiscardCost(ids: string[]): void {
@@ -3236,8 +3242,7 @@
   function askManaTapCost(card: CardView, ability: ManaAbilityView): void {
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
-      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
-      if (options.length > need) {
+      if (manaTapNeedsPicker(ability.tap_others_options)) {
         manaTapPrompt = { card, ability };
         return;
       }
@@ -5092,6 +5097,7 @@
     label={manaTapPrompt?.ability.tap_others_label ?? "an untapped creature you control"}
     options={manaTapOptions}
     count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
+    min={manaTapPrompt?.ability.tap_others_options?.min}
     verb="Tap"
     onConfirm={confirmManaTapCost}
     onCancel={() => {

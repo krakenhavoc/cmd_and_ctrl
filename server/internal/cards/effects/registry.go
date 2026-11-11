@@ -857,7 +857,7 @@ func Register(spec Spec) {
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
 		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
-		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers, false)
+		checkManaTapOthersClause(spec.Name, i, ma)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
 		// every one of them a boot-time refusal rather than a
@@ -1704,6 +1704,29 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 	case tc.Filter.Players:
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a tap-others clause matches permanents only", card, where))
 	}
+}
+
+// checkManaTapOthersClause is checkTapOthersClause for a mana ability,
+// which may also print "Tap X untapped <permanents> you control" with X
+// the number tapped (#5447, Hazel of the Rootbloom): the any-number form
+// (TapXUntappedForMana). A mana ability announces no X, so the count has
+// to be read off the payment, and such an ability must declare
+// ProducedForPaid: an output that ignored the count would be a cost the
+// player could pay with nothing.
+func checkManaTapOthersClause(card string, i int, ma ManaAbility) {
+	tc := ma.Cost.TapOthers
+	where := fmt.Sprintf("mana ability %d", i)
+	if tc == nil || !tc.AnyNumber {
+		checkTapOthersClause(card, where, tc, false)
+		return
+	}
+	if ma.ProducedForPaid == nil {
+		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but its output does not read the payment (ProducedForPaid)", card, where))
+	}
+	fixed := *tc
+	fixed.AnyNumber = false
+	fixed.Count = 1
+	checkTapOthersClause(card, where, &fixed, false)
 }
 
 // zoneDeclared reports whether `zone` appears in a Spec's

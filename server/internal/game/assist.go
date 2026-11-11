@@ -313,8 +313,8 @@ func (g *Game) parkForAssistLocked(p *Player, card Card, cardID uuid.UUID, param
 			return false, ErrChoicePending
 		}
 	}
-	spend := ManaSpendForCastParams(card, params)
 	helper := params.AssistPlayer
+	spend := ManaSpendForCastParams(card, params).PaidBy(helper)
 	ceiling := g.assistCeilingLocked(helper, generic, spend)
 	if ceiling == 0 {
 		return false, nil
@@ -434,7 +434,7 @@ func (g *Game) prepareAssistLocked(p *Player, card Card, params CastSpellParams)
 		return nil, ErrAssistTooMuch
 	}
 	hp := g.playerByIDLocked(a.helper)
-	spend := ManaSpendForCastParams(card, params)
+	spend := ManaSpendForCastParams(card, params).PaidBy(a.helper)
 	plan, short, ok := g.assistFundsLocked(a.helper, a.amount, spend)
 	if !ok || hp == nil {
 		name := "the helper"
@@ -460,7 +460,7 @@ func (g *Game) castManaShortLocked(p *Player, card Card, params CastSpellParams)
 	if err != nil {
 		return nil // refused by the payment itself, before anything is spent
 	}
-	spend := ManaSpendForCastParams(card, params)
+	spend := ManaSpendForCastParams(card, params).PaidBy(p.ID)
 	// #2575: read with the auto-tap's exclusions, as applyAutoTapLocked
 	// reads it, so a "no more than one mana of each color" clause
 	// chooses the colours the payment will.

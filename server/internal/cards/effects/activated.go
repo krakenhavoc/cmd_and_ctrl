@@ -618,6 +618,23 @@ func TapXUntapped(label string, preds ...CardPredicate) game.AbilityCost {
 	}}
 }
 
+// TapXUntappedForMana is "Tap X untapped <permanents> you control" as a
+// component of a MANA ability's cost (#5447, Hazel of the Rootbloom's
+// "{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana in any
+// combination of colors"). A mana ability announces no X (CR 605.3b), so
+// X is the number of permanents the activator names, from none up to
+// every one that could pay, and the ability's ProducedForPaid reads it
+// back as len(paid.TappedOthers). Like every tap-others cost it is not
+// the {T} symbol (CR 302.6) and does not target; a source that also pays
+// its own {T} is never one of the X (CR 118.3).
+func TapXUntappedForMana(label string, preds ...CardPredicate) *game.TapOthersCost {
+	return &game.TapOthersCost{
+		Filter:    TargetPermanent(label, preds...),
+		Label:     label,
+		AnyNumber: true,
+	}
+}
+
 // ReturnAPermanentToHand is "Return a <permanent> you control to its
 // owner's hand" as a COST (#1213) — Quirion Ranger's
 //

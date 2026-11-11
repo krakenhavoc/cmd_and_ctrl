@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { manaAbilityNeedsPrompt, manaTapPayment } from "./manaAbilityCost";
+import { manaAbilityNeedsPrompt, manaTapNeedsPicker, manaTapPayment } from "./manaAbilityCost";
 import type { ManaAbilityView } from "./protocol";
 
 function ability(extra: Partial<ManaAbilityView>): ManaAbilityView {
@@ -43,5 +43,27 @@ describe("manaTapPayment", () => {
 
   it("keeps ordinary mana-ability payloads unchanged", () => {
     expect(manaTapPayment([])).toEqual({});
+  });
+});
+
+// #5447: Hazel of the Rootbloom's "Tap X untapped tokens you control".
+describe("manaTapNeedsPicker", () => {
+  it("sends a fixed count on its own when the options are exactly that many", () => {
+    expect(manaTapNeedsPicker({ cards: ["bear"], min: 1, max: 1 })).toBe(false);
+    expect(manaTapNeedsPicker({ cards: ["a", "b"], min: 2, max: 2 })).toBe(false);
+  });
+
+  it("asks which permanents pay a fixed count with more options than it needs", () => {
+    expect(manaTapNeedsPicker({ cards: ["bear", "elf"], min: 1, max: 1 })).toBe(true);
+  });
+
+  it("always asks how many to tap when the count is the player's", () => {
+    expect(manaTapNeedsPicker({ cards: ["a"], min: 0, max: 1 })).toBe(true);
+    expect(manaTapNeedsPicker({ cards: ["a", "b", "c"], min: 0, max: 3 })).toBe(true);
+  });
+
+  it("asks nothing with nothing to tap or no such cost", () => {
+    expect(manaTapNeedsPicker({ cards: [], min: 0, max: 0 })).toBe(false);
+    expect(manaTapNeedsPicker(undefined)).toBe(false);
   });
 });

@@ -227,7 +227,7 @@ func (g *Game) producibleManaVisitingLocked(c Card, visiting map[uuid.UUID]bool)
 		// Reflecting Pool next to it has to see the same answer the
 		// activation would give.
 		slots, err := manaAbilitySlotsLocked(g, c.Controller, c.InstanceID, &ab,
-			g.maxCounterPaymentLocked(c.Controller, c.InstanceID, ab.RemoveCounters))
+			g.maxManaPaymentLocked(c.Controller, c.InstanceID, &ab))
 		if err != nil {
 			continue
 		}

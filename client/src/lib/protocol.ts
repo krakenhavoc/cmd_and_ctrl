@@ -3264,6 +3264,11 @@ export interface EscalateView {
 // them.
 export interface AdditionalCostView {
   discard_cards?: number;
+  // #5457: the cards in the viewer's hand that may pay a discard the
+  // clause narrows ("discard a land card", Magmatic Insight). Absent
+  // when any card pays. Fewer cards than `min` means the cost cannot be
+  // paid right now, so the spell is uncastable.
+  discard_options?: LegalTargetsView;
   // S21 sub-PR 6: the permanents that may pay a "sacrifice a
   // creature" clause, already filtered to the caster's own board.
   // The picked IDs ride cast_spell as `sacrifice_ids`.
@@ -5832,8 +5837,10 @@ export interface ManaAbilityView {
   // #758: "Tap an untapped creature you control" on a mana ability
   // (Springleaf Drum). Same fields as an activated ability's
   // TapOthers component; the answer rides activate_mana_ability as
-  // `tap_ids`. This surface is fixed-count: CR 605.3b gives a mana
-  // ability no X announcement, so `count_from_x` is never set here.
+  // `tap_ids`. CR 605.3b gives a mana ability no X announcement, so
+  // `count_from_x` is never set here. #5447: "Tap X untapped tokens you
+  // control: Add X mana" (Hazel of the Rootbloom) ships `min` 0 and `max`
+  // every option; the number of `tap_ids` sent is the X.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #1600: "Exile a creature you control" on a mana ability (Food

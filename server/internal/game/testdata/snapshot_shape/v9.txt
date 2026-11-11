@@ -40486,6 +40486,7 @@ pendingChoices[].assist.spend.Payer	custom(uuid.UUID)
 pendingChoices[].assist.spend.PowerUp	bool
 pendingChoices[].assist.spend.Purpose	string
 pendingChoices[].assist.spend.SourceOnly	number:uint16
+pendingChoices[].assist.spend.SpellOwner	custom(uuid.UUID)
 pendingChoices[].assist.spend.Subtypes	array
 pendingChoices[].assist.spend.Subtypes[]	string
 pendingChoices[].assist.spend.Supertypes	array
