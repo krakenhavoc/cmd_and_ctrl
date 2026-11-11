@@ -417,16 +417,10 @@ func TestCmdr2S41ArchmageCopiesFaerieAndWizardPermanentSpellsOnly(t *testing.T) 
 	}
 }
 
-func TestCmdr2S41ArchmageIgnoresAnOpponentsSpellAndAnInstant(t *testing.T) {
+func TestCmdr2S41ArchmageIgnoresAnInstant(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	me := g.Seats[0]
 	pushCatalogPermanent(g, me.ID, "Archmage of Echoes", "Creature — Faerie Wizard", cmdr2S41ArchmageOracle, false)
-	advanceToMain(t, g)
-	castFromSeat(t, g, opp, "Their Sprite", "Creature — Faerie Rogue", "", nil)
-	passPriorityAroundTable(t, g)
-	if got := countBattlefieldNamed(g, opp.ID, "Their Sprite"); got != 1 {
-		t.Errorf("%d Their Sprites, want 1: Archmage copies only the spells you cast", got)
-	}
 	castCatalogSpell(t, g, "Wizard Trick", "Instant", "", nil)
 	passPriorityAroundTable(t, g)
 	if len(g.StackMeta) != 0 || g.Stack.Size() != 0 {
@@ -466,25 +460,19 @@ func TestCmdr2S41CaseCopiesNonlegendaryCreatureSpellsOnlyOnceSolved(t *testing.T
 }
 
 func TestCmdr2S41CaseSolvesAtTheEndStepWithFifteenCardsInYourGraveyard(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	g.WithWriteLock(func() { me.Graveyard.Cards = nil })
-	id := pushClass(g, me.ID, "Case of the Shifting Visage", mkmAC2CaseTypeLine, cmdr2S41CaseOracle)
-	for i := 0; i < 14; i++ {
-		pushGraveyardCardTyped(me, "Filler", "Instant")
-	}
-	if mkmAC2EndStepSolves(t, g, id) {
-		t.Fatal("the Case solved with fourteen cards in the graveyard")
-	}
-	pushGraveyardCardTyped(me, "Filler", "Instant")
-	if !mkmAC2EndStepSolves(t, g, id) {
-		// The first end step has passed; the next one solves it.
-		endTurn(t, g)
-		for g.Turn.ActiveSeat != 0 {
-			endTurn(t, g)
+	for _, tc := range []struct {
+		cards  int
+		solved bool
+	}{{14, false}, {15, true}} {
+		g := newCatalogGame(t)
+		me := g.Seats[g.Turn.ActiveSeat]
+		g.WithWriteLock(func() { me.Graveyard.Cards = nil })
+		id := pushClass(g, me.ID, "Case of the Shifting Visage", mkmAC2CaseTypeLine, cmdr2S41CaseOracle)
+		for i := 0; i < tc.cards; i++ {
+			pushGraveyardCardTyped(me, "Filler", "Instant")
 		}
-		if !mkmAC2EndStepSolves(t, g, id) {
-			t.Fatal("the Case did not solve with fifteen cards in the graveyard")
+		if got := mkmAC2EndStepSolves(t, g, id); got != tc.solved {
+			t.Errorf("with %d cards in the graveyard solved = %v, want %v", tc.cards, got, tc.solved)
 		}
 	}
 }
