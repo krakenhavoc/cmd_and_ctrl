@@ -1,6 +1,10 @@
 package effects
 
 import (
+	"strings"
+
+	"github.com/google/uuid"
+
 	"slices"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -52,4 +56,36 @@ func cmdr2S52OpponentsBelowHalfStarting(g *game.Game, source *game.Card) int {
 		}
 	}
 	return n
+}
+
+// cmdr2S52CardTypesSacrificedThisTurn counts the distinct card types among the
+// permanents `player` sacrificed this turn (Korvold, Gleeful Glutton's cost
+// reduction), from TurnTally.SacrificedCardTypes: each sacrificed permanent
+// was tallied once per card type it had as it was sacrificed, tokens included.
+func cmdr2S52CardTypesSacrificedThisTurn(g *game.Game, player uuid.UUID) int {
+	if g == nil {
+		return 0
+	}
+	n := 0
+	for _, t := range game.ChoosableCardTypes {
+		if g.SacrificedWithCardTypeThisTurn(player, strings.ToLower(t)) > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// cmdr2S52KorvoldGrow is Korvold's combat-damage effect: X is the number of
+// permanent types among cards in your graveyard, read once as the trigger
+// resolves; put X +1/+1 counters on Korvold and draw X cards.
+func cmdr2S52KorvoldGrow(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	x := permanentTypesInGraveyard(g, item.Controller)
+	if x <= 0 {
+		return nil
+	}
+	if err := (CounterOnThis{Kind: game.CounterPlusOne, N: x}).Apply(ctx); err != nil {
+		return err
+	}
+	return DrawCards{Player: item.Controller, N: x}.Apply(ctx)
 }

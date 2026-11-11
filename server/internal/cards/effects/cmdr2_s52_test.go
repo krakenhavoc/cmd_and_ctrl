@@ -173,3 +173,53 @@ func TestCmdr2S52AnyaScalesWithOpponentsBelowHalfStarting(t *testing.T) {
 	setLife(o2, 40)
 	check("both recovered", 4, false)
 }
+
+const cmdr2S52KorvoldOracle = "99e89098-bc55-4297-9407-ab9256b609da"
+
+func TestCmdr2S52KorvoldCostsLessPerCardTypeSacrificedThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	price := func() int {
+		return selfPricedMV(t, g, me, cmdr2S52KorvoldOracle, "Legendary Creature — Dragon Noble", "{5}{B}{R}{G}")
+	}
+	if got := price(); got != 8 {
+		t.Fatalf("nothing sacrificed: %d, want 8", got)
+	}
+	golem := pushPermanent(g, me.ID, game.Card{Name: "Golem", TypeLine: "Artifact Creature — Golem", Power: 1, Toughness: 1})
+	other := pushPermanent(g, me.ID, game.Card{Name: "Clue", TypeLine: "Artifact", Power: 0, Toughness: 0})
+	land := pushPermanent(g, me.ID, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(golem) })
+	if got := price(); got != 6 {
+		t.Errorf("an artifact creature sacrificed (two types): %d, want 6", got)
+	}
+	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(other) })
+	if got := price(); got != 6 {
+		t.Errorf("a second artifact adds no new type: %d, want 6", got)
+	}
+	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(land) })
+	if got := price(); got != 5 {
+		t.Errorf("a land adds a third type: %d, want 5", got)
+	}
+}
+
+func TestCmdr2S52KorvoldGrowsAndDrawsPerPermanentTypeInGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	korvold := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Korvold, Gleeful Glutton", TypeLine: "Legendary Creature — Dragon Noble",
+		OracleID: cmdr2S52KorvoldOracle, Power: 4, Toughness: 4, Owner: me.ID, Controller: me.ID,
+		Keywords: []string{"flying", "trample", "haste"},
+	})
+	// An artifact creature is two types; the land a third; an instant none.
+	std51Graveyard(me, "Artifact Creature — Golem", "Basic Land — Forest", "Instant")
+	hand := me.Hand.Size()
+	attackWith(t, g, opp.ID, korvold)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := effectivePowerWithCounters(t, g, korvold); got != 7 {
+		t.Errorf("power %d, want 7 (three counters)", got)
+	}
+	if got := me.Hand.Size() - hand; got != 3 {
+		t.Errorf("drew %d, want 3", got)
+	}
+}
