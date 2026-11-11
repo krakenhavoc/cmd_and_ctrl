@@ -3483,6 +3483,11 @@ export interface OptionalCostView {
   // what ONE payment taps; paying the offer N times names N times that
   // many on `teamwork_ids`. `max_times` is capped at what the options
   // cover, and fewer options than `min` means it cannot be taken now.
+  // #5688: on a conspire offer (`key` "conspire") the same two fields
+  // describe conspire's two creatures, and those picks ride cast_spell
+  // as `conspire_ids`, a list apart from `teamwork_ids`, so a spell
+  // whose own cost taps permanents can be conspired too. No permanent
+  // may be on both lists.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #5358: a kicker that returns a permanent (Chocobo Kick's "Kicker—Return

@@ -133,7 +133,7 @@ func couldAttack(c *protocol.CardView) bool {
 // keeps the normal threshold in a leftover window.
 var nonManaCastKeys = []string{
 	"alt_cost_ids", "discard_ids", "sacrifice_ids", "delve_ids",
-	"teamwork_ids", "blight_ids", "reveal_ids", "exile_permanent_ids", "return_ids", "exile_from_hand_ids", "exile_ids", "optional_costs", "cost_branch",
+	"teamwork_ids", "conspire_ids", "blight_ids", "reveal_ids", "exile_permanent_ids", "return_ids", "exile_from_hand_ids", "exile_ids", "optional_costs", "cost_branch",
 	"phyrexian_life",
 	// #5390: an offer's counter removal (Quilled Greatwurm's graveyard
 	// cast) spends counters, as an activation's does.

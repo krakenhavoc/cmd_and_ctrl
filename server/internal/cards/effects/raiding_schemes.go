@@ -19,20 +19,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // artifact, enchantment or planeswalker spell becomes a token as it
 // resolves (CR 707.10f).
 //
-// Caveat: the creatures ride the cast's one teamwork_ids list, so a spell
-// whose own cost already taps permanents there (New Blood, teamwork,
-// Collective Effort's escalate, a replicate cost that taps) is not
-// offered conspire. #4690.
+// The two creatures ride the cast's conspire_ids, a list of their own
+// (#5688), so a spell whose own cost taps permanents (New Blood, teamwork,
+// Collective Effort's escalate, a replicate cost that taps) is conspired
+// by tapping two more: one creature never pays both. Two Raiding Schemes
+// give a spell two instances, each paid and copied on its own (CR
+// 702.78b).
 func init() {
 	Register(Spec{
 		OracleID:     "854cac11-9a22-4dea-8c1b-c49a4858a754",
 		Name:         "Raiding Schemes",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Spells whose own cost already taps permanents aren't given conspire.",
-		},
+		Completeness: CompletenessFull,
 		GrantedOptionalCosts: []game.GrantedOptionalCost{
-			SpellsYouCastHave("Each noncreature spell you cast has conspire.", Noncreature(), Conspire()),
+			ConspireForSpellsYouCast("Each noncreature spell you cast has conspire.", Noncreature()),
 		},
 	})
 }

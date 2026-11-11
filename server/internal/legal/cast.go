@@ -56,6 +56,10 @@ type castParams struct {
 	// (#1703) — CastSpellParams.TeamworkIDs / BlightIDs.
 	TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 	BlightIDs   []string `json:"blight_ids,omitempty"`
+	// ConspireIDs are the two creatures an announced conspire cost taps
+	// (#5688) — CastSpellParams.ConspireIDs, a list apart from the
+	// spell's own taps on teamwork_ids.
+	ConspireIDs []string `json:"conspire_ids,omitempty"`
 	// RevealIDs is the one card a reveal / behold branch shows —
 	// CastSpellParams.RevealIDs.
 	RevealIDs []string `json:"reveal_ids,omitempty"`
@@ -1265,6 +1269,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			return
 		}
 	}
+	// #5688: conspire's two creatures, on their own list, from what the
+	// spell's own taps left. A set the seat cannot pay beside them is
+	// not announced.
+	conspireIDs, ok := e.conspireCastPayment(card.InstanceID, optional, chosen, teamIDs)
+	if !ok {
+		return
+	}
 
 	// ADR 0100 §6: delve's graveyard. The candidates are the engine's
 	// own walk, in the seat's fuel order when a policy supplies one, so
@@ -1276,7 +1287,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, beholdType, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, conspireIDs, blightIDs, revealIDs, beholdType, exileIDs, returnIDs, handExile, exileCardIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1591,11 +1602,12 @@ modeLoop:
 					// Treasure returned to Fear of Isolation cannot also be
 					// cracked for its {U} (it may still tap for mana, as a
 					// sacrificed one may).
-					if len(discards)+len(sacs)+len(teamIDs)+len(blightIDs)+len(altCostSets[0])+len(returnIDs) > 0 &&
+					if len(discards)+len(sacs)+len(teamIDs)+len(conspireIDs)+len(blightIDs)+len(altCostSets[0])+len(returnIDs) > 0 &&
 						!e.canPayExcluding(payCost, payX, spend, game.CastAutoTapExclusions(game.CastSpellParams{
 							DiscardIDs:   discards,
 							SacrificeIDs: sacs,
 							TeamworkIDs:  teamIDs,
+							ConspireIDs:  conspireIDs,
 							BlightIDs:    blightIDs,
 							AltCostIDs:   altCostSets[0],
 							ReturnIDs:    returnIDs,
@@ -1629,6 +1641,7 @@ modeLoop:
 						discards:  discards,
 						sacs:      sacs,
 						team:      teamIDs,
+						conspire:  conspireIDs,
 						blight:    blightIDs,
 						alt:       altCostSets[0],
 						delve:     payDelve,
@@ -1750,6 +1763,9 @@ type announcedCast struct {
 	// auto-tap plan the all-life payment is re-checked against.
 	team   []uuid.UUID
 	blight []uuid.UUID
+	// conspire is the creatures tapped for conspire (#5688), excluded
+	// the same way.
+	conspire []uuid.UUID
 	// alt is the alternative cost's card payment the announcement was
 	// emitted with (#1727) — excluded from the auto-tap plan like the
 	// rest.
@@ -1791,7 +1807,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs []uuid.UUID,
+	teamIDs, conspireIDs, blightIDs, revealIDs []uuid.UUID,
 	beholdType string,
 	exileIDs, returnIDs, handExile, exileCardIDs []uuid.UUID,
 	branch *int,
@@ -1890,6 +1906,8 @@ func (e *enumerator) castMoveEmitter(
 		if paying != nil && !paying.TapOthers.Empty() || optionalTaps(optional, chosen) {
 			label += tapLabel(g, teamIDs)
 		}
+		// #5688: and the two creatures conspire taps.
+		label += tapLabel(g, conspireIDs)
 		// ADR 0100: the delved and the undelved casts are otherwise the
 		// same line in the move log.
 		if len(delve) > 0 {
@@ -1972,6 +1990,7 @@ func (e *enumerator) castMoveEmitter(
 				OptionalCosts:     chosen,
 				CostBranch:        branch,
 				TeamworkIDs:       idStrings(teamIDs),
+				ConspireIDs:       idStrings(conspireIDs),
 				BlightIDs:         idStrings(blightIDs),
 				RevealIDs:         idStrings(revealIDs),
 				BeholdType:        beholdType,
@@ -2338,6 +2357,7 @@ func (a *announcedCast) autoTapExclusions(alt []uuid.UUID) map[uuid.UUID]bool {
 		DiscardIDs:   a.discards,
 		SacrificeIDs: a.sacs,
 		TeamworkIDs:  a.team,
+		ConspireIDs:  a.conspire,
 		BlightIDs:    a.blight,
 		AltCostIDs:   alt,
 	}, a.offer)

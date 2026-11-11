@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyCastChoices, castTapCost, optionalCostPayOptions } from "./targeting";
-import { castPreviewParams } from "./castPreview";
+import {
+  applyCastChoices,
+  castConspireCost,
+  castTapCost,
+  optionalCostPayOptions,
+} from "./targeting";
+import { castPreviewParams, castPreviewParamsFromPayload } from "./castPreview";
 import { canCastFromHand } from "./timing";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 
@@ -124,41 +129,85 @@ describe("castTapCost — a replicate cost that taps", () => {
   });
 });
 
-// #4690: conspire (granted by Raiding Schemes) — one payment taps two
-// creatures that share a colour with the spell, on the same picker.
-describe("castTapCost — conspire", () => {
+// #4690, #5688: conspire (granted by Raiding Schemes) — one payment taps
+// two creatures that share a colour with the spell, on the same picker,
+// answered on a list of its own (`conspire_ids`).
+describe("castConspireCost", () => {
+  const conspire = {
+    index: 0,
+    key: "conspire",
+    label: "Conspire",
+    max_times: 1,
+    tap_others_label: "two untapped creatures you control that share a color with it",
+    tap_others_options: { cards: ["red1", "red2", "red3"], min: 2, max: 2 },
+  };
   const plot: CardView = {
     ...newBlood,
     name: "Lightning Bolt",
     type_line: "Instant",
     additional_cost: undefined,
-    optional_costs: [
-      {
-        index: 0,
-        key: "conspire",
-        label: "Conspire",
-        max_times: 1,
-        tap_others_label: "two untapped creatures you control that share a color with it",
-        tap_others_options: { cards: ["red1", "red2", "red3"], min: 2, max: 2 },
-      },
-    ],
+    optional_costs: [conspire],
   };
 
-  it("asks for two creatures when conspire is paid", () => {
-    expect(castTapCost(plot, { optionalCosts: [0] })).toEqual({
+  it("asks for two creatures when conspire is paid, apart from the spell's own taps", () => {
+    expect(castConspireCost(plot, { optionalCosts: [0] })).toEqual({
       label: "two untapped creatures you control that share a color with it",
       count: 2,
       min: 2,
       options: ["red1", "red2", "red3"],
     });
-    expect(castTapCost(plot, {})).toBeUndefined();
+    expect(castConspireCost(plot, {})).toBeUndefined();
+    // Conspire is not the spell's own tap cost.
+    expect(castTapCost(plot, { optionalCosts: [0] })).toBeUndefined();
+  });
+
+  it("is asked beside a spell's own tap cost, leaving out what that cost taps", () => {
+    const blood: CardView = {
+      ...newBlood,
+      optional_costs: [
+        { ...conspire, tap_others_options: { cards: ["vamp", "rat1", "rat2"], min: 2, max: 2 } },
+      ],
+    };
+    const own = castTapCost(blood, { optionalCosts: [0] });
+    expect(own?.label).toBe(newBlood.additional_cost?.tap_others_label);
+    expect(castConspireCost(blood, { optionalCosts: [0], teamworkIDs: ["vamp"] })?.options).toEqual(
+      ["rat1", "rat2"],
+    );
+    expect(
+      castConspireCost(blood, { optionalCosts: [0], teamworkIDs: ["x"], tapIDs: ["rat1"] })
+        ?.options,
+    ).toEqual(["vamp", "rat2"]);
+  });
+
+  it("asks for four when two conspire costs are paid (CR 702.78b)", () => {
+    const two: CardView = { ...plot, optional_costs: [conspire, { ...conspire, index: 1 }] };
+    expect(castConspireCost(two, { optionalCosts: [0, 1] })?.count).toBe(4);
+    expect(castConspireCost(two, { optionalCosts: [1] })?.count).toBe(2);
   });
 
   it("greys the offer when only one creature shares a colour", () => {
-    const offer = plot.optional_costs![0];
     expect(
-      optionalCostPayOptions({ ...offer, tap_others_options: { cards: ["red1"], min: 2, max: 2 } }),
+      optionalCostPayOptions({
+        ...conspire,
+        tap_others_options: { cards: ["red1"], min: 2, max: 2 },
+      }),
     ).toEqual([]);
+  });
+
+  it("rides cast_spell as conspire_ids, and the auto-tap preview keeps them out of the mana", () => {
+    const params: Record<string, unknown> = {};
+    applyCastChoices(params, {
+      optionalCosts: [0],
+      teamworkIDs: ["vamp"],
+      conspireIDs: ["a", "b"],
+    });
+    expect(params.teamwork_ids).toEqual(["vamp"]);
+    expect(params.conspire_ids).toEqual(["a", "b"]);
+    expect(castPreviewParams({ conspireIDs: ["a", "b"] }).conspireIDs).toEqual(["a", "b"]);
+    expect(castPreviewParamsFromPayload({ conspire_ids: ["a", "b"] }).conspireIDs).toEqual([
+      "a",
+      "b",
+    ]);
   });
 });
 

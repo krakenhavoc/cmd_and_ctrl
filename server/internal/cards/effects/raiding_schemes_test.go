@@ -20,7 +20,7 @@ func TestRaidingSchemesIsRegistered(t *testing.T) {
 	if !ok {
 		t.Fatal("not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 		t.Errorf("Completeness = %v, Caveats = %v", spec.Completeness, spec.Caveats)
 	}
 }
@@ -212,12 +212,18 @@ func TestRaidingSchemesConspireIsEnumerated(t *testing.T) {
 			var p struct {
 				OptionalCosts []int       `json:"optional_costs"`
 				TeamworkIDs   []uuid.UUID `json:"teamwork_ids"`
+				ConspireIDs   []uuid.UUID `json:"conspire_ids"`
 			}
 			if err := json.Unmarshal(m.Params, &p); err != nil {
 				t.Fatal(err)
 			}
+			// #5688: the two creatures ride conspire_ids, and nothing is
+			// on teamwork_ids for a spell with no tap cost of its own.
+			if len(p.TeamworkIDs) > 0 {
+				t.Errorf("a Bolt names %v on teamwork_ids", p.TeamworkIDs)
+			}
 			if len(p.OptionalCosts) > 0 {
-				out = append(out, p.TeamworkIDs)
+				out = append(out, p.ConspireIDs)
 			}
 		}
 		return out

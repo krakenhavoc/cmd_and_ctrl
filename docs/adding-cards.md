@@ -13755,10 +13755,11 @@ ctx.SourcePermanent()                                                           
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
 - **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
-  "each noncreature spell you cast has conspire" is `SpellsYouCastHave(label, Noncreature(), Conspire())` (Raiding
-  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
-  engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
-  whose own cost already uses `teamwork_ids` (`castTapListTaken`).
+  "each noncreature spell you cast has conspire" is `ConspireForSpellsYouCast(label, Noncreature())` (Raiding
+  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `conspire_ids`, a list apart
+  from `teamwork_ids` (#5688), so a spell whose own cost taps permanents is conspired with two more; the copy is the
+  engine's trigger (`game/conspire.go`, body `conspire/copy`), one per conspire cost paid. The grant is `EachSource`:
+  two permanents granting it give two costs (CR 702.78b).
 - **"<Spells> you cast gain offspring {cost} as you cast them"** (Zinnia, Valley's Voice; #5428, CR 702.175) is
   `GrantedOptionalCosts: []game.GrantedOptionalCost{OffspringForSpellsYouCast(label, Creature(), "{2}")}`
   (`granted_offspring.go`). The cost has its own key, `granted-offspring`, so a creature that prints offspring keeps
