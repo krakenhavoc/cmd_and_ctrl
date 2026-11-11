@@ -340,6 +340,7 @@ body seven-of-nine-tertiary-adjunct/charge
 body shield-counter/remove
 body shirei/return-if-still-on-the-battlefield
 body shriek-treblemaker/cant-block
+body skyfisher-spider/destroy
 body slumbering-walker/return-from-graveyard
 body snaremaster-sprite/tap-and-stun
 body sorin-imperious-bloodlord/strike
@@ -552,6 +553,7 @@ choose choose-cards/ensign-pavel-chekov-picked
 choose choose-cards/eriettes-whisper-role
 choose choose-cards/ethereal-forager-return
 choose choose-cards/eumidian-wastewaker-discard
+choose choose-cards/evercoat-ursine-play-one
 choose choose-cards/evidence-examiner-collect-evidence
 choose choose-cards/exile-from-hand-and-plot
 choose choose-cards/exile-top-face-down-linked
@@ -1243,6 +1245,7 @@ confirm confirm/zealot-il-vec-damage
 confirm fin-b1/sidequest-catch-a-fish-take
 confirm may/alania-divergent-storm-draw-and-copy
 confirm may/carpet-of-flowers-add-mana
+confirm may/cemetery-tampering-mill
 confirm may/clive-ifrits-dominant-discard-and-draw
 confirm may/jecht-reluctant-guardian-transform
 confirm std-b9/traveling-botanist-take-land
@@ -1379,6 +1382,7 @@ option option-pick/dwarven-armorer-counter
 option option-pick/elemental-teachings-opponent
 option option-pick/emergent-ultimatum-opponent
 option option-pick/emeria-shepherd-return
+option option-pick/enchanters-bane-answer
 option option-pick/endure-counters-or-spirit
 option option-pick/energy-chosen-counter
 option option-pick/engine-clash
@@ -1843,6 +1847,7 @@ run prompt-run/namazu-trader-surveil
 run prompt-run/necrotic-hex-zombies
 run prompt-run/osseous-sticktwister-discarded
 run prompt-run/osseous-sticktwister-sacrificed
+run prompt-run/phenomenon-investigators-return
 run prompt-run/pitiless-carnage-sacrifice
 run prompt-run/planar-engineering-search
 run prompt-run/planetary-annihilation-keep-lands
@@ -1871,6 +1876,7 @@ run prompt-run/serendib-djinn-sacrificed
 run prompt-run/shadowgrange-archfiend-gain
 run prompt-run/sheoldred-the-true-scriptures-mill
 run prompt-run/sidequest-play-blitzball-attach
+run prompt-run/skyfisher-spider-sacrifice
 run prompt-run/slaughter-the-strong-keep
 run prompt-run/smallpox-sacrifice-creatures
 run prompt-run/smallpox-sacrifice-lands
@@ -2110,6 +2116,7 @@ tail card/deepfathom-echo-then
 tail carnival-of-souls/add-mana
 tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
+tail cemetery-tampering/offer-the-exiled-card
 tail chandra-flameshaper/choose-exiled
 tail charming-prince/after-exile
 tail choco-seeker-of-paradise/rest-into-graveyard
@@ -2643,6 +2650,7 @@ tail sacrificed-one/prompt-run/rhovanion-rampager-sacrifice
 tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
+tail sacrificed-one/prompt-run/skyfisher-spider-sacrifice
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
@@ -2811,6 +2819,8 @@ tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-consultation-named
+tail then/demonic-covenant-mill
+tail then/demonic-covenant-milled
 tail then/descendants-fury-sacrificed
 tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
@@ -2894,6 +2904,7 @@ tail then/pact-of-the-serpent-type-chosen
 tail then/palanis-hatcher-dinosaur
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
+tail then/phenomenon-investigators-draw
 tail then/photon-mighty-marvel-color-chosen
 tail then/plague-boiler-destroy
 tail then/planetary-annihilation-damage
