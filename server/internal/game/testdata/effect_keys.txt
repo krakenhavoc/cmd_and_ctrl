@@ -56,6 +56,7 @@ body behemoth-of-vault-0/destroy
 body berserk/destroy-if-attacked
 body blaster-hulk/divided-damage
 body blitz/sacrifice
+body bloodthirsty-adversary/copy
 body boilerbilges-ripper/damage
 body bolg-of-the-north/damage
 body brass-infiniscope/draw-and-gain-half-x
@@ -189,6 +190,7 @@ body grim-javelineer/surveil-1
 body grim-reaper-lethal-legionnaire/return
 body grist-the-hunger-tide/destroy
 body guide-of-souls/angel
+body halo-forager/cast
 body havengul-lich/gains-its-abilities
 body hawkeye/trick-arrows
 body head-of-the-hunt/wolf
@@ -272,6 +274,7 @@ body phyrexian-vindicator/prevented
 body phyrexian-vindicator/strike
 body pit-automaton/copy-exhaust
 body planechase/planeswalk
+body plasm-capture/refund
 body portent/draw
 body power-pack/cast-exiled-free
 body prepare/stensian-sanguinist-becomes-prepared
@@ -413,6 +416,7 @@ body zoraline-cosmos-caller/return
 castfollowup chandra-torch-of-defiance-2-to-each-opponent
 castfollowup conduit-of-worlds-no-more-spells
 castfollowup emet-selch-of-the-third-seat-once-each-turn
+castfollowup finale-of-promise/copy-twice
 castfollowup kaervek-the-punisher-lose-2
 castfollowup kefka-dancing-mad-life-loss
 castfollowup kyloxs-voltstrider-bottom-instead-of-graveyard
@@ -758,6 +762,7 @@ choose choose-cards/mind-roots-put-land
 choose choose-cards/minion-of-the-mighty-put
 choose choose-cards/mirrorwing-dragon-copy-order
 choose choose-cards/mishras-command-draw
+choose choose-cards/mission-briefing-chosen
 choose choose-cards/mistbreath-elder-return
 choose choose-cards/mog-moogle-warrior-discarded
 choose choose-cards/mount-doom-keep
@@ -1519,6 +1524,7 @@ payunless pay-unless/banon-the-returners-leader-discard
 payunless pay-unless/behemoth-of-vault-0-destroy
 payunless pay-unless/bitter-chill-scry-draw
 payunless pay-unless/blaster-hulk-damage
+payunless pay-unless/bloodthirsty-adversary-times
 payunless pay-unless/brilliant-wings-attach
 payunless pay-unless/bullseye-death-dealer-damage
 payunless pay-unless/bushy-bodyguard-counters
@@ -1576,6 +1582,7 @@ payunless pay-unless/graveyard-return-this-card-to-battlefield
 payunless pay-unless/graveyard-return-this-card-to-hand
 payunless pay-unless/grim-reaper-lethal-legionnaire-return
 payunless pay-unless/guide-of-souls-angel
+payunless pay-unless/halo-forager-x-cast
 payunless pay-unless/hashaton-scarabs-fist-zombie-copy
 payunless pay-unless/hawkeye-trick-arrows
 payunless pay-unless/hellkite-charger-extra-combat
@@ -2069,6 +2076,7 @@ tail blighted/blight/scuzzback-scrounger-treasure
 tail blighted/blight/sourbread-auntie-tokens
 tail blighted/blight/warren-torchmaster-when-you-do
 tail blitzwing/convert-if-none-lost
+tail bloodthirsty-adversary/copy-and-cast
 tail blue-mages-cane/copy-exiled
 tail bob-reluctant-hydra-agent/drain
 tail borg-cube/assimilated
@@ -2471,6 +2479,7 @@ tail mill-then/trystan-callous-cultivator
 tail mill-then/trystan-penitent-culler
 tail minion-of-the-mighty/entered
 tail mirkwood-nurturer/counter
+tail mission-briefing/choose
 tail mistbreath-elder/after-bounce
 tail mister-negative/draw
 tail model-of-unity/ask-next
