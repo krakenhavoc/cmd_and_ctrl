@@ -62,3 +62,62 @@ func cmdr2S22HexproofAndTapThis(label string) Effect {
 		return TapTarget{Target: item.SourceCardID}.Apply(ctx)
 	}
 }
+
+// cmdr2B08ToughnessIsCardsInYourHand is the toughness half of "power and
+// toughness are each equal to the number of cards in your hand" (CR 604.3,
+// layer 7a); powerIsCardsInYourHand is the power half.
+func cmdr2B08ToughnessIsCardsInYourHand() game.StaticAbility {
+	return game.StaticAbility{
+		Layer:             game.Layer7PT,
+		SubLayer:          game.SubLayer7A_CDA,
+		DependsOnHandSize: true,
+		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			return target.InstanceID == source.InstanceID
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+			n := 0
+			if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
+				n = p.Hand.Size()
+			}
+			c.Toughness = n
+		},
+	}
+}
+
+// cmdr2S22DrawThenMayReturnALand is Kefnet the Mindful's "Draw a card,
+// then you may return a land you control to its owner's hand": the pick
+// is made after the draw (CR 608.2c), so a land that was just drawn is
+// not a candidate (it is in hand) but one the draw let you play is.
+func cmdr2S22DrawThenMayReturnALand(g *game.Game, item *game.StackItem) error {
+	return Do(DrawCards{N: 1}, Instruction(func(ctx *Context) error {
+		return ChoosePermanents{
+			Question: "Kefnet the Mindful — you may return a land you control to its owner's hand",
+			Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+				var out []uuid.UUID
+				for _, id := range PermanentsControlledBy(g, of) {
+					if c, ok := g.LookupCardForEffect(id); ok && c.IsLand() {
+						out = append(out, id)
+					}
+				}
+				return out, 0, 1
+			},
+			Keyed: cmdr2S22LandReturned,
+		}.Apply(ctx)
+	}))(g, item)
+}
+
+// cmdr2S22LandReturned is the chosen land returning to its owner's hand,
+// keyed (#4290). An on-disk key.
+var cmdr2S22LandReturned = RegisterPermanentsPick("prompt-run/cmdr2-s22-kefnet-return-land", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if !onBattlefield(ctx.Game, id) {
+				continue
+			}
+			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})

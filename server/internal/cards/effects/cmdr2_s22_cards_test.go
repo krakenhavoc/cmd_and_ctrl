@@ -183,3 +183,95 @@ func TestS22PrognosticSphinxScriesThreeWhenItAttacks(t *testing.T) {
 		t.Fatalf("scry 3 offered %d cards", len(c.ScryCards))
 	}
 }
+
+// --- Tishana, Voice of Thunder ---
+
+func TestS22TishanaSizeFollowsTheHandAndDrawsPerCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	b12Creature(g, me.ID, "Bear A", "Creature — Bear", 2, 2)
+	b12Creature(g, me.ID, "Bear B", "Creature — Bear", 2, 2)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	s22FillHand(me, 2) // a card in hand keeps her alive: she is X/X
+	tishana := castCreatureCard(t, g, "Tishana, Voice of Thunder", "Legendary Creature — Merfolk Shaman", s22TishanaOracle, 0, 0)
+	if got := g.EffectiveMaxHandSizeLocked(me); got != game.NoMaxHandSize {
+		t.Errorf("max hand size %d, want no limit", got)
+	}
+	passPriorityAroundTable(t, g)
+	// Two Bears and Tishana: three cards drawn on top of the two held.
+	if me.Hand.Size() != 5 {
+		t.Fatalf("hand %d, want 5 (a card per creature you control)", me.Hand.Size())
+	}
+	pt := game.Characteristic{}
+	pt.Power, pt.Toughness = effectivePTOf(t, g, tishana)
+	if pt.Power != 5 || pt.Toughness != 5 {
+		t.Errorf("Tishana is %d/%d with five cards in hand, want 5/5", pt.Power, pt.Toughness)
+	}
+}
+
+// --- Kefnet the Mindful ---
+
+func TestS22KefnetAttacksAndBlocksOnlyWithSevenCardsInHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	kefnet := pushTestPermanent(g, me.ID, game.Card{Name: "Kefnet the Mindful", OracleID: s22KefnetOracle,
+		TypeLine: "Legendary Creature — God", Power: 5, Toughness: 5})
+	s22FillHand(me, 6)
+	advanceToDeclareAttackersOf(t, g, 0)
+	wantAttackRefused(t, g, kefnet, them.ID, "fewer than seven cards in hand")
+	s22FillHand(me, 7)
+	if err := declareResult(g, kefnet, them.ID); err != nil {
+		t.Errorf("attack with seven cards: %v", err)
+	}
+}
+
+func TestS22KefnetBlocksOnlyWithSevenCardsInHand(t *testing.T) {
+	g := newCatalogGame(t)
+	attacker, defender := g.Seats[0], g.Seats[1]
+	bear := b12Creature(g, attacker.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	kefnet := b12Push(g, defender.ID, "Kefnet the Mindful", "Legendary Creature — God", s22KefnetOracle, 5, 5)
+	s22FillHand(defender, 6)
+	b12Creature(g, defender.ID, "Elf", "Creature — Elf", 1, 1)
+	brAttack(t, g, bear)
+	brRefusal(t, g.Clone().DeclareBlocker(kefnet, bear), game.BlockReasonCantBlockAttacker)
+	defender.Hand.PushTop(game.Card{InstanceID: uuid.New(), Name: "Card", Owner: defender.ID, Controller: defender.ID})
+	if err := g.DeclareBlocker(kefnet, bear); err != nil {
+		t.Errorf("block with seven cards in hand: %v", err)
+	}
+}
+
+func TestS22KefnetDrawsThenMayReturnALand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	kefnet := pushCatalogPermanent(g, me.ID, "Kefnet the Mindful", "Legendary Creature — God", s22KefnetOracle, false)
+	land := pushCatalogPermanent(g, me.ID, "Island", "Basic Land — Island", "", false)
+	rock := pushCatalogPermanent(g, me.ID, "Rock", "Artifact", "", false)
+	stdB23Mana(t, g, me, "{U}{U}{U}{U}")
+	before := me.Hand.Size()
+	if err := g.ActivateCatalogAbility(me.ID, kefnet, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != before+1 {
+		t.Fatalf("hand %d, want %d", me.Hand.Size(), before+1)
+	}
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if pick == nil {
+		t.Fatalf("no land choice: %+v", g.PendingChoices)
+	}
+	if pick.ChooseMin != 0 || pick.ChooseMax != 1 {
+		t.Errorf("bounds %d..%d, want 0..1", pick.ChooseMin, pick.ChooseMax)
+	}
+	if !hasID(pick.ChooseCards, land) || hasID(pick.ChooseCards, rock) || hasID(pick.ChooseCards, kefnet) {
+		t.Errorf("candidates %v, want only the land", pick.ChooseCards)
+	}
+	if err := g.ResolveOwnPermanents(pick.ID, me.ID, []uuid.UUID{land}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(land) || onBattlefield(g, land) {
+		t.Error("the land did not return to hand")
+	}
+}
