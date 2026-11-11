@@ -24,13 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	copyTrigger := WheneverYouCast(And(Creature(), Not(Legendary())),
 		"Case of the Shifting Visage — copy that nonlegendary creature spell",
-		func(g *game.Game, item *game.StackItem) error {
-			return CopySpell{
-				StackID:       item.Trigger.Event.CardID,
-				Controller:    item.Controller,
-				FromLastKnown: true,
-			}.Apply(NewContext(g, item))
-		})
+		cmdr2S41CopyTheSpellJustCast)
 	copyTrigger.ActiveWhen = Solved()
 	Register(Spec{
 		OracleID:     "409697d5-ce3c-46aa-a97d-969d143a2a65",

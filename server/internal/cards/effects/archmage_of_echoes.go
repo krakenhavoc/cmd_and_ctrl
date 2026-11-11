@@ -28,13 +28,7 @@ func init() {
 			Ward(WardMana("{2}"), "Archmage of Echoes — ward {2}"),
 			WheneverYouCast(And(AnySubtype("Faerie", "Wizard"), Not(Or(Instant(), Sorcery()))),
 				"Archmage of Echoes — copy that Faerie or Wizard permanent spell",
-				func(g *game.Game, item *game.StackItem) error {
-					return CopySpell{
-						StackID:       item.Trigger.Event.CardID,
-						Controller:    item.Controller,
-						FromLastKnown: true,
-					}.Apply(NewContext(g, item))
-				}),
+				cmdr2S41CopyTheSpellJustCast),
 		},
 	})
 }

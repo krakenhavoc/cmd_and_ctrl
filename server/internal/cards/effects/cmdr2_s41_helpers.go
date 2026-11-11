@@ -303,3 +303,16 @@ func cmdr2S41FeatherCopies(g *game.Game, spell, caster, feather uuid.UUID, creat
 	}
 	return nil
 }
+
+// cmdr2S41CopyTheSpellJustCast is "copy that spell" for the spell the cast
+// event named (Archmage of Echoes, Case of the Shifting Visage). The spell is
+// named, not targeted, so one countered before the trigger resolves is still
+// copied from last-known information (CR 608.2h); the copy keeps the
+// original's targets (CR 707.10) and is not cast.
+func cmdr2S41CopyTheSpellJustCast(g *game.Game, item *game.StackItem) error {
+	return CopySpell{
+		StackID:       item.Trigger.Event.CardID,
+		Controller:    item.Controller,
+		FromLastKnown: true,
+	}.Apply(NewContext(g, item))
+}
