@@ -29,7 +29,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{B}, Sacrifice another enchantment: This creature gets +X/+0 until end of turn, where X is the sacrificed enchantment's mana value",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
 			Cost:    Plus(ManaCost("{2}{B}"), SacrificeAnotherN(1, "another enchantment", Enchantment())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

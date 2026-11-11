@@ -393,6 +393,11 @@ const GrantedAltCostEvoke = "granted-evoke"
 // identity, like every granted key: never renamed, never reused.
 const GrantedAltCostNextFree = "granted-next-spell-free"
 
+// GrantedAltCostNextLife is the key of the life offer a live
+// NextSpellPromise.PayLifeEqualToManaValue makes (Marshland Bloodcaster). An
+// on-disk identity, like every granted key: never renamed, never reused.
+const GrantedAltCostNextLife = "granted-next-spell-life"
+
 // nextSpellFreeOffersLocked is the one offer `playerID`'s live
 // "without paying its mana cost" promises make to a cast of `card`: at
 // most one, however many such promises match, since they are the same
@@ -406,6 +411,15 @@ func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card) []*Alter
 	}
 	for _, s := range p.Statics {
 		np := s.NextSpell
+		if np.PayLifeEqualToManaValue && g.livePromise(s) && np.Matches(card) {
+			if life, ok := lifeEqualToManaValue(card); ok {
+				label := fmt.Sprintf("Pay life equal to its mana value rather than pay its mana cost (%d life)", life)
+				if s.Label != "" {
+					label += " (" + s.Label + ")"
+				}
+				return []*AlternativeCost{{Key: GrantedAltCostNextLife, Label: label, Granted: true, Life: life}}
+			}
+		}
 		if !np.WithoutPayingManaCost || !g.livePromise(s) || !np.Matches(card) {
 			continue
 		}

@@ -127,3 +127,86 @@ func cmdr2S43PayLifeForAnEnchantmentSpellOnceEachOfYourTurns() game.GrantedAlter
 		LifeEqualToManaValue: true,
 	}
 }
+
+// cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn is the on-disk key of One
+// with the Multiverse's granted offer. Never renamed, never reused.
+const cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn = "granted-free-hand-or-top-once-your-turn"
+
+// cmdr2S43CastFromHandOrTopFreeOnceEachOfYourTurns is One with the
+// Multiverse's static: "Once during each of your turns, you may cast a spell
+// from your hand or the top of your library without paying its mana cost."
+// Omniscience's free offer (CastFromHandWithoutPayingManaCost), reaching the
+// top of the library as well as the hand, once per turn per source and on
+// your turn only. X is 0 (CR 107.3b).
+func cmdr2S43CastFromHandOrTopFreeOnceEachOfYourTurns() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:   cmdr2S43GrantedAltCostFreeHandOrTopOnceYourTurn,
+			Label: "Cast it without paying its mana cost",
+		},
+		Zones:        []game.ZoneKind{game.ZoneHand, game.ZoneLibrary},
+		OnceEachTurn: true,
+		YourTurnOnly: true,
+	}
+}
+
+// cmdr2S43TectonicGiantExile is "exile the top two cards of your library.
+// Choose one of them. Until the end of your next turn, you may play that
+// card" (Tectonic Giant's second mode): Strongbox Raider's shape
+// (stdB15ExileTopTwoChooseOnePlay) worded for the Giant. Both cards are
+// exiled face up, the controller picks one, and only it gets the window.
+func cmdr2S43TectonicGiantExile(ctx *Context) error {
+	ids := ctx.Game.LookAtTopOfLibraryForEffect(ctx.Controller(), 2)
+	if len(ids) == 0 {
+		return nil
+	}
+	return ctx.Game.ExileCardsKeyedForEffect(ids, ctx.ItemTail(cmdr2S43TectonicGiantChoose))
+}
+
+// cmdr2S43TectonicGiantChoose is "choose one of them" over the cards that
+// reached exile. An on-disk key.
+var cmdr2S43TectonicGiantChoose = CardTail("then/cmdr2-s43-tectonic-giant-choose", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  ctx.Controller(),
+		Source:   ctx.Source(),
+		Question: "Tectonic Giant — choose one of them (you may play it until the end of your next turn)",
+		Cards:    o.IDs,
+		Min:      1,
+		Max:      1,
+		LiveZone: game.ZoneExile,
+		ThenKey:  cmdr2S43TectonicGiantPlay,
+	})
+	return nil
+})
+
+// cmdr2S43TectonicGiantPlay gives the chosen card its window. An on-disk key.
+var cmdr2S43TectonicGiantPlay = game.RegisterChooseCardsThen("choose-cards/cmdr2-s43-tectonic-giant-play", func(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+			Player:   r.Chooser,
+			Zone:     game.ZoneExile,
+			Duration: g.UntilEndOfYourNextTurnDuration(r.Chooser),
+			Label:    "Tectonic Giant — play it until the end of your next turn",
+		})
+	}
+	return nil
+})
+
+// cmdr2S43TectonicGiantTrigger is "whenever this creature attacks or becomes
+// the target of a spell an opponent controls": the source was declared as an
+// attacker, or became the target of a SPELL (not an ability) whose controller
+// is an opponent (EventBecomesTarget names the targeter's controller as Actor
+// and its kind as TargeterKind).
+func cmdr2S43TectonicGiantTrigger(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	switch ev.Kind {
+	case game.EventAttack:
+		return ThisAttacked(ev, source, game.Characteristic{}, g)
+	case game.EventBecomesTarget:
+		return ev.CardID == source.InstanceID && ev.TargeterKind == game.StackItemSpell &&
+			ev.Actor != uuid.Nil && ev.Actor != source.Controller
+	}
+	return false
+}
