@@ -306,6 +306,7 @@ var tokenTable = map[string]game.Card{
 	"4/1 black Skeleton with menace":                                   {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 4, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"4/4 white and blue Elemental":                                     {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"W", "U"}}, // #4471: Hylda of the Icy Crown
 	"4/4 blue and red Elemental":                                       {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"U", "R"}},
+	"4/4 white Elemental with flying":                                  {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 4, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"flying"}}, // cmdr2 S22: Hoofprints of the Stag
 	"4/4 blue Giant Wizard":                                            {Name: "Giant Wizard", TypeLine: "Token Creature — Giant Wizard", Power: 4, Toughness: 4, Colors: []string{"U"}},
 	"2/2 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 2, Toughness: 2, Colors: []string{"G"}},
 	"4/4 green Bear":                                                   {Name: "Bear", TypeLine: "Token Creature — Bear", Power: 4, Toughness: 4, Colors: []string{"G"}},

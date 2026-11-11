@@ -27,9 +27,17 @@ const (
 
 func TestS22EveryBuiltCardIsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
-		s22TriskOracle:    "Triskaidekaphile",
-		s22SphinxOracle:   "Sphinx of Enlightenment",
-		s22ProgSphxOracle: "Prognostic Sphinx",
+		s22TriskOracle:     "Triskaidekaphile",
+		s22SphinxOracle:    "Sphinx of Enlightenment",
+		s22ProgSphxOracle:  "Prognostic Sphinx",
+		s22TishanaOracle:   "Tishana, Voice of Thunder",
+		s22KefnetOracle:    "Kefnet the Mindful",
+		s22HoofprintOracle: "Hoofprints of the Stag",
+		s22JolraelOracle:   "Jolrael, Mwonvuli Recluse",
+		s22KnowledgeOracle: "Knowledge Is Power",
+		s22AlandraOracle:   "Alandra, Sky Dreamer",
+		s22KianneOracle:    "Kianne, Corrupted Memory",
+		s22PhantomOracle:   "Final-Word Phantom",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -273,5 +281,287 @@ func TestS22KefnetDrawsThenMayReturnALand(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(land) || onBattlefield(g, land) {
 		t.Error("the land did not return to hand")
+	}
+}
+
+// --- draw-matters cards ---
+
+// s22Draw has `p` draw n cards (the library gets filler), letting any
+// trigger the draws set off resolve after each.
+func s22Draw(t *testing.T, g *game.Game, p *game.Player, n int) {
+	t.Helper()
+	for i := 0; i < n; i++ {
+		pushLibraryCardForTest(p, game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Land", Owner: p.ID, Controller: p.ID})
+		if err := g.DrawCard(p.ID); err != nil {
+			t.Fatalf("draw %d: %v", i+1, err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+}
+
+func s22TurnDraws(g *game.Game, p *game.Player) int {
+	n := 0
+	g.ReadSnapshot(func() { n = g.TurnTallyFor(p.ID).CardsDrawn })
+	return n
+}
+
+// --- Knowledge Is Power ---
+
+func TestS22KnowledgeIsPowerPumpsByCardsDrawnThisTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	mine := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
+	pushCatalogPermanent(g, me.ID, "Knowledge Is Power", "Enchantment", s22KnowledgeOracle, false)
+	base := s22TurnDraws(g, me)
+	s22Draw(t, g, me, 2)
+	want := 2 + base + 2
+	if p, tough := effectivePTOf(t, g, mine); p != want || tough != want {
+		t.Errorf("my Bear is %d/%d after %d draws this turn, want %d/%d", p, tough, base+2, want, want)
+	}
+	if p, _ := effectivePTOf(t, g, theirs); p != 2 {
+		t.Errorf("an opponent's creature is %d power, want 2", p)
+	}
+	s22Draw(t, g, opp, 1)
+	if p, _ := effectivePTOf(t, g, mine); p != want {
+		t.Errorf("an opponent's draw moved my Bear to %d", p)
+	}
+}
+
+// --- Jolrael, Mwonvuli Recluse ---
+
+func TestS22JolraelMakesACatOnTheSecondDrawOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	pushCatalogPermanent(g, me.ID, "Jolrael, Mwonvuli Recluse", "Legendary Creature — Human Druid", s22JolraelOracle, false)
+	base := s22TurnDraws(g, me)
+	if base > 1 {
+		t.Skipf("the turn is already at %d draws", base)
+	}
+	s22Draw(t, g, me, 2-base-1)
+	if n, _ := countTokensNamed(g, me.ID, "Cat"); n != 0 {
+		t.Fatalf("%d Cats after %d draws", n, 2-base-1+base)
+	}
+	s22Draw(t, g, me, 1)
+	if n, _ := countTokensNamed(g, me.ID, "Cat"); n != 1 {
+		t.Fatalf("%d Cats after the second draw, want 1", n)
+	}
+	s22Draw(t, g, me, 1)
+	if n, _ := countTokensNamed(g, me.ID, "Cat"); n != 1 {
+		t.Errorf("%d Cats after the third draw, want still 1", n)
+	}
+}
+
+func TestS22JolraelSetsBasePTToCardsInHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	jolrael := pushCatalogPermanent(g, me.ID, "Jolrael, Mwonvuli Recluse", "Legendary Creature — Human Druid", s22JolraelOracle, false)
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, g.Seats[1].ID, "Their Bear", "Creature — Bear", 2, 2)
+	s22FillHand(me, 4)
+	stdB23Mana(t, g, me, "{G}{G}{G}{G}{G}{G}")
+	if err := g.ActivateCatalogAbility(me.ID, jolrael, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	for name, id := range map[string]uuid.UUID{"Jolrael": jolrael, "Bear": bear} {
+		if p, tough := effectivePTOf(t, g, id); p != 4 || tough != 4 {
+			t.Errorf("%s is %d/%d, want 4/4", name, p, tough)
+		}
+	}
+	if p, _ := effectivePTOf(t, g, theirs); p != 2 {
+		t.Errorf("an opponent's creature is %d power, want 2", p)
+	}
+}
+
+// --- Alandra, Sky Dreamer ---
+
+func TestS22AlandraDrakeOnSecondDrawAndPumpOnFifth(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	alandra := pushCatalogPermanent(g, me.ID, "Alandra, Sky Dreamer", "Legendary Creature — Merfolk Wizard", s22AlandraOracle, false)
+	bear := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	s22FillHand(me, 0)
+	drawTo := func(n int) {
+		t.Helper()
+		if d := n - s22TurnDraws(g, me); d > 0 {
+			s22Draw(t, g, me, d)
+		}
+	}
+	if base := s22TurnDraws(g, me); base > 1 {
+		t.Fatalf("the turn is already at %d draws", base)
+	}
+	drawTo(1)
+	if n, _ := countTokensNamed(g, me.ID, "Drake"); n != 0 {
+		t.Fatalf("%d Drakes after one draw", n)
+	}
+	drawTo(2)
+	if n, _ := countTokensNamed(g, me.ID, "Drake"); n != 1 {
+		t.Fatalf("%d Drakes after the second draw, want 1", n)
+	}
+	drawTo(4)
+	if p, _ := effectivePTOf(t, g, alandra); p != 1 {
+		t.Fatalf("Alandra is %d power before the fifth draw, want 1 (the test stand-in is 1/1)", p)
+	}
+	drawTo(5)
+	x := me.Hand.Size()
+	if x < 4 {
+		t.Fatalf("hand %d, want at least 4", x)
+	}
+	if p, tough := effectivePTOf(t, g, alandra); p != 1+x || tough != 1+x {
+		t.Errorf("Alandra is %d/%d, want %d/%d", p, tough, 1+x, 1+x)
+	}
+	if p, _ := effectivePTOf(t, g, bear); p != 2 {
+		t.Errorf("a non-Drake is %d power, want 2", p)
+	}
+	drake := tokensNamed(g, "Drake")
+	if len(drake) != 1 {
+		t.Fatalf("%d Drakes", len(drake))
+	}
+	if p, tough := effectivePTOf(t, g, drake[0].InstanceID); p != 2+x || tough != 2+x {
+		t.Errorf("the Drake is %d/%d, want %d/%d", p, tough, 2+x, 2+x)
+	}
+	drawTo(6)
+	if p, _ := effectivePTOf(t, g, alandra); p != 1+x {
+		t.Errorf("a sixth draw changed Alandra to %d power", p)
+	}
+}
+
+// --- Hoofprints of the Stag ---
+
+func TestS22HoofprintsCountersAndElemental(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	stag := pushCatalogPermanent(g, me.ID, "Hoofprints of the Stag", "Kindred Enchantment — Elemental", s22HoofprintOracle, false)
+	for i := 0; i < 4; i++ {
+		pushLibraryCardForTest(me, game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Land", Owner: me.ID, Controller: me.ID})
+		if err := g.DrawCard(me.ID); err != nil {
+			t.Fatal(err)
+		}
+		if i == 0 {
+			// Declining puts no counter.
+			answerLatestTriggerPrompt(t, g, me.ID, false)
+			passPriorityAroundTable(t, g)
+			if got := counterCount(g, stag, "hoofprint"); got != 0 {
+				t.Fatalf("declined, still %d counters", got)
+			}
+			continue
+		}
+		answerLatestTriggerPrompt(t, g, me.ID, true)
+		passPriorityAroundTable(t, g)
+	}
+	if got := counterCount(g, stag, "hoofprint"); got != 3 {
+		t.Fatalf("%d hoofprint counters, want 3", got)
+	}
+	stdB23Mana(t, g, me, "{W}{W}{W}")
+	if err := g.ActivateCatalogAbility(me.ID, stag, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("activated with three counters")
+	}
+	pushLibraryCardForTest(me, game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Land", Owner: me.ID, Controller: me.ID})
+	if err := g.DrawCard(me.ID); err != nil {
+		t.Fatal(err)
+	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if err := g.ActivateCatalogAbility(me.ID, stag, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate with four counters: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, stag, "hoofprint"); got != 0 {
+		t.Errorf("%d counters left, want 0", got)
+	}
+	toks := tokensNamed(g, "Elemental")
+	if len(toks) != 1 || toks[0].Power != 4 || toks[0].Toughness != 4 || !hasEffectiveKeyword(t, g, toks[0].InstanceID, "flying") {
+		t.Errorf("tokens %+v, want one 4/4 flying Elemental", toks)
+	}
+}
+
+func TestS22HoofprintsActivatesOnlyDuringYourTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	advanceToMainOf(t, g, 1)
+	stag := pushCatalogPermanent(g, opp.ID, "Hoofprints of the Stag", "Kindred Enchantment — Elemental", s22HoofprintOracle, false)
+	_ = stag
+	me := g.Seats[0]
+	stag2 := pushCatalogPermanent(g, me.ID, "Hoofprints of the Stag", "Kindred Enchantment — Elemental", s22HoofprintOracle, false)
+	g.WithWriteLock(func() { _ = g.AddCounterForEffect(stag2, "hoofprint", 4) })
+	stdB23Mana(t, g, me, "{W}{W}{W}")
+	if err := g.ActivateCatalogAbility(me.ID, stag2, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
+		t.Fatal("activated on an opponent's turn")
+	}
+}
+
+// --- Kianne, Corrupted Memory ---
+
+func s22TimingOpen(g *game.Game, p *game.Player, typeLine string) bool {
+	var open bool
+	g.WithWriteLock(func() {
+		open = g.CastTimingOpenLocked(p.ID, game.Card{
+			InstanceID: uuid.New(), Name: "Timing Probe", TypeLine: typeLine,
+			Owner: p.ID, Controller: p.ID,
+		}, game.ZoneHand, nil)
+	})
+	return open
+}
+
+func TestS22KianneFlashFollowsThePowerParityAndGrowsOnDraws(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceTo(t, g, game.StepBeginCombat)
+	kianne := pushCatalogPermanent(g, me.ID, "Kianne, Corrupted Memory", "Legendary Creature — Illusion", s22KianneOracle, false)
+	g.WithWriteLock(func() { g.Battlefield.Cards[len(g.Battlefield.Cards)-1].Power = 2 })
+	if p, _ := effectivePTOf(t, g, kianne); p != 2 {
+		t.Fatalf("Kianne is %d power, want 2", p)
+	}
+	if !s22TimingOpen(g, me, "Sorcery") || !s22TimingOpen(g, me, "Enchantment") {
+		t.Error("even power: noncreature spells should have flash")
+	}
+	if s22TimingOpen(g, me, "Creature — Bear") {
+		t.Error("even power: creature spells should not have flash")
+	}
+	s22Draw(t, g, me, 1)
+	if got := counterCount(g, kianne, game.CounterPlusOne); got != 1 {
+		t.Fatalf("%d counters after a draw, want 1", got)
+	}
+	if s22TimingOpen(g, me, "Sorcery") {
+		t.Error("odd power: noncreature spells should not have flash")
+	}
+	if !s22TimingOpen(g, me, "Creature — Bear") {
+		t.Error("odd power: creature spells should have flash")
+	}
+	if s22TimingOpen(g, g.Seats[1], "Creature — Bear") {
+		t.Error("an opponent got Kianne's flash")
+	}
+	s22Draw(t, g, me, 1)
+	if !s22TimingOpen(g, me, "Sorcery") || s22TimingOpen(g, me, "Creature — Bear") {
+		t.Error("even power again: noncreature only")
+	}
+}
+
+// --- Final-Word Phantom ---
+
+func TestS22FinalWordPhantomFlashOnlyInOpponentsEndSteps(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Final-Word Phantom", "Creature — Spirit Detective", s22PhantomOracle, false)
+	advanceToEndStepOf(t, g, 1)
+	if !s22TimingOpen(g, me, "Sorcery") || !s22TimingOpen(g, me, "Creature — Bear") {
+		t.Error("in an opponent's end step spells should have flash")
+	}
+	if s22TimingOpen(g, g.Seats[2], "Sorcery") {
+		t.Error("another player got the Phantom's flash")
+	}
+	advanceToMainOf(t, g, 1)
+	if s22TimingOpen(g, me, "Sorcery") {
+		t.Error("in an opponent's main phase a sorcery should still be sorcery speed")
+	}
+	advanceToEndStepOf(t, g, 0)
+	if s22TimingOpen(g, me, "Sorcery") {
+		t.Error("in your own end step the Phantom grants nothing")
 	}
 }

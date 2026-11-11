@@ -121,3 +121,88 @@ var cmdr2S22LandReturned = RegisterPermanentsPick("prompt-run/cmdr2-s22-kefnet-r
 		return nil
 	},
 })
+
+// cmdr2S22DrewYourFifthCardThisTurn is "whenever you draw your fifth
+// card each turn": the turn's draw tally read after the draw, so it
+// fires on the fifth draw and on no other (b41DrewYourSecondCardThisTurn's
+// shape).
+func cmdr2S22DrewYourFifthCardThisTurn(ev game.Event, source *game.Card, g *game.Game) bool {
+	if ev.Kind != game.EventDrawCard || ev.Actor != source.Controller {
+		return false
+	}
+	return g.TurnTallyFor(source.Controller).CardsDrawn == 5
+}
+
+// cmdr2S22AlandraAndDrakesGetCardsInHand is "Alandra and Drakes you
+// control each get +X/+X until end of turn, where X is the number of
+// cards in your hand": X is read as the trigger resolves and the set of
+// creatures is locked then (CR 611.2c).
+func cmdr2S22AlandraAndDrakesGetCardsInHand(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	x := cardsInHand(g, item.Controller)
+	self := item.SourceCardID
+	return untilEndOfTurn(ctx, uuid.Nil,
+		And(YouControl(), Or(Subtype("Drake"), func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID == self })),
+		"Alandra, Sky Dreamer — Alandra and Drakes you control each get +X/+X until end of turn",
+		game.ModifyPTMod(x, x))
+}
+
+// cmdr2S22CreaturesBecomeXByXForCardsInHand is "Until end of turn,
+// creatures you control have base power and toughness X/X, where X is the
+// number of cards in your hand" (Jolrael, Mwonvuli Recluse), Mirror
+// Entity's layer 7b set with X read as the ability resolves.
+func cmdr2S22CreaturesBecomeXByXForCardsInHand(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	x := cardsInHand(g, item.Controller)
+	return untilEndOfTurn(ctx, uuid.Nil, And(Creature(), YouControl()),
+		"Jolrael, Mwonvuli Recluse — base power and toughness X/X",
+		game.SetBasePowerMod(x), game.SetBaseToughnessMod(x))
+}
+
+// cmdr2S22PlusXForCardsDrawnThisTurn is Knowledge Is Power's anthem:
+// "Creatures you control get +X/+X, where X is the number of cards you've
+// drawn this turn". Layer 7c over the controller's creatures, the tally
+// read on every pass; DependsOnEvents{EventDrawCard} drops the layer
+// cache on a draw (Duelist of the Mind's hint), since a draw moves
+// nothing on the battlefield.
+func cmdr2S22PlusXForCardsDrawnThisTurn() game.StaticAbility {
+	return game.StaticAbility{
+		Label:           "Creatures you control get +X/+X, where X is the number of cards you've drawn this turn.",
+		Layer:           game.Layer7PT,
+		SubLayer:        game.SubLayer7C_Modify,
+		AppliesTo:       cmdr2S22YourCreatures,
+		DependsOnEvents: []game.EventKind{game.EventDrawCard},
+		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+			x := g.TurnTallyFor(source.Controller).CardsDrawn
+			c.Power += x
+			c.Toughness += x
+		},
+	}
+}
+
+// cmdr2S22YourCreatures is "creatures you control" for a static's
+// AppliesTo: the source's controller's creatures, the source included.
+func cmdr2S22YourCreatures(target *game.Card, _ *game.Game, source *game.Card) bool {
+	return target.IsCreature() && target.Controller == source.Controller
+}
+
+// cmdr2S22CastWhilePowerParity is Kianne, Corrupted Memory's "as long as
+// this creature's power is even (odd), you may cast <kind> spells as
+// though they had flash": CastAsThoughFlash narrowed to a kind of spell
+// and gated on the source's live power parity.
+func cmdr2S22CastWhilePowerParity(filter game.PermissionFilter, even bool, label string) game.CastTimingRule {
+	rule := CastKindAsThoughFlash(filter, label)
+	rule.SourcePowerEven = even
+	rule.SourcePowerOdd = !even
+	return rule
+}
+
+// cmdr2S22CastDuringOpponentsEndStep is "During each opponent's end
+// step, you may cast spells as though they had flash" (Final-Word
+// Phantom).
+func cmdr2S22CastDuringOpponentsEndStep(label string) game.CastTimingRule {
+	rule := CastAsThoughFlash()
+	rule.Label = label
+	rule.DuringOpponentsEndStep = true
+	return rule
+}

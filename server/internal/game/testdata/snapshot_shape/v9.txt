@@ -4279,6 +4279,7 @@ frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].Source	custom(uu
 frozenEntries[].event.damageTail.sourceLki.AttackRequirements[].SourceName	string
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[]	object
+frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 frozenEntries[].event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -12725,6 +12726,7 @@ frozenEntries[].event.sourceLki.AttackRequirements[].Source	custom(uuid.UUID)
 frozenEntries[].event.sourceLki.AttackRequirements[].SourceName	string
 frozenEntries[].event.sourceLki.AttackTargetRestrictions	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[]	object
+frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 frozenEntries[].event.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -19137,6 +19139,7 @@ heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].Source	custom(uu
 heldCombatDamage.answers[].frame.SourceLKI.AttackRequirements[].SourceName	string
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[]	object
+heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore	array
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 heldCombatDamage.answers[].frame.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -19317,6 +19320,7 @@ lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
 lastKnownBattlefield{}.AttackTargetRestrictions	array
 lastKnownBattlefield{}.AttackTargetRestrictions[]	object
+lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore	array
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 lastKnownBattlefield{}.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -19501,6 +19505,7 @@ lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.U
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[]	object
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore	array
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -22482,6 +22487,7 @@ movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].Source	custom(uu
 movesAwaitingTokens[].damageTail.sourceLki.AttackRequirements[].SourceName	string
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[]	object
+movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 movesAwaitingTokens[].damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -30928,6 +30934,7 @@ movesAwaitingTokens[].sourceLki.AttackRequirements[].Source	custom(uuid.UUID)
 movesAwaitingTokens[].sourceLki.AttackRequirements[].SourceName	string
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[]	object
+movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 movesAwaitingTokens[].sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -41454,6 +41461,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(u
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[]	object
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -42298,6 +42306,7 @@ pendingChoices[].divideShield.staged[].lki.AttackRequirements[].Source	custom(uu
 pendingChoices[].divideShield.staged[].lki.AttackRequirements[].SourceName	string
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[]	object
+pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].divideShield.staged[].lki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -42467,6 +42476,7 @@ pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].Source	cus
 pendingChoices[].divideShield.staged[].sourceLki.AttackRequirements[].SourceName	string
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[]	object
+pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].divideShield.staged[].sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -48135,6 +48145,7 @@ pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackRequirements[].SourceName	string
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[]	object
+pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].replacementResume.event.damageTail.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -56581,6 +56592,7 @@ pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].Source	c
 pendingChoices[].replacementResume.event.sourceLki.AttackRequirements[].SourceName	string
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[]	object
+pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].replacementResume.event.sourceLki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -64525,6 +64537,7 @@ pendingChoices[].targetWalk.frame.lki.AttackRequirements[].Source	custom(uuid.UU
 pendingChoices[].targetWalk.frame.lki.AttackRequirements[].SourceName	string
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[]	object
+pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].targetWalk.frame.lki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -65278,6 +65291,7 @@ pendingChoices[].triggerFrame.lki.AttackRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].triggerFrame.lki.AttackRequirements[].SourceName	string
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[]	object
+pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerHandAtLeast	number:int
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControlMore	array
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControlMore[]	object
 pendingChoices[].triggerFrame.lki.AttackTargetRestrictions[].ControllerMustControlMore[].Colors	array
@@ -73258,6 +73272,7 @@ seats[].statics[].nextSpell.withoutPayingManaCost	bool
 seats[].statics[].source	custom(uuid.UUID)
 seats[].statics[].timing	object
 seats[].statics[].timing.affects	string
+seats[].statics[].timing.duringOpponentsEndStep	bool
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].timing.filter.artifactOrColorlessOnly	bool
@@ -73306,6 +73321,8 @@ seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.opponentCastASpellThisTurn	bool
 seats[].statics[].timing.ownedByCaster	bool
+seats[].statics[].timing.sourcePowerEven	bool
+seats[].statics[].timing.sourcePowerOdd	bool
 seats[].statics[].timing.sourceTapped	bool
 seats[].statics[].timing.timing	string
 seats[].stickerSheetPool	array

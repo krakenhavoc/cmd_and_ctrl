@@ -1742,6 +1742,7 @@ run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/cmdr2-s22-kefnet-return-land
 run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
