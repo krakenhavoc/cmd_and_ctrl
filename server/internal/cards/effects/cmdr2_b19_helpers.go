@@ -116,3 +116,47 @@ func cmdr2B19HasAnotherAuraAttached() CardPredicate {
 		return coronets >= 2
 	}
 }
+
+// cmdr2B19AurasAttachedTo counts the Auras attached to a permanent.
+// It runs inside a layer pass that may hold only the read lock, so it
+// walks the battlefield directly (see PumpAttachedPer). Auras are read as
+// the layers have them, so an enchantment that became an Aura counts.
+func cmdr2B19AurasAttachedTo(g *game.Game, id uuid.UUID) int {
+	if g == nil || g.Battlefield == nil {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		a := &g.Battlefield.Cards[i]
+		if a.IsAura() && a.IsAttachedTo(id) {
+			n++
+		}
+	}
+	return n
+}
+
+// cmdr2B19AurasOnTheBattlefield counts every Aura on the battlefield, any
+// controller's (Aura Gnarlid), by the same walk.
+func cmdr2B19AurasOnTheBattlefield(g *game.Game) int {
+	if g == nil || g.Battlefield == nil {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].IsAura() {
+			n++
+		}
+	}
+	return n
+}
+
+// cmdr2B19LesserPowerThanAttacker is "creatures with power less than this
+// creature's power": a blocker whose power is below the attacker's, both
+// read as the comparison rules do (CR 208.1), live as the block is
+// declared. The attacker is the creature itself, so a pump (Aura Gnarlid's
+// own) raises the bar.
+func cmdr2B19LesserPowerThanAttacker() BlockerAgainstAttacker {
+	return func(_ *game.Game, attacker, blocker *game.Card) bool {
+		return blocker.PowerForComparison() < attacker.PowerForComparison()
+	}
+}
