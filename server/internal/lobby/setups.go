@@ -97,6 +97,7 @@ func (c Config) tableSetups() tablesetups.Store {
 func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 	free := ts.EffectiveFreeMulligans()
 	away := ts.EffectiveAwayAfter()
+	format := ts.EffectiveFormat()
 	return game.SettingsPatch{
 		UndoLimit:       &ts.UndoLimit,
 		UndoScope:       &ts.UndoScope,
@@ -107,6 +108,12 @@ func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 
 		FreeMulligans: &free,
 		AwayAfter:     &away,
+		// ADR 0222 §1: the format, always named, so a setup captured at
+		// a Standard table makes a Standard table and one captured at a
+		// Commander table makes a Commander table whatever the new
+		// table was. A setup saved before formats names none and is
+		// read as Commander (applySetupSettings).
+		Format: &format,
 	}
 }
 
@@ -349,6 +356,14 @@ func applySetupSettings(c Config, actor, id uuid.UUID, settings json.RawMessage)
 	if err := json.Unmarshal(settings, &patch); err != nil {
 		return false, &setupSkip{Name: "table settings", Reason: "the saved settings could not be read"}
 	}
+	if patch.Format == nil {
+		// A setup saved before formats existed (ADR 0222 §1) is a
+		// Commander setup: its starting life and its bots' decks are
+		// Commander's, so it is never applied to a table of another
+		// format as though it fitted.
+		commander := game.FormatCommander
+		patch.Format = &commander
+	}
 	if verr := patch.Validate(); verr != nil {
 		return false, &setupSkip{Name: "table settings", Reason: verr.Error()}
 	}
@@ -390,8 +405,15 @@ func seatSetupBot(ctx context.Context, c Config, id uuid.UUID, name string, b ta
 	if c.Cards == nil || c.Cards.Count() == 0 {
 		return "the card index is not loaded"
 	}
+	table, err := c.Lobby.Format(id)
+	if err != nil {
+		return err.Error()
+	}
+	if ferr := botDeckFitsTable(c, deckID, table); ferr != nil {
+		return strings.TrimPrefix(ferr.Error(), ErrDeckWrongFormat.Error()+": ")
+	}
 	var sink responseSink
-	resolved, _, written, err := resolveDeckSource(ctx, c, &sink, "text", list)
+	resolved, _, written, err := resolveDeckSource(ctx, c, &sink, table, "text", list)
 	if written {
 		return "its deck " + sink.errorMessage()
 	}

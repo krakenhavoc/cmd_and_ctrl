@@ -100,6 +100,65 @@ afterEach(() => {
 });
 
 describe("the lobby's create flow for a signed-in player", () => {
+  // ADR 0222 §1: the format picker. Commander is chosen by default and
+  // is not sent; Standard is sent, and a Commander setup is not offered
+  // with it, so the setup and the format can never disagree.
+  it("offers a format picker, and creates a Standard table without a Commander setup", async () => {
+    setSession(sess("identified", USER));
+    let created = false;
+    routes = {
+      "GET /games": () => ({
+        games: created ? [{ ...createdMeta, format: "standard", max_seats: 2 }] : [],
+      }),
+      "GET /me": () => ({ admin: false }),
+      "GET /me/setup": () => ({
+        setup: { settings: { starting_life: 30 }, bots: [], tablemates: [] },
+      }),
+      "GET /bot/options": () => ({ enabled: true, tiers: [], decks: [] }),
+      "POST /games": () => {
+        created = true;
+        return { ...createdMeta, format: "standard", max_seats: 2, invite_token: "inv-player" };
+      },
+      "GET /me/tablemates": () => ({ tablemates: [] }),
+    };
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+    click(container.querySelector<HTMLButtonElement>('button[aria-label="new table"]')!);
+    flushSync();
+
+    const group = container.querySelector<HTMLElement>('[role="radiogroup"][aria-label="Format"]');
+    expect(group).not.toBeNull();
+    const radios = [...group!.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+    expect(radios.map((r) => r.value)).toEqual(["commander", "standard"]);
+    expect(radios[0].checked).toBe(true);
+    expect(group!.textContent).toMatch(/Commander.*40 life.*Standard.*2 players, 20 life/s);
+    // The Commander setup is offered while Commander is chosen.
+    expect(container.querySelector(".use-setup")?.textContent).toMatch(/Use my last setup/);
+
+    click(radios[1]);
+    flushSync();
+    expect(radios[1].checked).toBe(true);
+    expect(container.querySelector(".use-setup")).toBeNull();
+
+    const name = container.querySelector<HTMLInputElement>('input[aria-label="game name"]')!;
+    name.value = "FNM";
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync();
+    container
+      .querySelector<HTMLFormElement>('form[aria-label="create game"]')!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await settle();
+
+    expect(posted).toContainEqual({ url: "/games", body: { name: "FNM", format: "standard" } });
+    // The new table's card names its format and draws its two seats.
+    const card = container.querySelector<HTMLElement>("li.tcard")!;
+    expect([...card.querySelectorAll(".chip")].map((c) => c.textContent?.trim())).toContain(
+      "Standard",
+    );
+    expect(card.querySelectorAll("ul.tiles > li").length).toBe(2);
+  });
+
   it("offers the form with the last setup, creates with it, and opens the tablemates", async () => {
     setSession(sess("identified", USER));
     let created = false;
@@ -266,6 +325,74 @@ function tab(c: HTMLElement, name: RegExp): HTMLButtonElement {
     name.test(t.textContent ?? ""),
   )!;
 }
+
+// ADR 0222 §2: the picker offers the decks built for the table's format
+// and says what a pasted list is checked against. With no format it is
+// the Commander picker it always was.
+describe("the deck picker at a table of a format", () => {
+  function setup(format: string | undefined) {
+    setSession(sess("player", USER));
+    routes = {
+      "GET /decks": () => ({
+        decks: [
+          prebuilt("raid", "Raid"),
+          { ...prebuilt("rush", "Goblin Rush"), format: "standard", card_count: 60 },
+        ],
+      }),
+      "GET /me/decks": () => ({
+        decks: [
+          saved("c1", "Atraxa"),
+          saved("s1", "Elves", { format: "standard", card_count: 60 }),
+        ],
+      }),
+      "GET /me/last-deck": () => ({ last_deck: null }),
+    };
+    stubServer();
+    return render(DeckPicker as never, { gameID: GAME, playerID: "p1", format } as never);
+  }
+  const offered = (c: HTMLElement, name: string) =>
+    [...c.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)].map((i) => i.value);
+
+  it("offers the Standard decks and the Standard rules at a Standard table", async () => {
+    const { container } = setup("standard");
+    await settle();
+    expect(checked(container, "your-deck")).toBe("s1");
+    click(tab(container, /Pre-built/));
+    flushSync();
+    expect(checked(container, "prebuilt-deck")).toBe("rush");
+    click(tab(container, /Paste a list/));
+    flushSync();
+    expect(container.textContent).toMatch(/validated against Standard rules/);
+    expect(container.textContent).not.toMatch(/Commander rules/);
+    expect(container.querySelector("textarea")?.placeholder).toMatch(/Sideboard:/);
+    expect(container.querySelector("textarea")?.placeholder).not.toMatch(/Commander/);
+  });
+
+  it("is the Commander picker at a table that names no format", async () => {
+    const { container } = setup(undefined);
+    await settle();
+    expect(checked(container, "your-deck")).toBe("c1");
+    click(tab(container, /Pre-built/));
+    flushSync();
+    expect(checked(container, "prebuilt-deck")).toBe("raid");
+    click(tab(container, /Paste a list/));
+    flushSync();
+    expect(container.textContent).toMatch(
+      /validated against Commander rules — 100-card singleton, color identity,\s+format legality/,
+    );
+    expect(container.querySelector("textarea")?.placeholder).toMatch(/Commander:\n1 Atraxa/);
+  });
+
+  it("never offers a deck of the other format", async () => {
+    const std = setup("standard");
+    await settle();
+    expect(offered(std.container, "your-deck")).toEqual(["s1"]);
+    cleanup();
+    const cmd = setup("commander");
+    await settle();
+    expect(offered(cmd.container, "your-deck")).toEqual(["c1"]);
+  });
+});
 
 describe("the deck picker's tabs (owner decision 7)", () => {
   function setup(userID: string, library: unknown[], lastDeck: unknown = null) {

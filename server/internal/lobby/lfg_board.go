@@ -182,10 +182,17 @@ func (l *Lobby) lfgTable(id uuid.UUID) (lfgTable, bool) {
 func lfgSettings(s game.TableSettings) []discord.LFGField {
 	def := game.DefaultTableSettings()
 	var out []discord.LFGField
-	if s.StartingLife != def.StartingLife {
+	// ADR 0222 §1: a table of another format says so first, and its
+	// starting life is a house rule only when it is not the format's
+	// own. A Commander table's fields are what they were.
+	spec := s.FormatSpec()
+	if spec.Format != game.FormatCommander {
+		out = append(out, discord.LFGField{Name: "Format", Value: spec.Name})
+	}
+	if s.StartingLife != spec.StartingLife {
 		out = append(out, discord.LFGField{Name: "Starting life", Value: strconv.Itoa(s.StartingLife)})
 	}
-	if s.CommanderDamage != def.CommanderDamage {
+	if spec.CommanderExpected && s.CommanderDamage != def.CommanderDamage {
 		out = append(out, discord.LFGField{Name: "Commander damage", Value: strconv.Itoa(s.CommanderDamage)})
 	}
 	if s.UndoLimit != def.UndoLimit {

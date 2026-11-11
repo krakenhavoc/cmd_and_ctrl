@@ -40,6 +40,8 @@ export interface MyDeckCoverage {
 export interface MyDeckInfo {
   id: string;
   name: string;
+  /** The format the deck was built for (ADR 0222 §2); absent for Commander. */
+  format?: string;
   commanders: string[];
   card_count: number;
   updated_at: string;

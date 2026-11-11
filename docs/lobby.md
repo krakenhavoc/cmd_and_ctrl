@@ -878,6 +878,17 @@ starts. A server that does not offer the option (`GET /config`'s
 batches land, owner answer 3) answers **400** ("planechase is not offered on
 this server yet") and creates nothing.
 
+`format` is optional: `"commander"` (the default, and what a table that names
+none is) or `"standard"` ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §1). It is applied through the engine's
+settings as soon as the creator has sat down, before any bot or other person
+can: a Standard table has two seats and starts at 20 life. The answer and
+every later meta of a table of another format carry `format` and `max_seats`;
+a Commander table's carry neither, so its JSON is what it was. A format this
+server does not know answers **400** and creates nothing. With
+`"setup": "last"` the setup's own format wins: a setup remembers the format
+of the table it was captured at, and one saved before formats existed is a
+Commander setup.
+
 **Response 201**
 
 ```json
@@ -1218,6 +1229,12 @@ on. The WebSocket twin is the `set_table_settings` action
 
 **Request** — a *partial*. Only the fields present are applied; a field left
 out is untouched, which is why this is a `PATCH` and not a `PUT`.
+
+`format` ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §1) may be patched only while the table is in the lobby and no
+seat has a deck: a deck was checked against the format the table had. After
+that, or with more seats taken than the new format has, it is a **422**. A
+change with no `starting_life` beside it also sets the format's own starting
+life. Naming the format the table already has is never a change.
 
 ```json
 {
@@ -1746,6 +1763,15 @@ pre-built decks from `GET /decks`. RolePlayer may only set their own
 seat's deck (`player_id` in the body must match the session's bound
 player); RoleAdmin may set any seat.
 
+The deck is checked against the **table's format** ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §2). Commander: as
+it always was. Standard: at least 60 cards, at most four of a card other than
+basic lands counted across deck and sideboard, a sideboard of at most 15, no
+commander, and every card `legalities.standard == "legal"` (violation codes
+`too_many_copies`, `commander_not_allowed`, `sideboard_over_limit`, and the
+shared `wrong_card_count` and `not_legal_in_format`). A pre-built deck built
+for another format is a **422** that says so in one sentence. A signed-in
+player's saved copy records the table's format.
+
 **Request** — exactly one of `deck` and `source`:
 
 ```json
@@ -1985,6 +2011,11 @@ there; find it via `GET /me/decks`.
 Seat a deck already in the caller's library, without re-pasting it.
 `{deck_id}` is one of `GET /me/decks`' ids. No request body.
 
+A saved deck is seated only at a table of the format it was built for
+([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §2): otherwise a **422** naming both. `GET /me/decks` gives each
+deck's `format` (`"standard"`, or absent for Commander, which every deck
+saved before formats is).
+
 Only a `player` session already seated in this game may call it
 (`session.game_id` must match the path), for their own seat — there is
 no `player_id` field, unlike `POST /games/{id}/decks`, because a
@@ -2023,6 +2054,12 @@ The pre-built deck catalog the lobby's deck picker renders from, with
 each deck's engine-coverage profile. Game-independent — the same
 answer for every table — so the client fetches it once on mount.
 Session-gated; there is no seat to install a deck into without one.
+
+The decks of every format are listed ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) slice 1): the Commander decks
+first, then the others. A deck of another format carries `format`
+(`"standard"`) and has no `commander` and no `commander_cards`; a Commander
+deck's row is unchanged. The picker offers the decks of the table's format,
+and so does `GET /bot/options`, whose deck rows carry the same `format`.
 
 Served whether or not a Scryfall dump is loaded: the coverage grades
 come out of the effect registry and are true regardless. The honest

@@ -9,7 +9,7 @@
 import type { GameMeta } from "./api";
 import type { Session } from "./session";
 import { canInviteTablemates, type Tablemate } from "./tablemates";
-import { TABLE_SEATS } from "./tablesPage";
+import { tableSeats } from "./formats";
 
 /**
  * openSeats is how many seats a table has free. A table seats four
@@ -17,7 +17,7 @@ import { TABLE_SEATS } from "./tablesPage";
  * taken.
  */
 export function openSeats(g: GameMeta): number {
-  return Math.max(0, TABLE_SEATS - g.players.length);
+  return Math.max(0, tableSeats(g) - g.players.length);
 }
 
 /**
@@ -40,7 +40,7 @@ export function inviteTables(games: GameMeta[], s: Session | null | undefined): 
 
 /** tableChoiceLabel is one table in the chooser: its name and how full it is. */
 export function tableChoiceLabel(g: GameMeta): string {
-  return `${g.name} · ${g.players.length}/${TABLE_SEATS}`;
+  return `${g.name} · ${g.players.length}/${tableSeats(g)}`;
 }
 
 function plural(n: number, one: string, many: string): string {

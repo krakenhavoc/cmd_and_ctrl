@@ -136,12 +136,15 @@ func (h seatHold) of(userID uuid.UUID, discordID string) bool {
 }
 
 // seatCapLocked is how many seats e has: the plan's players while a
-// plan is kept, game.MaxPlayers otherwise. Callers hold l.mu.
+// plan is kept, otherwise its format's seat cap (ADR 0222 §1), which
+// is game.MaxPlayers at a Commander table. A plan never raises the cap
+// past the format's. Callers hold l.mu.
 func seatCapLocked(e *gameEntry) int {
-	if e.sched != nil && e.sched.players > 0 && e.sched.players < game.MaxPlayers {
+	limit := e.room.Game.SeatCap()
+	if e.sched != nil && e.sched.players > 0 && e.sched.players < limit {
 		return e.sched.players
 	}
-	return game.MaxPlayers
+	return limit
 }
 
 // heldLocked is how many seats are held at e. Callers hold l.mu.

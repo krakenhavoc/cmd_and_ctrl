@@ -1306,6 +1306,14 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendError(frame.ID, protocol.CodeBadRequest, "Planechase is not offered on this server yet")
 			return
 		}
+		// ADR 0222 §1: the format is chosen when the table is made.
+		// The lobby's settings door may still change it before a seat
+		// has a deck; this door has no seat list to ask, so it never
+		// changes it.
+		if changesFormat(room.Game.TableSettingsSnapshot(), action) {
+			c.sendError(frame.ID, protocol.CodeBadRequest, "the format is chosen when the table is made")
+			return
+		}
 		// …and NOT through Apply: a settings change is not a play, so
 		// it mints no undo entry. Otherwise lowering the undo limit
 		// could be taken back with the undo it was meant to stop, and
@@ -1470,6 +1478,20 @@ func refusesPlanechase(mgr *RoomManager, action actions.Action) bool {
 		return false
 	}
 	return p.TurnsOnPlanechase()
+}
+
+// changesFormat reports whether a table-settings action names a format
+// other than the table's (ADR 0222 §1). A patch that does not parse is
+// left to Dispatch to refuse.
+func changesFormat(current game.TableSettings, action actions.Action) bool {
+	if action.Type != actions.TypeSetTableSettings {
+		return false
+	}
+	var p game.SettingsPatch
+	if err := json.Unmarshal(action.Params, &p); err != nil || p.Format == nil {
+		return false
+	}
+	return p.Format.Spec().Format != current.EffectiveFormat()
 }
 
 // classifyActionError maps a dispatch-time error from the game or

@@ -11,6 +11,7 @@
 // what the in-game menu needs today.
 
 import type { Readable } from "svelte/store";
+import { formatOf } from "./formats";
 import { guardedWritable } from "./guardedStore";
 import type { GameView, PlayerView, TableSettingsView } from "./protocol";
 
@@ -191,13 +192,14 @@ export function setCurrentTablePace(p: TableSettingsView["bot_pace"] | null): vo
  */
 export function settingsSummary(s: TableSettingsView): string {
   const d = DEFAULT_TABLE_SETTINGS;
+  const format = formatOf(s.format);
   const undos = isUnlimitedUndo(s.undo_limit)
     ? "unlimited undos"
     : s.undo_limit === 0
       ? "no undos"
       : `${s.undo_limit} undo${s.undo_limit === 1 ? "" : "s"}`;
   const rest: string[] = [];
-  if (s.commander_damage !== d.commander_damage) {
+  if (format.hasCommander && s.commander_damage !== d.commander_damage) {
     rest.push(`${s.commander_damage} commander damage`);
   }
   if (s.undo_scope === "host_any") rest.push("host can undo anyone");
@@ -207,9 +209,29 @@ export function settingsSummary(s: TableSettingsView): string {
   if (s.bot_pace !== d.bot_pace) rest.push(`${s.bot_pace} pace`);
   if (s.allow_spawn) rest.push("spawning on");
   if (s.planechase) rest.push("Planechase");
+  // ADR 0222 §1: another format leads with its name, and has no
+  // "standard rules" filler, which would read as the format's name.
+  if (format.id !== "commander") {
+    return [format.name, `${s.starting_life} life`, undos, ...rest].join(" · ");
+  }
   return [`${s.starting_life} life`, undos, ...(rest.length > 0 ? rest : ["standard rules"])].join(
     " · ",
   );
+}
+
+/**
+ * What the table settings cover, for a control's tooltip: "undos,
+ * starting life, commander damage, table pace, spawning". Commander
+ * damage is left out where no seat has a commander (ADR 0222 slice 1).
+ */
+export function settingsTopics(commanders: boolean, life = "starting life"): string {
+  return [
+    "undos",
+    life,
+    ...(commanders ? ["commander damage"] : []),
+    "table pace",
+    "spawning",
+  ].join(", ");
 }
 
 /** The table's settings, or the defaults when the frame has none. */
@@ -328,6 +350,10 @@ export function settingsPatchError(
   // fixed from then on, like free mulligans.
   if (patch.planechase !== undefined && startingLifeLocked(state)) {
     return "The game has already started, so Planechase is fixed.";
+  }
+  // ADR 0222 §1: the format is chosen when the table is made.
+  if (patch.format !== undefined && startingLifeLocked(state)) {
+    return "The game has already started, so the format is fixed.";
   }
   if (patch.away_after !== undefined) {
     const n = patch.away_after;

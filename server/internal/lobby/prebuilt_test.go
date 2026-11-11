@@ -95,11 +95,17 @@ func TestPrebuiltDecksListsEveryDeckWithItsCoverage(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Decks) != len(decks.All()) {
-		t.Fatalf("listed %d decks, registry has %d", len(out.Decks), len(decks.All()))
+	// Every format's decks are listed (ADR 0222 slice 1), the Commander
+	// decks first and as they always were; the rows after them are
+	// TestPrebuiltDecksListTheStandardDecks's.
+	if len(out.Decks) != len(decks.Every()) {
+		t.Fatalf("listed %d decks, registry has %d", len(out.Decks), len(decks.Every()))
 	}
-	for i, got := range out.Decks {
+	for i, got := range out.Decks[:len(decks.All())] {
 		want := decks.All()[i]
+		if got.Format != "" {
+			t.Errorf("%s: a Commander deck names the format %q; it names none", got.ID, got.Format)
+		}
 		if got.ID != want.ID {
 			t.Errorf("deck %d: id %q, want %q (picker order is the registry's)", i, got.ID, want.ID)
 		}
@@ -193,11 +199,17 @@ func TestPrebuiltDecksCarryTheirCommanders(t *testing.T) {
 	if err := json.Unmarshal(raw, &out); err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /decks: %d, decode %v (%s)", resp.StatusCode, err, raw)
 	}
-	if len(out.Decks) != len(decks.All()) {
-		t.Fatalf("listed %d decks, registry has %d", len(out.Decks), len(decks.All()))
+	// Every format's decks are listed (ADR 0222 slice 1), the Commander
+	// decks first and as they always were; the rows after them are
+	// TestPrebuiltDecksListTheStandardDecks's.
+	if len(out.Decks) != len(decks.Every()) {
+		t.Fatalf("listed %d decks, registry has %d", len(out.Decks), len(decks.Every()))
 	}
-	for i, got := range out.Decks {
+	for i, got := range out.Decks[:len(decks.All())] {
 		want := decks.All()[i]
+		if got.Format != "" {
+			t.Errorf("%s: a Commander deck names the format %q; it names none", got.ID, got.Format)
+		}
 		if len(got.CommanderCards) != 1 {
 			t.Fatalf("%s: commander_cards = %+v, want the one commander", got.ID, got.CommanderCards)
 		}

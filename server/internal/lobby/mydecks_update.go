@@ -391,6 +391,10 @@ func (d *deckCheck) previewUpdate(c Config, w http.ResponseWriter, r *http.Reque
 	}
 
 	merged, kept := carryPrintings(c, oldEntries, newEntries)
+	// ADR 0222 §2: an updated list is read, and checked, as a deck of
+	// the format the saved deck was built for. Commander's rows are
+	// returned as they are.
+	merged = deck.EntriesFor(libraryDeckFormat(saved), merged)
 	commanders, cardCount := libraryShape(c, merged)
 	oldKey, err := libraryDeckKey(c, saved, oldEntries)
 	if err != nil {
@@ -402,6 +406,7 @@ func (d *deckCheck) previewUpdate(c Config, w http.ResponseWriter, r *http.Reque
 	}
 	newReport, err := deckcoverage.BuildWith(c.Cards, deckcoverage.Deck{
 		Name: saved.Name, Source: source, SourceURL: sourceURL, DeckKey: newKey, Entries: merged,
+		Format: libraryDeckFormat(saved),
 	}, verdicts)
 	if err != nil {
 		return err

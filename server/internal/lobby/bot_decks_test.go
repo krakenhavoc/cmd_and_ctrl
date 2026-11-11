@@ -14,6 +14,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -377,7 +378,7 @@ func TestPlaceholderBotDeckIsLegal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: Resolve: %v", info.ID, err)
 		}
-		if err := deck.Validate(list); err != nil {
+		if err := deck.Validate(list, game.FormatCommander); err != nil {
 			t.Fatalf("%s is not a legal Commander deck: %v", info.ID, err)
 		}
 		if got := len(list.Commanders) + len(list.Mainboard); got != 100 {

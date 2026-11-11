@@ -137,8 +137,12 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * games played, games won, the date joined), and the Discord paragraph
  * says so; account deletion empties the Discord connection, then
  * deletes the token with the identity row.
+ * 36 (#2352, ADR 0222 §2) adds decks.format: the format a saved deck was
+ * built for (Commander or Standard). It describes a list the person
+ * already saved; the "Your decks" row names it, and account deletion
+ * deletes it with the deck.
  */
-export const PRIVACY_SCHEMA_VERSION = 35;
+export const PRIVACY_SCHEMA_VERSION = 36;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

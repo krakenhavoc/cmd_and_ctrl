@@ -151,7 +151,7 @@ func TestADeckOfMeldCardsValidates(t *testing.T) {
 	for i := 0; i < 60; i++ {
 		list.Mainboard = append(list.Mainboard, basic)
 	}
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("Validate: %v", err)
 	}
 }
@@ -163,7 +163,7 @@ func TestADeckOfMeldCardsValidates(t *testing.T) {
 func TestTheCombinedBackFaceIsNotADeckCard(t *testing.T) {
 	list := buildValidDeck()
 	list.Mainboard[0] = urzaPlaneswalkerPrint()
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeMeldBackFace)
 	var ve *ValidationError
 	if !errors.As(err, &ve) {
@@ -177,5 +177,5 @@ func TestTheCombinedBackFaceIsNotADeckCard(t *testing.T) {
 
 	list = buildValidDeck()
 	list.Commanders = []cards.Card{urzaPlaneswalkerPrint()}
-	assertHasViolation(t, Validate(list), CodeMeldBackFace)
+	assertHasViolation(t, Validate(list, game.FormatCommander), CodeMeldBackFace)
 }
