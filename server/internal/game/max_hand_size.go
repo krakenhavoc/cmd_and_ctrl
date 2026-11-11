@@ -230,6 +230,23 @@ func (g *Game) EffectiveMaxHandSizeLocked(p *Player) int {
 			}
 		}
 	}
+	// An emblem's maximum-hand-size statics (Wrenn and Seven's "You have
+	// no maximum hand size"), after the battlefield: they function in the
+	// command zone (CR 114.3) and the emblem's owner is "you" (CR 114.2).
+	if CatalogHandSize != nil {
+		g.forEachEmblemLocked(func(src *Card) bool {
+			key := CatalogKey(*src)
+			if key == "" {
+				return true
+			}
+			for _, s := range CatalogHandSize(key) {
+				if s.Reaches(src.Controller, src.ChosenPlayer, p.ID) {
+					entries = append(entries, handSizeEntry{at: src.layerTimestamp(), s: s})
+				}
+			}
+			return true
+		})
+	}
 	if len(entries) == 0 {
 		return DefaultMaxHandSize
 	}

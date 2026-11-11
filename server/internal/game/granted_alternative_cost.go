@@ -301,12 +301,28 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 		return out
 	}
 	var seen map[string]bool
+	// The battlefield's sources, then the emblems' (CR 114.3: an emblem's
+	// static functions in the command zone, and its owner is "you", CR
+	// 114.2; Tamiyo, Field Researcher's emblem).
+	type offerSource struct {
+		src *Card
+		key string
+	}
+	var sources []offerSource
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
-		key := catalogAbilityKeyOf(src)
-		if key == "" {
-			continue
+		if key := catalogAbilityKeyOf(src); key != "" {
+			sources = append(sources, offerSource{src, key})
 		}
+	}
+	g.forEachEmblemLocked(func(src *Card) bool {
+		if key := CatalogKey(*src); key != "" {
+			sources = append(sources, offerSource{src, key})
+		}
+		return true
+	})
+	for _, os := range sources {
+		src, key := os.src, os.key
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
 			// A static offers its controller's casts, unless it says it
 			// offers every player's (Weftwalking).
