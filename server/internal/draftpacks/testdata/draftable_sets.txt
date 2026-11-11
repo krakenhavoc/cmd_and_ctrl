@@ -3,7 +3,15 @@
 # TestDraftableLedger fails when a set listed here stops being draftable.
 # Regenerate on purpose only; see testdata/README.md.
 # <set code> <pack cards> <name>
-#
-# EMPTY ON PURPOSE: the session that added this file had no Scryfall dump
-# to generate it from. Until someone with the dump runs -update-draftable,
-# no real set is protected by the ledger.
+blb 266 Bloomburrow
+dft 276 Aetherdrift
+dsk 276 Duskmourn: House of Horror
+fdn 276 Foundations
+fin 300 Final Fantasy
+lci 291 The Lost Caverns of Ixalan
+mkm 276 Murders at Karlov Manor
+otj 276 Outlaws of Thunder Junction
+spm 193 Marvel's Spider-Man
+tdm 271 Tarkir: Dragonstorm
+tla 286 Avatar: The Last Airbender
+woe 266 Wilds of Eldraine
