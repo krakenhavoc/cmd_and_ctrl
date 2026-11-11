@@ -119,3 +119,74 @@ func TestCmdr2B19PollenbrightWingsGivesFlyingAndMakesThatManySaprolings(t *testi
 		t.Errorf("%d Saprolings, want 3 (the damage dealt)", n)
 	}
 }
+
+const cmdr2WarbriarBlessing = "4a58954a-1d20-48b8-847c-3615de67e122"
+
+func TestCmdr2B19WarbriarBlessingPumpsToughnessAndFightsOnEntering(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := ecl6Seats(g)
+	mine := b12Creature(g, me.ID, "Mine", "Creature — Bear", 2, 2)
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 2, 2)
+	advanceToMain(t, g)
+	ecl6Cast(t, g, me, "Warbriar Blessing", "Enchantment — Aura", cmdr2WarbriarBlessing, 0, 0,
+		game.CastSpellParams{Targets: cardRefs(mine)})
+	ecl6ResolveSpell(t, g)
+	pickCard(t, g, me.ID, theirs)
+	passPriorityAroundTable(t, g)
+	if p, tt := ptOf(t, g, mine); p != 2 || tt != 4 {
+		t.Errorf("enchanted creature is %d/%d, want 2/4", p, tt)
+	}
+	if len(battlefieldIDsNamed(g, "Theirs")) != 0 {
+		t.Error("the opposing creature survived the fight")
+	}
+	if len(battlefieldIDsNamed(g, "Mine")) != 1 {
+		t.Error("the enchanted creature died")
+	}
+}
+
+func TestCmdr2B19WarbriarBlessingOnlyEnchantsYourOwnCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := ecl6Seats(g)
+	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Bear", 3, 3)
+	advanceToMain(t, g)
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Warbriar Blessing", TypeLine: "Enchantment — Aura",
+			OracleID: cmdr2WarbriarBlessing, Owner: me.ID, Controller: me.ID})
+	})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, Targets: cardRefs(theirs)}); err == nil {
+		t.Error("enchanting an opponent's creature was allowed")
+	}
+}
+
+const cmdr2SpectralSteel = "95f74c0d-3f89-4944-997e-1bdc408bae71"
+
+func TestCmdr2B19SpectralSteelPumpsAndReturnsAnotherAuraOrEquipmentFromTheGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, _, _ := blbB1Seats(g)
+	host := b12Creature(g, me.ID, "Host", "Creature — Bear", 2, 2)
+	cmdr2B19Attach(g, me.ID, host, "Spectral Steel", cmdr2SpectralSteel)
+	if p, tt := ptOf(t, g, host); p != 4 || tt != 4 {
+		t.Fatalf("enchanted creature is %d/%d, want 4/4", p, tt)
+	}
+	toMainForCost(t, g)
+	steel := pushCatalogGraveyardCard(me, "Spectral Steel", "Enchantment — Aura", cmdr2SpectralSteel, 0, 0)
+	aura := pushCatalogGraveyardCard(me, "Gy Aura", "Enchantment — Aura", "", 0, 0)
+	gear := pushCatalogGraveyardCard(me, "Gy Blade", "Artifact — Equipment", "", 0, 0)
+	bear := pushCatalogGraveyardCard(me, "Gy Bear", "Creature — Bear", "", 2, 2)
+	floatForTest(g, me, "WC")
+	for _, bad := range []uuid.UUID{steel, bear} {
+		if err := g.ActivateCatalogAbility(me.ID, steel, 0, game.ActivateAbilityParams{Targets: cardTarget(bad)}); err == nil {
+			t.Fatalf("%s was accepted; the target is another Aura or Equipment card", bad)
+		}
+	}
+	b16Activate(t, g, me.ID, steel, 0, game.ActivateAbilityParams{Strict: true, Targets: cardTarget(aura)})
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(aura) {
+		t.Error("the Aura card did not return to hand")
+	}
+	if !g.Exile.Contains(steel) {
+		t.Error("Spectral Steel was not exiled")
+	}
+	_ = gear
+}
