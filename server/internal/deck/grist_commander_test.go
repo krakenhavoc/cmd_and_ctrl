@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // grist_commander_test.go — #5427. Grist, the Hunger Tide is a legal
@@ -31,7 +32,7 @@ func TestValidateAcceptsGristAsACommander(t *testing.T) {
 	for i := 0; i < 99; i++ {
 		list.Mainboard = append(list.Mainboard, swamp)
 	}
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Fatalf("a Grist deck is refused: %v", err)
 	}
 }
