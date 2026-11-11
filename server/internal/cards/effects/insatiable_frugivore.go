@@ -30,8 +30,8 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:   label,
-			Cost:    Plus(ManaCost("{3}{B}"), SacrificeX("X Foods", cmdr2S18IsFood)),
+			Label: label,
+			Cost:  Plus(ManaCost("{3}{B}"), SacrificeX("X Foods", cmdr2S18IsFood)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				x := ctx.X()
