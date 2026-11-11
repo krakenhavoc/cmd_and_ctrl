@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Mathas, Fiend Seeker — Legendary Creature — Vampire (3/3) for {R}{W}{B}:
 //
@@ -33,16 +29,7 @@ func init() {
 			Triggered: []game.TriggeredAbility{
 				WhenThisDies("Mathas, Fiend Seeker — bounty: each opponent draws a card and gains 2 life",
 					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						var err error
-						eachOpponent(g, item.Controller, func(opp uuid.UUID) bool {
-							if err = (DrawCards{Player: opp, N: 1}).Apply(ctx); err != nil {
-								return true
-							}
-							err = GainLife{Player: opp, Amount: 2}.Apply(ctx)
-							return err != nil
-						})
-						return err
+						return cmdr2B01EachOpponentOfDrawsAndGains(g, item, item.Controller, 2)
 					}),
 			},
 		}},

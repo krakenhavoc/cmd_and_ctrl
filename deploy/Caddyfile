@@ -50,7 +50,7 @@
 	# A missing entry fails silently: the path falls through to file_server,
 	# the client receives index.html, JSON parsing fails, and the feature
 	# quietly disappears instead of erroring.
-	@api path /ws /healthz /me /me/* /logout /logout/* /config /games /games/* /join /cards/ /cards/* /admin/* /auth/* /avatars/* /playmats/* /bugreport /bugreport/* /dev /dev/* /bot /bot/* /catalog /catalog/* /decks /roadmap /deck-coverage /deck-requests /community /stats/* /pods /pods/* /scheduled /scheduled/*
+	@api path /ws /healthz /me /me/* /logout /logout/* /config /games /games/* /join /cards/ /cards/* /admin/* /auth/* /avatars/* /playmats/* /bugreport /bugreport/* /dev /dev/* /bot /bot/* /catalog /catalog/* /decks /roadmap /draft /draft/* /deck-coverage /deck-requests /community /stats/* /pods /pods/* /scheduled /scheduled/*
 
 	# `handle` makes the two branches exclusive: API routes are proxied, and
 	# everything else is the static app shell, which alone gets the security

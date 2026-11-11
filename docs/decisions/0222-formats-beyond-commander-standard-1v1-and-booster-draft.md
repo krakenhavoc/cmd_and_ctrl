@@ -1,6 +1,7 @@
 # ADR 0222 — Formats beyond Commander: Standard 1v1 and booster draft
 
 **Status:** Accepted · 2026-11-10 (Ian read the summary of this ADR and its calls and said to go ahead) · [S81](../sprints.md)
+**Amended 2026-11-11:** packs follow the draft product of the set's era (owner correction). §4, [#5437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5437).
 **Issue:** [#5431](https://github.com/krakenhavoc/cmd_and_ctrl/issues/5431) (the formats epic)
 **Owner decisions:** Ian, 2026-11-10, recorded under [Owner decisions](#owner-decisions). They are **decided**. Everything under [Calls made here](#calls-made-here) is this ADR's and can be changed in review.
 **Numbering:** checked on 2026-11-10 after `git fetch --all --prune`, over `docs/decisions/` on all 129 remote heads: 0221 is the highest number anywhere. This is **0222**.
@@ -63,7 +64,7 @@ One naming note: "pod" is taken. [ADR 0220](0220-pods-groups-of-players-for-shar
 
 ### 4. Packs
 
-- A pack is generated from Scryfall data for one set: the cards the dump marks as found in boosters, in slots by rarity, at the rates Wizards publishes for that set's play booster. Where a set's exact sheet isn't public, the pack follows the published slot rates and says so on the set's draft page. **Packs are approximations of retail packs, and the page says that.**
+- A pack is generated from Scryfall data for one set: the cards the dump marks as found in boosters, in slots by rarity, to the draftable booster of that set's own era, chosen from the set's release date: a **play booster** (14 cards) for a set released on or after 2024-02-09 (Murders at Karlov Manor); a **draft booster** (15 cards: 10 commons, 3 uncommons, 1 rare that is a mythic rare about 1 time in 8, 1 basic land) for a set from 2008-10-03 (Shards of Alara) up to that date; and a **draft booster from before mythic rares** (15 cards: 11 commons, 3 uncommons, 1 rare) for an older set. These dates and rates were written from memory and are to be checked against a source; a set whose booster differed is corrected per set, as data. Set boosters and collector boosters were sold beside draft boosters and were never draft products, so they are not modelled. Where a set's exact sheet isn't public, the pack follows the published slot rates and says so on the set's draft page. **Packs are approximations of retail packs, and the page says that.**
 - **A set is draftable only when every card its packs can contain is in the catalog as Full.** The check is computed from the catalog, never a hand-kept list, and a test fails if a draftable set loses a card. A draft never hands someone a card that doesn't work.
 - Foil, showcase and other treatments are not modelled. One printing of each card.
 - Nothing about a pack is scarce or owned. A pack exists for the length of a draft and is thrown away.

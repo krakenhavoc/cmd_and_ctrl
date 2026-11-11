@@ -1,0 +1,17 @@
+# Sets recorded as draftable (ADR 0222 §4, #5437). GENERATED: do not edit.
+# Source: the Scryfall default-cards dump
+# TestDraftableLedger fails when a set listed here stops being draftable.
+# Regenerate on purpose only; see testdata/README.md.
+# <set code> <pack cards> <name>
+blb 266 Bloomburrow
+dft 276 Aetherdrift
+dsk 276 Duskmourn: House of Horror
+fdn 276 Foundations
+fin 300 Final Fantasy
+lci 291 The Lost Caverns of Ixalan
+mkm 276 Murders at Karlov Manor
+otj 276 Outlaws of Thunder Junction
+spm 193 Marvel's Spider-Man
+tdm 271 Tarkir: Dragonstorm
+tla 286 Avatar: The Last Airbender
+woe 266 Wilds of Eldraine
