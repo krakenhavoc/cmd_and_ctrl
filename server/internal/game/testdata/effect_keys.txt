@@ -2019,6 +2019,7 @@ tail attacking-tokens/calamity-sacrifice-then-next-round
 tail attacking-tokens/dalkovan-encampment-sacrifice-the-warriors
 tail attacking-tokens/dorotheas-retribution-sacrifice-the-spirit
 tail attacking-tokens/fire-navy-trebuchet-sacrifice-the-boulder
+tail attacking-tokens/kari-zev-exile-ragavan
 tail attacking-tokens/kavaron-harrier-sacrifice-the-robot
 tail attacking-tokens/living-laser-exile-the-tokens
 tail attacking-tokens/loki-the-deceiver-sacrifice-the-token
@@ -2191,6 +2192,7 @@ tail each-player/mill-until-land-step
 tail earthbender-ascension/search
 tail earthen-arms/awaken
 tail earthshape/shield
+tail echoing-assault/sacrifice-at-next-end-step
 tail eerie-gravestone/after-mill
 tail elemental-teachings/choose
 tail elkin-lair/may-play-exiled

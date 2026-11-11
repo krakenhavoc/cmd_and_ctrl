@@ -62,6 +62,17 @@ func s46Settle(t *testing.T, g *game.Game) {
 	}
 }
 
+// s46AnswerTwoMyriads answers the two other opponents' prompts of each of
+// two myriad instances: the second instance asks once the first resolves.
+func s46AnswerTwoMyriads(t *testing.T, g *game.Game, me uuid.UUID, yes bool) {
+	t.Helper()
+	answerMayChoice(t, g, me, yes)
+	answerMayChoice(t, g, me, yes)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me, yes)
+	answerMayChoice(t, g, me, yes)
+}
+
 // s46Encore activates encore from the graveyard and resolves it.
 func s46Encore(t *testing.T, g *game.Game, name, typeLine, oracle string, p, tgh int, mana string) (uuid.UUID, *game.Player) {
 	t.Helper()
@@ -329,9 +340,7 @@ func TestCmdrS46ScurryOfSquirrelsAsksEachOpponentTwice(t *testing.T) {
 	for triggerOrderPrompt(g) != nil {
 		answerTriggerOrderInOfferedOrder(t, g)
 	}
-	for i := 0; i < 4; i++ {
-		answerMayChoice(t, g, me.ID, true)
-	}
+	s46AnswerTwoMyriads(t, g, me.ID, true)
 	if n := len(s46Tokens(g, me.ID, "Scurry of Squirrels")); n != 4 {
 		t.Fatalf("%d copies, want 4 (two for each of two other opponents)", n)
 	}
@@ -352,9 +361,7 @@ func TestCmdrS46ScurryCombatDamagePutsACounterOnATargetCreature(t *testing.T) {
 	for triggerOrderPrompt(g) != nil {
 		answerTriggerOrderInOfferedOrder(t, g)
 	}
-	for i := 0; i < 4; i++ {
-		answerMayChoice(t, g, me.ID, false)
-	}
+	s46AnswerTwoMyriads(t, g, me.ID, false)
 	advanceTo(t, g, game.StepCombatDamage)
 	passPriorityAroundTable(t, g)
 	answerPickTarget(t, g, bear)
