@@ -36,6 +36,10 @@ func TestCmdr2S29EveryBuiltCardIsRegisteredFull(t *testing.T) {
 		s29DelugeOracle:    "Deluge of Doom",
 		s29DescendOracle:   "Descend upon the Sinful",
 		s29SlimeOracle:     "Convert to Slime",
+		s29SpawnOracle:     "Demolisher Spawn",
+		s29IshkanahOracle:  "Ishkanah, Grafwidow",
+		s29UrsineOracle:    "Ursine Monstrosity",
+		s29SkinnerOracle:   "Obsessive Skinner",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -293,5 +297,179 @@ func TestCmdr2S29ConvertToSlimeRefusesAPermanentNoClauseTakes(t *testing.T) {
 		{Kind: game.TargetCard, ID: land, Slot: 0}})
 	if err == nil {
 		t.Error("a land was accepted as a target")
+	}
+}
+
+// --- Demolisher Spawn ----------------------------------------------------------------
+
+func s29SpawnAttack(t *testing.T, seed int) (*game.Game, uuid.UUID, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	spawn := b12Push(g, me.ID, "Demolisher Spawn", "Enchantment Creature — Horror", s29SpawnOracle, 7, 7)
+	ally := b12Creature(g, me.ID, "Ally Bear", "Creature — Bear", 2, 2)
+	b24SeedTypes(me, seed)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{spawn, ally} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatalf("DeclareAttacker: %v", err)
+		}
+	}
+	lockInAttacks(t, g)
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	return g, spawn, ally
+}
+
+func TestCmdr2S29DemolisherSpawnPumpsOtherAttackersWithDelirium(t *testing.T) {
+	g, spawn, ally := s29SpawnAttack(t, 4)
+	if p, tou := s29Size(t, g, ally); p != 6 || tou != 6 {
+		t.Errorf("other attacker %d/%d, want 6/6", p, tou)
+	}
+	if p, tou := s29Size(t, g, spawn); p != 7 || tou != 7 {
+		t.Errorf("the Spawn %d/%d, want 7/7 (other attacking creatures only)", p, tou)
+	}
+}
+
+func TestCmdr2S29DemolisherSpawnDoesNothingWithoutDelirium(t *testing.T) {
+	g, _, ally := s29SpawnAttack(t, 3)
+	if p, tou := s29Size(t, g, ally); p != 2 || tou != 2 {
+		t.Errorf("other attacker %d/%d, want 2/2", p, tou)
+	}
+}
+
+// --- Ishkanah, Grafwidow -------------------------------------------------------------
+
+func s29Spiders(g *game.Game) int {
+	n := 0
+	g.ReadSnapshot(func() {
+		for _, c := range g.Battlefield.Cards {
+			if c.Name == "Spider" && c.IsToken() {
+				n++
+			}
+		}
+	})
+	return n
+}
+
+func TestCmdr2S29IshkanahMakesThreeSpidersWithDelirium(t *testing.T) {
+	g := newCatalogGame(t)
+	b24SeedTypes(g.Seats[0], 4)
+	castAndResolveCreature(t, g, "Ishkanah, Grafwidow", "Legendary Creature — Spider", s29IshkanahOracle)
+	passPriorityAroundTable(t, g)
+	if n := s29Spiders(g); n != 3 {
+		t.Fatalf("%d Spider tokens, want 3", n)
+	}
+	spider, _ := s29Token(g, "Spider")
+	if p, tou := s29Size(t, g, spider.InstanceID); p != 1 || tou != 2 || !hasKeywordOf(g, spider.InstanceID, "reach") {
+		t.Errorf("Spider %d/%d, want a 1/2 with reach", p, tou)
+	}
+}
+
+func TestCmdr2S29IshkanahMakesNoSpidersWithoutDelirium(t *testing.T) {
+	g := newCatalogGame(t)
+	b24SeedTypes(g.Seats[0], 3)
+	castAndResolveCreature(t, g, "Ishkanah, Grafwidow", "Legendary Creature — Spider", s29IshkanahOracle)
+	passPriorityAroundTable(t, g)
+	if n := s29Spiders(g); n != 0 {
+		t.Errorf("%d Spider tokens, want none", n)
+	}
+}
+
+func TestCmdr2S29IshkanahDrainsOneForEachSpider(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ish := b12Push(g, me.ID, "Ishkanah, Grafwidow", "Legendary Creature — Spider", s29IshkanahOracle, 3, 5)
+	b12Creature(g, me.ID, "Spider A", "Creature — Spider", 1, 2)
+	b12Creature(g, opp.ID, "Their Spider", "Creature — Spider", 1, 2)
+	b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	toMain(t, g)
+	me.ManaPool.AddMana(game.ManaToken{Color: "B"})
+	for i := 0; i < 6; i++ {
+		me.ManaPool.AddMana(game.ManaToken{Color: "C"})
+	}
+	if err := g.ActivateCatalogAbility(me.ID, ish, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}, Strict: true}); err != nil {
+		t.Fatalf("ActivateAbility: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != 40-2 {
+		t.Errorf("opponent life %d, want 38 (Ishkanah and one other Spider you control)", opp.Life)
+	}
+}
+
+// --- Obsessive Skinner ---------------------------------------------------------------
+
+func TestCmdr2S29ObsessiveSkinnerPutsACounterOnTargetCreatureWhenItEnters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	friend := b12Creature(g, me.ID, "Friend", "Creature — Bear", 2, 2)
+	castAndResolveCreature(t, g, "Obsessive Skinner", "Creature — Human Rogue", s29SkinnerOracle)
+	answerPickTargetIfOpen(t, g, friend)
+	passPriorityAroundTable(t, g)
+	if n := countersOn(g, friend, game.CounterPlusOne); n != 1 {
+		t.Errorf("friend has %d +1/+1 counters, want 1", n)
+	}
+}
+
+func s29SkinnerUpkeep(t *testing.T, seed int) (*game.Game, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Push(g, me.ID, "Obsessive Skinner", "Creature — Human Rogue", s29SkinnerOracle, 1, 1)
+	friend := b12Creature(g, me.ID, "Friend", "Creature — Bear", 2, 2)
+	b24SeedTypes(me, seed)
+	advanceToUpkeepOf(t, g, 1)
+	answerPickTargetIfOpen(t, g, friend)
+	passPriorityAroundTable(t, g)
+	return g, friend
+}
+
+func TestCmdr2S29ObsessiveSkinnerCountersAtAnOpponentsUpkeepWithDelirium(t *testing.T) {
+	g, friend := s29SkinnerUpkeep(t, 4)
+	if n := countersOn(g, friend, game.CounterPlusOne); n != 1 {
+		t.Errorf("%d counters after the opponent's upkeep, want 1", n)
+	}
+}
+
+func TestCmdr2S29ObsessiveSkinnerDoesNothingAtAnOpponentsUpkeepWithoutDelirium(t *testing.T) {
+	g, friend := s29SkinnerUpkeep(t, 3)
+	if n := countersOn(g, friend, game.CounterPlusOne); n != 0 {
+		t.Errorf("%d counters without delirium, want 0", n)
+	}
+}
+
+// --- Ursine Monstrosity --------------------------------------------------------------
+
+func TestCmdr2S29UrsineMonstrosityMillsAndGetsStrongerAtBeginningOfCombat(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := b12Push(g, me.ID, "Ursine Monstrosity", "Creature — Bear Mutant", s29UrsineOracle, 3, 3)
+	b24SeedTypes(me, 2) // creature and instant
+	seedLibraryTop(me, "Milled Land", "Land", "")
+	grave := me.Graveyard.Size()
+	advanceTo(t, g, game.StepBeginCombat)
+	passPriorityAroundTable(t, g)
+	if got := me.Graveyard.Size(); got != grave+1 {
+		t.Errorf("graveyard %d, want %d (one card milled)", got, grave+1)
+	}
+	// creature, instant and the milled land: three card types.
+	if p, tou := s29Size(t, g, bear); p != 6 || tou != 6 {
+		t.Errorf("Ursine Monstrosity %d/%d, want 6/6", p, tou)
+	}
+	if !hasKeywordOf(g, bear, "indestructible") {
+		t.Error("no indestructible")
+	}
+	var must []uuid.UUID
+	g.ReadSnapshot(func() {
+		c, _ := g.LookupCardForEffect(bear)
+		for _, r := range c.Effective().AttackRequirements {
+			if r.MustAttack != uuid.Nil {
+				must = append(must, r.MustAttack)
+			}
+		}
+	})
+	if len(must) != 1 || must[0] == me.ID {
+		t.Errorf("must attack %v; want exactly one opponent", must)
 	}
 }
