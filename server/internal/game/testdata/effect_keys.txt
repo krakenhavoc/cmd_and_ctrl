@@ -613,6 +613,7 @@ choose choose-cards/kastral-put-bird
 choose choose-cards/kaya-spirits-justice-copy
 choose choose-cards/kaya-spirits-justice-exile
 choose choose-cards/kellan-the-kid-if-you-dont
+choose choose-cards/king-narfis-betrayal-exile
 choose choose-cards/kinscaer-sentry-put
 choose choose-cards/klaw-sonic-subjugator-discard
 choose choose-cards/klaw-sonic-subjugator-reveal
@@ -783,6 +784,7 @@ choose choose-cards/opening-hand-exile
 choose choose-cards/ordered-pick-leg
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
+choose choose-cards/otc-gonti-lord-of-luxury-exile
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perforating-artist-punisher-discarded
 choose choose-cards/pia-aether-ascetic-search
@@ -2349,6 +2351,7 @@ tail gul-dukat/drain-each-opponent
 tail hama/choose-from-graveyard
 tail hama/grant-waterbend-cast
 tail harried-dronesmith/haste-then-sacrifice
+tail heartless-conscription/play-exiled-then-exile-this
 tail heirloom-auntie/remove-counter
 tail hellcat/loses-abilities-gains-haste
 tail helm-of-obedience/after-mill
@@ -2711,6 +2714,7 @@ tail tail/eagles-are-coming-birds
 tail tail/fugitive-codebreaker-draw
 tail tail/hide-in-plain-sight-rest
 tail tail/intrude-on-the-mind-rest
+tail tail/king-narfis-betrayal-after-mill
 tail tail/lazav-investigate
 tail tail/pumpkin-bombs-after-fuse
 tail tail/reenact-the-crime-copy
