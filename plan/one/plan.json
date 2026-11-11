@@ -1,0 +1,491 @@
+{
+ "set": "one",
+ "mechanics": [
+  {
+   "name": "Toxic",
+   "exists": true,
+   "evidence": "grep -i toxic game: game/infect_wither_toxic.go (ToxicValue, ToxicTotal, CR 702.164), keywords.go; 33 effects files (skrelvs_hive.go, skrelv_defector_mite.go)."
+  },
+  {
+   "name": "Proliferate (the action)",
+   "exists": true,
+   "evidence": "game/proliferate.go, game/keyword_action.go (KeywordActionProliferate, CR 701.34); 101 effects files."
+  },
+  {
+   "name": "'Whenever you proliferate' triggers",
+   "exists": false,
+   "evidence": "grep -ri 'you proliferate' game cards/effects: 0; events.go:888 states there is no EventProliferate. Seam s1."
+  },
+  {
+   "name": "Corrupted (ability word)",
+   "exists": true,
+   "evidence": "Ability word, no rules meaning (CR 207.2c). Predicates rfReprintBCorrupted, seedcoreCorrupted; cards skrelvs_hive.go, the_seedcore.go, corrupted_conviction.go."
+  },
+  {
+   "name": "For Mirrodin!",
+   "exists": false,
+   "evidence": "grep -ri mirrodin game cards/effects: no keyword or helper. LivingWeapon (living_weapon.go) and token row '2/2 red Rebel' exist. Seam s2 (small)."
+  },
+  {
+   "name": "Oil counters",
+   "exists": true,
+   "evidence": "Plain named counters: vat_of_rebirth.go, mindsplice_apparatus.go, chocobo_knights.go, batch41_helpers.go; RemoveCountersFromThis / RemoveCountersAmong in activated.go."
+  },
+  {
+   "name": "Compleated and Phyrexian mana",
+   "exists": true,
+   "evidence": "compleated.go Compleated() (CR 702.150a), game/phyrexian_mana.go, paid_cost.go PhyrexianLife; card vraska_betrayals_sting.go. Hybrid Phyrexian symbols are mentioned in game/mana.go and paid_cost.go but no catalog card uses one (watch item, batch 20)."
+  },
+  {
+   "name": "Poison counters on players",
+   "exists": true,
+   "evidence": "game/player_counters.go, game_end.go; ichor_rats.go, swamp_mosquito.go."
+  },
+  {
+   "name": "Affinity (for artifacts / for Equipment)",
+   "exists": true,
+   "evidence": "AffinityFor(label, predicate) in self_cost_modifier.go; 72 effects files. No 'Affinity for Equipment' card yet, same helper with another predicate."
+  },
+  {
+   "name": "Battle cry, melee, lieutenant, experience counters (ONC)",
+   "exists": true,
+   "evidence": "battle_cry.go BattleCry(); melee in game/keywords.go and glory_to_the_empire.go; lieutenant in 33 effects files; experience in game/counter_types.go."
+  },
+  {
+   "name": "Sphere land subtype",
+   "exists": true,
+   "evidence": "the_seedcore.go and the_mycosynth_gardens.go (both Land — Sphere) are in the catalog; the subtype registry itself was not read."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Emit a proliferate event and add a 'whenever you proliferate' trigger",
+   "clause": "Whenever you proliferate, ... / When you proliferate, return this card from your graveyard to your hand.",
+   "why": "CR 701.34 proliferate is a keyword action with a CR 614 window (game/keyword_action.go, game/proliferate.go) but nothing is emitted after it: game/events.go says 'there is no EventProliferate at all' (#976), while scry and surveil have EventScry / EventSurveil. Expect a post-action EventProliferate (Actor = the proliferating player, fired even when nothing was chosen, once per proliferate of 'proliferate twice') from ProliferateForEffect, a WheneverYouProliferate helper in triggers_common.go, and the graveyard-zone form for Voidwing Hybrid.",
+   "checked": "grep -ri 'you proliferate' game cards/effects: 0 hits. grep 'Event[A-Za-z]*Proliferat': only the comment in events.go:888 saying it does not exist. 'Whenever you scry' has precedents (celeborn_the_wise.go, diviner_of_victory.go) on EventScry, so the shape to copy exists.",
+   "size": "medium",
+   "cards": [
+    "cffec16f-373b-43e7-a04c-4452987d7e02",
+    "cf4a3b1a-4b87-473e-be1f-3aa3da45c28e",
+    "17c934a7-3480-4309-a217-ca2550538ae7",
+    "0dab592c-a230-408d-a383-044e561dbe5d"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Add the For Mirrodin! keyword helper",
+   "clause": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)",
+   "why": "CR 702.163 has no helper and the keyword is unknown to the engine. Near-copy of LivingWeapon (cards/effects/living_weapon.go) with the existing token row '2/2 red Rebel' (tokens_table.go:286): add ForMirrodin(cardName) plus the printed keyword. Small, but 13 cards and two later batches (11, 14) share it, so it is built once here with the nine plain Equipment.",
+   "checked": "grep -ri 'mirrodin' game cards/effects: no keyword or helper (only set-name comments). grep 'func LivingWeapon': living_weapon.go:55. grep 'then attach (this|it) to it': 24 living-weapon style files, none creating a Rebel. Token row exists (barret_avalanche_leader.go uses TokenCard(\"2/2 red Rebel\")).",
+   "size": "small",
+   "cards": [
+    "93c2b91d-7d4e-483c-a11f-4a525f881503",
+    "4cd4c6da-a84e-4cba-893b-799a7cb5c411",
+    "4c35f41a-55e4-49ca-b211-f57d7b1b90f6",
+    "c43b176a-9001-4fe4-bd9b-809880134067",
+    "63018d1c-f7fb-44c8-bcd2-292e74ab5b54",
+    "bd31c248-8b3f-4fa5-a639-19b0e37b15c3",
+    "1fd04d9e-cf89-49ba-a932-5d278f65bf77",
+    "2f6c21a1-d618-497c-bfde-c0f2e1014d99",
+    "6253f9d4-83ff-4a0b-b465-e9f9a565f664"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Add an 'exile a spell you control' activation cost",
+   "clause": "{1}{U/P}, {T}, Exile a spell you control: Target opponent reveals cards from the top of their library until they reveal a card with mana value equal to 1 plus the exiled spell's mana value. ...",
+   "why": "No AbilityCost moves an object from the stack to exile as a cost and remembers its mana value for the effect. Expect a new cost in cards/effects/activated.go beside ExileAPermanentYouControl / ExileFromHand, with the stack removal in game/activated.go and the exiled spell's last known mana value on the paid cost. The {U/P} in an activation cost already exists (game/activated.go).",
+   "checked": "Listed every 'func X(...) game.AbilityCost' in activated.go: exile costs cover permanents, hand, graveyard, library top and the source, none the stack. grep -i 'Exile a spell you control|ExileSpellCost|exile.{0,20}spell you control': 0 hits.",
+   "size": "small",
+   "cards": [
+    "55e42539-3fe2-4c84-9978-c071d6fc6aa0"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Vanilla and keyword-only creatures",
+   "shared": "Keywords only: toxic N, flying, menace, deathtouch, double strike, reach, haste, trample. Toxic is read through game.ToxicTotal (game/infect_wither_toxic.go), so granted toxic counts; 'toxic N' is a keyword token. Evasion lines 'can't be blocked by creatures with flying / with power 2 or less' have precedents (grep the phrase). Oxidda Finisher: AffinityFor(label, predicate) in self_cost_modifier.go with an Equipment predicate; 'Affinity for Equipment' also appears in batches 14 (Rebel Salvo, Goldwardens' Gambit). Duelist of Deep Faith's 'During your turn, this creature has first strike' also appears in s2 (Hexgold Halberd) and batch 4 (Mite Overseer). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "0594f19c-c4c2-4812-8f4d-5630fc24c47a",
+    "419e9ab0-fe79-4a4f-8bcb-fe4e5373e292",
+    "83bf5610-a798-4508-88d2-c60d96f60d23",
+    "ae685a9b-4cb8-4a8a-935d-378102431c51",
+    "5a2f8474-b032-4567-a569-3f9725805f10",
+    "14af3ec5-d90a-4560-a70a-8645765f1253",
+    "1b27303b-756e-45b9-956f-6bbbd83d31ab",
+    "a7df9a4e-d556-4345-9884-0724a3f9d5f8",
+    "08261b68-b261-4e47-a085-c489ba394108",
+    "b7cc831c-c1a1-4ea4-ae78-5be2b6173407",
+    "fb5a02ce-6080-47f9-815a-fef3758d753b",
+    "f308a1de-94a6-4f9f-8f46-6f2018959b40",
+    "30d69e88-2bf6-43b8-8678-2cf37f6a5cf5"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Sphere lands, Skullbombs and simple mana",
+   "shared": "Two five-card cycles: write each once (one shared helper per cycle, in this batch only). Sphere is a land subtype: check it is a known land type. Mirrex: 'Activate only if this land entered this turn' precedents gleaming_bastion.go, hidden_lair.go; Phyrexian Mite token: PhyrexianMiteToken() in reality_fracture_fra_reprint_b_helpers.go (precedents skrelvs_hive.go, white_suns_twilight.go). Oil counters are plain named counters (precedents vat_of_rebirth.go, mindsplice_apparatus.go, batch41_helpers.go); costs via RemoveCountersFromThis in activated.go. Myr Convert: PayLife cost on a mana ability.",
+   "after": [],
+   "cards": [
+    "e2dd05d5-312e-47f1-873e-c0741ee6ef4a",
+    "8110fe69-c66c-4e2c-86ee-dcc8dc9a13d1",
+    "8618f8e8-fd86-47e3-905d-e6624b599b9b",
+    "b0ea4975-a944-4585-8711-60f203cffa4a",
+    "db9c155f-b342-41bb-9e1a-50358fb9f40e",
+    "43057d84-b424-489c-abec-3fb4cb823d80",
+    "0c43e9b4-013a-47ee-9805-f41afb0a3bde",
+    "77e0c121-724c-43a0-84e3-1800e2d94a34",
+    "3cb91e96-285d-4191-97cd-ee7ce5d86eb2",
+    "6d364283-617a-4661-865d-abd9c304b2f9",
+    "5502741a-e3b9-454e-8121-4360a6db6750",
+    "63e8d282-d038-4a8c-a0cb-f51ddf87d8ea",
+    "6abf433e-27da-4abb-b262-3af792a1db23"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Simple enters and dies triggers",
+   "shared": "One-sentence triggers from effects.Do primitives with a footprint. Reflexive 'you may pay/sacrifice. When you do' (Ambulatory Edifice, Shrapnel Slinger): reflexive_bodies.go. Dune Mover: 'shuffle and put that card on top' precedents campus_guide.go, loyal_tutor.go. Cruel Grimnarch: 'For each opponent who can't' precedent aclazotz_deepest_betrayal.go. Testament Bearer: 'the rest into your graveyard' precedents (commune_with_evil.go). Token row '1/1 red Phyrexian Goblin' exists in tokens_table.go. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "6d16c2fa-4118-4b81-92ca-6c8e9efe03b6",
+    "b0493924-dc6d-4655-865f-7e9b40f547ea",
+    "b3e3d037-992b-4718-913d-7ab509d2047e",
+    "ce0f6cd6-35d5-4f52-b81e-6d15e3bf916e",
+    "4c27b7cd-dcbf-45a7-9e15-a6d8dfd3a087",
+    "43923f24-7e95-4934-9a5c-8d9a5e06ddea",
+    "97bb382b-16b2-44db-a2bd-de09ca90bfcc",
+    "38d2176c-1a1e-4030-9c63-e28ba4a69b6d",
+    "c9daff24-1af8-4133-bff1-e0e4d1042db4",
+    "26d6a089-b867-4b89-be8e-2ad11bff0d64",
+    "b46351cf-73c7-493c-b8a7-5d7bedc8b205",
+    "b400536c-ea8b-4237-90da-1d3ac139881d",
+    "f6b499d5-0e39-46ce-9de9-f64a2cc2cb32"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Phyrexian Mites and poison-counter spells",
+   "shared": "Phyrexian Mite token: PhyrexianMiteToken() in reality_fracture_fra_reprint_b_helpers.go (precedents skrelvs_hive.go, white_suns_twilight.go). Giving poison: precedents ichor_rats.go, swamp_mosquito.go, white_suns_twilight.go. Mite Overseer: {W/P} in an activation cost exists (game/activated.go, phyrexian_mana.go). Phyresis Outbreak reads as a board wipe: declare its Sweep; the per-controller -1/-1 is locked in on resolution. Vishgraz: characteristic-defining style +1/+1 per opponents' poison needs a Label. Charge of the Mites and Infectious Bite must be castable by the probe in server/internal/legal. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "929c67aa-49ff-4401-85e8-76990fe1a369",
+    "99ba0d4f-b2bf-48ea-95d6-b6b85ee077ab",
+    "6b1f750c-0f01-4b1c-ad8f-260e26fbbfea",
+    "9587bdb3-fb6a-47c0-898d-404bf60fcb6b",
+    "fa47c190-d66a-41b0-aa08-21036cda4223",
+    "e9c03ed6-34dd-46f7-ab41-8004348328cc",
+    "d92411b3-cb25-4123-a78e-4f785dfdae0c",
+    "7b1599c0-bb4f-48f8-a358-dc60166b13e7",
+    "3f661b58-e8ca-412c-bdac-af151162de12",
+    "66051196-53ea-4461-b241-205df9395b3b",
+    "33fd9192-3e9b-4d3a-92aa-06de29d449df",
+    "7b740cd6-e07d-4273-8a7f-e084bdaf0f1c",
+    "47148b5d-3850-4614-822e-6ef2755996f8"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Toxic matters and toxic grants",
+   "shared": "Toxic is read through game.ToxicTotal (game/infect_wither_toxic.go), so granted toxic counts; 'toxic N' is a keyword token. 'Has toxic' is ToxicTotal > 0 (skrelvs_hive.go). Granting toxic: skrelv_defector_mite.go ('gains toxic'), Karumonix-style static grant (see the comment at infect_wither_toxic.go:88). Watch item: Plague Nurse gives toxic 1 to creatures that already have toxic, so the totals must ADD (CR 702.164b) and not be deduplicated as one keyword token; stop and report if the grant does not stack. Watch item: Necrogen Rotpriest's 'that player gets an additional poison counter' is a separate trigger on combat damage by a creature with toxic, not a change to the toxic amount. Necrogen Communion: 'return that card to the battlefield under your control' needs the died card's identity. Ribskiff is a Vehicle with toxic. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "5d55c397-3828-4e4b-8a61-8c7272ba4800",
+    "1c832491-6b78-49c6-baf2-63f17847f5f5",
+    "4c11bda3-903f-4b7c-9e5e-f6c5c91977cf",
+    "c2a6cfb7-e5bd-49c8-aa51-fd5203eca8b8",
+    "573a3afb-3a2a-41b7-ac1a-9685b90bffa3",
+    "b4e85b7c-3047-46d1-a6e6-2ec5eac0268a",
+    "ed9c488a-9d44-4d2d-bcf8-81352193b8c2",
+    "8026533d-c0e7-48b7-9e1a-9a370899aa57",
+    "ff58459a-0015-4012-86c0-580da4e02676",
+    "af7abd22-3134-4872-bbe2-0ad84742d9e5",
+    "7d9a424e-cab1-410f-9c04-ee0025d04169",
+    "8f761657-7127-4552-a200-532e063e2419"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Proliferate creatures and an Aura",
+   "shared": "Proliferate exists: Proliferate primitive in proliferate.go (effects) over game.ProliferateForEffect; the prompt waits, so sequence later steps after it (CR 608.2c). 'You may pay {N}. If you do, proliferate' and 'you may tap it / sacrifice it. If you do' are optional-cost bodies. Contagious Vorrac: proliferate only if no card was put into hand. Mesmerizing Dose: 'doesn't untap during its controller's untap step' has many precedents. None of these needs seam s1 (they proliferate, they do not trigger on it). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "f6311b7a-7482-4b13-9f8f-13e80c98e98e",
+    "b0102259-7a2c-470e-b04b-4a1f615d057c",
+    "4854a41e-db49-462f-ae57-0ba4005bae75",
+    "1b6da140-0d91-4fae-a3ee-33e6808acf34",
+    "066f6a3d-5e7b-40a4-b348-6dfb5d5239de",
+    "aa9bde06-098c-41b3-b816-49daacc02c50",
+    "d9e48750-d930-4095-abf0-dec2ac53be81",
+    "420aaa77-f429-4f3d-a73e-91dc25cb38db",
+    "766c3528-2c5c-4e92-aa85-b1e0e115d491",
+    "195ab0c7-0848-4803-a299-9155e1f56a85"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Corrupted commons and uncommons",
+   "shared": "Corrupted is an ability word (CR 207.2c): reuse the existing predicate (rfReprintBCorrupted in reality_fracture_fra_reprint_b_helpers.go, seedcoreCorrupted in the_seedcore.go; precedents skrelvs_hive.go, the_seedcore.go). The sentence 'an opponent has three or more poison counters' also appears in batches 7, 8, 16, 19 and 20: do not add a second predicate. Shapes: static while corrupted (Apostle of Invasion, Bonepicker Skirge, Zealot's Conviction: skrelvs_hive.go), intervening-if trigger (Incisor Glider, Vivisection Evangelist), activation restriction (Sinew Dancer, Chittering Skitterling, Fleshless Gladiator, Glistening Sphere: the_seedcore.go), 'instead if its controller has three or more' on a spell (Anoint with Affliction, Bring the Ending: the check is on the target's controller, not any opponent). Fleshless Gladiator activates from the graveyard. Glistening Sphere proliferates on entering. Phyrexian Atlas: 'whenever this artifact becomes tapped' (TimesBecameTappedThisTurn and tapped triggers exist). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "15679808-baba-4a11-b111-f313ce24197f",
+    "b85d54e9-4f21-4440-9fd4-7b73b560c99d",
+    "e51f89c8-3d7f-4f1a-bc35-67b92db20e10",
+    "a605864a-f46f-4ebc-8e56-ce7322c918b0",
+    "007f3b20-d58b-4986-8de8-9e419af88628",
+    "d56f1543-2b2d-4ce3-bcfe-41224a0cece4",
+    "c42833e6-3e42-4bd6-acbc-d8e284e9833e",
+    "864fc52a-e9f4-4254-901e-b949d96b34eb",
+    "8e33d6e5-30a2-48b4-826c-09aa75bbba27",
+    "90109cb4-1e16-4d54-9332-b5fb1e71042c",
+    "79ab207f-e7ff-4236-b260-5a109a73fbed",
+    "402c3afe-7041-41a3-8fcd-64a060c12d4a",
+    "57b37690-0fb6-4e78-9210-4a529a6ade7c"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Proliferate spells and simple instants and sorceries",
+   "shared": "Proliferate as in batch 6. 'If that spell's / that permanent's mana value was 3 or less, proliferate' (Reject Imperfection, Serum Snare, Carnivorous Canopy) reads last known mana value: one local helper in this batch only. Expand the Sphere: 'proliferate a number of times' precedents ripples_of_potential.go, powerful_broker.go. Corrupted is an ability word (CR 207.2c): reuse the existing predicate (rfReprintBCorrupted in reality_fracture_fra_reprint_b_helpers.go, seedcoreCorrupted in the_seedcore.go; precedents skrelvs_hive.go, the_seedcore.go). The sentence 'an opponent has three or more poison counters' also appears in batches 7, 8, 16, 19 and 20: do not add a second predicate. Distorted Curiosity: CostsLess with a condition (into_the_story.go, hagra_mauling.go). Every 'target' spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "25781dc5-d6ea-4273-9fe3-06a8808b3718",
+    "fbc7350c-d392-44bf-92f7-8dd4743a73b4",
+    "23c2cdc9-2b16-423a-b932-2daadeb1021b",
+    "b3360259-19df-43c6-95a9-e76770f2fb77",
+    "e4912bc3-bee9-4a2f-a13e-3a99018f8a65",
+    "0fac3187-9b86-4854-854b-a4c203526a64",
+    "c0ef21d5-f4bf-4417-b701-d98c2dbbaa43",
+    "05d1e797-bda2-4411-a546-919493768650",
+    "03e59169-d8f8-40da-b5f7-645d16365e7b",
+    "cf6ff089-63d7-4a98-b95d-2837c017a866",
+    "6ebbf025-2996-46f2-ac23-992909251525",
+    "405a2cf9-62a0-460c-bf2a-ce4c351b61ce",
+    "d91b3c6f-f8a1-4859-90ca-22cd79517552"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Oil: noncreature-spell counters",
+   "shared": "Oil counters are plain named counters (precedents vat_of_rebirth.go, mindsplice_apparatus.go, batch41_helpers.go); costs via RemoveCountersFromThis in activated.go. Eight cards print 'Whenever you cast a noncreature spell, put an oil counter on this creature': one helper, in this batch only (noncreature-cast precedent b10NoncreatureSpellCastByYou in batch12_helpers.go). Vindictive Flamestoker: 'costs {1} less to activate for each' precedents in cost_modifier.go, boseiju_who_endures.go. Serum-Core Chimera: 'When you discard a card this way' is reflexive (reflexive_bodies.go, talions_messenger.go). Magmatic Sprinter: 'unless you remove two oil counters' is an optional payment at the end step. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "8cac286c-1a17-4ee1-9858-d7a2f8c09037",
+    "d52ecb32-26ed-484b-b1a7-ee47b66f0f94",
+    "ed54a59b-b24c-4681-b862-fa634fe759fd",
+    "7ed9a887-9942-4482-942e-b3b05feb6342",
+    "4fe38c9e-6fa0-4e05-9d3f-8fd635c457fb",
+    "af22ed78-7054-4f5c-84ab-2a274c3d47fb",
+    "e82f46f3-143b-46ae-ab5d-4aa177437a64",
+    "e4a96cc7-8a4f-4007-8477-e1f30720db7b",
+    "85d025d9-158d-4bf1-b3b2-361f3fe59663"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "Oil: enters with counters, remove a counter to activate",
+   "shared": "Oil counters are plain named counters (precedents vat_of_rebirth.go, mindsplice_apparatus.go, batch41_helpers.go); costs via RemoveCountersFromThis in activated.go. 'This creature enters with N oil counters on it' is the usual enters-with replacement (needs a Label or RowLabel). Meldweb Strider is a Vehicle that also animates by removing a counter. Lattice-Blade Mantis: 'you may remove an oil counter. If you do, untap it'. Watchful Blisterzoa reads last known counters when it dies. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "3088ee75-3b51-4cbc-8987-76cb93f416b1",
+    "a7ee67a6-0ac7-4079-a947-4e52d09ace8e",
+    "85488433-3c23-4a29-b063-53dba71f26c4",
+    "6096b221-7b6e-4528-8b5d-8ad0fcef3fba",
+    "bcbb318d-0ebc-48a2-afd7-69cf5351893d",
+    "5e3d2b03-4c44-49a3-ab11-871ca9c372f7",
+    "7a49731b-bd95-4f0a-ac47-1aa318c12fec",
+    "6755a7af-5b55-4245-a777-27e69979479b",
+    "ca130ba1-a4a8-4225-9799-75d56bac6fb3",
+    "c2c7a9c2-28f8-4cf0-a042-420f6a4ba8bd",
+    "478cc55b-dd71-4adc-909d-c39d435587ee",
+    "ec1fcec2-ba7a-44d7-b251-22a7cd417493",
+    "b66dd751-fef7-4310-9c09-8d1b1fc78fef"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Oil: graveyard triggers and oil counts",
+   "shared": "Oil counters are plain named counters (precedents vat_of_rebirth.go, mindsplice_apparatus.go, batch41_helpers.go); costs via RemoveCountersFromThis in activated.go. Four cards print 'Whenever another creature or artifact you control is put into a graveyard from the battlefield, put an oil counter on this creature' (precedent vat_of_rebirth.go): one helper, in this batch only. Five cards count or test 'permanents you control with oil counters on them' (Urabrask's Anointer, Kuldotha Cackler, Oil-Gorger Troll, Cinderslash Ravager, Ichorplate Golem): one predicate, in this batch only. Atraxa's Skitterfang: 'gains your choice of' precedents hunters_axe.go, lunar_avenger.go. Armored Scrapgorger: tapped-for-mana trigger targets a card in a graveyard. Cinderslash Ravager's one damage to each opposing creature is not a Sweep unless the guard says so: check. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "d6ded5b0-1309-4f1e-be10-d84ca0a5dd20",
+    "754e5238-00a2-45fa-9b20-40980b73f1cc",
+    "fa519a46-11ab-4ab8-9286-904ce2746c03",
+    "41dd7ec7-a238-4723-a244-9a112d4fbfd2",
+    "e350c2d5-0ca2-4b9c-b01f-a3c31cbf8d10",
+    "0d3a4db2-df79-4946-8f87-b174cf9c293c",
+    "2feca0cd-6bd3-4e19-8cfd-81d7bd1118ee",
+    "a09c134b-7802-4526-9250-ec5cc637d9c0",
+    "e1a41091-6ff1-42bb-b248-90040107efe1",
+    "238f2c86-4376-48f2-ae71-c10d3d785163",
+    "a1c6bd47-19ef-44f9-921a-e4ffa80b25e1",
+    "8255b408-cc8c-453f-982c-f361b5559cec"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Oil: rares and artifacts",
+   "shared": "Oil counters are plain named counters (precedents vat_of_rebirth.go, mindsplice_apparatus.go, batch41_helpers.go); costs via RemoveCountersFromThis in activated.go. The Filigree Sylex: RemoveCountersAmong in activated.go for 'Remove ten oil counters from among permanents you control'; its second ability reads as a board wipe, declare its Sweep. Urabrask's Forge: X/1 Horror token sized on resolution, sacrificed at the next end step (b41PhyrexianHorrorToken in batch41_helpers.go is the nearest row: check its text before reuse). Vulshok Factory: a mana ability that also puts a charge counter (black_mana_battery.go, coalition_relic.go). Archfiend of the Dross: 'you lose the game' precedents demonic_pact.go. Watch item: Churning Reservoir's 'Activate only if an oil counter was removed from a permanent you controlled this turn or a permanent with an oil counter on it was put into a graveyard this turn' needs a per-turn fact; triggers can see counter removal (TriggeredAbility.PerCounterRemoved, game/triggers.go) and g.EventsThisTurn exists, but no tally was found (grep 'counter.{0,40}removed' in turn_tally.go: 0). Stop and report if it does not fit. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "9188031e-1c24-4981-a3d2-461a2bf917b6",
+    "482ec736-7d4a-49c6-a757-e134123329ca",
+    "56a55f45-2cc6-407d-b212-5619c98456d9",
+    "6eca2ac9-16ba-4a11-b6ee-3caf2d7d8254",
+    "7c4b2203-a937-4d91-8e39-2283fe686b45",
+    "38347ab3-ae43-4d10-b665-8520ace0eb76",
+    "9d1c5987-3572-4bf9-b01c-eb6e98a7da77",
+    "85eb890e-a5e1-48f8-b813-e8424d18b28a",
+    "c5b0d98b-9743-488e-a3be-07043d6ad78a"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Artifacts matter",
+   "shared": "'Whenever this or another artifact you control enters' (Veil of Assimilation, Transplant Theorist, Mandible Justiciar, Eye of Malcator): one trigger shape. Cephalopod Sentry: 'power is equal to the number of artifacts you control' precedent in cloud_deck_helpers.go (CDA needs a Label). Malcator: 'three or more artifacts entered the battlefield under your control this turn' (EnteredWithCardTypeThisTurn in game). Token row '3/3 colorless Phyrexian Golem artifact' exists (also used by Incubation Sac in batch 10). Unctus's Retrofitter: 'becomes an artifact creature with base power and toughness 4/4 for as long as' precedents iron_man_futurist_paragon.go, living_brain_mechanical_marvel.go. Plated Onslaught: AffinityFor (self_cost_modifier.go). Furnace Punisher: 'unless they control two or more basic lands'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "e8270c29-1887-4d3f-b70f-6b79ada8fe47",
+    "d1faaa3e-8e99-48e9-bb04-98bd46b7217c",
+    "ee8f3dbd-6e86-46c2-9393-7da6c3c4b46d",
+    "8e8875dc-72a4-47a4-bb99-ca817c177b82",
+    "7270b5b6-a571-4e6d-91de-03f7cc035b3c",
+    "3dd81e3e-e57a-4b6f-9043-bba0cebb3e90",
+    "4a60db66-0347-4efc-8507-ab7ed8d984fe",
+    "5707c278-dab9-43bc-b3a3-a6b7923511f4",
+    "0d1c6a82-943a-46bd-97ed-6055226ef2ab",
+    "998d8d8a-743d-43f9-8e9b-42460f170243",
+    "1589d90d-411a-4e77-9771-51518b2b224b",
+    "606af824-e711-4957-99c0-d02b0f6c729d"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Equipment matters",
+   "shared": "Uses ForMirrodin from s2 (Bladehold War-Whip, Glimmer Lens, Hexplate Wallbreaker). Equip cost reductions: 'Equip abilities you activate' and 'that target this creature cost' precedents in cost_modifier.go, dwarven_mauler.go, fervent_champion.go. Hexplate Wallbreaker: extra_phases.go, 'if it's the first combat phase' precedent karlach_fury_of_avernus.go. 'Affinity for Equipment' (also Oxidda Finisher, batch 1): AffinityFor with an Equipment predicate. Goldwardens' Gambit: 'you may attach an Equipment you control to it' precedent vow_to_erebor.go; Rebel token row exists. Sword of Forge and Frontier: impulse play plus an additional land drop (escape_to_the_wilds.go). Rebel Salvo: 'loses indestructible' precedents burn_from_within.go. Awaken the Sleeper: 'destroy all Equipment attached' is optional. Target spells must be castable by the probe in server/internal/legal. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [
+    "s2"
+   ],
+   "cards": [
+    "d3142c6b-86e9-42b7-916c-ce7c34e7bd53",
+    "bb7cebb7-a979-4879-b834-deab13f2a22c",
+    "f7f78825-10d6-441a-ae26-51b77cc271cd",
+    "644c785d-3061-44bc-9f78-bc939c565bf4",
+    "1f874f7f-b959-4de5-a5db-e65a90ac2f9d",
+    "a35b7fd3-fdef-4414-b720-978f7ce70bff",
+    "e68fa0e6-9f55-498b-a13e-197cb30ca4aa",
+    "d4df1710-7402-45a7-966f-b51ddc087fbe",
+    "af05cc39-725b-4535-919a-ddbcb89c2210",
+    "c6331ce3-21f7-4784-80fe-df1f541a4c46",
+    "cf113674-f809-4b97-9e8d-e22385446ddb"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Remaining spells and Auras",
+   "shared": "X spells: Black and Green Sun's Twilight ('If X is 5 or more'; White Sun's Twilight is the precedent, white_suns_twilight.go). Green Sun's Twilight: 'instead put the chosen cards onto the battlefield or into your hand' is a per-card choice; watch item, stop and report if no pick shape fits. Nahiri's Sacrifice: additional cost 'sacrifice an artifact or creature with mana value X' sets X (sacrifice.go, megatron_tyrant.go; 'with mana value X' precedents entrancing_melody.go) and divides damage (divided-damage prompt exists, game/pending_choice.go). Vanish into Eternity: 'costs {3} more to cast if it targets a creature' precedent dragons_prey.go. Planar Disruption: 'its activated abilities can't be activated' precedents detain.go, deadlock_trap.go. Every 'X target' / divided spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "af105cda-1f7c-4868-9407-a97c46bd762d",
+    "0221330a-3e7a-40aa-9c78-85c88a4c1a53",
+    "f4a73cde-58bf-4719-8eb0-e039fdde4f62",
+    "66465bc1-4a34-4951-be53-57f90002976a",
+    "0b49924b-cf83-46d9-b665-9c718a40e16c",
+    "a84cc828-8d1b-4e61-a13f-60124e2ee35f",
+    "478e59b8-03ad-4f8e-8c18-6ab5ad77a6f8",
+    "c14e422b-6412-45ce-8e82-d47ba61557a0",
+    "6128679e-7e54-41e4-ab6e-25aeeffed49f"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Toxic and corrupted rares (rules-heavy)",
+   "shared": "Corrupted is an ability word (CR 207.2c): reuse the existing predicate (rfReprintBCorrupted in reality_fracture_fra_reprint_b_helpers.go, seedcoreCorrupted in the_seedcore.go; precedents skrelvs_hive.go, the_seedcore.go). The sentence 'an opponent has three or more poison counters' also appears in batches 7, 8, 16, 19 and 20: do not add a second predicate. Toxic is read through game.ToxicTotal (game/infect_wither_toxic.go), so granted toxic counts; 'toxic N' is a keyword token. Wurmquake: X/X Phyrexian Wurm with trample and toxic 1 is a new token row, this batch only; 'mana spent to cast' precedents aberrant_manawurm.go. Watch items, stop and report if they do not fit: (1) Geth's Summons: the number of targets depends on opponents with three or more poison counters 'as you cast this spell'; (2) Noxious Assault: a delayed 'Whenever a creature blocks this turn' trigger (delayed_on_event.go; only self-block triggers were found); (3) Venerated Rotpriest: 'a creature you control becomes the target of a spell' (39 becomes-the-target precedents, e.g. archive_dragon.go; spells only, not abilities); (4) Kinzu: token copy 'except it's 1/1 and has toxic 1' (copy-except precedents offspring.go, the_jolly_balloon_man.go); (5) Glissa's Retriever: reflexive 'When you do, return up to X target cards'. Norn's Decree: 'Whenever a player attacks' precedents aurelia_the_law_above.go. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "0eeb9a62-1b36-42f5-8820-3331fa5ca3a6",
+    "c345be5e-243d-44c8-a7c7-280bdb235223",
+    "92c43ee1-0f7d-4993-8d3a-689cc87d7480",
+    "95c0611a-b6f1-4cb8-8b47-73aa9c2a7d2c",
+    "eafd7ba5-691d-4f8d-94bb-70a5612245a1",
+    "e4f4c41b-2533-497f-96bb-7083ef597268",
+    "d099be2e-1879-4bb0-a27d-a386308387c0",
+    "ba922414-878f-4261-9bce-500c5c9e9506"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Legends and Commander cards I",
+   "shared": "Otharri: experience counters exist (game/counter_types.go); Rebel token row exists; tokens 'tapped and attacking'; graveyard ability with 'Tap an untapped Rebel you control' (TapAnotherUntapped / TapAnUntapped costs; precedent purple_pentapus.go). Rhuk: 'attach all Equipment attached to that creature' on attack or death, read from last known information when it died; watch item. Kemba, Jor Kadeen: 'equipped creatures you control'. Skyhunter Strike Force: melee exists (game/keywords.go), 'have melee' precedents glory_to_the_empire.go; lieutenant precedents angelic_field_marshal.go. Roar of Resistance: 'creatures attacking your opponents and/or planeswalkers they control'. Urtet: read Myr through source.TextSubtype. Tyrranax Rex: ward {4}, can't be countered. Annex Sentry: exile-until-leaves. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "967897db-a34b-493c-bd48-04e2650902d2",
+    "93c97e1a-bd7e-4307-8ada-58f53a887cf8",
+    "06607cba-76ba-4145-a5b5-24d3428142ac",
+    "b081352b-d17b-4031-bbcc-c5c02cbfa6b6",
+    "6222fccf-fc08-4190-8d40-a56d6d1423df",
+    "8ade0824-9fd0-417d-94dd-ac399e35b582",
+    "a0753b28-e693-4f5b-a4e4-846e933058d3",
+    "6e42da0c-151e-468d-91cb-5a5b117a9298",
+    "be31fa46-d5ac-4c85-9c19-3f0e2b1f223b"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Legends II (rules-heavy)",
+   "shared": "Watch items, stop and report if they do not fit: (1) Melira, the Living Cure: a replacement on poison counters going on YOU (ReplacementEvent.CounterPlayer, game/replacements.go; precedents aether_refinery.go, laezel_vlaakiths_champion.go) that caps the event at one and then refuses further poison this turn (ReplacementAppliedThisTurnForEffect exists); (2) Encroaching Mycosynth: a Layer 4 type-adding static over spells and cards in other zones (StaticAbility.AffectsZones / OffTheBattlefield(), game/zone_layers.go handles Layer4Type; mycosynth_lattice.go only does this for colour); (3) Thrun: a TargetingRestriction (game/targeting_restriction.go, TargetingQuery.By carries the targeting object's characteristics) for nongreen spells and abilities from nongreen sources opponents control; (4) Slobad: restricted mana via ManaRestrictAnyOf with ManaRestrictType(\"Artifact\") (castle_garenbrig.go), amount from the sacrificed artifact's mana value; (5) Geth: the granted 'If this creature would leave the battlefield, exile it instead' (Whip of Erebos precedent); (6) Ria Ivor: prevent_next_from_source.go, then tokens equal to the damage prevented. Unctus: {U/P} activation; granted 'becomes tapped' trigger; 'becomes a blue artifact in addition' precedents liquimetal_torque.go. Monument to Perfection: 'lands with different names' precedent field_of_the_dead.go, Sphere and Locus subtypes; 'loses all abilities'. Kethek: reveal-until with 'lesser mana value' than the sacrificed creature. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint. Phyrexian Mite token: PhyrexianMiteToken() in reality_fracture_fra_reprint_b_helpers.go (precedents skrelvs_hive.go, white_suns_twilight.go).",
+   "after": [],
+   "cards": [
+    "6bb8c22c-8b01-45f8-8c9e-f683e6b4f022",
+    "1f0bb053-4967-4289-b2b1-f6309f2eca7d",
+    "789b7af5-ac15-40b6-b5b7-f3fcdcfb52e1",
+    "72062fb6-0329-424d-936a-882b638d6d57",
+    "b868de48-3271-4f33-94a4-3dd9b67dd72c",
+    "785f55bb-d47c-470c-94d4-95f69055e35f",
+    "54c18f09-5c5a-46e7-9f66-ff91bc12537c",
+    "df4bb104-d939-434f-8a1c-e89beda27c90",
+    "26747bdc-6bd4-4218-ae83-bd46c7668880"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "Copies and casting from exile (rules-heavy)",
+   "shared": "Uses ForMirrodin from s2 (Blade of Shared Souls). Blade of Shared Souls: become_copy.go with g.WhileAttachedToDuration (game/duration.go:947) for 'for as long as this Equipment remains attached to it'. Blue and Red Sun's Twilight: token copies, Red's gain haste and are exiled at the next end step; 'Destroy up to X target' precedent pest_infestation.go and the spell must be castable by the probe in server/internal/legal. Capricious Hellraiser: exile at random (tersa_lightshatter.go) then 'copy it. You may cast the copy' (kaervek_the_punisher.go, roving_actuator.go). Mercurial Spelldancer: 'when you next cast an instant or sorcery spell this turn, copy' precedents doublecast.go, galvanic_iteration.go; its oil trigger is the sentence batch 9 owns, so write it inline here rather than a second helper. Argentum Masticore: protection from multicolored; 'sacrifice unless you discard' then reflexive destroy. Watch items, stop and report if they do not fit: (1) Chiss-Goria: 'You may cast an artifact spell from among them this turn. If you do, it has affinity for artifacts' (next_spell_promise.go has AffinityFor for the NEXT spell, don_and_raph_hard_science.go; here it is tied to one cast from exile); (2) Ixhel: each corrupted opponent exiles their top card FACE DOWN, you may look at and play them for as long as they remain exiled, spending mana as any colour (game/cast_permission.go:1742, any_color_spend.go, effect_api.go face-down exile). Corrupted is an ability word (CR 207.2c): reuse the existing predicate (rfReprintBCorrupted in reality_fracture_fra_reprint_b_helpers.go, seedcoreCorrupted in the_seedcore.go; precedents skrelvs_hive.go, the_seedcore.go). The sentence 'an opponent has three or more poison counters' also appears in batches 7, 8, 16, 19 and 20: do not add a second predicate. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [
+    "s2"
+   ],
+   "cards": [
+    "bfecd486-8326-426b-ac2b-54946f6ae707",
+    "11e637b4-6ce0-4514-98d6-02a2d073f73b",
+    "21c77cdb-9ba1-4621-b096-7eb94c076cef",
+    "eb7b024c-da9b-4544-8648-0ac0395cf7fc",
+    "5b90f8ed-84b2-4306-9dfa-b5654ea0e4cd",
+    "3ceee5c2-321c-49ec-ba49-1fac7f6ee2cc",
+    "3f4d1ae1-d5c6-4afb-94c8-8e0ae4891501",
+    "9fb7982f-fe35-4dea-a515-a0039ddbbaec"
+   ]
+  },
+  {
+   "n": 20,
+   "theme": "Planeswalkers and the toxic Beast token (rules-heavy)",
+   "shared": "Compleated exists: Compleated() in compleated.go (precedent vraska_betrayals_sting.go) reads Card.PhyrexianLifePaid per symbol, so Nissa's two {G/P} work; hybrid Phyrexian {R/G/P}, {R/W/P} is known to the mana code (game/mana.go, paid_cost.go) but no catalog card was found using it: watch item for Lukka and Nahiri. The 3/3 green Phyrexian Beast with toxic 1 is a new token row shared by Lukka, Goliath Hatchery and Viral Spawning, which is why those two are here. Goliath Hatchery: 'total toxic value' is game.ToxicTotal. Watch items, stop and report if they do not fit: (1) Kaito: 'you may activate loyalty abilities of Kaito twice this turn' granted by a trigger for one turn; the engine has the permanent static Spec.LoyaltyTwiceEachTurn (urza_planeswalker.go, game/loyalty_limit.go) and The Chain Veil's per-player grant (Purpose.ExtraLoyaltyActivations, refused off an activated row by purpose.go), neither is a turn-scoped grant to one permanent; (2) Viral Spawning: flashback it has only while corrupted and in the graveyard (GrantFlashbackToCard in granted_permissions.go is a one-shot grant); (3) Nahiri: 'attacks a player each combat if able' until your next turn (attack_requirements.go; a player, not a planeswalker) and 'mana value less than Nahiri's loyalty'; (4) Tyvar: Spec.ActivateAsThoughHaste (shang_chi_master_of_kung_fu.go). Jace: LoyaltyMinusX cost exists. Lukka and Koth: restricted mana as castle_garenbrig.go; divided damage with X fixed 'as you activate'; emblem. Kaya: copy 'except it's a 1/1 white Spirit creature with flying in addition'. Nissa's -7 and target abilities must pass the probe in server/internal/legal. Corrupted is an ability word (CR 207.2c): reuse the existing predicate (rfReprintBCorrupted in reality_fracture_fra_reprint_b_helpers.go, seedcoreCorrupted in the_seedcore.go; precedents skrelvs_hive.go, the_seedcore.go). The sentence 'an opponent has three or more poison counters' also appears in batches 7, 8, 16, 19 and 20: do not add a second predicate. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; read creature-type and colour words through source.TextSubtype / ctx.TextSubtype; build one-sentence triggers from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "03dafab4-841f-41cb-8f2e-8188f5177837",
+    "17fd42f6-f388-4ffc-8fec-ca9ada2506ee",
+    "9260ae3d-59bf-4e46-a13e-930754c3f0d2",
+    "2c75b870-263b-41ab-9ece-6e3845bc3d8d",
+    "8e68eba1-65ac-4c03-956f-45e7b5695e2a",
+    "d71d42e0-cd56-4f53-95ff-ecab7f8c6552",
+    "9c8845d6-fa65-4731-b348-dc724fc2d285",
+    "848c2b8f-8086-4047-8ad0-24b701dc4d0d",
+    "c4d65bcd-f6c5-40c3-825d-06b5183e7dbe",
+    "9945c7eb-97a9-42df-a051-1ea514973280"
+   ]
+  }
+ ]
+}
