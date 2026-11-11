@@ -33,26 +33,16 @@ func init() {
 }
 
 func sadisticShellGameAsk(ctx *Context, players, chosen []uuid.UUID) error {
-	g, controller := ctx.Game, ctx.Controller()
 	if len(players) == 0 {
-		for _, id := range chosen {
-			if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
+		// Simultaneously, one event, so a creature chosen twice dies once.
+		return ctx.Game.DestroyPermanentsKeyedForEffect(chosen, game.KeyedTail{})
 	}
 	chooser, rest := players[0], players[1:]
-	var candidates []uuid.UUID
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.IsCreature() && c.Controller != controller {
-			candidates = append(candidates, c.InstanceID)
-		}
-	}
+	candidates := sadisticShellGameCandidates(ctx)
 	if len(candidates) == 0 {
 		return sadisticShellGameAsk(ctx, rest, chosen)
 	}
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  chooser,
 		Source:   ctx.Source(),
 		Question: "Sadistic Shell Game — choose a creature the caster doesn't control (it will be destroyed)",
@@ -65,6 +55,17 @@ func sadisticShellGameAsk(ctx *Context, players, chosen []uuid.UUID) error {
 		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
+}
+
+// sadisticShellGameCandidates are the creatures its caster doesn't control.
+func sadisticShellGameCandidates(ctx *Context) []uuid.UUID {
+	var out []uuid.UUID
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if c.IsCreature() && c.Controller != ctx.Controller() {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
 }
 
 // sadisticShellGamePick is one player's choice answered, keyed (#4253):
