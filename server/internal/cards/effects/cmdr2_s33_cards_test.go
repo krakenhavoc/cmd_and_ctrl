@@ -14,6 +14,8 @@ const (
 	s33WeRideAtDawnOracle  = "5675ac63-b69b-41b9-a7ed-4085a4e431b2"
 	s33SellSwordOracle     = "60c77b18-c111-4e16-ad19-2ef32582cd9e"
 	s33GraverobberOracle   = "960cff3b-678c-404e-a643-ac5e91e6b50c"
+	s33TellerOracle        = "bd1ccc6f-d281-413e-889e-1e022c3f2a99"
+	s33ApothecaryOracle    = "09ecb8df-2a17-4e5a-814c-474bce54794d"
 	s33LifeInsuranceOracle = "50779f73-c538-4364-aca4-4ab069a00814"
 )
 
@@ -21,6 +23,8 @@ func TestS33CardsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		s33BackInTownOracle:    "Back in Town",
 		s33LifeInsuranceOracle: "Life Insurance",
+		s33ApothecaryOracle:    "Bloodroot Apothecary",
+		s33TellerOracle:        "Misfortune Teller",
 		s33GraverobberOracle:   "Charred Graverobber",
 		s33SellSwordOracle:     "Angelic Sell-Sword",
 		s33WeRideAtDawnOracle:  "We Ride at Dawn",
@@ -228,5 +232,106 @@ func TestS33CharredGraverobberReturnsAnOutlawCardFromYourGraveyard(t *testing.T)
 	}
 	if !me.Graveyard.Contains(bear) {
 		t.Error("a non-outlaw card left the graveyard")
+	}
+}
+
+func TestS33MisfortuneTellerExilesAndPaysByCardType(t *testing.T) {
+	for _, tc := range []struct {
+		name, typeLine          string
+		rogues, treasures, gain int
+	}{
+		{"Dead Bear", "Creature — Bear", 1, 0, 0},
+		{"Dead Forest", "Basic Land — Forest", 0, 1, 0},
+		{"Dead Dryad", "Creature Land — Dryad", 1, 1, 0},
+		{"Dead Rock", "Artifact", 0, 0, 3},
+	} {
+		g := newCatalogGame(t)
+		me := g.Seats[0]
+		card := seedGraveyardCard(t, g, tc.name, tc.typeLine, "")
+		life := me.Life
+		castCatalogSpell(t, g, "Misfortune Teller", "Creature — Human Warlock", s33TellerOracle, nil)
+		assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: card}, true)
+		if me.Graveyard.Contains(card) {
+			t.Errorf("%s: the card was not exiled", tc.name)
+		}
+		if n, _ := countTokensNamed(g, me.ID, "Rogue"); n != tc.rogues {
+			t.Errorf("%s: %d Rogues, want %d", tc.name, n, tc.rogues)
+		}
+		if n, _ := countTokensNamed(g, me.ID, "Treasure"); n != tc.treasures {
+			t.Errorf("%s: %d Treasures, want %d", tc.name, n, tc.treasures)
+		}
+		if me.Life != life+tc.gain {
+			t.Errorf("%s: life %d, want %d", tc.name, me.Life, life+tc.gain)
+		}
+	}
+}
+
+func TestS33MisfortuneTellerTriggersOnCombatDamageToAPlayer(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
+	teller := b12Push(g, me.ID, "Misfortune Teller", "Creature — Human Warlock", s33TellerOracle, 3, 1)
+	card := seedGraveyardCard(t, g, "Dead Rock", "Artifact", "")
+	life := me.Life
+	dealNoncombatDamage(g, me.ID, teller, opp.ID)
+	passPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(card) {
+		t.Fatal("noncombat damage triggered it")
+	}
+	dealCombatDamage(g, me.ID, teller, opp.ID)
+	assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: card}, true)
+	if me.Graveyard.Contains(card) || me.Life != life+3 {
+		t.Errorf("combat damage did not trigger: card in graveyard %v, life %d want %d", me.Graveyard.Contains(card), me.Life, life+3)
+	}
+}
+
+func TestS33BloodrootApothecaryGivesYouAndTargetOpponentATreasure(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	castCatalogSpell(t, g, "Bloodroot Apothecary", "Creature — Squirrel Druid", s33ApothecaryOracle, nil)
+	assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}, true)
+	if n, _ := countTokensNamed(g, me.ID, "Treasure"); n != 1 {
+		t.Errorf("you have %d Treasures, want 1", n)
+	}
+	if n, _ := countTokensNamed(g, opp.ID, "Treasure"); n != 1 {
+		t.Errorf("the opponent has %d Treasures, want 1", n)
+	}
+	if n, _ := countTokensNamed(g, g.Seats[2].ID, "Treasure"); n != 0 {
+		t.Errorf("a bystander has %d Treasures, want 0", n)
+	}
+}
+
+func TestS33BloodrootApothecaryPoisonsAnOpponentSacrificingANoncreatureToken(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "Bloodroot Apothecary", "Creature — Squirrel Druid", s33ApothecaryOracle, 3, 3)
+	sac := func(owner uuid.UUID, id uuid.UUID) {
+		if err := (SacrificePermanent{Target: id}).Apply(ctxFor(g, &game.StackItem{Controller: owner})); err != nil {
+			t.Fatalf("sacrifice: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+	}
+	poison := func(p *game.Player) int { return p.Counters[game.CounterPoison] }
+	sac(opp.ID, socB2Token(g, opp.ID, "Goblin", "Goblin", 1, 1))
+	if poison(opp) != 0 {
+		t.Fatalf("a creature token gave %d poison", poison(opp))
+	}
+	sac(opp.ID, b12Permanent(g, opp.ID, "Rock", "Artifact"))
+	if poison(opp) != 0 {
+		t.Fatalf("a nontoken permanent gave %d poison", poison(opp))
+	}
+	mint := func(owner uuid.UUID) uuid.UUID {
+		if err := (CreateToken{Controller: owner, Template: TreasureToken(), N: 1}).Apply(ctxFor(g, &game.StackItem{Controller: owner})); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		return findBattlefieldByName(g, "Treasure")
+	}
+	sac(me.ID, mint(me.ID))
+	if poison(me) != 0 {
+		t.Fatalf("your own Treasure gave you %d poison", poison(me))
+	}
+	sac(opp.ID, mint(opp.ID))
+	if poison(opp) != 2 {
+		t.Errorf("an opponent's sacrificed Treasure gave %d poison, want 2", poison(opp))
 	}
 }
