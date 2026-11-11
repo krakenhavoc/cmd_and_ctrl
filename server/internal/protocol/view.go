@@ -122,6 +122,13 @@ type GameView struct {
 	// identical for every viewer: the command zone is public, and the
 	// planar deck's cards are on nobody's wire, only its size.
 	Planechase *PlanechaseView `json:"planechase,omitempty"`
+	// NoCommanders is true when no seat brought a commander (ADR 0222
+	// slice 1), which is when the client hides its commander UI: the
+	// command zone tile, the commander damage grid and the commander
+	// damage setting. It reads the cards, not the format, and is
+	// omitted at every table with a commander, so a Commander table's
+	// view is unchanged.
+	NoCommanders bool `json:"no_commanders,omitempty"`
 	// StackItems is the announce-time metadata for every item
 	// currently on the stack — caster, target list, modes, X,
 	// distribution, hold-priority, split-second flags. Indexed in
@@ -6188,6 +6195,7 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			Planechase:            viewOfPlanechase(g, ids),
+			NoCommanders:          !g.HasCommanderLocked(),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
@@ -11920,6 +11928,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		OpeningRoll: v.OpeningRoll,
 		// ADR 0216 §9: the face-up planar cards are public.
 		Planechase:            filterPlanechaseFor(v.Planechase, isKnower),
+		NoCommanders:          v.NoCommanders,
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
 		DelayedTriggers:       v.DelayedTriggers,
@@ -14777,6 +14786,10 @@ type TableSettingsView struct {
 	// Planechase plays the game with a communal planar deck and the
 	// planar die (ADR 0216). Fixed once the game is active.
 	Planechase bool `json:"planechase,omitempty"`
+	// Format is the table's format (ADR 0222 §1): "standard", or
+	// omitted for Commander, the default, so a Commander table's wire
+	// is what it was. Fixed once the game is active.
+	Format string `json:"format,omitempty"`
 }
 
 // PlanechaseView is GameView.planechase (ADR 0216 §9).
@@ -14863,7 +14876,16 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		FreeMulligans: s.EffectiveFreeMulligans(),
 		AwayAfter:     s.EffectiveAwayAfter(),
 		Planechase:    s.Planechase,
+		Format:        string(storedFormatOf(s)),
 	}
+}
+
+// storedFormatOf is the wire's format: empty for Commander.
+func storedFormatOf(s game.TableSettings) game.Format {
+	if f := s.EffectiveFormat(); f != game.FormatCommander {
+		return f
+	}
+	return ""
 }
 
 // modeMemoryWire is the wire spelling of a "that hasn't been chosen"

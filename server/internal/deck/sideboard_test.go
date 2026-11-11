@@ -248,7 +248,7 @@ func violationFor(err error, code string) (Violation, bool) {
 func TestASideboardWarnsWithWhatItIsFor(t *testing.T) {
 	list := legalDeck()
 	list.Sideboard = sideCards(3)
-	v, ok := violationFor(Validate(list), CodeSideboardUnsupported)
+	v, ok := violationFor(Validate(list, game.FormatCommander), CodeSideboardUnsupported)
 	if !ok {
 		t.Fatal("no sideboard note")
 	}
@@ -256,11 +256,11 @@ func TestASideboardWarnsWithWhatItIsFor(t *testing.T) {
 		strings.Contains(v.Message, "ignored") {
 		t.Errorf("message %q", v.Message)
 	}
-	if _, fatal := violationFor(Validate(list), CodeSideboardTooLarge); fatal {
+	if _, fatal := violationFor(Validate(list, game.FormatCommander), CodeSideboardTooLarge); fatal {
 		t.Error("a small sideboard is too large")
 	}
 	// No sideboard, no note.
-	if err := Validate(legalDeck()); err != nil {
+	if err := Validate(legalDeck(), game.FormatCommander); err != nil {
 		t.Errorf("a plain deck: %v", err)
 	}
 }
@@ -272,7 +272,7 @@ func TestASideboardWarnsWithWhatItIsFor(t *testing.T) {
 func TestASideboardOverTheCapWarnsAndIsNotSeated(t *testing.T) {
 	list := legalDeck()
 	list.Sideboard = sideCards(MaxSideboard)
-	if _, ok := violationFor(Validate(list), CodeSideboardTooLarge); ok {
+	if _, ok := violationFor(Validate(list, game.FormatCommander), CodeSideboardTooLarge); ok {
 		t.Errorf("a sideboard of exactly %d is too large", MaxSideboard)
 	}
 	if got := len(list.SeatedSideboard()); got != MaxSideboard {
@@ -280,7 +280,7 @@ func TestASideboardOverTheCapWarnsAndIsNotSeated(t *testing.T) {
 	}
 
 	list.Sideboard = sideCards(MaxSideboard + 1)
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	v, ok := violationFor(err, CodeSideboardTooLarge)
 	if !ok {
 		t.Fatalf("a sideboard of %d is not flagged", MaxSideboard+1)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 func TestRealDumpSquallDeckFullyAutomated(t *testing.T) {
@@ -29,7 +30,7 @@ func TestRealDumpSquallDeckFullyAutomated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := deck.Validate(resolved); err != nil {
+	if err := deck.Validate(resolved, game.FormatCommander); err != nil {
 		t.Fatalf("deck validation: %v", err)
 	}
 	report, err := Build(idx, Deck{Name: "Squall", Entries: entries})

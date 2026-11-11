@@ -13,6 +13,7 @@
   import { botDeckTile, FILTER_FROM, sameName, type PickerCommit } from "../deckPicker";
   import type { PrebuiltDeck } from "../prebuiltDecks";
   import { L } from "../labels";
+  import { fitsFormat } from "../formats";
   import DeckGrid from "./DeckGrid.svelte";
   import ShopLinks from "./ShopLinks.svelte";
 
@@ -38,9 +39,14 @@
     onadded: () => void;
     oncancel: () => void;
     onchange?: (commit: PickerCommit | null) => void;
+    /** The table's format (ADR 0222 §2); absent is Commander. The bot is offered its decks. */
+    format?: string;
   }
 
-  const { gameID, seat, options, prebuilt, onadded, oncancel, onchange }: Props = $props();
+  const { gameID, seat, options, prebuilt, onadded, oncancel, onchange, format }: Props = $props();
+
+  // The bot decks built for the table's format.
+  const decks = $derived(options.decks.filter((d) => fitsFormat(d.format, format)));
 
   const uid = $props.id();
 
@@ -54,7 +60,9 @@
   let tier = $state(
     untrack(() => (startOnKey ? tierForOwnKey("") : defaultBotTier(options.tiers))),
   );
-  let deck = $state(untrack(() => options.decks[0]?.id ?? ""));
+  let deck = $state(
+    untrack(() => options.decks.find((d) => fitsFormat(d.format, format))?.id ?? ""),
+  );
   let model = $state(untrack(() => options.own_key?.model ?? ""));
   let query = $state("");
   let busy = $state(false);
@@ -64,14 +72,14 @@
   const offNotes = $derived(ownKey ? [] : unavailableNotes(options.tiers));
   const note = $derived(tierNote(options.tiers, tier));
   const tiles = $derived(
-    options.decks.map((d) =>
+    decks.map((d) =>
       botDeckTile(
         d,
         prebuilt.find((p) => p.id === d.id),
       ),
     ),
   );
-  const current = $derived(options.decks.find((d) => d.id === deck));
+  const current = $derived(decks.find((d) => d.id === deck));
   const cards = $derived(prebuilt.find((p) => p.id === deck)?.cards ?? []);
 
   function toggleOwnKey(on: boolean): void {
@@ -182,7 +190,7 @@
     </label>
   {/if}
 
-  {#if options.decks.length > FILTER_FROM}
+  {#if decks.length > FILTER_FROM}
     <input
       class="filter"
       type="search"

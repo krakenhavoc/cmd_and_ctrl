@@ -35,6 +35,10 @@ type DeckInfo struct {
 	Colors []string `json:"colors,omitempty"`
 	// Commander is the deck's commander, for the picker subtitle.
 	Commander string `json:"commander,omitempty"`
+	// Format is the format the deck is built for (ADR 0222 §2):
+	// "standard", or empty for Commander. A plain string: no aiseat
+	// package may import internal/game.
+	Format string `json:"format,omitempty"`
 }
 
 // DeckSource is the named-deck lookup the lobby needs. Implemented by

@@ -108,7 +108,12 @@ type Entry struct {
 	Name        string
 	Count       int
 	IsCommander bool
-	IsSideboard bool
+	// CommanderInferred is true when no heading or marker made this row
+	// a commander: ParseText guessed it from a short unheaded last
+	// block. EntriesFor reads such a row as the sideboard for a format
+	// with no commander (ADR 0222 §2).
+	CommanderInferred bool
+	IsSideboard       bool
 	// IsCompanion marks the deck's companion row (ADR 0172 §1): a
 	// `Companion` text section, Moxfield's `companions` board or an
 	// Archidekt `Companion` category.

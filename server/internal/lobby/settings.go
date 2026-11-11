@@ -63,12 +63,24 @@ func (l *Lobby) UpdateSettings(id, actor uuid.UUID, patch game.SettingsPatch) (g
 		return game.TableSettings{}, ErrGameNotFound
 	}
 
+	// ADR 0222 §1: a format is chosen when the table is made. It may
+	// still change in the lobby, but not once a seat has a deck, which
+	// was checked against the format the table had.
+	if patch.Format != nil && patch.Format.Spec().Format != entry.room.Game.TableSettingsSnapshot().EffectiveFormat() {
+		for _, seat := range entry.meta.Players {
+			if seat.DeckUploaded {
+				return game.TableSettings{}, ErrFormatDecksLoaded
+			}
+		}
+	}
+
 	var err error
 	if broadcast, err = l.applyLocked(id, entry, func() error {
 		return entry.room.Game.UpdateSettings(actor, patch)
 	}); err != nil {
 		return game.TableSettings{}, err
 	}
+	syncFormatLocked(entry)
 	// ADR 0211 §1: the host's change keeps the table open; the
 	// server admin's (actor uuid.Nil) does not.
 	if actor != uuid.Nil {
@@ -97,4 +109,30 @@ func (l *Lobby) Settings(id uuid.UUID) (game.TableSettings, error) {
 		return game.TableSettings{}, ErrGameNotFound
 	}
 	return entry.room.Game.TableSettingsSnapshot(), nil
+}
+
+// syncFormatLocked copies the table's format and its seat cap from the
+// engine's settings onto the entry's meta (ADR 0222 §1). The engine is
+// the authority; the meta is a cache for the table list and the join
+// page. A Commander table's meta carries neither field. Callers hold
+// l.mu.
+func syncFormatLocked(entry *gameEntry) {
+	spec := entry.room.Game.TableSettingsSnapshot().FormatSpec()
+	entry.meta.Format, entry.meta.MaxSeats = "", 0
+	if spec.Format != game.FormatCommander {
+		entry.meta.Format = string(spec.Format)
+	}
+	if spec.MaxSeats != game.MaxPlayers {
+		entry.meta.MaxSeats = spec.MaxSeats
+	}
+}
+
+// Format is the table's format, for the deck routes: a deck is checked
+// against the format of the table it is seated at (ADR 0222 §2).
+func (l *Lobby) Format(id uuid.UUID) (game.Format, error) {
+	s, err := l.Settings(id)
+	if err != nil {
+		return "", err
+	}
+	return s.EffectiveFormat(), nil
 }

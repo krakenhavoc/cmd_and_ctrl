@@ -73,6 +73,12 @@ type DeckProfile struct {
 	// Cards is the list. Order is normalised on use, so a caller
 	// that shuffles it does not cost the cache.
 	Cards []DeckCard
+	// Format is the format the deck is built for (ADR 0222 §2):
+	// "standard", or empty for Commander. It picks the primer's opening
+	// line and the standard of play it names; the Commander primer is
+	// byte for byte what it was. A plain string: no aiseat package may
+	// import internal/game.
+	Format string
 }
 
 // rulesPrimer is the constant half of the static block. Short on
@@ -96,10 +102,35 @@ How to answer:
   {"index": <number>, "move": "<that entry's text, copied exactly as it is listed>", "why": "<at most twelve words>"}
 - No preamble, no code fence, no explanation outside the JSON, and no internal or system XML tags.`
 
+// The two sentences of rulesPrimer that are about Commander, and what a
+// two-player constructed game says instead (ADR 0222 slice 1).
+const (
+	primerCommanderGame = "You are playing one seat in a four-player game of Magic: the Gathering (Commander) on a private hobby server."
+	primerStandardGame  = "You are playing one seat in a two-player game of Magic: the Gathering (Standard, best of one: 60-card decks, 20 life, no commander) on a private hobby server."
+	primerCommanderPlay = "Play to the standard of a good, ordinary Commander player: make the land drop, develop the board, spend removal on the biggest threat, attack the player who is winning, and hold up an instant when holding it is worth more than casting it."
+	primerStandardPlay  = "Play to the standard of a good, ordinary Standard player: make the land drop, develop the board, spend removal on the biggest threat, attack when the race favours you, and hold up an instant when holding it is worth more than casting it."
+	primerCommandZone   = "your own hand and command zone, and public information"
+	primerNoCommandZone = "your own hand, and public information"
+)
+
+// primerFor is the rules primer for a deck of format: rulesPrimer for
+// Commander (the empty format, and any name this build does not know),
+// and the same text with its Commander sentences replaced for Standard.
+func primerFor(format string) string {
+	if format != "standard" {
+		return rulesPrimer
+	}
+	return strings.NewReplacer(
+		primerCommanderGame, primerStandardGame,
+		primerCommanderPlay, primerStandardPlay,
+		primerCommandZone, primerNoCommandZone,
+	).Replace(rulesPrimer)
+}
+
 // staticBlocks builds the cached half. The breakpoint goes on the
 // LAST block so tools (none) and system cache together.
 func (d DeckProfile) staticBlocks() []Block {
-	blocks := []Block{{Text: rulesPrimer}}
+	blocks := []Block{{Text: primerFor(d.Format)}}
 	var b strings.Builder
 	if d.Name != "" {
 		fmt.Fprintf(&b, "YOUR DECK: %s\n", d.Name)

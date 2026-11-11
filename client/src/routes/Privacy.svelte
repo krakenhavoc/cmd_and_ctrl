@@ -50,10 +50,10 @@
     {
       what: "Your decks",
       details:
-        "Each saved deck’s name, the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown with the deck’s name when you seat it at a table).",
+        "Each saved deck’s name, the format it is for (Commander or Standard), the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown with the deck’s name when you seat it at a table).",
       why: "So you can seat a deck without pasting it again.",
       howLong: "Until you delete the deck or your account.",
-      source: "migrations 0005, 0008, 0027",
+      source: "migrations 0005, 0008, 0027, 0036",
     },
     {
       what: "Your settings and last table",

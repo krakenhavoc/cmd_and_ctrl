@@ -157,6 +157,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Card is one row of a curated decklist.
@@ -183,8 +184,9 @@ type Card struct {
 	// cross-checks these against Scryfall.
 	Identity string
 
-	// Count is the number of copies, and is only ever set above one for
-	// basic lands. Zero means one copy — see Copies.
+	// Count is the number of copies. In a Commander deck it is only ever
+	// set above one for basic lands; a constructed deck (Deck.Format)
+	// runs up to four of a card. Zero means one copy — see Copies.
 	Count int
 
 	// Basic marks a basic land: exempt from the singleton rule and from
@@ -201,9 +203,15 @@ func (c Card) Copies() int {
 	return c.Count
 }
 
-// Deck is one pre-built deck: a legal Commander deck whose every
-// non-basic card the engine actually plays.
+// Deck is one pre-built deck: a legal deck of its format, Commander
+// unless Format says otherwise, whose every non-basic card the engine
+// actually plays.
 type Deck struct {
+	// Format is the format the deck is built for (ADR 0222 §2). The
+	// zero value is Commander, which is every deck from before formats.
+	// A deck of a format with no commander leaves Commander empty.
+	Format game.Format
+
 	// ID is the stable wire identifier the lobby sends to seat a
 	// player or a bot with this deck.
 	// Kebab-case, never renamed once shipped — a saved lobby config
@@ -242,8 +250,12 @@ type Deck struct {
 	Companion *Card
 }
 
-// all is the registry, in picker order. Adding a deck means adding it
-// here; nothing else discovers decks.
+// all is the Commander registry, in picker order. Adding a Commander
+// deck means adding it here; nothing else discovers decks. The decks of
+// the other formats are in constructed (standard.go): they are kept
+// apart so that everything written against the Commander catalog (All,
+// IDs, the bot arena, the hundred-card and singleton tests) still means
+// what it meant before formats.
 var all = []Deck{
 	monoRedAggro,
 	simicRamp,
@@ -259,7 +271,8 @@ var all = []Deck{
 	gruulCounters,
 }
 
-// All returns every curated deck, in a stable picker order. The
+// All returns every curated COMMANDER deck, in a stable picker order.
+// Every is the catalog across formats, and In one format's. The
 // returned slice is freshly allocated, but the Deck values share their
 // Mainboard backing arrays with the registry — treat them as read-only.
 func All() []Deck {
@@ -278,6 +291,36 @@ func IDs() []string {
 	}
 	return out
 }
+
+// Every returns the curated decks of every format: the Commander decks
+// in picker order, then the other formats'. The pickers serve this,
+// each row carrying its format, and offer the rows of the table's.
+func Every() []Deck {
+	out := make([]Deck, 0, len(all)+len(constructed))
+	out = append(out, all...)
+	out = append(out, constructed...)
+	return out
+}
+
+// In returns the curated decks built for format, in picker order.
+func In(format game.Format) []Deck {
+	want := format.Spec().Format
+	var out []Deck
+	for _, d := range Every() {
+		if d.FormatOf() == want {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// FormatOf is the format the deck is built for: Commander when Format
+// is empty.
+func (d Deck) FormatOf() game.Format { return d.Format.Spec().Format }
+
+// HasCommander reports whether the deck has a command-zone card. False
+// for a deck of a format with none.
+func (d Deck) HasCommander() bool { return d.Commander.Name != "" }
 
 // legacyIDs maps a retired deck ID to the ID of the deck that replaced
 // it. Migration 0018 rewrites the IDs the database stores, but a
@@ -304,6 +347,11 @@ func Lookup(id string) (Deck, bool) {
 			return d, true
 		}
 	}
+	for _, d := range constructed {
+		if d.ID == id {
+			return d, true
+		}
+	}
 	return Deck{}, false
 }
 
@@ -311,7 +359,9 @@ func Lookup(id string) (Deck, bool) {
 // row (not per copy). Used by the tests and by Decklist.
 func (d Deck) Cards() []Card {
 	out := make([]Card, 0, len(d.Mainboard)+1)
-	out = append(out, d.Commander)
+	if d.HasCommander() {
+		out = append(out, d.Commander)
+	}
 	out = append(out, d.Mainboard...)
 	return out
 }
@@ -330,7 +380,10 @@ func (d Deck) WithCompanion() []Card {
 // Size is the total card count including the commander and every copy
 // of a basic land. A legal Commander deck has Size 100.
 func (d Deck) Size() int {
-	n := d.Commander.Copies()
+	n := 0
+	if d.HasCommander() {
+		n = d.Commander.Copies()
+	}
 	for _, c := range d.Mainboard {
 		n += c.Copies()
 	}
@@ -345,9 +398,12 @@ func (d Deck) Size() int {
 // held to, and there is exactly one legality path in the server.
 func (d Deck) Decklist() string {
 	var b strings.Builder
-	b.WriteString("Commander:\n")
-	fmt.Fprintf(&b, "%d %s\n", d.Commander.Copies(), d.Commander.Name)
-	b.WriteString("\nDeck:\n")
+	if d.HasCommander() {
+		b.WriteString("Commander:\n")
+		fmt.Fprintf(&b, "%d %s\n", d.Commander.Copies(), d.Commander.Name)
+		b.WriteString("\n")
+	}
+	b.WriteString("Deck:\n")
 	for _, c := range d.Mainboard {
 		fmt.Fprintf(&b, "%d %s\n", c.Copies(), c.Name)
 	}
@@ -390,6 +446,7 @@ func (d Deck) Load(idx *cards.Index) (*deck.List, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decks: %s: parse: %w", id, err)
 	}
+	entries = deck.EntriesFor(d.FormatOf(), entries)
 	list, err := deck.Resolve(idx, d.Name, entries)
 	if err != nil {
 		return nil, fmt.Errorf("decks: %s: resolve: %w", id, err)
@@ -397,7 +454,7 @@ func (d Deck) Load(idx *cards.Index) (*deck.List, error) {
 	if err := d.checkOracleIDs(list); err != nil {
 		return nil, err
 	}
-	if err := deck.Validate(list); err != nil {
+	if err := deck.Validate(list, d.FormatOf()); err != nil {
 		return nil, fmt.Errorf("decks: %s: %w", id, err)
 	}
 	return list, nil

@@ -47,6 +47,7 @@
   import type { TableSettingsView } from "../protocol";
   import { DEFAULT_AWAY_AFTER, describeAwayAfter } from "../away";
   import { devFeature } from "../env";
+  import { formatOf } from "../formats";
   import { L } from "../labels";
 
   interface Props {
@@ -69,9 +70,24 @@
     // verbatim — "this table has spawning switched off" is advice,
     // and paraphrasing it loses the advice.
     error?: string | null;
+    // Whether the table has commanders (ADR 0222 slice 1): false at a
+    // table of a format with none, or in a game where no seat brought
+    // one, and the commander damage setting is then left out. Absent
+    // is true, which is every Commander table.
+    commanders?: boolean;
   }
 
-  const { settings, canManage, gameState, onpatch, busy = false, error = null }: Props = $props();
+  const {
+    settings,
+    canManage,
+    gameState,
+    onpatch,
+    busy = false,
+    error = null,
+    commanders = true,
+  }: Props = $props();
+
+  const format = $derived(formatOf(settings.format));
 
   // Numbers are edited, not chosen, so they need somewhere to live
   // between keystrokes. The draft follows the authoritative settings
@@ -223,31 +239,33 @@
         Fixed — the life totals have already been dealt. Use the ± controls on a seat to change
         somebody's life now.
       {:else}
-        What each seat starts on. Commander is 40.
+        What each seat starts on. {format.name} is {format.startingLife}.
       {/if}
     </p>
   </section>
 
-  <section class="tsp-field" data-field="commander_damage">
-    <div class="tsp-row">
-      <label class="tsp-label" for="tsp-cmd">Commander damage</label>
-      <span class="tsp-control">
-        <input
-          id="tsp-cmd"
-          type="number"
-          min={MIN_COMMANDER_DAMAGE}
-          max={MAX_COMMANDER_DAMAGE}
-          {disabled}
-          bind:value={cmdDraft}
-          onchange={() => commitNumber(cmdDraft, "commander_damage")}
-        />
-      </span>
-    </div>
-    <p class="tsp-hint">Damage from one commander that knocks a player out. Commander is 21.</p>
-    {#if commanderWarning}
-      <p class="tsp-warn" role="status">{commanderWarning}</p>
-    {/if}
-  </section>
+  {#if commanders}
+    <section class="tsp-field" data-field="commander_damage">
+      <div class="tsp-row">
+        <label class="tsp-label" for="tsp-cmd">Commander damage</label>
+        <span class="tsp-control">
+          <input
+            id="tsp-cmd"
+            type="number"
+            min={MIN_COMMANDER_DAMAGE}
+            max={MAX_COMMANDER_DAMAGE}
+            {disabled}
+            bind:value={cmdDraft}
+            onchange={() => commitNumber(cmdDraft, "commander_damage")}
+          />
+        </span>
+      </div>
+      <p class="tsp-hint">Damage from one commander that knocks a player out. Commander is 21.</p>
+      {#if commanderWarning}
+        <p class="tsp-warn" role="status">{commanderWarning}</p>
+      {/if}
+    </section>
+  {/if}
 
   <section class="tsp-field" data-field="bot_pace">
     <div class="tsp-row">

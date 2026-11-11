@@ -28,6 +28,7 @@
     type PickerTab,
   } from "../deckPicker";
   import { L } from "../labels";
+  import { fitsFormat, formatOf } from "../formats";
   import DeckGrid from "./DeckGrid.svelte";
   import SideboardList from "./decks/SideboardList.svelte";
   import Icon from "./Icon.svelte";
@@ -78,6 +79,12 @@
     actions?: "inline" | "external";
     /** What is selected and what committing it says, whenever either changes. */
     onchange?: (state: PickerState) => void;
+    /**
+     * The table's format (ADR 0222 §2); absent is Commander. The picker
+     * offers the saved and pre-built decks built for it, and the paste
+     * tab says what a list is checked against.
+     */
+    format?: string;
   }
 
   const {
@@ -87,7 +94,10 @@
     shopLinks = false,
     actions = "inline",
     onchange,
+    format,
   }: Props = $props();
+
+  const formatInfo = $derived(formatOf(format));
 
   const uid = $props.id();
   const signedIn = $derived(isSignedIn($session?.principal.user_id));
@@ -110,7 +120,7 @@
       .finally(() => (lastLoaded = true));
     if (signedIn) {
       void fetchMyDecks()
-        .then((res) => (libDecks = res.decks ?? []))
+        .then((res) => (libDecks = (res.decks ?? []).filter((d) => fitsFormat(d.format, format))))
         // Session expired between render and fetch: no My decks tab.
         .catch(() => (libDecks = []))
         .finally(() => (libLoaded = true));
@@ -118,7 +128,7 @@
       libLoaded = true;
     }
     void fetchPrebuiltDecks()
-      .then((res) => (preDecks = res.decks ?? []))
+      .then((res) => (preDecks = (res.decks ?? []).filter((d) => fitsFormat(d.format, format))))
       // A server without the route: Paste a list still works.
       .catch(() => (preDecks = []))
       .finally(() => (preLoaded = true));
@@ -296,10 +306,15 @@
   }
 
   function pastedMessage(res: UploadDeckResponse): string {
-    const cmd = `${res.commanders.length === 1 ? "commander" : "commanders"}: ${res.commanders.join(" / ")}`;
+    // ADR 0222 §2: a deck of a format with no commander names none.
+    const commanders = res.commanders ?? [];
+    const cmd =
+      commanders.length === 0
+        ? ""
+        : `, ${commanders.length === 1 ? "commander" : "commanders"}: ${commanders.join(" / ")}`;
     const companion = res.companion ? `, companion: ${res.companion}` : "";
     const side = res.sideboard ? `, sideboard: ${res.sideboard} outside the game` : "";
-    return `Uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, ${cmd}${companion}${side}`;
+    return `Uploaded ${res.deck_name || "deck"}: ${res.card_count} cards${cmd}${companion}${side}`;
   }
 
   /**
@@ -503,10 +518,7 @@
           {/if}
         {/if}
       {:else}
-        <p class="note">
-          Every deck is validated against Commander rules — 100-card singleton, color identity,
-          format legality — whichever way it arrives.
-        </p>
+        <p class="note">{formatInfo.deckRules}</p>
         <p class="note">
           An Archidekt deck link, or a plain-text decklist. On Moxfield, open the deck, then Export
           and Copy plain text, and paste it here.
@@ -516,7 +528,7 @@
         {/if}
         <textarea
           rows="7"
-          placeholder={"https://archidekt.com/decks/123456\n\n— or paste the list —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
+          placeholder={formatInfo.pastePlaceholder}
           bind:value={source}
           aria-label={L.decklistSource}
         ></textarea>

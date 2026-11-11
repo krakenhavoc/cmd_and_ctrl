@@ -40,6 +40,7 @@
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
   import { HAND_SORTS } from "../../handOrder";
   import { L } from "../../labels";
+  import { settingsTopics } from "../../tableSettings";
   import {
     BLOCK_SPECTATOR_LABEL,
     REMOVE_SPECTATOR_LABEL,
@@ -434,7 +435,7 @@
         role="menuitem"
         onclick={via(props.onTableSettings)}
         title={props.canManage
-          ? "the table's house rules — undos, life, commander damage, table pace, spawning"
+          ? `the table's house rules — ${settingsTopics(props.commanders !== false, "life")}`
           : "the table's house rules (only the host can change them)"}
       >
         <Icon name="gear" size={15} /> Table settings…
