@@ -485,11 +485,14 @@ choose choose-cards/chandra-flameshaper-play
 choose choose-cards/chandra-legacy-of-fire-remove
 choose choose-cards/chaos-shrines-black-crystal-return
 choose choose-cards/charming-scoundrel-draw
+choose choose-cards/charnel-serenade-return
 choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
 choose choose-cards/cmdr2-b09-florian-exile
+choose choose-cards/cmdr2-s18-arthur-marigold-knight-creature
+choose choose-cards/cmdr2-s37-ugins-mastery-turn-face-up
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -1353,6 +1356,7 @@ option option-pick/choose-option-as-enters
 option option-pick/choose-player-as-enters
 option option-pick/choose-second-player-as-enters
 option option-pick/cloak-and-dagger-entwined-choice
+option option-pick/cmdr2-s18-arthur-marigold-knight-attack
 option option-pick/coin-of-fate-opponent
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
@@ -1534,6 +1538,8 @@ payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
 payunless pay-unless/cmdr2-b05-fathom-fleet-captain-pirate
 payunless pay-unless/cmdr2-b05-surgespanner-bounce
 payunless pay-unless/cmdr2-b09-timothar-exile
+payunless pay-unless/cmdr2-s18-insatiable-frugivore-repeat
+payunless pay-unless/cmdr2-s18-killer-service
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
@@ -1758,6 +1764,9 @@ run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
 run prompt-run/cmdr2-b09-foul-rebirth-token
 run prompt-run/cmdr2-b09-promise-of-aclazotz-populate
+run prompt-run/cmdr2-s18-killer-service-rhino
+run prompt-run/cmdr2-s22-kefnet-return-land
+run prompt-run/cmdr2-s34-each-player-may-put-counters
 run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
@@ -2105,6 +2114,7 @@ tail carrion-cruiser/after-mill
 tail cease/gain-and-draw
 tail chandra-flameshaper/choose-exiled
 tail charming-prince/after-exile
+tail charnel-serenade/then
 tail choco-seeker-of-paradise/rest-into-graveyard
 tail chrome-dome/haste-and-sacrifice-copy
 tail city-of-the-daleks/bind-tagged-tokens
@@ -2117,6 +2127,10 @@ tail cmdr2-b03/shuffle-rest-into-library
 tail cmdr2-b05/admiral-brass-entered
 tail cmdr2-b09-timothar/after-exile
 tail cmdr2-b09-timothar/bat
+tail cmdr2-s18-arthur-marigold-knight/entered
+tail cmdr2-s34/goad-then-next-player-bird
+tail cmdr2-s34/goad-tokens-for-rest-of-game
+tail cmdr2-s40/time-counters
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
@@ -2382,6 +2396,7 @@ tail if-it-was/lion-sash-counter
 tail if-it-was/mastermind-plum-treasure
 tail if-it-was/raven-eagle-clue
 tail if-it-was/scavenging-ooze-grow
+tail immortal-obligation/duty-rules
 tail improvisation-capstone/after-mill
 tail impulse-exile/offer-free-casts
 tail incandescent-soulstoke/entered
@@ -2607,6 +2622,7 @@ tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
 tail sacrificed-one/prompt-run/cmdr2-b09-foul-rebirth-token
 tail sacrificed-one/prompt-run/cmdr2-b09-promise-of-aclazotz-populate
+tail sacrificed-one/prompt-run/cmdr2-s18-killer-service-rhino
 tail sacrificed-one/prompt-run/comet-crawler-pump
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
