@@ -12,6 +12,8 @@ import (
 const (
 	s33BackInTownOracle    = "ce723db6-2a80-42a5-a176-cd322b4e1e27"
 	s33WeRideAtDawnOracle  = "5675ac63-b69b-41b9-a7ed-4085a4e431b2"
+	s33SellSwordOracle     = "60c77b18-c111-4e16-ad19-2ef32582cd9e"
+	s33GraverobberOracle   = "960cff3b-678c-404e-a643-ac5e91e6b50c"
 	s33LifeInsuranceOracle = "50779f73-c538-4364-aca4-4ab069a00814"
 )
 
@@ -19,6 +21,8 @@ func TestS33CardsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		s33BackInTownOracle:    "Back in Town",
 		s33LifeInsuranceOracle: "Life Insurance",
+		s33GraverobberOracle:   "Charred Graverobber",
+		s33SellSwordOracle:     "Angelic Sell-Sword",
 		s33WeRideAtDawnOracle:  "We Ride at Dawn",
 	} {
 		spec, ok := Lookup(oracle)
@@ -159,4 +163,70 @@ func TestS33WeRideAtDawnMakesAMercenaryWhenYourCommanderAttacks(t *testing.T) {
 		t.Errorf("%d Mercenaries after the commander attacked, want 1", n)
 	}
 	_ = cmdr
+}
+
+func TestS33AngelicSellSwordMakesAMercenaryForItselfAndOtherNontokenCreatures(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	b12PlayFromHand(t, g, "Angelic Sell-Sword", "Creature — Angel Mercenary", s33SellSwordOracle, game.CastSpellParams{})
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Mercenary"); n != 1 {
+		t.Fatalf("%d Mercenaries after the Sell-Sword entered, want 1", n)
+	}
+	b12PlayFromHand(t, g, "Bear", "Creature — Bear", "", game.CastSpellParams{})
+	passPriorityAroundTable(t, g)
+	if n, _ := countTokensNamed(g, me.ID, "Mercenary"); n != 2 {
+		t.Fatalf("%d Mercenaries after another nontoken creature entered, want 2", n)
+	}
+	// The Mercenary tokens themselves entered without making more.
+}
+
+func TestS33AngelicSellSwordDrawsOnlyAtPowerSixOrMore(t *testing.T) {
+	for _, tc := range []struct {
+		power, draws int
+	}{{4, 0}, {6, 1}} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		advanceToMain(t, g)
+		sword := b12Push(g, me.ID, "Angelic Sell-Sword", "Creature — Angel Mercenary", s33SellSwordOracle, tc.power, 4)
+		hand := me.Hand.Size()
+		declareAttack(t, g, opp.ID, sword)
+		passPriorityAroundTable(t, g)
+		if got := me.Hand.Size() - hand; got != tc.draws {
+			t.Errorf("power %d: drew %d, want %d", tc.power, got, tc.draws)
+		}
+	}
+}
+
+func TestS33CharredGraverobberDeclaresEscapeWithACounter(t *testing.T) {
+	if !game.CardCastableFromZone(s33GraverobberOracle, game.ZoneGraveyard) {
+		t.Fatal("the graveyard is not a castable zone")
+	}
+	offers := game.AlternativeCostsOfferedFromZone(s33GraverobberOracle, game.ZoneGraveyard)
+	if len(offers) != 1 || offers[0].Key != "escape" {
+		t.Fatalf("graveyard offers = %+v, want one escape", offers)
+	}
+	o := offers[0]
+	if o.ManaCost != "{3}{B}{B}" || o.ExileFromGraveyard == nil || o.ExileFromGraveyard.Min != 4 || o.ExileFromGraveyard.Max != 4 {
+		t.Errorf("escape offer = %+v, want {3}{B}{B} and exile four", o)
+	}
+	if o.EntersWithCounterCount != 1 || o.EntersWithCounterName != "+1/+1" {
+		t.Errorf("escapes with %d %q counters, want one +1/+1", o.EntersWithCounterCount, o.EntersWithCounterName)
+	}
+}
+
+func TestS33CharredGraverobberReturnsAnOutlawCardFromYourGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pirate := seedGraveyardCard(t, g, "Dead Pirate", "Creature — Human Pirate", "")
+	bear := seedGraveyardCard(t, g, "Dead Bear", "Creature — Bear", "")
+	castCatalogSpell(t, g, "Charred Graverobber", "Creature — Skeleton Mercenary", s33GraverobberOracle, nil)
+	assistCardSettle(t, g, me.ID, &game.TargetRef{Kind: game.TargetCard, ID: pirate}, true)
+	if !me.Hand.Contains(pirate) {
+		t.Error("the outlaw card did not return to hand")
+	}
+	if !me.Graveyard.Contains(bear) {
+		t.Error("a non-outlaw card left the graveyard")
+	}
 }
