@@ -8,15 +8,36 @@
 // The body is set names and card names, public card data like the
 // catalogue: the route and this page need no session.
 
+import { L } from "./labels";
+
 export const DRAFT_SETS_HASH = "#/draft/sets";
 export const DRAFT_SETS_TITLE = "Sets you can draft";
 
 /**
  * What every surface that shows a pack must say (ADR 0222 §4): a pack is
- * built to slot rates by rarity, not taken from a real print sheet.
+ * built to slot rates by rarity, not taken from a real print sheet, and
+ * it follows the booster the set was drafted with when it was sold.
  */
 export const PACKS_ARE_APPROXIMATIONS =
-  "Packs are approximations of retail packs. Each one is 14 cards in slots by rarity, modelled on a play booster, with one printing of each card. Foils, showcase frames and tokens are left out, and the exact mix of a real pack is not reproduced.";
+  "Packs are approximations of retail packs. Each set uses the booster it was drafted with: a 14-card play booster for sets released from February 2024 on, and a 15-card draft booster for older sets. Cards come in slots by rarity, with one printing of each card. Foils, showcase frames and tokens are left out, the exact mix of a real pack is not reproduced, and set and collector boosters are not used.";
+
+/**
+ * The kind of booster a set's packs are modelled on: the draftable
+ * booster of the set's era. Mirrors draftpacks.Kind.
+ */
+export type BoosterKind = "play" | "draft";
+
+/** The name of a booster kind, or "" for one this client does not know. */
+export function boosterName(kind: string | undefined): string {
+  switch (kind) {
+    case "play":
+      return L.draftPlayBooster;
+    case "draft":
+      return L.draftDraftBooster;
+    default:
+      return "";
+  }
+}
 
 export interface DraftSet {
   /** Scryfall's lowercase set code. */
@@ -24,6 +45,8 @@ export interface DraftSet {
   name: string;
   /** "YYYY-MM-DD"; absent when the data has no date. */
   released?: string;
+  /** Which booster the set's packs are modelled on. */
+  booster: BoosterKind;
   /** How many different cards the set's packs can contain. */
   cards: number;
   /** True only when no card blocks the set. */

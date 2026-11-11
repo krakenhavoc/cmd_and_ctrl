@@ -13,6 +13,7 @@
   import Page from "../lib/components/Page.svelte";
   import {
     blockedSets,
+    boosterName,
     cardsToGo,
     DRAFT_SETS_TITLE,
     fetchDraftSets,
@@ -51,6 +52,7 @@
   <span class="set-meta">
     <span class="code">{s.code}</span>
     {#if releaseYear(s.released)}<span>{releaseYear(s.released)}</span>{/if}
+    {#if boosterName(s.booster)}<span class="booster">{boosterName(s.booster)}</span>{/if}
     <span>{s.cards} cards</span>
   </span>
 {/snippet}
@@ -238,7 +240,8 @@
   }
   .set-meta {
     display: inline-flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 2px 10px;
     font-family: var(--font-mono);
     font-size: 12px;
     font-variant-numeric: tabular-nums;

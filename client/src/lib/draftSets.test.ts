@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   blockedSets,
+  boosterName,
   cardsToGo,
   DRAFT_SETS_HASH,
   fetchDraftSets,
@@ -10,6 +11,7 @@ import {
   releaseYear,
   type DraftSet,
 } from "./draftSets";
+import { L } from "./labels";
 import { parseHash } from "./router";
 import { isPublicRoute } from "./signedInHome";
 
@@ -18,6 +20,7 @@ function set(code: string, blockers: string[] = [], released = "2026-01-01"): Dr
     code,
     name: code.toUpperCase(),
     released,
+    booster: "play",
     cards: 260,
     draftable: blockers.length === 0,
     blockers,
@@ -31,6 +34,21 @@ afterEach(() => {
 });
 
 describe("the draftable-set list", () => {
+  it("names the booster a set uses, from the label registry", () => {
+    expect(boosterName("play")).toBe(L.draftPlayBooster);
+    expect(boosterName("draft")).toBe(L.draftDraftBooster);
+    expect(L.draftPlayBooster).toBe("Play booster");
+    expect(L.draftDraftBooster).toBe("Draft booster");
+    // An older server, or a kind this client does not know, shows nothing.
+    expect(boosterName(undefined)).toBe("");
+    expect(boosterName("collector")).toBe("");
+  });
+
+  it("says in the approximation note that both kinds of booster are used", () => {
+    expect(PACKS_ARE_APPROXIMATIONS).toContain("play booster");
+    expect(PACKS_ARE_APPROXIMATIONS).toContain("draft booster");
+  });
+
   it("splits ready sets from blocked ones, the closest to ready first", () => {
     const sets = [set("new", ["A", "B", "C"]), set("mid"), set("old", ["A"]), set("tie", ["Z"])];
     expect(readySets(sets).map((s) => s.code)).toEqual(["mid"]);

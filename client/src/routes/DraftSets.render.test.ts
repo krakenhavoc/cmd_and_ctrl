@@ -8,6 +8,7 @@ import { tick } from "svelte";
 
 import DraftSets from "./DraftSets.svelte";
 import { DRAFT_SETS_TITLE, PACKS_ARE_APPROXIMATIONS } from "../lib/draftSets";
+import { L } from "../lib/labels";
 import { cleanup, flushSync, render } from "../lib/test/render.svelte";
 
 const realFetch = globalThis.fetch;
@@ -46,6 +47,7 @@ const LIST = {
       code: "new",
       name: "Newest Set",
       released: "2026-09-01",
+      booster: "play",
       cards: 270,
       draftable: false,
       blockers: ["Card One", "Card Three", "Card Two"],
@@ -54,6 +56,7 @@ const LIST = {
       code: "rdy",
       name: "Ready Set",
       released: "2026-05-01",
+      booster: "play",
       cards: 261,
       draftable: true,
       blockers: [],
@@ -61,7 +64,8 @@ const LIST = {
     {
       code: "one",
       name: "Almost There",
-      released: "2025-02-01",
+      released: "2023-02-01",
+      booster: "draft",
       cards: 255,
       draftable: false,
       blockers: ["Last Card"],
@@ -85,6 +89,8 @@ describe("the draftable sets page", () => {
     expect(text(ready[0])).toContain("rdy");
     expect(text(ready[0])).toContain("2026");
     expect(text(ready[0])).toContain("261 cards");
+    // Each set says which booster its packs are modelled on.
+    expect(text(ready[0].querySelector(".booster"))).toBe(L.draftPlayBooster);
     expect(text(container.querySelector("#ready-title"))).toBe("Ready to draft 1");
 
     const blocked = [...container.querySelectorAll('[data-testid="blocked-sets"] > li')];
@@ -92,6 +98,8 @@ describe("the draftable sets page", () => {
       "Almost There",
       "Newest Set",
     ]);
+    expect(text(blocked[0].querySelector(".booster"))).toBe(L.draftDraftBooster);
+    expect(text(blocked[1].querySelector(".booster"))).toBe(L.draftPlayBooster);
     expect(text(blocked[0].querySelector(".togo"))).toBe("1 card to go");
     expect(text(blocked[1].querySelector(".togo"))).toBe("3 cards to go");
     expect([...blocked[1].querySelectorAll(".blockers li")].map(text)).toEqual([
@@ -111,6 +119,9 @@ describe("the draftable sets page", () => {
     const note = () => text(container.querySelector('[data-testid="packs-approximate"]'));
     expect(note()).toBe(PACKS_ARE_APPROXIMATIONS);
     expect(note()).toContain("Packs are approximations of retail packs.");
+    // It names both kinds of booster a set can use.
+    expect(note()).toContain("play booster");
+    expect(note()).toContain("draft booster");
     await settle();
     expect(note()).toBe(PACKS_ARE_APPROXIMATIONS);
   });

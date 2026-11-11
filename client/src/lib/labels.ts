@@ -2534,6 +2534,21 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}HoverZoomOverlay.svelte`],
     doc: "the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big",
   }),
+  // -- The draftable sets page (ADR 0222 §4, #5437) --
+  draftPlayBooster: label({
+    name: "Play booster",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/draftSets.ts"],
+    doc: "the draftable sets page: a set whose packs are modelled on a play booster (sets released from February 2024 on)",
+  }),
+  draftDraftBooster: label({
+    name: "Draft booster",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/draftSets.ts"],
+    doc: "the draftable sets page: a set whose packs are modelled on a draft booster (sets before play boosters)",
+  }),
 } satisfies Record<string, LabelSpec>;
 
 export type LabelKey = keyof typeof LABEL_SPECS;
