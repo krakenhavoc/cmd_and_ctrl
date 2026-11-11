@@ -143,7 +143,7 @@ func TestS49SelvalaParleyIsAManaAbility(t *testing.T) {
 			t.Errorf("seat %d hand %d, want %d (each player draws)", i, h, hands[i]+1)
 		}
 	}
-	if len(g.Stack.Items) != 0 {
+	if !stackFullyEmpty(g) {
 		t.Error("a mana ability must not use the stack")
 	}
 }
