@@ -96,6 +96,7 @@ var tokenTable = map[string]game.Card{
 	"3/1 colorless Wall artifact with defender named Stone Boulder":    {Name: "Stone Boulder", TypeLine: "Token Artifact Creature — Wall", Power: 3, Toughness: 1, Keywords: []string{"defender"}},
 	"0/4 white Wall with defender and flying":                          {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender", "flying"}},
 	"0/4 white Wall with defender":                                     {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 0, Toughness: 4, Colors: []string{"W"}, Keywords: []string{"defender"}},
+	"1/3 white Wall with defender":                                     {Name: "Wall", TypeLine: "Token Creature — Wall", Power: 1, Toughness: 3, Colors: []string{"W"}, Keywords: []string{"defender"}},
 	"1/1 black Bat with flying":                                        {Name: "Bat", TypeLine: "Token Creature — Bat", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"1/1 black Horror":                                                 {Name: "Horror", TypeLine: "Token Creature — Horror", Power: 1, Toughness: 1, Colors: []string{"B"}},
 	"1/1 black Insect":                                                 {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}},
@@ -284,7 +285,11 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Rhino Warrior":                                          {Name: "Rhino Warrior", TypeLine: "Token Creature — Rhino Warrior", Power: 4, Toughness: 4, Colors: []string{"G"}},
 	"3/3 green Frog Lizard":                                            {Name: "Frog Lizard", TypeLine: "Token Creature — Frog Lizard", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 colorless Golem artifact":                                     {Name: "Golem", TypeLine: "Token Enchantment Artifact Creature — Golem", Power: 3, Toughness: 3},
+	"4/4 colorless Construct artifact":                                 {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 4, Toughness: 4},
 	"4/4 colorless Construct artifact with flying and haste":           {Name: "Construct", TypeLine: "Token Artifact Creature — Construct", Power: 4, Toughness: 4, Keywords: []string{"flying", "haste"}},
+	"3/3 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 3, Toughness: 3},
+	"9/9 colorless Golem artifact creature":                            {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 9, Toughness: 9},
+	"1/1 black Insect with flying":                                     {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"B"}, Keywords: []string{"flying"}},
 	"4/4 white and blue Golem artifact":                                {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4, Colors: []string{"W", "U"}},
 	"3/3 colorless Phyrexian Wurm artifact":                            {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 3, Toughness: 3},
 	"3/3 green Dinosaur with trample":                                  {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
@@ -368,6 +373,12 @@ var tokenTable = map[string]game.Card{
 	"2/2 red Mutant":               {Name: "Mutant", TypeLine: "Token Creature — Mutant", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 white Dinosaur Soldier":   {Name: "Dinosaur Soldier", TypeLine: "Token Creature — Dinosaur Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}},
 
+	// #5368: Amphin Mutineer's Salamander Warrior (Tarkir: Dragonstorm Commander).
+	"4/3 blue Salamander Warrior": {Name: "Salamander Warrior", TypeLine: "Token Creature — Salamander Warrior", Power: 4, Toughness: 3, Colors: []string{"U"}},
+
+	// #5368: Verix Bladewing's Karox Bladewing (Tarkir: Dragonstorm Commander).
+	"4/4 red Legendary Dragon named Karox Bladewing with flying": {Name: "Karox Bladewing", TypeLine: "Token Legendary Creature — Dragon", Power: 4, Toughness: 4, Colors: []string{"R"}, Keywords: []string{"flying"}},
+
 	// #4457 batch 12: The Last Ronin's Technique's Ninja Turtle Spirit.
 	"1/1 white Ninja Turtle Spirit": {Name: "Ninja Turtle Spirit", TypeLine: "Token Creature — Ninja Turtle Spirit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	// #4457: Lord Dregg, Insect Invader's token.
@@ -422,4 +433,6 @@ var tokenTable = map[string]game.Card{
 
 	// #4465: Foundations' Ninja (Kaito, Cunning Infiltrator).
 	"2/1 blue Ninja": {Name: "Ninja", TypeLine: "Token Creature — Ninja", Power: 2, Toughness: 1, Colors: []string{"U"}},
+	// #5368: Tarkir: Dragonstorm Commander's First Mate Ragavan (Baral and Kari Zev).
+	"2/1 red Legendary Monkey Pirate named First Mate Ragavan": {Name: "First Mate Ragavan", TypeLine: "Token Legendary Creature — Monkey Pirate", Power: 2, Toughness: 1, Colors: []string{"R"}},
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Violation is one validation failure. Collected into ValidationError
@@ -39,6 +40,19 @@ const (
 	// lose for the player and a saved deck with a large sideboard or
 	// maybeboard section still seats.
 	CodeSideboardTooLarge = "sideboard_too_large"
+	// CodeTooManyCopies flags more cards of one English name than a
+	// constructed format allows across the deck and its sideboard (CR
+	// 100.2a, 100.4a). Fatal. Commander's one-copy rule keeps
+	// CodeSingleton.
+	CodeTooManyCopies = "too_many_copies"
+	// CodeCommanderNotAllowed flags a commander in a deck for a format
+	// that has none (ADR 0222 §2). Fatal.
+	CodeCommanderNotAllowed = "commander_not_allowed"
+	// CodeSideboardOverLimit flags a constructed sideboard of more
+	// cards than the format allows (CR 100.4a). Fatal, unlike
+	// CodeSideboardTooLarge: in constructed the sideboard is part of
+	// what the rules check, and in Commander it is not.
+	CodeSideboardOverLimit = "sideboard_over_limit"
 	// CodeAttractionDeckIllegal flags an Attraction deck that breaks CR
 	// 717.2a (fewer than ten cards, or two with one English name). ADR
 	// 0207 §2: NON-fatal, like an oversized sideboard. The deck imports
@@ -133,7 +147,26 @@ func (e *ValidationError) Error() string {
 	return "deck: " + strings.Join(msgs, "; ")
 }
 
-// Validate enforces Commander-format rules on a resolved List. At S05
+// Validate checks a resolved List against a format's deck rules (ADR
+// 0222 §2). The empty format is Commander, which is what every caller
+// from before formats meant. Commander's check is validateCommander,
+// unchanged; any other format's is validateConstructed (format.go),
+// driven by the format's game.DeckRules row.
+func Validate(list *List, format game.Format) error {
+	if list == nil {
+		return fmt.Errorf("deck: nil list")
+	}
+	spec, ok := game.LookupFormat(format)
+	if !ok {
+		return fmt.Errorf("deck: unknown format %q", format)
+	}
+	if spec.Format == game.FormatCommander {
+		return validateCommander(list)
+	}
+	return validateConstructed(list, spec)
+}
+
+// validateCommander enforces Commander-format rules on a resolved List. At S05
 // those rules are:
 //
 //  1. Exactly one commander, or two that a partner ability pairs
@@ -157,7 +190,7 @@ func (e *ValidationError) Error() string {
 // Sideboard cards are surfaced as a warning, not an error — Commander
 // doesn't use a sideboard but "I accidentally pasted a Standard deck"
 // is a recoverable mistake that shouldn't reject the whole upload.
-func Validate(list *List) error {
+func validateCommander(list *List) error {
 	if list == nil {
 		return fmt.Errorf("deck: nil list")
 	}
@@ -361,7 +394,7 @@ func Validate(list *List) error {
 
 	// ADR 0172: the companion, judged on its own. It is not one of
 	// the 100, so none of the checks above saw it.
-	vs = append(vs, companionViolations(list)...)
+	vs = append(vs, companionViolations(list, game.FormatCommander.Spec())...)
 
 	if len(vs) == 0 {
 		return nil

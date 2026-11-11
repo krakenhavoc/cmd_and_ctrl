@@ -502,7 +502,7 @@ func (l *Lobby) seatRematch(id uuid.UUID, spec rematchSeatSpec) (uuid.UUID, erro
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return uuid.Nil, ErrGameStarted
 	}
-	if len(entry.meta.Players) >= game.MaxPlayers {
+	if len(entry.meta.Players) >= entry.room.Game.SeatCap() {
 		return uuid.Nil, ErrGameFull
 	}
 	if spec.userID != uuid.Nil {

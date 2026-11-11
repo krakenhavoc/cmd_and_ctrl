@@ -11,6 +11,7 @@
 // test, and a `.svelte` file is the awkward place to write one.
 
 import { isAdmin } from "./admin";
+import { formatOf } from "./formats";
 import { signedInUserID } from "./myGames";
 import type { Session } from "./session";
 import type { Tablemate } from "./tablemates";
@@ -32,6 +33,12 @@ export interface SetupSettings {
   bot_pace?: string;
   allow_spawn?: boolean;
   free_mulligans?: number;
+  /**
+   * The format of the table the setup was captured at (ADR 0222 §1).
+   * Absent from a setup saved before formats existed, which is a
+   * Commander setup.
+   */
+  format?: string;
 }
 
 /** A remembered setup, as GET /me/setup serves it. */
@@ -78,7 +85,6 @@ export function canCreateTables(s: Session | null | undefined): boolean {
 
 /** The defaults a new table starts with (game.DefaultTableSettings). */
 const DEFAULTS = {
-  starting_life: 40,
   commander_damage: 21,
   bot_pace: "normal",
   allow_spawn: false,
@@ -94,6 +100,11 @@ export function setupSummary(
   deckName: (id: string) => string = (id) => id,
 ): string {
   const parts: string[] = [];
+  const s = setup.settings ?? {};
+  // ADR 0222 §1: a setup of another format says so first, and its
+  // starting life is compared with that format's.
+  const format = formatOf(s.format);
+  if (format.id !== "commander") parts.push(format.name);
   const bots = setup.bots ?? [];
   if (bots.length === 0) {
     parts.push("no bots");
@@ -104,11 +115,14 @@ export function setupSummary(
     });
     parts.push(`${bots.length} bot${bots.length === 1 ? "" : "s"}: ${names.join(", ")}`);
   }
-  const s = setup.settings ?? {};
-  if (s.starting_life !== undefined && s.starting_life !== DEFAULTS.starting_life) {
+  if (s.starting_life !== undefined && s.starting_life !== format.startingLife) {
     parts.push(`starting life ${s.starting_life}`);
   }
-  if (s.commander_damage !== undefined && s.commander_damage !== DEFAULTS.commander_damage) {
+  if (
+    format.hasCommander &&
+    s.commander_damage !== undefined &&
+    s.commander_damage !== DEFAULTS.commander_damage
+  ) {
     parts.push(`commander damage ${s.commander_damage}`);
   }
   if (s.bot_pace !== undefined && s.bot_pace !== DEFAULTS.bot_pace) {

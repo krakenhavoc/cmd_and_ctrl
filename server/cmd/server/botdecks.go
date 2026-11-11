@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // botDeckCatalog is the wiring S31 sub-PR 4 promised and sub-PR 5
@@ -23,9 +24,11 @@ import (
 // wiring, so it sits with the rest of the boot wiring.
 type botDeckCatalog struct{}
 
-// List returns every curated deck in picker order.
+// List returns every curated deck in picker order: the Commander
+// decks, then the other formats' (ADR 0222 slice 1). Each row names its
+// format, and the picker offers the rows of the table's.
 func (botDeckCatalog) List() []aiseat.DeckInfo {
-	all := decks.All()
+	all := decks.Every()
 	out := make([]aiseat.DeckInfo, 0, len(all))
 	for _, d := range all {
 		out = append(out, botDeckInfo(d))
@@ -63,11 +66,16 @@ func botDeckInfo(d decks.Deck) aiseat.DeckInfo {
 	for _, c := range d.Identity {
 		colors = append(colors, string(c))
 	}
+	format := ""
+	if f := d.FormatOf(); f != game.FormatCommander {
+		format = string(f)
+	}
 	return aiseat.DeckInfo{
 		ID:          d.ID,
 		Name:        d.Name,
 		Description: description,
 		Colors:      colors,
 		Commander:   d.Commander.Name,
+		Format:      format,
 	}
 }

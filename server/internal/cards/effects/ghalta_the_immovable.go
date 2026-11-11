@@ -45,15 +45,7 @@ func init() {
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.Controller == source.Controller && target.IsCreature()
 			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				kept := c.Abilities[:0:0]
-				for _, a := range c.Abilities {
-					if a != "defender" {
-						kept = append(kept, a)
-					}
-				}
-				c.Abilities = kept
-			},
+			Apply: loseDefenderApply,
 		}, {
 			Layer: game.Layer6Ability,
 			Label: "Each creature you control with toughness greater than its power assigns combat damage equal to its toughness rather than its power.",

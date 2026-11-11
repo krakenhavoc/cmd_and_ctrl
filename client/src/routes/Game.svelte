@@ -3115,6 +3115,7 @@
     seated: dockShown,
     eliminated: viewerEliminated,
     gameEnded,
+    commanders: !view?.no_commanders,
     drawKey: keyHint(keys.drawCard) ? formatChord(keys.drawCard, mac) : "",
     drawTitle: `draw a card${keyHint(keys.drawCard)}`,
     canManage,
@@ -3416,7 +3417,12 @@
         </h2>
         <!-- The lobby card's deck picker (ADR 0212 §3), with its own
              Sit down button: there is no card footer here. -->
-        <DeckPicker {gameID} playerID={viewerID} onSuccess={() => (deckImportDismissed = true)} />
+        <DeckPicker
+          {gameID}
+          playerID={viewerID}
+          format={tableSettings.format}
+          onSuccess={() => (deckImportDismissed = true)}
+        />
         <p class="prompt-hint import-hint">
           You can also manage decks (and other seats) from the
           <button class="linkish" onclick={back}>lobby</button>.
@@ -4021,6 +4027,7 @@
           settings={tableSettings}
           {canManage}
           gameState={gameEnded ? "ended" : "active"}
+          commanders={!view?.no_commanders}
           onpatch={patchTableSettingsOverSocket}
         />
         {#if voice}

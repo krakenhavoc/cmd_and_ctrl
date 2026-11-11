@@ -156,6 +156,18 @@ func (s *SQLStore) SetPowerLevel(ctx context.Context, id uuid.UUID, level float6
 	return getDeck(ctx, s.db, id.String())
 }
 
+// SetFormat implements Store.
+func (s *SQLStore) SetFormat(ctx context.Context, owner, id uuid.UUID, format string) (Deck, error) {
+	res, err := s.db.ExecContext(ctx, `UPDATE decks SET format = ? WHERE id = ? AND owner_id = ?`, format, id.String(), owner.String())
+	if err != nil {
+		return Deck{}, fmt.Errorf("decklibrary: set format: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return Deck{}, ErrNotFound
+	}
+	return getDeck(ctx, s.db, id.String())
+}
+
 // Get implements Store.
 func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (Deck, error) {
 	return getDeck(ctx, s.db, id.String())
@@ -164,7 +176,7 @@ func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (Deck, error) {
 // List implements Store.
 func (s *SQLStore) List(ctx context.Context, owner uuid.UUID) ([]Deck, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, power_level, created_at, updated_at
+		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, power_level, format, created_at, updated_at
 		 FROM decks WHERE owner_id = ? ORDER BY updated_at DESC, rowid DESC`, owner.String())
 	if err != nil {
 		return nil, fmt.Errorf("decklibrary: list: %w", err)
@@ -280,7 +292,7 @@ type queryRower interface {
 
 func getDeck(ctx context.Context, q queryRower, id string) (Deck, error) {
 	row := q.QueryRowContext(ctx,
-		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, power_level, created_at, updated_at
+		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, power_level, format, created_at, updated_at
 		 FROM decks WHERE id = ?`, id)
 	d, err := scanDeck(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -306,7 +318,7 @@ func scanDeck(row rowScanner) (Deck, error) {
 		powerLevel       sql.NullFloat64
 		created, updated int64
 	)
-	if err := row.Scan(&idStr, &ownerStr, &d.Name, &d.SourceFormat, &d.SourceText, &sourceURL, &commandersJSON, &d.CardCount, &powerLevel, &created, &updated); err != nil {
+	if err := row.Scan(&idStr, &ownerStr, &d.Name, &d.SourceFormat, &d.SourceText, &sourceURL, &commandersJSON, &d.CardCount, &powerLevel, &d.Format, &created, &updated); err != nil {
 		return Deck{}, err
 	}
 	d.SourceURL = sourceURL.String

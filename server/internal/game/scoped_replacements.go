@@ -168,6 +168,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a oneMorePlusOneCounter replacement names no player"
 		}
+	case ModMultiplyTokens:
+		// #5368: Kaya, Geist Hunter names whose tokens are multiplied.
+		if m.Player == uuid.Nil || m.Amount < 2 {
+			return "a multiplyTokens replacement names no player or a factor below 2"
+		}
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
@@ -205,6 +210,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchRollDie
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		return watchCounterPlaced
+	case ModMultiplyTokens:
+		return []EventKind{EventTokenCreated}
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
 	case ModLandManaIsColor:
@@ -734,6 +741,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		return oneMoreCounterAppliesLocked(g, m, ev)
 	case ModOneMorePlusOneCounter:
 		return oneMorePlusOneCounterAppliesLocked(g, m, ev)
+	case ModMultiplyTokens:
+		return multiplyTokensAppliesLocked(m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
@@ -819,6 +828,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 	case ModOneMoreCounter, ModOneMorePlusOneCounter:
 		// "That many plus one": one window per kind, so one more each.
 		ev.CounterDelta++
+	case ModMultiplyTokens:
+		// "Twice that many of those tokens": ×Amount, one window per record.
+		ev.MultiplyTokens(m.Amount)
 	case ModLandManaIsColor:
 		// #1997: every coloured mana becomes the chosen colour.
 		applyLandManaColorLocked(m, ev)

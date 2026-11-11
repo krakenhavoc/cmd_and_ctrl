@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // indexWith is a test helper that builds a cards.Index pre-populated
@@ -229,7 +230,7 @@ func TestValidateDFCLegendaryCommander(t *testing.T) {
 	for i := 0; i < 99; i++ {
 		list.Mainboard = append(list.Mainboard, basic)
 	}
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	// We expect no commander-legality violation. Other violations
 	// (e.g. singleton) are fine — we only care that the DFC legendary
 	// isn't rejected as "not a commander".
@@ -299,7 +300,7 @@ func buildValidDeck() *List {
 
 func TestValidateHappyPath(t *testing.T) {
 	list := buildValidDeck()
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("Validate: got %v, want nil", err)
 	}
 }
@@ -307,21 +308,21 @@ func TestValidateHappyPath(t *testing.T) {
 func TestValidateWrongCardCount(t *testing.T) {
 	list := buildValidDeck()
 	list.Mainboard = list.Mainboard[:50]
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeWrongCardCount)
 }
 
 func TestValidateMissingCommander(t *testing.T) {
 	list := buildValidDeck()
 	list.Commanders = nil
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeMissingCommander)
 }
 
 func TestValidateTooManyCommanders(t *testing.T) {
 	list := buildValidDeck()
 	list.Commanders = append(list.Commanders, list.Commanders[0])
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeTooManyCommanders)
 }
 
@@ -329,7 +330,7 @@ func TestValidateNotLegalCommander(t *testing.T) {
 	list := buildValidDeck()
 	// Replace the commander with a non-legendary creature.
 	list.Commanders = []cards.Card{basicLegal("Llanowar Elves", "Creature — Elf Druid", "G")}
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeNotLegalCommander)
 }
 
@@ -344,7 +345,7 @@ func TestValidateColorIdentity(t *testing.T) {
 	}
 	// Replace the last card with a red card.
 	list.Mainboard[0] = basicLegal("Lightning Bolt", "Instant", "R")
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeColorIdentity)
 }
 
@@ -353,14 +354,14 @@ func TestValidateSingletonViolation(t *testing.T) {
 	// Duplicate a non-basic card.
 	list.Mainboard[0] = basicLegal("Sol Ring", "Artifact")
 	list.Mainboard[1] = basicLegal("Sol Ring", "Artifact")
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeSingleton)
 }
 
 func TestValidateBasicLandsNotSingleton(t *testing.T) {
 	list := buildValidDeck()
 	// Already has 60 Plains — should pass.
-	if err := Validate(list); err != nil {
+	if err := Validate(list, game.FormatCommander); err != nil {
 		t.Errorf("basics: got %v, want nil", err)
 	}
 }
@@ -373,14 +374,14 @@ func TestValidateBannedCard(t *testing.T) {
 		ColorIdentity: []string{"W", "U", "B", "G"},
 		Legalities:    map[string]string{"commander": "banned"},
 	}
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeNotLegalInFormat)
 }
 
 func TestValidateSideboardWarning(t *testing.T) {
 	list := buildValidDeck()
 	list.Sideboard = []cards.Card{basicLegal("Relic of Progenitus", "Artifact")}
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	// Sideboard is a warning only — still surfaces as a violation so
 	// the client can show a banner, but nothing else should fail.
 	assertHasViolation(t, err, CodeSideboardUnsupported)
@@ -571,26 +572,26 @@ func TestValidateCopyLimitFromOracleText(t *testing.T) {
 	dfc := basicLegal("Front // Back", "Creature", "B")
 	dfc.CardFaces = []cards.CardFace{{OracleText: "A deck can have up to two cards named Front."}}
 
-	if err := Validate(fill(nazgul, 9)); err != nil {
+	if err := Validate(fill(nazgul, 9), game.FormatCommander); err != nil {
 		t.Errorf("nine Nazgûl: got %v, want nil", err)
 	}
-	err := Validate(fill(nazgul, 10))
+	err := Validate(fill(nazgul, 10), game.FormatCommander)
 	assertHasViolation(t, err, CodeSingleton)
 	if !strings.Contains(err.Error(), "up to 9") {
 		t.Errorf("ten Nazgûl message should name the limit: %v", err)
 	}
-	assertHasViolation(t, Validate(fill(dwarves, 8)), CodeSingleton)
-	if err := Validate(fill(dwarves, 7)); err != nil {
+	assertHasViolation(t, Validate(fill(dwarves, 8), game.FormatCommander), CodeSingleton)
+	if err := Validate(fill(dwarves, 7), game.FormatCommander); err != nil {
 		t.Errorf("seven Dwarves: got %v", err)
 	}
-	if err := Validate(fill(rats, 30)); err != nil {
+	if err := Validate(fill(rats, 30), game.FormatCommander); err != nil {
 		t.Errorf("thirty Relentless Rats: got %v, want nil", err)
 	}
-	assertHasViolation(t, Validate(fill(withText("Plain", "Flying"), 2)), CodeSingleton)
-	if err := Validate(fill(dfc, 2)); err != nil {
+	assertHasViolation(t, Validate(fill(withText("Plain", "Flying"), 2), game.FormatCommander), CodeSingleton)
+	if err := Validate(fill(dfc, 2), game.FormatCommander); err != nil {
 		t.Errorf("face allowance: got %v", err)
 	}
-	assertHasViolation(t, Validate(fill(dfc, 3)), CodeSingleton)
+	assertHasViolation(t, Validate(fill(dfc, 3), game.FormatCommander), CodeSingleton)
 }
 
 func TestValidateOneCardsLimitDoesNotLiftAnother(t *testing.T) {
@@ -600,7 +601,7 @@ func TestValidateOneCardsLimitDoesNotLiftAnother(t *testing.T) {
 	list.Mainboard[0], list.Mainboard[1] = rats, rats
 	list.Mainboard[2] = basicLegal("Sol Ring", "Artifact")
 	list.Mainboard[3] = basicLegal("Sol Ring", "Artifact")
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	assertHasViolation(t, err, CodeSingleton)
 	if strings.Contains(err.Error(), "Relentless") {
 		t.Errorf("rats flagged: %v", err)

@@ -484,7 +484,7 @@ func TestSaveToLibrarySkipsSomeoneElsesSeat(t *testing.T) {
 		{"another seat at this game", game, theirs},
 		{"a seat at another game", uuid.New(), mine},
 	} {
-		got, err := saveToLibrary(context.Background(), c, p, tc.game, tc.playerID, "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+		got, err := saveToLibrary(context.Background(), c, p, tc.game, tc.playerID, "", "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 		if got != "" || err != nil {
 			t.Errorf("%s: saveToLibrary = %q, %v; want nothing saved", tc.name, got, err)
 		}
@@ -494,7 +494,7 @@ func TestSaveToLibrarySkipsSomeoneElsesSeat(t *testing.T) {
 	}
 
 	// Their own seat saves, as before.
-	got, err := saveToLibrary(context.Background(), c, p, game, mine, "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+	got, err := saveToLibrary(context.Background(), c, p, game, mine, "", "", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 	if got == "" || err != nil {
 		t.Errorf("own seat: saveToLibrary = %q, %v; want a deck id", got, err)
 	}

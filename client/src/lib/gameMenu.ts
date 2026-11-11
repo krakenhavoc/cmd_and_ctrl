@@ -25,6 +25,9 @@ export interface GameMenuOptions {
   seated: boolean;
   // Concede is drawn disabled, not hidden, once it means nothing.
   eliminated?: boolean;
+  // False where no seat has a commander (ADR 0222 slice 1): the Table
+  // settings tooltip then leaves commander damage out. Absent is true.
+  commanders?: boolean;
   // ADR 0167 §4: false while the viewer plays another seat's turn or
   // has theirs played for them. The server refuses every sandbox verb
   // to both players then, so the sandbox tools and the vote launcher

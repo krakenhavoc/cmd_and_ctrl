@@ -229,6 +229,13 @@ type PermissionFilter struct {
 	// nothing.
 	CardType string `json:"cardType,omitempty"`
 
+	// CardTypesAny is Baral and Kari Zev's "a spell ... that shares a card
+	// type with it": lowercase card types joined by spaces ("instant
+	// artifact"), a card qualifies when it has AT LEAST ONE of them
+	// (CR 205.2a). A string rather than a slice because PermissionFilter is
+	// compared with ==. Empty constrains nothing. Additive.
+	CardTypesAny string `json:"cardTypesAny,omitempty"`
+
 	// SorceryOnly is Teferi, Time Raveler's +1: "you may cast SORCERY
 	// spells as though they had flash" (#1195). Narrower than
 	// InstantOrSorceryOnly, which would also open an instant that
@@ -435,6 +442,16 @@ type PermissionFilter struct {
 	PowerOrToughnessCapped bool `json:"powerOrToughnessCapped,omitempty"`
 	PowerOrToughnessAtMost int  `json:"powerOrToughnessAtMost,omitempty"`
 
+	// PowerAtLeastCapped and PowerAtLeast are "creature spells with power N
+	// or greater" (Thundermane Dragon: "cast creature spells with power 4 or
+	// greater from the top of your library"): a card qualifies when it is a
+	// creature and its power is N or more, judged on the face being cast and
+	// read as PowerOrToughnessAtMost reads it (a characteristic-defining `*`
+	// is worked out by the game; unknown is never "N or more"). The flag says
+	// the clause is there because 0 is a legal N. Additive, and both write
+	// nothing when unset.
+	PowerAtLeastCapped bool `json:"powerAtLeastCapped,omitempty"`
+	PowerAtLeast       int  `json:"powerAtLeast,omitempty"`
 	// PowerCapped and PowerAtMost are "creature spells with power N or
 	// less" (Assemble the Players, #4452): a card qualifies when it is a
 	// creature and its power is N or less. The flag says the clause is
@@ -473,6 +490,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.CardType != "" && !c.HasCardType(strings.ToLower(f.CardType)) {
+		return false
+	}
+	if f.CardTypesAny != "" && !cardHasAnyTypeOf(c, f.CardTypesAny) {
 		return false
 	}
 	if f.SorceryOnly && !c.IsSorcery() {
@@ -527,6 +547,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.PowerOrToughnessCapped && !powerOrToughnessAtMost(&c, f.PowerOrToughnessAtMost) {
+		return false
+	}
+	if f.PowerAtLeastCapped && !powerAtLeast(&c, f.PowerAtLeast) {
 		return false
 	}
 	if f.PowerCapped && !powerAtMost(&c, f.PowerAtMost) {
@@ -756,6 +779,15 @@ type CastPermission struct {
 	// priced offer is the home of an additional cost here.
 	DiscardLandCard bool `json:"discardLandCard,omitempty"`
 
+	// SacrificeLandInAddition is "by sacrificing a land in addition to
+	// paying its other costs" (Exploration Broodship's last line): the
+	// synthesised offer charges the card's printed mana cost and the
+	// sacrifice of a land the caster controls (AlternativeCost.Sacrifice,
+	// named in CastSpellParams.AltCostIDs), so the sacrifice is a cost
+	// and a payoff sees it. Read only with an AltCostKey, as LifeInAddition
+	// is. Additive within a snapshot version.
+	SacrificeLandInAddition bool `json:"sacrificeLandInAddition,omitempty"`
+
 	// SneakCost is the price of a granted sneak (#4680, Ninja Teen's
 	// "Creature cards in your graveyard have sneak {3}{B}"), read only
 	// under AltCostKeyGrantedSneak: the synthesised offer charges it and
@@ -976,6 +1008,12 @@ type CastPermission struct {
 	// that lasts as long as the permanent is that object. Additive within a
 	// snapshot version.
 	GainsSubtypes []string `json:"gainsSubtypes,omitempty"`
+
+	// GainsUntilEndOfTurn is the printed "until end of turn" on those gains
+	// (Thundermane Dragon: "it gains haste until end of turn"): they last to
+	// the end of the turn the cast is made in, rather than for as long as the
+	// permanent is on the battlefield. Additive; false writes nothing.
+	GainsUntilEndOfTurn bool `json:"gainsUntilEndOfTurn,omitempty"`
 
 	// EntersWithCounterKind and EntersWithCounters are "If you cast a
 	// creature spell this way, that creature enters with an additional
@@ -1608,6 +1646,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.DiscardLandCard {
 		out.DiscardFromHand = RetraceDiscardSpec()
 		out.PayLabel = "a land card"
+	}
+	if p.SacrificeLandInAddition {
+		out.Sacrifice = sacrificeALandSpec()
+		out.PayLabel = "a land"
 	}
 	if p.DiscardCard {
 		// ADR 0135 §2: "by discarding a card rather than paying its
@@ -3178,6 +3220,22 @@ func RetraceDiscardSpec() *TargetSpec {
 	}
 }
 
+// sacrificeALandSpec builds the "sacrifice a land" component of a granted
+// offer (CastPermission.SacrificeLandInAddition): one land the caster
+// controls, matched by its effective types. A cost, not a target
+// (CR 601.2h).
+func sacrificeALandSpec() *TargetSpec {
+	return &TargetSpec{
+		Mode:  "permanent",
+		Label: "a land",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return c.IsLand()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
 // discardAnyCardSpec builds the "discarding a card" component of a
 // granted offer (CastPermission.DiscardCard, ADR 0135 §2): any one card
 // from the caster's own hand. A cost, not a target (CR 601.2h); the
@@ -3344,4 +3402,15 @@ func CreatureCounterRemovalCost(n int) *CounterRemovalCost {
 		},
 		Among: true,
 	}
+}
+
+// cardHasAnyTypeOf reports whether c has at least one of the card types
+// in the space-joined lowercase list (PermissionFilter.CardTypesAny).
+func cardHasAnyTypeOf(c Card, types string) bool {
+	for _, t := range strings.Fields(types) {
+		if c.HasCardType(t) {
+			return true
+		}
+	}
+	return false
 }

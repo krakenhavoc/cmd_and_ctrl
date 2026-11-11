@@ -30,6 +30,7 @@ function mount(over: {
   canManage?: boolean;
   gameState?: string;
   onpatch?: (p: Partial<TableSettingsView>) => void;
+  commanders?: boolean;
 }) {
   return render(
     TableSettingsPanel as never,
@@ -38,6 +39,7 @@ function mount(over: {
       canManage: over.canManage ?? true,
       gameState: over.gameState ?? "lobby",
       onpatch: over.onpatch ?? (() => {}),
+      ...(over.commanders === undefined ? {} : { commanders: over.commanders }),
     } as never,
   );
 }
@@ -55,6 +57,30 @@ function control(container: HTMLElement, name: string): HTMLInputElement {
 }
 
 describe("the table settings panel", () => {
+  // ADR 0222 slice 1: the commander damage setting is hidden where no
+  // seat has a commander, and only there.
+  it("hides commander damage at a table with no commanders, and names the format's life", () => {
+    const withCommanders = mount({});
+    expect(
+      withCommanders.container.querySelector('[data-field="commander_damage"]'),
+    ).not.toBeNull();
+    expect(field(withCommanders.container, "starting_life").textContent).toMatch(
+      /Commander is 40\./,
+    );
+    cleanup();
+
+    const standard = mount({
+      settings: { format: "standard", starting_life: 20 },
+      commanders: false,
+    });
+    expect(standard.container.querySelector('[data-field="commander_damage"]')).toBeNull();
+    expect(field(standard.container, "starting_life").textContent).toMatch(/Standard is 20\./);
+    // Everything else is still there.
+    for (const name of ["undo_limit", "starting_life", "bot_pace"]) {
+      expect(standard.container.querySelector(`[data-field="${name}"]`)).not.toBeNull();
+    }
+  });
+
   it("renders every v1 setting", () => {
     const { container } = mount({});
     for (const name of [

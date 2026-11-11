@@ -505,6 +505,27 @@ export const LABEL_SPECS = {
     owners: ["lib/components/TableSettingsPanel.svelte", "routes/Lobby.svelte"],
     doc: "the Planechase table option (ADR 0216 §1): the new-table form's box and the table settings switch, locked once the game starts; offered where the server offers it",
   }),
+  tableFormat: label({
+    name: "Format",
+    kind: "aria",
+    role: "radiogroup",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the new-table form's format picker (ADR 0222 §1): one radio per format, Commander first and chosen by default; the format is fixed once a seat has a deck",
+  }),
+  formatCommander: label({
+    name: "Commander",
+    kind: "text",
+    role: "radio",
+    owners: ["lib/formats.ts"],
+    doc: "the Commander format's name (ADR 0222 §1): the format picker's first radio, and a deck's or a table's format wherever it is named",
+  }),
+  formatStandard: label({
+    name: "Standard",
+    kind: "text",
+    role: "radio",
+    owners: ["lib/formats.ts"],
+    doc: "the Standard format's name (ADR 0222 §1): the format picker's radio, a Standard table's chip and rules line, and a Standard deck's tag in the pickers",
+  }),
   skipToMyTurn: label({
     name: "Skip to my turn",
     kind: "aria",

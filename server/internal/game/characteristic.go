@@ -413,6 +413,13 @@ type Characteristic struct {
 	// when it snapshots every combatant's amount.
 	DamageByToughness bool `json:",omitempty"`
 
+	// DamageByToughnessAlways is DamageByToughness without the "when
+	// greater" clause: "each creature you control assigns combat damage
+	// equal to its toughness rather than its power" (Felothar the
+	// Steadfast, CR 510.1c). combatDamagePower answers with the
+	// toughness even when it is the smaller number.
+	DamageByToughnessAlways bool `json:",omitempty"`
+
 	// DamageAsPositivePower is "if this creature's power is negative, it
 	// assigns combat damage as though its power were positive" (Loot,
 	// the Anomaly, #3505): combatDamagePower answers with the absolute

@@ -197,6 +197,10 @@ func (l *Lobby) persistGameLocked(entry *gameEntry) {
 // how a game that ends over the WebSocket (concede, a state-based
 // loss) gets its ended_at without anybody opening the lobby.
 func (l *Lobby) syncStateLocked(entry *gameEntry) {
+	// The format rides the engine's settings, which a restart restores
+	// from the snapshot; the meta's copy is refreshed wherever the
+	// state is (ADR 0222 §1).
+	syncFormatLocked(entry)
 	live := entry.room.Game.CurrentState()
 	if string(live) == entry.meta.State && (live != game.StateEnded || entry.endedAt != nil) {
 		return

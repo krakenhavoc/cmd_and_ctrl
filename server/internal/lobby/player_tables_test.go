@@ -36,6 +36,8 @@ type tableStack struct {
 	host    *fakeBotHost
 	setups  *tablesetups.SQLStore
 	library decklibrary.Store
+	// cards is the stack's card index, for a test that adds cards.
+	cards *cards.Index
 }
 
 // testDeckSource is the bot decklist every tableStack bot plays.
@@ -87,6 +89,7 @@ func newTableStackWith(t *testing.T) *tableStack {
 		host:      host,
 		setups:    setups,
 		library:   library,
+		cards:     idx,
 	}
 }
 

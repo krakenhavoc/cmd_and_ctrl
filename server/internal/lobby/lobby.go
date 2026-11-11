@@ -36,9 +36,16 @@ import (
 // Errors returned by Lobby methods. Kept as sentinels so HTTP
 // handlers can map them to status codes without string matching.
 var (
-	ErrGameNotFound    = errors.New("lobby: game not found")
-	ErrInvalidInvite   = errors.New("lobby: invalid invite token")
-	ErrGameFull        = errors.New("lobby: game is full")
+	ErrGameNotFound  = errors.New("lobby: game not found")
+	ErrInvalidInvite = errors.New("lobby: invalid invite token")
+	ErrGameFull      = errors.New("lobby: game is full")
+	// ErrFormatDecksLoaded refuses a format change at a table where a
+	// seat already has a deck: the deck was checked against the format
+	// the table had (ADR 0222 §1).
+	ErrFormatDecksLoaded = errors.New("lobby: the format cannot change once a seat has a deck; make a new table for another format")
+	// ErrDeckWrongFormat refuses a built-in deck at a table of another
+	// format.
+	ErrDeckWrongFormat = errors.New("lobby: that deck is built for another format")
 	ErrGameStarted     = errors.New("lobby: game already started")
 	ErrEmptyName       = errors.New("lobby: name is required")
 	ErrSeatTaken       = errors.New("lobby: seat already claimed")
@@ -167,6 +174,13 @@ type GameMeta struct {
 	// §1). Public: the table's seats should see that the result of
 	// their game will be posted with their names.
 	Results bool `json:"results,omitempty"`
+	// Format is the table's format (ADR 0222 §1): "standard", or
+	// omitted for Commander, the default. A cache of the engine's
+	// table settings, which are the authority (syncFormatLocked).
+	Format string `json:"format,omitempty"`
+	// MaxSeats is how many seats the table's format has, omitted at a
+	// four-seat table.
+	MaxSeats int `json:"max_seats,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the

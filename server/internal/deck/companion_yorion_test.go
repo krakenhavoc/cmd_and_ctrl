@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // companion_yorion_test.go — #4128: Yorion, Sky Nomad's companion
@@ -30,7 +31,7 @@ func TestYorionCompanionConditionIsNeverMetInCommander(t *testing.T) {
 	list := companionDeck()
 	y := yorion()
 	list.Companion = &y
-	err := Validate(list)
+	err := Validate(list, game.FormatCommander)
 	ve, ok := err.(*ValidationError)
 	if !ok {
 		t.Fatalf("Validate = %v, want a validation error", err)
@@ -58,10 +59,10 @@ func TestYorionCompanionConditionIsNeverMetInCommander(t *testing.T) {
 // The deck-wide form judges the count, not a fixed answer: a starting
 // deck twenty over the minimum would pass.
 func TestYorionUnmetCountsTheStartingDeck(t *testing.T) {
-	if why := yorionUnmet(make([]cards.Card, commanderDeckSize)); why == "" {
+	if why := yorionUnmet(make([]cards.Card, commanderDeckSize), game.FormatCommander.Spec()); why == "" {
 		t.Error("a 100-card starting deck meets Yorion's condition")
 	}
-	if why := yorionUnmet(make([]cards.Card, commanderDeckSize+yorionExtraCards)); why != "" {
+	if why := yorionUnmet(make([]cards.Card, commanderDeckSize+yorionExtraCards), game.FormatCommander.Spec()); why != "" {
 		t.Errorf("a 120-card starting deck fails: %s", why)
 	}
 }

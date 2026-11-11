@@ -90,7 +90,8 @@
     type LobbyPrimaryKind,
   } from "../lib/tablesPage";
   import type { TableSettingsView } from "../lib/protocol";
-  import { settingsSummary, type TableSettingsPatch } from "../lib/tableSettings";
+  import { settingsSummary, settingsTopics, type TableSettingsPatch } from "../lib/tableSettings";
+  import { FORMATS, formatOf, type FormatID } from "../lib/formats";
   import DeckPicker from "../lib/components/DeckPicker.svelte";
   import BotPicker from "../lib/components/BotPicker.svelte";
   import type { PickerCommit, PickerState } from "../lib/deckPicker";
@@ -313,6 +314,13 @@
   // (owner answer 3: cmd-dev until the plane batches land).
   let wantPlanechase = $state(false);
   const planechaseOffered = devFeature("planechase");
+  // ADR 0222 §1: the new table's format. Commander unless the creator
+  // picks another; the last setup is offered only for the format it
+  // was captured at, so the two can never disagree.
+  let newFormat = $state<FormatID>("commander");
+  const setupFits = $derived(
+    lastSetup !== null && formatOf(lastSetup.settings?.format).id === newFormat,
+  );
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -659,13 +667,14 @@
     busy = true;
     createError = "";
     try {
-      const withSetup = useLastSetup && lastSetup !== null;
+      const withSetup = useLastSetup && setupFits;
       const meta = await createGame(newName.trim(), {
         ...(withSetup ? { setup: "last" as const } : {}),
+        format: newFormat,
         voiceRoom: $community.voice && wantVoiceRoom,
         lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
         results: $community.results === true && wantResults,
-        planechase: $planechaseOffered && wantPlanechase,
+        planechase: $planechaseOffered && wantPlanechase && newFormat === "commander",
       });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
@@ -1016,7 +1025,7 @@
     if (canReadSettings(g)) {
       items.push({
         label: settingsFor === g.id ? "Hide table settings" : "Table settings",
-        title: "undos, starting life, commander damage, table pace, spawning",
+        title: settingsTopics(formatOf(g.format).hasCommander),
         onclick: () => toggleTableSettings(g.id),
       });
     }
@@ -1613,7 +1622,18 @@
       <form class="new-table" aria-label={L.createGame} onsubmit={onCreate}>
         <span class="nt-label">New table</span>
         <div class="nt-row"><NewTableRow bind:name={newName} {busy} /></div>
-        {#if lastSetup}
+        <div class="nt-format" role="radiogroup" aria-label={L.tableFormat}>
+          {#each FORMATS as f (f.id)}
+            <label class="format-opt">
+              <input type="radio" name="nt-format" value={f.id} bind:group={newFormat} />
+              <span>
+                {f.name}
+                <span class="format-sum">{f.blurb}</span>
+              </span>
+            </label>
+          {/each}
+        </div>
+        {#if lastSetup && setupFits}
           <label class="use-setup">
             <input type="checkbox" bind:checked={useLastSetup} />
             <span>
@@ -1657,7 +1677,7 @@
             </span>
           </label>
         {/if}
-        {#if $planechaseOffered}
+        {#if $planechaseOffered && newFormat === "commander"}
           <label class="use-setup">
             <input type="checkbox" bind:checked={wantPlanechase} />
             <span>
@@ -1753,6 +1773,10 @@
                   <span class="chip" class:live={chip.live}>
                     {#if chip.live}<i class="dot ok"></i>{/if}{chip.label}
                   </span>
+                  {#if formatOf(g.format).id !== "commander"}
+                    <!-- ADR 0222 §1: a table of another format says so. -->
+                    <span class="chip">{formatOf(g.format).name}</span>
+                  {/if}
                   <span class="ctx">{contextLine(g, { seat: myNo })}</span>
                 </div>
                 {#if lobby}
@@ -1764,7 +1788,7 @@
                       aria-label={L.tableSettingsLine(rulesText ?? "loading")}
                       aria-expanded={settingsFor === g.id}
                       title={canManageTableFor(g)
-                        ? "table settings: undos, starting life, commander damage, table pace, spawning"
+                        ? `table settings: ${settingsTopics(formatOf(g.format).hasCommander)}`
                         : "the table's settings; only the host can change them"}
                       onclick={() => toggleTableSettings(g.id)}
                     >
@@ -1915,7 +1939,7 @@
                       aria-label={L.tableSettingsLine(rulesText ?? "loading")}
                       aria-expanded={settingsFor === g.id}
                       title={canManageTableFor(g)
-                        ? "table settings: undos, starting life, commander damage, table pace, spawning"
+                        ? `table settings: ${settingsTopics(formatOf(g.format).hasCommander)}`
                         : "the table's settings; only the host can change them"}
                       onclick={() => toggleTableSettings(g.id)}
                     >
@@ -1958,6 +1982,7 @@
                     bind:this={botPicker}
                     gameID={g.id}
                     seat={botSeat}
+                    format={g.format}
                     options={botOptions}
                     prebuilt={prebuiltDecks}
                     onchange={(c) => (botCommit = c)}
@@ -1985,6 +2010,7 @@
                     bind:this={deckPicker}
                     gameID={g.id}
                     playerID={$session.playerID}
+                    format={g.format}
                     shopLinks
                     actions="external"
                     onchange={(st) => (pickerState = st)}
@@ -2000,6 +2026,7 @@
                       settings={tableSettings}
                       canManage={canManageTableFor(g)}
                       gameState={g.state}
+                      commanders={formatOf(tableSettings.format).hasCommander}
                       busy={settingsBusy}
                       error={settingsError}
                       onpatch={(patch) => applyTableSettings(g.id, patch)}
@@ -2463,7 +2490,8 @@
   .nt-error {
     flex: 1 0 100%;
   }
-  .use-setup {
+  .use-setup,
+  .format-opt {
     display: flex;
     align-items: flex-start;
     gap: 6px;
@@ -2471,10 +2499,18 @@
     color: var(--fg);
     max-width: 420px;
   }
-  .use-setup input {
+  .use-setup input,
+  .format-opt input {
     margin: 2px 0 0;
   }
-  .setup-sum {
+  /* ADR 0222 §1: the format radios, one row each like the boxes below. */
+  .nt-format {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .setup-sum,
+  .format-sum {
     display: block;
     font-size: 11.5px;
     color: var(--fg-muted);

@@ -528,6 +528,11 @@ export interface GameView {
   // ADR 0216 §9: a Planechase table's planar state. Absent unless the
   // table plays Planechase. Public to every viewer.
   planechase?: PlanechaseView;
+  // ADR 0222 slice 1: true when no seat brought a commander, which is
+  // when the commander UI is hidden (the command zone tile, the
+  // commander damage grid and setting). Absent at every table with a
+  // commander, so a Commander table is unchanged.
+  no_commanders?: boolean;
   // Stack item announce-time metadata (S13.1). Indexed bottom..top —
   // the corresponding spell card (if any) lives in `stack` at the
   // same index. Empty when the stack is empty.
@@ -6132,6 +6137,10 @@ export interface TableSettingsView {
   // ADR 0216 §1: a Planechase table (a communal planar deck and the
   // planar die). Absent is off. Fixed once the game is active.
   planechase?: boolean;
+  // ADR 0222 §1: the table's format, "standard", or absent for
+  // Commander, the default. Chosen when the table is made; read it
+  // through formatOf (formats.ts).
+  format?: string;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

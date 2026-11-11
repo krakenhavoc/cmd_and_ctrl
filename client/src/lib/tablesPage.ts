@@ -1,5 +1,6 @@
 import type { BotDeckInfo, BotTierInfo, GameMeta, SeatInfo } from "./api";
 import { deckArt, deckIdentity, type DeckArt } from "./deckGrid";
+import { tableSeats } from "./formats";
 import { COMMANDER_JOIN, sameName, type DeckPreview, type PickerCommit } from "./deckPicker";
 import { L } from "./labels";
 import { myGameStatus, relativeDay, type MyGame } from "./myGames";
@@ -115,11 +116,15 @@ export const TABLE_SEATS = 4;
 // seat is open. The lobby renumbers seats when one leaves, so the open
 // ones are the last; a seat number out of range is kept, at the end,
 // rather than dropped.
+//
+// A table of another format has that format's seats (ADR 0222 §1): a
+// Standard table draws two tiles.
 export function lobbySlots(g: GameMeta): (SeatInfo | null)[] {
-  const slots: (SeatInfo | null)[] = Array.from({ length: TABLE_SEATS }, () => null);
+  const seats = tableSeats(g);
+  const slots: (SeatInfo | null)[] = Array.from({ length: seats }, () => null);
   const extra: SeatInfo[] = [];
   for (const p of [...g.players].sort((a, b) => a.seat - b.seat)) {
-    if (p.seat >= 0 && p.seat < TABLE_SEATS && slots[p.seat] === null) slots[p.seat] = p;
+    if (p.seat >= 0 && p.seat < seats && slots[p.seat] === null) slots[p.seat] = p;
     else extra.push(p);
   }
   return [...slots, ...extra];
@@ -273,7 +278,7 @@ export function readiness(g: GameMeta, me: SeatInfo | null, opts: { bots: boolea
   }));
   const seated = g.players.length;
   const ready = g.players.filter(seatReady).length;
-  const open = Math.max(0, TABLE_SEATS - seated);
+  const open = Math.max(0, tableSeats(g) - seated);
   const choosing = g.players.filter((p) => !seatReady(p));
   let status: string;
   if (me && !seatReady(me)) status = "waiting on your deck";
@@ -356,8 +361,8 @@ export function lobbyPrimary(g: GameMeta, v: LobbyViewer): LobbyPrimary {
       label: L.startGame(n),
       disabled: false,
       title:
-        n < TABLE_SEATS
-          ? `start the game with ${n} players; the open ${n === TABLE_SEATS - 1 ? "seat closes" : "seats close"}`
+        n < tableSeats(g)
+          ? `start the game with ${n} players; the open ${n === tableSeats(g) - 1 ? "seat closes" : "seats close"}`
           : "start the game",
     };
   };
