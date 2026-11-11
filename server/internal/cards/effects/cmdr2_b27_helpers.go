@@ -97,6 +97,7 @@ func cmdr2B27IsYourFirstSurveilThisTurn(ev game.Event, source *game.Card, _ game
 func cmdr2B27SurveilPlusTwoMay(label string) game.ReplacementEffect {
 	r := KeywordActionBecomes(game.KeywordActionSurveil, cmdr2B27PlusTwo, label)
 	r.Optional = true
+	r.Label = label
 	return r
 }
 
