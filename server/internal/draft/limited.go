@@ -165,7 +165,7 @@ func (d *Draft) builder() DeckBuilder {
 	if d.cfg.Builder != nil {
 		return d.cfg.Builder
 	}
-	return SimpleDeckBuilder{}
+	return BotDeckBuilder{Seed: d.cfg.Seed}
 }
 
 func (d *Draft) buildTimeout() time.Duration {

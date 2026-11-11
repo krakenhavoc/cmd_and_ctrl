@@ -216,9 +216,9 @@ type Config struct {
 	Mode    Mode
 	// Seats is the size of the draft, MinSeats to MaxSeats.
 	Seats int
-	// Seed is what the packs, and the placeholder bot's picks, are drawn
-	// from. Two drafts with one seed, one Source and the same picks are
-	// the same draft.
+	// Seed is what the packs are drawn from, and what the bot's picks are
+	// a function of. Two drafts with one seed, one Source and the same
+	// picks are the same draft.
 	Seed uint64
 	// PickTimeout is the pick timer. Zero is DefaultPickTimeout.
 	PickTimeout time.Duration
@@ -226,7 +226,7 @@ type Config struct {
 	// seat is a bot.
 	Solo bool
 	// Picker picks for bot seats, for a seat whose timer ran out and for
-	// a seat that is away. Nil is RandomPicker{Seed}.
+	// a seat that is away. Nil is BotPicker{Seed}, the draft bot (#5439).
 	Picker Picker
 
 	// What follows the picks (limited.go, #5440).
@@ -237,7 +237,7 @@ type Config struct {
 	// BestOf is the length of the draft's matches, 1 or 3. Zero is 1.
 	BestOf int
 	// Builder builds a deck for a bot seat and for a person whose build
-	// timer ran out. Nil is SimpleDeckBuilder.
+	// timer ran out. Nil is BotDeckBuilder{Seed}, the draft bot (#5439).
 	Builder DeckBuilder
 }
 
@@ -294,7 +294,7 @@ func New(cfg Config, now time.Time) (*Draft, error) {
 	}
 	d := &Draft{ID: uuid.New(), CreatedAt: now, cfg: cfg, state: StateLobby, picker: cfg.Picker}
 	if d.picker == nil {
-		d.picker = RandomPicker{Seed: cfg.Seed}
+		d.picker = BotPicker{Seed: cfg.Seed}
 	}
 	return d, nil
 }

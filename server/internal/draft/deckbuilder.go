@@ -58,13 +58,26 @@ func IsBasicLandName(name string) bool {
 // DeckBuilder builds a deck from a card pool for a seat no person is
 // building for: a bot seat, and a person whose build timer ran out.
 //
-// It is the seam for slice 5 (#5439), whose bot builds a real deck:
-// the roll-up points Config.Builder at it. A deck that fails the
+// A draft given no builder uses BotDeckBuilder, the draft bot's deck
+// (#5439). A deck that fails the
 // limited check is replaced with SimpleDeckBuilder's, so a draft never
 // stalls on a builder. A DeckBuilder is called with the draft's lock
 // held, so it must not block and must not call back into the draft.
 type DeckBuilder interface {
 	BuildLimitedDeck(pool []Card) LimitedDeck
+}
+
+// BotDeckBuilder is the DeckBuilder a draft uses when it is given none:
+// the draft bot's BuildDeck (#5439), which takes the pool's two best
+// colours by rating, the best cards under a curve check, and lands split
+// by colour weight. The seed is the draft's, so a seeded draft builds the
+// same decks every time.
+type BotDeckBuilder struct{ Seed uint64 }
+
+// BuildLimitedDeck builds the bot's deck.
+func (b BotDeckBuilder) BuildLimitedDeck(pool []Card) LimitedDeck {
+	main, lands := BuildDeck(pool, StandardBasics, b.Seed)
+	return LimitedDeck{Main: main, Basics: lands}
 }
 
 // The shape of the default deck: 23 cards and 17 lands make 40.
@@ -73,7 +86,7 @@ const (
 	simpleDeckLands  = 17
 )
 
-// SimpleDeckBuilder is the default DeckBuilder, and deliberately plain:
+// SimpleDeckBuilder is the fallback DeckBuilder, and deliberately plain:
 // the pool's two most common colours, its 23 cheapest playable cards,
 // and 17 basic lands split by colour. A playable card is one that is
 // not a land and has no colour outside the two.
