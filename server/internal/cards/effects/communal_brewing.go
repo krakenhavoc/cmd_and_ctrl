@@ -26,17 +26,7 @@ func init() {
 	const draw = "Communal Brewing — any number of target opponents each draw a card; put an ingredient counter on this enchantment for it and for each card drawn"
 	const cast = "Communal Brewing — that creature enters with X additional +1/+1 counters, where X is the number of ingredient counters on this enchantment"
 	enters := WhenThisEnters(draw, Do(
-		Instruction(func(ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetPlayer {
-					continue
-				}
-				if err := (DrawCards{Player: t.ID, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		}),
+		Instruction(cmdr2B23EachTargetPlayerDraws),
 		Instruction(func(ctx *Context) error {
 			n := 1 + opponentsDrawsThisResolution(ctx)
 			return CounterOnThis{Kind: cmdr2B23IngredientCounter, N: n}.Apply(ctx)

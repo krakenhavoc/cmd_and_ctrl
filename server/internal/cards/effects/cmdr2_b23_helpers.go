@@ -30,7 +30,7 @@ func cmdr2B23OtherWizardsEnterWithACounter(label string) game.ReplacementEffect 
 				return false
 			}
 			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.IsCreature() && entering.Controller == src.Controller && entering.HasSubtype("Wizard")
+			return ok && entering.IsCreature() && entering.Controller == src.Controller && entering.HasSubtype(src.TextSubtype("Wizard"))
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB(game.CounterPlusOne, 1)
@@ -199,4 +199,18 @@ func cmdr2B23Graft(name string) game.TriggeredAbility {
 		}
 		return AddCounter{Target: to, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 	}), name+" — move a +1/+1 counter onto the creature that entered?"))
+}
+
+// cmdr2B23EachTargetPlayerDraws is "each of those target players draws a
+// card", in target order, for each target still legal (CR 608.2b).
+func cmdr2B23EachTargetPlayerDraws(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		if err := (DrawCards{Player: t.ID, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
