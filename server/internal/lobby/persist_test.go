@@ -46,7 +46,19 @@ func openTestDB(t *testing.T, dir string) *db.DB {
 func newDurableLobby(t *testing.T, dir string) (*Lobby, *ws.RoomManager) {
 	t.Helper()
 	mgr := ws.NewRoomManager(quietLogger(), dir)
-	return NewLobbyWithStore(mgr, NewSQLStore(openTestDB(t, dir))), mgr
+	lb := NewLobbyWithStore(mgr, NewSQLStore(openTestDB(t, dir)))
+	// A table can still be committing when the test body returns (the
+	// sideboarding watcher starts the next game on its own goroutine),
+	// and every commit writes its restore point under dir. Delete shuts
+	// each room's restore gate, which waits out a write in flight and
+	// refuses every later one, so t.TempDir's RemoveAll (registered
+	// before this, so it runs after) never races a writer (#5693).
+	t.Cleanup(func() {
+		for _, r := range mgr.List() {
+			mgr.Delete(r.Game.ID)
+		}
+	})
+	return lb, mgr
 }
 
 // TestInviteSurvivesARestart is the test that makes the feature
