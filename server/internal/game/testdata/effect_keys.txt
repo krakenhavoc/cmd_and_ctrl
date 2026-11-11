@@ -616,6 +616,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/leyline-dowser-milled
 choose choose-cards/lichs-mastery-exile
 choose choose-cards/lightstall-inquisitor-exile
 choose choose-cards/liliana-dreadhorde-general-keep-artifact
@@ -1228,6 +1229,7 @@ drawthen alpharael-discard-two-unless-artifact
 drawthen bonny-pall-clearcutter/put-land
 drawthen brainstorm-put-back
 drawthen brainsurge-put-back
+drawthen cmdr2-b01-brainstone-put-back
 drawthen development-after-draw
 drawthen discard-two-unless-artifact
 drawthen discard-two-unless-basic-land
@@ -2350,6 +2352,7 @@ tail lady-loki/spell-exiled
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail level-up/then-draw-if-power-10
+tail leyline-dowser/after-mill
 tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost

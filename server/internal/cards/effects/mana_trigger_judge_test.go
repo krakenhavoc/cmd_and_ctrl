@@ -114,6 +114,8 @@ func buildJudgeBoard(t *testing.T, key, chosen string, monarch bool) (*game.Game
 			InstanceID: id, Name: "Trigger " + key, TypeLine: "Enchantment — Aura", OracleID: oracle,
 			ActiveFace: face, Owner: p.ID, Controller: p.ID, ChosenColor: chosen,
 			AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: forest.InstanceID},
+			// Barbflare Gremlin's trigger needs "this creature is tapped".
+			Tapped: oracle == c2BarbflareOracle,
 		}
 		pushBattlefieldCardWithTimestamp(g, c)
 		triggerSources = append(triggerSources, id)
