@@ -20,7 +20,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OffspringToken("Prosperous Bandit"),
 			WheneverThisDealsCombatDamageToAPlayer("Prosperous Bandit — create that many tapped Treasure tokens",
-				Do(cmdr2S18TappedTreasuresForDamage{})),
+				Do(cmdr2S18TappedTreasuresForDamage{Count: func(ctx *Context) int { return ctx.Trigger().Event.Amount }})),
 		},
 	})
 }

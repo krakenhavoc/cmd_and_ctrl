@@ -12,17 +12,26 @@ import (
 // tokens": one per point of the combat damage that triggered the ability
 // (Prosperous Bandit). Its footprint is CreateTokensForEach's: a token step
 // entering tapped changes only the new token's own state.
-type cmdr2S18TappedTreasuresForDamage struct{}
+type cmdr2S18TappedTreasuresForDamage struct {
+	// Count is how many: the combat damage that triggered the ability.
+	Count func(ctx *Context) int
+}
 
-func (cmdr2S18TappedTreasuresForDamage) Apply(ctx *Context) error {
-	n := ctx.Trigger().Event.Amount
+func (s cmdr2S18TappedTreasuresForDamage) Apply(ctx *Context) error {
+	if s.Count == nil {
+		return nil
+	}
+	n := s.Count(ctx)
 	if n <= 0 {
 		return nil
 	}
 	return CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: n}.Apply(ctx)
 }
 
-func (cmdr2S18TappedTreasuresForDamage) footprints() ([]game.FootprintStep, bool) {
+func (s cmdr2S18TappedTreasuresForDamage) footprints() ([]game.FootprintStep, bool) {
+	if s.Count == nil {
+		return nil, false
+	}
 	key, manual, keywords := game.FootprintTokenOf(TreasureToken())
 	return []game.FootprintStep{
 		condStep(game.FootprintCondBoard, 0),

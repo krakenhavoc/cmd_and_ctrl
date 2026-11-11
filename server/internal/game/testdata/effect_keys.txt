@@ -488,6 +488,7 @@ choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
+choose choose-cards/cmdr2-s18-arthur-marigold-knight-creature
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -1345,6 +1346,7 @@ option option-pick/choose-option-as-enters
 option option-pick/choose-player-as-enters
 option option-pick/choose-second-player-as-enters
 option option-pick/cloak-and-dagger-entwined-choice
+option option-pick/cmdr2-s18-arthur-marigold-knight-attack
 option option-pick/coin-of-fate-opponent
 option option-pick/court-of-ambition-answer-3
 option option-pick/court-of-ambition-answer-6
@@ -1520,6 +1522,8 @@ payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/chaos-spewer-blight
+payunless pay-unless/cmdr2-s18-insatiable-frugivore-repeat
+payunless pay-unless/cmdr2-s18-killer-service
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
@@ -1742,6 +1746,7 @@ run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/cmdr2-s18-killer-service-rhino
 run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
@@ -2094,6 +2099,7 @@ tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
 tail cmdr-b9/gain-haste-until-eot
 tail cmdr-b9/then-proliferate
+tail cmdr2-s18-arthur-marigold-knight/entered
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
@@ -2575,6 +2581,7 @@ tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
+tail sacrificed-one/prompt-run/cmdr2-s18-killer-service-rhino
 tail sacrificed-one/prompt-run/comet-crawler-pump
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
