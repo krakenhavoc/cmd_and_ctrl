@@ -2376,6 +2376,7 @@ frozenEntries[].event.auraHost.Mode	number:int
 frozenEntries[].event.auraHost.Slot	number:int
 frozenEntries[].event.auraHost.epoch	number:int
 frozenEntries[].event.auraHost.splice	number:int
+frozenEntries[].event.auraHostCreaturesOnly	bool
 frozenEntries[].event.auraHostFixed	bool
 frozenEntries[].event.auraHostSettled	bool
 frozenEntries[].event.canceled	bool
@@ -20474,6 +20475,7 @@ movesAwaitingTokens[].auraHost.Mode	number:int
 movesAwaitingTokens[].auraHost.Slot	number:int
 movesAwaitingTokens[].auraHost.epoch	number:int
 movesAwaitingTokens[].auraHost.splice	number:int
+movesAwaitingTokens[].auraHostCreaturesOnly	bool
 movesAwaitingTokens[].auraHostFixed	bool
 movesAwaitingTokens[].auraHostSettled	bool
 movesAwaitingTokens[].canceled	bool
@@ -45987,6 +45989,7 @@ pendingChoices[].replacementResume.event.auraHost.Mode	number:int
 pendingChoices[].replacementResume.event.auraHost.Slot	number:int
 pendingChoices[].replacementResume.event.auraHost.epoch	number:int
 pendingChoices[].replacementResume.event.auraHost.splice	number:int
+pendingChoices[].replacementResume.event.auraHostCreaturesOnly	bool
 pendingChoices[].replacementResume.event.auraHostFixed	bool
 pendingChoices[].replacementResume.event.auraHostSettled	bool
 pendingChoices[].replacementResume.event.canceled	bool

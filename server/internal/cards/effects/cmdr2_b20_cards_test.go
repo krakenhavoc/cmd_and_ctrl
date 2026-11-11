@@ -271,3 +271,44 @@ func TestCmdr2B20SionaMakesASoldierWhenYourAuraAttachesToYourCreature(t *testing
 		t.Errorf("%d Soldiers after moving the Aura to another creature of mine, want 2", soldiers())
 	}
 }
+
+func TestCmdr2B20RetetherReturnsEachAuraOntoACreatureOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	first := ahPacifism(me)
+	second := ahPacifism(me)
+	animate := ahAnimateDead(me)
+	theirs := ahPacifism(opp)
+	// A creature card in a graveyard is a host for Animate Dead but not for Retether.
+	b17GraveyardCard(opp, "Gy Bear", "Creature — Bear", "{1}{G}")
+	rock := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Rock", TypeLine: "Artifact", Owner: opp.ID, Controller: opp.ID})
+	a := pushTribalCreature(g, opp.ID, "Bear A", "Creature — Bear", 2, 2)
+	b := pushTribalCreature(g, opp.ID, "Bear B", "Creature — Bear", 3, 3)
+
+	castCatalogSpell(t, g, "Retether", "Sorcery", cmdr2Retether, nil)
+	passPriorityAroundTable(t, g)
+	c := auraHostChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the first Aura asks for its host")
+	}
+	if len(c.PickTargetPlayers) != 0 || hasID(c.PickTargetCards, rock) {
+		t.Errorf("a player or a noncreature was offered as a host: %+v", c)
+	}
+	answerAuraHost(t, g, me.ID, cardRef(a))
+	if auraHostChoiceFor(g, me.ID) == nil {
+		t.Fatal("the second Aura asks its own question")
+	}
+	answerAuraHost(t, g, me.ID, cardRef(b))
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{first, second} {
+		if !g.Battlefield.Contains(id) {
+			t.Fatalf("a Pacifism did not return")
+		}
+	}
+	if g.Battlefield.Contains(animate) || !me.Graveyard.Contains(animate) {
+		t.Error("Animate Dead returned though it could only enchant a creature card in a graveyard")
+	}
+	if g.Battlefield.Contains(theirs) {
+		t.Error("an Aura card from another player's graveyard returned")
+	}
+}
