@@ -1,0 +1,444 @@
+{
+ "set": "vow",
+ "mechanics": [
+  {
+   "name": "Blood tokens",
+   "exists": true,
+   "evidence": "grep 'Blood' cards/effects/tokens.go: BloodToken() / printedBloodToken (CR 111.10g); 'Blood token' in 8 non-test effect files (glass_cast_heart.go, transmutation_font.go, kamber_the_plunderer.go ...). 'Whenever you sacrifice a <Food/Clue/Treasure>' has 13 precedent files (rapacious_guest.go, lonis_genetics_expert.go); SacrificeN / SacrificeSubtype in activated.go."
+  },
+  {
+   "name": "Cleave",
+   "exists": true,
+   "evidence": "grep 'Cleave': effects.Cleave(cost, targets) in cards/effects/alternative_cost.go, AlternativeCost.Targets in game/alternative_cost.go (CR 702.148); catalog cards wash_away.go, dread_fugue.go, inspired_idea.go, alchemists_gambit.go. A {X} alternative cost is covered by game/cast_cost_test.go TestAlternativeCostAndTheValueOfX."
+  },
+  {
+   "name": "Training",
+   "exists": true,
+   "evidence": "grep 'Training(': cards/effects/training.go Training(label) (CR 702.149a), used by hopeful_initiate.go and warriors_resolve.go. 'trains' (CR 702.149c) has no hook: grep 'this creature trains' and 'Trained|EventTrain' in game and effects found nothing; one card (Savior of Ollenbock), watch item in batch 9."
+  },
+  {
+   "name": "Exploit",
+   "exists": true,
+   "evidence": "grep 'Exploit': cards/effects/exploit.go Exploit(cardName, payoff BodyRef) (CR 702.110), used by overcharged_amalgam.go. No engine event: grep 'Exploit' in internal/game found 0 files, so another permanent cannot watch an exploit (seam s2)."
+  },
+  {
+   "name": "Transforming double-faced cards",
+   "exists": true,
+   "evidence": "grep 'Transform' in internal/game: LayoutTransform, TransformPermanentForEffect, ReturnFromGraveyardTransformedForEffect, ExileAndReturnTransformedForEffect (game/transform.go); 232 effect files; 'transforms into' triggers in afflicted_deserter.go, ashling_rekindled.go."
+  },
+  {
+   "name": "Daybound / nightbound",
+   "exists": true,
+   "evidence": "grep 'Daybound': KeywordDaybound in internal/game, docs/adding-cards.md 'Day and night' (ADR 0132). No card of the input uses it."
+  },
+  {
+   "name": "Disturb",
+   "exists": true,
+   "evidence": "grep 'Disturb': 35 effect files, game tests TestDisturbCastsTheBackFaceFromTheGraveyard. No card of the input uses it."
+  },
+  {
+   "name": "Soulbond (VOC)",
+   "exists": false,
+   "evidence": "grep -rni 'soulbond' over server/internal, docs and client/src: 0 hits. grep 'PairedWith|paired with another': 0 hits (the 11 'paired' hits in effects are unrelated prose). Seam s1."
+  },
+  {
+   "name": "Melee (VOC)",
+   "exists": true,
+   "evidence": "grep 'Melee': KeywordMelee, resolveMeleeItems in internal/game; 'have melee|has melee' in glory_to_the_empire.go, titania_proud_pummeler.go."
+  },
+  {
+   "name": "Affinity for Spirits (VOC)",
+   "exists": true,
+   "evidence": "grep 'AffinityFor': cards/effects/self_cost_modifier.go AffinityFor(label, match), 40 files."
+  },
+  {
+   "name": "Partner with (VOC)",
+   "exists": true,
+   "evidence": "grep 'PartnerWith': 21 effect files; docs/adding-cards.md 'Partner with (CR 702.124j, #2142)'."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Add soulbond: pairing two creatures",
+   "clause": "Soulbond (You may pair this creature with another unpaired creature when either enters. They remain paired for as long as you control both of them.) / As long as <this> is paired with another creature, each of those creatures has \"...\"",
+   "why": "No pairing state exists. Needs (CR 702.95a-e): a paired-with link on game.Card (additive snapshot field), the two triggers (this enters; another creature enters while this is unpaired) with an intervening 'both unpaired' check and a may-pair choice at resolution, unpairing when either changes controller, stops being a creature or leaves the battlefield, a 'paired' predicate for the conditional layer-6 grant to both creatures (ADR 0093 GrantAbilities), and a protocol/client field so the table shows the pair. Expect game.Card + a new game/soulbond.go, protocol/view.go, effects/soulbond.go, and a client chip.",
+   "checked": "grep -rni 'soulbond' server/internal docs client/src: 0 hits. grep -rniE 'PairedWith|paired with another' game protocol client/src: 0 hits. grep -il 'paired' cards/effects: 11 files, all unrelated prose (activated.go, ashnods_altar.go ...).",
+   "size": "large",
+   "cards": [
+    "a41e632f-9d36-44d2-b1dd-e17df0d2486e",
+    "172b94a0-2801-4623-aed8-902591c2d591",
+    "95157a46-6e0a-4800-93d3-46d2842464db",
+    "d18dfca7-2947-4308-a9ef-501e1b4843f4",
+    "bf9a6242-b608-46ef-a059-7e757dd52e9b"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Make exploiting an event other permanents can watch",
+   "clause": "Whenever a creature you control exploits a nontoken creature, create a 2/2 black Zombie creature token.",
+   "why": "Exploit is modelled in cards/effects/exploit.go as a reflexive trigger private to the exploiting card (exploitSacrificed -> ReflexiveTrigger); nothing is published, so Skull Skaab cannot see another creature's exploit, or tell that the sacrificed creature was a nontoken. Needs an event (exploiter, sacrificed object with last-known information) raised when the sacrifice settles, in game's event kinds and Exploit's keyed run. The other seven exploit cards use the existing Exploit(cardName, payoff) as is and ride with this item because they share the helper.",
+   "checked": "grep -rl 'Exploit' server/internal/game: 0 files. grep -rnE 'EventExploit|Exploited' game: 0 hits. grep 'exploits a' cards/effects: only exploit.go and its test. Exploit users on develop: overcharged_amalgam.go.",
+   "size": "small",
+   "cards": [
+    "c73839bf-7500-4fd4-aa2b-e2e2e157784d",
+    "3047ad53-1fbd-4b01-bf75-a3e633c863fe",
+    "18dd694f-e239-4603-85fd-b34b028ff6a4",
+    "8bd41805-5903-4f3f-927e-2391f0ab9478",
+    "e0f47fe2-9e97-400e-98c1-a80ca8be66f3",
+    "7932ddef-b274-4f56-be7f-72e82d17fc59",
+    "69c54156-255b-40d9-9c63-4cb9099aa859",
+    "eedbc164-032c-420f-ac59-bd2675ff1b69"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Return a card transformed, attached to a named host",
+   "clause": "When enchanted creature dies, return this card to the battlefield transformed under your control attached to target opponent.",
+   "why": "game.ReturnFromGraveyardTransformedForEffect(cardID, controller, tapped, counters) (game/transform.go:565) has no host parameter. Without one the CR 303.4f entry choice (game/aura_host.go) asks the controller to pick any player for the back face's 'Enchant player', which is untargeted and lets the Curse go on yourself: stronger and different from printed. Needs an AttachedTo (a TargetRef of kind player) on the transformed-return path, as ZoneEntryOptions.AttachedTo / ReturnFromGraveyardTogether.AttachedTo already give the untransformed paths, and CR 303.4i when the host is illegal.",
+   "checked": "grep -n 'AttachedTo' game/transform.go game/exile_return_transformed_counter.go: 0 hits. grep -liE 'attached to target opponent|transformed under your control attached' cards/effects: 0 files. docs/adding-cards.md 'Auras put onto the battlefield without being cast (#3158)' lists AttachedTo only on SearchLibrary, ReturnFromGraveyardTogether, PutOntoBattlefieldTogetherKeyedForEffect and TokenEntryOptions.",
+   "size": "small",
+   "cards": [
+    "93cddbad-92ef-4b30-a0e7-981aee714bce"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Simple creatures, tricks and removal",
+   "shared": "No new helper expected: effects.Do primitives (pump until end of turn, destroy, deal damage, gain life, scry), WhenThisEnters / WhenThisDies from triggers_common.go, activated.go for the sorcery-speed abilities. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "4f0ec90b-e5a0-49bd-8fa0-9be6ba259a62",
+    "6ec9a14a-0a62-4f8a-9147-3cab01411a65",
+    "2a6c7826-dcfe-4029-894e-6c82c4dd84b7",
+    "c804ac8e-7427-43c6-b496-3ee6de192f03",
+    "fa7c13c0-350b-4ed6-8c16-590d2b988184",
+    "6fd5f773-e53e-4a7d-9093-dddd9b2e741f",
+    "94c98a3b-9c3e-497f-b954-8f2248ca01ac",
+    "13b0a3f3-04a5-465f-898b-13a28f795a16",
+    "fbb3f959-ded7-4570-bacf-0e1394dbef80",
+    "612ea70d-f4f2-4909-a025-218161ae1059",
+    "1d789ccd-8192-41b1-a5bb-1e2174657698",
+    "41c06726-0360-4488-8dc3-ec257386a372",
+    "b1e76ce9-6f39-419c-99e3-ede2dfa4858c"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Simple creatures with one trigger or condition",
+   "shared": "Precedents: 'can't attack alone' attack_limits.go / pet_sehlat.go; 'greatest toughness among' glint_weaver.go; 'if you gained life this turn' (Courier Bat) is the tally batch 6's Markov Purifier and batch 4's Restless Bloodseeker also read: use the existing life-gained-this-turn read, do not add one. Arm the Cathars is three distinct targets with 'up to one other' twice: must be castable by the probe in server/internal/legal with one target. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "d50f1ff7-d2bc-4e36-876d-77648f447f5b",
+    "a9f111aa-5d34-4317-9a03-35cd94a888c7",
+    "d5377597-3454-4636-8563-7e6a5544e36a",
+    "a16eeef9-e03c-4ebb-b986-325252a9491f",
+    "e86279ba-cb22-4754-90f4-38354657b8fa",
+    "ed7a2ee0-289d-4e5f-92e0-1539395baf33",
+    "4c912e9a-21f9-4058-b28c-43f319e35d09",
+    "c1f1ca09-897a-434c-bbb1-e4ad4a1547aa",
+    "d714dc46-2db2-439f-b558-2b69d5c36b46",
+    "d8ff239c-cd71-4cd2-9e96-792a116989ca",
+    "e711a2d6-008d-4e7b-986e-f34805165679",
+    "14a555eb-9720-45b4-9eb5-77b739e1045c",
+    "c6a1a91f-46b9-4e41-a3d3-3423b02c42a5"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Blood tokens: plain makers",
+   "shared": "effects.BloodToken() in tokens.go (CR 111.10g) and the existing create-token primitive; precedents glass_cast_heart.go, transmutation_font.go, kamber_the_plunderer.go. Every card here only CREATES Blood; sacrificing Blood is batch 4 and counting it is batch 5, and the sentence 'create a Blood token' appears in all three. Ceremonial Knife grants a trigger to the equipped creature (ADR 0093 grant). Sigarda's Imprisonment's activated ability belongs to the Aura. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "417e798d-9ca6-4cd0-adb4-f61d3becb201",
+    "219cf182-0942-4569-91e9-9bc9bb1d06d0",
+    "5a3f9c4d-20a8-46aa-9cf3-3916f56a7906",
+    "3c0be888-0d66-4bad-84f4-90c3934915d7",
+    "cef82674-1f61-407b-801b-a76a3803e598",
+    "abfa5753-8c02-4e2f-8f98-b0636907293a",
+    "db221948-fcb9-4ef9-ae69-70266235dd04",
+    "a2743cb6-564d-43f1-99cc-4ba3ceb2e282",
+    "56c78349-e4fa-48ba-ae8e-d2312ae6edc6",
+    "aff9a568-2848-4614-a28b-b1ea84f7f0b7",
+    "e6e7b5ba-ea10-4f53-8afc-045aa1906c6b",
+    "105cea6e-18e9-4dec-a533-0dca4d41320b",
+    "574230c7-b949-4c90-b107-c26458a6e469"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Blood tokens: sacrificing and counting them",
+   "shared": "One shared vocabulary for this batch only: a Blood-token predicate, 'sacrifice a/two Blood tokens' as a cost (SacrificeN / SacrificeSubtype in activated.go) and as a 'you may ... if you do' (maySacrificeOne), and 'whenever you sacrifice a Blood token' (precedent rapacious_guest.go, lonis_genetics_expert.go for Food/Clue; 'one or more ... triggers only once each turn' is docs '\"This ability triggers only once\" (#5245)'). Restless Bloodseeker is a transforming DFC (TransformPermanentForEffect) kept here for the sacrifice cost; batch 14/15 hold the other DFCs. Strefan: 'each player who lost life this turn' (24 precedent files, bloodtithe_collector.go) and 'put ... from your hand onto the battlefield tapped and attacking' (kinscaer_sentry.go, minion_of_the_mighty.go). Anje's cost 'Sacrifice another creature or a Blood token' is one sacrifice with an either-or predicate: watch item, stop and report if SacrificeN cannot express it. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "32845ed6-2328-462e-be3a-579589748588",
+    "7e165b4e-4c8f-4a0f-bd6e-7b0a15b12d1d",
+    "2d338aa5-22bc-4cc4-a1e0-cc5018ce001e",
+    "86360908-6b8b-4c1c-9e10-4f3d389aaa3e",
+    "35553c2a-0150-49e4-81da-f356c6a17253",
+    "940080ce-c504-48c8-a763-326fef907217",
+    "7aef5d2e-b66d-4822-b563-44d21d008272",
+    "1829f1dc-1fa9-4361-b318-d4dee280e6fd",
+    "3cc745d2-5021-43ff-ace8-35011011e62a",
+    "419a8ab2-cff6-4811-a559-8791c9bb3d8e",
+    "7292272d-6511-466b-aadd-c4fe7ed8df09"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Blood and Vampires: counted amounts and rules-heavy cards",
+   "shared": "Arterial Alchemy is Gemcutter Buccaneer's shape: AreAlsoEquipment + granted equip/static bundles in granted_equipment.go. 'Excess damage' (Lacerate Flesh): 16 precedent files (archaics_agony.go). Odric counts keywords among creatures you control: no file with that sentence was found (grep 'from among flying, first strike'), read the post-layer keywords and count each once. 'Whenever you create a Blood token' (Voldaren Bloodcaster, a DFC): precedents 'Whenever you create one or more tokens' rosie_cotton_of_south_lane.go, staff_of_the_storyteller.go. Markov Enforcer: 'a creature dealt damage by this creature this turn dies' reads game.PermanentDealtDamageToPermanentThisTurn (dealt_damage_by.go). Vampires' Vengeance reads as a board wipe: declare its Sweep; 'non-Vampire' through TextSubtype. Watch item: Midnight Arsonist's 'up to X target artifacts without mana abilities' has no precedent (grep 'without mana abilit': 0); game.ManaAbilitiesOf(c) can serve as the predicate, and the 'up to X targets' spec must pass the probe in server/internal/legal; stop and report if it does not fit. 'number of Vampires you control' is shared by Midnight Arsonist and Dominating Vampire. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "201c8de7-9675-475b-8f9e-7b1935234488",
+    "690f79f3-e6a5-4542-8401-61a9bf645d55",
+    "6b384c3c-0d6b-4bba-b4c7-5af8b32bdf1c",
+    "3a82e724-28f6-430f-a474-ab4276197963",
+    "e262ea6f-c8c7-45c7-a9a6-29dcbe6300a4",
+    "dfc982a2-9ae8-4206-a2d7-4dcfcde02451",
+    "a720f3d3-c2d7-4e50-8cc6-600120380e9c",
+    "145ef633-a2e0-4bd9-a866-5767821eb44f",
+    "d9ee7916-2c9d-4489-8dd8-86929b09c6ea"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Auras, Equipment, artifacts and life gain",
+   "shared": "Bride's Gown and Groom's Finery are one helper (a conditional static reading 'an Equipment named X is attached to a creature you control'; no precedent file, grep 'Equipment named' found only unrelated clever_concealment.go). Heron of Hope: angel_of_vitality.go / leyline_of_hope.go replacement (needs a Label). Honeymoon Hearse is a Vehicle with no crew: 'Tap two untapped creatures you control' cost (conspire.go, raiding_schemes.go) and 'becomes an artifact creature until end of turn' (13 files). Investigator's Journal is a Clue by subtype (tamiyos_journal.go). Fleeting Spirit: exile and return at the beginning of the next end step. Creepy Puppeteer: 'attacked with exactly one other creature this combat' (near precedents illicit_masquerade.go, love_on_the_battlefield.go). Watch item: Boarded Window's 'if you were dealt 4 or more damage this turn' counts combat and noncombat damage; Game.CombatDamageTakenThisTurn (turn_tally.go) covers combat only and grim_repriser.go reads noncombat from this turn's events; stop and report if no total can be read. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "63e6c80a-a7c7-4c98-b760-271c36425dd1",
+    "b7d2feda-1a0e-4b62-be6d-a8dec7d8ea31",
+    "e0717287-9bff-446b-838d-6fc0adccc768",
+    "87925405-072b-49d6-97c0-fc3a13c10d07",
+    "3e159175-78e5-40df-8fe9-e694938e7222",
+    "22e0e822-c4aa-4ec1-b7e4-0c1c869ef71b",
+    "f0c4414f-f153-40f6-a3b3-94bcbf1d3e29",
+    "f297648b-0dda-4c58-a3eb-fdabdfb42177",
+    "01e742ed-660c-43c6-b393-e589a54cbe1b",
+    "d28eac97-f38a-4d2a-aeae-e758bd3ecf4e",
+    "bc79eb3c-33e2-4820-a59c-92a6271fd725",
+    "7bb3c3b8-25b7-4c48-aa41-dcdcebbc3d5e",
+    "bc9ac394-15b6-4d95-acca-5dc247235d2b"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Creature-type words: Wolves, Vampires, Zombies, Spirits",
+   "shared": "Every card names a creature type in its text: read each through source.TextSubtype / ctx.TextSubtype (the guard that failed last wave). 'Wolf or Werewolf' is one predicate for Hungry Ridgewolf, Packsong Pup and Runebound Wolf; the same words appear in Lunar Rejection (batch 8, cleave). Kessig Wolfrider's 3/2 red Wolf token is this batch's only new token (TokenCard). Gift of Fangs: one static with an either-or (+2/+2 if a Vampire, otherwise -2/-2). Markov Retribution: 'choose one or both', second mode has two targets; Aim for the Head and Sawblade Slinger are modal; each must be castable by the probe in server/internal/legal. Ascendant Packleader names no type: a conditional enters-with counter and a cast trigger on mana value 4 or greater. Hamlet Vanguard: ward {2} plus 'enters with two +1/+1 counters for each other nontoken Human'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "5a7cd356-c07b-47dd-b089-8ecdd0e15581",
+    "cd796e12-c422-4869-8d59-794600425381",
+    "955e4c54-14c4-49bb-94e1-c6cc800c6d91",
+    "d9c42e56-1818-4b73-9cd6-1c5aaf6a5b56",
+    "7e81853c-d0c0-40bc-80fc-13a5964878b2",
+    "fa0bff4f-af97-4733-b9d3-a0bc9ef1e2ca",
+    "bae41d41-9dbe-4d6b-bf5d-8a7d7041462c",
+    "24ac7e7e-b60d-4965-91c1-7ea7e6387737",
+    "b191ae0c-7d54-459f-abe3-aab5d792e514",
+    "901f0a8f-7462-4970-8d21-265c8c0188e6",
+    "df7397b6-9a37-4012-8677-ae8e3b7c4bc3",
+    "2ee4f7ba-7238-44b5-8315-9f50502ed796",
+    "3a9ca9b2-0085-41de-9c08-60aaa8122da2"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Cleave",
+   "shared": "effects.Cleave(cost, targets) in alternative_cost.go; precedents wash_away.go (target clause swapped), dread_fugue.go, inspired_idea.go, alchemists_gambit.go (resolution branches on StackItem.AltCost == \"cleave\"). Path of Peril is a board wipe on both costs: declare its Sweep. Lunar Rejection's 'Wolf or Werewolf' goes through TextSubtype (same words as batch 7). Watch item: Lantern Flare's cleave cost is {X}{R}{W} and removes 'X is the number of creatures you control', so X is announced only on the cleave cast; game/cast_cost_test.go TestAlternativeCostAndTheValueOfX covers a {X} alternative cost, but no catalog card uses one; stop and report if the announce or the client picker does not fit. Dig Up cleaved has no reveal and searches for any card. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "8651da8e-9b2c-4530-a521-aea490ad88d4",
+    "ae96fe7e-8d89-4f44-9cc4-3c9b124fdc4b",
+    "83094dd2-b8e9-4753-a8a0-657b446def60",
+    "06a1c404-d76f-4206-8740-7ad7488fac33",
+    "d2f693d9-f338-41d6-b7e2-ddaa5f4bcc3b",
+    "d9763c75-75f7-4766-8cca-84c899796e3c",
+    "d41987b0-2ea0-4cc7-8608-70c486db76eb",
+    "378567f8-7aef-42b6-853e-8591641052e8"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Training and +1/+1 counters",
+   "shared": "effects.Training(label) in training.go; precedents hopeful_initiate.go, warriors_resolve.go. Torens's token is a 1/1 green and white Human Soldier that carries Training (a tokenTemplate with the trigger). 'put its counters on target creature' (Parish-Blade Trainee): 11 precedent files (broodguard_elite.go). 'one or more +1/+1 counters are put on ... triggers only once each turn' (Cloaked Cadet): docs '#5245'. Sigardian Paladin: 'as long as you've put one or more +1/+1 counters on a creature this turn'. Watch item: Savior of Ollenbock's 'Whenever this creature trains' (CR 702.149c: when a resolving training ability puts one or more +1/+1 counters on it) has no hook (grep 'trains': 0). Build it the way exploit.go builds 'exploits a creature': a keyed reflexive trigger raised by the training resolution only when the counter really went on. Its target is 'up to one other target creature from the battlefield or creature card from a graveyard' (precedent taskmaster_mercenary_mimic.go), exiled linked, returned by a leaves-the-battlefield trigger. Stop and report if the reflexive shape does not fit. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "40d6e1ff-995b-42fc-8146-8d5e5f1adcd9",
+    "08a40717-c272-42e6-adb1-0148614b1202",
+    "e1ca5c24-bbd8-4eed-bb2b-17163f90e72b",
+    "8e5e6f1d-4945-4074-a33e-c0e8b6b24a47",
+    "e1733392-1402-458b-bbc7-673d733c731c",
+    "fda06d9e-d17f-4bb6-916b-06116e47c8e8",
+    "1857dc32-8ff1-4519-b1ca-480a5c2d3b3c",
+    "2cb96408-9195-4e41-ad9a-f8c74fbad083",
+    "7a8fa68b-8c87-4ecd-ac29-50fd90c62159",
+    "472756f7-7fb8-4630-be14-d78bb9c99157",
+    "ae6dc45c-b8c9-4cbf-892f-8c00f4199aaf"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "Graveyard value: Zombies, self-mill and recursion",
+   "shared": "Graveyard-activated abilities ('Exile this card from your graveyard: ...', 'Return this card from your graveyard ...') are docs 'Abilities from the hand (#660)' siblings; Screaming Swarm puts itself 'second from the top' (library_order.go TopDepth). Dying to Serve: BlackZombieToken() in tokens.go, entering tapped, 'triggers only once each turn'. Cobbled Lancer: additional cost 'exile a creature card from your graveyard' (additional_cost.go). Witness the Future: 'shuffles up to four target cards from their graveyard' is quandrix_command.go / target_relation_players_graveyard.go. Retrieve exiles itself on resolution. Archghoul of Thraben: 'Zombie' through TextSubtype. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "575ffeb4-6d12-4f69-bcc9-15db325daac1",
+    "200bbf1d-835d-4d61-a6ab-a0b2abfbed79",
+    "e11b2b6e-3819-4dcb-b64e-2dfe6a6b049d",
+    "3b97794a-3aaa-45a6-9cad-f1b768615b6d",
+    "5f4ad578-f2c4-47f6-8080-8fbc17383f6f",
+    "2b719057-1bc0-4c3a-97c3-8377844570dd",
+    "7e484372-a052-4df6-a6b2-2c6accccabef",
+    "5ea5d171-a7b8-4269-9405-d2f4ccf0cbcb",
+    "db4f67a9-6b47-4abe-9367-718da9e0609e",
+    "5187c0b2-1996-42ea-bd77-3031b3add596",
+    "7594d892-1589-4643-a72a-2cfb2730a83d",
+    "fc7f00ad-7cc1-4be4-9924-16531e4fb829",
+    "157a4cba-b2e6-4c42-b7dc-62db19625c9c"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Green: Insects, lands and toughness",
+   "shared": "The 1/1 green Insect token is made by four cards, all here (Crawling Infestation, Vilespawn Spider, Hiveheart Shaman, Old Rutstein): one token helper. Old Rutstein also makes Treasure and Blood (both exist in tokens.go). Ancient Lumberknot: 'assigns combat damage equal to its toughness' for a subset is ghalta_the_immovable.go / bedrock_tortoise.go. Hiveheart Shaman: 'doesn't share a land type with a land you control' (search_rules.go, myriad_landscape.go) and 'basic land types among lands you control' (attack_tax.go). Glorious Sunrise: 'target land gains \"{T}: Add {G}{G}{G}\" until end of turn' (princess_yue.go, hydro_man_fluid_felon.go). Cultivator Colossus: 'repeat this process' (14 files, claim_jumper.go). Nature's Embrace: 'Enchant creature or land', the land half grants a mana ability (docs 'Adding a mana ability'). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "a42262b8-8a26-4570-a6ee-24b239d095fc",
+    "3e969073-76cc-4a2c-9abd-3a4094488fe5",
+    "c3780529-d47e-48dc-86f6-c1a282c3b656",
+    "8f5ffb0b-0585-4a37-8048-eda53990d1dd",
+    "e05029b4-552d-4691-a5c4-885284fb1636",
+    "4d8505d3-c8a1-4850-95d4-5ddb8ad49770",
+    "844c1024-db80-4287-9770-3b10e53d0fc8",
+    "9ab101c2-215b-4736-873a-4a1ef6666b6d",
+    "7a0168c5-e258-4c50-96aa-95deb2198e6f",
+    "d714f1f6-539e-4a2a-b738-226854d7ff09",
+    "660ff9fa-1e9b-4697-a3f5-b12238703161",
+    "b6bde4eb-15f0-4e6e-9d25-459a2f75ccf2"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Spirits: tokens, melee and partners",
+   "shared": "The 1/1 white Spirit with flying is TokenCard(\"1/1 white Spirit with flying\") (batch28_helpers.go b28WhiteSpiritFlyingToken): reuse, do not add a row. Millicent: AffinityFor(\"Affinity for Spirits\", ...) in self_cost_modifier.go. Drogskol Reinforcements: melee is KeywordMelee, 'Other Spirits you control have melee' as glory_to_the_empire.go, and 'Prevent all noncombat damage that would be dealt to Spirits you control' (blessed_sanctuary.go, crystal_barricade.go; needs a Label). Rhoda and Timin: docs 'Partner with (#2142)'. Rhoda's 'becomes tapped, if it isn't being declared as an attacker' watches game.EventTapCard only (docs 'A creature becoming tapped (#4534)': an attacker is tapped without that event). Breath of the Sleepless: 'cast Spirit spells as though they had flash' (cast_timing.go). 'Spirit' through TextSubtype everywhere. The words 'if you control a Spirit' also appear in batch 13 (Geistlight Snare, Supernatural Rescue). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "e787ec12-ba0f-4a85-af6b-422423c90155",
+    "71766a05-62a5-4839-b9bf-f5dcde710251",
+    "726dbbce-cd5e-4605-aa1d-ae5ec80cc8cf",
+    "321e101c-a426-4d18-be0b-c26c5348b70d",
+    "9c5897cd-f209-4e51-adc2-d791e5671029",
+    "3f03c834-2cb3-4c54-bee6-c64f3a5fce47",
+    "6d174448-52f5-4439-9586-3abc5af940d7",
+    "3579e40c-6ec5-4927-8252-5a188db400ab",
+    "0a836332-5905-4afa-a442-47d0bcf8acea",
+    "eb887067-4466-45da-8387-4444fdc723f8"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Tempo, tappers and mass effects",
+   "shared": "Supernatural Rescue: 'has flash as long as' is docs 'Flash if a condition holds (#5207)' (colossal_rattlewurm.go, take_for_a_ride.go) and its cast trigger with targets is elder_deep_fiend.go. Steelclad Spirit: defender_waivers.go. Wanderlight Spirit: 'can block only creatures with flying' (stormbound_geist.go). Stormchaser Drake: 'becomes the target of a spell you control' (39 'becomes the target of a spell' files). Dreamshackle Geist: 'choose up to one' modal trigger. By Invitation Only ('Choose a number between 0 and 13', expel_the_interlopers.go) and Consuming Tide ('not chosen this way', the_eternal_wanderer.go; 'opponent who has more cards in hand than you', wojek_investigator.go) read as board wipes: declare Sweep. Sigarda's Summons: a base P/T-setting static plus type and keyword grants, each with a Label. 'if you control a Spirit' through TextSubtype (same words as batch 12). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "45f159dc-a5f9-4335-896b-ad544c303801",
+    "a77510ef-baf0-4cc5-b659-6aaaed0b02f4",
+    "aa40d270-63d7-4022-ade9-67c1ab65ef70",
+    "3dc225a2-61b6-4ac9-a86b-df0c2b0b3898",
+    "7b4c2dcf-86f4-409d-90c3-8fe83966cac0",
+    "a9530416-d5fb-4ddd-ae6f-0eefb9f276c5",
+    "822b6d56-939a-42b9-b50c-9a8ba50ec3ad",
+    "0fa886c2-9b58-4368-b2d0-e619c62a554f",
+    "d64e96bf-6815-462c-93b4-c9c22dc43eda",
+    "24cd8f54-c1d4-4040-93bf-a7b9b719ac30",
+    "7fd06710-0721-4e3e-90ed-d0ccecb1919a"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Double-faced cards: one transform condition",
+   "shared": "game.TransformPermanentForEffect and the catalog's two-face Spec; precedents afflicted_deserter.go, ashling_rekindled.go. Each front face transforms on one condition or one activation and the back face is plain. Dormant Grove (Enchantment front, Creature back) and Foreboding Statue (omen counters, a mana ability that also puts a counter: docs 'Adding a mana ability') are the two to take care with. 'toughness greater than their power' (Catapult Fodder) is fecund_greenshell.go; 'four or more creature cards in your graveyard' is shared by Bloodsworn Squire and, in batch 11, Reclusive Taxidermist. Ragged Recluse: 'if you discarded a card this turn'. Panicked Bystander: 'gained 3 or more life this turn'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "60d591f6-6d84-45d2-9d78-a2ef07a3e403",
+    "9ad999fe-889a-426a-86b3-c0c311b82041",
+    "fc58a086-2743-4465-bf16-4a20701cd3b1",
+    "90379825-1894-4b79-bf72-445175e97ffb",
+    "aa2c0d23-8df8-408b-a8c0-c4cd005f078d",
+    "a6375c5b-ec78-4ee8-b681-8d92797a5b43",
+    "1be58157-186e-48e4-b375-dc5f10d785ac",
+    "d8c0f103-4658-4f4f-8429-c06bdd017846"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Double-faced cards: rules-heavy",
+   "shared": "Edgar, Charmed Groom ('dies, return it transformed') is game.ReturnFromGraveyardTransformedForEffect (transform.go); Biolume Egg is the same at the beginning of the next end step from 'When you sacrifice this creature' (disturbing_mirth.go, ordeal_of_nylea.go). Alluring Suitor: 'attack with exactly two creatures' (love_on_the_battlefield.go), 'transforms into' trigger, mana kept until end of turn (11 files, kessig_naturalist.go). Runo Stromkirk / Krothuss: token copies entering tapped and attacking (97 files). Wedding Announcement: 'attacked with two or more creatures this turn' (minas_tirith.go). Voltaic Visionary: 'When you play a card exiled with this creature' is Prowl's linked exile, read from Event.ExiledWith (prowl_stoic_strategist.go, #2651). Watch item: Jacob Hauken exiles a card from HAND face down with a look permission (grep 'exile a card from your hand face down': 0; nearest predators_hour.go), and its back face lets you play one of the cards exiled with the permanent free once during each of your turns, across both faces of one object; stop and report if the linked-exile and once-per-turn permission do not fit. Radiant Grace is seam s3, not here. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "e98e8129-3e0e-45cc-b00c-1387cc592023",
+    "7af3876e-5297-46e6-936e-6c8344f4b6ac",
+    "96cb97ca-4ce0-4d33-86fb-4db4ce1956be",
+    "16d2a56a-7181-4ef3-866b-10dd8615d9e9",
+    "70d7d1a7-9d39-44ec-a4ea-a70ffa453d23",
+    "6469c7fd-6c0f-4233-8c38-4742ddcf3c3f",
+    "8ffe9e3f-fd9f-4d8b-9467-4cd301e3c8b4",
+    "259ac30c-cc05-4c04-9b23-71283f84b808"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Cards exiled with a permanent, and cards in exile",
+   "shared": "The four Cemetery cards follow cemetery_prowler.go: an untargeted pick from any graveyard at resolution, exiled LINKED (ExileTarget.Linked, CR 607.2a), then 'shares a card type with the exiled card' (docs '\"the exiled card\" (#4463)'; type sharing in target_relation.go, bilbo_luckwearer.go). One helper for the pick, in this batch only. Cemetery Desecrator: 'When you do, choose one' is a reflexive modal with X = the exiled card's mana value; 'remove X counters from target permanent' is choose_counters.go / glissa_sunslayer.go. Grolnok: 'exile it with a croak counter on it ... you may play lands and cast spells from among' is dauthi_voidwalker.go's void counter. Umbris: 'exiles cards from the top of their library until they exile a land' (14 files) and 'cards your opponents own in exile' (18 'own in exile' files). Watch item: Circle of Confinement's 'a Vampire spell with the same name as a card exiled with this enchantment' has no precedent (grep 'same name as (a|the) card exiled': 0); read the linked exile and compare names; stop and report if the cast event cannot see it. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "85e9a43e-5676-4d12-ac27-e8cf57307d5e",
+    "fa450433-85b0-4f95-bd4e-f141ba036bee",
+    "14fe4531-96cd-415b-aa4a-b41fd271d902",
+    "34c8fffd-1b23-4f40-ad29-1f0acb519e7e",
+    "d1cd7a93-4b83-4755-90bc-17cb64bfb131",
+    "53029460-50a0-4934-8fa9-0271517cd5d0",
+    "af31febb-af53-4b48-b930-9e1f9e5d8f26",
+    "068b9586-53e3-4791-a26c-a6b38d038f66",
+    "54731e3f-a84a-4fc9-8c02-2f769133c71c",
+    "4bf0427e-5e87-4d32-ad34-1d8946ab96fd"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Copies and reanimation",
+   "shared": "Docs 'Adding a copy effect'. Haunting Imitation and Dollhouse of Horrors make token copies with exceptions ('except it's 1/1 ... Spirit ... flying': ghost_vacuum.go, std_b26_helpers.go; '0/0 Construct ... gets +1/+1 for each': urzas_saga.go and docs 'a token that sizes itself'). Watch item: Donal copies a creature SPELL 'except the copy is a 1/1 Spirit in addition to its other types', once each turn; precedents for a permanent-spell copy with an exception are jackal_genius_geneticist.go and the_clone_saga.go; stop and report if the exception cannot ride the spell copy. Olivia, Crimson Bride: 'return ... tapped and attacking' plus an indefinite grant of a state trigger ('When you don't control a legendary Vampire, exile this creature': docs 'State triggers (ADR 0107)', indefinite grant as clavileno_first_of_the_blessed.go); watch item, stop and report if a granted state trigger does not fit. Sinister Waltz: three targets, two returned at random. Sudden Salvation: 'put there from the battlefield this turn' (9 files, brought_back.go). Edgar's Awakening: 'When you discard this card' (discard_replacements.go, titanbones_towering_heart.go) with a reflexive 'When you do'. Geralf: token sized by the sacrificed creature's toughness. Targeted spells here must be castable by the probe in server/internal/legal. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "1c9f2b6e-a0eb-493e-8c43-3a14f6d95a53",
+    "c96ed5b2-6286-4f54-becb-c07f54335e63",
+    "73970475-f899-4e93-8498-286240181295",
+    "8922a91e-3d15-4351-8d77-e0d6bc4de82e",
+    "36a7d1a6-4eb8-4ddc-942c-00fd2acbf2ee",
+    "a5b0f351-5536-41ec-aa09-1e5344a0effb",
+    "2c04371a-af69-4e42-8cda-096cf8312b5e",
+    "0a0743b0-07c2-4e11-8b30-6b1b8156bdd0"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Planeswalker, play-from-exile and big rares",
+   "shared": "Chandra, Dressed to Kill: two +1 abilities (the first adds {R} as part of a loyalty ability, not a mana ability), an emblem (docs 'Emblems (#623)') whose X is 'the amount of mana spent to cast that spell' (15 files, aberrant_manawurm.go). Eruth: a draw replacement, effects.DrawBecomes in draw_replacements.go (needs a Label). Curse of Hospitality: 'Enchant player' (curse_of_opulence.go) and 'may play that card and spend mana as though it were mana of any color' (grenzo_havoc_raiser.go, any_color_spend.go). Spectral Arcanist: 'cast ... from a graveyard without paying its mana cost. If that spell would be put into a graveyard, exile it instead' (impulsivity.go). Scion of Opulence: 'Sacrifice two artifacts' cost and an exile-and-play-this-turn. Imposing Grandeur: each_player_may_wheel.go, and 'greatest mana value of a commander' (command_chair.go, majestic_genesis.go). Stensia Uprising: 1/1 red Human token (hanweir_garrison.go), 'exactly thirteen permanents', reflexive sacrifice. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "4686f776-2055-470c-bd99-7c4bb32902c0",
+    "a0380b63-58ef-4545-beec-6ad307bbc21b",
+    "0fb70b94-0847-4155-8953-cb53fef82ef1",
+    "aba60536-ffbd-480c-8e8f-9639bdc53d4b",
+    "5818b31e-2e86-4230-937e-478e14534f91",
+    "c9ef02d6-717d-4f2a-aa10-0af717d6360f",
+    "ae18580a-1753-4dc8-b437-8a779b1a6e4d",
+    "a881bf6e-6247-4adb-9f9c-e4b928692573"
+   ]
+  }
+ ]
+}
