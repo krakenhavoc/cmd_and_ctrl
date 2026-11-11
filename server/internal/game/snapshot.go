@@ -1769,6 +1769,9 @@ type stackItemSnapshot struct {
 	// ExileAndPlot is Lilah's mark: exile the resolving spell and plot it.
 	// Carried for the reason ExileWithCounter is.
 	ExileAndPlot bool `json:"exileAndPlot,omitempty"`
+	// ExileLinkedTo is Forger's Foundry's mark: exile the resolving spell,
+	// linked to this object. Carried for the reason ExileWithCounter is.
+	ExileLinkedTo *PermissionCardRef `json:"exileLinkedTo,omitempty"`
 	// ExileInsteadOfGraveyard (#3863) is Torrential Gearhulk's and
 	// Emet-Selch's "if that spell would be put into your graveyard,
 	// exile it instead". Carried: a restore that lost it would let the
@@ -3329,6 +3332,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863
@@ -4518,6 +4522,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		ExileAndPlot:     s.ExileAndPlot,
+		ExileLinkedTo:    clonePermissionCardRefPtr(s.ExileLinkedTo),
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
 		// #3863

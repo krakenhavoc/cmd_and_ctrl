@@ -12885,6 +12885,9 @@ frozenEntries[].event.stackItem.doubledByName	string
 frozenEntries[].event.stackItem.entersTapped	bool
 frozenEntries[].event.stackItem.exileAndPlot	bool
 frozenEntries[].event.stackItem.exileInsteadOfGraveyard	bool
+frozenEntries[].event.stackItem.exileLinkedTo	object
+frozenEntries[].event.stackItem.exileLinkedTo.epoch	number:int
+frozenEntries[].event.stackItem.exileLinkedTo.id	custom(uuid.UUID)
 frozenEntries[].event.stackItem.exileWithCounter	string
 frozenEntries[].event.stackItem.faceDown	string
 frozenEntries[].event.stackItem.foretold	bool
@@ -20145,6 +20148,9 @@ lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.entersTapped	bool
 lastKnownStack[].item.exileAndPlot	bool
 lastKnownStack[].item.exileInsteadOfGraveyard	bool
+lastKnownStack[].item.exileLinkedTo	object
+lastKnownStack[].item.exileLinkedTo.epoch	number:int
+lastKnownStack[].item.exileLinkedTo.id	custom(uuid.UUID)
 lastKnownStack[].item.exileWithCounter	string
 lastKnownStack[].item.faceDown	string
 lastKnownStack[].item.foretold	bool
@@ -32328,6 +32334,9 @@ movesAwaitingTokens[].stackItem.doubledByName	string
 movesAwaitingTokens[].stackItem.entersTapped	bool
 movesAwaitingTokens[].stackItem.exileAndPlot	bool
 movesAwaitingTokens[].stackItem.exileInsteadOfGraveyard	bool
+movesAwaitingTokens[].stackItem.exileLinkedTo	object
+movesAwaitingTokens[].stackItem.exileLinkedTo.epoch	number:int
+movesAwaitingTokens[].stackItem.exileLinkedTo.id	custom(uuid.UUID)
 movesAwaitingTokens[].stackItem.exileWithCounter	string
 movesAwaitingTokens[].stackItem.faceDown	string
 movesAwaitingTokens[].stackItem.foretold	bool
@@ -38606,6 +38615,9 @@ pausedModeWalk.item.doubledByName	string
 pausedModeWalk.item.entersTapped	bool
 pausedModeWalk.item.exileAndPlot	bool
 pausedModeWalk.item.exileInsteadOfGraveyard	bool
+pausedModeWalk.item.exileLinkedTo	object
+pausedModeWalk.item.exileLinkedTo.epoch	number:int
+pausedModeWalk.item.exileLinkedTo.id	custom(uuid.UUID)
 pausedModeWalk.item.exileWithCounter	string
 pausedModeWalk.item.faceDown	string
 pausedModeWalk.item.foretold	bool
@@ -38947,6 +38959,9 @@ pausedResolutionTail.item.doubledByName	string
 pausedResolutionTail.item.entersTapped	bool
 pausedResolutionTail.item.exileAndPlot	bool
 pausedResolutionTail.item.exileInsteadOfGraveyard	bool
+pausedResolutionTail.item.exileLinkedTo	object
+pausedResolutionTail.item.exileLinkedTo.epoch	number:int
+pausedResolutionTail.item.exileLinkedTo.id	custom(uuid.UUID)
 pausedResolutionTail.item.exileWithCounter	string
 pausedResolutionTail.item.faceDown	string
 pausedResolutionTail.item.foretold	bool
@@ -39282,6 +39297,9 @@ pausedStepWalk.item.doubledByName	string
 pausedStepWalk.item.entersTapped	bool
 pausedStepWalk.item.exileAndPlot	bool
 pausedStepWalk.item.exileInsteadOfGraveyard	bool
+pausedStepWalk.item.exileLinkedTo	object
+pausedStepWalk.item.exileLinkedTo.epoch	number:int
+pausedStepWalk.item.exileLinkedTo.id	custom(uuid.UUID)
 pausedStepWalk.item.exileWithCounter	string
 pausedStepWalk.item.faceDown	string
 pausedStepWalk.item.foretold	bool
@@ -41881,6 +41899,9 @@ pendingChoices[].copyWalk.item.doubledByName	string
 pendingChoices[].copyWalk.item.entersTapped	bool
 pendingChoices[].copyWalk.item.exileAndPlot	bool
 pendingChoices[].copyWalk.item.exileInsteadOfGraveyard	bool
+pendingChoices[].copyWalk.item.exileLinkedTo	object
+pendingChoices[].copyWalk.item.exileLinkedTo.epoch	number:int
+pendingChoices[].copyWalk.item.exileLinkedTo.id	custom(uuid.UUID)
 pendingChoices[].copyWalk.item.exileWithCounter	string
 pendingChoices[].copyWalk.item.faceDown	string
 pendingChoices[].copyWalk.item.foretold	bool
@@ -57981,6 +58002,9 @@ pendingChoices[].replacementResume.event.stackItem.doubledByName	string
 pendingChoices[].replacementResume.event.stackItem.entersTapped	bool
 pendingChoices[].replacementResume.event.stackItem.exileAndPlot	bool
 pendingChoices[].replacementResume.event.stackItem.exileInsteadOfGraveyard	bool
+pendingChoices[].replacementResume.event.stackItem.exileLinkedTo	object
+pendingChoices[].replacementResume.event.stackItem.exileLinkedTo.epoch	number:int
+pendingChoices[].replacementResume.event.stackItem.exileLinkedTo.id	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.stackItem.exileWithCounter	string
 pendingChoices[].replacementResume.event.stackItem.faceDown	string
 pendingChoices[].replacementResume.event.stackItem.foretold	bool
@@ -67263,6 +67287,9 @@ pendingTriggers[].doubledByName	string
 pendingTriggers[].entersTapped	bool
 pendingTriggers[].exileAndPlot	bool
 pendingTriggers[].exileInsteadOfGraveyard	bool
+pendingTriggers[].exileLinkedTo	object
+pendingTriggers[].exileLinkedTo.epoch	number:int
+pendingTriggers[].exileLinkedTo.id	custom(uuid.UUID)
 pendingTriggers[].exileWithCounter	string
 pendingTriggers[].faceDown	string
 pendingTriggers[].foretold	bool
@@ -69701,6 +69728,9 @@ resolving.item.doubledByName	string
 resolving.item.entersTapped	bool
 resolving.item.exileAndPlot	bool
 resolving.item.exileInsteadOfGraveyard	bool
+resolving.item.exileLinkedTo	object
+resolving.item.exileLinkedTo.epoch	number:int
+resolving.item.exileLinkedTo.id	custom(uuid.UUID)
 resolving.item.exileWithCounter	string
 resolving.item.faceDown	string
 resolving.item.foretold	bool
@@ -75063,6 +75093,9 @@ stackMeta[].doubledByName	string
 stackMeta[].entersTapped	bool
 stackMeta[].exileAndPlot	bool
 stackMeta[].exileInsteadOfGraveyard	bool
+stackMeta[].exileLinkedTo	object
+stackMeta[].exileLinkedTo.epoch	number:int
+stackMeta[].exileLinkedTo.id	custom(uuid.UUID)
 stackMeta[].exileWithCounter	string
 stackMeta[].faceDown	string
 stackMeta[].foretold	bool

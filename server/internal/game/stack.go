@@ -575,6 +575,15 @@ type StackItem struct {
 	// on a copy.
 	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
 
+	// ExileLinkedTo is "you may exile that spell instead of putting it into
+	// its owner's graveyard as it resolves" with CR 607.2a's link: the
+	// spell, when it resolves, is exiled "with" this object (Forger's
+	// Foundry), which later reads the cards exiled with it. Resolution
+	// only: a countered or fizzled spell goes to the graveyard. Set by
+	// MarkSpellExilesLinkedForEffect; never on a copy. Added in the S79 SOC
+	// run (additive within the snapshot version).
+	ExileLinkedTo *PermissionCardRef `json:"exileLinkedTo,omitempty"`
+
 	// BottomInsteadOfGraveyard is "If that spell would be put into a
 	// graveyard, put it on the bottom of its owner's library instead"
 	// (Quintorius, Loremaster) as a fact about this stack object: the
