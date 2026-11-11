@@ -75560,10 +75560,12 @@ turnTally.damageSources[].source.epoch	number:int
 turnTally.damageSources[].source.id	custom(uuid.UUID)
 turnTally.damagedObjects	array
 turnTally.damagedObjects[]	object
+turnTally.damagedObjects[].amount	number:int
 turnTally.damagedObjects[].combat	bool
 turnTally.damagedObjects[].source	object
 turnTally.damagedObjects[].source.epoch	number:int
 turnTally.damagedObjects[].source.id	custom(uuid.UUID)
+turnTally.damagedObjects[].sourceController	custom(uuid.UUID)
 turnTally.damagedObjects[].victim	object
 turnTally.damagedObjects[].victim.epoch	number:int
 turnTally.damagedObjects[].victim.id	custom(uuid.UUID)
