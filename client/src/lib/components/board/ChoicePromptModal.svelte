@@ -2174,7 +2174,11 @@
             ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
             : c.copy_use === "tokens"
               ? [c.reason || "Create copies of…", "copy · CR 707"]
-              : [c.reason || "Enter as a copy of…", "copy · CR 707"]
+              : c.copy_use === "exile_other"
+                ? [`${c.reason || "Exile two cards"} — the other card`, "copy · CR 707"]
+                : c.copy_use === "exile_copied"
+                  ? [`${c.reason || "Exile two cards"} — the card to copy`, "copy · CR 707"]
+                  : [c.reason || "Enter as a copy of…", "copy · CR 707"]
           : isUntapChoice
             ? [c.reason || "Untap step — choose which permanents untap", "untap · CR 502.3"]
             : isEntryReveal
@@ -2225,7 +2229,11 @@
                   ? "Exchange text boxes"
                   : c.copy_use === "tokens"
                     ? "Create copies"
-                    : "Enter as a copy"
+                    : c.copy_use === "exile_copied"
+                      ? "Copy this card"
+                      : c.copy_use === "exile_other"
+                        ? "Exile both"
+                        : "Enter as a copy"
               : isUntapChoice
                 ? "Untap"
                 : isEntryReveal
@@ -3192,6 +3200,14 @@
           Pick a creature and the tokens you are about to create are copies of it instead — they
           copy the printed card, so counters, damage and other effects don't come across. Or pick
           nothing and create the tokens as they are.
+        {:else if isCopyTarget && active?.copy_use === "exile_copied"}
+          Pick the card it enters as a copy of. You then pick a second card; both are exiled, and it
+          enters with +1/+1 counters equal to the second card's power. Or pick nothing: nothing is
+          exiled and it enters as itself.
+        {:else if isCopyTarget && active?.copy_use === "exile_other"}
+          Pick the other card. Both cards are exiled, and it enters as a copy of the first with
+          +1/+1 counters equal to this card's power. Or pick nothing: nothing is exiled and it
+          enters as itself.
         {:else if isCopyTarget}
           Pick what it enters as a copy of — it copies the printed card, so counters, damage and
           other effects don't come across. Or copy nothing and let it enter as itself.

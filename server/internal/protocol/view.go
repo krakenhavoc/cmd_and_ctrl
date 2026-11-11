@@ -939,8 +939,11 @@ type PendingChoiceView struct {
 	// CopyUse says what a "copy_target" pick is for when nothing is
 	// entering as a copy: "tokens" (Esix, Fractal Bloom: the creature
 	// the tokens being created will copy; the empty answer creates the
-	// tokens as they were). Absent for the ordinary enters-as-a-copy
-	// pick. Same answer, same empty decline; only the wording differs.
+	// tokens as they were); "exile_copied" then "exile_other" (The
+	// Mimeoplasm's two graveyard cards: the one to copy, then the one
+	// whose power becomes counters; both are exiled, and an empty answer
+	// to either exiles nothing). Absent for the ordinary
+	// enters-as-a-copy pick. Same answer, same empty decline.
 	CopyUse string `json:"copy_use,omitempty"`
 	// Placement populates the ADR 0088 "put_in_library" kind: which
 	// lanes the answer may use — "top" ({top_order} alone), "bottom"

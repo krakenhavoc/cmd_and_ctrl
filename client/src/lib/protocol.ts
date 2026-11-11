@@ -2280,8 +2280,11 @@ export interface PendingChoiceView {
   // #5457: what a "copy_target" pick is for when nothing is entering as a
   // copy. "tokens" (Esix, Fractal Bloom): the creature the tokens being
   // created will copy; the empty answer creates the tokens as they were.
-  // Absent for the ordinary enters-as-a-copy pick.
-  copy_use?: "tokens";
+  // "exile_copied" then "exile_other" (The Mimeoplasm): the graveyard
+  // card to exile and enter as a copy of, then the other card to exile,
+  // whose power becomes +1/+1 counters; an empty answer to either exiles
+  // nothing. Absent for the ordinary enters-as-a-copy pick.
+  copy_use?: "tokens" | "exile_copied" | "exile_other";
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.

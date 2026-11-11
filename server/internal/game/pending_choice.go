@@ -836,8 +836,10 @@ type PendingChoice struct {
 	ExchangesText bool
 	// CopyUse says what a PendingChoiceCopyTarget's pick is for when it
 	// is not the object the entering permanent copies: CopyUseTokens (the
-	// creature a token creation's tokens copy, Esix, Fractal Bloom). Empty
-	// for the ordinary enters-as-a-copy pick. The answer and the empty
+	// creature a token creation's tokens copy, Esix, Fractal Bloom), or
+	// CopyUseExileCopied and CopyUseExileOther (The Mimeoplasm's two
+	// graveyard cards, both exiled). Empty for the ordinary
+	// enters-as-a-copy pick. The answer and the empty
 	// decline are the same; only the wording differs. Wire `copy_use`.
 	CopyUse string
 

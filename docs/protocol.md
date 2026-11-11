@@ -3794,8 +3794,16 @@ Trading Card's entry choice, swap the rules text of two creatures.
   create that many tokens that are copies of that creature"): the prompt
   is asked inside a token creation, the pick is the creature the tokens
   will copy, and an empty list creates the tokens as they were. Same
-  `options[]` and the same `{choice_id, card_ids}` answer. Absent for
-  the ordinary enters-as-a-copy pick.
+  `options[]` and the same `{choice_id, card_ids}` answer.
+  `"exile_copied"` and then `"exile_other"` (The Mimeoplasm: "you may
+  exile two creature cards from graveyards. If you do, it enters as a
+  copy of one of those cards with a number of additional +1/+1 counters
+  on it equal to the power of the other card") are two prompts over one
+  paused entry: the first pick is the card to copy, the second prompt's
+  `options[]` are the candidates left and its pick is the other card.
+  Both cards are exiled when the second is answered; an empty list on
+  either prompt exiles nothing and the permanent enters as itself.
+  Absent for the ordinary enters-as-a-copy pick.
 
 ## Changed words (ADR 0160 amendment, #2779, 2026-10-15)
 
