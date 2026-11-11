@@ -42,7 +42,7 @@ func init() {
 				return ok && c.IsCreature() && cmdr2B21IsTwoByTwo(c.BasePower(), c.BaseToughness())
 			}, "Duskana, the Rage Mother — the attacker gets +3/+3 until end of turn",
 				func(g *game.Game, item *game.StackItem) error {
-					var id uuid.UUID = item.Trigger.Event.CardID
+					id := item.Trigger.Event.CardID
 					return BoostUntilEOT{Target: id, Power: 3, Toughness: 3,
 						Label: "Duskana, the Rage Mother — +3/+3 until end of turn"}.Apply(NewContext(g, item))
 				}),

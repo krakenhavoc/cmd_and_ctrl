@@ -1,8 +1,9 @@
 package effects
 
 import (
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -245,7 +246,7 @@ func TestCmdr2B25ChannelerInitiatePutsThreeOnYourCreatureAndMakesMana(t *testing
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b12Creature(g, me.ID, "Mine", "Creature — Elf", 5, 5)
 	theirs := b12Creature(g, opp.ID, "Theirs", "Creature — Elf", 5, 5)
-	init := c25CastCreature(t, g, "Channeler Initiate", "Creature — Human Druid", c25ChannelerOracle, 3, 4)
+	initiate := c25CastCreature(t, g, "Channeler Initiate", "Creature — Human Druid", c25ChannelerOracle, 3, 4)
 	passPriorityAroundTable(t, g)
 	if p := latestPickTarget(g, me.ID); p != nil {
 		if hasID(p.PickTargetCards, theirs) {
@@ -264,14 +265,14 @@ func TestCmdr2B25ChannelerInitiatePutsThreeOnYourCreatureAndMakesMana(t *testing
 	// turn began pays {T}.
 	vet := b12Push(g, me.ID, "Channeler Initiate", "Creature — Human Druid", c25ChannelerOracle, 3, 4)
 	addCountersForTest(g, vet, game.CounterMinusOne, 1)
-	init = vet
-	if err := g.ActivateManaAbility(me.ID, init, 0, game.ManaAbilityParams{}); err != nil {
+	initiate = vet
+	if err := g.ActivateManaAbility(me.ID, initiate, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("mana ability: %v", err)
 	}
-	if got := countersOn(g, init, game.CounterMinusOne); got != 0 {
+	if got := countersOn(g, initiate, game.CounterMinusOne); got != 0 {
 		t.Errorf("counters left = %d, want 0", got)
 	}
-	if err := g.ActivateManaAbility(me.ID, init, 0, game.ManaAbilityParams{}); err == nil {
+	if err := g.ActivateManaAbility(me.ID, initiate, 0, game.ManaAbilityParams{}); err == nil {
 		t.Error("no counter and tapped: it cannot be paid again")
 	}
 }
