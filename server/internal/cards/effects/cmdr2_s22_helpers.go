@@ -63,27 +63,6 @@ func cmdr2S22HexproofAndTapThis(label string) Effect {
 	}
 }
 
-// cmdr2B08ToughnessIsCardsInYourHand is the toughness half of "power and
-// toughness are each equal to the number of cards in your hand" (CR 604.3,
-// layer 7a); powerIsCardsInYourHand is the power half.
-func cmdr2B08ToughnessIsCardsInYourHand() game.StaticAbility {
-	return game.StaticAbility{
-		Layer:             game.Layer7PT,
-		SubLayer:          game.SubLayer7A_CDA,
-		DependsOnHandSize: true,
-		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID
-		},
-		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := 0
-			if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
-				n = p.Hand.Size()
-			}
-			c.Toughness = n
-		},
-	}
-}
-
 // cmdr2S22DrawThenMayReturnALand is Kefnet the Mindful's "Draw a card,
 // then you may return a land you control to its owner's hand": the pick
 // is made after the draw (CR 608.2c), so a land that was just drawn is
