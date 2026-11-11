@@ -651,6 +651,15 @@ func TestNoSeatSeesAnotherSeatsCards(t *testing.T) {
 						okNames[all[cid].name] = true
 						okScry[all[cid].scry] = true
 					}
+					// A basic land the seat's own deck added from outside
+					// its pool (CR 100.2b) is named in its own view. It is
+					// no card of the draft, whoever else drafted a card of
+					// that name.
+					if own, ok := d.Deck(i); ok {
+						for name := range own.Basics {
+							okNames[name] = true
+						}
+					}
 					for _, f := range all {
 						if allowed[f.id] {
 							continue

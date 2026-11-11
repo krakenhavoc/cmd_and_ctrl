@@ -1507,6 +1507,9 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		if !known {
 			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown format %q (want %s)", body.Format, formatNames()))
 		}
+		if formatSpec.DraftOnly {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("a %s table is opened by a draft for its matches; start a draft instead", formatSpec.Name))
+		}
 		// ADR 0222 §3: the match length, checked before a table exists.
 		switch {
 		case body.BestOf != 0 && body.BestOf != 1 && body.BestOf != 3:
@@ -5143,6 +5146,9 @@ var _ = context.Background
 func formatNames() string {
 	var names []string
 	for _, f := range game.Formats() {
+		if f.DraftOnly {
+			continue
+		}
 		names = append(names, string(f.Format))
 	}
 	return strings.Join(names, ", ")

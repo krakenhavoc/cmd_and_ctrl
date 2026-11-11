@@ -314,6 +314,11 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 			if g.State != StateLobby {
 				return ErrFormatLocked
 			}
+			// A draft's table is opened as one (OpenLimited) and stays
+			// one; no other table becomes one (FormatSpec.DraftOnly).
+			if spec.DraftOnly || old.FormatSpec().DraftOnly {
+				return fmt.Errorf("%w: %s %q is set by a draft, not chosen", ErrInvalidSetting, SettingFormat, FormatLimited)
+			}
 			if len(g.Seats) > spec.MaxSeats {
 				return ErrFormatSeats
 			}

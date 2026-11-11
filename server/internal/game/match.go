@@ -657,7 +657,7 @@ func CheckMatchDeck(spec FormatSpec, main, side []Card, fixed int, ownText map[s
 	case total < rules.MinCards:
 		problems = append(problems, fmt.Sprintf("the deck has %d cards; a %s deck needs at least %d", total, spec.Name, rules.MinCards))
 	}
-	if len(side) > rules.SideboardSize {
+	if !rules.AnySideboard && len(side) > rules.SideboardSize {
 		problems = append(problems, fmt.Sprintf("the sideboard has %d cards; a %s sideboard can have at most %d", len(side), spec.Name, rules.SideboardSize))
 	}
 	if rules.MaxCopies > 0 {

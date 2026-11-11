@@ -112,7 +112,7 @@ const (
 	// StatePicking: packs are open.
 	StatePicking State = "picking"
 	// StateDone: the last pick is made and every seat holds its pool.
-	// Deckbuilding comes next (#5440).
+	// What follows, the build and the rounds, is Phase (limited.go).
 	StateDone State = "done"
 )
 
@@ -228,6 +228,17 @@ type Config struct {
 	// Picker picks for bot seats, for a seat whose timer ran out and for
 	// a seat that is away. Nil is RandomPicker{Seed}.
 	Picker Picker
+
+	// What follows the picks (limited.go, #5440).
+	//
+	// BuildTimeout is the deckbuilding timer. Zero is
+	// DefaultBuildTimeout.
+	BuildTimeout time.Duration
+	// BestOf is the length of the draft's matches, 1 or 3. Zero is 1.
+	BestOf int
+	// Builder builds a deck for a bot seat and for a person whose build
+	// timer ran out. Nil is SimpleDeckBuilder.
+	Builder DeckBuilder
 }
 
 // Draft is one booster draft. It is not safe for concurrent use; Room
@@ -255,6 +266,10 @@ type Draft struct {
 	stepAt time.Time
 	// seq rises with every change a view can show.
 	seq uint64
+
+	// play is the build and the rounds (limited.go), nil until the last
+	// pick is made.
+	play *play
 }
 
 // New makes a draft in its lobby, with no seat taken.
@@ -270,6 +285,12 @@ func New(cfg Config, now time.Time) (*Draft, error) {
 	}
 	if cfg.PickTimeout < 0 {
 		return nil, fmt.Errorf("%w: a negative pick timer", ErrBadConfig)
+	}
+	if cfg.BuildTimeout < 0 {
+		return nil, fmt.Errorf("%w: a negative build timer", ErrBadConfig)
+	}
+	if cfg.BestOf != 0 && cfg.BestOf != 1 && cfg.BestOf != 3 {
+		return nil, fmt.Errorf("%w: best of %d (want 1 or 3)", ErrBadConfig, cfg.BestOf)
 	}
 	d := &Draft{ID: uuid.New(), CreatedAt: now, cfg: cfg, state: StateLobby, picker: cfg.Picker}
 	if d.picker == nil {
@@ -396,6 +417,8 @@ func (d *Draft) Leave(seatID uuid.UUID, now time.Time) error {
 	d.seq++
 	if d.state == StatePicking {
 		d.advance(now)
+	} else if d.state == StateDone {
+		d.afterLeave(i, now)
 	}
 	return nil
 }
@@ -656,6 +679,7 @@ func (d *Draft) pass(now time.Time) {
 				s.pack, s.rest, s.picked = nil, nil, false
 			}
 			d.seq++
+			d.beginBuilding(now)
 			return
 		}
 		d.openRound(now)

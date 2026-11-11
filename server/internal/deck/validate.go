@@ -163,6 +163,14 @@ func Validate(list *List, format game.Format) error {
 	if spec.Format == game.FormatCommander {
 		return validateCommander(list)
 	}
+	if spec.Deck.FromPool {
+		// A limited deck is legal against a card pool, which a list
+		// alone does not carry (ValidateLimited, limited.go).
+		return &ValidationError{Violations: []Violation{{
+			Code:    CodeNotLegalInFormat,
+			Message: fmt.Sprintf("a %s deck is built from a drafted card pool, inside its draft", spec.Name),
+		}}}
+	}
 	return validateConstructed(list, spec)
 }
 
