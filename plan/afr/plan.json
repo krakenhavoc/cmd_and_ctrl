@@ -1,0 +1,498 @@
+{
+ "set": "afr",
+ "mechanics": [
+  {
+   "name": "Venture into the dungeon / dungeons",
+   "exists": true,
+   "evidence": "No venture card is in the input (all already in the catalog). docs/adding-cards.md has 'The initiative and dungeons (ADR 0203, #4096)'; effects/venture_cards_b_test.go exists."
+  },
+  {
+   "name": "Rolling dice (d20 results tables, d4-d12)",
+   "exists": true,
+   "evidence": "effects/random_effects.go: RollDice{Sides,N,IgnoreLowest,Then}, DiceTail, WheneverYouRollDice; game/dice_roll.go RollDiceThenForEffect (#4307). Precedents: hoarding_ogre.go (d20 table), diviners_portent.go ('roll a d20 and add'), reckless_endeavor.go ('roll two d8 and choose one result'), berserkers_frenzy.go."
+  },
+  {
+   "name": "Dice: 'roll that many dice plus one and ignore the lowest roll' (static replacement)",
+   "exists": false,
+   "evidence": "Only a one-shot scoped record exists: game/dice_roll.go ModRollExtraDieIgnoreOne (Squid Fire Knight, a chooser picks the roll to ignore). grep 'RepEventRollDice' shows no card-side static replacement; normalized grep of effects for 'plus one and ignore' and 'ignore the lowest roll' = 0 files. Seam s1."
+  },
+  {
+   "name": "Dice: natural result vs result after modifiers",
+   "exists": false,
+   "evidence": "CR 706.2 separates the natural result from the result. game/dice_roll.go:237 emits EventRollDie with Amount = the die face only; grep 'Natural|Modifier' in game/events*.go and effect_api_random.go = nothing; diviners_portent.go adds its modifier inside its own tail, after the event. Natural-result readers can use Amount/Sides today; a reader of the modified result (Farideh) cannot. Seam s1."
+  },
+  {
+   "name": "Dice rolled as a cost or as a permanent enters",
+   "exists": false,
+   "evidence": "Cost constructors in effects (grep '^func [A-Z]\\w*Cost(') list no roll cost; game corpus grep 'roll a d[0-9]+ as a cost|RollAsCost|CostRoll' = 0; no effects file combines RollDice with EntersWith/AsEnters. Seam s2."
+  },
+  {
+   "name": "Class enchantments (levels, 'When this Class becomes level N')",
+   "exists": true,
+   "evidence": "effects/artificer_class.go and the Bloomburrow Talents (alchemists_talent.go, builders_talent.go ...): 8 files quote 'Class becomes level'; docs/adding-cards.md 'Designations: Class levels' (#757)."
+  },
+  {
+   "name": "Pack tactics (ability word)",
+   "exists": true,
+   "evidence": "effects/werewolf_pack_leader.go and intrepid_outlander.go use packTacticsAttackingPower / packTacticsTotalPower."
+  },
+  {
+   "name": "'Mana from a Treasure was spent'",
+   "exists": true,
+   "evidence": "game/mana_spent.go ManaSpent view (FromTreasure), cast_provenance.go; effects/hired_hexblade.go (ETB check), kalain_reclusive_painter.go ('for each mana from a Treasure'). Not proven for an ACTIVATED ability's payment (Forsworn Paladin): watch item in batch 9."
+  },
+  {
+   "name": "Flavor words (Bardic Inspiration, Cone of Cold ...)",
+   "exists": true,
+   "evidence": "No rules meaning (ability-word-like labels); nothing to build."
+  },
+  {
+   "name": "Ward (mana and non-mana costs)",
+   "exists": true,
+   "evidence": "effects/ward.go; 14 files quote 'Ward—Discard a card'."
+  },
+  {
+   "name": "Monstrosity (Clay Golem)",
+   "exists": true,
+   "evidence": "effects/monstrosity.go; 13 files quote 'becomes monstrous'. Only the 'Roll a d8' cost is missing (s2)."
+  },
+  {
+   "name": "Melee (Wulfgar)",
+   "exists": true,
+   "evidence": "game/melee.go; trigger doubler for 'a creature attacking causes a triggered ability ... to trigger' quoted in 23 effects files."
+  },
+  {
+   "name": "Phasing ('phases out')",
+   "exists": true,
+   "evidence": "docs 'Phasing (#1199, CR 702.26)'; 19 effects files quote 'phases out' (galadriels_dismissal.go, guardian_of_faith.go)."
+  },
+  {
+   "name": "Cascade granted to a spell (Wild-Magic Sorcerer)",
+   "exists": true,
+   "evidence": "effects/maelstrom_nexus.go, imoti_celebrant_of_bounty.go ('has cascade'). 'First spell you cast from exile each turn' filter unproven: watch item in batch 16."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Add a static 'roll one more die and ignore the lowest' replacement and carry roll modifiers on the roll",
+   "clause": "\"If you would roll one or more dice, instead roll that many dice plus one and ignore the lowest roll.\" (Pixie Guide, Barbarian Class). \"Roll a d20 and subtract the number of cards in your hand.\" / \"Roll a d20 and add the toughness of the creature you sacrificed this way.\" / \"...add the number of creature cards in your graveyard that were put there from the battlefield this turn.\" / \"...add the total mana value of those cards.\" read together with \"If any of those results was 10 or higher, draw a card.\" (Farideh), \"Whenever you roll a die's highest natural result\" (Netherese Puzzle-Ward) and \"When you roll a natural 20\" (Critical Hit).",
+   "why": "(a) The only dice replacement is the one-shot ScopedEffect ModRollExtraDieIgnoreOne in game/dice_roll.go, whose extra die is ignored by a chooser. A permanent's static replacement on RepEventRollDice that adds a die and raises DiceRoll.IgnoreLowest is missing (two of them stack: two more dice, two lowest ignored; CR 706.6 lets the roller pick among tied lowest). Expect: a card-side ReplacementEffect on RepEventRollDice in dice_roll.go/replacements.go plus a helper in effects/random_effects.go, with a Label. (b) EventRollDie.Amount is the face shown and nothing carries the modifier, so a trigger cannot tell the natural result from the result (CR 706.2). Expect: a Modifier on game.DiceRoll and on the EventRollDie event (additive snapshot field), RollDice{Modifier}, and WheneverYouRollDice handing the tail both. The four modifier cards then use it instead of adding inside their tails as diviners_portent.go does; the natural-result triggers must keep reading the unmodified face.",
+   "checked": "grep RepEventRollDice server/internal: only game/ (dice_roll.go, replacements.go, pending_choice.go, zone_route.go, scoped_replacements.go), no card. Normalized grep of effects/*.go for 'ignore the lowest roll', 'plus one and ignore', 'highest natural result', 'natural 20', 'subtract the number' = 0 files each. grep 'Natural|Modifier|Modified' game/events*.go game/effect_api_random.go = nothing. Read dice_roll.go header, random_effects.go, diviners_portent.go, CR 706.2 and 706.6 in cmdr/cr.txt.",
+   "size": "medium",
+   "cards": [
+    "b6003419-1a2a-46f3-b32c-47b825324f78",
+    "59faa1b9-17aa-4f2c-a8f8-17ab50392b36",
+    "faf5c18c-2642-4df3-a21f-3b237527e6a6",
+    "561e8ecc-1f2b-4fd4-8f92-a0acea449816",
+    "992e6845-1c6c-4b74-839c-317823bde15b",
+    "91df4cf5-d7ec-4fcd-87ed-e075ef6ceba9",
+    "a9c58cfe-9630-48fa-84ad-50268eb725ed",
+    "55eb3c21-6834-4c62-8ab9-54b901531fed",
+    "bdb80d7b-672c-4e2a-b93b-9b96721b93f2"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Roll dice as an activation cost and as a permanent enters",
+   "clause": "\"{6}, Roll a d8: Monstrosity X, where X is the result.\" (Clay Golem). \"As this creature enters, roll X d6. It enters with a number of +1/+1 counters on it equal to the total of those results.\" (Neverwinter Hydra).",
+   "why": "Every roll goes through RollDiceThenForEffect from a resolving effect, with the rest as a registered tail. A roll that is part of paying a cost (its result fixed before the ability is on the stack, visible to 'whenever you roll', replaceable by s1's static and able to pause for Squid Fire Knight's question mid-payment) has no cost kind; and no enters-with replacement rolls dice while the permanent is entering (the entry would have to wait on the dice window). Expect: a RollDieCost in effects/activated.go with the result stored on PaidCost (game/paid_cost.go) for the effect to read, and an as-enters hook that rolls before counters are placed (game/dice_roll.go + the enters-with path). Build after s1: both edit dice_roll.go.",
+   "checked": "Listed every exported *Cost constructor in effects (grep '^func [A-Z][A-Za-z]*Cost('): no roll cost. Normalized grep of the game package for 'roll a d[0-9]+ as a cost|RollAsCost|CostRoll' = 0; effects for 'Roll X d6' = 0; no effects file contains both RollDice/RollDie and EntersWith/AsEnters. Monstrosity itself exists (effects/monstrosity.go, hydra_broodmaster.go 'Monstrosity X').",
+   "size": "medium",
+   "cards": [
+    "8773c2ea-ef41-4403-bb52-07f0d70d9bbe",
+    "e71e7a68-d96e-4ebb-8d4f-9c45ff8b8b66"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Give a token only the triggered abilities of the cards exiled to pay for it (Vecna)",
+   "clause": "\"{T}, Exile The Book of Vile Darkness and artifacts you control named Eye of Vecna and Hand of Vecna: Create Vecna, a legendary 8/8 black Zombie God creature token with indestructible and all triggered abilities of the exiled cards.\"",
+   "why": "ADR 0155's borrow (game/borrowed_triggers.go, effects/borrowed_triggers.go HasActivatedAndTriggeredAbilitiesOf) lends activated abilities and, with AbilityBorrow.Triggered, triggered ones as well; there is no triggered-only borrow, and giving Vecna the Book's and the Hand's activated abilities would be stronger than printed. The lenders here are the cards exiled as this activation's cost (one, two or three cards, as they last existed), fixed for a token rather than a permanent's own static; LastChosenExiledCardLender covers one chosen card only. Also needed: a cost that exiles the source plus every artifact you control with either name. Expect: a TriggeredOnly flag on game.AbilityBorrow, a lender reading the cost's exiled cards, and the token row. Eye of Vecna and Hand of Vecna are built here so the three are tested together (Hand's 'equipped creature or a creature you control named Vecna'; 'Equip—Pay 1 life for each card in your hand' should reuse game/life_cost_count.go).",
+   "checked": "Normalized grep of effects for 'all triggered abilities of the exiled' and 'has all triggered abilities' = 0; 'AllTriggeredAbilitiesOf|triggered abilities of' = 9 files, all the activated-and-triggered borrow (borrowed_triggers.go, Koh) or trigger doublers. Read effects/borrowed_triggers.go.",
+   "size": "small",
+   "cards": [
+    "fcc666bc-6fea-44e0-94bc-462c742db528",
+    "371a7bbf-5890-46d8-ae57-f020c103b465",
+    "3b7f0dd3-5b4c-4ac0-a43a-ddc62a44663e"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Vanilla, keyword and one-line ETB creatures",
+   "shared": "Triggers from triggers_common.go (WhenThisEnters, WheneverThisDealsCombatDamageToAPlayer) with Do primitives; no new helper or token. White Dragon's 'doesn't untap during its controller's next untap step' follows fifty_feet_of_rope.go / junk_winder.go (the same sentence is in Scion of Stygia, batch 10, and Dragon Turtle, batch 17). Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "a361fdd1-7f97-4aed-8e24-ab2a03387f73",
+    "c336eb5b-e185-4d4b-b106-3a641ba9aad1",
+    "5e95618c-4f58-4ae9-9e5e-deffd5e210a4",
+    "3b61b6da-44ed-4766-8134-fca37afd3f2a",
+    "813c0654-7e3b-435b-b7a5-148f0c36a4be",
+    "0fab815f-bccf-40ef-95e9-ba64b137fb8c",
+    "05c5752a-6ccb-45ff-bb85-5f89efd5944b",
+    "a89b0fd5-84b2-487c-8b03-e78d97276fd3",
+    "4da64806-8a1d-4926-a168-695df43309cf",
+    "ff6e4346-463c-445d-8f72-11cb35dd99ee",
+    "ad804712-18ba-49d7-9af2-4361edaa6cf8",
+    "bb03e682-4525-40d2-8c49-6328f84bd36a",
+    "9a17452d-3adb-42ec-99f8-0083740cefa0"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Simple creatures with one activated or triggered ability",
+   "shared": "activated.go costs (SacrificeCost, TapCost, 'Activate only once each turn' via activation_conditions.go). Elturgard Ranger's 2/2 green Wolf is the token Ranger Class (batch 13) also makes: use the existing Wolf row, add none. 'You may put a land card from your hand onto the battlefield' (Scaled Herbalist, Gretchen Titchwillow) is one shared body; find the existing helper before writing one. Clever Conjurer: 'not named' reads the name through the text-change path. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "00bcbeb5-196a-4a54-ac8d-dec708e68d01",
+    "6ec2d957-c6d9-469f-8190-8b621c490238",
+    "27083627-a5d0-4fc6-9e66-fa44803ef080",
+    "1a04f70c-288d-4010-a6d5-24e9778b9b45",
+    "bf061d7e-46eb-4037-968c-3cfc5ca94552",
+    "00d11662-9d10-4915-b80c-c1ad54b4e71b",
+    "628e59e2-3665-40dd-ba4f-11ab5824de22",
+    "d558b465-75c6-450e-b1f2-5843ad67de71",
+    "04936cc9-c915-4182-b84a-3491d26be548",
+    "3da90ae6-a8cc-4633-bf49-7413ce91b697",
+    "a6e654fb-3567-4b92-ae9b-d064bba7112a",
+    "6fd9ece7-366f-45c7-a8ea-edb4ca637a06",
+    "cedeea30-b580-4ea7-bbc3-7358fed8ae61"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "One-shot instants and sorceries",
+   "shared": "primitives.go only. Check for Traps: 'reveals their hand, you choose a nonland card' is ADR 0116 (docs/adding-cards.md 'Reveals their hand. You choose a ... card from it'). Sudden Insight: stdDifferentManaValuesAmongYourNonlands in std_b17_helpers.go is the battlefield count; the graveyard count follows lunar_insight.go / eris_roar_of_the_storm.go. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Burning Hands 'green', Ray of Enfeeblement 'white', Power Word Kill's four creature types, Mordenkainen's Polymorph 'Dragon'; the same colour test is in Divine Smite and Ray of Frost, batch 17, and Hunter's Mark, batch 19.) Each targeted spell must be castable by the probe in server/internal/legal.",
+   "after": [],
+   "cards": [
+    "a5f10b54-10db-4c92-a596-8afea4e470f5",
+    "0fae0474-25ec-474f-8c7f-9e9061835030",
+    "2ebe4c68-87eb-474d-a4c4-0468835b4900",
+    "fa5dad0b-8e23-4b88-b383-849f7318e01f",
+    "8060dc97-9868-4846-85f4-0ef70da2b021",
+    "0bbab99f-2ff6-4d48-b7c1-1ab0500c9422",
+    "ea935885-acbc-450d-a3ad-f80c09e12ce7",
+    "6bbdf771-75d5-4910-bd16-6232e254f7f6",
+    "51a0d1c2-ff29-4ac9-84a2-ad4f566fee8d",
+    "647e5639-6339-48af-af96-e48729e1cad3",
+    "5ac8c234-030d-4ba1-bc2f-d05761045278",
+    "8e0b605f-2095-4189-8c71-9d1ac93db42e",
+    "41b2ea88-b3b9-44f0-8886-7b2f37b22ebf"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Modal 'You ...' spells and other 'Choose one' instants",
+   "shared": "Spec.Modes (modes.go); the flavor word before each mode has no rules meaning and belongs in the mode's label only. You Find Some Prisoners: 'Exile the top three cards ... Choose one of them. Until the end of your next turn, you may play that card' has precedents in tectonic_giant.go, heroes_hangout.go, cmdr2_s43_helpers.go, with any_color_spend.go for the mana clause; it is an OPPONENT's library here, stop and report if the helper only reads your own (the any-colour permission sentence is also in Hurl Through Hell and Rogue Class, batch 14). Wild Shape: one until-end-of-turn record per mode (base P/T, type, keyword), as werewolf_pack_leader.go builds its own. Choose Your Weapon: doubling.go / bulk_up.go. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Wild Shape's Turtle/Spider/Elephant.)",
+   "after": [],
+   "cards": [
+    "e0945337-1833-4545-a83f-fca673e7f0d0",
+    "41cdeb52-e90f-44f8-94d2-23aa032c4870",
+    "49aa87c7-034b-409d-b37f-50db6a42e533",
+    "934ef52e-3e97-418a-bbcf-114badbb2c8a",
+    "55d94c09-b6aa-4af5-923a-b4efc2a245df",
+    "9913da11-07f0-494a-8c47-11629dcb5be2",
+    "77d016e3-f652-4827-b49a-8044f6d2d45b",
+    "88e5300d-8339-41cb-85bf-325909116b61",
+    "c735077a-fae8-4c5f-a5bf-35969696460c",
+    "467c526a-02a7-405d-98de-c632ea83519b",
+    "a3acb58d-3fb1-4602-8575-d78b716b0ea5",
+    "99f4a22a-ba33-43f0-bc58-9df8388706cd"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Modal ETB creatures and simple artifacts",
+   "shared": "Modal triggers ('When this creature enters, choose one —') through the trigger-mode vocabulary in modes.go. Portable Hole: 'exile ... until this artifact leaves the battlefield' as brutal_cathar.go / angel_of_sanctions.go. Iron Golem: 'attacks or blocks each combat if able' is in kharn_the_betrayer.go (attack_requirements.go, block_requirements.go). Manticore: 'that was dealt damage this turn' as bitter_downfall.go. Skullport Merchant: 'Sacrifice another creature or a Treasure' is one sacrifice cost with a two-part filter. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "88443470-f696-4f9b-b34d-50be8f1d4bc2",
+    "e7645ac4-6e05-426a-a62d-a33b30c33102",
+    "0146f430-da82-48d3-a576-c2b05101797f",
+    "da2d27f7-cced-4118-bddc-41712e37e916",
+    "e5e6229a-3422-4afd-9a87-86daa2d31d3a",
+    "3e0d39e2-d99f-4729-899b-c7bcd2b53615",
+    "e35c8206-98d0-44ab-8770-823a5ff7ab72",
+    "fe35b55e-52ae-428e-b27e-817ee78b5d8c",
+    "64ed5c35-8185-4e68-8028-b7b632ef5828",
+    "11fb3fee-ae84-4bf3-b834-63d3b8987df3",
+    "5e57a8cd-f4f0-40b2-84a0-e002751c0d40",
+    "43990801-ed4a-49ff-a96e-03faa302214f"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Simple Equipment and 'is equipped' creatures",
+   "shared": "attachments.go / activated.go AnEquipAbilityCost. 'Flash / When this Equipment enters, attach it to target creature you control' (Paladin's Shield, Dueling Rapier) is one shared trigger. Plate Armor: 'costs {1} less to activate for each other Equipment you control' through cost_modifier.go (27 files quote the activate-cost reduction). Leather Armor: 'Equip {0}. Activate only once each turn'. Dwarfhold Champion and Armory Veteran: armed_assailant.go. Spare Dagger: reflexive 'When you do'. Trickster's Talisman: granted combat-damage trigger whose cost is sacrificing the Equipment (the grantor), copy as colorstorm_stallion.go; stop and report if the granted ability cannot name its grantor. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "4b9abe7f-050f-4d0a-bc01-f442164f95de",
+    "843f3373-b8ef-416c-9163-aa1aa6b4a51d",
+    "629fe1be-272d-465f-b9b1-2ce177410f13",
+    "6f6601bc-cb12-4054-9027-e4a0ebdae1a3",
+    "dc548b03-ef5f-40df-8311-35d4cf26f3c5",
+    "7ceec1fd-4af5-40d4-9d17-424e21889d64",
+    "7a6ce270-c261-422f-845f-11c22602a274",
+    "36082b5e-760b-4245-af59-00d308470d1a",
+    "d895df97-e7e7-4f15-a79b-0ce8f1a252d3",
+    "bc2ea8c8-5360-4256-91c5-d821b5e59c0f",
+    "3db19689-73bb-48b2-a464-63615eb6bba0",
+    "2b51bbb3-1514-4a79-861f-b9cec9f0ec1b",
+    "17469f58-286e-4410-b717-5908d24eecdd"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Life gain and 'if a creature died this turn'",
+   "shared": "'Whenever you gain life' triggers from triggers_common.go; the morbid condition has many precedents (the same 'if a creature died this turn' is in Warlock Class, batch 13). Death-Priest of Myrkul and Skeletal Swarming make the same 1/1 black Skeleton: one token row, both in this batch. The Book of Exalted Deeds: 'if you gained 3 or more life this turn' as indulging_patrician.go; the enlightened counter is a marker and the granted 'You can't lose the game and your opponents can't win the game' has no duration (docs 'Winning, losing, and can't lose'); watch: stop and report if a granted player-level static cannot outlive the Book. Ebondeath: conditional cast from graveyard ('if a creature not named Ebondeath, Dracolich died this turn'), 110 files quote 'You may cast this card from your graveyard'. Grim Wanderer: 'Cast this spell only if' via game/cast_gate.go. Wight: 'a creature dealt damage by this creature this turn dies' as bushi_tenderfoot.go / dealt_damage_by.go. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Death-Priest's Skeletons, Vampires and Zombies.)",
+   "after": [],
+   "cards": [
+    "cd10ebc9-9f6c-4da2-9a86-263902002ebc",
+    "be030639-cbc9-416b-b0ca-1a76439791d8",
+    "61f3e964-6bea-4543-992e-3e36404bf628",
+    "4e690b82-9877-41f2-9dcd-cffdb6e3cd64",
+    "fb29737c-2dfa-4139-988b-29dc8b829c08",
+    "af231505-bd2e-4499-9fd5-f761dde2ecef",
+    "93ab7462-ceef-4bc7-a9fe-8af8ceb78e1c",
+    "179cc807-5150-4513-88b2-73cb05009b7d",
+    "614feadd-b74f-4d9c-a0a3-3a63724956af",
+    "1a6fce11-e77c-41f1-9ff7-9a93b18071db",
+    "046add85-952f-46ac-974a-463d2a7d3fd4",
+    "0a07a676-890f-49a2-9a2d-17d7b1dc6868"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Heavier Equipment and Equipment legends",
+   "shared": "Icingdeath's token: a legendary Equipment token as mabel_heir_to_cragflame.go. Bruenor: 'pay {0} rather than pay the equip cost of the first equip ability you activate each turn' is kili_the_resourceful.go (game/equip_cost_alternative.go). Catti-brie: 'Remove all +1/+1 counters' cost as dr_mccoy_surly_surgeon.go. Fiendlash: blazing_sunsteel.go. Wand of Orcus: screeching_scorchbeast.go for 'that many 2/2 black Zombie'. Galea: top-of-library casting as augur_of_autumn.go / elven_chorus.go. WATCH (stop and report if it does not fit): Belt of Giant Strength ('costs {X} less, where X is the power of the creature it targets': a reduction that reads the announced target); Dancing Sword ('become a 2/1 Construct artifact creature ... it isn't an Equipment', with no duration; tezzeret_betrayer_of_flesh.go is the only precedent); Galea's 'When you cast an Equipment spell this way, it gains \"When this Equipment enters, attach it...\"' (an ability given to a spell that the permanent keeps); Vorpal Sword (an Equipment gains a triggered ability until end of turn). Equip-cost sentences also appear in Plate Armor (batch 6) and Fighter Class (batch 13). Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "86df1de7-967a-4420-847f-7a77d0217a15",
+    "eb70939f-c4ce-4224-ab74-acc24771d7f0",
+    "2d21dc80-2900-4dc3-9657-f17b50716481",
+    "9fd521d5-baa3-4054-a990-d23265863c71",
+    "ea7de96f-db69-421d-a951-ffaeac140379",
+    "f44ffa35-bd88-4996-8b20-46329565df9b",
+    "61bfab3f-d8f0-4ff5-9ddf-3fd605070c8f",
+    "da3b12d1-8867-4063-b50d-3b2f5ce0549f",
+    "1dc2c213-72f6-4112-96a8-bf6ad553c707",
+    "30c0df75-9822-4016-a52b-d2e69dd58124"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Treasure-mana payoffs and pack tactics",
+   "shared": "Treasure mana: ctx.ManaSpent().FromTreasure() (context.go, hired_hexblade.go for the ETB form, kalain_reclusive_painter.go for 'for each mana from a Treasure'). WATCH: Forsworn Paladin asks it of an ACTIVATED ability's payment ('to activate this ability'); the record is PaidCost.Mana, stop and report if an ability item does not carry it. Pack tactics: packTacticsAttackingPower / packTacticsTotalPower from werewolf_pack_leader.go for all five cards; do not write a second helper. Battle Cry Goblin's 'token that's tapped and attacking' uses the existing 1/1 red Goblin row (the same sentence is on Den of the Bugbear, batch 17). Minimus Containment: imprisoned_in_the_moon.go plus ADR 0210 ('They are Food artifacts') for becoming a Treasure artifact with the Treasure ability; it removes the creature type. Mimic is a nontoken Treasure: its mana must count as 'mana from a Treasure' (subtype, not token-ness). Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Battle Cry Goblin's Goblins, Mimic's Shapeshifter.)",
+   "after": [],
+   "cards": [
+    "c29713ee-57e9-40b4-8ca3-a4cc6ede0f46",
+    "f25b97f9-8ca2-40f7-9d55-47fa8bb2054e",
+    "d3564614-4463-4683-83f0-07561ab3431c",
+    "f666a990-bd9c-4160-9770-4758fd40ca92",
+    "ba8156cd-2e78-4763-b61d-8bc85b2f3657",
+    "0a5e6223-ca31-4605-9c33-9ce492aaf556",
+    "9e445336-8b1e-4642-b8bc-aa460ad79a3f",
+    "d5b4e9fd-3df6-4d1d-8135-d7c8615b05a7",
+    "d53ef172-8c26-4469-94c6-bf7fe4d48dbf",
+    "e74c4001-d958-4d2b-b57d-c3601f01580c",
+    "4d92b3d3-d34b-430f-af6a-db512d204d06"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "d20 results tables, simple",
+   "shared": "RollDice{Sides:20,N:1,Then:<DiceTail>} exactly as hoarding_ogre.go: one DiceTail per card, key 'dice/<card>-...' (an on-disk identity, never reused). Rows are an if-chain on rolls[0]. 'Choose target creature, then roll' (Spiked Pit Trap, Scion of Stygia, Aberrant Mind Sorcerer) targets on announcement and the tail reads the item's target. A Scry or other prompt in a row puts the rest in its Then, as diviners_portent.go explains. Goblin Morningstar: create the token, then attach to that same token (the tail needs the created token's id). No modifiers here, so this batch does not wait for s1.",
+   "after": [],
+   "cards": [
+    "6a038dec-2d9c-4422-a0f3-94bf70e55217",
+    "f06cecd4-8447-4351-9dfa-861afb84f1e6",
+    "ae9f4b85-46ed-4a1a-ada4-54ce56f41815",
+    "8a825e4c-4a87-4b8d-84f7-3e50b896d7cb",
+    "a352cc67-eae8-4fa5-abba-507821c4cf47",
+    "927d74c4-afe0-4856-9a02-c3fca9535c2f",
+    "a0aa1aa1-f011-4c65-9886-95521947beef",
+    "a73e1f0a-8895-4eb2-9780-94951a8f227b",
+    "25ab42a5-ec1a-4510-b957-1d4f14fa10b0",
+    "19b229c4-1c21-4c7c-a25e-4e8c1cd4ed4b",
+    "753ead8c-f3f8-42fe-931d-79f5ee3ece54",
+    "043d8dee-379f-4706-ad47-0bb562717007",
+    "61ff247e-a119-4f35-af62-2645d6762bba"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Dice tables with heavier rows, and other dice sizes",
+   "shared": "Same RollDice/DiceTail shape as batch 10. Loathsome Troll: an ability activated only from the graveyard (Spec zones for activated abilities). Chaos Channeler: impulse exile 'you may play it/them this turn'. Wizard's Spellbook: 'Copy that card. You may cast the copy' as blue_mages_cane.go / reenact_the_crime.go (docs 'Copying a card and casting the copy', #3258), the 10-19 row casting for {1} as an alternative cost, the 20 row over every card exiled with the artifact. Underdark Rift: 'just beneath the top X cards' as the Nth-from-the-top helpers behind approach_of_the_second_sun.go. Bag of Devouring: 'exiled with this artifact' pile as bag_of_holding.go. Power of Persuasion: owner chooses top or bottom; control 'until the end of your next turn'. WATCH (stop and report): Delina's 'You may roll again' (CR 706.3c: a tail that rolls again from inside a DiceTail, and the token's 'except it's not legendary and has \"At end of combat, exile this token\"'); Ebony Fly's 'you may have this artifact become an X/X' chosen after the roll; Sword of Hours comparing the d12 to 'the damage dealt'; Bag of Tricks revealing until a creature of exactly the rolled mana value (may reveal the whole library). Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Ebony Fly's Insect.)",
+   "after": [],
+   "cards": [
+    "3df26058-c58d-4869-ae32-922d28c3aca2",
+    "d360ce89-d80d-4be6-be8c-7e7758cd5840",
+    "5c615c99-77b7-4bea-9286-1e8d257153fb",
+    "ea9031de-6169-4b1c-9390-7fdaf876c7cd",
+    "8d57dadb-c689-4691-b331-aba15daf46ff",
+    "740fe41a-16bb-4c97-a03c-f678f15a0a0c",
+    "199c7604-6b4b-4cec-b6c2-b6b2918b11c8",
+    "4443345d-a292-4394-97dd-0e6f4d9aedf7",
+    "f14ce7d7-6cfa-4f88-a381-d6e912c18b5d",
+    "2a2f2d6c-3937-4e4b-9e4a-3480e0c787d0",
+    "abaddcce-9039-4b4e-baf8-fdab304b5c52"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "'Whenever you roll one or more dice', the Endeavors and multi-player rolls",
+   "shared": "After s1 because WheneverYouRollDice (random_effects.go) changes there. Brazen Dwarf, Feywild Trickster and Vrondiss use WheneverYouRollDice (once per instruction). The four Endeavors copy reckless_endeavor.go ('Roll two dN and choose one result'). Valiant Endeavor reads as a board wipe: declare its Sweep. Feywild Trickster's 1/1 blue Faerie Dragon with flying and Vrondiss's 5/4 Dragon Spirit ('When this token deals damage, sacrifice it') are single-card tokens. Bucknard's Everfull Purse: 'the player to your right' is the previous seat in turn order (anara_wolvid_familiar.go / bowie_base_one.go read a neighbour); control changes as the ability resolves. WATCH (stop and report): Chaos Dragon, 'each player rolls a d20' (DiceRoll.Player is any player, so chain one roll per player through tails, each replaceable) then 'can't attack those players or planeswalkers they control this combat' (furygale_flocking.go has 'can't attack that player') combined with 'attacks each combat if able'; Grave Endeavor's 'return ... with a number of +1/+1 counters equal to that result' picked at resolution, not targeted.",
+   "after": [
+    "s1"
+   ],
+   "cards": [
+    "256ab1e2-0c6a-41c1-ba01-021f3c90cfa2",
+    "b385edc3-c897-48e3-b251-242c77159fa0",
+    "2160c837-342b-409f-a1db-0ec5ac023ccf",
+    "a04f46b4-b0b0-4aef-907f-1df1a2e261de",
+    "4ba1f2c5-6456-4809-a563-fd5bd311869a",
+    "917dc5a0-071d-4658-ab58-29ac841260f7",
+    "2c4ee0df-e720-475b-aa04-e6394f3d708f",
+    "901ee0e3-1011-40e1-815a-09246112e8dc",
+    "f70b9eee-3874-4391-8df8-e10bbd19307e"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Classes I: levels built from existing statics and triggers",
+   "shared": "Rules-heavy. Class levels and 'When this Class becomes level N' as artificer_class.go and docs 'Designations: Class levels' (#757). Druid Class level 3: a land becomes a creature with haste and a P/T-setting ability with no duration (it stays a land). Cleric Class: 'that much life plus 1' as angel_of_vitality.go; level 2 as heliod_sun_crowned.go. Paladin Class: opponents' spells cost {1} more during your turn (cost_modifier.go). Ranger Class: Wolf token shared with Elturgard Ranger (batch 2, existing row); level 3 as augur_of_autumn.go / garruks_horde.go. Warlock Class level 3: 'each opponent loses life equal to the life they lost this turn' reads LifeLostThisTurn as wound_reflection.go. Fighter Class: 'Equip abilities you activate cost {2} less' in cost_modifier.go; WATCH level 3 'up to one target creature blocks it this combat if able' per attacking creature (block_requirements.go has 'target creature blocks it this combat if able', Grappling Hook): stop and report if the requirement cannot name the attacker from the trigger's event. Monk of the Open Hand: second-spell trigger. Circle of the Moon Druid: 'During your turn, this creature is a Bear with base power and toughness 4/2' is a layer-4 type set that removes other creature types. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype.",
+   "after": [],
+   "cards": [
+    "dcbcbf42-4654-487a-acad-21f2606d229b",
+    "f0ead7f5-5c82-40fd-8e89-3e3c5d31fbad",
+    "ac9d52b2-78a5-4b17-8aaf-1c1cb936a508",
+    "d1586808-efc2-469a-8384-ba4acf231e69",
+    "766c2c67-d1ee-44ff-b9bb-355361646ef1",
+    "8a280ba8-6b7b-46dd-9c2b-6d0027cfff30",
+    "2d3998fc-a68a-4923-a456-b3e43ab6decb",
+    "90569b99-8b63-4d2e-b7de-b578b8adbdcb"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Classes II and playing cards from exile",
+   "shared": "Rules-heavy. Exile-and-play permissions: any_color_spend.go, game/cast_permission.go, game/exile_play.go. Rogue Class: 'exile ... face down. You may look at it for as long as it remains exiled' as intet_the_dreamer.go / outrageous_robbery.go; level 3 opens every card exiled with this Class. Hurl Through Hell: cast the exiled creature card until the end of your next turn. Flameskull: 'you may play one of those cards' as unlucky_witness.go / nashi_moon_sages_scion.go. Bard Class: 'enter with an additional +1/+1 counter' (27 precedents); level 3 impulse. Sorcerer Class level 3 counts instants and sorceries cast this turn. WATCH (stop and report if it does not fit): Bard Class level 2, '{R}{G} less ... reduces only the amount of colored mana you pay' (aang_master_of_elements.go uses a mana-unit reduction that MAY reduce generic, CR 118.7; grep for a coloured-only flag found none); Sorcerer Class level 2, mana spendable 'only to cast an instant or sorcery spell or to gain a Class level' (game/mana_restriction.go: a restriction naming one kind of activated ability); Monk Class level 3, the exiled card 'has \"You may cast this card from exile as long as you've cast another spell this turn\"' (game/cast_from_exile_own_text.go covers PRINTED text; here it is a granted, conditional permission), and level 1 'second spell you cast each turn costs {1} less' as highspire_bell_ringer.go; Asmodeus, a draw replaced by 'exile the top card of your library face down' (draw_replacements.go, notion_thief.go) and 'Return all cards exiled with Asmodeus ... you lose that much life' (bag_of_holding.go); Share the Spoils, 'whenever an opponent loses the game' (game.EventPlayerLost exists; zenos_yae_galvus.go, frodo_saurons_bane.go mention it), a once-per-turn permission for EACH player on their own turn over one shared exile pile, and the reflexive 'When they do'. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "76f0f39a-ce1b-4935-a6b8-5c4e1a27ab24",
+    "5bbc3ad0-4865-43f0-8baf-e7f4af5db656",
+    "65b28ec7-1099-4f9d-8d57-2ffd8a5b0e91",
+    "19ba0f2d-4de3-49a0-be7d-da0aa220cd8a",
+    "f3d935cd-d582-464a-a13b-bb84a53da4a1",
+    "4254c048-7207-4ca0-bd20-ebb418d9ed1a",
+    "1e4032f6-9741-4845-9325-781c9e489172",
+    "d39af66c-4997-48b8-a704-f21d93247d7d"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Planeswalkers and token-making legends",
+   "shared": "Rules-heavy. Loyalty abilities and emblems per docs 'Emblems (#623)' and 'Planeswalker statics, eminence and loyalty timing' (ADR 0140). Lolth and Drider make the same 2/1 black Spider with reach and menace: one token row, both here. Zariel's Devil ('When this token dies, it deals 1 damage to any target') probably exists, grep the token rows first; her emblem is an end-of-combat trigger plus an additional combat phase (docs 'Extra combats, phases and steps'), first combat phase of your turn only. Grand Master of Flowers: a planeswalker that is also a creature while it has seven or more loyalty (gideon_blackblade.go); 'search your library and/or graveyard for a card named' is library_or_graveyard_search.go / ajanis_aid.go. Minsc: Boo token; '{X}: ... base power and toughness X/X' as aettir_and_priwen.go. Drizzt: Guenhwyvar token; the dying creature's last-known power against Drizzt's current power. Minn: Illusion token with its own static; 'draw your second card each turn' (52 precedents). WATCH (stop and report): Mordenkainen -10 'Exchange your hand and library, then shuffle' (no precedent; the cards move, they are not drawn or discarded, and the emblem's 'no maximum hand size' has 27 precedents); Lolth's emblem 'if that player lost less than 8 life this turn, they lose life equal to the difference' (LifeLostThisTurn, one trigger per damaged opponent per combat damage step); Grand Master's 'can't attack or block until your next turn' with a target restriction on three keywords. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype.",
+   "after": [],
+   "cards": [
+    "6be0bf15-fdcb-4425-9bd8-3c39039cab7d",
+    "7a8edf45-206e-4d0e-bd69-06f1ca70d17c",
+    "1db76752-31ed-4a16-986a-d0852ba7d812",
+    "04ddb495-e9b0-47bf-b892-c7ae7b87c10c",
+    "1f3dbc53-4075-40b8-b70d-ce74d3ff5f6d",
+    "2cd10c6c-f946-457e-9175-92501322f7a5",
+    "1e939df0-d421-42b7-b642-88b3555fd8df",
+    "d4212d44-d6a0-4c5b-9c54-bc90f36828dd"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Copies, and casting cards that are not in your hand",
+   "shared": "Rules-heavy. docs 'Adding a copy effect' and 'Copying a card and casting the copy' (#3258). True Polymorph: impossible_man.go / silent_hallcreeper.go ('becomes a copy of another target', no duration). Phantom Steed: exile-until-leaves plus a tapped-and-attacking token copy of the exiled card with an added type. Ochre Jelly: delayed token copy at the next end step with half the counters, rounded down (last-known counters). Volo: copying a creature spell as reflections_of_littjara.go; the type comparison reads creature types of creatures you control and creature cards in your graveyard. Rod of Absorption: 'exile it instead of putting it into a graveyard as it resolves' as cmdr2_s41_helpers.go / lilah_undefeated_slickshot.go; the payoff as etali_primal_storm.go / dance_with_calamity.go with a total-mana-value cap. Demilich: 'Copy it. You may cast the copy' (kaervek_the_punisher.go). WATCH (stop and report if it does not fit): Demilich's graveyard cast 'by exiling four instant and/or sorcery cards from your graveyard in addition to paying its other costs' (escape-shaped; kotis_sibsig_champion.go is the only hit) and its per-spell {U} reduction; Wild-Magic Sorcerer, 'the first spell you cast from exile each turn has cascade' (maelstrom_nexus.go grants cascade to the first spell each turn; the from-exile filter is new); Extract Brain, an opponent chooses X cards from their hand and you may cast one of them from THEIR hand free (aetherworks_marvel.go for 'cast a spell from among them'); Xanathar, a chosen opponent 'can't cast spells' this turn (game/cast_ban.go), you look at and play the top card of THEIR library (game/cast_permission.go line 628 stores a per-opponent library permission; gwenom_remorseless.go, shamans_trance.go) with any-colour mana.",
+   "after": [],
+   "cards": [
+    "8d24e181-74c1-4913-a18a-59378ec7d9e7",
+    "22c643b1-62dd-477c-8944-97b3becdfdbe",
+    "2b757d32-09a3-49cd-ada4-84b5335178ce",
+    "f105960e-6609-4192-afc0-e243013b7cc1",
+    "d32345c1-ed20-4bfc-a5fa-6ac7b99542ec",
+    "eeb50bfc-8443-482b-bfc1-ea96b37809cd",
+    "a450ef56-8511-43e0-bdca-0c25f54ba338",
+    "bb0eb9c2-c26d-452d-9e02-fc0bec2655c4",
+    "1a168ba5-8e11-41dd-8f8a-8cb23bbde056"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Creature lands, phasing and tap-down",
+   "shared": "The five creature lands share 'If you control two or more other lands, this land enters tapped' (one helper, with a Label) and an until-end-of-turn 'becomes an N/N <colour> <type> creature ... It's still a land' record; Den of the Bugbear and Hive of the Eye Tyrant grant an attack trigger for the turn, Lair of the Hydra is {X}{G} with 'X can't be 0' (activated.go). Blink Dog and Divine Smite: phasing (docs 'Phasing', galadriels_dismissal.go, guardian_of_faith.go); Divine Smite's 'If that permanent is black, exile it instead'. Ray of Frost: aura with a conditional 'loses all abilities'. Dragon Turtle: taps itself and the target, both skip their controllers' next untap steps (the sentence shared with White Dragon, batch 1, and Scion of Stygia, batch 10). Circle of Dreams Druid: mana ability counting creatures (docs 'Adding a mana ability'). Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Every land's creature type and colour; 'red' on Ray of Frost; 'black' on Divine Smite.)",
+   "after": [],
+   "cards": [
+    "f451b8f0-1ff5-4e8d-9f30-9352d83ed687",
+    "d17163d4-dd43-4de6-b7cf-576448160b7f",
+    "126e9140-2c05-4c00-8b01-5653456c736a",
+    "1e4146d2-cfa0-4f5e-9761-3c83519b90c3",
+    "087c8c0e-a91c-4e3c-8387-9312db01f343",
+    "02a7d95a-0a45-4aa3-b5b8-01c0b36462d8",
+    "3b06b242-caed-4c8f-b5ab-30e86061286e",
+    "3de32046-454b-40be-b522-a3d1d5302b10",
+    "a3270e64-38d2-49e5-8a1e-a5e81205776b",
+    "1c857fa4-e823-494d-9ea4-7eb9e719c9b6"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Dragons, ward and big creatures",
+   "shared": "Ward from effects/ward.go, including 'Ward—Discard a card' (14 precedents) and a conditional ward (Iymrith 'as long as it's untapped'; The Tarrasque 'as long as it was cast', precedent doomsday_excruciator.go / call_forth_the_tempest.go). Dragon's Fire: optional additional cost 'reveal a Dragon card from your hand or choose a Dragon you control' is the behold shape (BeholdCost, ChooseOrRevealCost in effects; caustic_exhale.go and the other Exhales); it then reads that card's or creature's power. Dragon's Disciple: 'As this creature enters, you may reveal a Dragon card' as temple_of_the_dragon_queen.go. Blue Dragon: three targets with different sizes, 'until your next turn'. Klauth: 'add X mana in any combination of colors ... Spend this mana only to cast spells ... you don't lose this mana' (add_mana.go, birgi_god_of_storytelling.go). Klauth's Will: the Will cycle (akromas_will.go, jeskas_will.go); Breathe Flame reads as a board wipe: declare its Sweep; 'up to X target' must be castable by the probe in server/internal/legal. Storvald: 'choose one or both' with two base-P/T targets. WATCH (stop and report): Green Dragon, 'until end of turn, whenever a creature an opponent controls is dealt damage, destroy it' (a delayed trigger that fires more than once; cryoshatter.go has the sentence as an Aura's trigger); Inferno of the Star Mounts, 'When its power becomes 20 this way' (a reflexive trigger read as the pump resolves: atlas_sizable_stooge.go, magma_pummeler.go). Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype.",
+   "after": [],
+   "cards": [
+    "7237d607-2613-4786-96d6-55792c2e02b9",
+    "3e5d3574-cc92-434a-a210-fcda906391c8",
+    "1d00e54a-5897-43dc-9c38-a0e2ce6a7433",
+    "c2a4c6c7-e5b4-4cc8-91d8-5de8cc95ed00",
+    "d5efba91-8400-41a3-91c6-cb5e81f07976",
+    "cd54438d-7f9d-4d80-b15b-0f0bf4becc15",
+    "2df30a75-4957-4eab-8b0b-4c973f00642d",
+    "bfd66214-e576-4a7e-8559-4e4e51d56b98",
+    "5d7802a7-df6e-47fb-9065-c7461ea24a19",
+    "8cefa5d6-5151-4e75-8b72-f210a4c751ea",
+    "639926c1-c4b4-4a49-b125-0e1b584c5bb8"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "X spells, target-set rules and one-off artifacts",
+   "shared": "An 'X target' spell must be castable by the probe in server/internal/legal (Long Rest, Meteor Swarm). Long Rest: 'X target cards with different mana values' is a target-set difference rule (game/target_set.go, clause.Different in clauses.go); 'life total becomes equal to your starting life total' as oketras_last_mercy.go; it exiles itself. Meteor Swarm: 8 damage divided among X targets (game/divide.go). Hunter's Mark: 'costs {3} less to cast if it targets a blue permanent you don't control' (28 precedents such as bitter_downfall.go), can't be countered. Split the Party: half rounded up, the caster chooses which (rush_of_dread.go / vonas_hunger.go). Sphere of Annihilation: 'enters with X void counters'; its upkeep exile reads as a board wipe: declare its Sweep. Instrument of the Bards: optional harmony counter, search by mana value equal to the counters. Fey Steed: 'becomes the target of a spell or ability an opponent controls'. WATCH (stop and report): Ride the Avalanche, 'The next spell you cast this turn can be cast as though it had flash' (quicken.go, cast_timing.go) and 'When you next cast a spell this turn' with a target chosen then and X = that spell's mana value (game/spell_x_value.go has Brass Infiniscope's 'when you next cast a spell'); Hellish Rebuke, an ability granted to every permanent your opponents control that names 'the player who cast Hellish Rebuke'. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. ('blue' on Hunter's Mark.)",
+   "after": [],
+   "cards": [
+    "fc8df5c8-fda6-454c-a1ac-21c6e3d75b9c",
+    "3e7bd846-7295-4590-a419-c97cd2526bc1",
+    "7def9bfe-6a59-4300-8134-fce7508dca38",
+    "9ad61841-9894-41da-bdd8-248c2ce21b00",
+    "b96399f9-c0ba-4507-be13-65cf716b7757",
+    "d79755c4-3c61-4fc8-8eb7-fbdc23951748",
+    "18cced8b-9836-4e11-bb4e-69a971a33a50",
+    "d49c94fa-712a-47c0-b571-4db7e064a590",
+    "5d307515-6ea1-4b1f-8e4b-49bfebfbdfcc"
+   ]
+  },
+  {
+   "n": 20,
+   "theme": "Complex legends",
+   "shared": "Rules-heavy. Orcus: ETB reading the X it was cast with (0 when not cast); mode 2 'Return up to X target creature cards with total mana value X or less' is the total rule of game/target_set.go (#4616; the_rise_of_sozin.go, marshals_anthem.go); mode 1 reads as a board wipe: declare its Sweep. Gelatinous Cube: bronzebeak_foragers.go has both halves ('exile ... until this creature leaves' and '{X}...: Put target ... card with mana value X exiled with this creature into its owner's graveyard'). Lorcan: 'put into an opponent's graveyard from anywhere' (dauthi_voidwalker.go, bloodchief_ascension.go), pay life equal to mana value, enters as a Warlock in addition; 'If a Warlock you control would die, exile it instead' (29 precedents). Karazikar: 'Whenever you attack a player' once per attacked player with goad; 'an opponent attacks another one of your opponents'. Wulfgar: melee (game/melee.go) and the attack-trigger doubler (ancient_greenwarden.go-style helper in cmdr2_b08_helpers.go; 23 files). Nihiloor: 'for each opponent, tap up to one untapped creature you control. When you do, gain control ...' as hapatra_the_desert_frost.go / omega_heartless_evolution.go for the per-opponent shape, garland_royal_kidnapper.go for control 'for as long as you control'. Krydle: a combat-damage trigger with four instructions in order, and 'Whenever you attack, you may pay {2}'. Froghemoth: 'up to that many target cards from their graveyard', the number of targets coming from the damage event. Orcus, Lorcan, Nihiloor and Froghemoth are the watch items: stop and report if the per-opponent reflexive trigger, the total-mana-value target rule or a target count read from the triggering event does not fit. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: colour and creature-type words are read through source.TextSubtype / ctx.TextSubtype. (Lorcan's Warlock.)",
+   "after": [],
+   "cards": [
+    "9d02b5e1-bd29-45ad-b11d-f2cd21c48979",
+    "3c2e2e69-cd44-458f-a5b0-8591baa24e65",
+    "6c87c261-00a8-46f2-92c8-42009a0a2faf",
+    "47fde936-be71-4550-826b-b98d139cc57a",
+    "b19d1459-eb08-4e75-95f4-402d86371a78",
+    "148271de-3351-41a1-bcf5-3ecaadc51540",
+    "77212081-0b49-4d92-9c5a-1f21e6907fce",
+    "66e66543-1f56-4e62-9183-3804843db101"
+   ]
+  }
+ ]
+}
