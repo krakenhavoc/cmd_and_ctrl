@@ -75,3 +75,47 @@ func TestCmdr2B19VowsPumpGrantAndBarAttackingTheirController(t *testing.T) {
 		}
 	}
 }
+
+const (
+	cmdr2VerdantEmbrace    = "f0bbd988-50b7-476c-9183-dfabd4a95079"
+	cmdr2PollenbrightWings = "582c8030-1d41-4c63-8ed6-06aad398a96c"
+)
+
+func TestCmdr2B19VerdantEmbracePumpsAndMakesSaprolingsForTheHostsControllerEachUpkeep(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	host := b12Creature(g, opp.ID, "Host", "Creature — Bear", 2, 2)
+	cmdr2B19Attach(g, me.ID, host, "Verdant Embrace", cmdr2VerdantEmbrace)
+	if p, to := effectivePTOf(t, g, host); p != 5 || to != 5 {
+		t.Fatalf("host is %d/%d, want 5/5", p, to)
+	}
+	advanceTo(t, g, game.StepUpkeep)
+	passPriorityAroundTable(t, g)
+	if n := namedOnBattlefield(g, "Saproling", opp.ID); n != 1 {
+		t.Errorf("%d Saprolings for the enchanted creature's controller on my upkeep, want 1", n)
+	}
+	if n := namedOnBattlefield(g, "Saproling", me.ID); n != 0 {
+		t.Errorf("%d Saprolings for the Aura's controller, want 0", n)
+	}
+}
+
+func TestCmdr2B19PollenbrightWingsGivesFlyingAndMakesThatManySaprolings(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	host := b12Creature(g, me.ID, "Host", "Creature — Bear", 3, 3)
+	other := b12Creature(g, me.ID, "Other", "Creature — Bear", 2, 2)
+	cmdr2B19Attach(g, me.ID, host, "Pollenbright Wings", cmdr2PollenbrightWings)
+	if !hasEffectiveKeyword(t, g, host, "flying") {
+		t.Fatal("the enchanted creature lacks flying")
+	}
+	dealCombatDamageToPlayer(g, other, opp.ID, 2)
+	passPriorityAroundTable(t, g)
+	if n := namedOnBattlefield(g, "Saproling", me.ID); n != 0 {
+		t.Fatalf("%d Saprolings after an unenchanted creature connected", n)
+	}
+	dealCombatDamageToPlayer(g, host, opp.ID, 3)
+	passPriorityAroundTable(t, g)
+	if n := namedOnBattlefield(g, "Saproling", me.ID); n != 3 {
+		t.Errorf("%d Saprolings, want 3 (the damage dealt)", n)
+	}
+}
