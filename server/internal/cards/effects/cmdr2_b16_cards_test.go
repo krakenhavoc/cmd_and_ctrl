@@ -124,7 +124,7 @@ func TestC2B16GreaterTanukiChannelsForABasicLandTapped(t *testing.T) {
 	advanceToMain(t, g)
 	forest := dftMPLibraryTop(me, c2b15Bear(), c2b15Forest(), c2b15Spell())[1]
 	id := pushCatalogHandCard(me, "Greater Tanuki", "Enchantment Creature — Dog", c2b16TanukiOracle)
-	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{2}{G}"); err != nil {
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{G}"); err != nil {
 		t.Fatal(err)
 	}
 	if err := g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
@@ -201,8 +201,10 @@ func TestC2B16TopiaryStomperFetchesALandAndNeedsSevenLandsToFight(t *testing.T) 
 	c2b16Lands(g2, g2.Seats[(g2.Turn.ActiveSeat+1)%4], 9)
 	c2b16Lands(g2, me2, 6)
 	s2 := b12Push(g2, me2.ID, "Topiary Stomper", "Creature — Plant Dinosaur", c2b16StomperOracle, 4, 4)
-	if card := layeredCard(t, g2, s2); game.Restricted(&card, game.CantAttack) {
-		t.Error("opponent's lands let the Stomper attack")
+	advanceToMain(t, g2)
+	g2.WithWriteLock(func() { g2.RecomputeLayersIfStaleLocked() })
+	if card := layeredCard(t, g2, s2); !game.Restricted(&card, game.CantAttack) {
+		t.Error("six own lands and nine opposing ones: the Stomper can attack")
 	}
 }
 
