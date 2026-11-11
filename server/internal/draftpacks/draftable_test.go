@@ -218,6 +218,9 @@ func TestFixtureAgainstTheRealCatalog(t *testing.T) {
 	if alpha.Name != "C2 Fixture Alpha" || alpha.Released != "2026-01-01" {
 		t.Fatalf("c2a name and date: %+v", alpha)
 	}
+	if alpha.Booster != KindPlay {
+		t.Fatalf("c2a, released in 2026, uses the %q booster, want play", alpha.Booster)
+	}
 
 	beta := findSet(t, resp, "c2b")
 	if beta.Draftable || !reflect.DeepEqual(beta.Blockers, []string{"C2 Fixture Unbuilt Card"}) {
@@ -236,7 +239,7 @@ func TestFixtureAgainstTheRealCatalog(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(pack.Cards) != PackSize {
+		if len(pack.Cards) != PlayBoosterSize {
 			t.Fatalf("seed %d: %d cards", seed, len(pack.Cards))
 		}
 		for _, c := range pack.Cards {
@@ -401,7 +404,7 @@ func TestDraftSetsEndpoint(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"code", "name", "released", "cards", "draftable", "blockers"} {
+	for _, key := range []string{"code", "name", "released", "booster", "cards", "draftable", "blockers"} {
 		if _, ok := raw.Sets[0][key]; !ok {
 			t.Errorf("a set has no %q field", key)
 		}

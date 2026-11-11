@@ -106,7 +106,8 @@ func (d *drawer) free(pool []Card) int {
 }
 
 // rareOrMythic draws the rare slot: a mythic 1 time in MythicOneIn when
-// the set has mythics, a rare otherwise. A set with only one of the two
+// the set has mythics, a rare otherwise. A recipe with no mythic rate
+// has no mythics in its pool (buildPool), so it always draws a rare. A set with only one of the two
 // draws from the one it has, and when every card of the rolled rarity
 // is already in the pack it takes the other rather than repeat a card.
 func (p Pool) rareOrMythic(d *drawer) (Card, bool) {
@@ -171,13 +172,16 @@ func (p Pool) Pack(rng *rand.Rand) (Pack, error) {
 	for range r.Commons {
 		common(SlotCommon)
 	}
-	// The seventh common slot. The roll is skipped, not just ignored,
-	// when the set has no bonus sheet in the data.
-	if len(p.Bonus) > 0 && oneIn(rng, r.BonusSheetOneIn) {
-		c, ok := d.draw(p.Bonus)
-		add(SlotBonus, c, ok)
-	} else {
-		common(SlotCommon)
+	// The bonus slots (a play booster's seventh common slot). The roll
+	// is skipped, not just ignored, when the set has no bonus sheet in
+	// the data.
+	for range r.BonusSlots {
+		if len(p.Bonus) > 0 && oneIn(rng, r.BonusSheetOneIn) {
+			c, ok := d.draw(p.Bonus)
+			add(SlotBonus, c, ok)
+		} else {
+			common(SlotCommon)
+		}
 	}
 	for range r.Uncommons {
 		c, ok := d.draw(p.Uncommons)

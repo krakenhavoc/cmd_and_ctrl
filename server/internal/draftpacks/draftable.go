@@ -41,6 +41,11 @@ func CatalogIsFull(idx *cards.Index) IsFull {
 // every card a pack can contain that the catalog does not hold as Full
 // (ADR 0222 §4). Sorted by name.
 //
+// The pool is built to the set's own recipe, so a slot the recipe does
+// not have cannot block: a draft booster from before mythic rares holds
+// no mythic, and a bonus sheet counts only where the recipe has a bonus
+// slot and names the sheet.
+//
 // Basic lands are exempt. The engine plays a basic land without a
 // catalog entry (there is nothing on one to automate), so the catalog
 // registers none, and counting them would block every set.
@@ -69,8 +74,11 @@ type SetStatus struct {
 	Name string `json:"name"`
 	// Released is "YYYY-MM-DD", empty when the data has none.
 	Released string `json:"released,omitempty"`
+	// Booster is the kind of retail booster the set's packs approximate,
+	// the draftable booster of the set's era: "play" or "draft".
+	Booster Kind `json:"booster"`
 	// Cards is how many different cards the set's packs can contain,
-	// basic lands included.
+	// basic lands included when the booster has a land slot.
 	Cards int `json:"cards"`
 	// Draftable is true only when Blockers is empty.
 	Draftable bool `json:"draftable"`
@@ -109,37 +117,14 @@ func sets(idx *cards.Index, isFull IsFull, table map[string]Override) Response {
 	found := collect(idx, nil)
 	out := make([]SetStatus, 0, 64)
 	for code, main := range found {
-		var name, setType string
-		dates := map[string]int{}
-		for _, c := range main {
-			if name == "" {
-				name = c.SetName
-			}
-			if setType == "" {
-				setType = c.SetType
-			}
-			if c.ReleasedAt != "" {
-				dates[c.ReleasedAt]++
-			}
-		}
-		released := commonDate(dates)
-		if info, ok := idx.Set(code); ok {
-			if info.Name != "" {
-				name = info.Name
-			}
-			if info.SetType != "" {
-				setType = info.SetType
-			}
-			if info.ReleasedAt != "" {
-				released = info.ReleasedAt
-			}
-		}
+		meta := metaFor(idx, code, main)
+		name, setType, released := meta.Name, meta.SetType, meta.Released
 		if !listedSetTypes[setType] {
 			continue
 		}
-		r := recipeFor(table, code)
+		r := recipeFor(table, code, released)
 		var bonus map[uuid.UUID]cards.Card
-		if r.BonusSheet != "" && r.BonusSheet != code {
+		if r.UsesBonusSheet() && r.BonusSheet != code {
 			bonus = found[r.BonusSheet]
 		}
 		pool := buildPool(code, r, main, bonus)
@@ -153,6 +138,7 @@ func sets(idx *cards.Index, isFull IsFull, table map[string]Override) Response {
 			Code:     code,
 			Name:     name,
 			Released: released,
+			Booster:  r.Kind,
 			Cards:    len(pool.Contents()),
 			Blockers: []string{},
 		}

@@ -87,12 +87,17 @@ func slotCounts(p Pack) map[Slot]int {
 	return out
 }
 
-func TestDefaultRecipeIsFourteenCards(t *testing.T) {
-	if got := DefaultRecipe().Size(); got != PackSize {
-		t.Fatalf("DefaultRecipe().Size() = %d, want PackSize = %d", got, PackSize)
+func TestPlayBoosterRecipeIsFourteenCards(t *testing.T) {
+	if got := PlayBoosterRecipe().Size(); got != PlayBoosterSize {
+		t.Fatalf("PlayBoosterRecipe().Size() = %d, want PlayBoosterSize = %d", got, PlayBoosterSize)
 	}
-	if PackSize != 14 {
-		t.Fatalf("PackSize = %d, want 14 (a play booster's playable cards)", PackSize)
+	if PlayBoosterSize != 14 {
+		t.Fatalf("PlayBoosterSize = %d, want 14 (a play booster's playable cards)", PlayBoosterSize)
+	}
+	// The synthetic sets of these tests are dated 2026, so the tests
+	// below that take the set's own recipe run on a play booster.
+	if got := RecipeFor("syn", "2026-03-01"); got != PlayBoosterRecipe() {
+		t.Fatalf("a set released in 2026 gets %+v, want the play booster", got)
 	}
 }
 
@@ -103,8 +108,8 @@ func TestPackSlotCounts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("seed %d: %v", seed, err)
 		}
-		if len(pack.Cards) != PackSize {
-			t.Fatalf("seed %d: %d cards, want %d", seed, len(pack.Cards), PackSize)
+		if len(pack.Cards) != PlayBoosterSize {
+			t.Fatalf("seed %d: %d cards, want %d", seed, len(pack.Cards), PlayBoosterSize)
 		}
 		got := slotCounts(pack)
 		// No bonus sheet in the data: the seventh common slot is a common.
@@ -167,7 +172,7 @@ func TestPackRarityRates(t *testing.T) {
 		idx.Put(synthCard("bon", fmt.Sprintf("Bonus %02d", i), "mythic", fmt.Sprint(i+1)))
 	}
 	sheet := "bon"
-	pool := poolFor(idx, "syn", Override{BonusSheet: &sheet}.Apply(DefaultRecipe()))
+	pool := poolFor(idx, "syn", Override{BonusSheet: &sheet}.Apply(PlayBoosterRecipe()))
 	if len(pool.Bonus) != 40 {
 		t.Fatalf("bonus sheet has %d cards, want 40", len(pool.Bonus))
 	}
@@ -179,7 +184,7 @@ func TestPackRarityRates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(pack.Cards) != PackSize {
+		if len(pack.Cards) != PlayBoosterSize {
 			t.Fatalf("seed %d: %d cards", seed, len(pack.Cards))
 		}
 		for _, c := range pack.Cards {
@@ -279,8 +284,8 @@ func TestPackRepeatsOnlyWhenTheDataForcesIt(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(pack.Cards) != PackSize {
-			t.Fatalf("seed %d: %d cards, want %d", seed, len(pack.Cards), PackSize)
+		if len(pack.Cards) != PlayBoosterSize {
+			t.Fatalf("seed %d: %d cards, want %d", seed, len(pack.Cards), PlayBoosterSize)
 		}
 		commons := map[uuid.UUID]bool{}
 		uncommons := map[uuid.UUID]int{}
@@ -312,8 +317,8 @@ func TestLandSlotIsACommonWhenTheSetHasNoBasics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pack.Cards) != PackSize {
-		t.Fatalf("%d cards, want %d", len(pack.Cards), PackSize)
+	if len(pack.Cards) != PlayBoosterSize {
+		t.Fatalf("%d cards, want %d", len(pack.Cards), PlayBoosterSize)
 	}
 	for _, c := range pack.Cards {
 		if c.Slot == SlotLand && (c.Rarity != Common || c.Basic) {
@@ -405,15 +410,15 @@ func TestOverridesAreDataPerSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := recipeFor(table, "syn")
+	r := recipeFor(table, "syn", "2026-03-01")
 	if r.MythicOneIn != 2 || r.BonusSheet != "bon" || r.Wildcards != 1 || r.Uncommons != 4 {
 		t.Fatalf("override not applied: %+v", r)
 	}
-	if r.Commons != CommonSlots || r.BonusSheetOneIn != BonusSheetOneIn {
-		t.Fatalf("an unset field lost its default: %+v", r)
+	if r.Commons != CommonSlots || r.BonusSheetOneIn != BonusSheetOneIn || r.Kind != KindPlay {
+		t.Fatalf("an unset field lost its era's value: %+v", r)
 	}
-	if got := recipeFor(table, "other"); got != DefaultRecipe() {
-		t.Fatalf("a set with no override got %+v, want the default", got)
+	if got := recipeFor(table, "other", "2026-03-01"); got != PlayBoosterRecipe() {
+		t.Fatalf("a set with no override got %+v, want its era's recipe", got)
 	}
 
 	// The override changes the packs.
@@ -443,8 +448,13 @@ func TestOverridesFileParses(t *testing.T) {
 		t.Fatal(err)
 	}
 	for code, o := range table {
-		if r := o.Apply(DefaultRecipe()); r.Size() <= 0 {
-			t.Errorf("override for %q leaves an empty pack", code)
+		for _, e := range Eras {
+			if r := o.Apply(e.Recipe); r.Size() <= 0 {
+				t.Errorf("override for %q leaves an empty pack in the era %q", code, e.Name)
+			}
+		}
+		if o.Kind != nil && *o.Kind != string(KindPlay) && *o.Kind != string(KindDraft) {
+			t.Errorf("override for %q names the booster kind %q, want play or draft", code, *o.Kind)
 		}
 		if o.Note == "" {
 			t.Errorf("override for %q has no note saying where the correction comes from", code)

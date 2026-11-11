@@ -38,7 +38,9 @@ type Card struct {
 }
 
 // Pool is every card one set's packs can contain, split by the slot that
-// draws it. Each slice holds one Card per oracle ID, sorted by name, so
+// draws it. It holds only what the set's recipe has a slot for: a recipe
+// with no mythic rate has no Mythics, one with no land slot has no
+// Lands, and one with no bonus slot has no Bonus. Each slice holds one Card per oracle ID, sorted by name, so
 // a seeded draw is the same on every run.
 type Pool struct {
 	// Set is the lowercase set code the pool was built for.
@@ -218,6 +220,11 @@ func sortCards(cs []Card) {
 // them. A card of any other rarity ("special", "bonus") belongs to no
 // slot of this model, so no pack can contain it and it is left out.
 //
+// The recipe decides which slots exist. With no land slot the basic
+// lands are left out, with no mythic rate the mythic rares are, and with
+// no bonus slot the bonus sheet is: a pack cannot contain them, so the
+// draftable check never sees them.
+//
 // bonus is the bonus sheet's printings, nil for none. A card that is in
 // both the set and its bonus sheet stays in the set's own slot.
 func buildPool(set string, r Recipe, main, bonus map[uuid.UUID]cards.Card) Pool {
@@ -226,7 +233,9 @@ func buildPool(set string, r Recipe, main, bonus map[uuid.UUID]cards.Card) Pool 
 		pc := toCard(c)
 		switch {
 		case pc.Basic:
-			p.Lands = append(p.Lands, pc)
+			if r.HasLands() {
+				p.Lands = append(p.Lands, pc)
+			}
 		case pc.Rarity == Common:
 			p.Commons = append(p.Commons, pc)
 		case pc.Rarity == Uncommon:
@@ -234,8 +243,13 @@ func buildPool(set string, r Recipe, main, bonus map[uuid.UUID]cards.Card) Pool 
 		case pc.Rarity == Rare:
 			p.Rares = append(p.Rares, pc)
 		case pc.Rarity == Mythic:
-			p.Mythics = append(p.Mythics, pc)
+			if r.HasMythics() {
+				p.Mythics = append(p.Mythics, pc)
+			}
 		}
+	}
+	if !r.UsesBonusSheet() {
+		bonus = nil
 	}
 	for id, c := range bonus {
 		if _, dup := main[id]; dup {
@@ -251,13 +265,64 @@ func buildPool(set string, r Recipe, main, bonus map[uuid.UUID]cards.Card) Pool 
 	return p
 }
 
-// PoolFor builds the pool of one set from the index, to the set's
-// recipe (RecipeFor). It walks every printing once, so a caller making
-// many packs builds the pool once and calls Pool.Pack on it.
-func PoolFor(idx *cards.Index, set string) Pool {
-	return poolFor(idx, set, RecipeFor(set))
+// setMeta is what the data says about a set as a whole.
+type setMeta struct {
+	Name     string
+	SetType  string
+	Released string
 }
 
+// metaFor reads a set's name, type and release date: from the set table
+// when the index has one, else from the set's own printings (the most
+// frequent release date among them).
+func metaFor(idx *cards.Index, code string, main map[uuid.UUID]cards.Card) setMeta {
+	var m setMeta
+	dates := map[string]int{}
+	for _, c := range main {
+		if m.Name == "" {
+			m.Name = c.SetName
+		}
+		if m.SetType == "" {
+			m.SetType = c.SetType
+		}
+		if c.ReleasedAt != "" {
+			dates[c.ReleasedAt]++
+		}
+	}
+	m.Released = commonDate(dates)
+	if idx == nil {
+		return m
+	}
+	if info, ok := idx.Set(code); ok {
+		if info.Name != "" {
+			m.Name = info.Name
+		}
+		if info.SetType != "" {
+			m.SetType = info.SetType
+		}
+		if info.ReleasedAt != "" {
+			m.Released = info.ReleasedAt
+		}
+	}
+	return m
+}
+
+// PoolFor builds the pool of one set from the index, to the set's
+// recipe: the recipe of the era the set was released in, with its
+// override (RecipeFor). It walks every printing once (twice for a set
+// with a bonus sheet), so a caller making many packs builds the pool
+// once and calls Pool.Pack on it.
+func PoolFor(idx *cards.Index, set string) Pool {
+	set = strings.ToLower(strings.TrimSpace(set))
+	main := collect(idx, map[string]bool{set: true})[set]
+	r := RecipeFor(set, metaFor(idx, set, main).Released)
+	if !r.UsesBonusSheet() || r.BonusSheet == set {
+		return buildPool(set, r, main, nil)
+	}
+	return buildPool(set, r, main, collect(idx, map[string]bool{r.BonusSheet: true})[r.BonusSheet])
+}
+
+// poolFor is PoolFor to a recipe the caller gives.
 func poolFor(idx *cards.Index, set string, r Recipe) Pool {
 	set = strings.ToLower(strings.TrimSpace(set))
 	want := map[string]bool{set: true}
@@ -274,7 +339,8 @@ func poolFor(idx *cards.Index, set string, r Recipe) Pool {
 
 // CanFill reports whether the pool can make a pack at all: it has a
 // common, an uncommon, and a rare or mythic. A set with no basic lands
-// still can (the land slot falls back to a common).
+// still can (the land slot, where the recipe has one, falls back to a
+// common).
 func (p Pool) CanFill() bool {
 	return len(p.Commons) > 0 && len(p.Uncommons) > 0 && len(p.Rares)+len(p.Mythics) > 0
 }
