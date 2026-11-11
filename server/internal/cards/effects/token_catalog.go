@@ -356,6 +356,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
 
+	// Garruk, Cursed Huntsman's Wolf and Wrenn and Seven's Treefolk (batch 51).
+	printedCmdr2S51WolfToken,
+	printedCmdr2S51TreefolkToken,
+
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,

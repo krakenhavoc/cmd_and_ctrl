@@ -6,6 +6,8 @@
 # -update-shape. Anything else needs a SnapshotSchemaVersion bump, and
 # once the version moves on this file is frozen history (#522).
 activations	object
+activations.artifact_activated	map:string
+activations.artifact_activated{}	number:int
 activations.ever	map:string
 activations.ever{}	number:int
 activations.own_creature_targeted	map:string

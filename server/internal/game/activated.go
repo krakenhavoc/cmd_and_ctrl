@@ -1710,6 +1710,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// The same key is read now and written below, so the gate and the
 	// record cannot address different things.
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
+	sourceWasArtifact := g.isArtifactOnBattlefieldLocked(cardID)
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
@@ -2701,6 +2702,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taken above, before the costs ran, so a sacrifice-this cost has
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
+	g.noteArtifactActivationLocked(playerID, sourceWasArtifact)
 	// #4475: "the first equip ability you activate each turn" counts
 	// every equip announce, either row, resolved or not.
 	if ab.Equip {
