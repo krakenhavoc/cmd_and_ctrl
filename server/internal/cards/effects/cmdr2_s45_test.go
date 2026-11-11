@@ -183,3 +183,189 @@ func TestCmdr2S45PredatorsHourGrantsMenaceAndTheExileTrigger(t *testing.T) {
 	}
 	e2AssertFaceDownFor(t, g, lib[0], me.ID)
 }
+
+const (
+	cmdr2S45NashiOracle       = "d04b6c2c-50fc-464d-9991-230efec70d2b"
+	cmdr2S45InkEyesOracle     = "5d520476-740a-4005-801e-472b24fa6497"
+	cmdr2S45SilentBladeOracle = "4f515250-0f1f-4fb7-aa75-b703b81ccd4a"
+	cmdr2S45ShinobiOracle     = "4fc5f871-a809-4a4a-adfb-eb4cd52837c8"
+)
+
+func TestCmdr2S45NinjutsuCardsDeclareTheirKeywordCosts(t *testing.T) {
+	for _, tc := range []struct{ name, oracle, mana string }{
+		{"Nashi", cmdr2S45NashiOracle, "{3}{B}"},
+		{"Ink-Eyes", cmdr2S45InkEyesOracle, "{3}{B}{B}"},
+		{"Silent-Blade Oni", cmdr2S45SilentBladeOracle, "{4}{U}{B}"},
+		{"Fallen Shinobi", cmdr2S45ShinobiOracle, "{2}{U}{B}"},
+	} {
+		var found bool
+		for _, ab := range game.ActivatedAbilitiesForCard(game.Card{OracleID: tc.oracle}) {
+			if ab.Cost.Mana == tc.mana && !ab.Cost.ReturnToHand.Empty() && game.AbilityFunctionsFromZone(ab, game.ZoneHand) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: no ninjutsu %s ability that works from the hand", tc.name, tc.mana)
+		}
+	}
+}
+
+func TestCmdr2S45NashiExilesATopCardPerPlayerAndSpendsOneBudgetOnLife(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	nashi := b43Catalog(g, me.ID, "Nashi, Moon Sage's Scion", "Legendary Creature — Rat Ninja", cmdr2S45NashiOracle, 3, 2)
+	_ = nashi
+	var tops []uuid.UUID
+	for _, p := range g.Seats {
+		lib := cmdr2S45StackLibrary(p, 3)
+		tops = append(tops, lib[0])
+	}
+	attackWith(t, g, opp.ID, nashi)
+	passPriorityAroundTable(t, g)
+
+	for i, id := range tops {
+		if z := e2Zone(g, id); z != game.ZoneExile {
+			t.Fatalf("seat %d's top card is in %q, want exile", i, z)
+		}
+		perm := e2Permission(g, id)
+		if perm == nil || perm.Player != me.ID || !perm.LifeEqualToManaValue || perm.CastsLeft != 1 || perm.BudgetGroup == uuid.Nil {
+			t.Fatalf("seat %d's card permission %+v, want a one-use life-for-mana-value grant to you", i, perm)
+		}
+	}
+	// Cast one of the opponent's cards: life equal to its mana value ({1} = 1).
+	before := me.Life
+	if err := g.CastSpell(me.ID, tops[1], game.CastSpellParams{FromZone: "exile", AlternativeCost: "nashi_moon_sages_scion"}); err != nil {
+		t.Fatalf("cast an exiled card for life: %v", err)
+	}
+	if got := before - me.Life; got != 1 {
+		t.Errorf("paid %d life, want its mana value 1", got)
+	}
+	if p := e2Permission(g, tops[2]); p != nil && p.CastsLeft > 0 {
+		t.Errorf("the other cards still carry a live permission %+v: it is one play in all", p)
+	}
+	if err := g.CastSpell(me.ID, tops[0], game.CastSpellParams{FromZone: "exile", AlternativeCost: "nashi_moon_sages_scion", Strict: true}); err == nil {
+		t.Error("a second card was played: Nashi allows one of those cards")
+	}
+}
+
+func TestCmdr2S45InkEyesMayReanimateFromTheDamagedPlayersGraveyard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ink := b43Catalog(g, me.ID, "Ink-Eyes, Servant of Oni", "Legendary Creature — Rat Ninja", cmdr2S45InkEyesOracle, 5, 4)
+	victim := uuid.New()
+	opp.Graveyard.PushTop(game.Card{InstanceID: victim, Name: "Dead Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID})
+	spell := uuid.New()
+	opp.Graveyard.PushTop(game.Card{InstanceID: spell, Name: "Dead Spell", TypeLine: "Instant", Owner: opp.ID, Controller: opp.ID})
+	mine := uuid.New()
+	me.Graveyard.PushTop(game.Card{InstanceID: mine, Name: "My Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
+
+	attackWith(t, g, opp.ID, ink)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, victim)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(victim) {
+		t.Fatal("the creature card did not come back")
+	}
+	if got := controllerOf(t, g, victim); got != me.ID {
+		t.Errorf("it came back under %s, want your control", got)
+	}
+	if g.Battlefield.Contains(spell) || g.Battlefield.Contains(mine) {
+		t.Error("a non-creature card or your own graveyard card came back")
+	}
+}
+
+func TestCmdr2S45InkEyesDeclinedLeavesTheGraveyardAlone(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ink := b43Catalog(g, me.ID, "Ink-Eyes, Servant of Oni", "Legendary Creature — Rat Ninja", cmdr2S45InkEyesOracle, 5, 4)
+	victim := uuid.New()
+	opp.Graveyard.PushTop(game.Card{InstanceID: victim, Name: "Dead Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID})
+	attackWith(t, g, opp.ID, ink)
+	passPriorityAroundTable(t, g)
+	answerPickTarget(t, g, victim)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(victim) {
+		t.Fatal("a declined reanimation happened")
+	}
+}
+
+func TestCmdr2S45FallenShinobiExilesTwoForAFreePlay(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	shinobi := b43Catalog(g, me.ID, "Fallen Shinobi", "Creature — Zombie Ninja", cmdr2S45ShinobiOracle, 5, 4)
+	lib := cmdr2S45StackLibrary(opp, 5)
+	attackWith(t, g, opp.ID, shinobi)
+	passPriorityAroundTable(t, g)
+	for _, i := range []int{0, 1} {
+		if z := e2Zone(g, lib[i]); z != game.ZoneExile {
+			t.Fatalf("card %d in %q, want exile", i, z)
+		}
+		perm := e2Permission(g, lib[i])
+		if perm == nil || perm.Player != me.ID || perm.Cost != "{0}" || perm.CastOnly {
+			t.Errorf("card %d permission %+v, want a free play grant to the controller", i, perm)
+		}
+	}
+	if z := e2Zone(g, lib[2]); z != game.ZoneLibrary {
+		t.Errorf("third card in %q, want it left in the library", z)
+	}
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, lib[0], game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
+		t.Logf("cast outside the window: %v", err)
+	}
+}
+
+func TestCmdr2S45SilentBladeOniLooksAndCastsFromTheirHandFree(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	oni := b43Catalog(g, me.ID, "Silent-Blade Oni", "Creature — Demon Ninja", cmdr2S45SilentBladeOracle, 6, 5)
+	opp.Hand.Cards = nil
+	bear := uuid.New()
+	opp.Hand.PushTop(game.Card{InstanceID: bear, Name: "Their Bear", TypeLine: "Creature — Bear", ManaCost: "{3}{G}", Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID})
+	land := uuid.New()
+	opp.Hand.PushTop(game.Card{InstanceID: land, Name: "Their Forest", TypeLine: "Basic Land — Forest", Owner: opp.ID, Controller: opp.ID})
+
+	attackWith(t, g, opp.ID, oni)
+	passPriorityAroundTable(t, g)
+	for _, id := range []uuid.UUID{bear, land} {
+		c, _ := cmdr2S45CardInHand(opp, id)
+		if !c.IsKnownTo(me.ID) {
+			t.Errorf("you did not get to look at %s", c.Name)
+		}
+	}
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, bear)
+	if slicesContains(offer.DiscardOptions, land) {
+		t.Error("a land was offered as a spell to cast")
+	}
+	if err := castThroughResolutionCast(t, g, me.ID, bear, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast their card free: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(bear) {
+		t.Fatal("the creature did not resolve")
+	}
+	if got := controllerOf(t, g, bear); got != me.ID {
+		t.Errorf("it is under %s, want the caster", got)
+	}
+}
+
+func cmdr2S45CardInHand(p *game.Player, id uuid.UUID) (game.Card, bool) {
+	for _, c := range p.Hand.Cards {
+		if c.InstanceID == id {
+			return c, true
+		}
+	}
+	return game.Card{}, false
+}
+
+func slicesContains(ids []uuid.UUID, id uuid.UUID) bool {
+	for _, x := range ids {
+		if x == id {
+			return true
+		}
+	}
+	return false
+}
