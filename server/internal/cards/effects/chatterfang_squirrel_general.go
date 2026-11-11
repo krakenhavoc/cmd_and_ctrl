@@ -37,9 +37,9 @@ func init() {
 				return ev.Kind == game.RepEventCreateTokens &&
 					ev.TokenController == src.Controller && ev.TokenCount() > 0
 			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 				ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{
-					Template: TokenCard("1/1 green Squirrel"), Count: ev.TokenCount(),
+					Template: src.TokenThroughText(TokenCard("1/1 green Squirrel")), Count: ev.TokenCount(),
 				})
 				return nil
 			},
@@ -50,7 +50,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{B}, Sacrifice X Squirrels: Target creature gets +X/-X until end of turn.",
-			Purpose: ForTargets(HarmUntilEOT(0, 0, 0)),
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{B}"), SacrificeX("X Squirrels", HasSubtype("Squirrel"))),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

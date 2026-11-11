@@ -34,8 +34,8 @@ import (
 //
 // No simplification.
 func init() {
-	isFish := func(t game.Card) bool { return t.IsToken() && t.HasSubtype("Fish") && t.IsCreature() }
-	isShark := func(t game.Card) bool { return t.IsToken() && t.HasSubtype("Shark") && t.IsCreature() }
+	isFish := func(t game.Card) bool { return t.IsToken() && t.HasSubtypeWord("Fish") && t.IsCreature() }
+	isShark := func(t game.Card) bool { return t.IsToken() && t.HasSubtypeWord("Shark") && t.IsCreature() }
 	rewrite := func(label string, match func(game.Card) bool, kind string, level game.Designation) game.ReplacementEffect {
 		return game.ReplacementEffect{
 			Watches: []game.EventKind{game.EventTokenCreated},

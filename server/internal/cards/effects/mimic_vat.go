@@ -36,6 +36,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{3}, {T}: Create a token that's a copy of a card exiled with this artifact. It gains haste. Exile it at the beginning of the next end step.",
 			Cost:  Plus(ManaCost("{3}"), TapCost()),
+			// A hasty creature token that can block this turn.
+			Purpose: game.Purpose{Tokens: 1, CreatureTokens: 1, Answers: game.AnswerMakesBlocker},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				ref, ok := ctx.SourceRef()

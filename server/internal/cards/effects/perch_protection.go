@@ -63,7 +63,7 @@ func init() {
 					return err
 				}
 			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
+			return ExileTarget{Target: item.SourceCardID}.Apply(ctx)
 		},
 	})
 }
