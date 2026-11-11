@@ -10,6 +10,12 @@ import "github.com/google/uuid"
 // so the copy shares nothing with the game it came from, and the new game
 // does not reuse the old game's card identities.
 //
+// At a table of a format that plays matches (ADR 0222 §3) the copy also
+// holds the deck's companion and sideboard, stamped as they were
+// seated, after the library: the registered list a rematch starts from
+// is the whole seventy-five, not the sixty a match's last game happened
+// to be played with. A Commander table's copy is what it always was.
+//
 // Nil once the game has left the lobby: a started game's zones hold the
 // shuffled, dealt and played cards, not the deck.
 func (g *Game) LobbyDecks() map[uuid.UUID][]Card {
@@ -23,8 +29,15 @@ func (g *Game) LobbyDecks() map[uuid.UUID][]Card {
 		if p == nil {
 			continue
 		}
+		zones := []*Zone{p.Command, p.Library}
+		if g.Settings.FormatSpec().Matches {
+			zones = append(zones, p.Companion, p.Sideboard)
+		}
 		deck := make([]Card, 0, len(p.Command.Cards)+len(p.Library.Cards))
-		for _, zone := range []*Zone{p.Command, p.Library} {
+		for _, zone := range zones {
+			if zone == nil {
+				continue
+			}
 			for _, c := range zone.Cards {
 				cp := cloneCard(c)
 				cp.InstanceID = uuid.New()

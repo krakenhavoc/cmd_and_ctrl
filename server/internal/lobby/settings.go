@@ -117,8 +117,13 @@ func (l *Lobby) Settings(id uuid.UUID) (game.TableSettings, error) {
 // page. A Commander table's meta carries neither field. Callers hold
 // l.mu.
 func syncFormatLocked(entry *gameEntry) {
-	spec := entry.room.Game.TableSettingsSnapshot().FormatSpec()
-	entry.meta.Format, entry.meta.MaxSeats = "", 0
+	settings := entry.room.Game.TableSettingsSnapshot()
+	spec := settings.FormatSpec()
+	entry.meta.Format, entry.meta.MaxSeats, entry.meta.BestOf = "", 0, 0
+	// ADR 0222 §3: and the match length, for a best-of-three.
+	if n := settings.EffectiveBestOf(); n > 1 {
+		entry.meta.BestOf = n
+	}
 	if spec.Format != game.FormatCommander {
 		entry.meta.Format = string(spec.Format)
 	}

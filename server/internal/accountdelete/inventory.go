@@ -182,6 +182,8 @@ var Inventory = join(
 		"spells_cast", "cards_drawn", "attacks", "tokens_created", "mulligans", "commanders"),
 	cols("seat_card_stats", Kept, "which cards a seat cast, by card name; part of the game record and names no one",
 		"game_id", "seat", "name", "scryfall_id", "casts", "first_cast_turn"),
+	cols("match_games", Kept, "each game of a best-of-three (ADR 0222 §3): who won it by seat number, why it ended, who went first and how many turns it took; part of the game record the other player keeps, with no name or user id",
+		"game_id", "game_no", "outcome", "winner_seat", "cause", "starting_seat", "turns"),
 	cols("game_stats", Kept, "version 2 (ADR 0217): how the game was won and whether its replay was read; part of the game record the other players keep, with no name or user id",
 		"frames_complete", "win_kind", "win_turn", "combo_rule"),
 	cols("seat_stats", Kept, "version 2 (ADR 0217): a seat's turn order, deck hash, how it left, its land drops, mana troubles and attacks; part of the game record, naming a seat number, never a person, and reached through the tombstone as ADR 0165 §5",

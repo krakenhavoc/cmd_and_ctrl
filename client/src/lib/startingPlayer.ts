@@ -21,6 +21,13 @@ export interface OpeningRollWinner {
    * (Karn Liberated), when the log names one.
    */
   restarted?: { card?: string };
+  /**
+   * Set when this is a later game of a match (ADR 0222 §3, CR 103.1):
+   * the seat is the player who chose, the loser of the game before,
+   * `game` its number in the match and `drew` true when they chose to
+   * draw (`chosen` is then the opponent, who plays first).
+   */
+  matchGame?: { game: number; drew: boolean };
 }
 
 // openingRollWinner reads the durable public log rather than transient UI
@@ -42,6 +49,27 @@ export function openingRollWinner(view: StartingView | null): OpeningRollWinner 
     const name = nameOf(restart.seat);
     if (name === undefined) return null;
     return { seat: restart.seat, name, restarted: restart.label ? { card: restart.label } : {} };
+  }
+
+  // ADR 0222 §3: a later game of a match has no roll either. The loser
+  // of the game before chose who plays first, and the log begins with
+  // that line.
+  const next = (view.log ?? []).find((entry) => entry.kind === "match_game");
+  if (next) {
+    const name = nameOf(next.seat);
+    if (name === undefined) return null;
+    const drew = next.label === "draw";
+    const out: OpeningRollWinner = {
+      seat: next.seat,
+      name,
+      matchGame: { game: next.amount ?? 0, drew },
+    };
+    const target = next.target_seat;
+    if (target !== undefined && target !== next.seat) {
+      const chosenName = nameOf(target);
+      if (chosenName !== undefined) out.chosen = { seat: target, name: chosenName };
+    }
+    return out;
   }
 
   let choice: LogEvent | undefined;
@@ -89,6 +117,12 @@ export function openingRollText(winner: OpeningRollWinner): string {
     return card
       ? `${winner.name} restarted the game with ${card} and goes first`
       : `${winner.name} restarted the game and goes first`;
+  }
+  if (winner.matchGame) {
+    const game = winner.matchGame.game > 0 ? `Game ${winner.matchGame.game}: ` : "";
+    return winner.matchGame.drew
+      ? `${game}${winner.name} chose to draw`
+      : `${game}${winner.name} chose to play first`;
   }
   const won =
     winner.result === undefined

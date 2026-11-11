@@ -146,6 +146,12 @@ type TableSettings struct {
 	// existed holds, and omitempty keeps every Commander table's
 	// snapshot byte-identical. Fixed once the game is active.
 	Format Format `json:"format,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3,
+	// match.go). Read it only through EffectiveBestOf: the stored zero
+	// value is best-of-one, and 3 is a best-of-three in a format that
+	// plays matches. omitempty keeps every other table's snapshot
+	// byte-identical. Fixed once the game is active.
+	BestOf int `json:"bestOf,omitempty"`
 }
 
 // EffectiveAwayAfter is the away time in minutes, 0 for never.
@@ -200,6 +206,10 @@ type SettingsPatch struct {
 	// with no StartingLife beside it also sets the format's own
 	// starting life.
 	Format *Format `json:"format,omitempty"`
+	// BestOf is 1 or 3. Refused after Start (ErrBestOfLocked), and a 3
+	// is refused in a format that plays no matches (ErrBestOfFormat).
+	// A change of format to one that plays none sets it back to 1.
+	BestOf *int `json:"best_of,omitempty"`
 }
 
 // Validate range-checks every present field. It does not know the
@@ -241,6 +251,11 @@ func (p SettingsPatch) Validate() error {
 	}
 	if p.Format != nil {
 		if err := validateFormat(*p.Format); err != nil {
+			return err
+		}
+	}
+	if p.BestOf != nil {
+		if err := validateBestOf(*p.BestOf); err != nil {
 			return err
 		}
 	}
@@ -308,6 +323,19 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 			next.StartingLife = spec.StartingLife
 		}
 	}
+	if patch.BestOf != nil && *patch.BestOf != next.EffectiveBestOf() {
+		if g.State != StateLobby {
+			return ErrBestOfLocked
+		}
+		if *patch.BestOf > 1 && !next.FormatSpec().Matches {
+			return ErrBestOfFormat
+		}
+		next.BestOf = storedBestOf(*patch.BestOf)
+	}
+	if !next.FormatSpec().Matches {
+		// A format with no matches has no match length to keep.
+		next.BestOf = 0
+	}
 	if patch.UndoLimit != nil {
 		next.UndoLimit = *patch.UndoLimit
 	}
@@ -371,6 +399,7 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	// The format first: its line explains the starting life line that
 	// a format change brings with it.
 	emit(SettingFormat, string(old.EffectiveFormat()), string(next.EffectiveFormat()))
+	emit(SettingBestOf, strconv.Itoa(old.EffectiveBestOf()), strconv.Itoa(next.EffectiveBestOf()))
 	emit(SettingUndoLimit, strconv.Itoa(old.UndoLimit), strconv.Itoa(next.UndoLimit))
 	emit(SettingUndoScope, string(old.UndoScope), string(next.UndoScope))
 	emit(SettingStartingLife, strconv.Itoa(old.StartingLife), strconv.Itoa(next.StartingLife))

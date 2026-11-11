@@ -92,6 +92,7 @@
   import type { TableSettingsView } from "../lib/protocol";
   import { settingsSummary, settingsTopics, type TableSettingsPatch } from "../lib/tableSettings";
   import { FORMATS, formatOf, type FormatID } from "../lib/formats";
+  import { MATCH_LENGTHS, matchLengthChip, playsMatches } from "../lib/matchLength";
   import DeckPicker from "../lib/components/DeckPicker.svelte";
   import BotPicker from "../lib/components/BotPicker.svelte";
   import type { PickerCommit, PickerState } from "../lib/deckPicker";
@@ -318,6 +319,9 @@
   // picks another; the last setup is offered only for the format it
   // was captured at, so the two can never disagree.
   let newFormat = $state<FormatID>("commander");
+  // ADR 0222 §3: the new table's match length, where its format plays
+  // matches. One game unless the host asks for three.
+  let newBestOf = $state<1 | 3>(1);
   const setupFits = $derived(
     lastSetup !== null && formatOf(lastSetup.settings?.format).id === newFormat,
   );
@@ -671,6 +675,7 @@
       const meta = await createGame(newName.trim(), {
         ...(withSetup ? { setup: "last" as const } : {}),
         format: newFormat,
+        bestOf: playsMatches(newFormat) ? newBestOf : 1,
         voiceRoom: $community.voice && wantVoiceRoom,
         lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
         results: $community.results === true && wantResults,
@@ -1633,6 +1638,19 @@
             </label>
           {/each}
         </div>
+        {#if playsMatches(newFormat)}
+          <div class="nt-format" role="radiogroup" aria-label="match length">
+            {#each MATCH_LENGTHS as m (m.bestOf)}
+              <label class="format-opt">
+                <input type="radio" name="nt-best-of" value={m.bestOf} bind:group={newBestOf} />
+                <span>
+                  {m.name}
+                  <span class="format-sum">{m.blurb}</span>
+                </span>
+              </label>
+            {/each}
+          </div>
+        {/if}
         {#if lastSetup && setupFits}
           <label class="use-setup">
             <input type="checkbox" bind:checked={useLastSetup} />
@@ -1776,6 +1794,17 @@
                   {#if formatOf(g.format).id !== "commander"}
                     <!-- ADR 0222 §1: a table of another format says so. -->
                     <span class="chip">{formatOf(g.format).name}</span>
+                  {/if}
+                  {#if matchLengthChip(g.best_of)}
+                    <!-- ADR 0222 §3: a best-of-three says so, and once
+                         it has started, which game it is on and the
+                         score. -->
+                    <span class="chip">
+                      {matchLengthChip(g.best_of)}{#if g.match_game}
+                        · game {g.match_game} · {g.players
+                          .map((p) => p.match_wins ?? 0)
+                          .join("–")}{/if}
+                    </span>
                   {/if}
                   <span class="ctx">{contextLine(g, { seat: myNo })}</span>
                 </div>

@@ -106,6 +106,11 @@ func (g *Game) OutcomeKind() string {
 	if g.Outcome != nil {
 		kind = g.Outcome.Kind
 	}
+	// ADR 0222 §3: a finished best-of-three's result is the match's.
+	if k, _, ok := g.matchResultLocked(); ok {
+		g.mu.RUnlock()
+		return k
+	}
 	g.mu.RUnlock()
 	if !ended {
 		return ""
@@ -179,7 +184,7 @@ func (g *Game) loseGameLocked(p *Player, cause LossCause, source uuid.UUID) bool
 // Caller must hold g.mu.
 func (g *Game) checkGameOverLocked() bool {
 	if g.State != StateActive {
-		return g.State == StateEnded
+		return g.State == StateEnded || g.State == StateBetweenGames
 	}
 	var last *Player
 	left := 0
@@ -209,7 +214,7 @@ func (g *Game) checkGameOverLocked() bool {
 //
 // Caller must hold g.mu.
 func (g *Game) endGameLocked(o GameOutcome) {
-	if g.State == StateEnded {
+	if g.State == StateEnded || g.State == StateBetweenGames {
 		return
 	}
 	// CR 702.143f, #658: all face-down foretold cards are revealed as
@@ -234,6 +239,10 @@ func (g *Game) endGameLocked(o GameOutcome) {
 		CardID: o.Source,
 		Label:  o.Cause,
 	})
+	// ADR 0222 §3: at a table playing a match, the game that ended is
+	// one of its games. The match is over with it, or the table goes
+	// between games (StateBetweenGames) and this was not the end.
+	g.matchGameEndedLocked(o)
 }
 
 // WinTheGameForEffect is CR 104.2b: an effect says `player` wins the

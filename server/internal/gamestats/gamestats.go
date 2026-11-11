@@ -56,6 +56,21 @@ const (
 )
 
 // Game is one game's record.
+// MatchGame is one finished game of a best-of-three (match_games).
+type MatchGame struct {
+	// No is 1, 2 or 3.
+	No int
+	// Outcome is game.OutcomeWin or game.OutcomeDraw, and WinnerSeat
+	// the seat that won; nil for a draw.
+	Outcome    string
+	WinnerSeat *int
+	// Cause is the game outcome's cause, StartingSeat the seat that
+	// took the first turn and Turns the turn number the game ended on.
+	Cause        string
+	StartingSeat int
+	Turns        int
+}
+
 type Game struct {
 	GameID      uuid.UUID
 	Version     int
@@ -69,6 +84,11 @@ type Game struct {
 	// was none.
 	StartingSeat *int
 	ComputedAt   time.Time
+
+	// MatchGames is each game of a best-of-three (ADR 0222 §3), in
+	// order. The record itself is the match: one table, one result per
+	// seat. Nil for every other table, a best-of-one included.
+	MatchGames []MatchGame
 
 	// FramesComplete is true when the replay was read whole (ADR 0217
 	// §1). Without it the seats' Play is nil, or, for a replay cut short,
@@ -364,6 +384,22 @@ func Compute(in Input) Game {
 	}
 
 	placeAndResult(out.Seats, at, eliminated, in.Outcome, in.WinnerSeat)
+
+	// ADR 0222 §3: the games of a best-of-three, from the final view,
+	// so a record computed from a replay keeps them too. The seats'
+	// result above is the match's (the table's outcome); the log the
+	// rest of the record reads begins again with each game, so the
+	// counts describe the last one.
+	if m := in.View.Match; m != nil && m.BestOf > 1 {
+		for i, g := range m.Games {
+			mg := MatchGame{No: i + 1, Outcome: "draw", Cause: g.Cause, StartingSeat: g.StartingSeat, Turns: g.Turns}
+			if g.WinnerSeat != nil {
+				seat := *g.WinnerSeat
+				mg.Outcome, mg.WinnerSeat = "win", &seat
+			}
+			out.MatchGames = append(out.MatchGames, mg)
+		}
+	}
 
 	// Version 2: how the game was won and how each seat left (ADR 0217
 	// §3), turn order, the deck hash and the spread across opponents.
