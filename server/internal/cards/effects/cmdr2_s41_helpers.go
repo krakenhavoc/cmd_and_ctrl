@@ -55,3 +55,35 @@ func cmdr2S41DifferentInstantSorceryManaValues(g *game.Game, controller uuid.UUI
 func cmdr2S41CastThreeOrMoreSpellsThisTurn(g *game.Game, controller, _ uuid.UUID) bool {
 	return g.CastTallyFor(controller).Total >= 3
 }
+
+// cmdr2S41EightOrMoreInstantsSorceriesInGraveyard is Octavia's cost gate,
+// "if you have eight or more instant and/or sorcery cards in your graveyard",
+// read at CR 601.2f off the graveyard as it stands.
+func cmdr2S41EightOrMoreInstantsSorceriesInGraveyard(q game.CostQuery) bool {
+	return q.Game != nil && fandanielInstantsAndSorceries(q.Game, q.Controller) >= 8
+}
+
+// cmdr2S41BaseEightEight makes the chosen creature 8/8 at base until end
+// of turn (Octavia, Living Thesis). It sets base power and toughness (layer
+// 7b), so counters and anthems still apply on top of it.
+func cmdr2S41BaseEightEight(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return untilEndOfTurn(ctx, t.ID, nil,
+			"Octavia, Living Thesis — base power and toughness 8/8 until end of turn",
+			game.SetBasePTMods(8, 8)...)
+	}
+	return nil
+}
+
+// cmdr2S41FifteenOrMoreCardsInGraveyard is Case of the Shifting Visage's
+// solve condition, "there are fifteen or more cards in your graveyard",
+// checked at the beginning of the end step and again as the trigger
+// resolves (CR 603.4).
+func cmdr2S41FifteenOrMoreCardsInGraveyard(g *game.Game, controller, _ uuid.UUID) bool {
+	p := g.PlayerByIDForEffect(controller)
+	return p != nil && len(p.Graveyard.Cards) >= 15
+}
