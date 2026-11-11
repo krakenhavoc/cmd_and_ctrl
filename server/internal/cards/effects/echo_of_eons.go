@@ -42,11 +42,16 @@ func init() {
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{2}{U}")},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			players := tablePlayers(ctx)
-			return echoOfEonsShuffleEach(ctx.Game, players, players)
-		},
+		OnResolve:        echoOfEonsResolve,
 	})
+}
+
+// echoOfEonsResolve is "each player shuffles their hand and graveyard into
+// their library, then draws seven cards", shared with Memory (Commit //
+// Memory), which prints the same sentence.
+func echoOfEonsResolve(_ *game.StackItem, ctx *Context) error {
+	players := tablePlayers(ctx)
+	return echoOfEonsShuffleEach(ctx.Game, players, players)
 }
 
 // echoOfEonsShuffleEach tucks the head player's hand and graveyard

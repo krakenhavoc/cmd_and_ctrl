@@ -489,6 +489,7 @@ choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
 choose choose-cards/cmdr2-b09-florian-exile
+choose choose-cards/cmdr2-s39-dispersal-return
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -2109,6 +2110,7 @@ tail cmdr2-b03/shuffle-rest-into-library
 tail cmdr2-b05/admiral-brass-entered
 tail cmdr2-b09-timothar/after-exile
 tail cmdr2-b09-timothar/bat
+tail cmdr2-s39/concoct-return
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
