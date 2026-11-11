@@ -488,6 +488,7 @@ choose choose-cards/chief-montgomery-scott-put
 choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
+choose choose-cards/cmdr2-b09-florian-exile
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -515,6 +516,7 @@ choose choose-cards/deadly-cover-up-exile
 choose choose-cards/death-wish-take
 choose choose-cards/deepfathom-echo-copy
 choose choose-cards/demonlord-of-ashmouth-sacrifice
+choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/dinosaur-headdress-copy
 choose choose-cards/discard-draw-as-many
 choose choose-cards/discard-draw-one-if-any
@@ -626,6 +628,7 @@ choose choose-cards/learn-discard
 choose choose-cards/learn-lesson
 choose choose-cards/least-power-destroy
 choose choose-cards/ledger-shredder-connive
+choose choose-cards/leyline-dowser-milled
 choose choose-cards/lichs-mastery-exile
 choose choose-cards/lightstall-inquisitor-exile
 choose choose-cards/liliana-dreadhorde-general-keep-artifact
@@ -1247,6 +1250,7 @@ drawthen alpharael-discard-two-unless-artifact
 drawthen bonny-pall-clearcutter/put-land
 drawthen brainstorm-put-back
 drawthen brainsurge-put-back
+drawthen cmdr2-b01-brainstone-put-back
 drawthen development-after-draw
 drawthen discard-two-unless-artifact
 drawthen discard-two-unless-basic-land
@@ -1443,6 +1447,7 @@ option option-pick/season-of-gathering-type
 option option-pick/secret-choice
 option option-pick/seize-the-spotlight-answer
 option option-pick/shah-of-naar-isle-draw
+option option-pick/shifting-ceratops-keyword
 option option-pick/skullwinder-opponent
 option option-pick/slithermuse-opponent
 option option-pick/slumbering-walker-remove-a-counter
@@ -1520,6 +1525,10 @@ payunless pay-unless/bushy-bodyguard-counters
 payunless pay-unless/centaur-vinecrasher-return
 payunless pay-unless/chain-lightning-offer-copy
 payunless pay-unless/chaos-spewer-blight
+payunless pay-unless/cmdr2-b05-emperor-mihail-merfolk
+payunless pay-unless/cmdr2-b05-fathom-fleet-captain-pirate
+payunless pay-unless/cmdr2-b05-surgespanner-bounce
+payunless pay-unless/cmdr2-b09-timothar-exile
 payunless pay-unless/combustion-man-destroy
 payunless pay-unless/confiscation-coup-gain-control
 payunless pay-unless/conspiracy-theorist-discard
@@ -1742,6 +1751,8 @@ run prompt-run/brudiclad-tokens-become-copies
 run prompt-run/campsite-cuisine-sacrifice-foods
 run prompt-run/capital-punishment-discards
 run prompt-run/chitterspitter-acorn
+run prompt-run/cmdr2-b09-foul-rebirth-token
+run prompt-run/cmdr2-b09-promise-of-aclazotz-populate
 run prompt-run/comet-crawler-pump
 run prompt-run/consuming-vapors-gain
 run prompt-run/cornered-by-black-mages-wizard
@@ -2094,6 +2105,10 @@ tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
 tail cmdr-b9/gain-haste-until-eot
 tail cmdr-b9/then-proliferate
+tail cmdr2-b03/shuffle-rest-into-library
+tail cmdr2-b05/admiral-brass-entered
+tail cmdr2-b09-timothar/after-exile
+tail cmdr2-b09-timothar/bat
 tail coalstoke-gearhulk/entered
 tail colfenors-urn/return
 tail combustible-gearhulk/burn-total-mana-value
@@ -2141,6 +2156,7 @@ tail dark-tutor/found
 tail darkchild/play-exiled
 tail dawn-of-a-new-age/after-removal
 tail dawnhand-eulogist/after-mill
+tail deathgorge-scavenger/exiled-card-riders
 tail defy-death/two-counters-if-angel
 tail deliver-from-chaos/after-exile
 tail demonic-consultation/after-mill
@@ -2388,6 +2404,7 @@ tail lady-loki/spell-exiled
 tail last-voyage-of-the-blank/attach-returned
 tail lazav-familiar-stranger/after-exile
 tail level-up/then-draw-if-power-10
+tail leyline-dowser/after-mill
 tail lieutenant-nyota-uhura/after-exile
 tail life-exchange/second-half
 tail life/gain-equal-to-lost
@@ -2546,6 +2563,7 @@ tail recipient/create-a-mutagen-if-dealt-damage
 tail recipient/drain-life-gain-up-to
 tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
+tail recipient/marauding-raptor-dinosaur-pump
 tail recipient/reckless-blaze-watch-death
 tail recipient/sonic-shrieker-player-discards
 tail reckless-handling/discard-at-random
@@ -2575,6 +2593,8 @@ tail sacrificed-one/prompt-run/boilerbilges-ripper-sacrifice
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail sacrificed-one/prompt-run/bristlebud-farmer-sacrifice
 tail sacrificed-one/prompt-run/chitterspitter-acorn
+tail sacrificed-one/prompt-run/cmdr2-b09-foul-rebirth-token
+tail sacrificed-one/prompt-run/cmdr2-b09-promise-of-aclazotz-populate
 tail sacrificed-one/prompt-run/comet-crawler-pump
 tail sacrificed-one/prompt-run/cornered-crook-sacrifice
 tail sacrificed-one/prompt-run/dahar-master-sacrifice
@@ -2769,6 +2789,7 @@ tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-consultation-named
+tail then/descendants-fury-sacrificed
 tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
 tail then/discard-at-random
@@ -2808,6 +2829,7 @@ tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
+tail then/haunting-voyage-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
@@ -2822,6 +2844,7 @@ tail then/kaya-spirits-justice-exile-from-a-graveyard
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
 tail then/kindred-judgment-type-chosen
+tail then/kindred-summons-type-chosen
 tail then/king-solomons-frogs-exiled-one
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
@@ -2845,6 +2868,7 @@ tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered
 tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
+tail then/pact-of-the-serpent-type-chosen
 tail then/palanis-hatcher-dinosaur
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed
