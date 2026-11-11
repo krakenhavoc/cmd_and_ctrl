@@ -177,6 +177,9 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 	quality := SourceCharacteristics(&aura)
 	var out LegalTargets
 	for _, id := range matches.Players {
+		if ev.auraHostCreaturesOnly {
+			continue
+		}
 		p := g.playerByIDLocked(id)
 		if p == nil || p.Eliminated {
 			continue
@@ -202,6 +205,13 @@ func (g *Game) auraHostCandidatesLocked(ev *ReplacementEvent, aura Card, spec *T
 			if host == nil || (HasProtection(host) && ProtectedFrom(host, quality)) {
 				continue
 			}
+			if ev.auraHostCreaturesOnly && !host.IsCreature() {
+				continue
+			}
+		} else if ev.auraHostCreaturesOnly {
+			// "Only creatures can be enchanted this way": a card in a
+			// graveyard is not one (Animate Dead's own clause is skipped).
+			continue
 		}
 		out.Cards = append(out.Cards, id)
 	}
