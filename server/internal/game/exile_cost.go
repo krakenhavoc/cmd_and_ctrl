@@ -230,6 +230,16 @@ type ExileCost struct {
 	// as the hand, which is what every #1283 declaration meant before
 	// the field existed; read it through Zone(). effects.Register
 	// refuses any other zone at boot.
+	//
+	// ZoneExile is the one other pile, and a different move (#5457):
+	// "Put a card an opponent owns from exile into that player's
+	// graveyard" (Void Attendant and the other Processors). The walk
+	// reads the shared exile zone for cards an OPPONENT owns, and the
+	// payer puts each into its owner's graveyard instead of exiling it
+	// (Processes). The count, the label, the predicate, the picks on
+	// `exile_ids` and the validator are this component's own. A CR 602
+	// ability with a printed count only; effects.Register refuses the
+	// form anywhere else.
 	From ZoneKind
 
 	// Match is the clause's predicate. Nil matches any card in the
@@ -394,7 +404,15 @@ func (e *ExileCost) Zone() ZoneKind {
 // from; effects.Register refuses the rest at boot rather than shipping
 // a clause the candidate walk would never find a card for.
 func ExileCostZoneSupported(z ZoneKind) bool {
-	return z == ZoneHand || z == ZoneGraveyard
+	return z == ZoneHand || z == ZoneGraveyard || z == ZoneExile
+}
+
+// Processes reports whether the clause is "put a card an opponent owns
+// from exile into that player's graveyard" (From: ZoneExile, #5457)
+// rather than an exile out of the activator's own hand or graveyard.
+// Nil-safe.
+func (e *ExileCost) Processes() bool {
+	return e != nil && e.From == ZoneExile
 }
 
 // Matches reports whether `c` could pay this clause. Nil-safe on both
@@ -409,10 +427,10 @@ func (e *ExileCost) Matches(c Card) bool {
 	return e.Match(c)
 }
 
-// exileCostPile is the zone of `p` the clause reads — the hand or the
-// graveyard — or nil for a zone the component does not support.
-// Caller must hold g.mu.
-func exileCostPile(p *Player, cost *ExileCost) *Zone {
+// exileCostPileLocked is the zone the clause reads for `p` — their hand
+// or graveyard, or the shared exile zone for a processing clause — or
+// nil for a zone the component does not support. Caller must hold g.mu.
+func (g *Game) exileCostPileLocked(p *Player, cost *ExileCost) *Zone {
 	if p == nil {
 		return nil
 	}
@@ -421,8 +439,30 @@ func exileCostPile(p *Player, cost *ExileCost) *Zone {
 		return p.Hand
 	case ZoneGraveyard:
 		return p.Graveyard
+	case ZoneExile:
+		return g.Exile
 	}
 	return nil
+}
+
+// exileCostOwnerOKLocked is the ownership half of the walk. A hand or a
+// graveyard holds only its owner's cards, so there is nothing to ask;
+// the exile zone is shared, and a processing clause reads "a card an
+// OPPONENT owns": never the activator's own card, and never a card
+// whose owner has left the game (it has no graveyard to go to).
+// A face-down card is a card an opponent owns too: ownership is not a
+// characteristic, so a clause with no predicate offers it (see
+// processedCardLocked).
+// Caller must hold g.mu.
+func (g *Game) exileCostOwnerOKLocked(playerID uuid.UUID, cost *ExileCost, c *Card) bool {
+	if !cost.Processes() {
+		return true
+	}
+	if c.FaceDown && cost.Match != nil {
+		// No characteristics to read a predicate against (CR 406.3).
+		return false
+	}
+	return c.Owner != uuid.Nil && c.Owner != playerID && g.playerByIDLocked(c.Owner) != nil
 }
 
 // ExileCostOptionsForEffect lists the cards in `playerID`'s hand or
@@ -439,7 +479,7 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 	if cost == nil || (cost.N <= 0 && !cost.CountFromX && !cost.AnyNumber) {
 		return nil
 	}
-	pile := exileCostPile(g.playerByIDLocked(playerID), cost)
+	pile := g.exileCostPileLocked(g.playerByIDLocked(playerID), cost)
 	if pile == nil {
 		return nil
 	}
@@ -449,7 +489,7 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 	var out []uuid.UUID
 	for i := range pile.Cards {
 		c := pile.Cards[i]
-		if c.InstanceID == sourceID || !cost.Matches(lendCostText(text, c)) {
+		if c.InstanceID == sourceID || !g.exileCostOwnerOKLocked(playerID, cost, &c) || !cost.Matches(lendCostText(text, c)) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -477,7 +517,7 @@ func (g *Game) ExileCostPayableForEffect(playerID, sourceID uuid.UUID, cost *Exi
 // exileCostCardsLocked resolves ids out of the pile the clause reads.
 // Caller must hold g.mu.
 func (g *Game) exileCostCardsLocked(playerID uuid.UUID, cost *ExileCost, ids []uuid.UUID) []Card {
-	pile := exileCostPile(g.playerByIDLocked(playerID), cost)
+	pile := g.exileCostPileLocked(g.playerByIDLocked(playerID), cost)
 	var out []Card
 	for _, id := range ids {
 		if c := findZoneCard(pile, id); c != nil {
@@ -538,7 +578,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 	if !cost.AnyNumber && len(chosen) != cost.N {
 		return nil, ErrInvalidParam
 	}
-	pile := exileCostPile(p, cost)
+	pile := g.exileCostPileLocked(p, cost)
 	if pile == nil {
 		return nil, ErrInvalidParam
 	}
@@ -557,7 +597,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		if c == nil {
 			return nil, ErrCardNotFound
 		}
-		if !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
+		if !g.exileCostOwnerOKLocked(playerID, cost, c) || !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
 		named = append(named, *c)
@@ -632,6 +672,72 @@ func (g *Game) payExileCardsCostLinkedLocked(playerID, sourceID uuid.UUID, ids [
 		}
 	}
 	return nil
+}
+
+// payProcessCostLocked pays a processing clause (ExileCost.Processes,
+// #5457): each named card an opponent owns leaves exile for its owner's
+// graveyard, through the one exit primitive with MustSettleNow like every
+// other cost (CR 601.2h / 602.2b). It is not an exile and not a discard,
+// and the mover is the activator, so "put into a graveyard from anywhere"
+// watchers see an ordinary move with a cost's cause. A commander
+// processed this way lands in the graveyard and is offered the command
+// zone by the CR 903.9a state-based action, like one sacrificed to a cost.
+//
+// It returns the cards really moved, which differ from `ids` only for a
+// face-down pick (processedCardLocked).
+//
+// Caller must hold g.mu for writing and have validated the list.
+func (g *Game) payProcessCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
+	moved := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		id = g.processedCardLocked(playerID, sourceID, id, ids, moved)
+		if _, err := g.routeCardToZoneLocked(zoneRoute{
+			CardID:        id,
+			Dst:           ZoneGraveyard,
+			Actor:         playerID,
+			Source:        sourceID,
+			Cause:         MoveCause{Kind: MoveCauseCost, Controller: playerID},
+			MustSettleNow: true,
+		}); err != nil {
+			return moved, err
+		}
+		moved = append(moved, id)
+	}
+	return moved, nil
+}
+
+// processedCardLocked is the card a processing cost really moves for the
+// pick `id`. A face-up card is itself. A FACE-DOWN card has no
+// characteristics and can't be told from the cards exiled face down with
+// it, so the player has only chosen its group, and the card is taken at
+// random from that group (the Battle for Zendikar ruling on processing
+// face-down cards: groups are told apart by what exiled them and when).
+// The engine's record of a group is the owner plus the CR 607.2a link
+// (Card.ExiledWith and the turn it was stamped), so cards with the same
+// owner and link are one group; unlinked face-down cards of one owner
+// are one group. Cards another pick of the same payment names or has
+// already moved are left out, so two picks move two cards.
+//
+// Caller must hold g.mu for writing (it draws from the game's RNG).
+func (g *Game) processedCardLocked(playerID, sourceID, id uuid.UUID, named, moved []uuid.UUID) uuid.UUID {
+	pick := findZoneCard(g.Exile, id)
+	if pick == nil || !pick.FaceDown {
+		return id
+	}
+	group := []uuid.UUID{id}
+	for i := range g.Exile.Cards {
+		c := &g.Exile.Cards[i]
+		if c.InstanceID == id || !c.FaceDown || c.Owner != pick.Owner ||
+			c.ExiledWith != pick.ExiledWith || c.ExiledWithTurn != pick.ExiledWithTurn ||
+			slices.Contains(named, c.InstanceID) || slices.Contains(moved, c.InstanceID) {
+			continue
+		}
+		group = append(group, c.InstanceID)
+	}
+	if len(group) == 1 {
+		return id
+	}
+	return g.ChooseAtRandomForEffect(RandomDraw{Player: playerID, Source: sourceID}, group, 1)[0]
 }
 
 // ColorSymbols is the number of mana symbols in the card's printed mana

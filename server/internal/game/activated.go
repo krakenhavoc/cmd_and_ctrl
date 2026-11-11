@@ -2556,7 +2556,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// door: nothing here is discarded. Recorded on the payment so an
 	// effect that reads "the card exiled this way" can find it in exile
 	// by instance ID, where this just put it.
-	if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
+	if ab.Cost.ExileCards.Processes() {
+		// #5457: "Put a card an opponent owns from exile into that
+		// player's graveyard" (Void Attendant). The picks leave exile,
+		// so nothing is recorded as exiled.
+		if _, err := g.payProcessCostLocked(playerID, cardID, exiles); err != nil {
+			return err
+		}
+		exiles = nil
+	} else if err := g.payExileCardsCostLinkedLocked(playerID, cardID, exiles, params.commanderAnswers, ab.Cost.ExileCards != nil && ab.Cost.ExileCards.LinkToSource); err != nil {
 		return err
 	}
 	paid.Exiled = exiles

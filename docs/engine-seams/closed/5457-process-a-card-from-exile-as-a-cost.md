@@ -1,0 +1,6 @@
+---
+title: "Put a card an opponent owns from exile into that player's graveyard, as a cost"
+date: 2026-11-11
+issues: [5457]
+---
+**Put a card an opponent owns from exile into that player's graveyard, as a cost** (#5457, CR 602.2b, 118.3) — the Eldrazi Processors' cost is the exile-a-card component read against the shared exile zone: `game.ExileCost{From: ZoneExile}`, built with `effects.ProcessCards(n, label, match)`. The walk (`ExileCostOptionsForEffect`), the validator and the enumerator's payment are the component's own, with one more rule, that each card is one an opponent of the activator owns; the payer (`payProcessCostLocked`) puts each pick into its owner's graveyard instead of exiling it and records nothing on `PaidCost.Exiled`. A face-down pick stands for its group (same owner, same exiled-with link), and the card moved is drawn at random from the group. The picks ride `exile_ids`; the view's `exile_cost_zone` gains `"exile"`, and the client's picker reads the options out of the shared exile zone with the button "Put into graveyard". A CR 602 ability with a printed count only (`Register` refuses the form on a mana ability, a cast, with an open count or with a link). No snapshot change. **Cards now Full:** Void Attendant.

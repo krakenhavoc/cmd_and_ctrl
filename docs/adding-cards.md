@@ -5407,6 +5407,18 @@ reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
 
+**"Put a card an opponent owns from exile into that player's graveyard"
+(#5457):** `ProcessCards(n, label, match)`, composed with `Plus` — Void
+Attendant is
+`Plus(ManaCost("{1}{G}"), ProcessCards(1, "a card an opponent owns from exile", nil))`.
+It is the same component read against the shared exile zone
+(`game.ExileCost{From: ZoneExile}`): the picks ride `exile_ids`, each
+must be a card an opponent owns, and each goes to its owner's graveyard
+as the cost is paid. Nothing is recorded on `ctx.Exiled()`. A face-down
+pick stands for its group (same owner, same "exiled with" link) and the
+card moved is drawn at random from it. A CR 602 ability's cost only:
+`Register` refuses it on a mana ability and on a cast.
+
 **"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
 or `ExileAPermanentYouControl(label, preds...)` for another clause,
 composed with `Plus` — The Soul Stone's harness is

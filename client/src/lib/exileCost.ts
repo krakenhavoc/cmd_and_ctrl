@@ -9,7 +9,7 @@
 // zone `exile_cost_zone` names, and the modal has to say which one.
 // Both owners call these, so the two cannot drift apart.
 
-import type { CardView, ExileCostZone, PlayerView } from "./protocol";
+import type { CardView, ExileCostZone, PlayerView, ZoneView } from "./protocol";
 import { manaValueOf } from "./targetPrices";
 
 interface ExileCostFields {
@@ -25,28 +25,51 @@ export function exileCostZone(ability: ExileCostFields): ExileCostZone {
 
 // The cards the server offered for this clause, resolved out of the
 // seat's own hand or graveyard, in that zone's order. The server has
-// already filtered them; nothing narrows them further here.
+// already filtered them; nothing narrows them further here. #5457: a
+// processing clause ("put a card an opponent owns from exile into that
+// player's graveyard") reads the shared exile zone instead.
 export function exileCostOptionCards(
   seat: PlayerView | undefined,
   ability: ExileCostFields,
+  exile?: ZoneView,
 ): CardView[] {
-  if (!seat) return [];
   const ids = new Set(ability.exile_cost_options ?? []);
-  const pile = exileCostZone(ability) === "graveyard" ? seat.graveyard : seat.hand;
+  const zone = exileCostZone(ability);
+  if (zone === "exile") return (exile?.cards ?? []).filter((c) => ids.has(c.instance_id));
+  if (!seat) return [];
+  const pile = zone === "graveyard" ? seat.graveyard : seat.hand;
   return (pile?.cards ?? []).filter((c) => ids.has(c.instance_id));
 }
 
 // The modal's small print: where the cards come from, and that this is
 // not a discard (nothing that watches discards sees it).
 export function exileCostNote(ability: ExileCostFields): string {
-  return exileCostZone(ability) === "graveyard"
-    ? "exiled from your graveyard · not a discard"
-    : "exiled from your hand · not a discard";
+  switch (exileCostZone(ability)) {
+    case "exile":
+      return "an opponent's card in exile · it goes to its owner's graveyard";
+    case "graveyard":
+      return "exiled from your graveyard · not a discard";
+    default:
+      return "exiled from your hand · not a discard";
+  }
 }
 
 // Where the shortfall message says the cards have to be.
 export function exileCostWhere(ability: ExileCostFields): string {
-  return exileCostZone(ability) === "graveyard" ? "in your graveyard" : "in hand";
+  switch (exileCostZone(ability)) {
+    case "exile":
+      return "in exile";
+    case "graveyard":
+      return "in your graveyard";
+    default:
+      return "in hand";
+  }
+}
+
+// The picker's button: every pile but exile is exiled from; a card
+// already in exile is put into its owner's graveyard (#5457).
+export function exileCostVerb(ability: ExileCostFields): string {
+  return exileCostZone(ability) === "exile" ? "Put into graveyard" : "Exile";
 }
 
 // The mana symbols of one colour in a printed mana cost: {B}, a hybrid

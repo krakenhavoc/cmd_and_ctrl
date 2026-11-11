@@ -995,6 +995,21 @@ func ExileCardsFromGraveyard(n int, label string, match func(game.Card) bool) *g
 	return &game.ExileCost{N: n, Label: label, From: game.ZoneGraveyard, Match: match}
 }
 
+// ProcessCards is "Put N cards an opponent owns from exile into that
+// player's graveyard" as a CR 602 activated ability's cost (#5457): Void
+// Attendant, and the other Eldrazi Processors' activated abilities. The
+// exile-a-card component read against the shared exile zone
+// (game.ExileCost with From: ZoneExile): the activator names the cards on
+// exile_ids, each one a card an opponent owns, and each goes to its
+// owner's graveyard. `match` narrows the cards (nil is any card); a
+// face-down card has no characteristics, so a clause with a predicate
+// never offers one.
+//
+//	Cost: Plus(Mana("{1}{G}"), ProcessCards(1, "a card an opponent owns from exile", nil)),
+func ProcessCards(n int, label string, match func(game.Card) bool) game.AbilityCost {
+	return game.AbilityCost{ExileCards: &game.ExileCost{N: n, Label: label, From: game.ZoneExile, Match: match}}
+}
+
 // ExileFromGraveyard is "Exile N <kind> cards from your graveyard" as
 // a CR 602 activated ability's cost (#1297):
 //

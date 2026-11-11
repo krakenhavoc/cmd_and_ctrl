@@ -3926,9 +3926,15 @@ export type ExilePlayUntil =
   | "while_exiled"
   | "until_another";
 
-// #1297: the pile an "Exile N cards from your …" cost reads — always
-// the activator's own. The server stamps it with `exile_cost_n`.
-export type ExileCostZone = "hand" | "graveyard";
+// #1297: the pile an "Exile N cards from your …" cost reads — the
+// activator's own hand or graveyard. The server stamps it with
+// `exile_cost_n`. #5457: "exile" is the other move, "Put a card an
+// opponent owns from exile into that player's graveyard" (Void
+// Attendant): the options are cards in the shared `exile` zone that an
+// opponent owns, and each pick goes to its owner's graveyard. A
+// face-down option stands for its group: the server moves a card chosen
+// at random from the cards exiled face down with it.
+export type ExileCostZone = "hand" | "graveyard" | "exile";
 
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it
