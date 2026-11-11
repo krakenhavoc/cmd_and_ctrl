@@ -29,7 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, cmdr2S14SubtypeLandEntersUnderYourControl("Desert"),
 				"Hazezon, Shaper of Sand — create two 1/1 red, green, and white Sand Warrior creature tokens",
-				Do(CreateToken{Template: TokenCard("1/1 red, green, and white Sand Warrior"), N: 2})),
+				Do(CreateToken{Template: TokenCard("1/1 red and green and white Sand Warrior"), N: 2})),
 		},
 	})
 }

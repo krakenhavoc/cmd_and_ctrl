@@ -20,6 +20,7 @@ func init() {
 		OracleID:       "76dc9452-4e81-4152-bb4d-cdec6db767ed",
 		Name:           "Cataclysmic Prospecting",
 		Completeness:   CompletenessFull,
+		XMatters:       true,
 		ReadsManaSpent: game.ReadsPoolManaOnly,
 		WantsManaFrom:  game.ManaSourceDesert,
 		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true}},

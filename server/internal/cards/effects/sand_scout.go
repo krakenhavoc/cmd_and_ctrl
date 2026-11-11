@@ -40,7 +40,7 @@ func init() {
 			}),
 			TriggersOnlyOnceEachTurn(OncePerBatch(OnAny(cmdr2S14GraveyardEvents, gitrogLandToGraveyard,
 				"Sand Scout — create a 1/1 red, green, and white Sand Warrior creature token",
-				Do(CreateToken{Template: TokenCard("1/1 red, green, and white Sand Warrior"), N: 1})))),
+				Do(CreateToken{Template: TokenCard("1/1 red and green and white Sand Warrior"), N: 1})))),
 		},
 	})
 }

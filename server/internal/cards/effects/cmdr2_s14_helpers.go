@@ -57,9 +57,9 @@ func cmdr2S14ElementalYouControlDied(ev game.Event, source *game.Card, _ game.Ch
 	if !ok || leftUnderControlOf(ev, dead) != source.Controller {
 		return false
 	}
-	was, known := ev.WasSubtype("Elemental")
+	was, known := ev.WasSubtype(source.TextSubtype("Elemental"))
 	if !known {
-		was = dead.HasSubtype("Elemental")
+		was = dead.HasSubtype(source.TextSubtype("Elemental"))
 	}
 	return was
 }
