@@ -63,6 +63,14 @@ type ObjectDamageRecord struct {
 	// record restored from before the field existed reads false: weaker,
 	// never stronger.
 	VictimCreature bool `json:"victimCreature,omitempty"`
+	// Amount is the damage dealt, after replacement and prevention, and
+	// SourceController is who controlled the source as it dealt it, for
+	// "the amount of damage dealt to this creature this turn by sources
+	// they controlled" (Grothama, All-Devouring). Additive: a record
+	// restored from before these fields existed reads Amount 0, so it
+	// counts for nothing — weaker, never stronger.
+	Amount           int       `json:"amount,omitempty"`
+	SourceController uuid.UUID `json:"sourceController,omitempty"`
 }
 
 // recordDamagedObjectLocked notes the damage event `ev`, dealt to a
@@ -87,7 +95,38 @@ func (g *Game) recordDamagedObjectLocked(ev Event) {
 		Combat: ev.Combat,
 
 		VictimCreature: victim.IsCreature(),
+
+		Amount:           ev.Amount,
+		SourceController: src.Controller,
 	})
+}
+
+// DamageDealtToObjectThisTurnByControlledForEffect is the total damage
+// dealt this turn to the permanent object `victim` by sources `controller`
+// controlled as they dealt it, combat or not (Grothama, All-Devouring:
+// "each player draws cards equal to the amount of damage dealt to Grothama
+// this turn by sources they controlled"). The victim is read as the object
+// it is now or, once it has left, the one it most recently was
+// (PermanentRefForEffect), so a leaves-the-battlefield trigger still finds
+// the damage. A victim that has been back as a new object is a different
+// object (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) DamageDealtToObjectThisTurnByControlledForEffect(victimID, controller uuid.UUID) int {
+	if len(g.TurnTally.DamagedObjects) == 0 || controller == uuid.Nil {
+		return 0
+	}
+	victim, ok := g.PermanentRefForEffect(victimID)
+	if !ok {
+		return 0
+	}
+	total := 0
+	for _, rec := range g.TurnTally.DamagedObjects {
+		if rec.Victim == victim && rec.SourceController == controller {
+			total += rec.Amount
+		}
+	}
+	return total
 }
 
 // objectDealtDamageSinceLocked reports whether `source` dealt damage to

@@ -312,3 +312,66 @@ func TestCmdr2S52DereviTriggersOnCombatDamageByAnyCreatureYouControl(t *testing.
 		t.Error("the permanent should be untapped")
 	}
 }
+
+// cmdr2S52Attack declares the attack and locks it in, stopping in the
+// declare attackers step so an attack trigger's prompt can be answered.
+func cmdr2S52Attack(t *testing.T, g *game.Game, defender, attacker uuid.UUID) {
+	t.Helper()
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, defender); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+}
+
+const cmdr2S52GrothamaOracle = "34fd52c1-3d81-4005-b826-eeefbd7fd874"
+
+func TestCmdr2S52GrothamaFightGrantedToEveryOtherCreatureAndDrawsPerController(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	groth := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Grothama, All-Devouring", TypeLine: "Legendary Creature — Wurm",
+		OracleID: cmdr2S52GrothamaOracle, Power: 10, Toughness: 8, Owner: opp.ID, Controller: opp.ID,
+	})
+	bear := pushVanillaCreature(g, me.ID, "Bear", 3, 3)
+	pushVanillaCreature(g, third.ID, "Their Bear", 1, 1)
+	// Damage by my sources (3 from the fight) and by the opponent's own
+	// source (Grothama's controller): each player draws their own total.
+	before := [3]int{me.Hand.Size(), opp.Hand.Size(), third.Hand.Size()}
+	cmdr2S52Attack(t, g, opp.ID, bear)
+	// "you may have it fight": accept.
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if got := damageOn(t, g, groth); got != 3 {
+		t.Fatalf("Grothama has %d damage, want 3 from the fighting Bear", got)
+	}
+	// Grothama leaves: I drew for my 3 damage; nobody else dealt any.
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(groth) })
+	g.RunStateChecksForTest()
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - before[0]; got != 3 {
+		t.Errorf("I drew %d, want 3", got)
+	}
+	if got := opp.Hand.Size() - before[1]; got != 0 {
+		t.Errorf("Grothama's controller drew %d, want 0", got)
+	}
+	if got := third.Hand.Size() - before[2]; got != 0 {
+		t.Errorf("a bystander drew %d, want 0", got)
+	}
+}
+
+func TestCmdr2S52GrothamaFightIsOptional(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	groth := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Grothama, All-Devouring", TypeLine: "Legendary Creature — Wurm",
+		OracleID: cmdr2S52GrothamaOracle, Power: 10, Toughness: 8, Owner: opp.ID, Controller: opp.ID,
+	})
+	bear := pushVanillaCreature(g, me.ID, "Bear", 3, 3)
+	cmdr2S52Attack(t, g, opp.ID, bear)
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if got := damageOn(t, g, groth); got != 0 {
+		t.Errorf("declined fight, Grothama has %d damage, want 0", got)
+	}
+}

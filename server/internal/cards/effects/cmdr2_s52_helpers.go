@@ -118,3 +118,37 @@ func cmdr2S52PutThisFromCommandZone(g *game.Game, item *game.StackItem) error {
 	_, err := g.PutFromCommandZoneOntoBattlefieldForEffect(id, game.ZoneEntryOptions{Controller: item.Controller})
 	return err
 }
+
+// cmdr2S52GrothamaFight is the granted trigger's body, "you may have it fight
+// Grothama": the creature with the ability (the item's source) fights the
+// permanent that granted it (item.GrantedBy). The "may" is the trigger's
+// Optional prompt. Both are read as the permanent objects they are now; if
+// either has left the battlefield, or Grothama is no longer the grantor, the
+// fight does not happen (CR 701.14b).
+func cmdr2S52GrothamaFight(g *game.Game, item *game.StackItem) error {
+	if item.GrantedBy == uuid.Nil {
+		return nil
+	}
+	return b10Fight(NewContext(g, item), item.SourceCardID, item.GrantedBy)
+}
+
+// cmdr2S52GrothamaDraw is Grothama's leaves-the-battlefield effect: each
+// player, in APNAP order, draws cards equal to the damage dealt to Grothama
+// this turn by sources they controlled (TurnTally.DamagedObjects, read
+// through the object Grothama last was).
+func cmdr2S52GrothamaDraw(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	n := len(g.Seats)
+	for i := 0; i < n; i++ {
+		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
+		if p == nil || p.Eliminated {
+			continue
+		}
+		if amt := g.DamageDealtToObjectThisTurnByControlledForEffect(item.SourceCardID, p.ID); amt > 0 {
+			if err := (DrawCards{Player: p.ID, N: amt}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
