@@ -32,11 +32,11 @@ You need Go and Node. `make help` lists the targets; the common ones are:
 ```sh
 make server-dev   # the Go server on :8080
 make client-dev   # the Vite dev server on :5173
-make test         # server tests and client typecheck
+make test         # server tests, client typecheck and client unit tests
 ```
 
-[AGENTS.md](AGENTS.md) is the working guide: repo layout, commands, environment variables and
-conventions. [PLAN.md](PLAN.md) covers the vision and roadmap, and
+[AGENTS.md](AGENTS.md) is the working guide: the conventions, with links to the repo layout,
+commands and environment variables in [docs/](docs/). [PLAN.md](PLAN.md) is the charter, and
 [docs/decisions/](docs/decisions/) holds the architecture decision records.
 
 ## Contributing
