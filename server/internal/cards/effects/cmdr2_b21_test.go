@@ -339,12 +339,12 @@ func TestCmdr2B21MaskDeclineLeavesLifeAndHand(t *testing.T) {
 func TestCmdr2B21HamsphereGrowsWithHamsters(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	ship := pushDiesCreatureForTest(g, me.ID, "Rolling Hamsphere", cmdr2B21HamsphereOracle, "Artifact — Vehicle", 4, 4)
+	ship := b21Push(g, me.ID, "Rolling Hamsphere", "Artifact — Vehicle", cmdr2B21HamsphereOracle, 4, 4)
 	if got := effectivePower(t, g, ship); got != 4 {
 		t.Errorf("power %d with no Hamsters, want 4", got)
 	}
 	pushVanillaHamster := func(owner uuid.UUID) {
-		pushDiesCreatureForTest(g, owner, "Hamster", "", "Token Creature — Hamster", 1, 1)
+		b21Push(g, owner, "Hamster", "Token Creature — Hamster", "", 1, 1)
 	}
 	pushVanillaHamster(me.ID)
 	pushVanillaHamster(me.ID)
@@ -448,14 +448,14 @@ func TestCmdr2B21AugmenterGivesHasteToBasePowerOneEntrants(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	advanceToMain(t, g)
-	pushDiesCreatureForTest(g, me.ID, "Rapid Augmenter", cmdr2B21AugmenterOracle, "Creature — Otter Artificer", 1, 3)
+	b21Push(g, me.ID, "Rapid Augmenter", "Creature — Otter Artificer", cmdr2B21AugmenterOracle, 1, 3)
 	small := cmdr2B21Enter(t, g, me, "Small", "Creature — Mouse", "", 1, 4)
-	passPriorityAroundTable(t, g)
+	b35SettleTriggerOrders(t, g, me.ID)
 	if ab := effectiveAbilities(t, g, small); !containsString(ab, "haste") {
 		t.Errorf("abilities %v, want haste for a base power 1 creature", ab)
 	}
 	big := cmdr2B21Enter(t, g, me, "Big", "Creature — Bear", "", 2, 2)
-	passPriorityAroundTable(t, g)
+	b35SettleTriggerOrders(t, g, me.ID)
 	if ab := effectiveAbilities(t, g, big); containsString(ab, "haste") {
 		t.Errorf("abilities %v, a base power 2 creature must not gain haste", ab)
 	}
@@ -465,7 +465,7 @@ func TestCmdr2B21AugmenterGrowsOnlyWhenTheEntrantWasntCast(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	advanceToMain(t, g)
-	aug := pushDiesCreatureForTest(g, me.ID, "Rapid Augmenter", cmdr2B21AugmenterOracle, "Creature — Otter Artificer", 1, 3)
+	aug := b21Push(g, me.ID, "Rapid Augmenter", "Creature — Otter Artificer", cmdr2B21AugmenterOracle, 1, 3)
 
 	cmdr2B21CastCreature(t, g, me, "Cast Bear", "Creature — Bear", 2, 2)
 	if got := cmdr2B21Counters(t, g, aug); got != 0 {
@@ -474,7 +474,7 @@ func TestCmdr2B21AugmenterGrowsOnlyWhenTheEntrantWasntCast(t *testing.T) {
 	assertRestrictions(t, g, aug, 0)
 
 	cmdr2B21Enter(t, g, me, "Put Bear", "Creature — Bear", "", 2, 2)
-	passPriorityAroundTable(t, g)
+	b35SettleTriggerOrders(t, g, me.ID)
 	if got := cmdr2B21Counters(t, g, aug); got != 1 {
 		t.Errorf("counters %d, want 1 for a creature that wasn't cast", got)
 	}
@@ -484,9 +484,9 @@ func TestCmdr2B21AugmenterGrowsOnlyWhenTheEntrantWasntCast(t *testing.T) {
 func TestCmdr2B21AugmenterIgnoresOpponentsCreatures(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	aug := pushDiesCreatureForTest(g, me.ID, "Rapid Augmenter", cmdr2B21AugmenterOracle, "Creature — Otter Artificer", 1, 3)
+	aug := b21Push(g, me.ID, "Rapid Augmenter", "Creature — Otter Artificer", cmdr2B21AugmenterOracle, 1, 3)
 	cmdr2B21Enter(t, g, opp, "Their Bear", "Creature — Bear", "", 1, 1)
-	passPriorityAroundTable(t, g)
+	b35SettleTriggerOrders(t, g, me.ID)
 	if got := cmdr2B21Counters(t, g, aug); got != 0 {
 		t.Errorf("an opponent's creature put %d counters", got)
 	}
