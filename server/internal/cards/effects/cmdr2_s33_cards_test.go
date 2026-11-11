@@ -16,6 +16,7 @@ const (
 	s33GraverobberOracle   = "960cff3b-678c-404e-a643-ac5e91e6b50c"
 	s33TellerOracle        = "bd1ccc6f-d281-413e-889e-1e022c3f2a99"
 	s33ApothecaryOracle    = "09ecb8df-2a17-4e5a-814c-474bce54794d"
+	s33StockpileOracle     = "feaf9dcb-d845-4cf9-b35d-cd58175162e7"
 	s33LifeInsuranceOracle = "50779f73-c538-4364-aca4-4ab069a00814"
 )
 
@@ -23,6 +24,7 @@ func TestS33CardsRegisteredFull(t *testing.T) {
 	for oracle, name := range map[string]string{
 		s33BackInTownOracle:    "Back in Town",
 		s33LifeInsuranceOracle: "Life Insurance",
+		s33StockpileOracle:     "Glittering Stockpile",
 		s33ApothecaryOracle:    "Bloodroot Apothecary",
 		s33TellerOracle:        "Misfortune Teller",
 		s33GraverobberOracle:   "Charred Graverobber",
@@ -333,5 +335,38 @@ func TestS33BloodrootApothecaryPoisonsAnOpponentSacrificingANoncreatureToken(t *
 	sac(opp.ID, mint(opp.ID))
 	if poison(opp) != 2 {
 		t.Errorf("an opponent's sacrificed Treasure gave %d poison, want 2", poison(opp))
+	}
+}
+
+func TestS33GlitteringStockpileBanksStashCountersAndCashesThemIn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	stockpile := pushCatalogPermanent(g, me.ID, "Glittering Stockpile", "Artifact — Treasure", s33StockpileOracle, false)
+	untap := func() { g.WithWriteLock(func() { _ = g.UntapTargetForEffect(stockpile) }) }
+	stash := func() int {
+		c, _ := g.LookupCardForEffect(stockpile)
+		return c.Counters["stash"]
+	}
+	for i := 1; i <= 3; i++ {
+		if err := g.ActivateManaAbility(me.ID, stockpile, 0, game.ManaAbilityParams{}); err != nil {
+			t.Fatalf("tap for {R} #%d: %v", i, err)
+		}
+		if stash() != i {
+			t.Fatalf("after %d taps: %d stash counters", i, stash())
+		}
+		untap()
+	}
+	if me.ManaPool.CountColor("R") != 3 || me.ManaPool.Total() != 3 {
+		t.Fatalf("pool = %v, want {R}{R}{R}", me.ManaPool)
+	}
+	g.WithWriteLock(func() { me.ManaPool = game.ManaPool{} })
+	if err := g.ActivateManaAbility(me.ID, stockpile, 1, game.ManaAbilityParams{Colors: []string{"G"}}); err != nil {
+		t.Fatalf("sacrifice for mana: %v", err)
+	}
+	if got := me.ManaPool.CountColor("G"); got != 3 || me.ManaPool.Total() != 3 {
+		t.Errorf("sacrificing with 3 stash counters added %d mana, want 3", got)
+	}
+	if onBattlefield(g, stockpile) {
+		t.Error("the artifact was not sacrificed")
 	}
 }

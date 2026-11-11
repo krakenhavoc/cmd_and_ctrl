@@ -128,3 +128,29 @@ func cmdr2S33YouAndTargetOpponentEachCreateATreasure(g *game.Game, item *game.St
 	}
 	return CreateToken{Controller: item.Targets[0].ID, Template: TreasureToken(), N: 1}.Apply(ctx)
 }
+
+// cmdr2S33CounterStash is the stash counter of Glittering Stockpile.
+const cmdr2S33CounterStash = "stash"
+
+// cmdr2S33PutAStashCounter is "Put a stash counter on this artifact", the
+// rider of Glittering Stockpile's {T} ability: it follows the mana in the
+// printed order. A mana ability has no priority window, so a counter
+// doubler's order settles now (CR 605.3b), as Empowered Autogenerator's does.
+func cmdr2S33PutAStashCounter(g *game.Game, _, source uuid.UUID) error {
+	_, err := g.AddCounterMustSettleNowForEffect(source, cmdr2S33CounterStash, 1)
+	return err
+}
+
+// cmdr2S33StashCounters is X, "the number of stash counters on this
+// artifact". The sacrifice is part of the cost, so by the time the mana is
+// worked out the artifact has left the battlefield: X is then read from its
+// last-known information (CR 608.2h, CR 112.7a).
+func cmdr2S33StashCounters(g *game.Game, _, source uuid.UUID) int {
+	if c, ok := g.LookupCardForEffect(source); ok && onBattlefield(g, source) {
+		return c.Counters[cmdr2S33CounterStash]
+	}
+	if info, ok := g.LastKnownPermanentForEffect(source); ok {
+		return info.Counters[cmdr2S33CounterStash]
+	}
+	return 0
+}
