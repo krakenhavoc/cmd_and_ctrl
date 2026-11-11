@@ -10,6 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // raiding_schemes_tap_cost_test.go — #5688: conspire on a spell whose own
@@ -362,4 +363,44 @@ func TestTwoRaidingSchemesGiveTwoConspireCosts(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The view offers conspire on a spell whose own cost taps permanents: New
+// Blood in hand carries its own tap picker and a conspire offer whose
+// options are the untapped creatures that share its colour.
+func TestTheViewOffersConspireOnASpellWithATapCost(t *testing.T) {
+	g, me, _ := rsTapTable(t)
+	blood := handCardOf(g, me, "New Blood", "Sorcery", "{2}{B}{B}", newBloodOracle)
+	vamp := tacVampire(g, me.ID, "Vampire")
+	rat := pr7Creature(g, me.ID, "Rat", 1, "B")
+	pr7Creature(g, me.ID, "Human", 1, "W")
+
+	v := protocol.ViewOfGameFor(g, me.ID.String())
+	for _, s := range v.Seats {
+		for i := range s.Hand.Cards {
+			c := &s.Hand.Cards[i]
+			if c.InstanceID != blood.String() {
+				continue
+			}
+			if c.AdditionalCost == nil || c.AdditionalCost.TapOthersOptions == nil {
+				t.Fatal("New Blood lost its own tap picker")
+			}
+			if len(c.OptionalCosts) != 1 || c.OptionalCosts[0].Key != game.ConspireKey {
+				t.Fatalf("optional_costs = %+v, want the granted conspire", c.OptionalCosts)
+			}
+			to := c.OptionalCosts[0].TapOthersOptions
+			if to == nil || to.Min != 2 || to.Max != 2 {
+				t.Fatalf("conspire's tap_others_options = %+v, want 2/2", to)
+			}
+			got := slices.Clone(to.Cards)
+			want := []string{vamp.String(), rat.String()}
+			slices.Sort(got)
+			slices.Sort(want)
+			if !slices.Equal(got, want) {
+				t.Errorf("conspire options %v, want the two black creatures %v", got, want)
+			}
+			return
+		}
+	}
+	t.Fatal("New Blood is not in the caster's hand view")
 }
