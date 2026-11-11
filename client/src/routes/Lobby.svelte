@@ -1739,6 +1739,12 @@
               <p>Check how much of your list plays as printed, and save it.</p>
               <a class="btn ghost sm" href="#/decks">Decks</a>
             </div>
+            <!-- ADR 0222 §6, #5440: the signed-in way into a draft. -->
+            <div class="card">
+              <h3>{L.homeDraftCard}</h3>
+              <p>Open packs, build a 40-card deck and play three rounds, with bots or friends.</p>
+              <a class="btn ghost sm" href="#/draft">{L.draftNewTitle}</a>
+            </div>
             {#if $community.invite_url}
               <div class="card pod">
                 <h3>No pod yet?</h3>
@@ -2622,7 +2628,9 @@
   }
   .empty-cards {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Three or four start cards (the Discord one shows only with an
+       invite): they share the row at 820px and up. */
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 16px;
   }
   .empty-cards .card {

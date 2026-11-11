@@ -260,4 +260,18 @@ describe("the draft socket", () => {
     expect(FakeSocket.opened).toHaveLength(1);
     expect(statuses).toEqual(["connected"]);
   });
+
+  it("sends a deck as a draft_deck frame and returns its id (#5440)", () => {
+    const { sock } = open();
+    last().emit("open", {});
+    const id = sock.deck(["c1", "c2"], { Forest: 9 });
+    const frames = last().frames();
+    expect(frames[frames.length - 1]).toMatchObject({
+      kind: "draft_deck",
+      id,
+      payload: { main: ["c1", "c2"], basics: { Forest: 9 } },
+    });
+    sock.disconnect();
+    expect(sock.deck(["c1"], {})).toBeNull();
+  });
 });

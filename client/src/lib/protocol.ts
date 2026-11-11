@@ -24,7 +24,8 @@ export type Kind =
   // the per-seat view, and a seat's pick. Neither travels on a game
   // socket; lib/draftSocket.ts sends and reads them.
   | "draft"
-  | "draft_pick";
+  | "draft_pick"
+  | "draft_deck";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -35,6 +36,7 @@ export const ErrorCode = {
   // picking, already picked, a card not in the pack, the wrong number
   // of cards). Only ever sent on the draft socket.
   DraftPickRefused: "draft_pick_refused",
+  DraftDeckRefused: "draft_deck_refused",
   // S15 sub-PR 3: the strict-mode mana-cost gate rejected a
   // cast_spell. The error payload carries `missing` (brace-formatted
   // unpaid symbols) and `card_id` (the rejected cast's instance) so
@@ -401,6 +403,8 @@ export interface SideboardingView {
   play_first?: boolean;
   deck_min: number;
   sideboard_max: number;
+  /** The sideboard has no size limit and `sideboard_max` is not read (a limited table, CR 100.4b). */
+  sideboard_any?: boolean;
   // The viewer's own pool; none on a spectator's frame.
   pools?: MatchPoolView[];
 }

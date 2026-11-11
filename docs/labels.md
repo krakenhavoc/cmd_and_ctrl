@@ -70,6 +70,7 @@ registered, or when this file is stale.
 | `tableFormat` | `Format` | radiogroup | aria | `routes/Lobby.svelte` | the new-table form's format picker (ADR 0222 §1): one radio per format, Commander first and chosen by default; the format is fixed once a seat has a deck |
 | `formatCommander` | `Commander` | radio | text | `lib/formats.ts` | the Commander format's name (ADR 0222 §1): the format picker's first radio, and a deck's or a table's format wherever it is named |
 | `formatStandard` | `Standard` | radio | text | `lib/formats.ts` | the Standard format's name (ADR 0222 §1): the format picker's radio, a Standard table's chip and rules line, and a Standard deck's tag in the pickers |
+| `formatLimited` | `Limited` | text | text | `lib/formats.ts` | the limited format's name (ADR 0222 §6, #5440): the format of a table a draft opens for one of its matches; never in the format picker |
 | `matchBestOfOne` | `Best of one` | radio | text | `lib/matchLength.ts` | the match length picker's first radio (ADR 0222 §3): one game, the default at a table whose format plays matches |
 | `matchBestOfThree` | `Best of three` | radio | text | `lib/matchLength.ts` | the match length picker's second radio (ADR 0222 §3), and a best-of-three table's chip in the table list |
 | `matchScore` | `match score` | group | aria | `lib/components/board/MatchScore.svelte` | the command bar's score of a best-of-three (ADR 0222 §3): the game number and each seat's games won; absent at a Commander table and a best-of-one |
@@ -366,8 +367,23 @@ registered, or when this file is stale.
 | `draftWaiting` | `Waiting for the others` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen after the viewer has picked, above the names of the seats still picking |
 | `draftYourPicks` | `Your picks` | heading | text | `lib/components/draft/DraftRoom.svelte` | the pick screen's list of the viewer's own picks so far, grouped by colour and mana value |
 | `draftYourPool` | `Your pool` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's card pool, grouped by colour and mana value |
-| `draftFinished` | `The draft is finished` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's headline |
-| `draftDeckbuildingNext` | `Deckbuilding comes next` | heading | text | `lib/components/draft/DraftRoom.svelte` | a finished draft's note that building a deck from the pool is coming (#5440) and is not offered yet |
+| `draftFinished` | `The draft is finished` | heading | text | `lib/components/draft/DraftRounds.svelte` | a finished draft's headline, once its rounds are over or every person has left |
+| `draftBuildDeck` | `Build your deck` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's headline, once a draft's last pick is made |
+| `draftBuildTimer` | `build timer` | timer | aria | `lib/components/draft/DraftRoom.svelte` | the deckbuilding screen's countdown, run from the server's clock; when it ends a deck is built for anyone who has not submitted one |
+| `draftDeckZone` | `Your deck` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's deck: the pool cards chosen to play, each a button that moves it to the sideboard, and a drop target |
+| `draftSideboardZone` | `Sideboard` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's sideboard: every pool card not in the deck, each a button that adds it, and a drop target |
+| `draftBasicLands` | `Basic lands` | heading | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's steppers, one per basic land type; any number may be added |
+| `draftBasicStepper` | `how many <basic land>` (starts with `how many `) | group | aria | `lib/components/draft/DraftBuild.svelte` | one basic land's stepper on the deckbuilding screen: a fewer button, the count and a more button |
+| `draftCurve` | `mana curve of your deck` | img | aria | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's curve: the deck's cards that are not lands, counted by mana value from 0 to 6 and more |
+| `draftUseSuggestion` | `Use the suggested lands` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's button that sets the basic land steppers to the land-count suggestion |
+| `draftSubmitDeck` | `Submit deck` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's primary: sends draft_deck; disabled below the 40-card minimum |
+| `draftMatchLength` | `Matches` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's choice of the draft's match length: best of one (the default) or best of three |
+| `draftRound` | `Round <n> of <m>` (starts with `Round `) | heading | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's headline while a round is in play |
+| `draftPlayMatch` | `Play your match` | button | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's primary: POST /draft/{id}/match, then the limited table the match is played at |
+| `draftRecords` | `Win-loss table` | heading | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's table of every seat's wins and losses; the draft's only standings |
+| `draftBackToDraft` | `Back to the draft` | button | text | `routes/Game.svelte` | the way out of a draft match's table: the game-over corner button and the leave control go to the draft, not the lobby |
+| `myDrafts` | `My drafts` | link | text | `routes/MyDrafts.svelte`<br>`lib/components/draft/DraftCreate.svelte`<br>`lib/components/draft/DraftRounds.svelte` | a signed-in person's finished drafts at #/drafts: the page's title, and the link to it from the draft pages |
+| `homeDraftCard` | `Draft a set` | heading | text | `routes/Lobby.svelte` | the signed-in Home's start card for a booster draft, beside Practice game and Bring a deck; opens #/draft |
 | `draftGone` | `This draft is gone` | heading | text | `routes/Draft.svelte`<br>`lib/components/draft/DraftJoin.svelte`<br>`lib/components/draft/DraftRoom.svelte` | a draft that closed, or a seat that is no longer the viewer's: a plain message and the way to a new draft |
 | `draftNewDraft` | `Start another draft` | link | text | `routes/Draft.svelte`<br>`lib/components/draft/DraftJoin.svelte`<br>`lib/components/draft/DraftRoom.svelte` | the link to the create form from a finished or closed draft |
 | `draftGroupWhite` | `White` | heading | text | `lib/draft.ts` | a drafted pool's group of white cards |

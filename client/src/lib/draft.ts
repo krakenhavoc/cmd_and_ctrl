@@ -15,7 +15,7 @@
 import type { CardImageSize } from "./cardImage";
 import { L } from "./labels";
 import { costWords } from "./manaSymbol";
-import { currentSession } from "./session";
+import { currentSession, type Session } from "./session";
 
 export const DRAFT_NEW_HASH = "#/draft";
 
@@ -80,6 +80,69 @@ export interface DraftPlayer {
   picking?: boolean;
   /** How many cards it has drafted. A count, never the cards. */
   picked?: number;
+  /** It has a deck for the rounds. A bot always has. */
+  built?: boolean;
+}
+
+/** Where a draft is once its picks are done (#5440). */
+export type DraftPhase = "building" | "rounds" | "finished";
+
+/**
+ * A deck built from the viewer's pool: the pool cards it plays, by id,
+ * and how many of each basic land it adds. Every pool card it leaves
+ * out is the sideboard (CR 100.4b).
+ */
+export interface DraftDeck {
+  main: string[];
+  basics?: Record<string, number>;
+}
+
+/** The deckbuilding step, while it is open. */
+export interface DraftBuild {
+  deadline: string;
+  now: string;
+  /** The whole build timer, in seconds. */
+  seconds: number;
+  /** The smallest legal deck (CR 100.2b). */
+  deck_min: number;
+  /** The viewer has submitted a deck of their own. */
+  submitted: boolean;
+}
+
+/** One match of a round. `a` and `b` are seat numbers. */
+export interface DraftMatch {
+  a: number;
+  /** Absent when `a` sits the round out. */
+  b?: number;
+  bye?: boolean;
+  done: boolean;
+  /** The seat that won; absent for a draw. */
+  winner?: number;
+  wins_a: number;
+  wins_b: number;
+  /** Two bots did not play this out: the result was a coin toss. */
+  coin?: boolean;
+}
+
+/** One seat's record across the rounds. */
+export interface DraftStanding {
+  seat: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+/** The rounds, once they have begun. */
+export interface DraftPlay {
+  round: number;
+  rounds: number;
+  /** Every round's matches so far, oldest first. */
+  matches: DraftMatch[][];
+  standings: DraftStanding[];
+  /** The viewer's match in the round in play. */
+  yours?: DraftMatch;
+  /** The table the viewer's match is played at, once it is open. */
+  table?: string;
 }
 
 /** The whole draft as one seat may see it: a `draft` frame's payload. */
@@ -116,6 +179,14 @@ export interface DraftView {
   pool?: DraftCard[];
   /** The host's invite code, in the lobby of a draft that is not solo. */
   invite?: string;
+  /** What follows the picks: absent until `state` is done. */
+  phase?: DraftPhase;
+  /** The length of the draft's matches: 1 or 3. */
+  best_of?: number;
+  build?: DraftBuild;
+  /** The viewer's own deck, once they have one. */
+  deck?: DraftDeck;
+  play?: DraftPlay;
 }
 
 /** What `GET /draft/{id}?invite=` shows before joining. */
@@ -144,6 +215,8 @@ export interface CreateDraftInput {
   seats: number;
   name?: string;
   pick_seconds?: number;
+  /** The length of the draft's matches: 1 (the default) or 3. */
+  best_of?: number;
 }
 
 // ---- HTTP ----
@@ -225,6 +298,7 @@ export async function createDraft(input: CreateDraftInput): Promise<DraftSession
   const name = input.name?.trim();
   if (name) body.name = name;
   if (input.pick_seconds !== undefined) body.pick_seconds = input.pick_seconds;
+  if (input.best_of === 3) body.best_of = 3;
   const res = await draftFetch("/draft", { method: "POST", body, token: signedInBearer() });
   return (await res.json()) as DraftSession;
 }
@@ -261,6 +335,57 @@ export async function startDraft(id: string, token: string): Promise<DraftView> 
 /** `POST /draft/{id}/leave`, a seat token. */
 export async function leaveDraft(id: string, token: string): Promise<void> {
   await draftFetch(draftPath(id, "/leave"), { method: "POST", token });
+}
+
+/**
+ * `POST /draft/{id}/match`, a seat token: sits the caller at the table
+ * of their match in the round in play. The answer is a table seat's
+ * session, as a join's is, and the server sets it as the cookie the
+ * game page reads. The draft seat token is not spent.
+ */
+export async function seatDraftMatch(id: string, token: string): Promise<Session> {
+  const res = await draftFetch(draftPath(id, "/match"), { method: "POST", token });
+  const body = (await res.json()) as {
+    token: string;
+    expires_at: string;
+    principal: Session["principal"];
+    player_id?: string;
+    game?: { id?: string };
+  };
+  return {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+}
+
+/** The drag type a pool card carries on the deckbuilding screen: its draft id. */
+export const DRAG_TYPE = "application/x-c2-draft-card";
+
+// The way back from a match's table to its draft. The game page knows a
+// table by its id alone, so the draft page notes which draft a table
+// belongs to as it sends the player there. Session storage: it is this
+// tab's errand, and it is gone with the tab.
+const MATCH_KEY = "c2.draftMatch.";
+
+/** Notes that table `gameID` is a match of draft `draftID`. */
+export function rememberDraftMatch(gameID: string, draftID: string): void {
+  try {
+    sessionStorage.setItem(MATCH_KEY + gameID, draftID);
+  } catch {
+    // storage is off: the game page falls back to the lobby
+  }
+}
+
+/** The draft a table is a match of, or null. */
+export function draftOfMatch(gameID: string): string | null {
+  try {
+    return sessionStorage.getItem(MATCH_KEY + gameID);
+  } catch {
+    return null;
+  }
 }
 
 /** The draft socket's URL for a seat: `/draft/{id}/ws?token=`. */

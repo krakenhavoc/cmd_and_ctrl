@@ -11,6 +11,7 @@
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
   import { HISTORY_HASH } from "../lib/tablesPage";
+  import { draftHash, draftOfMatch } from "../lib/draft";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { removedNotice, session } from "../lib/session";
   import { serverFull } from "../lib/serverFull";
@@ -352,6 +353,12 @@
     gameID: string;
   }
   const { gameID }: Props = $props();
+
+  // The draft this table is a match of, when the draft page sent the
+  // player here (lib/draft.ts rememberDraftMatch); null at any other
+  // table. The page is keyed on the game, so its id never changes here.
+  // svelte-ignore state_referenced_locally
+  const matchDraft = draftOfMatch(gameID);
 
   // ADR 0121 §7: one dice schedule for the screen. The board's dice
   // layer fills it and draws from it; the strip's roll cue waits on it.
@@ -1108,12 +1115,16 @@
       // settings and session back as the route changes.
       const question = isPracticeGame(gameID)
         ? "Leave the practice game? It ends when you leave."
-        : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
+        : matchDraft
+          ? "Leave this match? Your seat stays active: you can come back to it from the draft."
+          : "Leave this game? Your seat stays active — you can rejoin from the lobby.";
       if (!confirm(question)) {
         return;
       }
     }
-    navigate("#/lobby");
+    // A draft's match goes back to its draft, where the next round is
+    // (ADR 0222 §6, #5440).
+    navigate(matchDraft ? draftHash(matchDraft) : "#/lobby");
   }
 
   // ---- Turn / priority / quick actions ----
@@ -3098,14 +3109,18 @@
     onAccept: () => void runRematch(() => acceptRematch(gameID)),
     onLeave: () => void runRematch(() => leaveRematch(gameID)),
   };
+  // A draft's match has no rematch (its draft pairs the next round), and
+  // its way out is the draft.
   const gameOverDockRequest = $derived(
-    gameEnded
-      ? gameOverRequest(back, gameOverArmed, {
-          plan: rematch,
-          busy: rematchBusy,
-          ...rematchActions,
-        })
-      : null,
+    !gameEnded
+      ? null
+      : matchDraft
+        ? gameOverRequest(back, gameOverArmed, undefined, L.draftBackToDraft)
+        : gameOverRequest(back, gameOverArmed, {
+            plan: rematch,
+            busy: rematchBusy,
+            ...rematchActions,
+          }),
   );
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----

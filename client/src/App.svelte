@@ -59,6 +59,7 @@
   const loadCatalog = () => import("./routes/Catalog.svelte");
   const loadRoadmap = () => import("./routes/Roadmap.svelte");
   const loadDraft = () => import("./routes/Draft.svelte");
+  const loadMyDrafts = () => import("./routes/MyDrafts.svelte");
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
@@ -206,6 +207,16 @@
       <RouteLoading />
     {:then { default: Draft }}
       <Draft id={$route.id} invite={$route.invite} />
+    {:catch}
+      <RouteLoading failed />
+    {/await}
+  {/key}
+{:else if $route.name === "myDrafts"}
+  {#key $route.id ?? ""}
+    {#await loadMyDrafts()}
+      <RouteLoading />
+    {:then { default: MyDrafts }}
+      <MyDrafts id={$route.id} />
     {:catch}
       <RouteLoading failed />
     {/await}

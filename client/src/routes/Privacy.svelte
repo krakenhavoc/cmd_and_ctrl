@@ -357,9 +357,9 @@
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
         decks, drafts, deck-request history, playmats, settings, last table setup, notification
-        settings, stats settings and Discord sign-in, signs you out everywhere, and turns your seat in every
-        table that has ended into “Deleted player”, so the other players keep their games. It is
-        refused while you hold a seat at a table that has not ended.
+        settings, stats settings and Discord sign-in, signs you out everywhere, and turns your seat
+        in every table that has ended into “Deleted player”, so the other players keep their games.
+        It is refused while you hold a seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

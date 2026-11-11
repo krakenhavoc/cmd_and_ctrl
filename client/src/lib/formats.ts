@@ -13,7 +13,7 @@
 import { L } from "./labels";
 
 /** A format's wire name. */
-export type FormatID = "commander" | "standard";
+export type FormatID = "commander" | "standard" | "limited";
 
 export interface FormatInfo {
   id: FormatID;
@@ -59,12 +59,31 @@ const STANDARD: FormatInfo = {
     "https://archidekt.com/decks/123456\n\n— or paste the list —\n\nDeck:\n4 Llanowar Elves\n4 Giant Growth\n22 Forest\n...\n\nSideboard:\n2 Naturalize\n...",
 };
 
-/** Every format, in the order the picker lists them: Commander first. */
+// Limited is a draft's format (ADR 0222 §6, #5440): a table of it is
+// opened by a draft for one of its matches, with both decks already
+// seated. It is never in the picker and no deck is ever pasted for it,
+// so its deck copy is only ever read by a summary.
+const LIMITED: FormatInfo = {
+  id: "limited",
+  name: L.formatLimited,
+  blurb: "2 players, 20 life, 40-card decks built from a draft",
+  seats: 2,
+  startingLife: 20,
+  hasCommander: false,
+  deckRules:
+    "A limited deck is built inside its draft: at least 40 cards from the cards you drafted, plus any number of basic lands.",
+  pastePlaceholder: "",
+};
+
+/** Every format a table can be made in, in the order the picker lists them: Commander first. */
 export const FORMATS: readonly FormatInfo[] = [COMMANDER, STANDARD];
+
+/** Every format a table can have, the picker's and a draft's. */
+const KNOWN: readonly FormatInfo[] = [...FORMATS, LIMITED];
 
 /** The format a wire value names; Commander for none or an unknown one. */
 export function formatOf(id: string | undefined | null): FormatInfo {
-  return FORMATS.find((f) => f.id === id) ?? COMMANDER;
+  return KNOWN.find((f) => f.id === id) ?? COMMANDER;
 }
 
 /** Whether a deck built for `deckFormat` may be seated at a `tableFormat` table. */

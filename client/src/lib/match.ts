@@ -149,7 +149,9 @@ export function deckProblem(deck: number, side: number, sb: SideboardingView): s
     const short = sb.deck_min - deck;
     return `Your deck has ${deck} cards. Bring in ${short} more to reach ${sb.deck_min}.`;
   }
-  if (side > sb.sideboard_max) {
+  // A limited sideboard is the rest of a card pool and has no size
+  // limit (CR 100.4b).
+  if (!sb.sideboard_any && side > sb.sideboard_max) {
     const over = side - sb.sideboard_max;
     return `Your sideboard has ${side} cards. Bring in ${over} more, or take fewer out: it holds ${sb.sideboard_max}.`;
   }
