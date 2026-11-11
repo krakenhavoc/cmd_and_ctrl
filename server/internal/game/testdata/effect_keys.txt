@@ -1866,6 +1866,7 @@ run prompt-run/smallpox-sacrifice-creatures
 run prompt-run/smallpox-sacrifice-lands
 run prompt-run/social-snub-drain
 run prompt-run/sorin-imperious-bloodlord-sacrifice
+run prompt-run/spirit-sisters-call-return
 run prompt-run/springbloom-druid-search
 run prompt-run/ss-botany-bay-opponents-exile
 run prompt-run/summon-valefor-sonic-wings
@@ -2480,6 +2481,7 @@ tail mirkwood-nurturer/counter
 tail mistbreath-elder/after-bounce
 tail mister-negative/draw
 tail model-of-unity/ask-next
+tail moldgraf-monstrosity/after-exile
 tail mole-module/after-mill
 tail molten-duplication/haste-and-sacrifice-copy
 tail morningtides-light/schedule-return-prevent-exile-self
@@ -2629,6 +2631,7 @@ tail sacrificed-one/prompt-run/ruthless-lawbringer-sacrifice
 tail sacrificed-one/prompt-run/ruthless-technomancer-treasures
 tail sacrificed-one/prompt-run/saw-sacrifice-draw
 tail sacrificed-one/prompt-run/sorin-imperious-bloodlord-sacrifice
+tail sacrificed-one/prompt-run/spirit-sisters-call-return
 tail sacrificed-one/prompt-run/swarm-culler-draw
 tail sacrificed-one/prompt-run/the-goose-mother-sacrifice-draw
 tail sacrificed-one/prompt-run/the-huntsmans-redemption-sacrificed
