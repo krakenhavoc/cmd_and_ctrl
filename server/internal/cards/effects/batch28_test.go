@@ -45,7 +45,6 @@ const (
 	b28LifebloodHydraOracle        = "b14d05c0-fe10-4079-a90e-0aea1a8fd375"
 	b28SpawnbedProtectorOracle     = "256a7f54-0e8e-4d22-a0f7-ff2830e8884e"
 	b28RampagingYaoGuaiSkipOracle  = "d37e8f75-c7cb-4270-bb2f-0125e972ed15"
-	b28TectonicGiantSkipOracle     = "0e5e46e3-f9af-47cc-a740-bf808d5cb4b1"
 	b28HoldoutSettlementFullOracle = "e6b77545-de5c-4f4a-b7ea-83498fb33ba8"
 	b28FertilidOracle              = "21f1c6d7-8289-44b2-b88f-c09e202be200"
 )
@@ -164,7 +163,6 @@ func TestBatch28CardsAreRegistered(t *testing.T) {
 	// until #1547 gave mana spend riders (hall_of_the_bandit_lord.go).
 	for _, skipped := range []string{
 		b28RampagingYaoGuaiSkipOracle, // an enters trigger cannot read the spell's X
-		b28TectonicGiantSkipOracle,    // a modal triggered ability
 	} {
 		if _, ok := Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)

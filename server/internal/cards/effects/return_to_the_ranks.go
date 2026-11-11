@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Return to the Ranks — Sorcery {X}{W}{W}:
 //
 //	"Convoke (Your creatures can help cast this spell. Each creature you
@@ -25,11 +23,6 @@ func init() {
 		TapCost:      Convoke(),
 		Targets: targetsCountedByX(TargetCardInGraveyard("X target creature cards with mana value 2 or less from your graveyard",
 			YouOwn(), Creature(), ManaValueLE(2))),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ReturnFromGraveyardTogether{
-				Targets:    legalTargetCardIDs(ctx),
-				Controller: ctx.Controller(),
-			}.Apply(ctx)
-		},
+		OnResolve: cmdr2S33ReturnTargetedCardsTogether,
 	})
 }

@@ -168,6 +168,11 @@ type CouncilVote struct {
 	// option naming the voter is the one the voter wants (Círdan: the
 	// votes you receive draw you cards). Nothing else reads it.
 	SelfBest bool `json:"selfBest,omitempty"`
+	// Choice marks a secret "chooses", not a vote (Prisoner's Dilemma:
+	// "each opponent secretly chooses silence or snitch, then the choices
+	// are revealed"): the hidden-ballot machinery without the vote rules,
+	// so no extra vote (CR 701.38d) and no Illusion of Choice applies.
+	Choice bool `json:"choice,omitempty"`
 	// Ballots are the votes cast so far, in the order they were cast.
 	Ballots []VoteBallot `json:"ballots,omitempty"`
 	// Abstained lists, in order, each voter who cast a vote for nothing
@@ -357,6 +362,12 @@ type VotePrompt struct {
 	SelfBest   bool
 	// Then runs with the result once everyone has voted. Required.
 	Then VoteThen
+	// Voters, when set, are the only players who vote or choose, in the
+	// order given (Prisoner's Dilemma: each opponent). Empty is every
+	// player in turn order from Starting.
+	Voters []uuid.UUID
+	// Choice is CouncilVote.Choice.
+	Choice bool
 	// Carry is plain data handed to Then.
 	Carry []uuid.UUID
 }
@@ -376,6 +387,10 @@ func (g *Game) StartVoteForEffect(p VotePrompt) error {
 	if len(p.Options) == 0 {
 		return fmt.Errorf("vote: no options")
 	}
+	voters := g.votersFromLocked(p.Starting)
+	if len(p.Voters) > 0 {
+		voters = copyUUIDs(p.Voters)
+	}
 	v := &CouncilVote{
 		Source:        p.Source,
 		Controller:    p.Controller,
@@ -383,7 +398,8 @@ func (g *Game) StartVoteForEffect(p VotePrompt) error {
 		Options:       cloneChoiceOptions(p.Options),
 		ForController: append([]int(nil), p.ForController...),
 		ForOpponents:  append([]int(nil), p.ForOpponents...),
-		Voters:        g.votersFromLocked(p.Starting),
+		Voters:        voters,
+		Choice:        p.Choice,
 		Zone:          p.OptionZone,
 		Secret:        p.Secret,
 		OthersOnly:    p.OthersOnly,
@@ -457,7 +473,10 @@ func (g *Game) askNextBallotLocked(v *CouncilVote) error {
 			if !g.playerInGameLocked(v.Voter) {
 				continue
 			}
-			must, may := g.extraVotesLocked(v.Voter)
+			must, may := 0, 0
+			if !v.Choice {
+				must, may = g.extraVotesLocked(v.Voter)
+			}
 			v.VotesLeft, v.MayLeft = 1+must, may
 		}
 		if !g.playerInGameLocked(v.Voter) {
@@ -486,6 +505,9 @@ func (g *Game) askNextBallotLocked(v *CouncilVote) error {
 		// reassigned to a stranger), and the header says whose vote it
 		// is.
 		chooser := g.voteChooserLocked(v.Voter)
+		if v.Choice {
+			chooser = v.Voter
+		}
 		if chooser != v.Voter {
 			if p := g.playerByIDLocked(v.Voter); p != nil {
 				question += " — you choose " + p.Name + "'s vote"

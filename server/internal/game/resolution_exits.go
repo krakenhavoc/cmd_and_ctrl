@@ -61,6 +61,9 @@ type resolutionExit struct {
 	card, owner, controller uuid.UUID
 	// counter is the counter kind of the exile-with-a-counter exit.
 	counter string
+	// link is the object the exile-linked exit's card is "exiled with"
+	// (CR 607.2a, exile_linked.go).
+	link PermissionCardRef
 }
 
 // The exits' kinds, written on a waiting prompt (resolutionExitThen's
@@ -74,6 +77,7 @@ const (
 	resolutionExitAdventure     = "adventure"
 	resolutionExitOmen          = "omen"
 	resolutionExitExilePlot     = "exile-plot"
+	resolutionExitExileLinked   = "exile-linked"
 )
 
 // apply rewrites the route the way this exit replaces it, and returns
@@ -98,6 +102,11 @@ func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 	case resolutionExitExilePlot:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 		return KeyedTail{Ref: exiledAndPlottedTail, Player: controller, Carry: []uuid.UUID{cardID}}
+	case resolutionExitExileLinked:
+		// Forger's Foundry: exile it, "exiled with" the object that offered
+		// the exile (the route stamps the link as the card lands).
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		r.ExiledWith = e.link
 	case resolutionExitAdventure:
 		// CR 715.3d names the spell's CONTROLLER twice — "its controller
 		// exiles it" and "that player may play it" — so a stolen
@@ -182,7 +191,7 @@ var (
 // goes to its owner's graveyard.
 //
 // Caller must hold g.mu.
-func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
+func (g *Game) resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 	var out []resolutionExit
 	exit := func(label, kind string) resolutionExit {
 		e := resolutionExit{label: label, kind: kind, card: c.InstanceID, owner: c.Owner}
@@ -225,6 +234,13 @@ func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 	if item != nil && !item.IsCopy && item.ExileAndPlot {
 		// Lilah: exile it, and it becomes plotted once it is there.
 		out = append(out, exit("Exile it, and it becomes plotted", resolutionExitExilePlot))
+	}
+	if item != nil && !item.IsCopy && item.ExileLinkedTo != nil && g.exileLinkCurrentLocked(*item.ExileLinkedTo) {
+		// Forger's Foundry: exile it, linked to the artifact whose mana
+		// paid for it (exile_linked.go).
+		e := exit("Exile it with "+g.exileLinkNameLocked(*item.ExileLinkedTo), resolutionExitExileLinked)
+		e.link = *item.ExileLinkedTo
+		out = append(out, e)
 	}
 	if castAsAdventure(c) {
 		// CR 715.3d, and CR 715.4's permission rides the route's
@@ -274,6 +290,12 @@ func (g *Game) chooseResolutionExitLocked(c Card, item *StackItem, exits []resol
 		}
 	}
 	carry := []uuid.UUID{exits[0].card, exits[0].owner, exits[0].controller}
+	for _, e := range exits {
+		if e.kind == resolutionExitExileLinked {
+			// The exile-linked exit's object rides as a fourth ID.
+			carry = append(carry, e.link.ID)
+		}
+	}
 	id := g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   c.InstanceID,
@@ -329,6 +351,11 @@ func routeResolutionExitLocked(g *Game, carry []uuid.UUID, words []string, index
 	e := resolutionExit{kind: kinds[index], card: carry[0], owner: carry[1], controller: carry[2]}
 	if e.kind == resolutionExitWithCounter {
 		e.counter = words[0]
+	}
+	if e.kind == resolutionExitExileLinked && len(carry) > 3 {
+		// The epoch is read live: the exit was offered only while the link
+		// was current, and the prompt holds IDs, not objects.
+		e.link = g.exileLinkRefLocked(carry[3])
 	}
 	r := resolutionExitRouteOf(e.card, e.owner)
 	then := e.apply(&r)

@@ -24,13 +24,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(b40Outlaw(), "Double Down — copy that outlaw spell",
-				func(g *game.Game, item *game.StackItem) error {
-					return CopySpell{
-						StackID:       item.Trigger.Event.CardID,
-						Controller:    item.Controller,
-						FromLastKnown: true,
-					}.Apply(NewContext(g, item))
-				}),
+				cmdr2S41CopyTheSpellJustCast),
 		},
 	})
 }

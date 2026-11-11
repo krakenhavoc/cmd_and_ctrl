@@ -788,6 +788,15 @@ type CastPermission struct {
 	// is. Additive within a snapshot version.
 	SacrificeLandInAddition bool `json:"sacrificeLandInAddition,omitempty"`
 
+	// SacrificeNonlandPermanentInAddition is "by sacrificing a nonland
+	// permanent in addition to paying its other costs" (Into the Pit): the
+	// synthesised offer charges the card's printed mana cost and the
+	// sacrifice of a nonland permanent the caster controls
+	// (AlternativeCost.Sacrifice, named in CastSpellParams.AltCostIDs),
+	// SacrificeLandInAddition's shape. Read only with an AltCostKey.
+	// Additive within a snapshot version.
+	SacrificeNonlandPermanentInAddition bool `json:"sacrificeNonlandPermanentInAddition,omitempty"`
+
 	// SneakCost is the price of a granted sneak (#4680, Ninja Teen's
 	// "Creature cards in your graveyard have sneak {3}{B}"), read only
 	// under AltCostKeyGrantedSneak: the synthesised offer charges it and
@@ -1650,6 +1659,10 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.SacrificeLandInAddition {
 		out.Sacrifice = sacrificeALandSpec()
 		out.PayLabel = "a land"
+	}
+	if p.SacrificeNonlandPermanentInAddition {
+		out.Sacrifice = sacrificeANonlandPermanentSpec()
+		out.PayLabel = "a nonland permanent"
 	}
 	if p.DiscardCard {
 		// ADR 0135 §2: "by discarding a card rather than paying its
@@ -3231,6 +3244,22 @@ func sacrificeALandSpec() *TargetSpec {
 		Zones: []ZoneKind{ZoneBattlefield},
 		CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
 			return c.IsLand()
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// sacrificeANonlandPermanentSpec builds the "sacrifice a nonland permanent"
+// component of a granted offer (CastPermission.SacrificeNonlandPermanentInAddition):
+// one nonland permanent the caster controls. A cost, not a target (CR 601.2h);
+// the spell is already on the stack (CR 601.2a), so it is never its own payment.
+func sacrificeANonlandPermanentSpec() *TargetSpec {
+	return &TargetSpec{
+		Mode:  "permanent",
+		Label: "a nonland permanent",
+		Zones: []ZoneKind{ZoneBattlefield},
+		CardOK: func(_ *Game, _ uuid.UUID, c Card, _ ZoneKind) bool {
+			return !c.IsLand()
 		},
 		Min: 1, Max: 1,
 	}

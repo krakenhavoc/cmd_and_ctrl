@@ -52,6 +52,12 @@ import (
 // regression, and a template on this list that starts matching is a
 // stale exemption to delete.
 var knownUnmatchedTokens = map[string]string{
+	// Court of Embereth (Wilds of Eldraine Commander) creates "a 3/1 red
+	// Knight creature token". The only Knight token cards in the dump are 2/2
+	// white and 3/3 white ones; no 3/1 red Knight was printed. The template
+	// follows the oracle text.
+	"3/1 red Knight": "no 3/1 red Knight token card was printed for Court of Embereth",
+
 	// Spawning Pit is a 2004 artifact and its token — "create a 2/2
 	// colorless Spawn artifact creature token" — was never printed as
 	// a token card; token cards start in 2007. The template is right

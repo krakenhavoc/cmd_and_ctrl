@@ -3327,6 +3327,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// activation. autoTapAbilityFor has already refused a spent
 		// ability, so this only ever writes a first use.
 		g.noteAbilityActivationLocked(g.activationTallyKeyLocked(cardID, ab.Label))
+		g.noteArtifactActivationLocked(p.ID, g.isArtifactOnBattlefieldLocked(cardID))
 		// #1242: the tap is a COMPONENT of the cost, paid only when the
 		// ability prints one — the same `if ab.TapCost` ActivateManaAbility
 		// has always had. A Gold token or an Eldrazi Spawn is cracked, not
@@ -5018,7 +5019,7 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// The three "as it resolves" exits (resolution_exits.go). Two
 		// or more is CR 616.1's choice, asked of the spell's
 		// controller; the card waits on the stack for the answer.
-		exits := resolutionExitsLocked(c, item)
+		exits := g.resolutionExitsLocked(c, item)
 		if len(exits) > 1 {
 			return g.chooseResolutionExitLocked(c, item, exits)
 		}
@@ -8158,6 +8159,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// rather than as ungated, because that is the answer that will
 	// still be true tomorrow.
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
+	sourceWasArtifact := g.isArtifactOnBattlefieldLocked(cardID)
 	if g.ManaAbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
@@ -8492,6 +8494,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 
 	g.noteAbilityActivationLocked(activationKey)
+	g.noteArtifactActivationLocked(playerID, sourceWasArtifact)
 	g.noteBorrowedActivationLocked(borrowedKey)
 
 	// --- pay ----------------------------------------------------

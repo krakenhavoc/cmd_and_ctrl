@@ -365,6 +365,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
 
+	// Garruk, Cursed Huntsman's Wolf and Wrenn and Seven's Treefolk (batch 51).
+	printedCmdr2S51WolfToken,
+	printedCmdr2S51TreefolkToken,
+
 	// Vernal Sovereign's Elemental (Lorwyn Eclipsed Commander, #5368): a green
 	// and white */* whose size is the creatures its controller controls.
 	printedCreatureCountElementalToken,

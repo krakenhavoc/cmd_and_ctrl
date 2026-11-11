@@ -990,6 +990,7 @@ var stackItemFields = plan(
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
 	"ExileAndPlot", carried, "",
+	"ExileLinkedTo", carried, "",
 	"ExileInsteadOfGraveyard", carried, "",
 	"BottomInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
