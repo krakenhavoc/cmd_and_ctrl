@@ -248,3 +248,63 @@ func TestCmdr2S36AshcloudPhoenixReturnsFaceDownAndTurnsUpForDamage(t *testing.T)
 		}
 	}
 }
+
+const s36RaptorOracle = "a7d4f5aa-26d4-4363-aa5a-a26d6f791b82"
+
+// s36RaptorInGraveyard seeds a Raptor in my graveyard and turns a
+// megamorph creature of mine face up.
+func s36RaptorTrigger(t *testing.T, g *game.Game, me *game.Player) uuid.UUID {
+	t.Helper()
+	raptor := uuid.New()
+	me.Graveyard.PushTop(game.Card{
+		InstanceID: raptor, Name: "Deathmist Raptor", TypeLine: "Creature — Dinosaur Beast", OracleID: s36RaptorOracle,
+		Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID,
+	})
+	id := s36CastFaceDown(t, g, "Ainok Survivalist", "Creature — Dog Shaman", s36AinokOracle, "megamorph", 2, 1)
+	s36TurnUp(t, g, me, id, "G", "C")
+	return raptor
+}
+
+func TestCmdr2S36DeathmistRaptorReturnsFaceUp(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	raptor := s36RaptorTrigger(t, g, me)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 0)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(raptor) {
+		t.Fatal("the Raptor did not return")
+	}
+	if c := findCardAnywhere(t, g, raptor); c.FaceDownIsPermanent() {
+		t.Error("the Raptor returned face down")
+	}
+}
+
+func TestCmdr2S36DeathmistRaptorReturnsFaceDownAndMegamorphsUp(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	raptor := s36RaptorTrigger(t, g, me)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 1)
+	passPriorityAroundTable(t, g)
+	if !g.Battlefield.Contains(raptor) || !findCardAnywhere(t, g, raptor).FaceDownIsPermanent() {
+		t.Fatal("the Raptor did not return face down")
+	}
+	s36TurnUp(t, g, me, raptor, "G", "C", "C", "C", "C")
+	if n := counterCount(g, raptor, game.CounterPlusOne); n != 1 {
+		t.Errorf("megamorph counters = %d, want 1", n)
+	}
+}
+
+func TestCmdr2S36DeathmistRaptorMayDecline(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	raptor := s36RaptorTrigger(t, g, me)
+	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(raptor) {
+		t.Error("the Raptor returned although I declined")
+	}
+}
