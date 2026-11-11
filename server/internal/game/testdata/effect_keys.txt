@@ -489,6 +489,7 @@ choose choose-cards/choco-seeker-of-paradise-take
 choose choose-cards/cirdan-the-shipwright-put
 choose choose-cards/cloak-a-card-from-your-hand
 choose choose-cards/cmdr2-b09-florian-exile
+choose choose-cards/cmdr2-s45-thief-of-sanity
 choose choose-cards/coax-from-the-blind-eternities-exile
 choose choose-cards/coax-from-the-blind-eternities-take
 choose choose-cards/coin-of-fate-picked
@@ -1077,6 +1078,7 @@ confirm confirm/channel-harm-deal
 confirm confirm/charismatic-conqueror-tap
 confirm confirm/clash-of-elements-top-or-bottom
 confirm confirm/cloak-of-confusion-no-damage
+confirm confirm/cmdr2-s45-ink-eyes-reanimate
 confirm confirm/combustible-gearhulk-draw-or-mill
 confirm confirm/commander-spock-land
 confirm confirm/copy-this-spell
