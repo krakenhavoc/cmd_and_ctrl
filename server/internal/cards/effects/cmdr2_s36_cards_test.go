@@ -178,3 +178,73 @@ func TestCmdr2S36SaltRoadAmbushersIgnoresAnOpponentsPermanent(t *testing.T) {
 		t.Errorf("counters = %d, want only the megamorph one", n)
 	}
 }
+
+const (
+	s36HydraOracle   = "637ddd65-112d-40f7-9bab-a61724d9165c"
+	s36PhoenixOracle = "fb2d7c3d-b68f-410e-9a73-cfcbfe702ade"
+)
+
+func TestCmdr2S36HoodedHydraTurnsUpWithFiveCountersAndLeavesSnakes(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := s36CastFaceDown(t, g, "Hooded Hydra", "Creature — Snake Hydra", s36HydraOracle, "morph", 0, 0)
+	if n := counterCount(g, id, game.CounterPlusOne); n != 0 {
+		t.Fatalf("a face-down Hydra has %d counters", n)
+	}
+	s36TurnUp(t, g, me, id, "G", "G", "C", "C", "C")
+	if n := counterCount(g, id, game.CounterPlusOne); n != 5 {
+		t.Fatalf("counters = %d, want 5", n)
+	}
+	before := tokensNamedControlledBy(g, "Snake", me.ID)
+	killCreature(t, g, me.ID, id)
+	passPriorityAroundTable(t, g)
+	if got := tokensNamedControlledBy(g, "Snake", me.ID) - before; got != 5 {
+		t.Errorf("Snakes = %d, want one per counter (5)", got)
+	}
+}
+
+func TestCmdr2S36HoodedHydraCastFaceUpEntersWithXCounters(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	active := me
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Hooded Hydra", TypeLine: "Creature — Snake Hydra", OracleID: s36HydraOracle,
+		ManaCost: "{X}{G}{G}", Owner: active.ID, Controller: active.ID,
+	})
+	advanceToMain(t, g)
+	g.WithWriteLock(func() { active.ManaPool.AddMana(manaTokens("G", "G", "C", "C", "C")...) })
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{XValue: 3}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n := counterCount(g, id, game.CounterPlusOne); n != 3 {
+		t.Errorf("counters = %d, want X=3", n)
+	}
+}
+
+func TestCmdr2S36AshcloudPhoenixReturnsFaceDownAndTurnsUpForDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := b12Push(g, me.ID, "Ashcloud Phoenix", "Creature — Phoenix", s36PhoenixOracle, 4, 1)
+	killCreature(t, g, me.ID, id)
+	passPriorityAroundTable(t, g)
+	c := findCardAnywhere(t, g, id)
+	if !g.Battlefield.Contains(id) || !c.FaceDownIsPermanent() {
+		t.Fatalf("the Phoenix did not return face down (battlefield=%v faceDown=%v)", g.Battlefield.Contains(id), c.FaceDownIsPermanent())
+	}
+	if c.Controller != me.ID {
+		t.Error("it did not return under my control")
+	}
+	lives := map[uuid.UUID]int{}
+	for _, p := range g.Seats {
+		lives[p.ID] = p.Life
+	}
+	s36TurnUp(t, g, me, id, "R", "R", "C", "C", "C", "C")
+	passPriorityAroundTable(t, g)
+	for _, p := range g.Seats {
+		if p.Life != lives[p.ID]-2 {
+			t.Errorf("seat life %d → %d, want 2 damage", lives[p.ID], p.Life)
+		}
+	}
+}
