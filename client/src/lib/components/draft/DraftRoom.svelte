@@ -52,10 +52,12 @@
   import { session, setSession } from "../../session";
   import Icon from "../Icon.svelte";
   import Page from "../Page.svelte";
+  import DraftArchetypesPanel from "./DraftArchetypesPanel.svelte";
   import DraftBuild from "./DraftBuild.svelte";
   import DraftPack from "./DraftPack.svelte";
   import DraftRounds from "./DraftRounds.svelte";
   import DraftPool from "./DraftPool.svelte";
+  import DraftRatingsBar from "./DraftRatingsBar.svelte";
   import DraftSeats from "./DraftSeats.svelte";
 
   interface Props {
@@ -78,6 +80,14 @@
   let clock = $state(0);
   // The build timer (#5440) counts the same way, from `build`.
   const building = $derived(view?.state === "done" && view.phase === "building");
+  // The set's colour pairs and the ratings beside its cards (#5703). A
+  // cube has no set to show pairs of.
+  const pairsSet = $derived(
+    view && !view.cube && view.set && (view.state === "picking" || building) ? view.set : "",
+  );
+  const ratedCards = $derived(
+    view ? [...(view.pack ?? []), ...(view.picks ?? []), ...(view.pool ?? [])] : [],
+  );
   const seconds = $derived(
     !view
       ? null
@@ -450,6 +460,10 @@
         </p>
       {/if}
 
+      {#if view.state !== "lobby"}
+        <DraftRatingsBar cards={ratedCards} />
+      {/if}
+
       {#if view.state === "lobby"}
         <div class="cols">
           <section class="card" aria-labelledby="draft-seats-h">
@@ -594,6 +608,14 @@
           <DraftPool cards={view.pool ?? view.picks ?? []} images />
         </section>
       {/if}
+
+      <!-- Last in the page, so the pick comes first by keyboard; on a wide
+           screen the grid puts it on the left. -->
+      {#if pairsSet}
+        <aside class="pairs-aside" data-testid="draft-pairs">
+          <DraftArchetypesPanel set={pairsSet} setName={view.set_name} />
+        </aside>
+      {/if}
     {/if}
   </div>
 </Page>
@@ -615,6 +637,29 @@
     flex-direction: column;
     gap: 22px;
     min-width: 0;
+  }
+  /* The set's colour pairs (#5703): to the left of everything else on a
+     wide screen, kept in view as the pack scrolls, and after it on a
+     narrow one. Added to the stack, so each of its other children keeps
+     the layout it has, now in the second column. */
+  .pairs-aside {
+    min-width: 0;
+  }
+  @media (min-width: 1100px) {
+    .stack:has(> .pairs-aside) {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    }
+    .stack:has(> .pairs-aside) > * {
+      grid-column: 2;
+    }
+    .stack:has(> .pairs-aside) > .pairs-aside {
+      grid-column: 1;
+      grid-row: 1 / span 3;
+      align-self: start;
+      position: sticky;
+      top: 16px;
+    }
   }
   .cols {
     display: grid;

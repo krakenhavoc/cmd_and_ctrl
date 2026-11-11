@@ -18,6 +18,8 @@ import {
   type DraftCard,
   type DraftView,
 } from "../lib/draft";
+import { clearArchetypeCache } from "../lib/draftArchetypes";
+import { ratingsPref } from "../lib/draftRatings.svelte";
 import { PACKS_ARE_APPROXIMATIONS } from "../lib/draftSets";
 import { L } from "../lib/labels";
 import { currentSession, sessionFromOAuth, setSession } from "../lib/session";
@@ -1646,5 +1648,103 @@ describe("a draft that is gone, and a lost connection", () => {
     expect(text(main(c))).toContain(
       "The server is full right now. Please try again in a few minutes.",
     );
+  });
+});
+
+// #5703 (ADR 0222 §7): the rating beside each card, its credit and switch,
+// and the set's colour pairs beside the pack.
+describe("card ratings and colour pairs in the room", () => {
+  const LANDS = {
+    source: "17lands",
+    value: 58.3,
+    tier: "B+",
+    games: 900,
+    set: "blb",
+    format: "PremierDraft",
+    fetched: "2026-11-11",
+  };
+  const rated = (): DraftView =>
+    view({
+      pack: [
+        card("c1", "Shoreline Looter", { rating: LANDS }),
+        card("c2", "Bonecache Overseer", { rating: { source: "c2", value: 3.4 } }),
+        card("c3", "Fountainport Bell"),
+      ],
+    });
+  const pairs = {
+    set: "blb",
+    name: "Bloomburrow",
+    pairs: [{ colors: "WU", label: "Birds and flyers", signposts: [] }],
+  };
+  const open = async (v: DraftView): Promise<HTMLElement> => {
+    serve({ "GET /draft/sets/blb/archetypes": { body: pairs } });
+    rememberDraftSeat(ID, { token: "seat-token", expires_at: "2099-01-01T00:00:00Z" });
+    const { container } = render(Draft as never, { id: ID } as never);
+    await settle();
+    socket().frame("draft", v);
+    await settle();
+    return container;
+  };
+
+  afterEach(() => {
+    ratingsPref.set(true);
+    clearArchetypeCache();
+  });
+
+  it("puts a badge on each rated card, names the source in the card's name, and credits 17Lands", async () => {
+    const c = await open(rated());
+    const buttons = cardButtons(c);
+    const badges = buttons.map((b) => b.querySelector('[data-testid="rating-badge"]'));
+    expect(badges.map((b) => b?.getAttribute("data-source") ?? null)).toEqual([
+      "17lands",
+      "c2",
+      null,
+    ]);
+    expect(text(badges[0])).toBe("B+ 58.3%");
+    expect(text(badges[1])).toBe("3.4 C2");
+    expect(buttons[0].getAttribute("aria-label")).toContain(
+      "17Lands win rate 58.3 percent, grade B+",
+    );
+    expect(buttons[1].getAttribute("aria-label")).toContain("C2 rating 3.4");
+    expect(buttons[2].getAttribute("aria-label")).not.toContain("rating");
+    const credit = [...c.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (a) => text(a) === L.draftRatingsCredit,
+    )!;
+    expect(credit.getAttribute("href")).toBe("https://www.17lands.com/");
+  });
+
+  it("hides the badges and the credit when the viewer switches ratings off", async () => {
+    const c = await open(rated());
+    const box = [...c.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].find((i) =>
+      text(i.closest("label")).includes(L.draftRatingsShow),
+    )!;
+    box.checked = false;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    expect(c.querySelectorAll('[data-testid="rating-badge"]')).toHaveLength(0);
+    expect(cardButtons(c)[0].getAttribute("aria-label")).not.toContain("17Lands");
+    expect([...c.querySelectorAll("a")].some((a) => text(a) === L.draftRatingsCredit)).toBe(false);
+  });
+
+  it("shows no ratings bar for a pack of cards with none", async () => {
+    const c = await open(view());
+    expect(c.querySelector('[data-testid="ratings-bar"]')).toBeNull();
+  });
+
+  it("shows the set's colour pairs beside the pick, and not in a cube", async () => {
+    const c = await open(rated());
+    const panel = c.querySelector('[data-testid="draft-pairs"]')!;
+    expect(text(panel)).toContain(L.draftArchetypesTitle);
+    expect(text(panel)).toContain("Birds and flyers");
+    expect(calls.some((x) => x.url === "/draft/sets/blb/archetypes")).toBe(true);
+    cleanup();
+
+    const cube = await open(view({ cube: true, set: "", set_name: "My cube", booster: "cube" }));
+    expect(cube.querySelector('[data-testid="draft-pairs"]')).toBeNull();
+  });
+
+  it("shows no colour pairs in the lobby", async () => {
+    const c = await open(view({ state: "lobby", pack: undefined }));
+    expect(c.querySelector('[data-testid="draft-pairs"]')).toBeNull();
   });
 });

@@ -12,6 +12,7 @@
 
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
+  import DraftArchetypes from "../lib/components/draft/DraftArchetypes.svelte";
   import {
     blockedSets,
     boosterName,
@@ -29,6 +30,9 @@
   let sets = $state<DraftSet[] | null>(null);
   let loading = $state(true);
   let error = $state("");
+  // The sets whose colour pairs the viewer has opened; each is fetched
+  // when first opened, not for the whole list.
+  let pairsOpen = $state<Record<string, boolean>>({});
 
   const ready = $derived(readySets(sets ?? []));
   const blocked = $derived(blockedSets(sets ?? []));
@@ -96,6 +100,16 @@
                 <a class="link-arrow go" href={draftNewHash(s.code)}
                   >{L.draftThisSet}<span class="sr-only">: {s.name}</span> →</a
                 >
+                <details
+                  class="pairs"
+                  data-testid="pairs-{s.code}"
+                  ontoggle={(e) => (pairsOpen[s.code] = e.currentTarget.open)}
+                >
+                  <summary>{L.draftArchetypesTitle}<span class="sr-only">: {s.name}</span></summary>
+                  {#if pairsOpen[s.code]}
+                    <div class="pairs-body"><DraftArchetypes set={s.code} /></div>
+                  {/if}
+                </details>
               </li>
             {/each}
           </ul>
@@ -261,6 +275,27 @@
   .go {
     margin-left: auto;
     font-size: 13px;
+  }
+  /* The colour pairs of a ready set: a plain disclosure under its row. */
+  .pairs {
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+  .pairs summary {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-muted);
+    cursor: pointer;
+  }
+  .pairs summary:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+  .pairs-body {
+    margin-top: 8px;
   }
   .sr-only {
     position: absolute;

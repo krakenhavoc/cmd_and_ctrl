@@ -9,6 +9,7 @@ import { tick } from "svelte";
 import DraftSets from "./DraftSets.svelte";
 import { DRAFT_SETS_TITLE, PACKS_ARE_APPROXIMATIONS } from "../lib/draftSets";
 import { L } from "../lib/labels";
+import { clearArchetypeCache } from "../lib/draftArchetypes";
 import { cleanup, flushSync, render } from "../lib/test/render.svelte";
 
 const realFetch = globalThis.fetch;
@@ -35,6 +36,7 @@ async function settle(): Promise<void> {
 
 afterEach(() => {
   cleanup();
+  clearArchetypeCache();
   globalThis.fetch = realFetch;
   vi.restoreAllMocks();
 });
@@ -109,8 +111,10 @@ describe("the draftable sets page", () => {
     ]);
     // The cards sit in a native disclosure, closed until asked for.
     expect(blocked[1].querySelector("details")!.open).toBe(false);
-    // A ready set is never shown as waiting on anything.
-    expect(ready[0].querySelector("details")).toBeNull();
+    // A ready set is never shown as waiting on anything: its one
+    // disclosure is its colour pairs, not a list of blockers.
+    expect(ready[0].querySelector(".blockers")).toBeNull();
+    expect(text(ready[0].querySelector("details > summary"))).toContain(L.draftArchetypesTitle);
   });
 
   it("says packs are approximations of retail packs, before and after the list loads", async () => {
@@ -168,5 +172,53 @@ describe("the draftable sets page", () => {
       "Couldn’t load the sets (boom)",
     );
     expect(container.querySelector("#ready-title")).toBeNull();
+  });
+
+  // #5703: each ready set shows its ten colour pairs, asked for only when
+  // the viewer opens them.
+  it("shows a ready set's colour pairs when opened, and asks for them only then", async () => {
+    const pairs = {
+      set: "rdy",
+      name: "Ready Set",
+      pairs: [
+        {
+          colors: "WU",
+          label: "Birds and flyers",
+          signposts: [
+            {
+              id: "11111111-1111-1111-1111-111111111111",
+              name: "Plumecreed Mentor",
+              mana_cost: "{1}{W}{U}",
+            },
+          ],
+        },
+        { colors: "UB", signposts: [] },
+      ],
+    };
+    const spy = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      const body = url === "/draft/sets/rdy/archetypes" ? pairs : LIST;
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    globalThis.fetch = spy as never;
+    const { container } = render(DraftSets as never, {} as never);
+    await settle();
+    const urls = () => spy.mock.calls.map((c) => String(c[0]));
+    expect(urls()).not.toContain("/draft/sets/rdy/archetypes");
+
+    const details = container.querySelector<HTMLDetailsElement>('[data-testid="pairs-rdy"]')!;
+    details.open = true;
+    details.dispatchEvent(new Event("toggle"));
+    await settle();
+    expect(urls()).toContain("/draft/sets/rdy/archetypes");
+    const rows = [...details.querySelectorAll('[data-testid="archetypes"] [data-pair]')];
+    expect(rows.map((r) => r.getAttribute("data-pair"))).toEqual(["WU", "UB"]);
+    expect(text(rows[0])).toContain("Birds and flyers");
+    expect(text(rows[0])).toContain("Plumecreed Mentor");
+    // A pair with no gold uncommon says so instead of inventing a label.
+    expect(text(rows[1])).toContain("No gold uncommon in this set");
   });
 });

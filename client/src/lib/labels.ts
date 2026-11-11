@@ -2606,6 +2606,28 @@ export const LABEL_SPECS = {
     owners: ["lib/draftSets.ts"],
     doc: "the draftable sets page: a set whose packs are modelled on a draft booster (sets before play boosters)",
   }),
+  // -- Card ratings and colour pairs (ADR 0222 §7, #5703) --
+  draftRatingsCredit: label({
+    name: "Card ratings from 17Lands",
+    kind: "text",
+    role: "link",
+    owners: [`${DRAFT}DraftRatingsBar.svelte`],
+    doc: "the credit 17Lands' data is used on: shown wherever a 17Lands rating shows beside a draft card; links to 17lands.com (the owner's condition, 2026-11-11)",
+  }),
+  draftRatingsShow: label({
+    name: "Show card ratings",
+    kind: "text",
+    role: "checkbox",
+    owners: [`${DRAFT}DraftRatingsBar.svelte`],
+    doc: "the viewer's switch for the rating beside each draft card, kept in this browser only; on by default",
+  }),
+  draftArchetypesTitle: label({
+    name: "Colour pairs",
+    kind: "text",
+    role: "heading",
+    owners: ["routes/DraftSets.svelte", `${DRAFT}DraftArchetypesPanel.svelte`],
+    doc: "a set's ten colour pairs with a short label and the gold uncommons that name each: the disclosure on the draftable sets page and the panel beside a draft",
+  }),
   // -- The booster draft (ADR 0222 §5, #5438) --
   draftThisSet: label({
     name: "Draft this set",

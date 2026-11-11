@@ -13,15 +13,16 @@
 
   import {
     canConfirm,
-    cardAccessibleName,
     pickCount,
     pruneSelection,
     toggleSelection,
     type DraftCard,
   } from "../../draft";
+  import { ratedCardName } from "../../draftRatings.svelte";
   import { L } from "../../labels";
   import Icon from "../Icon.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftRatingBadge from "./DraftRatingBadge.svelte";
 
   interface Props {
     pack: DraftCard[];
@@ -101,13 +102,14 @@
           class="pick-card"
           class:on
           aria-pressed={on}
-          aria-label={cardAccessibleName(card)}
+          aria-label={ratedCardName(card)}
           disabled={busy}
           onclick={() => toggle(card.id)}
           ondblclick={() => pickNow(card.id)}
           onkeydown={(e) => onKey(e, card.id)}
         >
           <DraftCardArt {card} />
+          <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
           {#if on}
             <span class="mark" aria-hidden="true"><Icon name="check" size={14} /></span>
           {/if}

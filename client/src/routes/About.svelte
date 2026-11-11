@@ -129,6 +129,12 @@
           which is not affiliated with this site.
         </li>
         <li>
+          The card ratings shown in a draft come from
+          <a href="https://www.17lands.com/" target="_blank" rel="noopener noreferrer">17Lands</a>,
+          which publishes win rates from games its users played and is not affiliated with this
+          site. A card 17Lands has no win rate for shows this site’s own score, marked C2.
+        </li>
+        <li>
           Card art belongs to its artists: where a card is shown as an art crop, the artist is
           credited on it.
         </li>

@@ -10,15 +10,16 @@
   // `cards` is the viewer's `picks` or `pool`. No other seat's cards
   // exist on the wire (CR 905.1c).
   import {
-    cardAccessibleName,
     DRAG_TYPE,
     groupPool,
     stackCopies,
     type DraftCard,
     type PoolGroupKey,
   } from "../../draft";
+  import { ratedCardName } from "../../draftRatings.svelte";
   import ManaCost from "../board/ManaCost.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftRatingBadge from "./DraftRatingBadge.svelte";
 
   interface Props {
     cards: DraftCard[];
@@ -77,7 +78,7 @@
                   <button
                     type="button"
                     class="move"
-                    aria-label={`${verb}: ${cardAccessibleName(card)}`}
+                    aria-label={`${verb}: ${ratedCardName(card)}`}
                     title={`${verb}: ${card.name}`}
                     draggable="true"
                     ondragstart={(ev) => dragStart(ev, card)}
@@ -88,6 +89,7 @@
                 {:else}
                   <DraftCardArt {card} alt={card.name} />
                 {/if}
+                <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
               </li>
             {/each}
           </ul>
@@ -102,6 +104,7 @@
                     {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
                   </span>
                   {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                  <DraftRatingBadge rating={s.card.rating} cardSet={s.card.set} />
                 </li>
               {/each}
             {/each}
@@ -217,6 +220,10 @@
   .move:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 2px;
+  }
+  /* The rating badge sits on the corner of the card. */
+  .imgs li {
+    position: relative;
   }
   .imgs {
     display: grid;
