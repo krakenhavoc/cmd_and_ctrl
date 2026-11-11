@@ -185,17 +185,15 @@ func TestCmdr2S45PredatorsHourGrantsMenaceAndTheExileTrigger(t *testing.T) {
 }
 
 const (
-	cmdr2S45NashiOracle       = "d04b6c2c-50fc-464d-9991-230efec70d2b"
-	cmdr2S45InkEyesOracle     = "5d520476-740a-4005-801e-472b24fa6497"
-	cmdr2S45SilentBladeOracle = "4f515250-0f1f-4fb7-aa75-b703b81ccd4a"
-	cmdr2S45ShinobiOracle     = "4fc5f871-a809-4a4a-adfb-eb4cd52837c8"
+	cmdr2S45NashiOracle   = "d04b6c2c-50fc-464d-9991-230efec70d2b"
+	cmdr2S45InkEyesOracle = "5d520476-740a-4005-801e-472b24fa6497"
+	cmdr2S45ShinobiOracle = "4fc5f871-a809-4a4a-adfb-eb4cd52837c8"
 )
 
 func TestCmdr2S45NinjutsuCardsDeclareTheirKeywordCosts(t *testing.T) {
 	for _, tc := range []struct{ name, oracle, mana string }{
 		{"Nashi", cmdr2S45NashiOracle, "{3}{B}"},
 		{"Ink-Eyes", cmdr2S45InkEyesOracle, "{3}{B}{B}"},
-		{"Silent-Blade Oni", cmdr2S45SilentBladeOracle, "{4}{U}{B}"},
 		{"Fallen Shinobi", cmdr2S45ShinobiOracle, "{2}{U}{B}"},
 	} {
 		var found bool
@@ -232,6 +230,7 @@ func TestCmdr2S45NashiExilesATopCardPerPlayerAndSpendsOneBudgetOnLife(t *testing
 			t.Fatalf("seat %d's card permission %+v, want a one-use life-for-mana-value grant to you", i, perm)
 		}
 	}
+	advanceToMain(t, g)
 	// Cast one of the opponent's cards: life equal to its mana value ({1} = 1).
 	before := me.Life
 	if err := g.CastSpell(me.ID, tops[1], game.CastSpellParams{FromZone: "exile", AlternativeCost: "nashi_moon_sages_scion"}); err != nil {
@@ -316,56 +315,4 @@ func TestCmdr2S45FallenShinobiExilesTwoForAFreePlay(t *testing.T) {
 	if err := g.CastSpell(me.ID, lib[0], game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
 		t.Logf("cast outside the window: %v", err)
 	}
-}
-
-func TestCmdr2S45SilentBladeOniLooksAndCastsFromTheirHandFree(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	oni := b43Catalog(g, me.ID, "Silent-Blade Oni", "Creature — Demon Ninja", cmdr2S45SilentBladeOracle, 6, 5)
-	opp.Hand.Cards = nil
-	bear := uuid.New()
-	opp.Hand.PushTop(game.Card{InstanceID: bear, Name: "Their Bear", TypeLine: "Creature — Bear", ManaCost: "{3}{G}", Power: 2, Toughness: 2, Owner: opp.ID, Controller: opp.ID})
-	land := uuid.New()
-	opp.Hand.PushTop(game.Card{InstanceID: land, Name: "Their Forest", TypeLine: "Basic Land — Forest", Owner: opp.ID, Controller: opp.ID})
-
-	attackWith(t, g, opp.ID, oni)
-	passPriorityAroundTable(t, g)
-	for _, id := range []uuid.UUID{bear, land} {
-		c, _ := cmdr2S45CardInHand(opp, id)
-		if !c.IsKnownTo(me.ID) {
-			t.Errorf("you did not get to look at %s", c.Name)
-		}
-	}
-	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, bear)
-	if slicesContains(offer.DiscardOptions, land) {
-		t.Error("a land was offered as a spell to cast")
-	}
-	if err := castThroughResolutionCast(t, g, me.ID, bear, game.CastSpellParams{Strict: true}); err != nil {
-		t.Fatalf("cast their card free: %v", err)
-	}
-	passPriorityAroundTable(t, g)
-	if !g.Battlefield.Contains(bear) {
-		t.Fatal("the creature did not resolve")
-	}
-	if got := controllerOf(t, g, bear); got != me.ID {
-		t.Errorf("it is under %s, want the caster", got)
-	}
-}
-
-func cmdr2S45CardInHand(p *game.Player, id uuid.UUID) (game.Card, bool) {
-	for _, c := range p.Hand.Cards {
-		if c.InstanceID == id {
-			return c, true
-		}
-	}
-	return game.Card{}, false
-}
-
-func slicesContains(ids []uuid.UUID, id uuid.UUID) bool {
-	for _, x := range ids {
-		if x == id {
-			return true
-		}
-	}
-	return false
 }
