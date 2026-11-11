@@ -593,6 +593,15 @@ type TargetSpec struct {
 	// effects.ControlledByThatPlayer.
 	ControlledByThatPlayer bool
 
+	// AttackingThatPlayer is "creature that's attacking that player" on a
+	// TRIGGERED ability's clause (Echoing Assault, #5368): the candidate
+	// must be attacking the player the triggering event's Target names. A
+	// creature attacking a planeswalker or battle that player controls is
+	// not attacking that player (CR 508.3e). DATA, judged in sourceAdmits
+	// for ControlledByThatPlayer's reasons; a walk with no fired trigger
+	// admits NOTHING. Build it with effects.AttackingThatPlayer.
+	AttackingThatPlayer bool
+
 	// ControlledByEventActor is "…that player controls" where that player is
 	// the triggering event's ACTOR, the controller of whatever caused it
 	// (Black Bolt, Inhuman King: "Whenever Black Bolt becomes the target of
@@ -1946,6 +1955,20 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 	return that != uuid.Nil && c.Controller == that
 }
 
+// attackingThatPlayerAdmits is AttackingThatPlayer's gate: true without the
+// flag, and with it only a creature attacking the player the triggering
+// event names as its Target. No fired trigger admits nothing.
+func (s *TargetSpec) attackingThatPlayerAdmits(src TargetSource, c Card) bool {
+	if !s.AttackingThatPlayer {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	that := src.Trigger.Event.Target
+	return that != uuid.Nil && c.AttackingTarget == that
+}
+
 // eventActorAdmits is ControlledByEventActor's gate: true without the flag,
 // and with it only a candidate controlled by the player the triggering event
 // names as its Actor. No trigger, or an event with no Actor, admits nothing.
@@ -2028,7 +2051,7 @@ func triggerActorOf(src TargetSource) uuid.UUID {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.attackingThatPlayerAdmits(src, c) || !s.eventActorAdmits(src, c) || !s.eventAmountAdmits(g, src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.chosenTypeAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

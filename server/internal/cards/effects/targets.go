@@ -670,6 +670,19 @@ func ControlledByThatPlayer(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// AttackingThatPlayer narrows a TRIGGERED ability's clause to creatures that
+// are attacking the player the triggering event names (Echoing Assault's
+// "target nontoken creature that's attacking that player", #5368). Data on
+// the clause (game.TargetSpec.AttackingThatPlayer), judged in the one shared
+// walk; on a spell, an activation or an event naming no player it admits
+// nothing.
+//
+//	AttackingThatPlayer(TargetCreature("target nontoken creature that's attacking that player", Not(IsTokenPredicate())))
+func AttackingThatPlayer(spec *game.TargetSpec) *game.TargetSpec {
+	spec.AttackingThatPlayer = true
+	return spec
+}
+
 // ControlledByThatEventActor narrows a TRIGGERED ability's clause to what
 // the player who caused the triggering event controls (Black Bolt, Inhuman
 // King's "destroy target nonland permanent that player controls" after
