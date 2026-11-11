@@ -49,6 +49,19 @@ func s46Tokens(g *game.Game, controller uuid.UUID, name string) []game.Card {
 	return out
 }
 
+// s46Settle passes priority around the table and answers trigger-order and
+// target prompts until neither is pending.
+func s46Settle(t *testing.T, g *game.Game) {
+	t.Helper()
+	for i := 0; i < 8; i++ {
+		passPriorityAroundTable(t, g)
+		for triggerOrderPrompt(g) != nil {
+			answerTriggerOrderInOfferedOrder(t, g)
+		}
+		answerAnyPendingTargetPrompts(t, g)
+	}
+}
+
 // s46Encore activates encore from the graveyard and resolves it.
 func s46Encore(t *testing.T, g *game.Game, name, typeLine, oracle string, p, tgh int, mana string) (uuid.UUID, *game.Player) {
 	t.Helper()
@@ -161,7 +174,7 @@ func TestCmdrS46JubilationPumpsOnlyTheCreaturesYouHaveThen(t *testing.T) {
 func TestCmdrS46JubilationEncoreTokensEachPump(t *testing.T) {
 	g := newCatalogGame(t)
 	_, me := s46Encore(t, g, "Jubilation", "Creature — Elemental Incarnation", s46Jubilation, 5, 5, "{C}{C}{C}{C}{C}{C}{C}{G}{G}")
-	passPriorityAroundTable(t, g)
+	s46Settle(t, g)
 	toks := s46Tokens(g, me.ID, "Jubilation")
 	if len(toks) != 3 {
 		t.Fatalf("%d tokens, want 3", len(toks))
@@ -262,6 +275,9 @@ func TestCmdrS46ScionOfCalamityMyriadsAndDestroysAnArtifactOrEnchantment(t *test
 		Owner: g.Seats[2].ID, Controller: g.Seats[2].ID})
 	declareAttack(t, g, opp1.ID, scion)
 	passPriorityAroundTable(t, g)
+	for triggerOrderPrompt(g) != nil {
+		answerTriggerOrderInOfferedOrder(t, g)
+	}
 	answerMayChoice(t, g, me.ID, true)
 	answerMayChoice(t, g, me.ID, false)
 	copies := 0
@@ -274,9 +290,7 @@ func TestCmdrS46ScionOfCalamityMyriadsAndDestroysAnArtifactOrEnchantment(t *test
 		t.Fatalf("%d myriad copies, want the one accepted", copies)
 	}
 	advanceTo(t, g, game.StepCombatDamage)
-	passPriorityAroundTable(t, g)
-	answerAnyPendingTargetPrompts(t, g)
-	passPriorityAroundTable(t, g)
+	s46Settle(t, g)
 	if g.Battlefield.Contains(rock) {
 		t.Error("the artifact of the player the Scion hit survived")
 	}
@@ -312,6 +326,9 @@ func TestCmdrS46ScurryOfSquirrelsAsksEachOpponentTwice(t *testing.T) {
 	scurry := b12Push(g, me.ID, "Scurry of Squirrels", "Creature — Squirrel Scout", s46Scurry, 2, 2)
 	declareAttack(t, g, opp.ID, scurry)
 	passPriorityAroundTable(t, g)
+	for triggerOrderPrompt(g) != nil {
+		answerTriggerOrderInOfferedOrder(t, g)
+	}
 	for i := 0; i < 4; i++ {
 		answerMayChoice(t, g, me.ID, true)
 	}
@@ -332,6 +349,9 @@ func TestCmdrS46ScurryCombatDamagePutsACounterOnATargetCreature(t *testing.T) {
 	bear := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
 	declareAttack(t, g, opp.ID, scurry)
 	passPriorityAroundTable(t, g)
+	for triggerOrderPrompt(g) != nil {
+		answerTriggerOrderInOfferedOrder(t, g)
+	}
 	for i := 0; i < 4; i++ {
 		answerMayChoice(t, g, me.ID, false)
 	}
