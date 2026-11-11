@@ -154,8 +154,14 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * them, and says a guest's draft is kept only while it runs; account
  * deletion deletes the person's rows and clears the pointer wherever
  * another person's draft named them.
+ * 39 (#5441, ADR 0222 §8) adds cubes: a signed-in person's saved cubes
+ * (the name they gave one, its card list, its singleton setting and
+ * when it was made and changed). The new "Your cubes" row names them,
+ * with the caps, and says the cube's name is shown at a draft dealt
+ * from it and kept in the other drafters' records; account deletion
+ * deletes the person's cubes.
  */
-export const PRIVACY_SCHEMA_VERSION = 38;
+export const PRIVACY_SCHEMA_VERSION = 39;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
@@ -208,6 +214,10 @@ export const PRIVACY_FACTS = {
   podSuggestGames: 3,
   /** pods.SuggestWindow, in days: how far back those games count. */
   podSuggestDays: 30,
+  /** cubes.MaxCubes: cubes one person can keep. */
+  cubesPerPerson: 20,
+  /** cubes.MaxCards: cards one cube can hold. */
+  cubeMaxCards: 1080,
   /** schedule.Keep, in hours: a scheduled table and its list are kept this long after the start, or after a cancel. */
   scheduledKeepHours: 24,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */
