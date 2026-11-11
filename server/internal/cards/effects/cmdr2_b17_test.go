@@ -210,8 +210,7 @@ func cmdr2B17NextUpkeepOfSeat0(t *testing.T, g *game.Game) {
 func TestCmdr2B17DeepForestHermitVanishesAfterThreeUpkeeps(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	hermit := castCatalogSpell(t, g, "Deep Forest Hermit", "Creature — Elf Druid", cmdr2B17HermitOracle, nil)
-	passPriorityAroundTable(t, g)
+	hermit := b38CastCreature(t, g, "Deep Forest Hermit", "Creature — Elf Druid", cmdr2B17HermitOracle, 1, 1)
 	var c game.Card
 	var ok bool
 	g.ReadSnapshot(func() {
