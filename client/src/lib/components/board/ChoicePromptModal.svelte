@@ -2172,7 +2172,9 @@
         : isCopyTarget
           ? c.exchanges_text
             ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
-            : [c.reason || "Enter as a copy of…", "copy · CR 707"]
+            : c.copy_use === "tokens"
+              ? [c.reason || "Create copies of…", "copy · CR 707"]
+              : [c.reason || "Enter as a copy of…", "copy · CR 707"]
           : isUntapChoice
             ? [c.reason || "Untap step — choose which permanents untap", "untap · CR 502.3"]
             : isEntryReveal
@@ -2216,10 +2218,14 @@
               ? none
                 ? c.exchanges_text
                   ? "Keep its own text"
-                  : "Enter as itself"
+                  : c.copy_use === "tokens"
+                    ? "Create the tokens as they are"
+                    : "Enter as itself"
                 : c.exchanges_text
                   ? "Exchange text boxes"
-                  : "Enter as a copy"
+                  : c.copy_use === "tokens"
+                    ? "Create copies"
+                    : "Enter as a copy"
               : isUntapChoice
                 ? "Untap"
                 : isEntryReveal
@@ -3182,6 +3188,10 @@
         {:else if isCopyTarget && active?.exchanges_text}
           Pick a creature to exchange text boxes with — each takes the other's rules text and keeps
           its own name, types and power and toughness. Or pick nothing and keep its own text.
+        {:else if isCopyTarget && active?.copy_use === "tokens"}
+          Pick a creature and the tokens you are about to create are copies of it instead — they
+          copy the printed card, so counters, damage and other effects don't come across. Or pick
+          nothing and create the tokens as they are.
         {:else if isCopyTarget}
           Pick what it enters as a copy of — it copies the printed card, so counters, damage and
           other effects don't come across. Or copy nothing and let it enter as itself.

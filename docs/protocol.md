@@ -3788,6 +3788,14 @@ Trading Card's entry choice, swap the rules text of two creatures.
   to copy. Same `options[]`, same `{choice_id, card_ids}` answer, and an
   empty list still declines (he keeps his own text). Absent on every
   other prompt.
+- **`copy_use` on a `copy_target` PendingChoiceView** (#5457). What the
+  pick is for when nothing is entering as a copy. `"tokens"` (Esix,
+  Fractal Bloom: "you may instead choose a creature other than Esix and
+  create that many tokens that are copies of that creature"): the prompt
+  is asked inside a token creation, the pick is the creature the tokens
+  will copy, and an empty list creates the tokens as they were. Same
+  `options[]` and the same `{choice_id, card_ids}` answer. Absent for
+  the ordinary enters-as-a-copy pick.
 
 ## Changed words (ADR 0160 amendment, #2779, 2026-10-15)
 

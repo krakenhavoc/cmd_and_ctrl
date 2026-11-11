@@ -936,6 +936,12 @@ type PendingChoiceView struct {
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
 	// decline; only the wording differs.
 	ExchangesText bool `json:"exchanges_text,omitempty"`
+	// CopyUse says what a "copy_target" pick is for when nothing is
+	// entering as a copy: "tokens" (Esix, Fractal Bloom: the creature
+	// the tokens being created will copy; the empty answer creates the
+	// tokens as they were). Absent for the ordinary enters-as-a-copy
+	// pick. Same answer, same empty decline; only the wording differs.
+	CopyUse string `json:"copy_use,omitempty"`
 	// Placement populates the ADR 0088 "put_in_library" kind: which
 	// lanes the answer may use — "top" ({top_order} alone), "bottom"
 	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
@@ -10359,6 +10365,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			AskedByHand:      string(c.AskedByHand),
 			PrivateText:      c.PrivateText(),
 			ExchangesText:    c.ExchangesText,
+			CopyUse:          c.CopyUse,
 		}
 		for _, earlier := range c.EarlierPermanentChoicesForEffect() {
 			entry := EarlierChoiceView{

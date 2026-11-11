@@ -1219,6 +1219,7 @@ var pendingChoiceFields = plan(
 	// ADR 0160: a copy_target prompt that exchanges text boxes. Carried
 	// with CopyOptions; only the wording reads it.
 	"ExchangesText", carried, "",
+	"CopyUse", carried, "",
 	// ADR 0160's 2026-10-15 amendment: the creature types a
 	// choose_creature_type prompt refuses.
 	"ExcludedTypes", carried, "",

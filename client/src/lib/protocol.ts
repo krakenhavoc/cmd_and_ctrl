@@ -2277,6 +2277,11 @@ export interface PendingChoiceView {
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
   exchanges_text?: boolean;
+  // #5457: what a "copy_target" pick is for when nothing is entering as a
+  // copy. "tokens" (Esix, Fractal Bloom): the creature the tokens being
+  // created will copy; the empty answer creates the tokens as they were.
+  // Absent for the ordinary enters-as-a-copy pick.
+  copy_use?: "tokens";
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.

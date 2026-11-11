@@ -131,7 +131,10 @@ func (g *Game) offerCopyChoiceLocked(ev *ReplacementEvent, chosen activeReplacem
 	}
 	candidates := sel.Candidates(ev, g, chosen.source)
 	chooser := g.copyChooserLocked(ev, chosen)
-	if len(candidates) == 0 || !ev.entryResumable || g.chooserGoneLocked(chooser) || chooser == uuid.Nil {
+	// A token creation (Esix, Fractal Bloom) resumes as any "may" on the
+	// instruction does; only an ENTRY needs its site to be resumable.
+	resumable := ev.entryResumable || ev.Kind == RepEventCreateTokens
+	if len(candidates) == 0 || !resumable || g.chooserGoneLocked(chooser) || chooser == uuid.Nil {
 		g.markReplacementAppliedLocked(ev, chosen.id)
 		return false
 	}
@@ -179,6 +182,7 @@ func (g *Game) queueCopyTargetPromptLocked(
 		Reason:               reason,
 		CopyOptions:          append([]uuid.UUID(nil), candidates...),
 		ExchangesText:        chosen.effect.CopySelector != nil && chosen.effect.CopySelector.ExchangeText,
+		CopyUse:              copyUseOf(ev),
 		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
 		replacementResume: &replacementResumeFrame{
 			ev:         ev,
@@ -239,6 +243,10 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 	// forever.
 	g.markReplacementAppliedLocked(ev, chosen.id)
 
+	if ev.Kind == RepEventCreateTokens {
+		return g.resolveTokenCopyChoiceLocked(ev, chosen, cardID)
+	}
+
 	exchange := chosen.effect.CopySelector != nil && chosen.effect.CopySelector.ExchangeText
 	if exchange && cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
 		ev.exchangeTextWith = cardID
@@ -272,6 +280,50 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 	// entry still owes its caller an answer — a search its shuffle, a
 	// simultaneous entry (#1322) the rest of its batch.
 	return g.finishSettledReplacementLocked(ev, out)
+}
+
+// CopyUseTokens is PendingChoice.CopyUse for a copy_target asked inside a
+// token creation: "you may instead choose a creature … and create that
+// many tokens that are copies of that creature" (Esix, Fractal Bloom).
+// The pick is what the TOKENS copy; nothing is entering as a copy. An
+// on-disk and wire value, never renamed.
+const CopyUseTokens = "tokens"
+
+// copyUseOf is the CopyUse a copy_target prompt over ev carries.
+func copyUseOf(ev *ReplacementEvent) string {
+	if ev != nil && ev.Kind == RepEventCreateTokens {
+		return CopyUseTokens
+	}
+	return ""
+}
+
+// resolveTokenCopyChoiceLocked is ResolveCopyTarget for a copy selector
+// on a token CREATION (CR 701.7b, CR 614.1a). A legal pick is named on
+// the event (CopySourceForEffect) and the effect's own Replace then
+// rewrites the instruction from it, as an Optional "yes" would; a
+// decline, a stale pick, or a source that has left since the prompt
+// leaves the instruction as it was. Either way the apply-loop is
+// re-entered and the creation finishes through the resume the "may"
+// replacements on a creation use.
+//
+// Caller must hold g.mu, with the effect already marked applied.
+func (g *Game) resolveTokenCopyChoiceLocked(ev *ReplacementEvent, chosen activeReplacement, cardID uuid.UUID) error {
+	if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
+		if live, present := g.liveReplacementSourceLocked(chosen); present {
+			ev.copySourceID = cardID
+			g.runReplaceLocked(ev, live)
+			ev.copySourceID = uuid.Nil
+		}
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	return g.finishReplacementResumeLocked(ev, out)
 }
 
 // copyCandidateStillLegalLocked re-runs the selector against the

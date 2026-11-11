@@ -834,6 +834,12 @@ type PendingChoice struct {
 	// copy (CopySelector.ExchangeText, ADR 0160 Decision 6). The answer
 	// is the same; only the wording differs. Wire `exchanges_text`.
 	ExchangesText bool
+	// CopyUse says what a PendingChoiceCopyTarget's pick is for when it
+	// is not the object the entering permanent copies: CopyUseTokens (the
+	// creature a token creation's tokens copy, Esix, Fractal Bloom). Empty
+	// for the ordinary enters-as-a-copy pick. The answer and the empty
+	// decline are the same; only the wording differs. Wire `copy_use`.
+	CopyUse string
 
 	// ExcludedTypes are creature types a PendingChoiceCreatureType may
 	// NOT be answered with (ADR 0160's 2026-10-15 amendment): Artificial
