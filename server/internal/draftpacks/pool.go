@@ -60,9 +60,17 @@ type Pool struct {
 
 // inBoosters reports whether a printing is a card a booster of its set
 // can hold: marked as found in boosters, a real paper card, not a token
-// or other placeholder.
+// or other placeholder. Scryfall does not flag every set (see collect),
+// so this is the rule for a set that has flags, and mainRunNumber is the
+// one for a set that has none.
 func inBoosters(c cards.Card) bool {
-	if !c.Booster || c.Digital || c.Oversized || c.OracleID == uuid.Nil || c.SetCode == "" {
+	return c.Booster && paperCard(c)
+}
+
+// paperCard is inBoosters without the booster flag: a real paper card of
+// the English printing, not a token or other placeholder.
+func paperCard(c cards.Card) bool {
+	if c.Digital || c.Oversized || c.OracleID == uuid.Nil || c.SetCode == "" {
 		return false
 	}
 	if c.Lang != "" && c.Lang != "en" {
@@ -96,16 +104,35 @@ var treatmentFrameEffects = map[string]bool{
 	"textless":       true,
 }
 
+// universesBeyondPromoType is the promo_types value Scryfall puts on
+// every printing of a Universes Beyond set, plain ones included. It marks
+// the franchise, not a treatment, so plainFrame ignores it; treatment
+// does not, and counts it equally on every printing of the set.
+const universesBeyondPromoType = "universesbeyond"
+
 // treatment is 0 for a printing in its plain booster frame and grows
 // with each sign of a collector treatment. The printing that stands for
 // a card is the one with the lowest.
 func treatment(c cards.Card) int {
+	return treatmentSigns(c, false)
+}
+
+// plainFrame reports whether a printing is in its plain frame: treatment
+// 0, but with the Universes Beyond marker not counted as a treatment.
+func plainFrame(c cards.Card) bool {
+	return treatmentSigns(c, true) == 0
+}
+
+func treatmentSigns(c cards.Card, ignoreUniversesBeyond bool) int {
 	n := 0
 	if c.Promo {
 		n++
 	}
-	if len(c.PromoTypes) > 0 {
-		n++
+	for _, t := range c.PromoTypes {
+		if !ignoreUniversesBeyond || t != universesBeyondPromoType {
+			n++
+			break
+		}
 	}
 	if c.FullArt {
 		n++
@@ -176,18 +203,107 @@ func (s setPrintings) add(c cards.Card) {
 	}
 }
 
-// collect walks the index once and returns the booster printings of
-// every set, or only of the sets in want when want is not nil.
+// plainNumber is a collector number that is only digits ("214", not
+// "214a", "214★" or "A-12"), as a number.
+func plainNumber(s string) (int, bool) {
+	if s == "" || len(s) > 8 {
+		return 0, false
+	}
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return 0, false
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n, true
+}
+
+// mainRunNumber is the collector number of a printing that can be in the
+// main run of a set Scryfall has not flagged for boosters: a paper card
+// in its plain frame, not a promo, with a plain collector number.
+func mainRunNumber(c cards.Card) (int, bool) {
+	if !paperCard(c) || !plainFrame(c) {
+		return 0, false
+	}
+	n, ok := plainNumber(c.CollectorNo)
+	return n, ok && n > 0
+}
+
+// mainRunLength is how far a set's main run goes: the longest run of
+// collector numbers 1, 2, 3, ... that each have a plain-frame, non-promo
+// printing. A set prints its main run first and its showcase, extended-art
+// and borderless reprints after it, and its basic lands apart from both,
+// so the first number with no plain printing is where the main run ends.
+// A set with no printing numbered 1 has none (0).
+func mainRunLength(plain map[int]bool) int {
+	n := 0
+	for plain[n+1] {
+		n++
+	}
+	return n
+}
+
+// collect walks the index and returns the printings that stand for a
+// card in the boosters of every set, or only of the sets in want when
+// want is not nil. Every route to a pool (the list, PoolFor, a draft's
+// pools and the image scope) goes through it, so they cannot disagree.
+//
+// A set's cards are the ones Scryfall flags as found in boosters
+// (inBoosters). Scryfall has flagged none of the printings of some sets,
+// the newest ones among them (Star Trek, Secrets of Strixhaven, TMNT, on
+// 2026-11-11, #5689), and such a set has no pool by that rule. For a
+// set none of whose printings carries the flag, the cards are its main
+// run instead: the printings numbered 1 to mainRunLength that are in the
+// plain frame and are not promos. A set with any flagged printing is
+// never read this way.
 func collect(idx *cards.Index, want map[string]bool) setPrintings {
 	out := setPrintings{}
 	if idx == nil {
 		return out
 	}
+	wanted := func(c cards.Card) bool {
+		return want == nil || want[strings.ToLower(c.SetCode)]
+	}
+	// Pass one: which sets carry the flag at all, and the plain numbers
+	// of the ones that might not.
+	flagged := map[string]bool{}
+	plain := map[string]map[int]bool{}
 	idx.EachPrinting(func(c cards.Card) {
-		if want != nil && !want[strings.ToLower(c.SetCode)] {
+		if !wanted(c) {
 			return
 		}
-		if inBoosters(c) {
+		code := strings.ToLower(c.SetCode)
+		if c.Booster {
+			flagged[code] = true
+			return
+		}
+		if n, ok := mainRunNumber(c); ok {
+			if plain[code] == nil {
+				plain[code] = map[int]bool{}
+			}
+			plain[code][n] = true
+		}
+	})
+	runLen := map[string]int{}
+	for code, nums := range plain {
+		if !flagged[code] {
+			runLen[code] = mainRunLength(nums)
+		}
+	}
+	// Pass two: the printings.
+	idx.EachPrinting(func(c cards.Card) {
+		if !wanted(c) {
+			return
+		}
+		code := strings.ToLower(c.SetCode)
+		if flagged[code] {
+			if inBoosters(c) {
+				out.add(c)
+			}
+			return
+		}
+		if n, ok := mainRunNumber(c); ok && n <= runLen[code] {
 			out.add(c)
 		}
 	})

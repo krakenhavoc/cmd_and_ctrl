@@ -634,8 +634,16 @@ generates and opens no pack: drafting is #5438.
 
 - `sets` is every set a pack can be made for, newest first: a `core`,
   `expansion`, `masters` or `draft_innovation` set whose booster cards
-  (Scryfall's `booster` flag) include a common, an uncommon, and a rare or
-  mythic.
+  include a common, an uncommon, and a rare or mythic. A set's booster
+  cards are the printings Scryfall flags with `booster`. Scryfall flags none
+  of the printings of some sets (Star Trek, Secrets of Strixhaven and TMNT
+  on 2026-11-11, #5689); for a set none of whose printings is flagged, they
+  are its main run instead: the printings numbered 1, 2, 3, ... up to the
+  first number with no plain-frame, non-promo printing. That leaves out the
+  showcase, extended-art and borderless reprints that follow the run, promos,
+  lettered numbers and the basic lands past the run, and so gives the same
+  cards the flag gives a set that has it. A set with any flagged printing is
+  read by the flag alone.
 - `booster` is the kind of retail booster the set's packs are modelled on,
   the draftable booster of the set's era, chosen from its `released` date:
   `"play"` for a set released on or after 2024-02-09, `"draft"` for an older

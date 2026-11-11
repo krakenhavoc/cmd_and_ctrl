@@ -249,6 +249,16 @@ Section 8 says what a cube is. These are the calls its build made, each open to 
 
 Not built here: custom pack recipes (a later ADR, as section 8 says); sharing a cube or drafting someone else's; importing from a cube site's link (a pasted export works); a draft bot that rates cube cards differently from set cards (it uses the same ratings).
 
+### Sets Scryfall has not flagged for boosters (amendment 2026-11-11, #5689)
+
+Section 4 says a pack is made from "the cards the dump marks as found in boosters". On 2026-11-11 Scryfall's `booster` flag is false on every printing of Star Trek (`trk`), Secrets of Strixhaven (`sos`) and TMNT (`tmt`), so by that rule they had no cards, no pool, and no row in `GET /draft/sets`.
+
+- **The flag stays the rule for any set that has it.** A set with even one flagged printing is built exactly as before.
+- **A set none of whose printings is flagged is built from its main run**: the printings, paper cards in the plain frame and not promos, whose collector numbers are 1, 2, 3, ... up to the first number that has no such printing. Showcase, extended-art and borderless reprints, promos, lettered numbers and the basic lands come after that number, so they are left out, and one printing per card stands for it as before.
+- **Why the run is read from the numbers.** The set list's `printed_size` is null for Star Trek, Secrets of Strixhaven, TMNT, Lorwyn Eclipsed and Bloomburrow, `card_count` counts every printing, and no printing says where the main run ends. In the dump of 2026-11-11, in the two flagged sets checked (Lorwyn Eclipsed, Bloomburrow), the flagged plain-frame printings are exactly the numbers 1 to the run's last, and the first treated printing follows it straight away; the three unflagged sets have the same shape.
+- **The Universes Beyond marker is not a treatment.** Scryfall puts `promo_types: ["universesbeyond"]` on every printing of such a set, plain ones included, so the plain-frame test ignores that one value.
+- **One rule in one place.** `draftpacks.collect` applies it, so the list, `PoolFor`, a draft's pools and the image scope cannot disagree.
+
 ## Consequences
 
 - The catalog's "Full" now carries more weight: a draftable set is a promise that every card in its packs works unaided.
