@@ -192,12 +192,10 @@ var keywordWeights = map[string]float64{
 // Rate is the rating of a card with these facts. It is a pure function:
 // the same facts always give the same number.
 func Rate(f Facts) float64 {
-	if f.Land {
-		if !f.Creature {
-			// A basic land is told apart by the caller (Card.Basic); a
-			// land's facts alone say only that it is one.
-			return NonbasicLandRating
-		}
+	if f.Land && !f.Creature {
+		// A basic land is told apart by the caller (Card.Basic); a land's
+		// facts alone say only that it is one.
+		return NonbasicLandRating
 	}
 	var r float64
 	switch {

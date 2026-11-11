@@ -4,6 +4,7 @@ import (
 	"math/rand/v2"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -278,20 +279,12 @@ func TestEightBotsDoNotDraftIdentically(t *testing.T) {
 			key = append(key, c.Name)
 		}
 		sort.Strings(key)
-		k := reflect.ValueOf(key).String() + sortJoin(key)
+		k := strings.Join(key, "|")
 		if seen[k] {
 			t.Error("two bots drafted the same pool")
 		}
 		seen[k] = true
 	}
-}
-
-func sortJoin(s []string) string {
-	out := ""
-	for _, x := range s {
-		out += x + "|"
-	}
-	return out
 }
 
 // checkingPicker fails the test on a pick the draft would overrule.
