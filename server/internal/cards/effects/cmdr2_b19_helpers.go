@@ -175,3 +175,87 @@ func cmdr2B19YourAuraBecameAttachedToYourCreature(ev game.Event, source *game.Ca
 	host, ok := g.LookupCardForEffect(ev.Target)
 	return ok && host.IsCreature() && host.Controller == source.Controller && host.Controller != uuid.Nil
 }
+
+// cmdr2B19OfferAuraForNextToken is Liberated Livestock's walk over its
+// tokens: for the first token in `tokens` that is still on the battlefield,
+// ask `player` to pick an Aura card from their hand and/or graveyard (or
+// none), put it onto the battlefield attached to that token, and go on to
+// the rest once the entry is complete. A token with no Aura card to offer is
+// passed over without a question. The tokens still to come ride the prompt
+// and the tail as data (Carry).
+func cmdr2B19OfferAuraForNextToken(g *game.Game, player, source uuid.UUID, tokens []uuid.UUID) error {
+	for len(tokens) > 0 {
+		token := tokens[0]
+		rest := tokens[1:]
+		tokens = rest
+		if c, ok := g.LookupCardForEffect(token); !ok || !c.IsCreature() {
+			continue
+		}
+		p := g.PlayerByIDForEffect(player)
+		if p == nil || p.Eliminated {
+			return nil
+		}
+		var cands []uuid.UUID
+		for _, z := range []*game.Zone{p.Hand, p.Graveyard} {
+			if z == nil {
+				continue
+			}
+			for _, c := range z.Cards {
+				if c.IsAura() && !c.IsToken() {
+					cands = append(cands, c.InstanceID)
+				}
+			}
+		}
+		if len(cands) == 0 {
+			continue
+		}
+		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Destination: game.ChooseOntoBattlefield,
+			Chooser:     player,
+			Source:      source,
+			Question:    "Liberated Livestock — you may put an Aura card from your hand and/or graveyard onto the battlefield attached to that token",
+			Cards:       cands,
+			Min:         0,
+			Max:         1,
+			ThenKey:     cmdr2B19LivestockPick,
+			Carry:       append([]uuid.UUID{token}, rest...),
+		})
+		return nil
+	}
+	return nil
+}
+
+// cmdr2B19LivestockPick is the pick's continuation: Carry is the token this
+// offer is for, then the tokens still to come.
+var cmdr2B19LivestockPick game.ChooseCardsThen
+
+// cmdr2B19LivestockNext runs once the put has entered (or been refused) and
+// offers the next token its Aura.
+var cmdr2B19LivestockNext game.TailRef
+
+// The pick and the tail refer to each other through the walk, so they are
+// registered here rather than by package-level initializers (an
+// initialization cycle).
+func init() {
+	cmdr2B19LivestockPick = game.RegisterChooseCardsThen("choose-cards/cmdr2-b19-liberated-livestock-aura",
+		func(g *game.Game, r game.CardsChosen) error {
+			if len(r.Carry) == 0 {
+				return nil
+			}
+			token, rest := r.Carry[0], r.Carry[1:]
+			if len(r.Picked) == 0 {
+				return cmdr2B19OfferAuraForNextToken(g, r.Chooser, r.Source, rest)
+			}
+			from := game.ZoneHand
+			if z := g.FindCardZoneForEffect(r.Picked[0]); z != nil {
+				from = z.Kind
+			}
+			return g.PutOntoBattlefieldTogetherKeyedForEffect(
+				[]game.BatchEntry{{CardID: r.Picked[0], From: from}},
+				game.ZoneEntryOptions{Controller: r.Chooser, AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: token}},
+				game.KeyedTail{Ref: cmdr2B19LivestockNext, Player: r.Chooser, Source: r.Source, Carry: rest})
+		})
+	cmdr2B19LivestockNext = CardTail("cmdr2-b19/liberated-livestock-next", func(ctx *Context, o game.TailOutcome) error {
+		return cmdr2B19OfferAuraForNextToken(ctx.Game, o.Tail.Player, o.Tail.Source, o.Tail.Carry)
+	})
+}

@@ -19,8 +19,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one entry, each Aura choosing its host as it enters (CR 303.4f, so the
 // Aura that finds no legal host stays in the revealed pile and goes to the
 // bottom with the rest), and the rest go to the bottom in a random order.
-// An Aura card's mana value is its printed one on the battlefield's terms
-// (an {X} cost counts as 0 off the stack, CR 202.3e).
+// Mana value is read off the card in the library ({X} counts as 0 there,
+// CR 202.3e).
 //
 // No simplification.
 func init() {

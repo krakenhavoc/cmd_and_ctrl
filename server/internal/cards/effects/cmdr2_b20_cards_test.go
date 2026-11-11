@@ -15,7 +15,6 @@ const (
 	cmdr2KnickknackOuphe  = "55adf2f0-f023-4f41-ae9d-3c002e9e6e8d"
 	cmdr2TimberPaladin    = "0be44c76-9e3f-45c2-9b2c-6a5f00678780"
 	cmdr2AuraGnarlid      = "586aebf2-4653-49fa-8425-13bd1f511bf0"
-	cmdr2UmbraMystic      = "c0a4f47c-c7f9-4b95-aa1b-30580e4cf030"
 	cmdr2Retether         = "b693c24f-07d9-40fa-aa4a-8f7ba61f3452"
 	cmdr2LiberatedStock   = "d080cb03-b3e5-42e8-b289-2ce2151b4cb8"
 	cmdr2Siona            = "89e17ccf-cde7-428d-bd64-47e2f79b40d7"
@@ -25,8 +24,12 @@ const (
 
 func TestCmdr2B20EveryBuiltCardIsRegisteredFull(t *testing.T) {
 	want := map[string]string{
+		cmdr2KnickknackOuphe:  "Knickknack Ouphe",
 		cmdr2TimberPaladin:    "Timber Paladin",
 		cmdr2AuraGnarlid:      "Aura Gnarlid",
+		cmdr2Retether:         "Retether",
+		cmdr2LiberatedStock:   "Liberated Livestock",
+		cmdr2Siona:            "Siona, Captain of the Pyleas",
 		cmdr2OxDrover:         "Ox Drover",
 		cmdr2SilhanaLedgewalk: "Silhana Ledgewalker",
 	}
@@ -373,5 +376,88 @@ func TestCmdr2B20KnickknackOupheEntersWithXCountersAndPutsAurasOfManaValueXOrLes
 	bottom := map[uuid.UUID]bool{me.Library.Cards[0].InstanceID: true, me.Library.Cards[1].InstanceID: true}
 	if !bottom[bear] || !bottom[tooBig] {
 		t.Error("the revealed cards that did not enter are not on the bottom")
+	}
+}
+
+func TestCmdr2B20LiberatedLivestockMakesThreeTokensAndOffersAnAuraForEach(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	cow := dskB1Creature(g, me.ID, "Liberated Livestock", "Creature — Cat Bird Ox", cmdr2LiberatedStock, 4, 6)
+	inHand := uuid.New()
+	me.Hand.PushTop(game.Card{InstanceID: inHand, Name: "Pacifism", TypeLine: auraTypeLine, OracleID: pacifismOracle,
+		ManaCost: "{1}{W}", Colors: []string{"W"}, Owner: me.ID, Controller: me.ID})
+	gy1 := ahPacifism(me)
+	gy2 := ahPacifism(me)
+
+	killCreature(t, g, me.ID, cow)
+	passPriorityAroundTable(t, g)
+	cat, bird, ox := battlefieldIDsNamed(g, "Cat"), battlefieldIDsNamed(g, "Bird"), battlefieldIDsNamed(g, "Ox")
+	if len(cat) != 1 || len(bird) != 1 || len(ox) != 1 {
+		t.Fatalf("tokens: %d Cats, %d Birds, %d Oxen, want one each", len(cat), len(bird), len(ox))
+	}
+	if p, tt := ptOf(t, g, ox[0]); p != 2 || tt != 4 {
+		t.Errorf("the Ox is %d/%d, want 2/4", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, cat[0], "lifelink") || !hasEffectiveKeyword(t, g, bird[0], "flying") {
+		t.Error("the Cat lacks lifelink or the Bird lacks flying")
+	}
+	// The Cat's offer: all three Aura cards, hand and graveyard together.
+	prompt := latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no offer for the Cat")
+	}
+	if len(prompt.ChooseCards) != 3 || prompt.ChooseMin != 0 || prompt.ChooseMax != 1 {
+		t.Fatalf("the Cat's offer is %v [%d,%d], want the three Aura cards, up to one", prompt.ChooseCards, prompt.ChooseMin, prompt.ChooseMax)
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{inHand}); err != nil {
+		t.Fatalf("picking the Aura in hand: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := attachmentHostOf(t, g, inHand); got != cardRef(cat[0]) {
+		t.Fatalf("the Aura from hand enchants %v, want the Cat", got)
+	}
+	// The Bird's offer no longer has the card that went onto the Cat.
+	prompt = latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no offer for the Bird")
+	}
+	if len(prompt.ChooseCards) != 2 {
+		t.Fatalf("the Bird's offer is %v, want the two graveyard Auras", prompt.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{gy1}); err != nil {
+		t.Fatalf("picking the Aura in the graveyard: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := attachmentHostOf(t, g, gy1); got != cardRef(bird[0]) {
+		t.Fatalf("the Aura from the graveyard enchants %v, want the Bird", got)
+	}
+	// The Ox's offer may be declined.
+	prompt = latestChooseCards(g, me.ID)
+	if prompt == nil {
+		t.Fatal("no offer for the Ox")
+	}
+	if err := g.ResolveChooseCards(prompt.ID, me.ID, nil); err != nil {
+		t.Fatalf("declining: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(gy2) || !me.Graveyard.Contains(gy2) {
+		t.Error("the declined Aura left the graveyard")
+	}
+	if latestChooseCards(g, me.ID) != nil {
+		t.Error("a fourth offer was made")
+	}
+}
+
+func TestCmdr2B20LiberatedLivestockAsksNothingWithoutAnAuraCard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	cow := dskB1Creature(g, me.ID, "Liberated Livestock", "Creature — Cat Bird Ox", cmdr2LiberatedStock, 4, 6)
+	killCreature(t, g, me.ID, cow)
+	passPriorityAroundTable(t, g)
+	if len(battlefieldIDsNamed(g, "Cat")) != 1 || len(battlefieldIDsNamed(g, "Ox")) != 1 {
+		t.Error("the tokens were not created")
+	}
+	if latestChooseCards(g, me.ID) != nil {
+		t.Error("an offer was made with no Aura card in hand or graveyard")
 	}
 }
