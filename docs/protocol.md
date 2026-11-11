@@ -2064,6 +2064,10 @@ rises.
 }
 ```
 
+- `cube` is `true` for a draft of a saved card list ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §8,
+  #5441) and absent otherwise. `set` is then `""`, `set_name` is the cube's
+  name and `booster` is `"cube"`: the packs are cut from the shuffled list,
+  all one size, with no rarity slots. Nothing else about the view differs.
 - `state` is `lobby` (seats are being taken), `picking`, or `done`.
 - `mode` is `pick_one` or `pick_two`. `take` is how many cards the seat
   must take from the pack it holds now: 1, or 2 in pick two (1 when one
