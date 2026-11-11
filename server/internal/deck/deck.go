@@ -966,6 +966,10 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// ability". SetFace(0) below narrows a multi-faced card to its
 		// front face, which is the card in a library (CR 712.8a).
 		ManaAbilityText: game.PrintedFactOf(game.ManaAbilityInText(c.TypeLine, oracleTexts(c)...)),
+		// #5688: whether the printed text has the warp keyword, for Blade
+		// of the Swarm's "target exiled card with warp" on a card the
+		// catalog does not run.
+		WarpText: game.PrintedFactOf(game.WarpInText(oracleTexts(c)...)),
 		// #4464: whether the printed text is empty, for "a creature card
 		// with no abilities" (Fang-Druid Summoner, Rise from the Wreck).
 		NoAbilitiesText: game.PrintedFactOf(game.NoAbilitiesInText(oracleTexts(c)...)),

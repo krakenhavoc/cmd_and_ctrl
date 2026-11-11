@@ -1,0 +1,11 @@
+---
+title: "Conspire beside a spell's own tap cost, and separate instances"
+date: 2026-11-11
+issues: [5688]
+---
+**Conspire beside a spell's own tap cost, and separate instances** (#5688, CR 702.78a / 702.78b / 601.2b / 601.2h / 118.3; follows [conspire](engine-seams/closed/4690-conspire.md)) — conspire's two creatures rode the cast's one `teamwork_ids` list, so a granted conspire was not offered on a spell whose own cost taps permanents there (New Blood, teamwork, Collective Effort's escalate, a replicate cost that taps). They now ride a list of their own, `CastSpellParams.ConspireIDs` (`conspire_ids`): `game.planTapOthers` leaves the conspire entry out, `planConspire` reads it, and `validateConspireLocked` checks the two creatures with the tap clause's own validator and refuses one also named on `teamwork_ids` or `tap_ids`, so both costs are paid on one cast with different permanents and nothing is tapped by a refused one. Conspire's taps are not recorded on `PaidCost.TappedOthers`, which stays what the spell's own cost tapped (Burn at the Stake counts it). `castTapListTaken` is gone, and the grant is offered on every noncreature spell.
+- **Separate instances.** A grant of conspire is `EachSource` (`effects.ConspireForSpellsYouCast`), so two Raiding Schemes give a spell two conspire costs. Each one announced taps its own two creatures on the one list and is its own trigger, one copy each (`harvestConspireLocked`).
+- **The wire, the bot and the client.** `cast_spell.conspire_ids` and the auto-tap preview's `conspire_ids` are new and additive; a cast that pays conspire and nothing else on `teamwork_ids` may still name the creatures there (`game.castTapLists`). The enumerator names conspire's creatures from what the spell's own taps left (`conspireCastPayment`) and offers the conspired cast only when both costs can be paid. The client reads the list off the offer's `key` (`castConspireCost`) and asks after the spell's own taps, leaving those permanents out.
+- **Snapshot.** `ConspireIDs` is additive in v9 on the two places a cast's parameters are stored (a parked cast and an assist announcement). No effect key and no closure field changes.
+
+**Cards:** Raiding Schemes — Full.

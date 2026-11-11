@@ -64,7 +64,7 @@ import "github.com/google/uuid"
 // nil for none.
 func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uuid.UUID]bool {
 	full := [][]uuid.UUID{params.LockedSources, params.TapIDs, params.DiscardIDs,
-		params.TeamworkIDs, params.BlightIDs, params.ExilePermanentIDs}
+		params.TeamworkIDs, params.BlightIDs, params.ExilePermanentIDs, params.ConspireIDs}
 	// #5247: a permanent named to a return-to-hand additional cost is
 	// SACRIFICE-NAMED for the same reason a sacrificed one is: CR 601.2g
 	// has its mana abilities activated before CR 601.2h returns it, so an

@@ -787,6 +787,11 @@ func dispatch(g *game.Game, a Action) error {
 			// (CR 701.68a). Absent unless optional_costs names one.
 			TeamworkIDs []string `json:"teamwork_ids,omitempty"`
 			BlightIDs   []string `json:"blight_ids,omitempty"`
+			// #5688 — the two creatures tapped to pay an announced
+			// conspire cost (CR 702.78a), apart from the spell's own
+			// taps on teamwork_ids. Absent unless optional_costs
+			// names a conspire cost.
+			ConspireIDs []string `json:"conspire_ids,omitempty"`
 			// ADR 0100 amendment 2026-10-07 — the one card an
 			// announced reveal / behold branch shows ("reveal an Elf
 			// card from your hand or pay {3}"). Absent unless the
@@ -992,6 +997,7 @@ func dispatch(g *game.Game, a Action) error {
 		}{
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
+			{"conspire_ids", p.ConspireIDs, &params.ConspireIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
 			{"return_ids", p.ReturnIDs, &params.ReturnIDs},

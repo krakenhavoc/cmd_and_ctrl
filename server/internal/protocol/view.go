@@ -1903,6 +1903,13 @@ type OptionalCostView struct {
 	// cast_spell's `teamwork_ids`. max_times is capped at the payments
 	// the options cover, and an options list shorter than `min` means
 	// the offer cannot be taken right now (CR 118.3).
+	//
+	// A conspire offer (`key` "conspire", CR 702.78a) carries the same two
+	// fields for its two creatures, and those picks ride cast_spell's
+	// `conspire_ids` instead (#5688): a list apart from `teamwork_ids`,
+	// so a spell whose own cost taps permanents there can be conspired
+	// too. The options are not narrowed by what the spell's own cost will
+	// tap; the cast refuses a permanent named on both lists.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 
@@ -8965,7 +8972,8 @@ func viewOfOptionalCosts(g *game.Game, caster, castID uuid.UUID, src game.Target
 		// #4092: a replicate cost that taps — each payment taps Count of
 		// the options, so the stepper stops at what they cover. #4690:
 		// conspire's creatures share a colour with the spell, so the walk
-		// is asked with the spell as the cost's source.
+		// is asked with the spell as the cost's source. #5688: its picks
+		// ride conspire_ids, which the client reads off the offer's key.
 		if tc := oc.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)

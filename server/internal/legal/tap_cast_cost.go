@@ -48,7 +48,9 @@ func (e *enumerator) optionalTapCastPayment(castID uuid.UUID, optional []game.Ad
 	var tc *game.TapOthersCost
 	need := 0
 	for _, i := range chosen {
-		if i < 0 || i >= len(optional) || optional[i].TapOthers.Empty() {
+		// #5688: conspire's creatures ride their own list
+		// (conspireCastPayment).
+		if i < 0 || i >= len(optional) || optional[i].TapOthers.Empty() || game.ConspireCost(optional[i]) {
 			continue
 		}
 		tc = optional[i].TapOthers
@@ -64,12 +66,39 @@ func (e *enumerator) optionalTapCastPayment(castID uuid.UUID, optional []game.Ad
 	return append([]uuid.UUID(nil), pool[:need]...), true
 }
 
+// conspireCastPayment is the creatures an announced conspire cost taps
+// (#5688, CR 702.78a): two per conspire cost in `chosen`, off the engine's
+// own walk (creatures sharing a colour with the spell) in the cheapest-
+// to-tap order, and never one of `taken`, the permanents the spell's own
+// tap cost already names: a creature is tapped once. They ride the move's
+// conspire_ids. ok is false when what is left is too few, which drops
+// that announced set while the cast without conspire stays offered.
+func (e *enumerator) conspireCastPayment(castID uuid.UUID, optional []game.AdditionalCost, chosen []int, taken []uuid.UUID) (ids []uuid.UUID, ok bool) {
+	var tc *game.TapOthersCost
+	need := 0
+	for _, i := range chosen {
+		if i < 0 || i >= len(optional) || !game.ConspireCost(optional[i]) {
+			continue
+		}
+		tc = optional[i].TapOthers
+		need += tc.Count
+	}
+	if tc == nil {
+		return nil, true
+	}
+	pool := withoutIDs(e.cheapestTapFirst(e.g.TapOthersOptionsForEffect(e.seat, castID, tc)), taken)
+	if len(pool) < need {
+		return nil, false
+	}
+	return append([]uuid.UUID(nil), pool[:need]...), true
+}
+
 // optionalTaps reports whether the announced set `chosen` pays an
 // optional cost that taps permanents (#4092), so the move's label names
 // them.
 func optionalTaps(optional []game.AdditionalCost, chosen []int) bool {
 	for _, i := range chosen {
-		if i >= 0 && i < len(optional) && !optional[i].TapOthers.Empty() {
+		if i >= 0 && i < len(optional) && !optional[i].TapOthers.Empty() && !game.ConspireCost(optional[i]) {
 			return true
 		}
 	}

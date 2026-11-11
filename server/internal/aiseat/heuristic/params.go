@@ -85,6 +85,9 @@ type castParams struct {
 	// the permanents a mandatory tap cost taps (#3868, New Blood). Only
 	// the last are priced (valueOfCast), as an alternative cost's taps are.
 	TeamworkIDs []string `json:"teamwork_ids"`
+	// ConspireIDs are the two creatures a conspire cost taps (#5688), on
+	// their own list. Not priced, as they were not on teamwork_ids.
+	ConspireIDs []string `json:"conspire_ids"`
 	// CostBranch is the either/or additional cost's branch the cast pays
 	// (ADR 0100 §2), nil for a card with none.
 	CostBranch *int `json:"cost_branch"`

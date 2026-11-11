@@ -1733,6 +1733,10 @@ export async function fetchAutoTapPreview(
     if (cast.teamworkIDs && cast.teamworkIDs.length > 0) {
       params.set("teamwork_ids", cast.teamworkIDs.join(","));
     }
+    // #5688: nor can one tapped for conspire.
+    if (cast.conspireIDs && cast.conspireIDs.length > 0) {
+      params.set("conspire_ids", cast.conspireIDs.join(","));
+    }
     if (cast.blightIDs && cast.blightIDs.length > 0) {
       params.set("blight_ids", cast.blightIDs.join(","));
     }

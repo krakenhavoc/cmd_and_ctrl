@@ -441,6 +441,7 @@ battlefield.cards[].turnOvers	number:int
 battlefield.cards[].typeLine	string
 battlefield.cards[].unlocked	number:uint8
 battlefield.cards[].variableToughness	bool
+battlefield.cards[].warpText	number:uint8
 battlefield.kind	string
 battlefield.owner	custom(uuid.UUID)
 blockDeclarationClosed	bool
@@ -996,6 +997,7 @@ enteringTokens[].turnOvers	number:int
 enteringTokens[].typeLine	string
 enteringTokens[].unlocked	number:uint8
 enteringTokens[].variableToughness	bool
+enteringTokens[].warpText	number:uint8
 eventBatch	number:uint64
 eventSeq	number:uint64
 events	array
@@ -1511,6 +1513,7 @@ exile.cards[].turnOvers	number:int
 exile.cards[].typeLine	string
 exile.cards[].unlocked	number:uint8
 exile.cards[].variableToughness	bool
+exile.cards[].warpText	number:uint8
 exile.kind	string
 exile.owner	custom(uuid.UUID)
 extraLandDropsThisTurn	map:array
@@ -8888,6 +8891,7 @@ frozenEntries[].event.keywordActionTail.armyToken.turnOvers	number:int
 frozenEntries[].event.keywordActionTail.armyToken.typeLine	string
 frozenEntries[].event.keywordActionTail.armyToken.unlocked	number:uint8
 frozenEntries[].event.keywordActionTail.armyToken.variableToughness	bool
+frozenEntries[].event.keywordActionTail.armyToken.warpText	number:uint8
 frozenEntries[].event.keywordActionTail.ask	bool
 frozenEntries[].event.keywordActionTail.cards	array
 frozenEntries[].event.keywordActionTail.cards[]	custom(uuid.UUID)
@@ -11201,6 +11205,7 @@ frozenEntries[].event.millTail.run.planned[].turnOvers	number:int
 frozenEntries[].event.millTail.run.planned[].typeLine	string
 frozenEntries[].event.millTail.run.planned[].unlocked	number:uint8
 frozenEntries[].event.millTail.run.planned[].variableToughness	bool
+frozenEntries[].event.millTail.run.planned[].warpText	number:uint8
 frozenEntries[].event.millTail.run.player	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.repetitions	number:int
 frozenEntries[].event.millTail.run.seen	array
@@ -11608,6 +11613,7 @@ frozenEntries[].event.millTail.run.seen[].turnOvers	number:int
 frozenEntries[].event.millTail.run.seen[].typeLine	string
 frozenEntries[].event.millTail.run.seen[].unlocked	number:uint8
 frozenEntries[].event.millTail.run.seen[].variableToughness	bool
+frozenEntries[].event.millTail.run.seen[].warpText	number:uint8
 frozenEntries[].event.millTail.run.then	object
 frozenEntries[].event.millTail.run.then.asked	object
 frozenEntries[].event.millTail.run.then.asked.controller	custom(uuid.UUID)
@@ -13823,6 +13829,7 @@ frozenEntries[].event.tokenGroups[].template.turnOvers	number:int
 frozenEntries[].event.tokenGroups[].template.typeLine	string
 frozenEntries[].event.tokenGroups[].template.unlocked	number:uint8
 frozenEntries[].event.tokenGroups[].template.variableToughness	bool
+frozenEntries[].event.tokenGroups[].template.warpText	number:uint8
 frozenEntries[].event.tokenTail	object
 frozenEntries[].event.tokenTail.then	object
 frozenEntries[].event.tokenTail.then.asked	object
@@ -14873,6 +14880,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.turnOvers	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.typeLine	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.unlocked	number:uint8
 frozenEntries[].event.tokensAfterMove[].groups[].template.variableToughness	bool
+frozenEntries[].event.tokensAfterMove[].groups[].template.warpText	number:uint8
 frozenEntries[].event.tokensAfterMove[].source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute	object
 frozenEntries[].event.zoneRoute.actor	custom(uuid.UUID)
@@ -15293,6 +15301,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].turnOvers	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].typeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].unlocked	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].variableToughness	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].warpText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.player	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.repetitions	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen	array
@@ -15700,6 +15709,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].turnOvers	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].typeLine	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].unlocked	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].variableToughness	bool
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].warpText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.then	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.asked.controller	custom(uuid.UUID)
@@ -19354,6 +19364,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].turnOvers	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].typeLine	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].unlocked	number:uint8
 frozenEntries[].event.zoneRoute.simultaneousExit[].variableToughness	bool
+frozenEntries[].event.zoneRoute.simultaneousExit[].warpText	number:uint8
 frozenEntries[].event.zoneRoute.source	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.stateBased	bool
 frozenEntries[].event.zoneRoute.toBottom	bool
@@ -20407,6 +20418,7 @@ lastKnownStack[].card.turnOvers	number:int
 lastKnownStack[].card.typeLine	string
 lastKnownStack[].card.unlocked	number:uint8
 lastKnownStack[].card.variableToughness	bool
+lastKnownStack[].card.warpText	number:uint8
 lastKnownStack[].item	object
 lastKnownStack[].item.altCost	string
 lastKnownStack[].item.altCostExiles	bool
@@ -21279,6 +21291,7 @@ match.decks[].fixed[].turnOvers	number:int
 match.decks[].fixed[].typeLine	string
 match.decks[].fixed[].unlocked	number:uint8
 match.decks[].fixed[].variableToughness	bool
+match.decks[].fixed[].warpText	number:uint8
 match.decks[].main	array
 match.decks[].main[]	object
 match.decks[].main[].abilitiesLostOnRestore	bool
@@ -21684,6 +21697,7 @@ match.decks[].main[].turnOvers	number:int
 match.decks[].main[].typeLine	string
 match.decks[].main[].unlocked	number:uint8
 match.decks[].main[].variableToughness	bool
+match.decks[].main[].warpText	number:uint8
 match.decks[].player	custom(uuid.UUID)
 match.decks[].registered	array
 match.decks[].registered[]	custom(uuid.UUID)
@@ -22092,6 +22106,7 @@ match.decks[].side[].turnOvers	number:int
 match.decks[].side[].typeLine	string
 match.decks[].side[].unlocked	number:uint8
 match.decks[].side[].variableToughness	bool
+match.decks[].side[].warpText	number:uint8
 match.games	array
 match.games[]	object
 match.games[].cause	string
@@ -28602,6 +28617,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.turnOvers	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.typeLine	string
 movesAwaitingTokens[].keywordActionTail.armyToken.unlocked	number:uint8
 movesAwaitingTokens[].keywordActionTail.armyToken.variableToughness	bool
+movesAwaitingTokens[].keywordActionTail.armyToken.warpText	number:uint8
 movesAwaitingTokens[].keywordActionTail.ask	bool
 movesAwaitingTokens[].keywordActionTail.cards	array
 movesAwaitingTokens[].keywordActionTail.cards[]	custom(uuid.UUID)
@@ -30915,6 +30931,7 @@ movesAwaitingTokens[].millTail.run.planned[].turnOvers	number:int
 movesAwaitingTokens[].millTail.run.planned[].typeLine	string
 movesAwaitingTokens[].millTail.run.planned[].unlocked	number:uint8
 movesAwaitingTokens[].millTail.run.planned[].variableToughness	bool
+movesAwaitingTokens[].millTail.run.planned[].warpText	number:uint8
 movesAwaitingTokens[].millTail.run.player	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.repetitions	number:int
 movesAwaitingTokens[].millTail.run.seen	array
@@ -31322,6 +31339,7 @@ movesAwaitingTokens[].millTail.run.seen[].turnOvers	number:int
 movesAwaitingTokens[].millTail.run.seen[].typeLine	string
 movesAwaitingTokens[].millTail.run.seen[].unlocked	number:uint8
 movesAwaitingTokens[].millTail.run.seen[].variableToughness	bool
+movesAwaitingTokens[].millTail.run.seen[].warpText	number:uint8
 movesAwaitingTokens[].millTail.run.then	object
 movesAwaitingTokens[].millTail.run.then.asked	object
 movesAwaitingTokens[].millTail.run.then.asked.controller	custom(uuid.UUID)
@@ -33537,6 +33555,7 @@ movesAwaitingTokens[].tokenGroups[].template.turnOvers	number:int
 movesAwaitingTokens[].tokenGroups[].template.typeLine	string
 movesAwaitingTokens[].tokenGroups[].template.unlocked	number:uint8
 movesAwaitingTokens[].tokenGroups[].template.variableToughness	bool
+movesAwaitingTokens[].tokenGroups[].template.warpText	number:uint8
 movesAwaitingTokens[].tokenTail	object
 movesAwaitingTokens[].tokenTail.then	object
 movesAwaitingTokens[].tokenTail.then.asked	object
@@ -34587,6 +34606,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.turnOvers	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.typeLine	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.unlocked	number:uint8
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.variableToughness	bool
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.warpText	number:uint8
 movesAwaitingTokens[].tokensAfterMove[].source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute	object
 movesAwaitingTokens[].zoneRoute.actor	custom(uuid.UUID)
@@ -35007,6 +35027,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].turnOvers	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].typeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].unlocked	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].variableToughness	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].warpText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.player	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.repetitions	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen	array
@@ -35414,6 +35435,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].turnOvers	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].typeLine	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].unlocked	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].variableToughness	bool
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].warpText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.asked.controller	custom(uuid.UUID)
@@ -39068,6 +39090,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].turnOvers	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].typeLine	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].unlocked	number:uint8
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].variableToughness	bool
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].warpText	number:uint8
 movesAwaitingTokens[].zoneRoute.source	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.stateBased	bool
 movesAwaitingTokens[].zoneRoute.toBottom	bool
@@ -40359,6 +40382,8 @@ pendingChoices[].assist.announce.params.AutoTap	bool
 pendingChoices[].assist.announce.params.BeholdType	string
 pendingChoices[].assist.announce.params.BlightIDs	array
 pendingChoices[].assist.announce.params.BlightIDs[]	custom(uuid.UUID)
+pendingChoices[].assist.announce.params.ConspireIDs	array
+pendingChoices[].assist.announce.params.ConspireIDs[]	custom(uuid.UUID)
 pendingChoices[].assist.announce.params.CostBranch	number:int
 pendingChoices[].assist.announce.params.CounterCounts	array
 pendingChoices[].assist.announce.params.CounterCounts[]	number:int
@@ -40927,6 +40952,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.turnOvers	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.typeLine	string
 pendingChoices[].attackSplit.settled.chosen[].template.unlocked	number:uint8
 pendingChoices[].attackSplit.settled.chosen[].template.variableToughness	bool
+pendingChoices[].attackSplit.settled.chosen[].template.warpText	number:uint8
 pendingChoices[].attackSplit.settled.groups	array
 pendingChoices[].attackSplit.settled.groups[]	object
 pendingChoices[].attackSplit.settled.groups[].attackOpponent	custom(uuid.UUID)
@@ -41354,6 +41380,7 @@ pendingChoices[].attackSplit.settled.groups[].template.turnOvers	number:int
 pendingChoices[].attackSplit.settled.groups[].template.typeLine	string
 pendingChoices[].attackSplit.settled.groups[].template.unlocked	number:uint8
 pendingChoices[].attackSplit.settled.groups[].template.variableToughness	bool
+pendingChoices[].attackSplit.settled.groups[].template.warpText	number:uint8
 pendingChoices[].attackSplit.settled.index	number:int
 pendingChoices[].attackSplit.settled.together	bool
 pendingChoices[].attackSplit.shares	array
@@ -42384,6 +42411,7 @@ pendingChoices[].attackSplit.template.turnOvers	number:int
 pendingChoices[].attackSplit.template.typeLine	string
 pendingChoices[].attackSplit.template.unlocked	number:uint8
 pendingChoices[].attackSplit.template.variableToughness	bool
+pendingChoices[].attackSplit.template.warpText	number:uint8
 pendingChoices[].autoAnswerCard	string
 pendingChoices[].autoAnswerKey	string
 pendingChoices[].autoAnswerPrompt	string
@@ -43179,6 +43207,7 @@ pendingChoices[].copyWalk.src.turnOvers	number:int
 pendingChoices[].copyWalk.src.typeLine	string
 pendingChoices[].copyWalk.src.unlocked	number:uint8
 pendingChoices[].copyWalk.src.variableToughness	bool
+pendingChoices[].copyWalk.src.warpText	number:uint8
 pendingChoices[].copyWalk.step	number:int
 pendingChoices[].copyWalk.steps	array
 pendingChoices[].copyWalk.steps[]	object
@@ -47331,6 +47360,8 @@ pendingChoices[].parked.cast.params.AutoTap	bool
 pendingChoices[].parked.cast.params.BeholdType	string
 pendingChoices[].parked.cast.params.BlightIDs	array
 pendingChoices[].parked.cast.params.BlightIDs[]	custom(uuid.UUID)
+pendingChoices[].parked.cast.params.ConspireIDs	array
+pendingChoices[].parked.cast.params.ConspireIDs[]	custom(uuid.UUID)
 pendingChoices[].parked.cast.params.CostBranch	number:int
 pendingChoices[].parked.cast.params.CounterCounts	array
 pendingChoices[].parked.cast.params.CounterCounts[]	number:int
@@ -54627,6 +54658,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.turnOvers	n
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.typeLine	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.unlocked	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.variableToughness	bool
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.warpText	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.ask	bool
 pendingChoices[].replacementResume.event.keywordActionTail.cards	array
 pendingChoices[].replacementResume.event.keywordActionTail.cards[]	custom(uuid.UUID)
@@ -56940,6 +56972,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].turnOvers	number
 pendingChoices[].replacementResume.event.millTail.run.planned[].typeLine	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].unlocked	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.planned[].variableToughness	bool
+pendingChoices[].replacementResume.event.millTail.run.planned[].warpText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.repetitions	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen	array
@@ -57347,6 +57380,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].turnOvers	number:in
 pendingChoices[].replacementResume.event.millTail.run.seen[].typeLine	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].unlocked	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.seen[].variableToughness	bool
+pendingChoices[].replacementResume.event.millTail.run.seen[].warpText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.then	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked	object
 pendingChoices[].replacementResume.event.millTail.run.then.asked.controller	custom(uuid.UUID)
@@ -59562,6 +59596,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.turnOvers	number
 pendingChoices[].replacementResume.event.tokenGroups[].template.typeLine	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.unlocked	number:uint8
 pendingChoices[].replacementResume.event.tokenGroups[].template.variableToughness	bool
+pendingChoices[].replacementResume.event.tokenGroups[].template.warpText	number:uint8
 pendingChoices[].replacementResume.event.tokenTail	object
 pendingChoices[].replacementResume.event.tokenTail.then	object
 pendingChoices[].replacementResume.event.tokenTail.then.asked	object
@@ -60612,6 +60647,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.tur
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.typeLine	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.unlocked	number:uint8
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.variableToughness	bool
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.warpText	number:uint8
 pendingChoices[].replacementResume.event.tokensAfterMove[].source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute	object
 pendingChoices[].replacementResume.event.zoneRoute.actor	custom(uuid.UUID)
@@ -61032,6 +61068,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].turn
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].typeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].unlocked	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].variableToughness	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].warpText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.repetitions	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen	array
@@ -61439,6 +61476,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].turnOve
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].typeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].unlocked	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].variableToughness	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].warpText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.asked.controller	custom(uuid.UUID)
@@ -65093,6 +65131,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].turnOvers	
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].typeLine	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].unlocked	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].variableToughness	bool
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].warpText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.source	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.stateBased	bool
 pendingChoices[].replacementResume.event.zoneRoute.toBottom	bool
@@ -67294,6 +67333,7 @@ pendingChoices[].targetWalk.frame.source.turnOvers	number:int
 pendingChoices[].targetWalk.frame.source.typeLine	string
 pendingChoices[].targetWalk.frame.source.unlocked	number:uint8
 pendingChoices[].targetWalk.frame.source.variableToughness	bool
+pendingChoices[].targetWalk.frame.source.warpText	number:uint8
 pendingChoices[].targetWalk.frame.trigger	object
 pendingChoices[].targetWalk.frame.trigger.Event	object
 pendingChoices[].targetWalk.frame.trigger.Event.actor	custom(uuid.UUID)
@@ -68057,6 +68097,7 @@ pendingChoices[].triggerFrame.source.turnOvers	number:int
 pendingChoices[].triggerFrame.source.typeLine	string
 pendingChoices[].triggerFrame.source.unlocked	number:uint8
 pendingChoices[].triggerFrame.source.variableToughness	bool
+pendingChoices[].triggerFrame.source.warpText	number:uint8
 pendingChoices[].triggerFrame.trigger	object
 pendingChoices[].triggerFrame.trigger.Event	object
 pendingChoices[].triggerFrame.trigger.Event.actor	custom(uuid.UUID)
@@ -69185,6 +69226,7 @@ phasedOut.cards[].turnOvers	number:int
 phasedOut.cards[].typeLine	string
 phasedOut.cards[].unlocked	number:uint8
 phasedOut.cards[].variableToughness	bool
+phasedOut.cards[].warpText	number:uint8
 phasedOut.kind	string
 phasedOut.owner	custom(uuid.UUID)
 planechase	object
@@ -69595,6 +69637,7 @@ planechase.deck.cards[].turnOvers	number:int
 planechase.deck.cards[].typeLine	string
 planechase.deck.cards[].unlocked	number:uint8
 planechase.deck.cards[].variableToughness	bool
+planechase.deck.cards[].warpText	number:uint8
 planechase.deck.kind	string
 planechase.deck.owner	custom(uuid.UUID)
 planechase.dieRolls	number:int
@@ -70005,6 +70048,7 @@ planechase.faceUp.cards[].turnOvers	number:int
 planechase.faceUp.cards[].typeLine	string
 planechase.faceUp.cards[].unlocked	number:uint8
 planechase.faceUp.cards[].variableToughness	bool
+planechase.faceUp.cards[].warpText	number:uint8
 planechase.faceUp.kind	string
 planechase.faceUp.owner	custom(uuid.UUID)
 planechase.mode	string
@@ -70651,6 +70695,7 @@ resolving.card.turnOvers	number:int
 resolving.card.typeLine	string
 resolving.card.unlocked	number:uint8
 resolving.card.variableToughness	bool
+resolving.card.warpText	number:uint8
 resolving.item	object
 resolving.item.altCost	string
 resolving.item.altCostExiles	bool
@@ -71657,6 +71702,7 @@ seats[].attractionDeck.cards[].turnOvers	number:int
 seats[].attractionDeck.cards[].typeLine	string
 seats[].attractionDeck.cards[].unlocked	number:uint8
 seats[].attractionDeck.cards[].variableToughness	bool
+seats[].attractionDeck.cards[].warpText	number:uint8
 seats[].attractionDeck.kind	string
 seats[].attractionDeck.owner	custom(uuid.UUID)
 seats[].autoAnswers	map:string
@@ -72227,6 +72273,7 @@ seats[].command.cards[].turnOvers	number:int
 seats[].command.cards[].typeLine	string
 seats[].command.cards[].unlocked	number:uint8
 seats[].command.cards[].variableToughness	bool
+seats[].command.cards[].warpText	number:uint8
 seats[].command.kind	string
 seats[].command.owner	custom(uuid.UUID)
 seats[].commanderCasts	map:array
@@ -72639,6 +72686,7 @@ seats[].companion.cards[].turnOvers	number:int
 seats[].companion.cards[].typeLine	string
 seats[].companion.cards[].unlocked	number:uint8
 seats[].companion.cards[].variableToughness	bool
+seats[].companion.cards[].warpText	number:uint8
 seats[].companion.kind	string
 seats[].companion.owner	custom(uuid.UUID)
 seats[].completedDungeons	array
@@ -73060,6 +73108,7 @@ seats[].emblems.cards[].turnOvers	number:int
 seats[].emblems.cards[].typeLine	string
 seats[].emblems.cards[].unlocked	number:uint8
 seats[].emblems.cards[].variableToughness	bool
+seats[].emblems.cards[].warpText	number:uint8
 seats[].emblems.kind	string
 seats[].emblems.owner	custom(uuid.UUID)
 seats[].endStepTurn	number:int
@@ -73568,6 +73617,7 @@ seats[].graveyard.cards[].turnOvers	number:int
 seats[].graveyard.cards[].typeLine	string
 seats[].graveyard.cards[].unlocked	number:uint8
 seats[].graveyard.cards[].variableToughness	bool
+seats[].graveyard.cards[].warpText	number:uint8
 seats[].graveyard.kind	string
 seats[].graveyard.owner	custom(uuid.UUID)
 seats[].hand	object
@@ -73976,6 +74026,7 @@ seats[].hand.cards[].turnOvers	number:int
 seats[].hand.cards[].typeLine	string
 seats[].hand.cards[].unlocked	number:uint8
 seats[].hand.cards[].variableToughness	bool
+seats[].hand.cards[].warpText	number:uint8
 seats[].hand.kind	string
 seats[].hand.owner	custom(uuid.UUID)
 seats[].handKept	bool
@@ -74389,6 +74440,7 @@ seats[].junkyard.cards[].turnOvers	number:int
 seats[].junkyard.cards[].typeLine	string
 seats[].junkyard.cards[].unlocked	number:uint8
 seats[].junkyard.cards[].variableToughness	bool
+seats[].junkyard.cards[].warpText	number:uint8
 seats[].junkyard.kind	string
 seats[].junkyard.owner	custom(uuid.UUID)
 seats[].landDropsPerTurn	number:int
@@ -74813,6 +74865,7 @@ seats[].library.cards[].turnOvers	number:int
 seats[].library.cards[].typeLine	string
 seats[].library.cards[].unlocked	number:uint8
 seats[].library.cards[].variableToughness	bool
+seats[].library.cards[].warpText	number:uint8
 seats[].library.kind	string
 seats[].library.owner	custom(uuid.UUID)
 seats[].life	number:int
@@ -75262,6 +75315,7 @@ seats[].sideboard.cards[].turnOvers	number:int
 seats[].sideboard.cards[].typeLine	string
 seats[].sideboard.cards[].unlocked	number:uint8
 seats[].sideboard.cards[].variableToughness	bool
+seats[].sideboard.cards[].warpText	number:uint8
 seats[].sideboard.kind	string
 seats[].sideboard.owner	custom(uuid.UUID)
 seats[].speed	number:int
@@ -76026,6 +76080,7 @@ stack.cards[].turnOvers	number:int
 stack.cards[].typeLine	string
 stack.cards[].unlocked	number:uint8
 stack.cards[].variableToughness	bool
+stack.cards[].warpText	number:uint8
 stack.kind	string
 stack.owner	custom(uuid.UUID)
 stackMeta	array

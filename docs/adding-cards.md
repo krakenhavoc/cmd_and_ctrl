@@ -13755,10 +13755,11 @@ ctx.SourcePermanent()                                                           
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
 - **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
-  "each noncreature spell you cast has conspire" is `SpellsYouCastHave(label, Noncreature(), Conspire())` (Raiding
-  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `teamwork_ids`, the copy is the
-  engine's trigger (`game/conspire.go`, body `conspire/copy`). A granted cost that taps is not offered on a spell
-  whose own cost already uses `teamwork_ids` (`castTapListTaken`).
+  "each noncreature spell you cast has conspire" is `ConspireForSpellsYouCast(label, Noncreature())` (Raiding
+  Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `conspire_ids`, a list apart
+  from `teamwork_ids` (#5688), so a spell whose own cost taps permanents is conspired with two more; the copy is the
+  engine's trigger (`game/conspire.go`, body `conspire/copy`), one per conspire cost paid. The grant is `EachSource`:
+  two permanents granting it give two costs (CR 702.78b).
 - **"<Spells> you cast gain offspring {cost} as you cast them"** (Zinnia, Valley's Voice; #5428, CR 702.175) is
   `GrantedOptionalCosts: []game.GrantedOptionalCost{OffspringForSpellsYouCast(label, Creature(), "{2}")}`
   (`granted_offspring.go`). The cost has its own key, `granted-offspring`, so a creature that prints offspring keeps
@@ -14239,6 +14240,11 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
   printed values, and read through `game.PrintsNoAbilities`. A card the importer never read (a token, a fixture, a
   restore point from before the stamp) is `PrintedUnknown` and is not "with no abilities". A test fixture says so with
   `NoAbilitiesText: game.PrintedYes`.
+- **"Card with warp" is the printed text too.** `game.Card.WarpText` is stamped by the deck importer
+  (`game.WarpInText`: a line of its own that starts "Warp [cost]", CR 702.185a) and re-derived by `SetFace`, because
+  warp is not a canonical keyword token and `Keywords` does not carry it. `game.HasWarp` (`WithWarp()`) answers yes
+  on the stamp or on a catalog warp cost, so a card the catalog does not run counts, and no for any face-down card
+  (CR 406.3a, CR 708.2a). A test fixture says so with `WarpText: game.PrintedYes`.
 - **"Exile X cards" on an ability** is `game.ExileCost.CountIsX`, an any-number clause with no floor: the activator
   announces X by naming that many matching cards, and `ctx.Exiled()` is X. It is graveyard-only, and the wire is the
   existing `exile_cost_any_number` picker. A cast's "exile X" stays `ExileXFromGraveyardCost`.
