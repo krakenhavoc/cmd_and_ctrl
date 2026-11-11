@@ -207,6 +207,7 @@ var tokenTable = map[string]game.Card{
 	"1/2 white Moogle with lifelink":                                   {Name: "Moogle", TypeLine: "Token Creature — Moogle", Power: 1, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"10/10 colorless Eldrazi":                                          {Name: "Eldrazi", TypeLine: "Token Creature — Eldrazi", Power: 10, Toughness: 10},
 	"3/1 red Elemental":                                                {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 3, Toughness: 1, Colors: []string{"R"}},
+	"3/1 red Knight":                                                   {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 3, Toughness: 1, Colors: []string{"R"}},
 	"3/1 black Mindless-One":                                           {Name: "Mindless-One", TypeLine: "Token Creature — Mindless-One", Power: 3, Toughness: 1, Colors: []string{"B"}},
 	"2/1 red Elemental with trample and haste":                         {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 2, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"trample", "haste"}},
 	"2/1 red Dwarf Berserker":                                          {Name: "Dwarf Berserker", TypeLine: "Token Creature — Dwarf Berserker", Power: 2, Toughness: 1, Colors: []string{"R"}},
