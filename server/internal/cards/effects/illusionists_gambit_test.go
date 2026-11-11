@@ -27,11 +27,11 @@ func TestIllusionistsGambitIsRegisteredFull(t *testing.T) {
 // attacking, and two opponents: the caster, who controls a planeswalker,
 // and a third player.
 type gambitScene struct {
-	g                    *game.Game
-	me, caster, third    *game.Player
-	atCaster, atThird    uuid.UUID
-	home, planeswalker   uuid.UUID
-	firstCombat          int
+	g                  *game.Game
+	me, caster, third  *game.Player
+	atCaster, atThird  uuid.UUID
+	home, planeswalker uuid.UUID
+	firstCombat        int
 }
 
 func newGambitScene(t *testing.T) *gambitScene {
