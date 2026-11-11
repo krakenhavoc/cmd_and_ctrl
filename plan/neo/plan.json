@@ -1,0 +1,499 @@
+{
+ "set": "neo",
+ "mechanics": [
+  {
+   "name": "Ninjutsu",
+   "exists": true,
+   "evidence": "git grep -il ninjutsu origin/develop: 33 files in effects, 30 in internal/game; effects/ninjutsu.go has Ninjutsu(cost) (ninja_of_the_deep_hours.go uses it). Only the cost-modifier keyword bit is missing (seam s2)."
+  },
+  {
+   "name": "Channel",
+   "exists": true,
+   "evidence": "effects/channel.go (channelOnResolve) and boseiju_who_endures.go; game/cost_modifier.go:814 prices a channel card in hand. 13 new cards reuse it."
+  },
+  {
+   "name": "Reconfigure",
+   "exists": true,
+   "evidence": "26 effects files (acquisition_octopus.go, blade_of_the_oni.go ...); docs/adding-cards.md 'Reconfigure (CR 702.151, #2639)'. No reconfigure card is left in the input."
+  },
+  {
+   "name": "Modified (CR 700.9)",
+   "exists": true,
+   "evidence": "'\\bmodified\\b' in 56 effects files (arana_heart_of_the_spider.go, attachments.go, batch07_helpers.go); 27 game files match Modified."
+  },
+  {
+   "name": "Saga that exiles itself and returns transformed",
+   "exists": true,
+   "evidence": "effects/transform.go:30,101 ExileAndReturnTransformed; fable_of_the_mirror_breaker.go is on develop."
+  },
+  {
+   "name": "Samurai/Warrior 'attacks alone'",
+   "exists": true,
+   "evidence": "'attacks alone' in 32 effects files (agent_13_sharon_carter.go, agents_of_shield.go: 'Whenever a creature you control attacks alone'); triggers_common.go:1356 ThisAttackedAlone. No 'Samurai or Warrior' card yet, so the subtype filter is new card-side code for one batch."
+  },
+  {
+   "name": "Crew / Vehicles",
+   "exists": true,
+   "evidence": "47 game files; CrewCost/CrewEffect (getaway_car.go), CrewedThis target wrapper, EventCrewedVehicle (events.go:1126). 'Whenever this Vehicle becomes crewed' (CR 702.122e) is NOT there (seam s1)."
+  },
+  {
+   "name": "Pilot token 'crews Vehicles as though its power were 2 greater'",
+   "exists": true,
+   "evidence": "17 effects files (back_on_track.go, born_to_drive.go); Characteristic CountedPower in game/activated.go:2917."
+  },
+  {
+   "name": "Compleated",
+   "exists": true,
+   "evidence": "effects/compleated.go, vraska_betrayals_sting.go; docs 'Compleated (CR 702.150a, ADR 0183, #2946)'."
+  },
+  {
+   "name": "Shrines (count of Shrines you control)",
+   "exists": true,
+   "evidence": "Sanctum of Fruitful Harvest is cast in avatar_b3_cards_test.go; subtype counts are ordinary. Go-Shintai cards themselves are new."
+  },
+  {
+   "name": "Keyword counters (indestructible, menace, deathtouch, reach ...)",
+   "exists": true,
+   "evidence": "52 effects files (aragorn_company_leader.go, arwen_mortal_queen.go); 17 game files (card.go, characteristic.go)."
+  },
+  {
+   "name": "Affinity (artifacts, enchantments)",
+   "exists": true,
+   "evidence": "'affinity for' in 45 effects files; game/cost_modifier.go:39."
+  },
+  {
+   "name": "Marches: exile any number of <colour> cards from hand, {2} less each",
+   "exists": true,
+   "evidence": "effects/additional_cost.go:372 ExileAnyNumberFromHandCost + CostsLessPerExiledFromHand (March of Swirling Mist, #3175); hand_exile_x_costs_test.go."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Add 'whenever this Vehicle becomes crewed' (CR 702.122e)",
+   "clause": "\"Whenever this Vehicle becomes crewed, ...\" (Mobilizer Mech); \"Whenever this Vehicle becomes crewed for the first time each turn, until end of turn, this Vehicle becomes a copy of target nonlegendary creature that crewed it this turn, except it's 4/3, it's a Vehicle artifact in addition to its other types, and it has flying.\" (Mindlink Mech)",
+   "why": "CR 702.122e: the trigger is 'whenever a crew ability of this Vehicle resolves'. The engine only emits EventCrewedVehicle, once per creature tapped while the cost is paid (game/events.go:1118, game/activated.go:2378), which is the wrong moment and the wrong count. Saddle already has the resolution-time sibling EventBecameSaddled; crew has none. Expect a new EventKind emitted from the crew effect's resolution (effects CrewEffect / game/activated.go), a trigger helper in triggers_common.go, and 'for the first time each turn' on top of it. Mindlink Mech then composes become_copy.go's until-end-of-turn copy with except edits and CrewedThis(...) for the target.",
+   "checked": "git grep -i 'BecameCrewed|became_crewed|EventCrew' internal/game: only EventCrewedVehicle. 'becomes crewed' in effects: two comments (ethersworn_shieldmage.go, spring_loaded_sawblades.go: 'whenever this Vehicle becomes crewed would not see it; nothing on the card asks'), no trigger. 'becomes crewed for the first time': 0. 'crewed it this turn': getaway_car.go and 4 others use CrewedThis, so the target clause exists. become_copy.go:196 has 'becomes a copy of target X until end of turn'. cr.txt line 4903 = 702.122e.",
+   "size": "medium",
+   "cards": [
+    "3c1a2a2d-656f-4021-b046-59e14383a8c8",
+    "009a4073-5946-4131-928c-c5c373745344"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Let cost modifiers recognise a ninjutsu ability",
+   "clause": "\"Ninjutsu abilities you activate cost {1} less to activate.\" (Silver-Fur Master)",
+   "why": "Activation cost modifiers pick a keyword by a bit on the priced ability (game/cost_modifier.go:355-373: Exhaust, Boast, PowerUp; effects AnEquipAbilityCost/ABoastAbilityCost/APowerUpAbilityCost). effects/ninjutsu.go says 'Nothing in the engine knows the word ninjutsu', so there is nothing to match on but the label, which the code forbids. Expect a Ninjutsu bit set by effects.Ninjutsu(), an ANinjutsuAbilityCost predicate, and a check that a hand-zone activation is priced through the same modifier path (commander ninjutsu included).",
+   "checked": "git grep -i 'ninjutsu abilities|NinjutsuCost|ninjutsu.*cost.*less' internal/game and effects: 0. 'abilities you activate cost' in effects: boast.go:76, bureau_headmaster.go (EquipAbilitiesYouActivateCostLess), dragonkin_berserker.go: the sibling pattern to copy. 'Ninjutsu|Keyword' in game/cost_modifier.go: only exhaust/boast/power-up bits.",
+   "size": "small",
+   "cards": [
+    "60ec735d-c9be-4776-beb7-f603ae22edbf"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Add a 'can't crew Vehicles' restriction",
+   "clause": "\"Enchanted permanent can't attack, block, or crew Vehicles. Its activated abilities can't be activated unless they're mana abilities.\" (Intercessor's Arrest)",
+   "why": "The crew cost's payer and candidate walk (game/activated.go ~2895-2925) accept any untapped creature the player controls; no characteristic or bar says a creature may not be tapped for crew. Expect a layered bit beside CountedPower (game/characteristic.go:447) read by the crew validator, the client picker and the legal-move enumerator, and a RestrictSelf-style helper. The rest of the card has precedent (can't attack or block; activation_restriction.go for 'unless they're mana abilities').",
+   "checked": "git grep -i \"can't crew|cannot crew|CantCrew|CanCrew|crewEligible\" internal/game, effects, docs: only two unrelated comments (cryptcaller_chariot.go, vehicles_test.go). \"can't attack, block, or crew|crew Vehicles\": 0. 'unless they're mana abilities': activation_restriction.go:20,128, collector_ouphe.go.",
+   "size": "small",
+   "cards": [
+    "d75357f4-d439-48ff-8fd7-52a02f07cc81"
+   ]
+  },
+  {
+   "id": "s4",
+   "title": "Record damage one source dealt to one player this turn",
+   "clause": "\"Whenever this creature deals damage to a player, if it has dealt 10 or more damage to that player this turn, they lose the game.\" (Vessel of the All-Consuming, back of Hidetsugu Consumes All)",
+   "why": "TurnTally keeps source-to-PERMANENT records (DamagedObjects, game/dealt_damage_by.go) and source-to-player records only for NONCOMBAT damage (NoncombatDamageRecord.Victim, game/turn_tally.go:1267); combat damage to players is a per-controller total (CombatDamageToPlayers). Nothing answers 'how much has this object dealt to that player this turn, combat and noncombat'. Expect an additive tally record keyed by source ObjectRef and victim player, written from EventDealDamage, plus a ForEffect reader. Chapter I of the front face is a board wipe and declares its Sweep.",
+   "checked": "git grep -i 'has dealt 10 or more damage|dealt .* or more damage to that player this turn' effects: 0. 'DamageToPlayerBy|DamageDealtToPlayer|DamageByTo|DamageBySource|CombatDamageDealtBy' internal/game: 0. Read turn_tally.go:470-487 and :1267, dealt_damage_by.go:56 (ObjectDamageRecord is permanents only).",
+   "size": "small",
+   "cards": [
+    "5b8be856-c08d-4356-925d-fce843565189"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Vanilla, keyword and one-line creatures and Vehicles",
+   "shared": "No new helper. Vehicles copy getaway_car.go (CrewCost(n), CrewEffect, Purpose AnswerAnimate on the crew row). Nezumi Bladeblesser's two conditional keywords are conditional statics (Label each). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "9e187d43-ae75-4589-81fc-476ae95ba5b9",
+    "316f7091-0c75-4510-a89a-6b58bb7f0627",
+    "bc64e396-7fa1-4a4e-a528-352737714a9c",
+    "f242d66c-011c-4b5b-a7d6-5e0bce257f73",
+    "78d9faff-2ad9-4cf9-a239-27c50435d007",
+    "9cef3013-6a84-4edd-9a47-e842df2200e3",
+    "6a45d09a-6af3-45fb-8f7c-cf630cb37f24",
+    "c4073754-7d92-4976-8e7d-d6eb85b91608",
+    "cb9fa34d-1d5f-461c-acad-bc573d41ceb2",
+    "408512c7-5016-4df4-b708-b7467bcdf0ae",
+    "8ee2371c-e2c3-412e-b9e9-1ec511c9d537",
+    "d2c7d10e-86d9-4e2d-a0da-2e39c172aae2",
+    "9bf2f0d9-57fb-4e44-90a5-260d735076a0"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Simple instants and sorceries",
+   "shared": "All from primitives.go. 'creature or Vehicle' target clause (Light the Way) is also printed in batches 3, 7, 12, 13, 14 and 17; each uses the existing target filters, no shared helper. You Are Already Dead: 'was dealt damage this turn' precedent bitter_downfall.go. Kaito's Pursuit reads Ninja/Rogue through TextSubtype. Boon of Boseiju: 'greatest mana value among' has 30 precedents (armor_wars.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "44e1946d-01b5-45db-abdc-2f6d6480cf60",
+    "cbb39e5c-e31a-44e9-be0c-2003c8bce599",
+    "721c3255-953c-49cd-a5dd-852c3d09eae4",
+    "83917116-d2d8-4701-a79f-af17486706ae",
+    "4497d0b9-cf4b-4c9d-bf7e-8ed85aa6b5b8",
+    "c1157d79-38ea-4a88-b346-7b12614ff78a",
+    "54402930-84ea-4c3e-9880-ca631e47485f",
+    "57544b37-fd5d-4da5-bbb6-7b4a09501dd1",
+    "410ce48e-d907-4bc5-ad90-2067161a0e04",
+    "a959a91a-3e1d-4bd4-9e14-5ee977540146",
+    "aa108554-f1a0-45b6-aa15-597d42be7a8a",
+    "c6c1e576-7197-4067-8cd1-aa535188e1b8",
+    "23b7fd18-3129-448f-881f-947ba988f98d"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Simple enters / dies / activated creatures",
+   "shared": "Precedents: 'When this creature enters or dies' (apex_witchstalker.go, goblin_marshal.go); Kami of Industry = return, haste, sacrifice at next end step (delayed trigger); Blossom Prancer, batch 8's Reality Heist and batch 15's Commune with Spirits print the same 'look at the top N, may reveal a ... put the rest on the bottom in a random order' sentence (existing look-and-pick primitive, no new helper). Gravelighter: 'if a creature died this turn' tally. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "e574bfdb-505b-4d61-a376-6d26f03cd9b1",
+    "301b8265-9e17-48c3-942d-b7243112b394",
+    "b0494c34-f142-441f-b7f8-e981416f0bad",
+    "45ef5ea9-70a6-4999-8778-6a11cb97d28e",
+    "51e76d8f-95c6-428f-9030-3f8718139f93",
+    "fbf8fdf5-0d7d-41a3-a6b9-27bb7a644c20",
+    "0d64d150-1716-4da4-9cfe-ee7749b89918",
+    "7e770c08-910e-4394-88c5-79c874750b6a",
+    "1733777d-87fe-4975-b099-1ff803a721e8",
+    "0ba86a50-13df-4b26-8b3a-9e3917ff850f",
+    "0629747e-8dd8-4150-95ee-9d860264ccb0",
+    "69e92c4f-df05-4297-a453-8e4644c31a90",
+    "b308fa9a-3f69-4e59-9d4b-8007d9a2b1f1"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Artifact synergies, small creatures and Equipment",
+   "shared": "Watch items, stop and report if they do not fit: Futurist Operative (static conditioned on ThisIsTapped, attack_limits.go:81, that sets subtypes, base P/T and unblockable together); Bronze Cudgels ('number of times this ability has resolved this turn': belladonna_took.go, harvestrite_host.go); Eater of Virtue (keyword list from cards exiled with it: copy altar_of_the_wretched.go wretchedBonemassKeywords and soulflayer.go; note the list includes protection); Kami of Transience (graveyard-zone end-step trigger reading 'an enchantment was put into your graveyard from the battlefield this turn'). Enormous Energy Blade: 'becomes attached' has 8 precedents (cmdr2_b19_helpers.go). Gloomshrieker: 'would die, exile it instead' is ADR 0178. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "53b9a2cf-2e6e-4ce0-bb9f-f33fb27b7b5e",
+    "93b0bd0e-414b-45bd-9d3d-7323140ef0c0",
+    "7ce7decb-1438-4c3d-88d2-26b0b3996b33",
+    "9f53aac8-f21f-4928-af8f-65b40cb9149c",
+    "7baffe00-78a4-4675-9c74-29eb3882bd01",
+    "b58737a4-180e-4e2f-95ae-afd6d446d608",
+    "426569c7-d868-4af1-bc83-5b5200532d17",
+    "993a91fa-84ed-4688-9884-e03cbad6c791",
+    "7818e900-2f4e-4710-87a4-5a9ac170a677",
+    "fa5aefaf-432f-41d0-8e54-0e8b7bc7ba98",
+    "82ebd4fa-9db1-4723-8305-8b8a9ce958e2",
+    "b6f8cc3b-b8f1-4b1a-8768-eddcb0631d80"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Vehicles with triggers and artifact engines",
+   "shared": "Reckoner Bankbuster's Pilot token: reuse the Pilot token of back_on_track.go / born_to_drive.go (pilot_cards_test.go). Automated Artificer: mana restriction 'only to activate an ability or cast an artifact spell' (pit_automaton.go, boommobile.go, ambulatory_reactor.go). Both Construct tokens of the set (Sokenzan Smelter's 3/1 red haste, Oni-Cult Anvil's 1/1 colorless) live here. Watch item: Oni-Cult Anvil 'one or more artifacts you control leave the battlefield during your turn ... triggers only once each turn' (aang_airbending_master.go batches creatures; docs 'This ability triggers only once', #5245) - stop and report if the batch-leave trigger cannot filter artifacts. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "060d109f-2969-4f9e-a723-535d662a571a",
+    "bf9421d2-54e2-44d8-8b39-2e41192a6517",
+    "b6be94dc-7162-4887-b959-3bda709724eb",
+    "92c9b2fd-95d6-4937-aee2-67b4bb8ca29d",
+    "18ad0dd1-2d0e-46b4-8ab1-ece07180267f",
+    "1dbadf75-28cd-4525-8f51-9c53049b9b54",
+    "04b33a43-57f1-46e9-b2c2-1dd3f8a4935c",
+    "a0eb1d5b-2c54-44fa-b7ad-bdd4b1147929",
+    "600e1093-5619-49b3-b193-bd263e4fde33",
+    "2750451f-348e-452f-88d0-bc921c46e8cc",
+    "172e7250-94a4-466f-9438-159174925012",
+    "dd645241-2992-4c4e-a6a8-c2215d2340ae",
+    "c018f072-8f6d-4835-a717-ed4ecba70d97"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Ninjutsu creatures",
+   "shared": "effects.Ninjutsu(cost) from ninjutsu.go on every card (cmdr2_s45_test.go checks the declared keyword cost). Biting-Palm Ninja and Kappa Tech-Wrecker share one shape: enters with a keyword counter, 'you may remove a <keyword> counter. When you do, ...' = reflexive.go WhenYouDo; write it once. Dokuchi Silencer is the same reflexive shape with a discard. Biting-Palm: 'reveals their hand, you choose a nonland card' is ADR 0116. Moon-Circuit Hacker: 'unless this creature entered this turn'. Silver-Fur Master is NOT here (seam s2); Thousand-Faced Shadow is in batch 20. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "3a3f0bf4-7a02-4a57-8a18-ff22f012e0ef",
+    "1e79b7bf-8a2d-4585-81d0-755dce78a4ea",
+    "84fb1c2f-cf1b-4166-834f-a887aa182d09",
+    "ba858b68-ae93-4e1c-8a3a-3e4ac97282e8",
+    "19797dd6-6f48-47bc-a9ac-84d4acad3fa5",
+    "b713ee3a-b6cd-4cd7-b403-f0bbc683ea99",
+    "54dc1c02-2d71-465b-a285-d6d11113991c",
+    "7cd8b017-8d59-4b55-bb9a-8d8e492ef1ac",
+    "a93b5956-c11e-434e-bed5-94af9de55382",
+    "d377b28f-c887-4937-9f14-74484b612551",
+    "5c22447b-7a7f-4a27-8d3b-1bb664ea94c3",
+    "2bc92c16-cd1e-4c32-9102-4593d77a9a9f"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Channel cards",
+   "shared": "effects/channel.go (precedent boseiju_who_endures.go); a channel ability is a hand-zone activated ability with DiscardSelf. Watch items, stop and report: Mirrorshell Crab 'Counter target spell or ability unless its controller pays {3}' (stifle.go and siren_stormtamer.go counter abilities, but no 'unless pays' on an ability was found); Roaring Earth's channel has {X} in a hand-zone cost and animates a land (awaken.go). Moonsnare Prototype: 'owner puts it on their choice of the top or bottom' (aetherspouts.go, endless_detour.go). Favor of Jukai prints 'As long as enchanted permanent is a creature, it gets ...', the sentence of batch 12's Auras: use that batch's precedent, do not add a second helper. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "cd727e02-5064-4b89-9398-e3cc4463ba56",
+    "b72fd535-0051-4f59-9d99-75895f751006",
+    "08af6fdc-4068-4652-b1fc-cda5309c7b71",
+    "53bfffae-b99e-44bd-8954-6cf236f93f26",
+    "90266ce6-4360-4de4-9b06-adff7d6c378b",
+    "5e891927-b6cb-40ae-8270-0e72820fd7f5",
+    "657f6318-aa09-46f1-ab69-896b17a48950",
+    "43abfce5-b1dd-4784-bb91-d57b2c28f6a6",
+    "7346c266-19d8-4432-acf5-f00aff074ad5",
+    "b767bd0a-a8fe-49d7-a3e7-4f9ac6a3280f",
+    "d5cdfa86-a234-4ddd-bfa0-4a3bc51eebce",
+    "a8ce90be-f0ab-4f8d-896a-cde8aaf24579",
+    "871e4c4e-8105-4cb9-b1cd-53c5f8e64494"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Artifact-and-enchantment payoffs, Samurai tokens",
+   "shared": "One local predicate 'you control an artifact and an enchantment' (0 hits on develop) used by Naomi, Kami of Terrible Secrets, When We Were Young, Okiba Salvage, Banishing Slash, Soul Transfer, Assassin's Ink; no other batch needs it. Every 2/2 white Samurai-with-vigilance token of the set is here (precedent wandering_emperor.go, the_eternal_wanderer.go). Soul Transfer: 'you may choose both instead' = conditional_mode_count_test.go, akromas_will.go, read 'as you cast' (ADR 0021 amendment, #3781). Experimental Synthesizer: 'enters or leaves the battlefield' (cryogen_relic.go, mouser_foundry.go). Reality Heist / Sky-Blessed Samurai: affinity (cost_modifier.go); Reality Heist's look-and-pick sentence is also in batches 3 and 15. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "cd6018de-5791-4c13-b134-38c410f04872",
+    "d7d8784f-8d2d-4f7b-a6fb-5c841936d9e5",
+    "1f27aa69-d17e-4f1f-9aba-cee205036f93",
+    "142409ce-1187-4554-bc07-6432c4d22dbc",
+    "2800830c-73c6-4097-be7b-d698c6813c38",
+    "1e46c709-5278-44f3-9f0e-f71bd9558339",
+    "a6d95d26-48d8-4a97-9a42-f492a61300c9",
+    "4a4a061d-bc4e-49da-8d20-90fcb571b025",
+    "fe2fe9f2-908b-49a9-9648-b01e0417a364",
+    "11db299a-0918-46a3-b39b-16acc3f4e281",
+    "dad767d4-e7d4-4fe0-8a18-bb434c5268eb",
+    "569da5d3-6af2-4021-a464-b30ebaaf6fa0"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Samurai or Warrior attacks alone",
+   "shared": "One new card-side trigger helper 'Whenever a Samurai or Warrior you control attacks alone' built on agents_of_shield.go / agent_13_sharon_carter.go ('a creature you control attacks alone') with the subtypes read through TextSubtype; all its users are here. Norika / Heiko: 'you may cast target ... card from your graveyard this turn' (zul_ashur_lich_lord.go, elemental_time_flamingo.go). Raiyuu: 'if it's the first combat phase of the turn, additional combat phase' (balthier_and_fran.go). Peerless Samurai: next_spell_promise.go. Ancestral Katana: WhenYouDo + attach. Ironsoul Enforcer: 'this creature or a commander you control attacks alone'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "6f143c8f-cb5c-4abc-a01b-b6813f5a524c",
+    "a4d67f2d-6b0f-4feb-bf7d-90ab4f2e46ab",
+    "9028f726-50c7-49f3-8386-e584415dcba2",
+    "bedf1dd5-b133-455b-bc3d-c7b1f469d91f",
+    "fe3b0393-dc50-4fa6-9b3f-1175a6a825e4",
+    "8e0f4e22-0677-4246-a4c5-6fcc74cb54a3",
+    "20c9fb06-3941-456f-ba02-4fbde9deb1e2",
+    "32e7385e-525e-4925-8cfd-bfea21fcd1bf",
+    "4b4c76e1-c480-4d10-93d4-483ef2debc4b",
+    "13a9b9fd-20fa-4734-9d95-3ab41ab9c7a0",
+    "f4aedfd3-4414-493c-bbba-75db301c0737",
+    "a613b00e-d6e8-4470-a7dc-5eab5e48dce0"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "Modified matters I",
+   "shared": "The existing modified predicate (attachments.go, batch07_helpers.go, arana_heart_of_the_spider.go); do not write another. Flame Discharge and Lethal Exploit read 'as you cast this spell' (ADR 0021 amendment, #3781) and are X / target spells that must be castable by the probe in server/internal/legal. Guardians of Oboro: felothar_the_steadfast.go, wakestone_gargoyle.go. Walking Skyscraper: 'hexproof as long as it's untapped' (archangel_of_tithes.go shape). Towashi Guide-Bot: ability cost reduction per modified creature (ActivationCostsLess, cost_modifier.go). Akki Ember-Keeper's 1/1 colorless Spirit token is TokenCard text, also made in batches 4, 11, 16, 18 and 19 (plain TokenCard string, no shared row). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "fa4755c2-e573-45c3-bd6a-61b2b35fbd24",
+    "61dfb656-1cdd-4ab3-b533-93718cc66b15",
+    "d76fc3aa-3962-4d64-a082-765e09bcdf25",
+    "3fb399fa-123f-448e-a473-573a1fab2c78",
+    "8df42f4a-022c-4fcb-a953-fb165fdbfc13",
+    "9f9b3ef8-e0ce-4906-96b3-a7727d7cc662",
+    "6bcdbded-46f0-44b9-86ad-edd6414e7ef6",
+    "53e39011-3d77-4883-9c8e-4707f6fc5c47",
+    "90c763b9-6173-46ff-b31c-7dcafc774170",
+    "42b28dfb-de4d-4005-b0d7-1db3917cf159",
+    "28bb9a58-f45a-4452-a1f4-c7609373085f",
+    "a972630e-651e-439d-9412-5be50da9b934",
+    "3d713c11-36a7-4b19-8c42-a9b61ef5902c"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Modified matters II and counter movers",
+   "shared": "Same modified predicate as batches 10 and 19 (the one already on develop; do not write another). Chishiro's 2/2 red Spirit with menace token is also Gift of Wrath's (batch 12): TokenCard string, no row. Akki Battle Squad: additional combat phase + 'triggers only once each turn' (aggravated_assault.go, #5245). Kaima: havoc_eater.go ('goaded this way'), eriette_of_the_charmed_apple.go. Iron Apprentice: 'put those counters on' (buzzard_wasp_colony.go, died_creature_lki_test.go). Kami of Celebration: 'cast a spell from exile' (fire_lord_zuko.go). Watch items, stop and report: Dramatist's Puppet (per counter kind, add or remove: plague_boiler.go asks 'put a counter or remove one', blitzball_stadium.go enumerates kinds; no card does both); Ascendant Acolyte (enters-with count of +1/+1 counters among other creatures; 'for each +1/+1 counter among' has 0 hits); Kosei (conditional granted trigger: enchanted AND equipped AND has a counter). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "9ec2114c-023b-45c3-a44c-6a9f6462bc85",
+    "006f4a62-8590-4ca0-9f51-3aea26cd1a54",
+    "c98a4af3-3e58-4927-9a60-d2664cf0b139",
+    "ecfabd06-c059-4f3d-9e5f-587364033cac",
+    "5bd81d2f-46a1-4536-92e7-28c7e1892735",
+    "41f7e725-bdb8-4c3a-adc7-a8184ec7c394",
+    "bec04768-c573-4886-9ca1-2511abc05a14",
+    "3d8f9b58-d011-4ed2-99ae-c626243fab26",
+    "8b9918c3-1135-4c63-991f-f0a38340a33b",
+    "cd0c8db0-67ee-483b-8298-455cce35fef7",
+    "e3473ed5-f2b2-4a41-aed9-ee37caa9d7be"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Auras",
+   "shared": "'Enchant artifact or creature' + 'As long as enchanted permanent is a creature, it gets ...' is one conditional attached static used by eight cards here (and by Favor of Jukai in batch 7): write it once, with a Label. Crackling Emergence and Harmonious Emergence share one body: the Aura animates a land (awaken.go, crawling_barrens.go for 'It's still a land') and replaces its destruction. Watch item, stop and report: 'If enchanted land would be destroyed, instead sacrifice this Aura and that land gains indestructible until end of turn' has 0 hits; umbra_armor.go UmbraArmor() is the nearest replacement and must be shown to fit a sacrifice plus a grant. Tamiyo's Compleation: 'If it's an Equipment, unattach it' (stolen_uniform.go), loses all abilities. Awakened Awareness: X of the Aura spell read at its enters trigger. Unquenchable Fury: granted attack trigger (ADR 0093) and graveyard-return. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "e01ab6d8-8419-436e-a8fb-10aa46ca3d05",
+    "9ba31dd0-d78e-4639-a550-bd72cac5898a",
+    "6629e5f3-ac59-48f8-b09c-3b98f59b9922",
+    "0ac5c149-f6af-46b6-974e-14689e9a583d",
+    "5ea0e3a5-9c38-4da4-98a6-41c14be512d9",
+    "7c2c460d-8059-41ff-b2d7-374aa498f011",
+    "71d8b7f5-a5da-4528-815e-51c65626b681",
+    "2e29efee-1eed-4bef-8574-0f6ff99d3cda",
+    "c4525b1c-5c3d-494e-b660-ba5a5a28f621",
+    "1c69a41e-122a-42c1-98d4-56035d68cfc8",
+    "c984787c-f883-42c9-ae5d-9277c84dba01",
+    "ad8fd4e9-f6ae-4f24-b806-4509c8f4ee47"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Vehicle type-changing, animation and artifact recursion",
+   "shared": "Rules-heavy (layers 1 and 4). Swift Reconfiguration and Imposter Mech print the same words, 'a Vehicle artifact with crew N and it loses all other card types': one helper for the type edit and the granted crew row (attachments.go, imprisoned_in_the_moon.go, vraska_betrayals_sting.go for 'loses all other card types'; espers_to_magicite.go and machine_gods_effigy.go for a copy 'except it's an artifact and it loses all other card types'). Kotori grants 'crew 2' to Vehicles (ADR 0093 granted ability; chandra_spark_hunter.go / tokens.go VehicleCrew1Token show the crew row). Mech Hangar: restricted mana 'only to cast a Pilot or Vehicle spell' (cargo_ship.go) and the animate row. Watch items, stop and report: Mechtitan Core (cost = ExileSelf + ExilePermanents of four others, game/activated.go:475-515; 'When that token leaves the battlefield, return all cards exiled with ... except this card' has 0 hits and is a delayed trigger tied to a token object); Greasefang ('return it to its owner's hand at the beginning of your next end step'; a Vehicle returned and not crewed). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "5d47e820-913f-441a-a6cc-37ab3181d79a",
+    "f434e266-d9d6-4058-96ff-a1bd4029d8dc",
+    "0659a5b0-9807-4e4c-8af3-b6e233051ad6",
+    "80ba76a6-cc48-4820-bc0b-c9ec18088a3b",
+    "29bbbbfe-77cb-411f-9c1b-f7e4724685c6",
+    "abc04775-171d-41f3-83ea-4b4eb72723d5",
+    "f1eb489d-104c-4801-b6d2-3f1a7ee73a75",
+    "0129ffe2-389f-4e05-8a04-96461bac39a5"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Marches, Invokes and X costs",
+   "shared": "Rules-heavy. The four Marches use ExileAnyNumberFromHandCost + CostsLessPerExiledFromHand (additional_cost.go:372, March of Swirling Mist; hand_exile_x_costs_test.go); each is an 'X target' spell that must be castable by the probe in server/internal/legal. Watch items, stop and report: March of Reckless Joy ('play up to two of those cards until the end of your next turn': impulse_exile.go permissions exist but no 'up to two of' cap was found); March of Burgeoning Life (target 'mana value less than X', then search by 'the same name as that creature': mirror_box.go, eradicate.go); Invoke Calamity (cast up to two instants/sorceries with total mana value 6 or less from graveyard and/or hand, free, exiled instead: impulse_exile.go:175 ManaValueBudget and uldaros_theorix.go budget casts from exile only); Scrap Welder ('Sacrifice an artifact with mana value X' where the sacrifice defines X: anchor_to_reality.go, batch27_helpers.go:489); Tameshi ('one or more noncreature permanents are returned to hand', any player's, once each turn: no bounce-batch trigger was found in triggers_common.go). Invoke Justice: 'distribute four +1/+1 counters' (abzan_charm.go). Invoke the Ancients: 'put your choice of a ... counter' (aragorn_company_leader.go). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "6e638332-fba1-4e91-9237-fdff23826640",
+    "a81fd70c-c2bc-4863-97a0-facde86f024c",
+    "ed06e421-480c-40c8-8c3e-1e466e5327b2",
+    "3b3ecaf2-7e95-4b62-9bc0-a61985508808",
+    "5b3f041e-ad4a-47ea-bdc4-1be2353f2e18",
+    "3e5cd60f-8fef-4152-a957-0a803997b3da",
+    "868b3c65-d753-4f32-b6ca-31e58782ea92",
+    "4ebce651-ef95-4a96-b720-a23757d641c8",
+    "b47b3cfe-7005-4b33-9d41-83b60808e12b"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Trickier instants and sorceries",
+   "shared": "Spinning Wheel Kick and Smoke Spirits' Aid are 'X target' spells: castable by the probe in server/internal/legal (dominion_infiltration.go, additional_cost.go X-target precedents). Collision of Realms reads as a board wipe: declare its Sweep. Watch items, stop and report: Storyweave ('The next time one or more enchantment creatures you control enter this turn, each enters with two additional +1/+1 counters': 'The next time one or more' has 0 hits; docs '... entry counters for a duration' (#3172) is the nearest); Collision of Realms (shuffle all creatures in, then reveal-until per player who shuffled a nontoken: aurora_awakener.go, gift_of_perfection.go; tokens cease to exist); Smoke Spirits' Aid (named Aura token created attached with a granted dies trigger: become_brutes.go, asinine_antics.go, ADR 0036/0093 Role tokens); Discover the Impossible (exile face down, optional free cast only if an instant with mana value 2 or less, else to hand); Invoke Despair ('Then repeat this process': another_round.go). Return to Action: granted 'dies, return it tapped' until end of turn. Voltage Surge: optional sacrifice additional cost. Commune with Spirits' look-and-pick sentence is also in batches 3 and 8. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "1779af8e-38fc-4043-b5fa-ee16a7ea840c",
+    "68f8ed23-024e-414f-bbb2-ab73fbe21b69",
+    "6a56e2ef-75dd-47d5-b61c-11faaba8cd9a",
+    "9c002b4d-bb6c-45a5-88e1-1df2958dff9f",
+    "94389047-4976-4be2-aaca-25dcdc538abe",
+    "ed37ce4e-d84e-442a-ac4e-0512f358c138",
+    "353dd446-2ea6-41c9-a10f-5a03e4de19b4",
+    "1c2a3f13-6bcb-42ad-98f6-642151ad54f1",
+    "8fef58ff-4743-4065-9df0-c5edf9aa2502",
+    "40cbf2c0-041a-44df-a775-580012caab67",
+    "f9ee4c80-20fb-4322-be02-1c78d37d7a99"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Shrines and Myojin",
+   "shared": "Go-Shintai: one shape for the five, 'At the beginning of your end step, you may pay {1}. When you do, ...' = reflexive.go WhenYouDo with a Shrine count read through TextSubtype (Shared Purpose prints 'If you do', not reflexive). Life's Origin's Shrine enchantment creature token is new (0 hits) and only here. Myojin: one helper for 'enters with an indestructible counter on it if you cast it from your hand' (myojin_of_nights_reach.go, kindred_boon.go, b30CastFromHand in batch30_helpers.go) and the remove-counter cost (33 'Remove a ... counter from' precedents). Myojin of Cryptic Dreams: lithoform_engine.go copies a permanent spell. Watch item, stop and report: Myojin of Grim Betrayal ('all creature cards in all graveyards that were put there from anywhere this turn': night_nurse_healer_of_heroes.go and reenact_the_crime.go read it for one target, not for every graveyard). Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "4cab6ea8-4a80-4b34-b758-7f2aa4d540e4",
+    "ff8cf669-a38a-44ae-baff-420f59492371",
+    "d145e4d4-a190-4c0b-8dfd-401c0111e995",
+    "183cfd35-c18a-4838-94e5-1ad66e6bd325",
+    "f6a2092a-093e-4cd6-9eb0-d8ed32da896c",
+    "6dbcd542-ddb0-434e-b8ee-3e31e1a8b051",
+    "34da0b06-565f-4964-b8bc-dd106278e086",
+    "20d20254-0f77-429a-a74e-0aec08d18f2d",
+    "896fc91a-1f57-45e2-b135-37bc9c2c80a7",
+    "1cb42cf5-ae69-46c5-b2ff-d2c1cd60099b",
+    "bfb75b28-0e51-4829-b104-f1679e63c126"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Sagas I: simple chapters, keyword back faces",
+   "shared": "Rules-heavy (double-faced Sagas). Chapter III of every NEO Saga is ExileAndReturnTransformed (transform.go:101); copy fable_of_the_mirror_breaker.go for the two-face Spec, the lore chapters and the oracle fixtures of both faces. Memory of Toshiro: mana 'only to cast an instant or sorcery spell' with a life cost. Likeness of the Seeker: 'becomes blocked, untap up to three lands'. Azusa's Many Journeys: additional land drop this turn. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "a6d646e8-0d84-489b-a46a-3bd5b1141864",
+    "a8995df6-99a7-41a7-bd3e-f34643b27947",
+    "2ee5f5ad-2f16-40d9-831a-2aefece31b36",
+    "096fbb51-be73-4edc-a051-770a12c09005",
+    "99473461-3c6f-4f7f-8ba2-d6c090ddb567",
+    "54257132-c67a-4c19-bada-08e7025c2929",
+    "0a708566-2994-47b3-8d89-0547cc115e7c",
+    "02c60b8b-f665-4279-a00f-ae03991df4a6"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Sagas II: board effects and counting back faces",
+   "shared": "Same Saga skeleton as batch 17 (transform.go ExileAndReturnTransformed, fable_of_the_mirror_breaker.go). The Fall of Lord Konda II: alicia_masters_skilled_sculptor.go ('each player gains control of all creatures they own') widened to permanents. Tribute to Horobi: opponents create the 1/1 black Rat Rogue token (only here); 'gain control of all Rat tokens' (hellkite_tyrant.go, broadcast_takeover.go). Behold the Unspeakable I: -2/-0 'until your next turn' (129 precedents). Kirin-Touched Orochi: modal attack trigger with two reflexive 'When you do' bodies (reflexive.go). Long Reach of Night: 'sacrifices a creature unless they discard a card'. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "ec08aeb3-bba7-4982-9160-68d25bd411d6",
+    "94794f7c-62e7-43c8-ba7f-ac5c0bc9a712",
+    "8b1e453a-35a6-4dff-bd37-498f34d0470e",
+    "6ba8e099-5871-4ee3-8a65-06fd8ccec340",
+    "464372ef-0b16-4b8d-ba6f-fbf5c905c479",
+    "81622cf6-3021-4ad4-933d-a7e3d8ac817f",
+    "cb7edb5e-3a90-41c7-ae52-dc564086bf22"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "Sagas III: rules-heavy chapters, and Satsuki",
+   "shared": "Same Saga skeleton as batch 17. Watch items, stop and report: Etching of Kumano ('If a creature dealt damage this turn by a source you controlled would die, exile it instead': game/dealt_damage_by.go has DamageDealtToObjectThisTurnByControlledForEffect and Kumano, Master Yamabushi's scoped exileIfWouldDie, but that scope names one dealer object, not a controller); Living Breakthrough ('opponents can't cast spells with the same mana value as that spell until your next turn': reflector_mage.go RestrictCasting + CastBanRule with PermissionFilter Min/MaxSpellManaValue, cast_permission.go:1067-1086; prove a ban by exact mana value can be stated without a new CastBanKind); The Dragon-Kami Reborn (exile face down with a hatching counter; Egg casts 'from among cards you own in exile with hatching counters': goliath_daydreamer.go does this with dream counters, face up); O-Kagachi Made Manifest ('defending player chooses a nonland card in your graveyard': rejoin_the_fight.go has an opponent choosing from your graveyard). Kumano II: 'When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter' (summon_brynhildr.go, the_clone_saga.go). Remnant of the Rising Star: 'you may pay {X}. When you do' + five-modified condition (develop's modified predicate). Satsuki: lore counters on each Saga, 'choose up to one' dies trigger. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "9d9b52b2-2edc-4f7f-a8d9-e024b1398847",
+    "c3a46eb3-38d9-4f47-9b71-26c9ea7ef1ce",
+    "535916f8-b51a-4414-8ab0-fdccdefd9433",
+    "e70ac420-8540-4a69-820f-ae3e0274ca1a",
+    "e711a213-2a6b-4b34-a788-95b6c0b7ba48",
+    "4d23b22b-31a5-4eec-b894-2dd5a7138c5a",
+    "e41be9ad-3717-4f25-a8e0-c9947a2a0227"
+   ]
+  },
+  {
+   "n": 20,
+   "theme": "Planeswalkers and complex legends",
+   "shared": "Rules-heavy. Tamiyo: compleated.go, loyalty -X (ADR 0032 amendment, #1944), the Tamiyo's Notebook token (0 hits, only here). Kaito: phases out at the end step if he entered this turn (#1199), 'unless you attacked this turn' (draw_then.go, alesha_who_laughs_at_fate.go), emblem (#623), the unblockable Ninja token. Tatsunari: the Keimi token (0 hits, only here). Kairi: 'any number of target ... with total mana value 6 or less' = TargetSpec.WithTotal (game/targets.go:1197, phoenix_warden_of_fire.go, reunion_of_the_house.go). Kyodai: 'for as long as you control' (durations.go, 36 precedents). Watch items, stop and report: Hinata ('cost {1} less/more to cast for each target' on every spell: game/cost_modifier.go ReadsTargets and Fireball's own-spell rule exist, 0 hits for a static that prices other spells by q.Targets); Thousand-Faced Shadow ('enters from your hand, if it's attacking': Provenance.FromZone; token copy 'enters tapped and attacking': echoing_assault.go, general_kreat_the_boltbringer.go); Hidetsugu, Devouring Chaos ('When you exile a nonland card this way': cait_sith_fortune_teller.go, reflexive_bodies.go); Risona (keyword counter on combat damage, removed 'whenever combat damage is dealt to you'). Kura: X/X token sized by lands. Guards: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel; creature-type and colour words go through source.TextSubtype / ctx.TextSubtype; a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "021b4745-4a15-462c-a6b0-2dee1dc9d196",
+    "ba48e067-f4d9-45b2-ade1-71cf8cda418c",
+    "6426e73a-7e11-48ab-ac5c-15647c6cf9ba",
+    "85aa53e8-f062-4d02-bc69-1413f7f0dcf1",
+    "d89bd776-8489-4c34-94ea-db1b088d9379",
+    "44c4839f-c92a-4535-817b-1838c47fcb5e",
+    "d56f24a1-04dc-4769-9941-05bd99508e40",
+    "aee473c7-c659-421c-96b5-05f57ca2ed97",
+    "e87be082-eafd-480e-b150-d27fd937e1b1",
+    "98636623-bbc6-4935-a2bb-2234691eb6d8"
+   ]
+  }
+ ]
+}
