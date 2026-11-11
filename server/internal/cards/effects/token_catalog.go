@@ -356,6 +356,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
 
+	// Vernal Sovereign's Elemental (Lorwyn Eclipsed Commander, #5368): a green
+	// and white */* whose size is the creatures its controller controls.
+	printedCreatureCountElementalToken,
+
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".
 	printedMercenaryToken,
