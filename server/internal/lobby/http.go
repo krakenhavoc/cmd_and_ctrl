@@ -26,6 +26,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cubes"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckcoverage"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
@@ -91,8 +92,12 @@ type Config struct {
 	// DraftHistory is a signed-in person's finished drafts, behind GET
 	// /me/drafts (mydrafts_http.go). Nil lists none.
 	DraftHistory drafthistory.Store
-	Auth         auth.Authenticator
-	AdminToken   string // shared admin token; empty disables admin flow
+	// Cubes is a signed-in person's saved cubes, behind /me/cubes
+	// (cubes_http.go) and a cube draft (ADR 0222 §8). Nil lists none
+	// and refuses a save and a cube draft.
+	Cubes      cubes.Store
+	Auth       auth.Authenticator
+	AdminToken string // shared admin token; empty disables admin flow
 	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
 	// ADR 0110 §3) and each allowlisted person's admin mode (ADR 0112
 	// §2): a signed-in session whose Discord ID is on the list is an
@@ -1130,6 +1135,20 @@ func Handler(c Config) http.Handler {
 	// token of the checker's fetch bucket like a save does.
 	mux.Handle("POST /me/decks/{id}/update", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.previewUpdate))))
 	mux.Handle("POST /me/decks/{id}/update/confirm", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.confirmUpdate))))
+	// ADR 0222 §8, #5441: a signed-in person's saved cubes. Every read
+	// runs the cube's check against the catalog, so they share a 1/s,
+	// burst-5 bucket of their own; a save from a link spends a token of
+	// the checker's fetch bucket like a deck save does. A caller that
+	// is not a signed-in person is a 403 on all five.
+	cubeLimit := newLimiter(1, 5)
+	cubeRoute := func(h lobbyHandler) http.Handler {
+		return cubeLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, h)))
+	}
+	mux.Handle("GET /me/cubes", cubeRoute(myCubes))
+	mux.Handle("POST /me/cubes", cubeRoute(deckChecks.createCube))
+	mux.Handle("GET /me/cubes/{id}", cubeRoute(myCube))
+	mux.Handle("PUT /me/cubes/{id}", cubeRoute(deckChecks.updateCube))
+	mux.Handle("DELETE /me/cubes/{id}", cubeRoute(deleteCube))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
 	bugs := newBugGate(c)

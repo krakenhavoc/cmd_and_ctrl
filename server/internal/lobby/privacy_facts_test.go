@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cubes"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/pods"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/schedule"
@@ -84,6 +85,8 @@ func TestPrivacyNoticeNumbersMatchTheServer(t *testing.T) {
 	check("podsPerPerson", pods.MaxPodsPerPerson, "pods.MaxPodsPerPerson")
 	check("podSuggestGames", pods.SuggestGames, "pods.SuggestGames")
 	check("podSuggestDays", int(pods.SuggestWindow/day), "pods.SuggestWindow")
+	check("cubesPerPerson", cubes.MaxCubes, "cubes.MaxCubes")
+	check("cubeMaxCards", cubes.MaxCards, "cubes.MaxCards")
 	check("scheduledKeepHours", int(schedule.Keep/time.Hour), "schedule.Keep")
 
 	// Backups: scripts/backup-offsite.sh is the source.

@@ -231,6 +231,24 @@ Sections 2 (limited), 6 and 9 say what follows a draft's picks. These are the ca
 
 Not built here: a weighted coin or an arena result for bot matches; a way to add basic lands while sideboarding; the away-player offer and the report button at a match table are whatever the table already gives (a report works as at any table, the away offer does not appear); a person's finished drafts cannot be deleted one at a time; the admin views list a draft's match tables as practice tables and do not list drafts.
 
+### Cube as built (slice 7, #5441)
+
+Section 8 says what a cube is. These are the calls its build made, each open to change in review like the ones above.
+
+- **A cube is a saved list, and it belongs to a person.** Migration 0039, `cubes`: the name its owner gave it (through the name filter, one name once per person), the list as text, the singleton setting and two dates. Only the owner can read, change or draft it; there is no sharing and no public cube. A cube needs an account, so a visitor drafts a set and is refused a cube (`cube_needs_sign_in`).
+- **The list is read by the deck importers** (a pasted list, or a link they support, fetched through the deck checker's own fetch limit). A plain list of names, one a line, also reads: that is what cube sites export. A cube has no commander and no sideboard, so every row is a card of the cube, whatever section a deck list put it in.
+- **Singleton is the default and the owner can turn it off.** Basic lands are never limited.
+- **The check is computed on every read, never stored.** Every card must be Full in the catalog; the check names the ones that are not, the names nobody recognises and, in a singleton cube, the cards listed more than once. A cube with any of them is saved and cannot be drafted, and it becomes draftable by itself once its cards are built. Basic lands pass without a catalog entry, as they do in a set's packs. The client's page offers to drop the cards that are not ready in one step.
+- **Size.** At most 1,080 cards (three times what eight seats of 15-card packs deal) and 20 cubes a person. A draft needs seats x 3 packs x pack size; a cube that is too small for the draft being made is refused with the sum, and the form says so first.
+- **Pack size is the host's choice for a cube draft: 15 by default, 9 to 20.** Section 8 says packs of 15; the range is there because cubes come in sizes that 15 does not divide well, and it costs one number on the form. A set's packs keep their own size.
+- **Dealing.** The list is shuffled from the draft's seed and cut into packs, so a draft's packs are a partition of one shuffle and share no card: a new `Dealer` seam beside `Source`, which generates each pack on its own. No rarity slots, no collation. Cards the shuffle leaves over are not used.
+- **Everything after the packs is the existing draft**: pick one or two, passing, the timer, bots, the build with free basics, rounds, and the stored record. The record's `set` is empty and its `set_name` is the cube's name. That name is the one thing about a cube its other drafters see and keep, and the privacy notice says so.
+- **Images.** The public draft image route also answers for any printing of a Full card, since a cube names its own printings. It stays scoped to cards the public catalogue shows.
+- **Stored data (ADR 0149).** `accountdelete.Inventory` and `Delete` cover `cubes`; the privacy page has a "Your cubes" row; `PRIVACY_SCHEMA_VERSION` is 39.
+- **The entry point.** "My cubes" (`#/cubes`) is a link on the create form, which offers a signed-in person "A set" or "One of my cubes". It is not in the header, for the reason "My drafts" is not.
+
+Not built here: custom pack recipes (a later ADR, as section 8 says); sharing a cube or drafting someone else's; importing from a cube site's link (a pasted export works); a draft bot that rates cube cards differently from set cards (it uses the same ratings).
+
 ## Consequences
 
 - The catalog's "Full" now carries more weight: a draftable set is a promise that every card in its packs works unaided.

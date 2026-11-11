@@ -47,7 +47,11 @@ export type Route =
   // link a host shares, which opens the join page for a browser that
   // holds no seat there. Both are public: a visitor drafts against bots
   // with no sign-in, as they play a practice game.
-  | { name: "draftNew"; set?: string }
+  // `cube` is ?cube=<id>, one of the caller's own cubes, chosen by the
+  // My cubes page's "Draft this cube" link (ADR 0222 §8, #5441).
+  | { name: "draftNew"; set?: string; cube?: string }
+  // A signed-in person's saved cubes (ADR 0222 §8, #5441), at #/cubes.
+  | { name: "myCubes" }
   // A signed-in person's finished drafts (ADR 0222 §9, #5440): the list
   // at #/drafts and one draft, read-only, at #/drafts/<id>.
   | { name: "myDrafts"; id?: string }
@@ -199,11 +203,15 @@ export function parseHash(hash: string): Route {
       if (parts[1] === "sets") return { name: "draftSets" };
       if (!parts[1] || parts[1] === "new") {
         const set = params.get("set");
+        const cube = params.get("cube");
+        if (cube) return { name: "draftNew", cube };
         return set ? { name: "draftNew", set } : { name: "draftNew" };
       }
       const invite = params.get("invite");
       return invite ? { name: "draft", id: parts[1], invite } : { name: "draft", id: parts[1] };
     }
+    case "cubes":
+      return { name: "myCubes" };
     case "drafts":
       return parts[1] ? { name: "myDrafts", id: parts[1] } : { name: "myDrafts" };
     case "privacy":

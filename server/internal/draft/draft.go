@@ -178,6 +178,16 @@ type Source interface {
 	Pack(rng *rand.Rand) ([]Card, error)
 }
 
+// Dealer is a Source whose packs depend on each other, so a draft takes
+// all of them in one call: a cube, whose packs are cut from one shuffle
+// of its list and share no card (CubeSource). Start asks a Dealer for
+// n packs and hands them out in the order it would have drawn them,
+// round by round and seat by seat.
+type Dealer interface {
+	Source
+	Deal(rng *rand.Rand, n int) ([][]Card, error)
+}
+
 // Seat is one seat of a draft.
 type Seat struct {
 	// ID is the seat's identity for the life of the draft. It is never
@@ -213,7 +223,10 @@ type Config struct {
 	Set     string
 	SetName string
 	Booster string
-	Mode    Mode
+	// Cube marks a draft of a saved card list (ADR 0222 §8): Set is
+	// empty, SetName is the cube's name and Booster is "cube".
+	Cube bool
+	Mode Mode
 	// Seats is the size of the draft, MinSeats to MaxSeats.
 	Seats int
 	// Seed is what the packs are drawn from, and what the bot's picks are
@@ -434,23 +447,56 @@ func (d *Draft) Start(by uuid.UUID, src Source, now time.Time) error {
 	if by != d.host || by == uuid.Nil {
 		return ErrNotHost
 	}
+	people := len(d.seats)
 	for n := 1; len(d.seats) < d.cfg.Seats; n++ {
 		d.seats = append(d.seats, &Seat{ID: uuid.New(), Name: "Bot " + strconv.Itoa(n), Bot: true})
 	}
+	packs, err := d.dealPacks(src)
+	if err != nil {
+		// A refused start leaves the lobby as it was.
+		d.seats = d.seats[:people]
+		return err
+	}
+	d.unopened = packs
+	d.state = StatePicking
+	d.round = 0
+	d.openRound(now)
+	d.advance(now)
+	return nil
+}
+
+// dealPacks draws every pack of the draft: packs[round][seat].
+func (d *Draft) dealPacks(src Source) ([][][]Card, error) {
 	// One stream for every pack, drawn in a fixed order (round, then
 	// seat), so the seed alone decides who opens what.
 	rng := rand.New(rand.NewPCG(d.cfg.Seed, packStream))
+	seats := len(d.seats)
+	var dealt [][]Card
+	if dealer, ok := src.(Dealer); ok {
+		var err error
+		if dealt, err = dealer.Deal(rng, Rounds*seats); err != nil {
+			return nil, err
+		}
+		if len(dealt) != Rounds*seats {
+			return nil, fmt.Errorf("draft: the pack source dealt %d packs, want %d", len(dealt), Rounds*seats)
+		}
+	}
 	next := 1
 	packs := make([][][]Card, Rounds)
 	for r := range Rounds {
-		packs[r] = make([][]Card, len(d.seats))
-		for s := range d.seats {
-			pack, err := src.Pack(rng)
-			if err != nil {
-				return err
+		packs[r] = make([][]Card, seats)
+		for s := range seats {
+			var pack []Card
+			if dealt != nil {
+				pack = dealt[r*seats+s]
+			} else {
+				var err error
+				if pack, err = src.Pack(rng); err != nil {
+					return nil, err
+				}
 			}
 			if len(pack) == 0 {
-				return fmt.Errorf("draft: the pack source made an empty pack")
+				return nil, fmt.Errorf("draft: the pack source made an empty pack")
 			}
 			for i := range pack {
 				pack[i].ID = "c" + strconv.Itoa(next)
@@ -459,12 +505,7 @@ func (d *Draft) Start(by uuid.UUID, src Source, now time.Time) error {
 			packs[r][s] = pack
 		}
 	}
-	d.unopened = packs
-	d.state = StatePicking
-	d.round = 0
-	d.openRound(now)
-	d.advance(now)
-	return nil
+	return packs, nil
 }
 
 // packStream is the PCG stream the packs are drawn on. The placeholder

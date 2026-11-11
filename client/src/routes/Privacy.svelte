@@ -110,6 +110,16 @@
         "migration 0038 draft_history, draft_history_matches; drafthistory/drafthistory.go Save, ForgetAccount; lobby/draft_matches.go recordDraft",
     },
     {
+      // ADR 0222 §8, #5441: cubes/store.go, lobby/cubes_http.go.
+      what: "Your cubes",
+      details: `If you save a cube, a list of cards to draft, we keep the name you gave it, the card list, whether it is singleton, and when you made and last changed it. You can keep up to ${F.cubesPerPerson} cubes of at most ${F.cubeMaxCards} cards each. If you make a cube from a deck link, the server fetches that link to read its cards and does not store the link. Only you can open, change or draft your cubes. When you start a draft from one, the people at that draft see the cube’s name and the cards they are dealt, and a signed-in person’s record of that draft (“Your drafts”) keeps the name. A cube needs an account, so nothing is kept for someone who is not signed in.`,
+      why: "So you can draft your own list of cards again without pasting it each time.",
+      howLong:
+        "Until you delete the cube or your account. Deleting your account deletes every cube you saved. The name of a cube you drafted with other people stays in their records of that draft.",
+      source:
+        "migration 0039 cubes; cubes/cubes.go MaxCubes, MaxCards; cubes/store.go ForgetAccount; lobby/cubes_http.go",
+    },
+    {
       // ADR 0215 privacy section, slice 2: schedule/schedule.go, lobby/scheduled_http.go.
       what: "Scheduled tables",
       details: `When you schedule a table or reserve a seat, we keep the plan and the list of people with seats or on the waitlist, in the order they reserved, until ${F.scheduledKeepHours} hours after the start. The host and the people on the list see the names on it; everyone else sees how many seats are open. A plan holds its name, its start and the host’s time zone, the number of players and the host’s table options.`,
@@ -356,10 +366,10 @@
       <h2 id="delete-info-title">Deleting your account</h2>
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
-        decks, drafts, deck-request history, playmats, settings, last table setup, notification
-        settings, stats settings and Discord sign-in, signs you out everywhere, and turns your seat
-        in every table that has ended into “Deleted player”, so the other players keep their games.
-        It is refused while you hold a seat at a table that has not ended.
+        decks, drafts, cubes, deck-request history, playmats, settings, last table setup,
+        notification settings, stats settings and Discord sign-in, signs you out everywhere, and
+        turns your seat in every table that has ended into “Deleted player”, so the other players
+        keep their games. It is refused while you hold a seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

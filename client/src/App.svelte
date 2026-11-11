@@ -60,6 +60,7 @@
   const loadRoadmap = () => import("./routes/Roadmap.svelte");
   const loadDraft = () => import("./routes/Draft.svelte");
   const loadMyDrafts = () => import("./routes/MyDrafts.svelte");
+  const loadMyCubes = () => import("./routes/MyCubes.svelte");
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
@@ -195,7 +196,7 @@
   {#await loadDraft()}
     <RouteLoading />
   {:then { default: Draft }}
-    <Draft set={$route.set} />
+    <Draft set={$route.set} cube={$route.cube} />
   {:catch}
     <RouteLoading failed />
   {/await}
@@ -221,6 +222,14 @@
       <RouteLoading failed />
     {/await}
   {/key}
+{:else if $route.name === "myCubes"}
+  {#await loadMyCubes()}
+    <RouteLoading />
+  {:then { default: MyCubes }}
+    <MyCubes />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
 {:else if $route.name === "privacy"}
   <Privacy />
 {:else if $route.name === "terms"}

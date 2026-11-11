@@ -35,8 +35,10 @@
     invite?: string;
     /** ?set=<code>, on the create form. */
     set?: string;
+    /** ?cube=<id>, on the create form: one of the caller's own cubes. */
+    cube?: string;
   }
-  const { id, invite, set }: Props = $props();
+  const { id, invite, set, cube }: Props = $props();
 
   // App.svelte keys this route on the id, so the seat is read once.
   // svelte-ignore state_referenced_locally
@@ -50,7 +52,7 @@
 </script>
 
 {#if !id}
-  <DraftCreate {set} />
+  <DraftCreate {set} {cube} />
 {:else if token}
   {#key token}
     <DraftRoom {id} {token} ongone={() => (token = "")} />

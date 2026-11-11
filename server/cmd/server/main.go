@@ -210,6 +210,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/oracletext"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/tokenart"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cubes"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
@@ -896,11 +897,18 @@ func main() {
 		draftHistory = store
 		l.SetDraftRecorder(store)
 	}
+	// A signed-in person's saved cubes (ADR 0222 §8, migration 0039).
+	// With no database there are none, and no cube can be drafted.
+	var cubeStore cubes.Store
+	if database != nil {
+		cubeStore = cubes.NewSQLStore(database)
+	}
 	lobbyCfg := lobby.Config{
 		Lobby:        l,
 		DraftSets:    draftSets,
 		DraftHub:     hub,
 		DraftHistory: draftHistory,
+		Cubes:        cubeStore,
 		Auth:         authenticator,
 		AdminToken:   cfg.AdminToken,
 		Admins:       admins,
