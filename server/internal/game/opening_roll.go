@@ -437,6 +437,7 @@ func removeSeat(seats []int, seat int) []int {
 func (g *Game) chooseStartingSeatLocked(seat int) {
 	chooser := g.Seats[g.OpeningRoll.Chooser].ID
 	g.EmitEvent(Event{Kind: EventStartingPlayer, Actor: chooser, Target: g.Seats[seat].ID})
+	g.noteMatchChooserLocked(chooser)
 	g.OpeningRoll = nil
 	g.dealAndBeginLocked(seat)
 }
@@ -482,6 +483,11 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 		}
 	}
 	g.StartingSeat = startingSeat
+	// CR 103.1: with no roll, the starting player stands as the one
+	// who chose (a no-op when the roll's winner is already recorded).
+	if p := g.Seats[startingSeat]; p != nil {
+		g.noteMatchChooserLocked(p.ID)
+	}
 	g.Turn = newStartingTurn(startingSeat)
 	// CR 901.6, ADR 0216 §3: the starting player is the first planar
 	// controller, and so owns the communal planar deck (CR 901.15b).

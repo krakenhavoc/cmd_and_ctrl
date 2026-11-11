@@ -369,6 +369,12 @@ type GameSnapshot struct {
 	// card, never stronger.
 	RestartPending *GameRestart `json:"restartPending,omitempty"`
 	RestartTail    *GameRestart `json:"restartTail,omitempty"`
+	// Match is Game.Match (ADR 0222 §3, match.go): the table's match.
+	// Additive: absent on every Commander table and on every file
+	// written before matches, which restore with no match, as they
+	// played. A table between two games has State "between_games" and
+	// its sideboarding window here, and restores into the window.
+	Match *matchSnapshot `json:"match,omitempty"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -2574,6 +2580,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.CombatHadAttackers = g.combatHadAttackers
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
+	s.Match = snapshotMatch(g.Match, cen)
 
 	s.Battlefield = snapshotZone(g.Battlefield, cen)
 	s.Stack = snapshotZone(g.Stack, cen)
@@ -2890,6 +2897,85 @@ func restoreCompanionZone(z *zoneSnapshot) *Zone {
 		return nil
 	}
 	return restoreZone(z, ZoneOutside)
+}
+
+// matchSnapshot mirrors Match (ADR 0222 §3). The pools are written and
+// read as zones by the pair every outside-the-game container uses, so a
+// pool card is a card like any other in the file.
+type matchSnapshot struct {
+	BestOf     int                 `json:"bestOf"`
+	Games      []MatchGame         `json:"games,omitempty"`
+	Decks      []matchDeckSnapshot `json:"decks,omitempty"`
+	Chooser    uuid.UUID           `json:"chooser,omitempty"`
+	Between    *MatchBetween       `json:"between,omitempty"`
+	Over       bool                `json:"over,omitempty"`
+	Winner     uuid.UUID           `json:"winner,omitempty"`
+	ConcededBy uuid.UUID           `json:"concededBy,omitempty"`
+}
+
+type matchDeckSnapshot struct {
+	Player     uuid.UUID     `json:"player"`
+	Main       *zoneSnapshot `json:"main,omitempty"`
+	Side       *zoneSnapshot `json:"side,omitempty"`
+	Fixed      *zoneSnapshot `json:"fixed,omitempty"`
+	Registered []uuid.UUID   `json:"registered,omitempty"`
+}
+
+func snapshotMatch(m *Match, cen *ContinuationCensus) *matchSnapshot {
+	if m == nil {
+		return nil
+	}
+	m = cloneMatch(m)
+	out := &matchSnapshot{
+		BestOf: m.BestOf, Games: m.Games, Chooser: m.Chooser, Between: m.Between,
+		Over: m.Over, Winner: m.Winner, ConcededBy: m.ConcededBy,
+	}
+	pool := func(owner uuid.UUID, cs []Card) *zoneSnapshot {
+		z := newZone(ZoneOutside, owner)
+		z.Cards = cs
+		return snapshotCompanionZone(z, cen)
+	}
+	for _, d := range m.Decks {
+		out.Decks = append(out.Decks, matchDeckSnapshot{
+			Player:     d.Player,
+			Main:       pool(d.Player, d.Main),
+			Side:       pool(d.Player, d.Side),
+			Fixed:      pool(d.Player, d.Fixed),
+			Registered: d.Registered,
+		})
+	}
+	return out
+}
+
+func restoreMatch(s *matchSnapshot) *Match {
+	if s == nil {
+		return nil
+	}
+	out := &Match{
+		BestOf: s.BestOf, Games: append([]MatchGame(nil), s.Games...), Chooser: s.Chooser,
+		Over: s.Over, Winner: s.Winner, ConcededBy: s.ConcededBy,
+	}
+	if s.Between != nil {
+		b := *s.Between
+		b.Ready = append([]uuid.UUID(nil), s.Between.Ready...)
+		out.Between = &b
+	}
+	pool := func(z *zoneSnapshot) []Card {
+		if r := restoreCompanionZone(z); r != nil {
+			return r.Cards
+		}
+		return nil
+	}
+	for _, d := range s.Decks {
+		out.Decks = append(out.Decks, MatchDeck{
+			Player:     d.Player,
+			Main:       pool(d.Main),
+			Side:       pool(d.Side),
+			Fixed:      pool(d.Fixed),
+			Registered: append([]uuid.UUID(nil), d.Registered...),
+		})
+	}
+	return out
 }
 
 // planechaseSnapshot mirrors a Planechase table's state (ADR 0216 §3):
@@ -3818,6 +3904,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.TurnEndPending = s.TurnEndPending
 	g.RestartPending = cloneGameRestart(s.RestartPending)
 	g.RestartTail = cloneGameRestart(s.RestartTail)
+	g.Match = restoreMatch(s.Match)
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen

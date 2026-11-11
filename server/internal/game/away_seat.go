@@ -61,6 +61,9 @@ func (g *Game) ConcedeForAway(actor, seat uuid.UUID, minutes int) error {
 		return ErrPlayerEliminated
 	}
 	g.EmitEvent(Event{Kind: EventAwaySeat, Actor: actor, Target: seat, Label: AwayConcede, Amount: minutes})
+	// ADR 0222 §3: a player the table moved on without is not coming
+	// back for the next game of a match either.
+	g.markMatchConcededLocked(p)
 	g.concedeLocked(p)
 	return nil
 }
