@@ -24,10 +24,11 @@ func init() {
 				TargetPermanent("target permanent")),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{G}{W}{U}: Put Derevi onto the battlefield from the command zone.",
-			Cost:   ManaCost("{1}{G}{W}{U}"),
-			Zones:  []game.ZoneKind{game.ZoneCommand},
-			Effect: cmdr2S52PutThisFromCommandZone,
+			Label:   "{1}{G}{W}{U}: Put Derevi onto the battlefield from the command zone.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{1}{G}{W}{U}"),
+			Zones:   []game.ZoneKind{game.ZoneCommand},
+			Effect:  cmdr2S52PutThisFromCommandZone,
 		}},
 	})
 }
