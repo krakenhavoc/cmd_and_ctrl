@@ -317,6 +317,7 @@ body rhinos-rampage/destroy-artifact
 body riddle-gate-gargoyle/lifelink
 body roads-go-ever-ever-on/pump-per-plains
 body rodolf-duskbringer/return-from-graveyard
+body rose-room-treasurer/damage
 body rowan-kenrith/creatures-attack-this-turn
 body ruinous-waterbending/gain-one-life
 body ruthless-lawbringer/destroy
@@ -1279,6 +1280,7 @@ number esper-terra/lore-counters
 number number/aether-refinery-create-an-aetherborn
 number number/aether-spike-counter-unless-paid
 number number/arcane-denial-draw-up-to-two
+number number/cmdr2-aetherborn-marauder-move
 number number/deal-that-much-damage-to-the-target
 number number/die-young-minus-one-for-each
 number number/expel-the-interlopers-destroy-power-at-least
@@ -1597,6 +1599,7 @@ payunless pay-unless/rings-of-brighthearth-copy-ability
 payunless pay-unless/riparian-tiger-pump
 payunless pay-unless/ripples-of-undeath-take-one
 payunless pay-unless/rodolf-duskbringer-return
+payunless pay-unless/rose-room-treasurer-damage
 payunless pay-unless/rush-of-inspiration-discard
 payunless pay-unless/scavengers-talent-return
 payunless pay-unless/sentry-bot-counters
@@ -2482,6 +2485,7 @@ tail promising-stairs/win-the-game
 tail proteus-staff/rest-on-bottom-in-any-order
 tail push-pull/haste-then-sacrifice
 tail push-the-limit/sacrifice-animate-haste
+tail put-from-library/cmdr2-shuffle-the-rest
 tail put-from-library/hei-bai-forest-guardian-shuffle
 tail put-from-library/rest-into-graveyard
 tail put-from-library/rest-into-hand
