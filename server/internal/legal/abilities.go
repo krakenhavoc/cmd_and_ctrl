@@ -1736,6 +1736,25 @@ func (e *enumerator) variableTapOthersPayments(pool []uuid.UUID, tc *game.TapOth
 	return e.variableCountPayments(pool, 1, func(n int) bool { return game.TapOthersCountLegal(tc, n, n) })
 }
 
+// anyNumberTapOthersPayments is variableTapOthersPayments for a mana
+// ability's "Tap X untapped <permanents> you control" (#5447), where X is
+// the number tapped: one nested payment for each of the first useful
+// counts, cheapest fuel first. Tapping none is legal and omitted, as X=0
+// is there: it pays the rest of the cost for no mana.
+func (e *enumerator) anyNumberTapOthersPayments(pool []uuid.UUID, sourceID uuid.UUID, alsoTapsSource bool) [][]uuid.UUID {
+	if alsoTapsSource {
+		kept := pool[:0:0]
+		for _, id := range pool {
+			if id != sourceID {
+				kept = append(kept, id)
+			}
+		}
+		pool = kept
+	}
+	pool = e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
+	return e.variableCountPayments(pool, 1, func(int) bool { return true })
+}
+
 // tapLabel is sacrificeLabel one verb over (#759).
 func tapLabel(g *game.Game, ids []uuid.UUID) string {
 	if len(ids) == 0 {
@@ -2616,7 +2635,13 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		}
 		tapSets := [][]uuid.UUID{nil}
 		if tc := ab.TapOthers; !tc.Empty() {
-			tapSets = e.tapOthersPayments(g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc), tc, source.InstanceID, ab.TapCost)
+			pool := g.TapOthersOptionsForEffect(e.seat, source.InstanceID, tc)
+			if game.TapOthersAnyNumber(tc) {
+				// #5447: "Tap X untapped tokens you control: Add X mana".
+				tapSets = e.anyNumberTapOthersPayments(pool, source.InstanceID, ab.TapCost)
+			} else {
+				tapSets = e.tapOthersPayments(pool, tc, source.InstanceID, ab.TapCost)
+			}
 			if len(tapSets) == 0 {
 				continue
 			}

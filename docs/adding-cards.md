@@ -5514,7 +5514,13 @@ Ruthless Technomancer's "Sacrifice X artifacts" is `SacrificeX` (ADR
 (#2527, ADR 0113's 2026-10-07 amendment). The count the activator
 names IS the announced X, read with
 `ctx.X()` like any other, and `effects.Register` refuses a cost that
-puts X in two places. The Martyr cycle's "Reveal X black cards from
+puts X in two places. A MANA ability announces no X (CR 605.3b), so
+Hazel of the Rootbloom's "{T}, Pay 2 life, Tap X untapped tokens you
+control: Add X mana in any combination of colors" is
+`ManaAbilityCost.TapOthers: TapXUntappedForMana("X untapped tokens you control", IsTokenPredicate())`
+(#5447): the activator names any number of them, and the ability's
+`ProducedForPaid` reads the count back as `len(paid.TappedOthers)`
+(`Register` refuses the form without one). The Martyr cycle's "Reveal X black cards from
 your hand" is `RevealX("X black cards", "B")` (#2598, ADR 0020's
 2026-10-08 amendment): the same announced-X count, but the cards are
 only shown, never moved, so the picks ride `reveal_ids` and nothing is

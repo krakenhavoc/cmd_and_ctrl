@@ -8554,7 +8554,10 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// respect: a mana ability never uses the stack (CR 605.3b), so
 	// whatever the taps trigger is drained by the state-check pass
 	// on the way out with everything else this activation queued.
-	g.payTapOthersCostLocked(playerID, params.TapIDs)
+	// #5447: what was tapped goes on the record, so an output that counts
+	// it ("Tap X untapped tokens you control: Add X mana", Hazel of the
+	// Rootbloom) reads the number the engine tapped.
+	paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
 	// Life after tap, before sacrifice — the same component order
 	// ActivateCatalogAbility pays an AbilityCost in (mana → tap →
 	// life → sacrifice). It matters only for the event log, since
@@ -9383,6 +9386,36 @@ func (g *Game) maxCounterPaymentLocked(playerID, sourceID uuid.UUID, rc *Counter
 	return PaidCost{CountersRemoved: total}
 }
 
+// maxManaPaymentLocked is the LARGEST payment `ab`'s variable cost
+// components could take right now, as a PaidCost: the counter removal
+// (maxCounterPaymentLocked) and, for a "Tap X untapped ..." component
+// (#5447, TapOthersCost.AnyNumber), every permanent that could be tapped
+// for it. What every "what could this source produce" reader hands the
+// output, for the reason maxCounterPaymentLocked gives.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) maxManaPaymentLocked(playerID, sourceID uuid.UUID, ab *ManaAbilityShape) PaidCost {
+	if ab == nil {
+		return PaidCost{}
+	}
+	paid := g.maxCounterPaymentLocked(playerID, sourceID, ab.RemoveCounters)
+	if !TapOthersAnyNumber(ab.TapOthers) {
+		return paid
+	}
+	for _, id := range g.TapOthersOptionsForEffect(playerID, sourceID, ab.TapOthers) {
+		if ab.TapCost && id == sourceID {
+			// CR 118.3: the source's own {T} has already spent it.
+			continue
+		}
+		c := findBattlefieldCard(g, id)
+		if c == nil {
+			continue
+		}
+		paid.TappedOthers = append(paid.TappedOthers, PaidTap{ID: c.InstanceID, Epoch: c.ObjectEpoch})
+	}
+	return paid
+}
+
 // MaxCounterPaymentForEffect is the largest number of counters a
 // variable removal could be paid with right now — the ceiling the
 // client's picker bounds its stepper with, from the same walk the
@@ -9427,7 +9460,7 @@ func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilitySh
 	if !ab.NarrowToCommanderIdentity && !computed {
 		return false
 	}
-	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxManaPaymentLocked(playerID, cardID, &ab))
 	if err != nil {
 		// A broken declaration is not this rule's business.
 		return false

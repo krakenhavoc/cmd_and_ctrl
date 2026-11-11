@@ -252,6 +252,7 @@
   import CostConfirmModal from "./CostConfirmModal.svelte";
   import {
     manaAbilityNeedsPrompt,
+    manaTapNeedsPicker,
     manaCostBranchPayment,
     manaExilePermanentPayment,
     manaTapPayment,
@@ -3241,8 +3242,7 @@
   function askManaTapCost(card: CardView, ability: ManaAbilityView): void {
     if (ability.tap_others_options) {
       const options = ability.tap_others_options.cards ?? [];
-      const need = ability.tap_others_options.max ?? ability.tap_others_options.min ?? 1;
-      if (options.length > need) {
+      if (manaTapNeedsPicker(ability.tap_others_options)) {
         manaTapPrompt = { card, ability };
         return;
       }
@@ -5097,6 +5097,7 @@
     label={manaTapPrompt?.ability.tap_others_label ?? "an untapped creature you control"}
     options={manaTapOptions}
     count={manaTapPrompt?.ability.tap_others_options?.max ?? 1}
+    min={manaTapPrompt?.ability.tap_others_options?.min}
     verb="Tap"
     onConfirm={confirmManaTapCost}
     onCancel={() => {
