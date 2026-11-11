@@ -122,6 +122,13 @@ type GameView struct {
 	// identical for every viewer: the command zone is public, and the
 	// planar deck's cards are on nobody's wire, only its size.
 	Planechase *PlanechaseView `json:"planechase,omitempty"`
+	// Match is the table's match (ADR 0222 §3, match_view.go): its
+	// score and, between two of its games, the sideboarding window.
+	// Absent at a table with no match, which is every Commander table.
+	// While match.sideboarding is present, state is "active" (the
+	// table is in play), the board is the finished game's, outcome is
+	// absent and no game action is legal.
+	Match *MatchView `json:"match,omitempty"`
 	// NoCommanders is true when no seat brought a commander (ADR 0222
 	// slice 1), which is when the client hides its commander UI: the
 	// command zone tile, the commander damage grid and the commander
@@ -6158,8 +6165,11 @@ func ViewOfGame(g *game.Game) GameView {
 		// the frame, whose owner, controller and knowers are all seats.
 		ids := newIDStrings(g.Seats)
 		view = GameView{
-			ID:          g.ID.String(),
-			State:       string(g.State),
+			ID: g.ID.String(),
+			// ADR 0222 §3: a table between two games of a match is in
+			// play on the wire, as it is to the lobby; match.sideboarding
+			// says where it is.
+			State:       string(wireState(g.State)),
 			Seats:       viewOfSeats(g, g.Seats, ids),
 			Battlefield: viewOfZone(g.Battlefield, ids),
 			Stack:       viewOfZone(g.Stack, ids),
@@ -6195,6 +6205,7 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			Planechase:            viewOfPlanechase(g, ids),
+			Match:                 viewOfMatch(g, ids),
 			NoCommanders:          !g.HasCommanderLocked(),
 			StackItems:            viewOfStackItemsInStackOrder(g),
 			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
@@ -6278,9 +6289,23 @@ func ViewOfGame(g *game.Game) GameView {
 		view.Reveals = publicRevealsOf(g, &view)
 		// ADR 0057: the result, resolved out of the same assembled
 		// view the log names its cards from.
-		view.Outcome = viewOfOutcome(g.Outcome, &view)
+		// ADR 0222 §3: between two games of a match the outcome on the
+		// engine is the finished game's, not the table's; it is in
+		// match.games, and the table has no outcome yet.
+		if g.State != game.StateBetweenGames {
+			view.Outcome = viewOfOutcome(g.Outcome, &view)
+		}
 	})
 	return view
+}
+
+// wireState is the state the wire names: a table between two games of
+// a match is "active".
+func wireState(s game.State) game.State {
+	if s == game.StateBetweenGames {
+		return game.StateActive
+	}
+	return s
 }
 
 // enumerateLegalMoves runs the legal-move enumerator once per seat
@@ -11927,7 +11952,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll: v.OpeningRoll,
 		// ADR 0216 §9: the face-up planar cards are public.
-		Planechase:            filterPlanechaseFor(v.Planechase, isKnower),
+		Planechase: filterPlanechaseFor(v.Planechase, isKnower),
+		// ADR 0222 §3: a pool is its owner's, and so is the choice of
+		// who plays first until the window closes.
+		Match:                 filterMatchFor(v.Match, viewerID),
 		NoCommanders:          v.NoCommanders,
 		StackItems:            v.StackItems,
 		PendingTriggers:       v.PendingTriggers,
@@ -14790,6 +14818,10 @@ type TableSettingsView struct {
 	// omitted for Commander, the default, so a Commander table's wire
 	// is what it was. Fixed once the game is active.
 	Format string `json:"format,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3): 3, or
+	// omitted for best-of-one and for a table with no match. Fixed once
+	// the game is active.
+	BestOf int `json:"best_of,omitempty"`
 }
 
 // PlanechaseView is GameView.planechase (ADR 0216 §9).
@@ -14877,7 +14909,16 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		AwayAfter:     s.EffectiveAwayAfter(),
 		Planechase:    s.Planechase,
 		Format:        string(storedFormatOf(s)),
+		BestOf:        storedBestOfOf(s),
 	}
+}
+
+// storedBestOfOf is the wire's match length: 0 for best-of-one.
+func storedBestOfOf(s game.TableSettings) int {
+	if n := s.EffectiveBestOf(); n > 1 {
+		return n
+	}
+	return 0
 }
 
 // storedFormatOf is the wire's format: empty for Commander.

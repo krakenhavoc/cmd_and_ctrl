@@ -843,6 +843,15 @@ server does not know answers **400** and creates nothing. With
 of the table it was captured at, and one saved before formats existed is a
 Commander setup.
 
+`best_of` is optional: `1` (the default) or `3`, the length of the table's
+match ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §3). Only a format that plays matches takes a `3`: at a
+Commander table, which has no match, it answers **400** and creates nothing,
+as does any other number. A best-of-three table's answer and every later meta
+carry `best_of: 3`; every other table's carry no `best_of`. Once the match has
+started, `GET /games` also gives the table `match_game` (the number of the
+game it is on) and each seat `match_wins` (its games won), and keeps them
+after the match ends. A setup remembers the match length with the format.
+
 **Response 201**
 
 ```json
@@ -1189,6 +1198,11 @@ seat has a deck: a deck was checked against the format the table had. After
 that, or with more seats taken than the new format has, it is a **422**. A
 change with no `starting_life` beside it also sets the format's own starting
 life. Naming the format the table already has is never a change.
+
+`best_of` ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §3) is `1` or `3` and may be patched only while the table is in
+the lobby; after that a change is a **422**. A `3` at a table whose format
+plays no matches is a **400**. Changing the format to one that plays none
+sets it back to 1.
 
 ```json
 {

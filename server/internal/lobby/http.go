@@ -1302,6 +1302,10 @@ type createGameRequest struct {
 	// life are the format's. A format this server does not know is a 400
 	// and no table is made.
 	Format string `json:"format,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3): 1 (the
+	// default when 0) or 3, for a format that plays matches. Anything
+	// else, or a 3 at a Commander table, is a 400 and no table is made.
+	BestOf int `json:"best_of,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1492,6 +1496,13 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		if !known {
 			return httpError(http.StatusBadRequest, fmt.Sprintf("unknown format %q (want %s)", body.Format, formatNames()))
 		}
+		// ADR 0222 §3: the match length, checked before a table exists.
+		switch {
+		case body.BestOf != 0 && body.BestOf != 1 && body.BestOf != 3:
+			return httpError(http.StatusBadRequest, fmt.Sprintf("best_of is %d (want 1 or 3)", body.BestOf))
+		case body.BestOf == 3 && !formatSpec.Matches:
+			return httpError(http.StatusBadRequest, fmt.Sprintf("a %s table does not play matches, so it has no best-of-three", formatSpec.Name))
+		}
 
 		if strings.TrimSpace(body.Name) == "" && !server {
 			// A blank name is a surprise (#2630); the creator's own name
@@ -1552,6 +1563,19 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			if formatSpec.MaxSeats != game.MaxPlayers {
 				out.MaxSeats = formatSpec.MaxSeats
 			}
+		}
+		if body.BestOf == 3 {
+			// ADR 0222 §3, after the format it depends on.
+			actor := uuid.Nil
+			if out.Seat != nil {
+				actor = out.Seat.PlayerID
+			}
+			three := 3
+			if _, berr := c.Lobby.UpdateSettings(meta.ID, actor, game.SettingsPatch{BestOf: &three}); berr != nil {
+				_ = c.Lobby.Delete(meta.ID)
+				return berr
+			}
+			out.BestOf = 3
 		}
 		if body.Planechase {
 			// ADR 0216 §1. The actor is the creator's new seat when
@@ -5024,12 +5048,14 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// game's state cannot satisfy (422), which is the documented
 	// rejection and the one a client is expected to pre-empt by
 	// disabling the control.
-	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered):
+	case errors.Is(err, game.ErrInvalidSetting), errors.Is(err, game.ErrPlanechaseNotOffered),
+		errors.Is(err, game.ErrBestOfFormat):
 		status = http.StatusBadRequest
 	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked),
 		errors.Is(err, game.ErrPlanechaseLocked),
 		// ADR 0222 §1: a format change the table's state refuses.
 		errors.Is(err, game.ErrFormatLocked), errors.Is(err, game.ErrFormatSeats),
+		errors.Is(err, game.ErrBestOfLocked),
 		errors.Is(err, ErrFormatDecksLoaded), errors.Is(err, ErrDeckWrongFormat):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
