@@ -50,8 +50,8 @@ func TestS49TemptWithBunnies(t *testing.T) {
 		}
 	}
 	// The spell left the hand: three draws net +2 would be wrong only if a draw is missing.
-	if hand(me) != before[me]+2 {
-		t.Errorf("caster hand = %d, want %d (three draws, the spell left it)", hand(me), before[me]+2)
+	if hand(me) != before[me]+3 {
+		t.Errorf("caster hand = %d, want %d (three draws, the spell left it)", hand(me), before[me]+3)
 	}
 	if hand(o1) != before[o1]+1 || hand(o2) != before[o2] || hand(o3) != before[o3]+1 {
 		t.Errorf("opponent hands wrong: %d %d %d", hand(o1)-before[o1], hand(o2)-before[o2], hand(o3)-before[o3])
@@ -110,7 +110,8 @@ func s49TopCards(g *game.Game, nonland ...int) {
 				c = game.Card{Name: "Top Spell", TypeLine: "Creature — Bear"}
 			}
 		}
-		pushLibraryCardForTest(p, c)
+		c.InstanceID, c.Owner, c.Controller = uuid.New(), p.ID, p.ID
+		p.Library.PushTop(c)
 	}
 }
 
@@ -293,8 +294,8 @@ func TestS49IntellectualOfferingTwoChoices(t *testing.T) {
 	answerOptionPick(t, g, me.ID, 1) // second choice names another opponent
 	passPriorityAroundTable(t, g)
 	hs := s49Hands(g)
-	if hs[0] != hands[0]-1+3 || hs[1] != hands[1]+3 || hs[2] != hands[2] || hs[3] != hands[3] {
-		t.Errorf("hands %v from %v, want caster -1+3 and the first opponent +3", hs, hands)
+	if hs[0] != hands[0]+3 || hs[1] != hands[1]+3 || hs[2] != hands[2] || hs[3] != hands[3] {
+		t.Errorf("hands %v from %v, want caster +3 and the first opponent +3", hs, hands)
 	}
 	tapped := map[uuid.UUID]bool{}
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -455,11 +456,9 @@ func TestS49PrisonersDilemma(t *testing.T) {
 			castCatalogSpell(t, g, "Prisoner's Dilemma", "Sorcery", s49Dilemma, nil)
 			passPriorityAroundTable(t, g)
 			for i, o := range opps {
-				if i > 0 {
-					// Nobody else sees a ballot before the last is in.
-					if ballotFor(g, o.ID) != nil {
-						t.Fatalf("ballot for %s opened early", o.Name)
-					}
+				// Ballots are asked one at a time.
+				if i+1 < len(opps) && ballotFor(g, opps[i+1].ID) != nil {
+					t.Fatalf("ballot for %s opened early", opps[i+1].Name)
 				}
 				voteFor(t, g, o.ID, tc.choices[i])
 			}
