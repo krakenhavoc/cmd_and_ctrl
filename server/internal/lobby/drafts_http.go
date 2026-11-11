@@ -74,6 +74,9 @@ type createDraftRequest struct {
 	PickSeconds int `json:"pick_seconds"`
 	// BuildSeconds is the deckbuilding timer, 120 to 1800; zero is 900.
 	BuildSeconds int `json:"build_seconds"`
+	// BuildUntimed builds with no timer (#5700): the rounds begin when
+	// the last person has submitted. It excludes build_seconds.
+	BuildUntimed bool `json:"build_untimed,omitempty"`
 	// BestOf is the length of the draft's matches: 1 (the default) or
 	// 3.
 	BestOf int `json:"best_of"`
@@ -253,6 +256,9 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 		}
 
 		build := time.Duration(0)
+		if body.BuildUntimed && body.BuildSeconds != 0 {
+			return httpError(http.StatusBadRequest, "send build_seconds or build_untimed, not both")
+		}
 		if body.BuildSeconds != 0 {
 			build = time.Duration(body.BuildSeconds) * time.Second
 			if build < draft.MinBuildTimeout || build > draft.MaxBuildTimeout {
@@ -272,6 +278,7 @@ func createDraft(visitor *ratelimit.Limiter) lobbyHandler {
 			Seats:        seats,
 			PickTimeout:  timeout,
 			BuildTimeout: build,
+			BuildUntimed: body.BuildUntimed,
 			BestOf:       body.BestOf,
 			HostName:     "Player",
 			Solo:         true,

@@ -242,7 +242,8 @@
 
   // The countdown's tick, only while a timer is running.
   $effect(() => {
-    const ticking = view?.state === "picking" ? !!view.deadline : building && !!view?.build;
+    const ticking =
+      view?.state === "picking" ? !!view.deadline : building && !!view?.build?.deadline;
     if (!ticking) return;
     const t = setInterval(() => (clock = performance.now()), 250);
     return () => clearInterval(t);

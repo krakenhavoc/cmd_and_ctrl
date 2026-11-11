@@ -106,10 +106,13 @@ export interface DraftDeck {
 
 /** The deckbuilding step, while it is open. */
 export interface DraftBuild {
-  deadline: string;
+  /** When the timer runs out. Absent when the build is untimed. */
+  deadline?: string;
   now: string;
-  /** The whole build timer, in seconds. */
+  /** The whole build timer, in seconds; 0 when the build is untimed. */
   seconds: number;
+  /** The build has no timer: the rounds begin when everyone has submitted (#5700). */
+  untimed?: boolean;
   /** The smallest legal deck (CR 100.2b). */
   deck_min: number;
   /** The viewer has submitted a deck of their own. */
@@ -232,6 +235,10 @@ export interface CreateDraftInput {
   seats: number;
   name?: string;
   pick_seconds?: number;
+  /** The deck building timer, 120 to 1800 seconds; the server's 900 when absent. */
+  build_seconds?: number;
+  /** Deck building has no timer (#5700). Not sent with `build_seconds`. */
+  build_untimed?: boolean;
   /** The length of the draft's matches: 1 (the default) or 3. */
   best_of?: number;
 }
@@ -321,6 +328,8 @@ export async function createDraft(input: CreateDraftInput): Promise<DraftSession
   const name = input.name?.trim();
   if (name) body.name = name;
   if (input.pick_seconds !== undefined) body.pick_seconds = input.pick_seconds;
+  if (input.build_untimed) body.build_untimed = true;
+  else if (input.build_seconds !== undefined) body.build_seconds = input.build_seconds;
   if (input.best_of === 3) body.best_of = 3;
   const res = await draftFetch("/draft", { method: "POST", body, token: signedInBearer() });
   return (await res.json()) as DraftSession;
@@ -527,6 +536,19 @@ export function storedDraftIDs(now: number = Date.now()): string[] {
  */
 export function defaultPickMode(seats: number): DraftMode {
   return seats === 4 ? "pick_two" : "pick_one";
+}
+
+/** The deck building timer's bounds and default, in minutes (the server's 2 to 30, 15). */
+export const MIN_BUILD_MINUTES = 2;
+export const MAX_BUILD_MINUTES = 30;
+export const DEFAULT_BUILD_MINUTES = 15;
+
+/** The build lengths, in minutes, the form offers. */
+export function buildMinuteChoices(): number[] {
+  return Array.from(
+    { length: MAX_BUILD_MINUTES - MIN_BUILD_MINUTES + 1 },
+    (_, i) => MIN_BUILD_MINUTES + i,
+  );
 }
 
 /** The seat counts the form offers. */

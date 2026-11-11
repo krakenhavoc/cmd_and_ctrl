@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  buildMinuteChoices,
   canConfirm,
   cardAccessibleName,
   clockText,
@@ -507,6 +508,34 @@ describe("the draft routes", () => {
     const spy = serve({ token: "t", expires_at: "x", draft: view() }, 201);
     await createDraft({ set: "blb", mode: "pick_one", seats: 8, name: "   " });
     expect(call(spy).body).toEqual({ set: "blb", mode: "pick_one", seats: 8 });
+  });
+
+  it("sends the build timer choice: untimed, or a length, never both", async () => {
+    const spy = serve({ token: "t", expires_at: "x", draft: view() }, 201);
+    await createDraft({ set: "blb", mode: "pick_one", seats: 8, build_untimed: true });
+    expect(call(spy).body).toEqual({ set: "blb", mode: "pick_one", seats: 8, build_untimed: true });
+    await createDraft({
+      set: "blb",
+      mode: "pick_one",
+      seats: 8,
+      build_untimed: true,
+      build_seconds: 600,
+    });
+    expect(call(spy, 1).body).toEqual({
+      set: "blb",
+      mode: "pick_one",
+      seats: 8,
+      build_untimed: true,
+    });
+    await createDraft({ cube: "c1", mode: "pick_one", seats: 4, build_seconds: 600 });
+    expect(call(spy, 2).body).toEqual({
+      cube: "c1",
+      mode: "pick_one",
+      seats: 4,
+      build_seconds: 600,
+    });
+    expect(buildMinuteChoices()[0]).toBe(2);
+    expect(buildMinuteChoices().at(-1)).toBe(30);
   });
 
   it("previews by invite, and by seat token", async () => {

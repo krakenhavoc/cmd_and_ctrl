@@ -222,9 +222,10 @@ export function sameDeck(a: BuildState, deck: DraftDeck | undefined | null): boo
  * Whole seconds left on the build timer: the server's `deadline - now`
  * when the frame was built, less the time passed here since it arrived,
  * so a clock that is wrong on this device does not move the deadline.
+ * Null when there is nothing to count: no build, or an untimed one.
  */
 export function buildSecondsLeft(build: DraftBuild | undefined, elapsedMs: number): number | null {
-  if (!build) return null;
+  if (!build || build.untimed || !build.deadline) return null;
   const deadline = Date.parse(build.deadline);
   const now = Date.parse(build.now);
   if (Number.isNaN(deadline) || Number.isNaN(now)) return null;

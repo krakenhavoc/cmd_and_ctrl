@@ -391,6 +391,10 @@ registered, or when this file is stale.
 | `draftUseSuggestion` | `Use the suggested lands` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's button that sets the basic land steppers to the land-count suggestion |
 | `draftSubmitDeck` | `Submit deck` | button | text | `lib/components/draft/DraftBuild.svelte` | the deckbuilding screen's primary: sends draft_deck; disabled below the 40-card minimum |
 | `draftMatchLength` | `Matches` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's choice of the draft's match length: best of one (the default) or best of three |
+| `draftBuildTime` | `Deck building` | radiogroup | text | `lib/components/draft/DraftCreate.svelte` | the create form's choice of how deck building after the last pick runs (#5700): on a timer (the default) or untimed |
+| `draftBuildTimed` | `Timed` | radio | text | `lib/components/draft/DraftCreate.svelte` | the create form's deck building radio for a timer: when it ends, a deck is built for anyone who has not submitted one |
+| `draftBuildUntimed` | `Untimed` | radio | text | `lib/components/draft/DraftCreate.svelte` | the create form's deck building radio for no timer: the rounds begin when every person has submitted a deck |
+| `draftBuildMinutes` | `Minutes to build` | combobox | text | `lib/components/draft/DraftCreate.svelte` | the create form's length of the deck building timer, 2 to 30 minutes, shown while deck building is timed |
 | `draftRound` | `Round <n> of <m>` (starts with `Round `) | heading | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's headline while a round is in play |
 | `draftPlayMatch` | `Play your match` | button | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's primary: POST /draft/{id}/match, then the limited table the match is played at |
 | `draftRecords` | `Win-loss table` | heading | text | `lib/components/draft/DraftRounds.svelte` | the rounds screen's table of every seat's wins and losses; the draft's only standings |

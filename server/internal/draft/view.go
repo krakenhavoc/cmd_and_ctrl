@@ -84,10 +84,15 @@ type View struct {
 
 // BuildView is the deckbuilding step.
 type BuildView struct {
-	Deadline time.Time `json:"deadline"`
-	Now      time.Time `json:"now"`
-	// Seconds is the whole build timer.
+	// Deadline is when the timer runs out. It is absent when the build
+	// is untimed (#5700): the rounds begin when the last person has
+	// submitted.
+	Deadline *time.Time `json:"deadline,omitempty"`
+	Now      time.Time  `json:"now"`
+	// Seconds is the whole build timer, 0 when the build is untimed.
 	Seconds int `json:"seconds"`
+	// Untimed says the build has no timer.
+	Untimed bool `json:"untimed,omitempty"`
 	// DeckMin is the smallest legal deck (CR 100.2b).
 	DeckMin int `json:"deck_min"`
 	// Submitted says the viewer has submitted a deck. They may submit
@@ -262,13 +267,19 @@ func (d *Draft) playView(v *View, you int, now time.Time) {
 		v.Deck = &own
 	}
 	if p.phase == PhaseBuilding {
-		v.Build = &BuildView{
-			Deadline:  p.buildDeadline,
+		b := &BuildView{
 			Now:       now,
-			Seconds:   int(d.buildTimeout() / time.Second),
 			DeckMin:   limitedDeckMin,
 			Submitted: p.built[you] && !p.auto[you],
 		}
+		if d.cfg.BuildUntimed {
+			b.Untimed = true
+		} else {
+			deadline := p.buildDeadline
+			b.Deadline = &deadline
+			b.Seconds = int(d.buildTimeout() / time.Second)
+		}
+		v.Build = b
 		return
 	}
 	if len(p.rounds) == 0 {

@@ -706,7 +706,7 @@ lasts the session TTL.
 
 ```json
 { "name": "Friday draft", "set": "blb", "mode": "pick_one", "seats": 8, "pick_seconds": 60,
-  "build_seconds": 900, "best_of": 1 }
+  "build_seconds": 900, "build_untimed": false, "best_of": 1 }
 ```
 
 - `set` is a set code from `GET /draft/sets` whose `draftable` is true. Any
@@ -737,6 +737,15 @@ lasts the session TTL.
 - `pick_seconds` is the pick timer, 15 to 300 (default 60).
 - `build_seconds` is the deckbuilding timer that follows the last pick, 120
   to 1800 (default 900).
+- `build_untimed` (boolean, default false; #5700) builds with no timer: the
+  draft has no build deadline, nobody is built for on time, and the rounds
+  begin when the last person has submitted. Bot seats are still built at
+  once. Sending it with `build_seconds` is a 400. A person with no socket
+  for 10 minutes (counted from when the build began, or from when their
+  last socket went if that was later, and from the start again whenever
+  they come back) is built for by the server's deck builder, so one person
+  who has left cannot hold the rounds back. A person whose page is open is
+  never built for. Applies to a set draft and a cube draft alike.
 - `best_of` is the length of the draft's matches: 1 (the default) or 3.
 - `name` is optional, at most 80 bytes, and goes through the name filter
   (400 `name_not_allowed`, as on `POST /games`). Blank gets a generated
@@ -825,9 +834,10 @@ says what follows ([protocol.md](protocol.md#the-draft-socket-draftidws)):
   `draft_deck` frame on the draft socket. The server runs the limited deck
   check (`deck.ValidateLimited`); a deck that fails is refused and changes
   nothing. A person may submit again until the rounds begin, which is when
-  the last person has submitted or `build_seconds` runs out. A person who
-  has not submitted by then gets a deck built from their pool by the
-  server's deck builder, as every bot seat does.
+  the last person has submitted or `build_seconds` runs out (an untimed
+  build, `build_untimed`, has no timer, only the 10-minute away rule above).
+  A person who has not submitted by then gets a deck built from their pool
+  by the server's deck builder, as every bot seat does.
 - **`rounds`.** Three rounds of one-against-one matches, best of one unless
   the draft asked for `best_of` 3. Each round pairs every seat at random
   from the draft's seed: nobody meets a seat they have already played,

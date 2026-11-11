@@ -352,6 +352,76 @@ describe("the create form", () => {
     expect(location.hash).toBe(`#/draft/${ID}`);
   });
 
+  it("offers timed or untimed deck building, timed for 15 minutes by default", async () => {
+    serve({ "GET /draft/sets": { body: SETS } });
+    const { container } = render(Draft as never, {} as never);
+    await settle();
+    const radio = (v: string) =>
+      container.querySelector<HTMLInputElement>(`input[name="draft-build-time"][value="${v}"]`)!;
+    const minutes = (): HTMLSelectElement | null =>
+      container.querySelector<HTMLSelectElement>("#draft-build-minutes");
+    expect(radio("timed").checked).toBe(true);
+    expect(radio("untimed").checked).toBe(false);
+    expect(minutes()!.value).toBe("15");
+    expect([...minutes()!.options].map((o) => o.value)).toEqual(
+      Array.from({ length: 29 }, (_, i) => String(i + 2)),
+    );
+    expect(container.textContent).toContain(L.draftBuildTime);
+    expect(container.textContent).toContain(L.draftBuildTimed);
+    expect(container.textContent).toContain(L.draftBuildUntimed);
+    // Untimed has no length to choose.
+    radio("untimed").checked = true;
+    radio("untimed").dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    expect(radio("untimed").checked).toBe(true);
+    expect(minutes()).toBeNull();
+  });
+
+  it("posts build_seconds for a chosen length, and build_untimed for an untimed draft", async () => {
+    serve({
+      "GET /draft/sets": { body: SETS },
+      "POST /draft": {
+        status: 201,
+        body: {
+          token: "seat-token",
+          expires_at: "2099-01-01T00:00:00Z",
+          draft: view({ state: "lobby" }),
+        },
+      },
+    });
+    const { container } = render(Draft as never, { set: "dmu" } as never);
+    await settle();
+    const submit = async (): Promise<void> => {
+      container
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await settle();
+    };
+    const radio = (v: string) =>
+      container.querySelector<HTMLInputElement>(`input[name="draft-build-time"][value="${v}"]`)!;
+
+    const minutes = container.querySelector<HTMLSelectElement>("#draft-build-minutes")!;
+    minutes.value = "20";
+    minutes.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    await submit();
+    const first = sent("POST", "/draft")[0].body as Record<string, unknown>;
+    expect(first).toMatchObject({ set: "dmu", build_seconds: 1200 });
+    expect(first).not.toHaveProperty("build_untimed");
+
+    location.hash = "#/draft";
+    await settle();
+    const again = container.querySelector("form");
+    expect(again).not.toBeNull();
+    radio("untimed").checked = true;
+    radio("untimed").dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    await submit();
+    const last = sent("POST", "/draft").at(-1)!.body as Record<string, unknown>;
+    expect(last.build_untimed).toBe(true);
+    expect(last).not.toHaveProperty("build_seconds");
+  });
+
   it("says so when the link's set cannot be drafted, and picks one that can", async () => {
     serve({ "GET /draft/sets": { body: SETS } });
     const { container } = render(Draft as never, { set: "new" } as never);
@@ -1248,6 +1318,37 @@ describe("building a deck", () => {
     expect(text(c.querySelector('[data-testid="draft-announce"]'))).toBe(
       "The picks are done. Build your deck.",
     );
+  });
+
+  it("shows no countdown when the build is untimed, and says the rounds wait for everyone", async () => {
+    const c = await room(
+      building({
+        build: {
+          now: "2026-11-11T19:00:00Z",
+          seconds: 0,
+          untimed: true,
+          deck_min: 40,
+          submitted: false,
+        },
+      }),
+    );
+    expect(text(c.querySelector("#draft-build-h"))).toBe(L.draftBuildDeck);
+    expect(c.querySelector(`[aria-label="${L.draftBuildTimer}"]`)).toBeNull();
+    expect(c.querySelector('[role="timer"]')).toBeNull();
+    const help = text(c.querySelector('[data-testid="draft-build"] .help'));
+    expect(help).toContain("the rounds begin when everyone has submitted a deck");
+    expect(help).not.toContain("When the timer ends");
+    // The deck is built and submitted as ever.
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(true);
+  });
+
+  it("says a deck is built when the timer ends, for a timed build", async () => {
+    const c = await room(building());
+    const help = text(c.querySelector('[data-testid="draft-build"] .help'));
+    expect(help).toContain(
+      "When the timer ends, a deck is built for anyone who has not submitted one",
+    );
+    expect(help).not.toContain("There is no timer");
   });
 
   it("moves a card with a click, adds basics with the steppers, and submits the deck", async () => {
