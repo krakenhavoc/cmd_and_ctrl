@@ -54,3 +54,10 @@ func cmdr2B27RestOneTopRestBottom(g *game.Game, res TakeFromLibraryResult) error
 		Reason:    libraryOrderLabel(g, res.Source, "put one of those cards on top of your library and the other on the bottom"),
 	})
 }
+
+// "then discard two cards unless you discard an enchantment card" —
+// Thirst for Meaning (and Arm-Mounted Anchor's sentence): Thirst for
+// Knowledge's prompt with enchantment cards where that card has artifacts.
+var drawThenDiscardTwoUnlessEnchantment = discardTwoUnlessOne("discard-two-unless-enchantment",
+	"discard two cards, or one enchantment card",
+	func(c game.Card) bool { return c.IsEnchantment() })

@@ -308,3 +308,99 @@ func TestCmdr2B27DiabolicVisionTakesOneOfFiveAndReordersTheRest(t *testing.T) {
 		t.Errorf("library top %v, want %v", got, want)
 	}
 }
+
+const (
+	cmdr2B27MeaningOracle = "70e58068-90d2-4720-a11c-5d243046b4a3"
+	cmdr2B27WatchOracle   = "847b5be5-cb0c-4857-bcd9-c5cfe55fdaeb"
+)
+
+func TestCmdr2B27ThirstForMeaningDrawsThreeAndOwesTwoDiscards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	hand := me.Hand.Size()
+	castCatalogSpell(t, g, "Thirst for Meaning", "Instant", cmdr2B27MeaningOracle, nil)
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+3 {
+		t.Errorf("drew %d, want 3", me.Hand.Size()-hand)
+	}
+	if discardOwed(g, me.ID) != 2 {
+		t.Errorf("owes %d discards, want 2", discardOwed(g, me.ID))
+	}
+}
+
+func TestCmdr2B27ThirstForMeaningAcceptsOneEnchantmentOnly(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	aura := handCardFull(me, "Pacifism", "Enchantment — Aura", "", "", nil)
+	rock := handCardFull(me, "Sol Ring", "Artifact", "", "", nil)
+	castCatalogSpell(t, g, "Thirst for Meaning", "Instant", cmdr2B27MeaningOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := discardChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no discard prompt")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{rock}); err == nil {
+		t.Fatal("a lone artifact was accepted")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{aura}); err != nil {
+		t.Fatalf("one enchantment card is a complete discard: %v", err)
+	}
+	if me.Hand.Contains(aura) || !me.Hand.Contains(rock) {
+		t.Error("only the enchantment was discarded")
+	}
+}
+
+func TestCmdr2B27ThirstForMeaningAcceptsAnyTwoCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	a := handCardFull(me, "Sol Ring", "Artifact", "", "", nil)
+	b := handCardFull(me, "Forest", "Basic Land — Forest", "", "", nil)
+	castCatalogSpell(t, g, "Thirst for Meaning", "Instant", cmdr2B27MeaningOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := discardChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no discard prompt")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{a, b}); err != nil {
+		t.Fatalf("two cards of any kind: %v", err)
+	}
+	if me.Hand.Contains(a) || me.Hand.Contains(b) {
+		t.Error("both cards should be discarded")
+	}
+}
+
+func TestCmdr2B27KeepWatchDrawsForEachAttackingCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	a := b12Push(g, active.ID, "Raider A", "Creature — Human", "", 2, 2)
+	b := b12Push(g, active.ID, "Raider B", "Creature — Human", "", 2, 2)
+	b12Creature(g, active.ID, "Idle", "Creature — Human", 2, 2)
+	declareAttack(t, g, victim.ID, a, b)
+	passPriorityAroundTable(t, g)
+	hand := victim.Hand.Size()
+	card := game.Card{Name: "Keep Watch", TypeLine: "Instant", ManaCost: "{2}{U}", OracleID: cmdr2B27WatchOracle}
+	if err := socB19CastWithPool(g, victim, card, "U", 3, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if got := victim.Hand.Size() - hand; got != 2 {
+		t.Errorf("drew %d, want 2 (one per attacker, not the idle creature)", got)
+	}
+}
+
+func TestCmdr2B27KeepWatchDrawsNothingOutsideCombat(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	b12Creature(g, me.ID, "Idle", "Creature — Human", 2, 2)
+	advanceToMain(t, g)
+	hand := me.Hand.Size()
+	card := game.Card{Name: "Keep Watch", TypeLine: "Instant", ManaCost: "{2}{U}", OracleID: cmdr2B27WatchOracle}
+	if err := socB19CastWithPool(g, me, card, "U", 3, game.CastSpellParams{}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand {
+		t.Errorf("drew %d with no attackers", me.Hand.Size()-hand)
+	}
+}
