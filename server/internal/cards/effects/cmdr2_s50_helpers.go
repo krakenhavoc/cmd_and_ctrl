@@ -9,28 +9,12 @@ import (
 // cmdr2_s50_helpers.go — helpers private to Commander wave 2, batch 50
 // (#5368): Duskmourn enchantments, horrors and hideaway.
 
-// cmdr2S50SpellOfAnyCreatureType passes on a spell with any of the given
-// creature types, read as the spell sits on the stack (a changeling or a
-// kindred spell counts, CR 702.73a / CR 308.3). A spell with two of the
-// types is still one spell. The types are words of the source's text
-// (CR 612.2).
-func cmdr2S50SpellOfAnyCreatureType(subtypes ...string) CostPredicate {
-	return func(q game.CostQuery) bool {
-		for _, s := range subtypes {
-			if q.Card.HasSubtype(q.Source.TextSubtype(s)) {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-// cmdr2S50ManaShortfall is how many mana a spell on the stack cost less
+// cmdr2S50ManaSpentShortfall is how many mana a spell on the stack cost less
 // than its mana value: the difference between its mana value (X included,
 // CR 202.3e) and the mana spent to cast it, or zero when it cost at least
 // that much (or its cost cannot be read). Neither number can change once
 // the spell is cast (CR 601.2h).
-func cmdr2S50ManaShortfall(g *game.Game, spellID uuid.UUID) int {
+func cmdr2S50ManaSpentShortfall(g *game.Game, spellID uuid.UUID) int {
 	mv, ok := g.LastKnownSpellManaValueForEffect(spellID)
 	if !ok {
 		return 0

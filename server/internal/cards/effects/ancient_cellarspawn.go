@@ -31,18 +31,18 @@ func init() {
 		Completeness:   CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsLess(1, "Each spell you cast that's a Demon, Horror, or Nightmare costs {1} less to cast.",
-				YourSpell(), cmdr2S50SpellOfAnyCreatureType("Demon", "Horror", "Nightmare")),
+				YourSpell(), cmdr2B05SpellOfAnyType("Demon", "Horror", "Nightmare")),
 		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Kind == game.EventCast && ev.Actor == source.Controller && cmdr2S50ManaShortfall(g, ev.CardID) > 0
+				return ev.Kind == game.EventCast && ev.Actor == source.Controller && cmdr2S50ManaSpentShortfall(g, ev.CardID) > 0
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Key:     "Ancient Cellarspawn — target opponent loses life equal to the difference",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, "Ancient Cellarspawn — target opponent loses life equal to the difference")
-				item.Params.Amount = cmdr2S50ManaShortfall(g, ev.CardID)
+				item.Params.Amount = cmdr2S50ManaSpentShortfall(g, ev.CardID)
 				return item
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
