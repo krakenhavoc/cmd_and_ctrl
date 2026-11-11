@@ -1,0 +1,554 @@
+{
+ "set": "snc",
+ "mechanics": [
+  {
+   "name": "Connive (CR 701.50)",
+   "exists": true,
+   "evidence": "grep Connive: 8 files in internal/game, 61 in effects; effects/connive.go has Connive and connive X (raffine_scheming_seer.go)."
+  },
+  {
+   "name": "Casualty N (CR 702.153)",
+   "exists": true,
+   "evidence": "game/casualty.go + effects/casualty.go Casualty(n); 22 effects files. Granting it exists too (SpellsYouCastHave, silverquill_the_disputant.go)."
+  },
+  {
+   "name": "Casualty X (Ob Nixilis, the Adversary)",
+   "exists": false,
+   "evidence": "grep -i 'Casualty X' and 'CasualtyX' over effects and game: 0 hits. Casualty(n) is a fixed PowerGE(n); resolveCasualty copies with no exception. Seam s2."
+  },
+  {
+   "name": "Blitz (CR 702.152)",
+   "exists": true,
+   "evidence": "game/blitz.go + effects/blitz.go Blitz(cost); 44 effects files; no printed-blitz card is in this input."
+  },
+  {
+   "name": "Blitz granted to spells (Henzie)",
+   "exists": false,
+   "evidence": "grep 'has blitz', 'GrantBlitz': 0 hits; effects/granted_alternative_cost.go:383 (checkGrantedAlternativeCosts) refuses a granted offer with o.Blitz. Seam s1."
+  },
+  {
+   "name": "Alliance (ability word)",
+   "exists": true,
+   "evidence": "'Alliance —' in 26 effects files (bosss_chauffeur.go etc.); it is an enters trigger for another creature you control."
+  },
+  {
+   "name": "Hideaway N (CR 702.75)",
+   "exists": true,
+   "evidence": "effects/hideaway.go func Hideaway; docs/adding-cards.md 'Adding a hideaway card (S43+, ADR 0091)'."
+  },
+  {
+   "name": "Shield counters (CR 122.1c)",
+   "exists": true,
+   "evidence": "CounterShield in 47 effects files (counter_shields.go); 'shield counter' in 24."
+  },
+  {
+   "name": "Tri-colour 'exile this card from your hand: target land gains ... until this card is cast from exile' cycle",
+   "exists": true,
+   "evidence": "grep 'until this card is cast from exile': emrakul_the_exigent_doom.go, game/duration.go UntilCardCast (#3520)."
+  },
+  {
+   "name": "'Five or more mana values among cards in your graveyard' (unnamed SNC threshold)",
+   "exists": false,
+   "evidence": "grep 'five or more mana values' and 'different mana values among cards in your graveyard': 0 hits. Not an engine seam: a count over the graveyard, one new helper in batch 12."
+  },
+  {
+   "name": "Fish token with \"This token can't be blocked\"",
+   "exists": false,
+   "evidence": "grep 'Fish creature token with': only reef_worm.go (a different Fish). New token row, all four cards in batch 7."
+  },
+  {
+   "name": "Citizen token (1/1 green and white)",
+   "exists": true,
+   "evidence": "'Citizen creature token' in 9 effects files (bosss_chauffeur.go, caldaia_guardian.go, grand_crescendo.go)."
+  },
+  {
+   "name": "Treasure-mana and colours-of-mana read on an activation",
+   "exists": true,
+   "evidence": "game/activated.go #3855 ('an ability that reads the mana spent to activate it'); effects/context.go ManaSpent/ColorsSpent; hired_hexblade.go for the cast side."
+  },
+  {
+   "name": "NCC returning keywords: encore, spectacle, scavenge, parley, split second, escape, support, manifest, addendum, aftermath, affinity, dethrone, melee, replicate, suspend, goad, proliferate, phasing",
+   "exists": true,
+   "evidence": "each grepped in effects: encore 22 files, spectacle 11, scavenge 53, parley 6, split second 19, escape 53, support 21, manifest 77, addendum 2 (unbreakable_formation.go), aftermath 13, affinity 61, dethrone 2 (scourge_of_the_throne.go), melee 19, replicate 22 (granted: hugh_first_of_many.go), suspend 44, goad 91, proliferate 75, phase out 37."
+  }
+ ],
+ "seams": [
+  {
+   "id": "s1",
+   "title": "Grant blitz to spells you cast, priced at their mana cost",
+   "clause": "Each creature spell you cast with mana value 4 or greater has blitz. The blitz cost is equal to its mana cost. / Blitz costs you pay cost {1} less for each time you've cast your commander from the command zone this game.",
+   "why": "A permanent cannot grant blitz: checkGrantedAlternativeCosts (server/internal/cards/effects/granted_alternative_cost.go, the o.Dash || o.Blitz || o.Sneak refusal) panics on a granted offer carrying Blitz, and game/granted_alternative_cost.go has no entry hook that applies blitz's haste, draw grant and end-step sacrifice off a granted key. Extend game.GrantedAlternativeCost the way granted evoke and granted warp were (GrantedAltCostEvoke, effects/granted_evoke.go): a 'granted-blitz' key with PricedAtManaCost, a MinManaValue 4 creature filter, the riders applied through game.ApplyBlitzRidersForEffect, and a reduction that applies to blitz costs only (printed and granted) counted from commander casts.",
+   "checked": "grep -i 'has blitz', 'GrantBlitz', 'blitz cost is equal' over effects+game comments: 0. grep Blitz in granted_alternative_cost.go: only the refusal (effects :383) and onlyMana (game :576). Precedents that DO exist: PricedAtManaCost (Herigast emerge), EvokeForSpellsYouCastFromHand, commander-cast counts ('cast your commander from the command zone this game' in 18 files, e.g. commanders_insight.go).",
+   "size": "medium",
+   "cards": [
+    "5320f5a6-8066-47d4-aa0a-4c879f39d413"
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "Build casualty X with a modified copy",
+   "clause": "Casualty X. The copy isn't legendary and has starting loyalty X.",
+   "why": "Casualty(n) (server/internal/cards/effects/casualty.go) is a fixed 'creature with power n or greater' sacrifice, and the copy is the engine's own trigger (game/casualty.go resolveCasualty), which copies with no exceptions. Needed: a casualty cost whose N is announced as X (any creature may be sacrificed, X is its power, read from the sacrificed permanent's last-known power on PaidCost), and a copy exception on that trigger (not legendary, starting loyalty X) for a permanent-spell copy that becomes a token.",
+   "checked": "grep -i 'Casualty X', 'CasualtyX', 'casualty.*XValue' over effects+game: no implementation. Copy exceptions on spell copies exist elsewhere ('copy ... isn't legendary' in 31 files, double_major.go), and 'copy of a permanent spell becomes a token' in 17 files, so only the casualty trigger and the variable cost are missing. The Devil token of the -2 exists (pugnacious_pugilist.go, tibalt_rakish_instigator.go).",
+   "size": "medium",
+   "cards": [
+    "a6abb6af-7ea2-43f3-8718-2a077ad0c947"
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "Add 'untap N tapped creatures you control' as an activation cost",
+   "clause": "{W}, {T}, Untap a tapped creature you control: ... / {W}{W}, {T}, Untap two tapped creatures you control: ... / {W}{W}{W}{W}{W}, {T}, Untap fifteen tapped creatures you control: You win the game.",
+   "why": "game.AbilityCost (game/activated.go) has TapOthers (tap untapped permanents) but no component that untaps tapped ones. Add its mirror (an UntapOthers *TapOthersCost or a flag on TapOthersCost), with the picker wording, the enumerator in server/internal/legal and the protocol list it rides on.",
+   "checked": "Listed every field of AbilityCost: Tap, TapOthers, Waterbend, Sacrifice*, Mana*, Life*, Energy*, Loyalty*, Crew, Saddle, RemoveCounters, AddCounter, Blight, Discard*, Reveal*, ReturnToHand, Exile*, ReturnSelf, BottomSelf, *Grantor, UnattachEquipment, Exert, PutFromHandOnLibraryTop, ExileFromLibraryTop, Mill, Either, Forage: none untaps. grep 'Untap (a|two|X|four) tapped' and 'UntapOthers|UntapTapped' over effects+game: 0.",
+   "size": "small",
+   "cards": [
+    "36a9de4c-8073-475d-8679-e50844eef09e"
+   ]
+  },
+  {
+   "id": "s4",
+   "title": "Let a cast permission ask for a creature sacrifice in addition",
+   "clause": "Once during each of your turns, you may cast an instant or sorcery spell from your graveyard by sacrificing a creature in addition to paying its other costs. If a spell cast this way would be put into your graveyard, exile it instead.",
+   "why": "game.CastPermission (game/cast_permission.go ~:782-835) carries SacrificeLandInAddition, SacrificeNonlandPermanentInAddition, LifeInAddition and RemoveCountersInAddition, each a fixed clause; there is no 'sacrifice a creature' one. Add the sibling (or generalise to a TargetSpec) beside them. The rest of the card has precedents: 'Once during each of your turns, you may cast' (16 files), 'If a spell cast this way would be put into your graveyard, exile it instead' (finale_of_promise.go).",
+   "checked": "grep 'InAddition' in game/cast_permission.go: only the four fields above. grep 'sacrific(e|ing) a creature in addition' over effects+game: 0. Falco Spara's 'by removing a counter from a creature you control' is NOT part of this seam: RemoveCountersInAddition (dawnhand_dissident.go) with N=1 on PlayFromTopOfYourLibrary (into_the_pit.go) covers it; it is a watch item in batch 20.",
+   "size": "small",
+   "cards": [
+    "d1438681-241b-4d53-9470-4d04a7797ea8"
+   ]
+  }
+ ],
+ "batches": [
+  {
+   "n": 1,
+   "theme": "Vanilla, French vanilla and one-line creatures",
+   "shared": "No new helpers. Hybrid-cost pump abilities (the three Initiates) and enters triggers from effects.Do primitives. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "f394d2bf-89aa-44c1-b473-8c7a8874a9a3",
+    "8f606acf-db16-42cd-8907-dad88c4a1d54",
+    "9c39bc53-52d3-4610-920e-5607a625b01f",
+    "533c4956-87f8-4bae-8924-166fc2e9ec1f",
+    "0e2f8758-7457-4b54-ae61-a9c68cea4a23",
+    "470f0bbf-a0c9-4216-96f0-d400dac17aef",
+    "184c763c-b52a-471c-bd87-d01729ebe5e4",
+    "df9a3fe0-aca8-4adb-9ef6-45616025925b",
+    "4e08e07f-ca30-4e34-b207-d8fe62c03777",
+    "0049438b-e37e-4c57-820e-f2ddf3322170",
+    "bdc3a563-86e0-4457-b00b-85c03e62a930",
+    "5e0d877c-6ce3-462b-9746-7fc921c93be9",
+    "c756d786-9aff-4d2e-9c06-6ae01d5fca2e"
+   ]
+  },
+  {
+   "n": 2,
+   "theme": "Simple instants and sorceries",
+   "shared": "Pump, burn, draw, fight and exile one-liners from primitives.go/helpers.go; Treasure token from the token catalog. Incandescent Aria ('3 damage to each nontoken creature') declares its Sweep. Guard: a card that reads as a board wipe declares its Sweep. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "1f570526-7fb0-4fe5-8014-b5793eb65f87",
+    "f4e860f1-e637-4640-b257-57c2e42793ce",
+    "c777002d-dcd4-4d75-8175-5440a8bb118e",
+    "d05aeada-2a9f-464d-8a66-b6e90f43bae3",
+    "bf65a5f5-5536-4616-a09e-2416439c7bc6",
+    "e9ede348-f1dc-45ba-9e31-3129ccc182d1",
+    "04dd9395-847b-46f7-a669-9b0df89d01ff",
+    "f6abd7e5-8c52-4b36-98c5-a4df8b5b6863",
+    "575d067a-83a0-49e7-8a74-e3e46a946c8c",
+    "c0c4ecf6-84e6-443e-8a81-e395b31c631d",
+    "2fd01a30-0c0e-4ac5-b96d-b2a6dad31f0c",
+    "96189b18-8cab-4709-b3b6-c4f2003829eb",
+    "d031b482-b33d-4eb4-a5bc-ea96e66a1d99"
+   ]
+  },
+  {
+   "n": 3,
+   "theme": "Sac-lands, plain Equipment and small artifacts",
+   "shared": "The five 'enters tapped, tap for two colours, {2}{C}{C},{T}, sacrifice: draw' lands share one helper (new, this batch only). Equipment through attachments.go. Goldhound is a Treasure artifact creature with its own mana ability. Cement Shoes grants an end-step tap trigger to the equipped creature (ADR 0093 grant) and 'doesn't untap'. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "7e2eb4d5-22a3-43c1-8cf3-e85723da1b61",
+    "e90e519d-023e-4d19-85ad-9972a76df3ba",
+    "19e6ebaf-7148-428f-8c79-1e9e57a4e659",
+    "18b0b583-d17b-4c67-bc67-c4d9aad155c7",
+    "46466819-3c8b-4f7e-82c2-93cb0118a6e6",
+    "f73d89ec-05c9-4998-a24b-bc675b04ec16",
+    "8a7c3718-74a1-4f26-8e06-0e17db4b0077",
+    "47b4dd69-0b2a-4dc3-99e8-f572fe049327",
+    "be3c138b-045b-4b08-a12f-a5679d972051",
+    "1201c146-54af-4668-a544-cde3ece23f2e",
+    "b5eb72bb-897f-4911-a797-3153c31df3e0",
+    "52d04c36-9d38-42b2-9e47-905ab06cb708"
+   ]
+  },
+  {
+   "n": 4,
+   "theme": "Connive creatures and attachments",
+   "shared": "effects/connive.go (Connive, connive X: raffine_scheming_seer.go). 'When it connives this way, return up to one target ...' (Psychic Pickpocket, Obscura Interceptor) is one shared reflexive helper; no card on develop prints it (grep 'connives this way': 0), so build it from the existing 'when you do' reflexive shape and STOP AND REPORT if a reflexive trigger cannot hang off a connive. Obscura Interceptor returns a SPELL to hand. Security Bypass grants a connive trigger to the enchanted creature. Connive also appears in batches 15, 17, 18 and 23 (Obscura Confluence, Kamiz, Change of Plans, Toluz) through the same Connive primitive. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "838c4831-7d5c-4025-92b3-46eee59d6b34",
+    "a4e8d2ad-cce2-45de-b9a2-7ba3b1546efb",
+    "d7ae0009-3747-4f3a-a613-3e640b0219a0",
+    "adfb28ca-2ba6-4104-b731-f8fd9367f7ec",
+    "5df80355-b12a-4989-94e5-1e0fa27350e8",
+    "2901948c-2a5a-4135-9135-27406e9d8652",
+    "ed2af15e-955b-43a1-80af-2484be373db3",
+    "cb660c6d-dc8b-4779-8613-6acf19418baa",
+    "60ead8a5-11fb-4eeb-99bf-0caaf1de1731",
+    "b0870f91-c544-446a-8f7b-a8d03fdb0a2a",
+    "584f9c45-9737-47bb-8ba4-a7cd9b0b2c1f"
+   ]
+  },
+  {
+   "n": 5,
+   "theme": "Casualty spells",
+   "shared": "Casualty(n) in casualty.go on OptionalCosts; the copy is the engine's trigger, declare only the cost (see silverquill_the_disputant.go and the 22 casualty cards on develop). Join the Maestros needs a new 4/3 black Ogre Warrior token row (only card that makes it). Cut Your Losses: 'mills half their library, rounded down' has precedents (helpers.go, kitsunes_technique.go). Audacious Swap: owner shuffles the permanent in, exiles the top card, land onto the battlefield else may cast free: watch item, stop and report if the 'that card's owner may cast it' permission does not fit. Grisly Sigil reads 'was dealt noncombat damage this turn' (bitter_downfall.go family).",
+   "after": [],
+   "cards": [
+    "5f12f665-f083-48ae-b61a-541051c996ec",
+    "1167fe30-32b8-4381-8067-a05cd345977b",
+    "c6932bcf-d66b-42c1-8ca4-6a4573e0f6bf",
+    "b9d9d118-a073-4e73-90fe-026462d1d895",
+    "144e3d90-8ed8-4c21-941d-fc59cec042a2",
+    "df45a344-5937-4a3f-a80f-581ea456ea05",
+    "8843faa9-0cd5-4ef3-8e7b-b8833db9dc84",
+    "849a7ae8-2b4e-4fa5-9607-2bfc961fee40",
+    "81d62f0a-b2ba-4e87-9003-e5472bd1101f",
+    "54530a84-8278-4c93-a2cb-f5c86619a053",
+    "8ce63f60-0211-46c7-8fb6-c5484ebfa029",
+    "40b0b93d-4075-42d6-bcd8-b2f9910cc7d2"
+   ]
+  },
+  {
+   "n": 6,
+   "theme": "Shield counters",
+   "shared": "CounterShield (counter_shields.go) with the enters-with-counters helper. Rigo: 'Whenever you attack a player or planeswalker with one or more creatures with power 1 or less' (bitter_work.go is the nearest attack-batch trigger). Sanctuary Warden: 'remove a counter from a creature or planeswalker you control. If you do'. Family's Favor grants an until-end-of-turn trigger (ADR 0093 grant bundle). Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "34f0beae-a8e2-4474-9f7f-4735d3f26863",
+    "094689cc-617a-426e-beb9-3f8de692cd5b",
+    "feee1926-0b63-404f-9b01-df965de26b5f",
+    "513034fc-873a-4877-afb2-39ece1ea6a7c",
+    "73829ae3-c8de-4e6d-9607-4b2e980ff144",
+    "c650f497-92d6-48cf-8b59-5d61eb184dc0",
+    "898c8415-8769-48c4-ad16-a4ba8c3d5d7d",
+    "3cdd795b-13b8-4812-89ee-d248368f915b",
+    "1f42a809-bbfc-4225-9c31-f7d0fa8fa17a",
+    "713bcfb6-e5ea-411e-b4b3-52e5eed5cdf1",
+    "7f5bebfd-faf3-485f-b906-aa96d621d499"
+   ]
+  },
+  {
+   "n": 7,
+   "theme": "Fish token and kinds of counters",
+   "shared": "ONE new token row: 1/1 blue Fish with \"This token can't be blocked\" (not Reef Worm's Fish), used by Reservoir Kraken, Sleep with the Fishes, Expendable Lackey and Exotic Pets, all here. 'For each kind of counter' has precedents: powerful_broker.go, blitzball_stadium.go; 'counter from among' aragorn_company_leader.go; 'move a counter from' fain_the_broker.go. Reservoir Kraken: each opponent in turn may tap a creature, a resolution choice. Contractual Safeguard: addendum as unbreakable_formation.go. The sentence 'for each kind of counter among permanents you control' also appears in batch 21 (Storm of Forms): reuse this batch's counter-kind count if it lands first, otherwise the precedent files. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "42e4d4d8-e4e0-4cf8-a6d0-887a17513280",
+    "48533a2d-1bdb-40a6-939e-9c8337e0dc5a",
+    "6f6cbcd4-7a4b-4a38-bf29-995e82e658ce",
+    "497cb281-e057-42fc-937d-512855b74159",
+    "41d408dc-f6fe-45b2-b225-2ac25db9ad0f",
+    "482889f4-6cf5-457f-9f52-a3f841e038b5",
+    "a87abe7a-fee9-45fd-b3d8-896e43ed6b3c",
+    "a01746f3-8e6f-47ce-a95b-e44556d1f73e",
+    "ba477a45-84cc-4a85-98e4-50dca3e58788",
+    "8ac43884-9f03-4945-98ea-c744d0403f32"
+   ]
+  },
+  {
+   "n": 8,
+   "theme": "Counters matter (Brokers)",
+   "shared": "Kros: generous_patron.go ('Whenever you put one or more counters on a creature you don't control') plus goad. Skyboon Evangelist: support.go. Park Heights Maverick: dethrone as scourge_of_the_throne.go, proliferate. Backstreet Bruiser: the defender waiver in adding-cards.md 'Adding a can't card' (#1936). Brokers Ascendancy puts loyalty counters. First Responder reads the returned creature's power. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "c29b592c-7115-4464-beba-e79f62691593",
+    "3ee68758-9431-4446-8539-f42f545f3bd0",
+    "def2087a-5020-41e8-aa7b-d1f0c1f0fdb6",
+    "debeb004-3157-43cf-95fd-220777417ff7",
+    "809edfed-89a9-4327-b7db-1bcec63f3e66",
+    "5dd54b2a-7d6a-44f5-8827-ff3660a4b12b",
+    "287f60a6-e83b-487b-add9-2048a06dcca1",
+    "354d9db1-18a6-4701-be3c-c4ded900e2ff",
+    "9bdf033e-87d4-4bc4-ba08-4b497cc1b559",
+    "8f5aed57-d0f3-4fa8-826c-0d94fa143f08"
+   ]
+  },
+  {
+   "n": 9,
+   "theme": "Alliance and Citizens I",
+   "shared": "Alliance is 'Whenever another creature you control enters' (bosss_chauffeur.go and 25 others). 'If this is the second time this ability has resolved this turn' (Rumor Gatherer, Sizzling Soloist): captain_michael_burnham.go, harvestrite_host.go. Sizzling Soloist's 'attacks during its controller's next combat phase if able' has no printed precedent (grep 0): watch item, stop and report if the attack-requirement duration does not fit. Citizen token from the token catalog (caldaia_guardian.go). Ceremonial Groundbreaker: 'Equip Citizen {1}' as the typed equip in attachments.go (blackblade_reforged.go). Angelic Observer: affinity for Citizens (affinity helpers, 41 files). Citizen words through TextSubtype. Guard: creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "39f7e59e-28dd-477e-be38-3fa515838ca4",
+    "5f7c6fa9-4208-4dc8-a75b-9586200d8e19",
+    "70af9a03-20d6-44e3-a181-b60e80bff643",
+    "e049eb22-a01a-463e-8de9-705d6eaf84e2",
+    "3ceca713-38de-4428-a4f1-2146f6e98393",
+    "f8975d81-d373-49b1-be00-9513b92877d9",
+    "232e16f4-32ae-4f42-a377-6bdebc9a06c7",
+    "96818698-c104-48f4-b73f-c8722d1d1be4",
+    "b3606b80-8d1b-4417-8902-a7ccf6b97cbb",
+    "17df0fda-d726-4c9d-bf44-6f2e3a347117",
+    "5bb05573-7e8f-471f-908d-04bccead79e3",
+    "64c7e03d-ba38-4979-8889-9bf0e7b8c66e",
+    "bbd340ce-cf06-43df-a060-be80bc46e985"
+   ]
+  },
+  {
+   "n": 10,
+   "theme": "Citizens II and Cabaretti",
+   "shared": "Same Citizen token row as batch 9 (existing, no new row). 'Look at the top five, may reveal a creature card' is one shape for Warm Welcome and Brazen Upstart. Prosperous Partnership: 'Tap three untapped creatures you control' is AbilityCost.TapOthers. Park Heights Pegasus: TurnTally.EnteredCardTypes. Bess: 'base power and toughness 1/1' filter, batched enters trigger. Scepter of Celebration creates 'that many' Citizens. Guard: creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "53807ded-5bbb-44a1-9c22-ffdd4b8523e0",
+    "aa4f9618-8106-451e-889a-79a5e8159256",
+    "758e68fd-76ba-467e-a756-c5daa7db16d5",
+    "00cd3bf9-0dd6-4ec0-a841-1839a71604ab",
+    "ce76d17e-d536-46f0-98e2-3e1b1b4f61a4",
+    "a40de3b1-b24b-4da4-b550-9ac9838aecba",
+    "c930b1f3-9bc3-4708-8d05-02295483c9d8",
+    "e0a9c4be-74fe-4984-9028-60380db1575b",
+    "fd92b588-f273-4206-9887-34e6877fc14f",
+    "df72b5d6-6f9e-4d6b-acf6-7dec4ff35468",
+    "9eb7f301-b9b6-48c3-9dad-e7df9cc15355"
+   ]
+  },
+  {
+   "n": 11,
+   "theme": "Treasure",
+   "shared": "Jolene: Xorn's 'plus an additional Treasure' replacement (xorn.go) and 'Whenever a player attacks one or more of your opponents' (breena_the_demagogue.go). Jetmir's Fixer and Paragon of Modernity read the mana spent TO ACTIVATE (game/activated.go #3855): watch item, stop and report if ManaSpent/ColorsSpent is empty for an ability item. Vazi: 'Treasure tokens you created this turn' and 'an opponent casts a spell or activates an ability, if mana from a Treasure was spent' have no printed precedent; derive the first from Game.EventsThisTurn, watch item for the second. Boxing Ring: 'a creature that fought this turn' from EventFight in EventsThisTurn (no tally exists; watch item). Capenna Express: 'Sacrifice a Treasure' cost. Spiteful Repossession counts damage dealt. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "a6e50e06-6d1d-457d-8fbb-ec9a866960c3",
+    "2578e8e4-a93c-4904-9037-92a1529c2c67",
+    "464968a8-865e-4ac8-927e-7c931e3dabb3",
+    "f87df7d4-99e2-4340-9d0a-b96c397555db",
+    "140d38cc-0ae6-4e9b-a60f-a51d2947e07b",
+    "8215f4a2-7131-426b-ad9c-6427caabd715",
+    "7446c013-63b0-402b-b8b9-dd25ccc553df",
+    "568432d1-c7fb-4da6-922a-22d4fa26284e",
+    "63fd77e2-348a-4f6c-88b4-465fbe339d29",
+    "c1c62704-1f20-48cf-8588-47e7fca85f7b",
+    "0e676904-17c3-40f2-9b5b-eb29cacc336f"
+   ]
+  },
+  {
+   "n": 12,
+   "theme": "Mana values in your graveyard",
+   "shared": "ONE new helper for this batch only: the number of different mana values among cards in a graveyard, and its 'five or more' threshold (no precedent: grep 0). Statics that depend on it rely on the graveyard layer invalidation that is already closed. Graveyard Shift: conditional flash as colossal_rattlewurm.go. Sewer Crocodile: 'costs {3} less to activate if' as arm_mounted_anchor.go / raft_security_officer.go. Oskar: cost reduction per mana value, and 'Whenever you discard a nonland card, you may cast it from your graveyard' (watch item, stop and report if a one-shot permission on the discarded card does not fit). All-Seeing Arbiter: -X/-0 until your next turn. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "03af4b10-900e-4013-bd5d-dd8d132d50fb",
+    "6944092f-22c6-4b65-840d-8c1b70883127",
+    "da8a93c6-66e2-492d-8894-397ba9ec5a87",
+    "b01e9ff2-865a-401e-a839-568cd4a0451d",
+    "fee73267-b0ef-4f43-a0bd-7728691d6f17",
+    "347a5faa-5656-4a36-af44-ab5a3ed267f4",
+    "0d6be8a4-b05b-40fb-a653-5aabf71809e0",
+    "f15460d9-0133-436c-b0fe-1661989124f0",
+    "14c2c818-0ce2-4809-a5ff-ee4a6253defa",
+    "85905607-dceb-4c37-81a3-ab441ce9490c"
+   ]
+  },
+  {
+   "n": 13,
+   "theme": "Sacrifice and Riveteers",
+   "shared": "Pyre-Sledge Arsonist: TurnTally.PermanentsSacrificed (korvold_gleeful_glutton.go, obsessive_pursuit.go). Forge Boss: batched 'one or more other creatures', once each turn (#5245). Riveteers Ascendancy: 'Do this only once each turn' (30 files). Dusk Mangler: the cost is effects.EitherCost (registry row either-or-additional-cost names this card as waiting on its entry trigger's sacrifice, discard and life loss in printed order): watch item, stop and report if the ordered three-part trigger does not fit. Incriminate: two targets controlled by the same player (switcheroo.go). Bellowing Mauler: each player loses 4 unless they sacrifice a nontoken creature. Mr. Orfeo: double power. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "c0c465ea-4242-4737-9c3e-69222bdb8f1b",
+    "c234d2ab-21d5-41a9-9ab8-47a8bd53a686",
+    "7f42a05c-9e6d-4cbc-92f1-4433cd22f149",
+    "71f3168d-9eeb-4570-8437-a3ffc39667e9",
+    "0cca60c3-f0be-494d-8c2c-9b135ef83165",
+    "8a749efc-e333-448e-8652-2dc4e6633e6b",
+    "58447f16-1df9-4e9a-bb22-b9aad042055a",
+    "43192553-0db9-48ec-ae88-a2605a6608d8",
+    "74de3356-9779-40f9-9881-fe795a1d5bbd",
+    "fa0a4765-5799-4464-88b6-6d1b15889eb5",
+    "d8b59cc3-766f-4350-971f-edf721fcc5be",
+    "7a0aa9ea-610e-4910-b66d-fdac69e88adf"
+   ]
+  },
+  {
+   "n": 14,
+   "theme": "Removal and conditional-cost spells",
+   "shared": "'This spell costs {2} less to cast if it targets a <colour> permanent' (Out of the Way, Knockout Blow, Whack, Torch Breath): bouncers_beatdown.go, brush_off.go and 29 others; colour words via TextSubtype guard. Torch Breath is an X spell: check the legal probe. Even the Score: a COLOURED reduction {U}{U}{U} (cost_modifier.go reduceByManaCost) on 'an opponent has drawn four or more cards this turn' (galvanize.go family); no card prints a coloured 'less to cast if' yet, watch item. Unleash the Inferno: excess damage then a reflexive target (the_last_agni_kai.go 'excess damage this way'). Corpse Explosion: exile-from-graveyard additional cost, reads 'the exiled card's power' (context.go). Hostile Takeover, Structural Assault and Corpse Explosion declare Sweep. Body Count: Spectacle (drill_bit.go) and creatures died under your control this turn. Guard: a card that reads as a board wipe declares its Sweep. Guard: an \"X target\" spell must be castable by the probe in server/internal/legal. Guard: creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype.",
+   "after": [],
+   "cards": [
+    "d305d2dd-578c-4964-a7c2-26490bb2ef2e",
+    "ab715312-0103-4681-b559-520026abd350",
+    "5c7f91af-8bac-4da1-b9e5-f15989c9d53c",
+    "23cf22fe-483f-4841-882e-e1513bb1d495",
+    "9300874a-32a9-4869-b3e1-1b996403df4e",
+    "7068637c-b025-41a5-be31-df1850f33b68",
+    "19becb14-3774-4732-b792-d2d0e5a94b35",
+    "b6d61d96-a56a-4f4c-a196-05e03fe16ed2",
+    "25f5cca6-a414-46d9-82e3-ce2fa21b14ca",
+    "9041338d-b660-4fc2-922f-cdf9d1a25993",
+    "5779d9b2-4de1-4aa4-a56d-0da05146743a"
+   ]
+  },
+  {
+   "n": 15,
+   "theme": "Charms and Confluences",
+   "shared": "Modal spells through modes.go; 'Choose three. You may choose the same mode more than once.' is fiery_confluence.go / cosmium_confluence.go. Brokers Confluence: 'Counter target activated or triggered ability' (stifle.go), phase out, proliferate. Obscura Confluence: connive on a target, 'loses all abilities and has base power and toughness 1/1' (sudden_spoiling.go). Maestros Confluence: goad each creature target player controls. Cabaretti Confluence: token copy with haste, sacrificed at end step. Riveteers Charm: sacrifice with the greatest mana value; play until your next end step. Cleanup Crew is a four-mode enters trigger. Riveteers Confluence's damage mode is a sweep: declare it. Guard: a card that reads as a board wipe declares its Sweep.",
+   "after": [],
+   "cards": [
+    "a90de2b8-4d71-4d0e-82b3-3b7ab194165b",
+    "3b207754-9172-426a-8efc-a9c3912d94bb",
+    "54e1b7f3-096a-4eb0-bcce-cce036d6cbe5",
+    "884eaa3f-b6af-4f0e-b0e7-cd40666986ce",
+    "36d8b701-f5dc-42c0-9869-268f8149cbd1",
+    "9f0bd777-f79d-47cd-83e3-85b80d5e7942",
+    "99c32f20-da98-477d-9eb2-9c0b189d8d88",
+    "1f2fb1dd-82e4-45fa-b2a9-7df7b8a4d533",
+    "d9c6c9cc-2dbf-48ac-ad3a-c500e7074c62",
+    "ef67a41b-a2a6-4f1b-a0d5-15560e99e387",
+    "12e0321b-1cd7-4519-8929-3261cf11a1a9"
+   ]
+  },
+  {
+   "n": 16,
+   "theme": "Graveyard recursion",
+   "shared": "Patch Up: targets with total mana value 3 or less (lively_dirge.go, 17 files). Rogues' Gallery: 'For each color, up to one target' (call_the_spirit_dragons.go). Extraction Specialist: 'can't attack or block for as long as you control' (possession_engine.go). Jailbreak: return under an opponent's control, then a reflexive return. Syrix: 'a creature card left your graveyard this turn' (bonecache_overseer.go), cast from graveyard on another Phoenix dying. Next of Kin: put from hand or the command zone (hellkite_courser.go), return attached at next end step (gift_of_immortality.go). Dodgy Jalopy: scavenge.go on a Vehicle with a characteristic-defining power: watch item, stop and report if Scavenge assumes a creature card. Grime Gorger: 'up to one card of each card type' pick (uldaros_theorix.go is the nearest): watch item. Cormela: spend-only mana for instant and sorcery spells (spend_only.go). Phoenix word through TextSubtype. Guard: creature-type and colour words are read through source.TextSubtype / ctx.TextSubtype. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "34a7026f-c6ca-4d89-8364-fd60fb613634",
+    "7ea1b0e8-a577-47e2-b4cb-a6ca973742d0",
+    "4164034a-5e59-4e40-a150-2c1000b0bd0d",
+    "169cf74a-07bf-4841-83f3-904df8a0a39b",
+    "bd3cdd9b-aa67-4bf5-80c8-53574d2c221e",
+    "eaca2576-020b-4af4-b348-6d1b56116c41",
+    "3cd9bac9-0abc-43d8-9f84-94f965f7a2e0",
+    "7271c442-2bd1-4d78-a049-b28bd5ee6876",
+    "ec97bb0e-0dc8-4b9b-8762-2f1649cc9044",
+    "5b079914-1302-40b5-8060-7c3e5b6e9eae",
+    "469d820d-b7a6-414a-af18-71c1b1e42da5"
+   ]
+  },
+  {
+   "n": 17,
+   "theme": "Attack triggers and combat (rules-heavy legends)",
+   "shared": "'Whenever you attack' batch triggers; Maestros Diabolist uses the existing Devil token row (pugnacious_pugilist.go), tapped and attacking. Shakedown Heavy: untap and remove from combat (protective_response.go). Phabine: parley (selvala_explorer_returned.go). Kitt Kanto: tap two untapped creatures, reflexive, at each player's combat. Beamtown Bullies: 'target opponent whose turn it is', goad, exile at next end step. Vivien's Stampede: melee grant and 'at the beginning of the next main phase this turn' (pygmy_hippo.go). Indulge // Excess: aftermath split (dusk_dawn.go, commit_memory.go). Arc Spitter: 'target creature that's blocking it' has no printed precedent, a target predicate over the blocking record. Kamiz: connive, then 'another attacking creature with lesser power'. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "49da6a78-f3b2-4691-975c-efbb644311f3",
+    "b6e3af71-0d68-4bf0-b886-c29dae15e9ae",
+    "62d394e1-6e7d-4703-8fd8-494f0f043876",
+    "70697ad7-d4bb-4b63-b895-bbb69e9d04e1",
+    "77b24f10-93af-44b9-af78-3a2f5ab32251",
+    "68d61090-a97f-47e9-bc64-7e5c7f8acbf7",
+    "c87dff29-fa4c-44f4-9de6-d85a347c1720",
+    "b0700c79-f948-4235-ad87-f8c6079a368a",
+    "abcb5b99-bf5e-402f-97a2-abb1ab39dd72",
+    "9376ccf6-1b18-44e9-8f9d-c5ad38927e2f",
+    "2b51d6e5-a4cd-4f2f-9762-6ad2cfd8b084"
+   ]
+  },
+  {
+   "n": 18,
+   "theme": "Opponent choices and group effects",
+   "shared": "Make an Example: piles of permanents (do_or_die.go, game/pile_split_keyed.go). Master of Ceremonies: each opponent chooses one of three words (seize_the_spotlight.go, prisoners_dilemma.go). Protection Racket: 'for each opponent in turn order' (malboro.go) with 'may pay life equal to' that card's mana value. Lord Xander: half hand, half library, half nonland permanents (pox_plague.go, game/sacrifice_half_cost.go). Nimble Larcenist: revealed-hand pick (adding-cards.md, ADR 0116). Mage's Attendant: new Wizard token with a sacrifice-to-counter ability (only card that makes it). Change of Plans is an 'X target' spell: check the legal probe; each connives, any number phase out. Guard: an \"X target\" spell must be castable by the probe in server/internal/legal. Guard: a one-sentence trigger is built from effects.Do primitives with a footprint.",
+   "after": [],
+   "cards": [
+    "4b51edb1-37cc-4993-a8a5-2eb5f79fa191",
+    "591edddc-3736-44cf-9719-117c24ff3980",
+    "18ed0c8a-db8f-4247-87c4-544b833f01bd",
+    "d17bfa94-5046-46ae-80af-be5d1d35af13",
+    "abd839ab-8b08-4bc0-900a-3a161c62b06c",
+    "d88c2375-65ec-4909-aef3-ee1a658a07cc",
+    "94b1e7ed-87f3-44e6-bf34-186dd9a1a0d1",
+    "a945710e-fab6-4b54-ba40-586f2e54baf4",
+    "b2f43df5-ec64-4375-b67f-b198732ab0b1"
+   ]
+  },
+  {
+   "n": 19,
+   "theme": "Hideaway and the exile-from-hand land cycle",
+   "shared": "The five tri-colour creatures share ONE helper modelled on emrakul_the_exigent_doom.go (#3520): ExileThis from hand as a cost, GrantAbilitiesFor with game.UntilCardCast, a WhileInZone cast permission. The granted ability here is a three-colour choice '{T}: Add {B}, {R}, or {G}' where Emrakul's is {C}{C}: stop and report if the grant bundle cannot carry a colour-choice mana ability. Hideaway N through hideaway.go (adding-cards.md 'Adding a hideaway card'). Wiretapping: 'Whenever you draw your first card during each of your draw steps' has no printed precedent (grep 0; nearest draw_replacements.go, monastery_siege.go): watch item. Smuggler's Buggy returns itself to hand when the exiled card is cast. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "84ac3096-098a-477a-8907-fc30ac15f00f",
+    "7db1402e-a434-45d2-9d21-9e0faeeaff10",
+    "02718076-4c71-4bf5-988f-e6f94fbf0aef",
+    "cd4f7912-81c0-44dd-87c2-a98e955fe5a8",
+    "92eae6af-b915-4eb8-93c4-527f732bb712",
+    "e19e1e83-75e5-4cfa-8d50-8ed0b027a202",
+    "befc5986-f06c-40a4-98ee-ffcace4ceaa8",
+    "2c2e4b19-ac88-426a-9f1b-ac305cd512e8"
+   ]
+  },
+  {
+   "n": 20,
+   "theme": "Exile-and-play, free casts and cast permissions",
+   "shared": "Falco Spara: PlayFromTopOfYourLibrary + CastOnly + RemoveCountersInAddition: 1 (into_the_pit.go, dawnhand_dissident.go): stop and report if that field means 'from among creatures' differently from 'a counter from a creature you control'. Xander's Pact: LifeEqualToManaValue (nashi_moon_sages_scion.go, bolass_citadel.go). Urabrask: 'the next time they would draw a card this turn, instead they exile the top card ... may play it this turn' (draw_replacements.go; no card prints it for an opponent): watch item. Evelyn: counter-marked exile and play (dauthi_voidwalker.go, tinybones_bauble_burglar.go) plus once each turn and mana of any colour. Meeting of the Five: spend-only mana for spells with exactly three colours (spend_only.go; niv_mizzet_guildpact.go for the colour count): watch item. Skyway Robber: 'escapes with' (ox_of_agonas.go) and casting from the cards its escape cost exiled: watch item. Cryptic Pursuit: manifest, face-down dies event (yarus_roar_of_the_old_gods.go). Sinister Concierge: gains suspend (taigam_master_opportunist.go). Evolving Door: counts the sacrificed creature's colours. Rocco: X from the cast (ManaSpentToCastThis family), 'if you cast it'. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "3fe61a65-b1c0-4d15-b379-e4ce22c96941",
+    "3df11e5c-19aa-441c-a889-6b40eb3fdabf",
+    "60fc4c2d-1bf9-4c9a-a240-ab9b1c9c6817",
+    "4ab6f615-1f04-4ed2-88b2-49faa8356dd0",
+    "30e4849e-c58c-4b65-9fb3-7aa40c944904",
+    "41c765a4-a9c9-4169-a9f1-74ededeb793c",
+    "b9c1ca24-5696-4777-8465-13a8f78e4fb5",
+    "58aac732-3f03-4551-a684-6cb0e3b31c09",
+    "214cfbc8-369e-4035-9b65-80d0e0024889",
+    "9b14c20f-c4ee-42ea-99cd-099b4eb25883"
+   ]
+  },
+  {
+   "n": 21,
+   "theme": "Spell copies and granted spell keywords",
+   "shared": "Anhelo: SpellsYouCastHave(..., Casualty(2)) (casualty.go, silverquill_the_disputant.go) limited to the FIRST instant or sorcery each turn: stop and report if the grant's Spells predicate cannot see the turn's cast count. Threefold Signal: granted replicate as hugh_first_of_many.go, filter 'exactly three colors'; copies of permanent spells become tokens. Parnesse: 'Whenever you copy a spell' (archmage_emeritus.go cast-or-copy event) and an opponent copying it (wandering_archaic.go); its first ability is the ward-like 'counter unless that player pays 4 life'. Errant: copy target spell you control that wasn't cast. Storm of Forms and Brass Knuckles: 'When you cast this spell, copy it' (storm.go family, 24 files); Brass Knuckles is a permanent-spell copy. Flawless Forgery: copy_and_cast.go (#3258) with casualty. Swindler's Scheme: reveal, shared card type, counter, opponent casts free. Spellbinding Soprano: encore.go and 'cost {1} less this turn' (armor_wars.go). 'For each kind of counter among permanents you control' is shared with batch 7.",
+   "after": [],
+   "cards": [
+    "d3c3f293-6790-4dce-900a-8af0464c2572",
+    "bc48da27-77e0-440f-b47b-4bdea3c3cc5e",
+    "c6040e8d-dac3-4bed-8d1d-d7d44aa10c86",
+    "23e6df25-90db-42a4-8658-e592e67be15e",
+    "e9a08492-3d2c-4c7a-8198-ef4193f5758a",
+    "5a8630a8-804e-4789-b9a3-96d9ede5e188",
+    "0e3cb267-5704-4708-94c8-e2fbce4978af",
+    "e3ff6134-10dd-4565-afcb-0f41a2933d19",
+    "dffd5f0f-3a7b-47ed-864e-06c752bdcefc"
+   ]
+  },
+  {
+   "n": 22,
+   "theme": "Copy effects, Auras and odd permanents",
+   "shared": "Undercover Operative: clone with a conditional enters-with shield counter (adding-cards.md 'Adding a copy effect'). Cephalid Facetaker: become_copy.go with 'except it's 1/4 and has ...'. Life of the Party: 'goaded for the rest of the game' (nettling_nuisance.go, rendmaw_creaking_nest.go). In Too Deep: split second, 'Enchant creature, planeswalker, or Clue', becomes a colourless Clue losing other abilities (imprisoned_in_the_moon.go). Jinnie Fay: optional token replacement that swaps the kind (ReplaceTokenKinds, token_replacements.go, moonlit_meditation.go) with a choice of two NEW token rows (2/2 green Cat with haste, 3/1 green Dog with vigilance): stop and report if an optional replacement cannot offer three answers. Public Enemy: all creatures attack one player if able (grand_melee.go, silver_surfer_galactuss_herald.go): watch item. Hold for Ransom: granted ability whose effect names the Aura's controller (animate_dead.go wording). False Floor exiles all untapped creatures: declare Sweep. Turf War: contested counters, control change of a land. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel. Guard: a card that reads as a board wipe declares its Sweep.",
+   "after": [],
+   "cards": [
+    "0bd57503-b544-45f8-bcd2-f5b2170010f6",
+    "cfb41a2b-4d8b-47e3-a074-95a1bd502227",
+    "b2d1f87b-a11f-43eb-8b89-b48945320d73",
+    "2829ae08-9964-4679-80e8-46d5d33d10b9",
+    "61fbaaf2-4286-4e9a-b9cb-aa31262b596a",
+    "c5f360dc-fe4e-4796-b5c1-468cbd0f6d24",
+    "0c9336c0-c0ec-4fb4-af7c-a7766265e927",
+    "f6828a87-eebe-48dd-873e-251624107e38",
+    "8e1b84d7-b0ae-4e9d-bc1a-c84832fea9f9"
+   ]
+  },
+  {
+   "n": 23,
+   "theme": "Planeswalkers and exile-until permanents",
+   "shared": "Elspeth Resplendent and Soul of Emancipation use the existing 3/3 white Angel flier row (linvala_the_preserver.go, token_catalog.go); Vivien on the Hunt and Crash the Party the existing 4/4 green Rhino Warrior (workshop_warchief.go). Elspeth: a keyword counter chosen from four, 'onto the battlefield with a shield counter'. Vivien: sacrifice then search for mana value exactly one more. Lagrella: any number of targets controlled by different players (target_set.go, run_away_together.go), exile until it leaves, counters when one returns under your control. Mysterious Limousine: exile until leaves, returning the previous one (mimic_vat.go 'return each other card exiled with'). Toluz: exile discarded cards from the graveyard, give them back on death (exiled-with record). Obscura Ascendancy: soul counters and existing Spirit flier token; Cabaretti Ascendancy: look at top, may reveal, may bottom. Guard: a helper returning a StaticAbility or ReplacementEffect needs a Label or RowLabel.",
+   "after": [],
+   "cards": [
+    "24591330-d038-478f-b89d-b7b66c0b5cc3",
+    "f6f927f3-dc3f-446c-aa7b-81048eb73243",
+    "6a98b586-5187-48a1-bde3-f6141f3e9cb1",
+    "864a9276-2fec-49b3-bc53-008608de5ab6",
+    "e9666fd2-3ebf-4f57-a51d-a80e625f39fa",
+    "005c181a-05db-4c15-9893-65103cca338e",
+    "337e322b-6144-4e0b-b998-df475166fcf6",
+    "c35c39be-6db4-4a80-ace1-07932d1bb460",
+    "34ec084d-2c16-452f-8dcc-06641c80f7d1"
+   ]
+  }
+ ]
+}
