@@ -71,3 +71,46 @@ func cmdr2B21BasePTCount(g *game.Game, controller uuid.UUID, match func(power, t
 	}
 	return n
 }
+
+// cmdr2B21HamstersYouControl counts the Hamsters `controller` controls. It
+// walks the battlefield directly, so it is safe inside a layer recompute.
+func cmdr2B21HamstersYouControl(g *game.Game, controller uuid.UUID) int {
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == controller && cmdr2B21HasSubtype(*c, "Hamster") {
+			n++
+		}
+	}
+	return n
+}
+
+// cmdr2B21IsTwoByTwo is "base power and toughness 2/2".
+func cmdr2B21IsTwoByTwo(power, toughness int) bool { return power == 2 && toughness == 2 }
+
+// cmdr2B21AnotherCreatureYouControlEntered is the shared condition of "Whenever
+// another creature you control enters": the entering permanent, when it is a
+// creature other than `source` under its controller's control.
+func cmdr2B21AnotherCreatureYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
+	if ev.Kind != game.EventETB || ev.CardID == source.InstanceID {
+		return game.Card{}, false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	if !ok || !c.IsCreature() || c.Controller != source.Controller {
+		return game.Card{}, false
+	}
+	return c, true
+}
+
+// cmdr2B21EnteredWithoutBeingCast is "it wasn't cast" for a permanent that just
+// entered: the most recent zone move of the card onto the battlefield did not
+// come from the stack. Every entry emits an EventZoneMove before its EventETB.
+func cmdr2B21EnteredWithoutBeingCast(g *game.Game, cardID uuid.UUID) bool {
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		ev := g.Events[i]
+		if ev.Kind == game.EventZoneMove && ev.CardID == cardID && ev.NewZone == game.ZoneBattlefield {
+			return ev.OldZone != game.ZoneStack
+		}
+	}
+	return false
+}
