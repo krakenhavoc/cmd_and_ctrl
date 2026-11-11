@@ -37,7 +37,7 @@ func publicStack(t *testing.T) (*httptest.Server, auth.Authenticator) {
 		Auth:       a,
 		AdminToken: "a-sufficiently-long-admin-token",
 	})
-	srv := httptest.NewServer(newPublicHandler(hub, a, nil, nil, lobbyHandler))
+	srv := httptest.NewServer(newPublicHandler(hub, a, nil, nil, nil, lobbyHandler))
 	t.Cleanup(func() {
 		srv.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

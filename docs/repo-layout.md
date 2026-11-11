@@ -43,6 +43,7 @@ cmd_and_ctrl/
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   │   ├── deckcoverage/ # a decklist's coverage report: every card bucketed manual / unreviewed / caveats / automated / no_effect (ADR 0095)
 │   │   ├── deckrequests/ # which GitHub issue tracks each requested deck, and who asked when (ADR 0095, migration 0006)
+│   │   ├── draft/       # the booster draft: seats, packs from draftpacks on a seed, pick one and pick two, passing left-right-left, the pick timer, the Picker a draft bot implements (a random placeholder until #5439) and the per-seat view that holds only the viewer's own pack and picks; in memory only, registered in lobby/drafts.go (ADR 0222 §5, #5438)
 │   │   ├── draftpacks/  # a pack for one set, built to the draftable booster of the set's era (play booster or draft booster), from the Scryfall dump, which sets are draftable (every pack card Full in the catalog) and the public GET /draft/sets (ADR 0222 §4, #5437)
 │   │   ├── gamestats/   # a finished game's statistics record (ADR 0165): Compute from the final view + the whole log (protocol.FullLogOf), and the store behind migration 0023's three tables
 │   │   ├── usersettings/ # a signed-in person's synced settings: one JSON object, 32 KiB cap, If-Match revision (ADR 0110 §4, migration 0008)
