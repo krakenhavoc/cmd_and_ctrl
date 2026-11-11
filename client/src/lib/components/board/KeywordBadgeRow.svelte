@@ -160,6 +160,7 @@
     // "mana value 3 or less" would abbreviate to MAN; the bound is the
     // information (#2181). A designation, not a characteristic (#2145).
     if (p.kind === "mana_value_at_most") return `MV≤${p.value ?? ""}`;
+    if (p.kind === "mana_value_at_least") return `MV≥${p.value ?? ""}`;
     if (p.kind === "ring_bearer") return "RNG";
     // Four qualities that name a count or a class, not a word: the first
     // three letters of "creatures with two or more creature types" and

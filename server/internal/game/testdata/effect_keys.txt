@@ -510,6 +510,7 @@ choose choose-cards/deadly-cover-up-exile
 choose choose-cards/death-wish-take
 choose choose-cards/deepfathom-echo-copy
 choose choose-cards/demonlord-of-ashmouth-sacrifice
+choose choose-cards/descendants-fury-sacrifice
 choose choose-cards/dinosaur-headdress-copy
 choose choose-cards/discard-draw-as-many
 choose choose-cards/discard-draw-one-if-any
@@ -2060,6 +2061,7 @@ tail city-of-the-daleks/bind-tagged-tokens
 tail claim-jumper/repeat
 tail claim-territory/forest-to-hand
 tail clash-of-elements/damage-owner-if-tucked
+tail cmdr2-b03/shuffle-rest-into-library
 tail coalstoke-gearhulk/entered
 tail combustible-gearhulk/burn-total-mana-value
 tail conflux/next-search
@@ -2729,6 +2731,7 @@ tail then/dance-with-calamity-exiled
 tail then/dark-depths-marit-lage
 tail then/deadly-designs-destroy
 tail then/demonic-consultation-named
+tail then/descendants-fury-sacrificed
 tail then/desculpting-blast-drone
 tail then/determined-iteration-sacrifice-at-end
 tail then/discard-at-random
@@ -2766,6 +2769,7 @@ tail then/grist-the-hunger-tide-milled
 tail then/guff-rewrites-history-shuffle-exile
 tail then/hall-of-gemstone-color-chosen
 tail then/harmonized-crescendo-type-chosen
+tail then/haunting-voyage-type-chosen
 tail then/heart-shaped-herb-return-and-monarch
 tail then/heroes-hangout-choose
 tail then/high-society-hunter-counter
@@ -2780,6 +2784,7 @@ tail then/kaya-spirits-justice-exile-from-a-graveyard
 tail then/kindred-charge-type-chosen
 tail then/kindred-dominance-type-chosen
 tail then/kindred-judgment-type-chosen
+tail then/kindred-summons-type-chosen
 tail then/king-solomons-frogs-exiled-one
 tail then/land-becomes-chosen-type
 tail then/last-light-of-durins-day-search
@@ -2803,6 +2808,7 @@ tail then/oona-queen-of-the-fae-color-chosen
 tail then/optimus-prime-bolstered
 tail then/orcrist-type-chosen
 tail then/outbreak-type-chosen
+tail then/pact-of-the-serpent-type-chosen
 tail then/palanis-hatcher-dinosaur
 tail then/patriarchs-bidding-type-chosen
 tail then/perforating-artist-punisher-sacrificed

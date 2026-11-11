@@ -10731,6 +10731,21 @@ the helper knows Forest on Dryad Arbor is a land type and that a
 changeling shares nothing with a creature that has no creature type
 at all. `OfCreatureType("Goblin")` is the targeting predicate.
 
+**"Of the chosen type" in a cost, and "shares a creature type with it"**
+(Commander-deck wave 2, #5368). A cost clause can name the chosen type too:
+`OfTheChosenType(cost.SacrificeOther)` on `SacrificeACreature()` is Etchings of
+the Chosen's "Sacrifice a creature of the chosen type" (the cost walk lends the
+source's `NamedTribe` to the clause, `TargetSource.tribe`). "Reveal cards until
+a creature card that shares a creature type with the sacrificed or dead
+creature" reads the creature's types before it goes, as one tail word
+(`cmdr2B03TypesWord`), and tests each card with `cmdr2B03SharesTypeWith`
+(a changeling shares with every creature that has a type): Descendants' Fury
+puts the hit onto the battlefield, Heirloom Blade into the hand
+(`cmdr2B03RevealUntilSharingTypeToHand`). "Protection from mana value N or
+greater" is `game.ProtectionQualityManaValueAtLeast`, the mirror of "or less".
+A `OfThatPlayersChoice` clause on a damage trigger is asked of the player the
+damage was dealt to (`triggerChooserOf`): Bladegriff Prototype.
+
 **Tests** — `pushNamedTribePermanent` in
 [tribal_test.go](../server/internal/cards/effects/tribal_test.go) seeds
 a permanent and answers its prompt in one call. Assert through
