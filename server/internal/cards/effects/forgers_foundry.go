@@ -44,7 +44,6 @@ func init() {
 			Label:        "{3}{U}{U}, {T}: You may cast any number of spells from among cards exiled with this artifact without paying their mana costs. Activate only as a sorcery.",
 			Cost:         Plus(ManaCost("{3}{U}{U}"), TapCost()),
 			SorcerySpeed: true,
-			Purpose:      game.Purpose{Answers: game.AnswerValue},
 			Effect:       cmdr2S41FoundryCastExiled,
 		}},
 	})
