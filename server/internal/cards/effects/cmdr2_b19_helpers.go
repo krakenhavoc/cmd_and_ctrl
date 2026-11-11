@@ -27,3 +27,35 @@ func cmdr2B19AttachedCantAttackYou() game.StaticAbility {
 		},
 	}
 }
+
+// cmdr2B19HumanMonkToken is Careful Cultivation's 1/1 green Human Monk
+// creature token with "{T}: Add {G}."
+func cmdr2B19HumanMonkToken() game.Card { return tokenFromCatalog(printedCmdr2B19HumanMonkToken) }
+
+// printedCmdr2B19HumanMonkToken is that token as PRINTED (Neon Dynasty's
+// token card, tneo 10). Its slug is an on-disk identity.
+func printedCmdr2B19HumanMonkToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "human-monk-tap-g",
+		Card: game.Card{
+			Name:      "Human Monk",
+			TypeLine:  "Token Creature — Human Monk",
+			Power:     1,
+			Toughness: 1,
+			Colors:    []string{"G"},
+		},
+		Mana: []game.ManaAbilityShape{{
+			TapCost:  true,
+			Produced: "{G}",
+			Label:    "{T}: Add {G}",
+		}},
+		Text: "{T}: Add {G}.",
+	}
+}
+
+// cmdr2B19AttachedIsCreature is the condition of Careful Cultivation's
+// "As long as enchanted permanent is a creature": the host as the earlier
+// layers have left it this pass.
+func cmdr2B19AttachedIsCreature(target *game.Card, g *game.Game, source *game.Card) bool {
+	return AttachedToSource(target, g, source) && target.IsCreature()
+}

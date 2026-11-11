@@ -190,3 +190,77 @@ func TestCmdr2B19SpectralSteelPumpsAndReturnsAnotherAuraOrEquipmentFromTheGravey
 	}
 	_ = gear
 }
+
+const cmdr2CarefulCultivation = "83959c3d-053c-4d95-a1b0-fe92f2b906db"
+
+func TestCmdr2B19CarefulCultivationOnACreatureAndOnANoncreatureArtifact(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	host := b12Creature(g, me.ID, "Host", "Creature — Bear", 2, 2)
+	rock := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Rock", TypeLine: "Artifact", Owner: me.ID, Controller: me.ID})
+	cmdr2B19Attach(g, me.ID, host, "Careful Cultivation", cmdr2CarefulCultivation)
+	cmdr2B19Attach(g, me.ID, rock, "Careful Cultivation", cmdr2CarefulCultivation)
+	if p, tt := ptOf(t, g, host); p != 3 || tt != 5 {
+		t.Errorf("enchanted creature is %d/%d, want 3/5", p, tt)
+	}
+	if !hasEffectiveKeyword(t, g, host, "reach") {
+		t.Error("the enchanted creature lacks reach")
+	}
+	if grantedManaRowsOf(g, host) != 1 {
+		t.Error("the enchanted creature has no granted mana ability")
+	}
+	if hasEffectiveKeyword(t, g, rock, "reach") || grantedManaRowsOf(g, rock) != 0 {
+		t.Error("an enchanted artifact that is not a creature got reach or the mana ability")
+	}
+	if c, _ := battlefieldCard(g, rock); c.Power != 0 || c.Toughness != 0 {
+		t.Errorf("the noncreature artifact got a pump: %d/%d", c.Power, c.Toughness)
+	}
+}
+
+func TestCmdr2B19CarefulCultivationRefusesALand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	land := pushBattlefieldCardWithTimestamp(g, game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	advanceToMain(t, g)
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Careful Cultivation", TypeLine: "Enchantment — Aura",
+			OracleID: cmdr2CarefulCultivation, Owner: me.ID, Controller: me.ID})
+	})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, Targets: cardRefs(land)}); err == nil {
+		t.Error("enchanting a land was allowed")
+	}
+}
+
+func TestCmdr2B19CarefulCultivationChannelsFromHandIntoAManaMonk(t *testing.T) {
+	g := newCatalogGame(t)
+	me, _, _ := blbB1Seats(g)
+	toMainForCost(t, g)
+	id := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: id, Name: "Careful Cultivation", TypeLine: "Enchantment — Aura",
+			OracleID: cmdr2CarefulCultivation, Owner: me.ID, Controller: me.ID})
+	})
+	floatForTest(g, me, "GC")
+	b16Activate(t, g, me.ID, id, 0, game.ActivateAbilityParams{Strict: true})
+	passPriorityAroundTable(t, g)
+	if me.Hand.Contains(id) || !me.Graveyard.Contains(id) {
+		t.Error("the card was not discarded")
+	}
+	if n := namedOnBattlefield(g, "Human Monk", me.ID); n != 1 {
+		t.Fatalf("%d Human Monk tokens, want 1", n)
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.Name != "Human Monk" {
+			continue
+		}
+		var abs []game.ManaAbilityShape
+		g.ReadSnapshot(func() {
+			card, _ := g.LookupCardForEffect(c.InstanceID)
+			abs, _ = game.ManaAbilitiesWithOrigins(card)
+		})
+		if len(abs) != 1 || abs[0].Produced != "{G}" || !abs[0].TapCost {
+			t.Errorf("Human Monk mana abilities = %+v, want {T}: Add {G}", abs)
+		}
+	}
+}
