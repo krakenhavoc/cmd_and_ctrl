@@ -103,6 +103,21 @@ type CopySelector struct {
 	// are ignored, and the exchange is registered once the permanent's
 	// object identity exists, before EventETB.
 	ExchangeText bool
+
+	// ExileWithAnother makes the copy a choice of TWO candidates, both
+	// exiled as the permanent enters (The Mimeoplasm, #5457): "you may
+	// exile two creature cards from graveyards. If you do, it enters as a
+	// copy of one of those cards with a number of additional +1/+1
+	// counters on it equal to the power of the other card." The prompt is
+	// asked twice over the same paused entry: first the card to copy
+	// (CopyUseExileCopied), then the other card among the candidates left
+	// (CopyUseExileOther). An empty answer to either, fewer than two
+	// candidates, or a pick that has left its graveyard in the meantime is
+	// the "may" declined: nothing is exiled and the permanent enters as
+	// itself. The other card's power is read where it is, as the two are
+	// exiled (PowerAnywhereForEffect), and the counters are part of the
+	// entry (AddCounterAtETB).
+	ExileWithAnother bool
 }
 
 // offerCopyChoiceLocked handles an applicable copy-selector
@@ -131,7 +146,14 @@ func (g *Game) offerCopyChoiceLocked(ev *ReplacementEvent, chosen activeReplacem
 	}
 	candidates := sel.Candidates(ev, g, chosen.source)
 	chooser := g.copyChooserLocked(ev, chosen)
-	if len(candidates) == 0 || !ev.entryResumable || g.chooserGoneLocked(chooser) || chooser == uuid.Nil {
+	// A token creation (Esix, Fractal Bloom) resumes as any "may" on the
+	// instruction does; only an ENTRY needs its site to be resumable.
+	resumable := ev.entryResumable || ev.Kind == RepEventCreateTokens
+	if sel.ExileWithAnother && len(candidates) < 2 {
+		// "Exile two": one card is not enough to do it.
+		candidates = nil
+	}
+	if len(candidates) == 0 || !resumable || g.chooserGoneLocked(chooser) || chooser == uuid.Nil {
 		g.markReplacementAppliedLocked(ev, chosen.id)
 		return false
 	}
@@ -179,6 +201,7 @@ func (g *Game) queueCopyTargetPromptLocked(
 		Reason:               reason,
 		CopyOptions:          append([]uuid.UUID(nil), candidates...),
 		ExchangesText:        chosen.effect.CopySelector != nil && chosen.effect.CopySelector.ExchangeText,
+		CopyUse:              copyUseOf(ev, chosen.effect.CopySelector),
 		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
 		replacementResume: &replacementResumeFrame{
 			ev:         ev,
@@ -239,8 +262,17 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 	// forever.
 	g.markReplacementAppliedLocked(ev, chosen.id)
 
+	if ev.Kind == RepEventCreateTokens {
+		return g.resolveTokenCopyChoiceLocked(ev, chosen, cardID)
+	}
+
 	exchange := chosen.effect.CopySelector != nil && chosen.effect.CopySelector.ExchangeText
-	if exchange && cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
+	if sel := chosen.effect.CopySelector; sel != nil && sel.ExileWithAnother {
+		if g.copyOfTwoStepLocked(ev, chosen, chooserID, cardID) {
+			// The second question is open over the same paused entry.
+			return nil
+		}
+	} else if exchange && cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
 		ev.exchangeTextWith = cardID
 	} else if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
 		if src, ok := g.copySourceCardLocked(cardID); ok {
@@ -272,6 +304,131 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 	// entry still owes its caller an answer — a search its shuffle, a
 	// simultaneous entry (#1322) the rest of its batch.
 	return g.finishSettledReplacementLocked(ev, out)
+}
+
+// CopyUseTokens is PendingChoice.CopyUse for a copy_target asked inside a
+// token creation: "you may instead choose a creature … and create that
+// many tokens that are copies of that creature" (Esix, Fractal Bloom).
+// The pick is what the TOKENS copy; nothing is entering as a copy. An
+// on-disk and wire value, never renamed.
+const CopyUseTokens = "tokens"
+
+// CopyUseExileCopied and CopyUseExileOther are PendingChoice.CopyUse for
+// the two questions of CopySelector.ExileWithAnother (The Mimeoplasm):
+// the card to exile and enter as a copy of, then the other card to
+// exile, whose power becomes +1/+1 counters. On-disk and wire values,
+// never renamed.
+const (
+	CopyUseExileCopied = "exile_copied"
+	CopyUseExileOther  = "exile_other"
+)
+
+// copyUseOf is the CopyUse a copy_target prompt over ev carries.
+func copyUseOf(ev *ReplacementEvent, sel *CopySelector) string {
+	switch {
+	case ev != nil && ev.Kind == RepEventCreateTokens:
+		return CopyUseTokens
+	case sel != nil && sel.ExileWithAnother && ev != nil && ev.copySourceID != uuid.Nil:
+		return CopyUseExileOther
+	case sel != nil && sel.ExileWithAnother:
+		return CopyUseExileCopied
+	}
+	return ""
+}
+
+// copyOfTwoStepLocked answers one of CopySelector.ExileWithAnother's two
+// questions. The first answer names the card to copy on the event
+// (copySourceID, which a restore point carries) and asks for the other
+// card among the candidates left; it reports true, and the entry stays
+// paused. The second answer exiles both cards and stamps the entry: the
+// first card's copiable values, the except clause, and +1/+1 counters
+// equal to the second card's power. Any decline or stale pick clears the
+// event's copy source and reports false with nothing exiled, so the
+// permanent enters as itself.
+//
+// Caller must hold g.mu, with the effect already marked applied.
+func (g *Game) copyOfTwoStepLocked(ev *ReplacementEvent, chosen activeReplacement, chooser, cardID uuid.UUID) bool {
+	sel := chosen.effect.CopySelector
+	first := ev.copySourceID
+	if first == uuid.Nil {
+		if cardID == uuid.Nil || !g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
+			return false
+		}
+		var rest []uuid.UUID
+		for _, id := range sel.Candidates(ev, g, chosen.source) {
+			if id != cardID {
+				rest = append(rest, id)
+			}
+		}
+		if len(rest) == 0 {
+			return false
+		}
+		ev.copySourceID = cardID
+		// The effect is still being decided, so it is not yet applied: a
+		// restore point taken on the second question gathers it again by
+		// its ID (rebuildReplacementResumeLocked gathers only what has not
+		// been applied). Nothing runs the apply-loop for this event while
+		// the question is open, and the second answer marks it.
+		delete(g.replacementsAppliedThisEvent[ev.ID], chosen.id)
+		g.queueCopyTargetPromptLocked(ev, chosen, chooser, rest)
+		return true
+	}
+	ev.copySourceID = uuid.Nil
+	if cardID == uuid.Nil || cardID == first ||
+		!g.copyCandidateStillLegalLocked(ev, chosen, cardID) ||
+		!g.copyCandidateStillLegalLocked(ev, chosen, first) {
+		return false
+	}
+	src, ok := g.copySourceCardLocked(first)
+	other, okOther := g.copySourceCardLocked(cardID)
+	if !ok || !okOther {
+		return false
+	}
+	values := SingleFacedCopiableValuesOf(src)
+	power := g.PowerAnywhereForEffect(other)
+	ev.copySourceID = first
+	if sel.Except != nil {
+		sel.Except(ev, &values, g, chosen.source)
+	}
+	ev.EntersAsCopyOf = &values
+	if power > 0 {
+		ev.AddCounterAtETB(CounterPlusOne, power)
+	}
+	for _, id := range []uuid.UUID{first, cardID} {
+		if _, err := g.routeCardToZoneLocked(zoneRoute{CardID: id, Dst: ZoneExile}); err != nil {
+			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
+		}
+	}
+	return false
+}
+
+// resolveTokenCopyChoiceLocked is ResolveCopyTarget for a copy selector
+// on a token CREATION (CR 701.7b, CR 614.1a). A legal pick is named on
+// the event (CopySourceForEffect) and the effect's own Replace then
+// rewrites the instruction from it, as an Optional "yes" would; a
+// decline, a stale pick, or a source that has left since the prompt
+// leaves the instruction as it was. Either way the apply-loop is
+// re-entered and the creation finishes through the resume the "may"
+// replacements on a creation use.
+//
+// Caller must hold g.mu, with the effect already marked applied.
+func (g *Game) resolveTokenCopyChoiceLocked(ev *ReplacementEvent, chosen activeReplacement, cardID uuid.UUID) error {
+	if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
+		if live, present := g.liveReplacementSourceLocked(chosen); present {
+			ev.copySourceID = cardID
+			g.runReplaceLocked(ev, live)
+			ev.copySourceID = uuid.Nil
+		}
+	}
+	out, err := g.applyReplacementsLocked(ev)
+	if errors.Is(err, errReplacementPending) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		g.clearReplacementEventLocked(ev.ID)
+		return err
+	}
+	return g.finishReplacementResumeLocked(ev, out)
 }
 
 // copyCandidateStillLegalLocked re-runs the selector against the

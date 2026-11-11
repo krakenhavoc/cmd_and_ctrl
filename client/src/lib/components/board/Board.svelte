@@ -257,7 +257,12 @@
     manaExilePermanentPayment,
     manaTapPayment,
   } from "../../manaAbilityCost";
-  import { exileCostNote, exileCostOptionCards, exileCostWhere } from "../../exileCost";
+  import {
+    exileCostNote,
+    exileCostOptionCards,
+    exileCostVerb,
+    exileCostWhere,
+  } from "../../exileCost";
   import { discardedManaValue } from "../../discardCostX";
   import { exiledTotalManaValue } from "../../exileTotalX";
   import {
@@ -2607,6 +2612,7 @@
     return exileCostOptionCards(
       view.seats.find((s) => s.id === viewerID),
       p.ability,
+      view.exile,
     );
   });
 
@@ -4917,7 +4923,7 @@
     symbolColor={abilityExilePrompt?.ability.exile_cost_symbol_color}
     symbolMin={abilityExilePrompt?.ability.exile_cost_symbol_min}
     manaValueMin={abilityExilePrompt?.ability.exile_cost_mana_value_min}
-    verb="Exile"
+    verb={abilityExilePrompt ? exileCostVerb(abilityExilePrompt.ability) : "Exile"}
     note={abilityExilePrompt ? exileCostNote(abilityExilePrompt.ability) : undefined}
     where={abilityExilePrompt ? exileCostWhere(abilityExilePrompt.ability) : undefined}
     onConfirm={confirmAbilityExileCost}

@@ -2277,6 +2277,14 @@ export interface PendingChoiceView {
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
   exchanges_text?: boolean;
+  // #5457: what a "copy_target" pick is for when nothing is entering as a
+  // copy. "tokens" (Esix, Fractal Bloom): the creature the tokens being
+  // created will copy; the empty answer creates the tokens as they were.
+  // "exile_copied" then "exile_other" (The Mimeoplasm): the graveyard
+  // card to exile and enter as a copy of, then the other card to exile,
+  // whose power becomes +1/+1 counters; an empty answer to either exiles
+  // nothing. Absent for the ordinary enters-as-a-copy pick.
+  copy_use?: "tokens" | "exile_copied" | "exile_other";
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
@@ -3931,9 +3939,15 @@ export type ExilePlayUntil =
   | "while_exiled"
   | "until_another";
 
-// #1297: the pile an "Exile N cards from your …" cost reads — always
-// the activator's own. The server stamps it with `exile_cost_n`.
-export type ExileCostZone = "hand" | "graveyard";
+// #1297: the pile an "Exile N cards from your …" cost reads — the
+// activator's own hand or graveyard. The server stamps it with
+// `exile_cost_n`. #5457: "exile" is the other move, "Put a card an
+// opponent owns from exile into that player's graveyard" (Void
+// Attendant): the options are cards in the shared `exile` zone that an
+// opponent owns, and each pick goes to its owner's graveyard. A
+// face-down option stands for its group: the server moves a card chosen
+// at random from the cards exiled face down with it.
+export type ExileCostZone = "hand" | "graveyard" | "exile";
 
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it

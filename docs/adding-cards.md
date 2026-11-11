@@ -5407,6 +5407,18 @@ reads which ones through `ctx.Exiled()` (Holistic Wisdom). Not
 `ExileThis()`, which is the SOURCE. A variable count ("Exile X cards")
 has no shape yet.
 
+**"Put a card an opponent owns from exile into that player's graveyard"
+(#5457):** `ProcessCards(n, label, match)`, composed with `Plus` — Void
+Attendant is
+`Plus(ManaCost("{1}{G}"), ProcessCards(1, "a card an opponent owns from exile", nil))`.
+It is the same component read against the shared exile zone
+(`game.ExileCost{From: ZoneExile}`): the picks ride `exile_ids`, each
+must be a card an opponent owns, and each goes to its owner's graveyard
+as the cost is paid. Nothing is recorded on `ctx.Exiled()`. A face-down
+pick stands for its group (same owner, same "exiled with" link) and the
+card moved is drawn at random from it. A CR 602 ability's cost only:
+`Register` refuses it on a mana ability and on a cast.
+
 **"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
 or `ExileAPermanentYouControl(label, preds...)` for another clause,
 composed with `Plus` — The Soul Stone's harness is
@@ -13701,6 +13713,14 @@ ctx.SourcePermanent()                                                           
   does AFTER the casts ("then each player who owns a spell you cast this way loses life") is a `ChooseCardsThen` key
   passed as the offer's `Then`, with the cards in `Carry` (Kefka, Dancing Mad). "Until end of turn, you may cast that
   card" is a real window: no prompt, no lapse (Nicol Bolas, God-Pharaoh).
+- **"Look at that player's hand. You may cast a spell from among those cards without paying its mana cost"**
+  (Silent-Blade Oni, #5457): `g.LookAtHandForEffect(looker, owner)` (`game/reveal_hand.go`) makes the looker, alone,
+  a knower of every card in that hand and returns them; then `g.OfferResolutionCastForEffect` over the ones
+  `freeCastCandidates` keeps, with `g.FreeCastFromHandPermission` as its `Permission`, `game.MayCastKeywordFreeCast`
+  and the decline label "Leave it in their hand". The cards never leave their owner's hand unless cast. A stored
+  permission naming the card object is the only thing that reaches a card in ANOTHER player's hand
+  (`foreignHandForCastLocked`), and only for the cast that claims that permission's offer: there is no ordinary
+  cast of it, and a land is never played out of it.
 - **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
   `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
   (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a

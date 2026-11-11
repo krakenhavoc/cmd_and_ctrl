@@ -5,6 +5,7 @@ import {
   exileCostNote,
   exileCostOptionCards,
   exileCostSymbolTotal,
+  exileCostVerb,
   exileCostWhere,
   exileCostZone,
 } from "./exileCost";
@@ -49,6 +50,19 @@ describe("exileCost", () => {
     expect(
       exileCostOptionCards(me, { exile_cost_options: ["h1", "g1"] }).map((c) => c.name),
     ).toEqual(["Held Beast"]);
+  });
+
+  // #5457: Void Attendant's options are an opponent's cards in the
+  // shared exile zone, and the verb is not "Exile".
+  it("resolves a processing clause's options out of exile", () => {
+    const exile = zone("exile", [card("x1", "Lost Bear"), card("x2", "Lost Bolt")]);
+    const clause = { exile_cost_options: ["x2"], exile_cost_zone: "exile" as const };
+    expect(exileCostOptionCards(me, clause, exile).map((c) => c.name)).toEqual(["Lost Bolt"]);
+    expect(exileCostOptionCards(me, clause)).toEqual([]);
+    expect(exileCostVerb(clause)).toBe("Put into graveyard");
+    expect(exileCostVerb({})).toBe("Exile");
+    expect(exileCostNote(clause)).toContain("owner's graveyard");
+    expect(exileCostWhere(clause)).toBe("in exile");
   });
 
   it("names the pile in the modal's copy", () => {
