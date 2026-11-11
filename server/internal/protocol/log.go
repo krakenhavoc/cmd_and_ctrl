@@ -666,6 +666,14 @@ const (
 	// a new object in the new one and the old lines could only say
 	// "a card".
 	LogGameRestarted LogKind = "game_restarted"
+	// LogMatchGame — the next game of a match began (ADR 0222 §3).
+	// `seat` is the player who chose who plays first (CR 103.1: the
+	// loser of the previous game), `target_seat` the starting player,
+	// `amount` the game's number in the match and `label` what the
+	// chooser chose, "play" or "draw". Like a restart's line it is
+	// always the FIRST line of the log: the log begins again with each
+	// game of a match, and the games before it are in match.games.
+	LogMatchGame LogKind = "match_game"
 	// LogPlayerControlScheduled — a player will control another during
 	// that player's next turn (CR 723.1, ADR 0167: Emrakul, the Promised
 	// End). `seat` is the controller, `target_seat` the controlled
@@ -1348,7 +1356,8 @@ func (f *logFold) feed(events []game.Event) int {
 			continue
 		case game.EventLoopReplayed:
 			f.replaying = false
-		case game.EventGameRestarted:
+		case game.EventGameRestarted, game.EventMatchGame:
+			// ADR 0222 §3: and with each game of a match.
 			// CR 727 (#3856): the log begins again with the new game.
 			// Its restart line is the first entry, and nothing the
 			// fold remembers about the old game's lines carries over.
@@ -2587,6 +2596,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventMatchGame:
+		base.Kind = LogMatchGame
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventGameRestarted:
 		base.Kind = LogGameRestarted
 		base.CardID = uuidStringOrEmpty(ev.Source)
@@ -3526,6 +3544,12 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s's turn ends", actor)
 		}
 		return fmt.Sprintf("%s's turn ends (%s)", actor, card)
+	case LogMatchGame:
+		// ADR 0222 §3, CR 103.1.
+		if e.Label == game.MatchChoseDraw {
+			return fmt.Sprintf("Game %d. %s chose to draw, so %s plays first", e.Amount, actor, target)
+		}
+		return fmt.Sprintf("Game %d. %s chose to play first", e.Amount, actor)
 	case LogGameRestarted:
 		line := fmt.Sprintf("%s restarted the game and goes first", actor)
 		if cardName != "" {
@@ -3699,6 +3723,12 @@ func renderSettingsText(e LogEvent) string {
 	case game.SettingFormat:
 		// ADR 0222 §1.
 		return fmt.Sprintf("%s set the format to %s", who, game.Format(e.Choice).Spec().Name)
+	case game.SettingBestOf:
+		// ADR 0222 §3.
+		if e.Choice == "3" {
+			return fmt.Sprintf("%s made the match best-of-three", who)
+		}
+		return fmt.Sprintf("%s made the match best-of-one", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

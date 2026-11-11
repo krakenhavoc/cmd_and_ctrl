@@ -181,6 +181,17 @@ type GameMeta struct {
 	// MaxSeats is how many seats the table's format has, omitted at a
 	// four-seat table.
 	MaxSeats int `json:"max_seats,omitempty"`
+	// BestOf is the length of the table's match (ADR 0222 §3): 3, or
+	// omitted for a best-of-one and for a table with no match. A cache
+	// of the engine's table settings, like Format. Once a best-of-three
+	// has started, List also gives each seat its games won
+	// (GamePlayer.MatchWins) and the number of the game in play
+	// (MatchGame).
+	BestOf int `json:"best_of,omitempty"`
+	// MatchGame is the number of the game a best-of-three is on, set by
+	// List from the engine. Omitted before the match starts and at
+	// every other table.
+	MatchGame int `json:"match_game,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -294,6 +305,12 @@ type SeatInfo struct {
 	// the lobby, once the game has ended, and on every other route.
 	// Public at the table: every seat and spectator sees it.
 	Life *int `json:"life,omitempty"`
+
+	// MatchWins is the games this seat has won in the table's
+	// best-of-three (ADR 0222 §3), set by List once the match has
+	// started and kept after it ends. Nil (omitted) at every other
+	// table, a best-of-one included.
+	MatchWins *int `json:"match_wins,omitempty"`
 
 	// UserID is the users row of the signed-in person holding the seat
 	// (seats.user_id, ADR 0051 sub-PR 4), or "" for a guest, a bot,
@@ -2067,6 +2084,15 @@ func copyMeta(m GameMeta) GameMeta {
 func glanceAt(e *gameEntry, m *GameMeta) {
 	if e.room == nil || e.room.Game == nil {
 		return
+	}
+	// ADR 0222 §3: the score of a best-of-three, in play or over.
+	if match := e.room.Game.MatchSnapshot(); match != nil && match.BestOf > 1 {
+		m.BestOf = match.BestOf
+		m.MatchGame = match.GameNumber()
+		for i := range m.Players {
+			wins := match.Wins(m.Players[i].PlayerID)
+			m.Players[i].MatchWins = &wins
+		}
 	}
 	glance, ok := e.room.Game.Glance()
 	if !ok {

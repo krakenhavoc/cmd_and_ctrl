@@ -34,6 +34,17 @@ import "github.com/google/uuid"
 func (g *Game) RemoveSeatFromGame(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.State == StateBetweenGames {
+		// ADR 0222 §3: a seat removed between two games of a match
+		// concedes the match; there is no game in play to concede.
+		p := g.playerByIDLocked(playerID)
+		if p == nil {
+			return ErrPlayerNotFound
+		}
+		g.concedeMatchBetweenGamesLocked(p)
+		p.Removed = true
+		return nil
+	}
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
@@ -42,6 +53,8 @@ func (g *Game) RemoveSeatFromGame(playerID uuid.UUID) error {
 		return ErrPlayerNotFound
 	}
 	if !p.Eliminated {
+		// A removed seat is not coming back for the next game either.
+		g.markMatchConcededLocked(p)
 		g.concedeLocked(p)
 	}
 	p.Removed = true

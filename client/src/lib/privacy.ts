@@ -141,8 +141,13 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * built for (Commander or Standard). It describes a list the person
  * already saved; the "Your decks" row names it, and account deletion
  * deletes it with the deck.
+ * 37 (#5436, ADR 0222 §3) adds match_games: for a best-of-three, a row
+ * per game saying which seat won it, why it ended, who went first and
+ * how many turns it took. Numbers by game and seat, no names or user
+ * ids, kept with the game's statistics; the "Game statistics" row says
+ * so.
  */
-export const PRIVACY_SCHEMA_VERSION = 36;
+export const PRIVACY_SCHEMA_VERSION = 37;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

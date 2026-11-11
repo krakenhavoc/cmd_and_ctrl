@@ -236,9 +236,18 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 // use, and exits when the game ends or the entry is dropped (stop is
 // closed). Started for every game that becomes active in this process
 // or comes back active from a restore point.
+//
+// It is also the between-games timer of a table playing a match (ADR
+// 0222 §3): while the sideboarding window is open it sleeps no longer
+// than the window's deadline, and begins the next game when that
+// comes. A table that came back from a restore point in the middle of
+// sideboarding is given time for its players to come back first.
 func (l *Lobby) watchEnd(entry *gameEntry) {
 	wake, unsubscribe := entry.room.Subscribe()
 	defer unsubscribe()
+	entry.room.Game.ExtendSideboarding(time.Now())
+	timer := time.NewTimer(time.Hour)
+	defer timer.Stop()
 	for {
 		if entry.room.Game.CurrentState() == game.StateEnded {
 			l.mu.Lock()
@@ -248,11 +257,57 @@ func (l *Lobby) watchEnd(entry *gameEntry) {
 			l.mu.Unlock()
 			return
 		}
+		var due <-chan time.Time
+		if deadline, open := entry.room.Game.SideboardingDeadline(); open {
+			// A zero deadline is a window everyone is ready for (two
+			// bot seats), which ends now.
+			wait := time.Duration(0)
+			if !deadline.IsZero() {
+				wait = time.Until(deadline)
+			}
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(max(wait, 0))
+			due = timer.C
+		}
 		select {
 		case <-wake:
+		case <-due:
+			l.advanceMatch(entry)
 		case <-entry.stop:
 			return
 		}
+	}
+}
+
+// errMatchNotDue stops advanceMatch's commit when the sideboarding
+// window is not over after all: a player readied up, or took it back,
+// while the timer fired.
+var errMatchNotDue = errors.New("lobby: the next game of the match is not due")
+
+// advanceMatch begins the next game of a table's match once its
+// sideboarding window is over (ADR 0222 §3), and sends the new game to
+// everyone at the table. The start of a game is not taken back, so the
+// commit mints no undo entry.
+func (l *Lobby) advanceMatch(entry *gameEntry) {
+	view, seq, err := entry.room.ApplyExternal(func() error {
+		if !entry.room.Game.AdvanceMatch(time.Now()) {
+			return errMatchNotDue
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	l.mu.Lock()
+	b := l.broadcast
+	l.mu.Unlock()
+	if b != nil {
+		b.BroadcastState(entry.meta.ID, seq, view)
 	}
 }
 

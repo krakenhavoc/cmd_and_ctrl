@@ -49,12 +49,12 @@ const COMMANDER: FormatInfo = {
 const STANDARD: FormatInfo = {
   id: "standard",
   name: L.formatStandard,
-  blurb: "2 players, 20 life, 60-card decks, one game",
+  blurb: "2 players, 20 life, 60-card decks, one game or best of three",
   seats: 2,
   startingLife: 20,
   hasCommander: false,
   deckRules:
-    "Every deck is validated against Standard rules — at least 60 cards, at most 4 of a card other than basic lands, every card legal in Standard, a sideboard of up to 15 — whichever way it arrives. Best of one: the sideboard is checked but not swapped in.",
+    "Every deck is validated against Standard rules — at least 60 cards, at most 4 of a card other than basic lands, every card legal in Standard, a sideboard of up to 15 — whichever way it arrives. In a best of three you can swap sideboard cards in between games.",
   pastePlaceholder:
     "https://archidekt.com/decks/123456\n\n— or paste the list —\n\nDeck:\n4 Llanowar Elves\n4 Giant Growth\n22 Forest\n...\n\nSideboard:\n2 Naturalize\n...",
 };

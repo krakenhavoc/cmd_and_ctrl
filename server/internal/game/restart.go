@@ -131,11 +131,7 @@ func (g *Game) finishRestartLocked() {
 	// RestoreFrom adopts what an undo adopts. These are the transient
 	// fields it leaves alone because an undo never needs them reset;
 	// a new game does.
-	g.openingHands = nil
-	g.libraryTopWatch = nil
-	g.scopedEffectMemo = scopedEffectAdapterMemo{}
-	g.promptKeys = promptKeyState{}
-	g.TurnTally = TurnTally{FirstEvent: len(g.Events)}
+	g.resetTransientsForNewGameLocked()
 
 	start := g.restartStartingSeatLocked(req.Restarter)
 	// ADR 0216: the new game of a Planechase table is a Planechase game
@@ -187,6 +183,20 @@ func (g *Game) finishRestartLocked() {
 	}
 }
 
+// resetTransientsForNewGameLocked resets the transient fields
+// RestoreFrom leaves alone because an undo never needs them reset. A
+// new game at the table does: a restart, and the next game of a match
+// (match.go).
+//
+// Caller must hold g.mu (write).
+func (g *Game) resetTransientsForNewGameLocked() {
+	g.openingHands = nil
+	g.libraryTopWatch = nil
+	g.scopedEffectMemo = scopedEffectAdapterMemo{}
+	g.promptKeys = promptKeyState{}
+	g.TurnTally = TurnTally{FirstEvent: len(g.Events)}
+}
+
 // restartStartingSeatLocked is the seat of the player who restarted the
 // game (CR 727.1a), or — when that player is no longer in it — the next
 // seat in turn order that is.
@@ -221,27 +231,7 @@ func (g *Game) restartStartingSeatLocked(restarter uuid.UUID) int {
 //
 // Caller must hold g.mu.
 func (g *Game) buildRestartedGameLocked(req *GameRestart) (*Game, []uuid.UUID) {
-	ng := NewGame()
-	ng.ID = g.ID
-	ng.CreatedAt = g.CreatedAt
-	ng.Settings = g.Settings
-	ng.LoopThreshold = g.LoopThreshold
-	// The log continues: Seq and batch numbers keep rising, so the undo
-	// stack, the secret-vote check and the public log's fold, which all
-	// compare Seq values, never see one go backwards.
-	ng.Events = g.Events
-	ng.eventSeq = g.eventSeq
-	ng.eventBatch = g.eventBatch
-	ng.Listeners = g.Listeners
-	ng.BuiltinReplacements = g.BuiltinReplacements
-	ng.tableRolls = g.tableRolls
-	ng.sourceOrdinalNext = g.sourceOrdinalNext
-	// A new key, derived: the new game's shuffles are not the old
-	// game's streams replayed from turn 0, and an undo of the restart
-	// that is redone derives the same key, as any undone shuffle does.
-	ng.rngKey = restartRNGKey(g.rngKey)
-	ng.layerVersion.Store(g.layerVersion.Load() + 1)
-	ng.lastResolvedVersion.Store(g.lastResolvedVersion.Load())
+	ng := g.newGameAtThisTableLocked(restartRNGKey(g.rngKey))
 
 	exempt := make(map[uuid.UUID]bool, len(req.Exempt))
 	for _, id := range req.Exempt {
@@ -339,6 +329,42 @@ func (g *Game) buildRestartedGameLocked(req *GameRestart) (*Game, []uuid.UUID) {
 	})
 	walk(g.Exile, nil)
 	return ng, exemptNew
+}
+
+// newGameAtThisTableLocked is a fresh NewGame that is still this table:
+// what a new game here CARRIES from the one before it, listed in this
+// one place. A restart (CR 727.1) and the next game of a match
+// (match.go, ADR 0222 §3) both begin from it, and RestoreFrom adopts
+// the result. It has no seats and no cards; the caller seats them.
+//
+// Caller must hold g.mu.
+func (g *Game) newGameAtThisTableLocked(rngKey [32]byte) *Game {
+	ng := NewGame()
+	ng.ID = g.ID
+	ng.CreatedAt = g.CreatedAt
+	ng.Settings = g.Settings
+	ng.LoopThreshold = g.LoopThreshold
+	// The log continues: Seq and batch numbers keep rising, so the undo
+	// stack, the secret-vote check and the public log's fold, which all
+	// compare Seq values, never see one go backwards.
+	ng.Events = g.Events
+	ng.eventSeq = g.eventSeq
+	ng.eventBatch = g.eventBatch
+	ng.Listeners = g.Listeners
+	ng.BuiltinReplacements = g.BuiltinReplacements
+	ng.tableRolls = g.tableRolls
+	ng.sourceOrdinalNext = g.sourceOrdinalNext
+	// A new key, derived: the new game's shuffles are not the old
+	// game's streams replayed from turn 0, and an undo of the restart
+	// that is redone derives the same key, as any undone shuffle does.
+	ng.rngKey = rngKey
+	ng.layerVersion.Store(g.layerVersion.Load() + 1)
+	ng.lastResolvedVersion.Store(g.lastResolvedVersion.Load())
+	// A game restarted inside a match is still that game of the match
+	// (CR 727.1: nobody wins, loses or draws a restarted game).
+	ng.Match = cloneMatch(g.Match)
+
+	return ng
 }
 
 // restartedPlayer is the new game's seat for a player of the old one:

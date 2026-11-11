@@ -130,6 +130,10 @@ export interface GameMenuOptions {
   ) => Promise<{ blocked: boolean; spectators: SpectatorLine[] }>;
   // Called once the confirm is accepted. Concede is irreversible.
   onConcede: () => void;
+  // ADR 0222 §3: set at a table playing a best-of-three, whose concede
+  // confirmation offers both: Concede concedes the game in play and the
+  // match goes on; this concedes the whole match.
+  onConcedeMatch?: () => void;
   onStartVote: (topic: string, options: string[]) => void;
 }
 

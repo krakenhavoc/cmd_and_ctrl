@@ -307,6 +307,12 @@ export type ActionType =
   // fields present are applied. Host or admin only, and deliberately
   // not undoable.
   | "set_table_settings"
+  // ADR 0222 §3: sideboarding between two games of a match, and
+  // conceding the whole match.
+  | "set_match_deck"
+  | "choose_play_first"
+  | "sideboard_ready"
+  | "concede_match"
   // Deprecated since S35: a one-field alias for set_table_settings
   // that cannot select an unlimited budget (a negative limit clamps
   // to 0). Kept so an old client and the gamecli scripts still work.
@@ -341,6 +347,63 @@ export interface SnapshotPayload {
   seq: number;
   generation: number;
   game: GameView;
+}
+
+// MatchView mirrors protocol.MatchView (ADR 0222 §3): the score of a
+// table's match and, between two of its games, the sideboarding window.
+// A best-of-one table has one too, with best_of 1; a score is shown
+// only for a longer match.
+export interface MatchView {
+  best_of: number;
+  // The number of the game in play, or of the last game played while
+  // the table is between games or the match is over.
+  game: number;
+  // Each seat's games won, by seat index.
+  wins: number[];
+  games?: MatchGameView[];
+  over?: boolean;
+  // The seat that won the match; absent for a draw.
+  winner_seat?: number;
+  conceded_seat?: number;
+  // Present between two games. The table's state is then "active", the
+  // board is the finished game's, and only sideboarding's actions are
+  // accepted.
+  sideboarding?: SideboardingView;
+}
+
+export interface MatchGameView {
+  // Absent for a drawn game.
+  winner_seat?: number;
+  cause?: string;
+  starting_seat: number;
+  turns: number;
+}
+
+export interface SideboardingView {
+  // RFC 3339 UTC, and the same in seconds by the server's clock when
+  // the frame was built.
+  deadline: string;
+  seconds_left: number;
+  // The seats that are ready; a bot seat always is.
+  ready: number[];
+  // Who chooses who plays first (CR 103.1), and the choice as it
+  // stands, which only the chooser's frame carries.
+  chooser_seat: number;
+  play_first?: boolean;
+  deck_min: number;
+  sideboard_max: number;
+  // The viewer's own pool; none on a spectator's frame.
+  pools?: MatchPoolView[];
+}
+
+// One seat's deck and sideboard between games. A card's instance_id is
+// its pool id, which set_match_deck takes.
+export interface MatchPoolView {
+  seat: number;
+  player_id: string;
+  deck: CardView[];
+  sideboard: CardView[];
+  registered: string[];
 }
 
 // OpeningRollView mirrors protocol.OpeningRollView (ADR 0121 §3): the
@@ -528,6 +591,9 @@ export interface GameView {
   // ADR 0216 §9: a Planechase table's planar state. Absent unless the
   // table plays Planechase. Public to every viewer.
   planechase?: PlanechaseView;
+  // ADR 0222 §3: the table's match, absent at a table with no match,
+  // which is every Commander table. Read it through match.ts.
+  match?: MatchView;
   // ADR 0222 slice 1: true when no seat brought a commander, which is
   // when the commander UI is hidden (the command zone tile, the
   // commander damage grid and setting). Absent at every table with a
@@ -1401,6 +1467,7 @@ export type LogKind =
   // many exiled cards will enter under their control after the
   // mulligans. Always the first line: the log begins again here.
   | "game_restarted"
+  | "match_game"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -6141,6 +6208,9 @@ export interface TableSettingsView {
   // Commander, the default. Chosen when the table is made; read it
   // through formatOf (formats.ts).
   format?: string;
+  // ADR 0222 §3: the length of the table's match, 3, or absent for a
+  // best-of-one and for a table with no match.
+  best_of?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

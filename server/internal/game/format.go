@@ -58,6 +58,10 @@ type FormatSpec struct {
 	MaxSeats int
 	// CommanderExpected says a deck of the format has a commander.
 	CommanderExpected bool
+	// Matches says a table of the format plays a match (ADR 0222 §3,
+	// match.go): best-of-one unless the table asks for best-of-three.
+	// False for Commander, whose tables have no match at all.
+	Matches bool
 	// Deck is the format's deck construction rules.
 	Deck DeckRules
 }
@@ -78,6 +82,7 @@ var formats = []FormatSpec{
 		Name:         "Standard",
 		StartingLife: 20,
 		MaxSeats:     2,
+		Matches:      true,
 		Deck:         DeckRules{MinCards: 60, MaxCopies: 4, SideboardSize: 15, Legality: "standard"},
 	},
 }

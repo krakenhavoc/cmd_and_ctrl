@@ -178,6 +178,21 @@ const (
 	// is active, the opening roll and the mulligan included; mints no
 	// undo entry (MintsNoUndo). The hub allows one per seat per 2 s.
 	TypeRollTableDie Type = "roll_table_die"
+	// ADR 0222 §3 — a match, best-of-three with sideboarding. Between
+	// two games of a match: set_match_deck is a player's sideboarding,
+	// params `{main: [pool card id, ...]}`, the cards of their pool
+	// that are their deck for the next game (the rest is their
+	// sideboard), refused if the format's deck check fails;
+	// choose_play_first is CR 103.1's choice by the loser of the last
+	// game, params `{play_first: bool}`; sideboard_ready readies up or
+	// takes it back, params `{ready: bool}`, and the next game begins
+	// when both players are ready. concede_match concedes the whole
+	// match, during a game or between two; concede still concedes only
+	// the game in play. None of the four mints an undo entry.
+	TypeSetMatchDeck    Type = "set_match_deck"
+	TypeChoosePlayFirst Type = "choose_play_first"
+	TypeSideboardReady  Type = "sideboard_ready"
+	TypeConcedeMatch    Type = "concede_match"
 	// #1530, #1968 — when to ask a seat to order its triggers: a seat's
 	// own preference, params `{trigger_order: "when_it_matters" |
 	// "always" | "never"}`. The #1530 form `{always_ask: bool}` is still
@@ -233,6 +248,24 @@ var openingRollActions = map[Type]struct{}{
 	TypeSetUndoLimit:              {},
 }
 
+// sideboardingActions are the only action types Dispatch accepts while
+// a table is between two games of a match (ADR 0222 §3): sideboarding's
+// own verbs, conceding the match, a table roll, a seat's own
+// preferences and the table settings. An ALLOWLIST, as the opening
+// roll's is: every other type is refused with game.ErrSideboardingOpen,
+// a concession of the game included, because no game is in play.
+var sideboardingActions = map[Type]struct{}{
+	TypeSetMatchDeck:              {},
+	TypeChoosePlayFirst:           {},
+	TypeSideboardReady:            {},
+	TypeConcedeMatch:              {},
+	TypeSetTriggerOrderPreference: {},
+	TypeSetAutoAnswers:            {},
+	TypeForgetTriggerOrder:        {},
+	TypeSetTableSettings:          {},
+	TypeSetUndoLimit:              {},
+}
+
 // MintsNoUndo reports whether an action of type t is applied without an
 // undo entry (ADR 0121 §3): the opening roll's verbs, a table roll
 // (§5), the two table settings verbs, and every action while the
@@ -254,6 +287,10 @@ func MintsNoUndo(g *game.Game, t Type) bool {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
 		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit,
 		TypeSetTriggerOrderPreference, TypeSetAutoAnswers, TypeForgetTriggerOrder:
+		return true
+	// ADR 0222 §3: sideboarding is not a play, and neither the end of
+	// a match nor the start of its next game is taken back.
+	case TypeSetMatchDeck, TypeChoosePlayFirst, TypeSideboardReady, TypeConcedeMatch:
 		return true
 	}
 	// ADR 0193: the loop conversation is not a play. The replay it
@@ -534,6 +571,12 @@ var playerScopedActions = map[Type]struct{}{
 	// winner chooses who goes first. The admin acts for any seat.
 	TypeRollOpening:          {},
 	TypeChooseStartingPlayer: {},
+	// ADR 0222 §3: a seat sideboards its own deck, readies itself up
+	// and concedes its own match.
+	TypeSetMatchDeck:    {},
+	TypeChoosePlayFirst: {},
+	TypeSideboardReady:  {},
+	TypeConcedeMatch:    {},
 	// ADR 0121 §5: a seat rolls its own table die.
 	TypeRollTableDie: {},
 	// #1530: a seat sets only its own preference.
@@ -623,6 +666,11 @@ func dispatch(g *game.Game, a Action) error {
 	// roll, a concession and the table settings happens.
 	if _, ok := openingRollActions[a.Type]; !ok && g.OpeningRollOpen() {
 		return game.ErrOpeningRollOpen
+	}
+	// ADR 0222 §3: between two games of a match, nothing but
+	// sideboarding happens.
+	if _, ok := sideboardingActions[a.Type]; !ok && g.SideboardingOpen() {
+		return game.ErrSideboardingOpen
 	}
 	// ADR 0166, CR 723.5: a player another player controls makes no
 	// decisions, and the controller makes them as that player.
@@ -1186,6 +1234,62 @@ func dispatch(g *game.Game, a Action) error {
 		// WebSocket edge, which knows the host (ADR 0121 §3). The
 		// caller is recorded as the presser: uuid.Nil is the admin.
 		return g.HostRollRemaining(a.Caller)
+
+	case TypeSetMatchDeck:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Main []string `json:"main"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		main := make([]uuid.UUID, 0, len(p.Main))
+		for _, s := range p.Main {
+			id, err := uuid.Parse(s)
+			if err != nil {
+				return fmt.Errorf("%w: %s main %q", ErrMissingParams, a.Type, s)
+			}
+			main = append(main, id)
+		}
+		return g.SetMatchDeck(a.Player, main)
+
+	case TypeChoosePlayFirst:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			PlayFirst *bool `json:"play_first"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.PlayFirst == nil {
+			return fmt.Errorf("%w: %s play_first", ErrMissingParams, a.Type)
+		}
+		return g.ChoosePlayFirst(a.Player, *p.PlayFirst)
+
+	case TypeSideboardReady:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Ready *bool `json:"ready"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		if p.Ready == nil {
+			return fmt.Errorf("%w: %s ready", ErrMissingParams, a.Type)
+		}
+		return g.SetSideboardReady(a.Player, *p.Ready)
+
+	case TypeConcedeMatch:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		return g.ConcedeMatch(a.Player)
 
 	case TypeChooseStartingPlayer:
 		if a.Player == uuid.Nil {

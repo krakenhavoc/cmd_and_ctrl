@@ -135,12 +135,12 @@
     {
       what: "Game statistics",
       details:
-        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. For every game we also work out, from its replay, how each seat used its lands and mana, which cards it held and cast, and how it attacked. It is part of the game’s record, kept with the game, and shown only to you. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
+        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. For every game we also work out, from its replay, how each seat used its lands and mana, which cards it held and cast, and how it attacked. For a best-of-three match we also keep, for each game of it, which seat won, why it ended, who went first and how many turns it took. It is part of the game’s record, kept with the game, and shown only to you. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
       why: "So you can see how your decks and games go, on your Stats page.",
       howLong:
         "As long as the game’s record is kept. Deleting the table deletes them. Deleting your account turns your seat into “Deleted player”, and these numbers then belong to that seat, as the rest of the game does.",
       source:
-        "migration 0023 game_stats, seat_stats, seat_card_stats; migration 0029 seat_turn_stats, seat_target_stats, seat_card_seen; gamestats/gamestats.go Compute",
+        "migration 0023 game_stats, seat_stats, seat_card_stats; migration 0029 seat_turn_stats, seat_target_stats, seat_card_seen; migration 0037 match_games; gamestats/gamestats.go Compute",
     },
     {
       what: "Results post in Discord",
