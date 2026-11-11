@@ -901,15 +901,17 @@ func TestADraftCountsAsOneTableAgainstTheCap(t *testing.T) {
 	if got, want := s.lobby.CapacityUsage().Load, lim.TableCost(2, 0)+lim.TableCost(0, 0); got != want {
 		t.Fatalf("load %d with a draft and a table, want %d", got, want)
 	}
-	// Done: the draft counts nothing.
+	// The picks are done and decks are being built: still one table and
+	// its people. What the rounds cost is
+	// TestADraftsMatchesCountAsTablesAgainstTheCap (#5440).
 	room := s.lobby.DraftRoom(host.Draft.ID)
 	room.With(func(d *draft.Draft) {
 		for d.State() == draft.StatePicking {
 			d.Expire(time.Now())
 		}
 	})
-	if got, want := s.lobby.CapacityUsage().Load, lim.TableCost(0, 0); got != want {
-		t.Fatalf("load %d with a finished draft and a table, want %d", got, want)
+	if got, want := s.lobby.CapacityUsage().Load, lim.TableCost(2, 0)+lim.TableCost(0, 0); got != want {
+		t.Fatalf("load %d with a draft building its decks and a table, want %d", got, want)
 	}
 }
 

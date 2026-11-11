@@ -144,6 +144,9 @@ type GameMeta struct {
 	// POST /games/practice, never listed and never persisted. The
 	// client reads it to know the table it is on is the tutorial's.
 	Practice bool `json:"practice,omitempty"`
+	// DraftID is the draft this table is a match of (draft_matches.go),
+	// "" for any other table. The client offers the way back to it.
+	DraftID string `json:"draft_id,omitempty"`
 	// IsCreator reports, for THIS response's viewer only, whether
 	// they created the game (#1098). Computed by redactMetaFor from
 	// CreatedBy and the requesting principal's UserID; never the raw
@@ -377,7 +380,10 @@ type Lobby struct {
 	// draft is not a game: it is in memory only and has no entry in
 	// games.
 	drafts map[uuid.UUID]*draftEntry
-	mgr    *ws.RoomManager
+	// draftRecorder keeps a signed-in person's finished drafts
+	// (draft_matches.go); nil keeps nothing.
+	draftRecorder DraftRecorder
+	mgr           *ws.RoomManager
 	// broadcast, when non-nil, receives the post-mutation view of
 	// every HTTP-side game mutation (join / deck upload / start) so
 	// clients already on the game page see it without waiting for
@@ -576,6 +582,12 @@ type gameEntry struct {
 	practice      bool
 	practiceOwner string
 	practiceHuman uuid.UUID
+
+	// draftMatch marks a limited table a draft opened for one of its
+	// matches (draft_matches.go, ADR 0222 §6). It is also a practice
+	// entry, for everything that means (unlisted, unstored), with no
+	// practice owner or human.
+	draftMatch *draftMatchRef
 
 	// blocks are the identities this table will not seat again (blocks.go,
 	// table_blocks). Guarded by l.mu like meta.

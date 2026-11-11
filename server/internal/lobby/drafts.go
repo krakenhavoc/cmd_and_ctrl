@@ -5,11 +5,13 @@ import (
 	"errors"
 	"math/rand/v2"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draft"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
@@ -37,6 +39,10 @@ var (
 	// ErrDraftNotFound is an unknown draft, a closed one, and a wrong
 	// invite: one answer for all three, so an invite cannot be probed.
 	ErrDraftNotFound = errors.New("lobby: draft not found")
+	// ErrDraftNoMatch is a seat asking for its match's table when it
+	// has none: the round has not begun, its match is over, or it sits
+	// this round out.
+	ErrDraftNoMatch = errors.New("lobby: this seat has no match to play right now")
 )
 
 // draftEntry is one live draft. Its fields are fixed at creation.
@@ -48,7 +54,20 @@ type draftEntry struct {
 	// owner is who the draft belongs to for the one-at-a-time rule:
 	// "user:<id>" for a signed-in creator, "" for a visitor.
 	owner string
+	// set is the set drafted, for the basic lands a deck adds.
+	set string
+
+	// done is closed when the draft closes, which ends watchDraft.
+	done     chan struct{}
+	doneOnce sync.Once
+	// sync serialises the steps that open a round's tables against a
+	// seat leaving, so a table is never opened for a seat on its way
+	// out (draft_matches.go).
+	sync sync.Mutex
 }
+
+// finish marks the entry closed.
+func (e *draftEntry) finish() { e.doneOnce.Do(func() { close(e.done) }) }
 
 // DraftSpec is what POST /draft asks for, after the handler has
 // resolved the set.
@@ -65,6 +84,10 @@ type DraftSpec struct {
 	Seats   int
 	// PickTimeout is the pick timer; zero is the default.
 	PickTimeout time.Duration
+	// BuildTimeout is the deckbuilding timer and BestOf the length of
+	// the draft's matches (1 or 3); zero is the default of each.
+	BuildTimeout time.Duration
+	BestOf       int
 
 	// HostName is the creator's seat name, HostUser their account
 	// (uuid.Nil for a visitor).
@@ -105,20 +128,22 @@ func (l *Lobby) CreateDraft(spec DraftSpec) (draftID, seatID uuid.UUID, err erro
 		seed = rand.Uint64()
 	}
 	d, err := draft.New(draft.Config{
-		Name:        name,
-		Set:         spec.Set,
-		SetName:     spec.SetName,
-		Booster:     spec.Booster,
-		Mode:        spec.Mode,
-		Seats:       spec.Seats,
-		Seed:        seed,
-		PickTimeout: spec.PickTimeout,
-		Solo:        spec.Solo,
+		Name:         name,
+		Set:          spec.Set,
+		SetName:      spec.SetName,
+		Booster:      spec.Booster,
+		Mode:         spec.Mode,
+		Seats:        spec.Seats,
+		Seed:         seed,
+		PickTimeout:  spec.PickTimeout,
+		Solo:         spec.Solo,
+		BuildTimeout: spec.BuildTimeout,
+		BestOf:       spec.BestOf,
 	}, time.Now())
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}
-	entry := &draftEntry{room: draft.NewRoom(d, spec.Source)}
+	entry := &draftEntry{room: draft.NewRoom(d, spec.Source), set: spec.Set, done: make(chan struct{})}
 	if !spec.Solo {
 		entry.invite, err = token.Random(16)
 		if err != nil {
@@ -140,23 +165,25 @@ func (l *Lobby) CreateDraft(spec DraftSpec) (draftID, seatID uuid.UUID, err erro
 		}
 	})
 
-	var replaced []*draft.Room
-	l.mu.Lock()
 	// The creator's earlier unfinished draft goes first, so its cost
-	// does not count against the new one.
+	// and its tables' do not count against the new one. A draft whose
+	// rounds are over is left for its people to look at.
 	if entry.owner != "" {
+		var replaced []uuid.UUID
+		l.mu.Lock()
 		for id, e := range l.drafts {
-			if e.owner == entry.owner && e.room.Status().State != draft.StateDone {
-				replaced = append(replaced, e.room)
-				delete(l.drafts, id)
+			if e.owner == entry.owner && e.room.Status().Phase != draft.PhaseFinished {
+				replaced = append(replaced, id)
 			}
 		}
+		l.mu.Unlock()
+		for _, id := range replaced {
+			l.closeDraft(id)
+		}
 	}
+	l.mu.Lock()
 	if !l.limits.Fits(l.loadLocked(), l.limits.TableCost(1, 0)) {
 		l.mu.Unlock()
-		for _, r := range replaced {
-			r.Close()
-		}
 		metrics.CapacityRefused(metrics.RefuseTableLoad)
 		return uuid.Nil, uuid.Nil, ErrServerFull
 	}
@@ -168,12 +195,10 @@ func (l *Lobby) CreateDraft(spec DraftSpec) (draftID, seatID uuid.UUID, err erro
 		l.drafts[d.ID] = entry
 	}
 	l.mu.Unlock()
-	for _, r := range replaced {
-		r.Close()
-	}
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}
+	go l.watchDraft(d.ID, entry)
 	return d.ID, seatID, nil
 }
 
@@ -265,7 +290,15 @@ func (l *Lobby) LeaveDraft(id, seat uuid.UUID) error {
 	if !ok {
 		return ErrDraftNotFound
 	}
+	// A person who leaves in the middle of a match concedes it, and
+	// what they drafted is kept before the seat forgets who they were
+	// (draft_matches.go). Both under the draft's sync lock, so no table
+	// is being opened for the seat as it goes.
+	e.sync.Lock()
+	l.concedeDraftMatch(id, seat)
+	l.recordDraft(e, seat)
 	humans, err := e.room.Leave(seat)
+	e.sync.Unlock()
 	if err != nil {
 		return err
 	}
@@ -275,15 +308,34 @@ func (l *Lobby) LeaveDraft(id, seat uuid.UUID) error {
 	return nil
 }
 
-// closeDraft ends a draft and forgets it.
+// closeDraft ends a draft and forgets it: what its signed-in people
+// drafted is kept first (a draft the sweep closes is as finished as it
+// will get), and its match tables go with it.
 func (l *Lobby) closeDraft(id uuid.UUID) {
 	l.mu.Lock()
 	e, ok := l.drafts[id]
+	l.mu.Unlock()
+	if !ok {
+		return
+	}
+	l.recordDraft(e, uuid.Nil)
+	l.mu.Lock()
 	delete(l.drafts, id)
 	l.mu.Unlock()
-	if ok {
-		e.room.Close()
+	e.finish()
+	e.room.Close()
+	l.dropDraftMatches(id)
+}
+
+// draftHasOpenMatch reports whether a draft has a match table still in
+// play. Callers hold l.mu.
+func (l *Lobby) draftHasOpenMatchLocked(id uuid.UUID) bool {
+	for _, g := range l.games {
+		if g.draftMatch != nil && g.draftMatch.draft == id && g.meta.State != string(game.StateEnded) {
+			return true
+		}
 	}
+	return false
 }
 
 // DraftCount is how many drafts are live.
@@ -297,11 +349,18 @@ func (l *Lobby) DraftCount() int {
 // 0222 §9, ADR 0148): one table, plus a human seat for each person,
 // while it is in its lobby or people are picking. Its bots add nothing:
 // a draft bot picks a card and runs no game, which is the work a bot
-// seat's weight stands for. A finished draft counts nothing, like an
-// ended table.
+// seat's weight stands for. Once the rounds begin the draft counts
+// nothing itself: each match it opens is a table and counts as one
+// (#5440). A finished draft counts nothing, like an ended table.
 func (l *Lobby) draftCostLocked(e *draftEntry) int {
 	st := e.room.Status()
-	if st.Closed || st.State == draft.StateDone {
+	if st.Closed {
+		return 0
+	}
+	// Through the picks and the build the draft is one table with its
+	// people. In the rounds its people are counted at the match tables
+	// they play at, each a table of its own (draft_matches.go).
+	if st.State == draft.StateDone && st.Phase != draft.PhaseBuilding {
 		return 0
 	}
 	return l.limits.TableCost(st.Humans, 0)
@@ -346,10 +405,14 @@ func (l *Lobby) tickDraftsIdle(now time.Time) {
 	type cand struct {
 		id   uuid.UUID
 		room *draft.Room
+		// playing says a match of the draft is still being played. Its
+		// people are at that table, not on the draft's socket, and the
+		// table has its own idle limit (draftMatchIdle).
+		playing bool
 	}
 	cands := make([]cand, 0, len(l.drafts))
 	for id, e := range l.drafts {
-		cands = append(cands, cand{id, e.room})
+		cands = append(cands, cand{id, e.room, l.draftHasOpenMatchLocked(id)})
 	}
 	l.mu.Unlock()
 
@@ -361,6 +424,7 @@ func (l *Lobby) tickDraftsIdle(now time.Time) {
 		due := st.Closed || st.Humans == 0
 		switch {
 		case due:
+		case c.playing:
 		case st.State == draft.StateLobby:
 			due = over(st.LastHuman, lim.IdleLobbyAfter) ||
 				(st.Solo && st.Connected == 0 && over(st.LastHuman, SoloDraftAbandonedAfter))

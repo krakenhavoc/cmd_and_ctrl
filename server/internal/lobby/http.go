@@ -31,6 +31,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/drafthistory"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
@@ -86,9 +87,12 @@ type Config struct {
 	DraftSets *draftpacks.Lister
 	// DraftHub serves the draft's socket (drafts_http.go): *ws.Hub in
 	// production. Nil answers 503 there.
-	DraftHub   DraftSockets
-	Auth       auth.Authenticator
-	AdminToken string // shared admin token; empty disables admin flow
+	DraftHub DraftSockets
+	// DraftHistory is a signed-in person's finished drafts, behind GET
+	// /me/drafts (mydrafts_http.go). Nil lists none.
+	DraftHistory drafthistory.Store
+	Auth         auth.Authenticator
+	AdminToken   string // shared admin token; empty disables admin flow
 	// Admins is the Discord user-ID allowlist (CMDCTRL_DISCORD_ADMIN_USER_IDS,
 	// ADR 0110 §3) and each allowlisted person's admin mode (ADR 0112
 	// §2): a signed-in session whose Discord ID is on the list is an
@@ -858,6 +862,9 @@ func Handler(c Config) http.Handler {
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
 	mux.Handle("GET /me/stats", auth.Middleware(c.Auth)(handlerFunc(c, myStats)))
+	// The caller's finished drafts (ADR 0222 §9, mydrafts_http.go).
+	mux.Handle("GET /me/drafts", auth.Middleware(c.Auth)(handlerFunc(c, myDrafts)))
+	mux.Handle("GET /me/drafts/{id}", auth.Middleware(c.Auth)(handlerFunc(c, myDraft)))
 	// The advanced-stats switch (ADR 0217 §2). Writes share a
 	// per-person bucket of 1 a second, burst 5, as the notifications.
 	statsPrefsLimit := newLimiter(1, 5)

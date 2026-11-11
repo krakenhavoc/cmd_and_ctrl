@@ -216,6 +216,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckrequests"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/drafthistory"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/draftpacks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
@@ -883,23 +884,32 @@ func main() {
 	// One draftable-set list for GET /draft/sets, the draft's own set
 	// check and the draft image route (ADR 0222 §4, §5).
 	draftSets := draftpacks.NewLister(cardIdx)
+	// A signed-in person's finished drafts (ADR 0222 §9, migration
+	// 0038). With no database nothing is kept and the list is empty.
+	var draftHistory drafthistory.Store
+	if database != nil {
+		store := drafthistory.NewSQLStore(database)
+		draftHistory = store
+		l.SetDraftRecorder(store)
+	}
 	lobbyCfg := lobby.Config{
-		Lobby:       l,
-		DraftSets:   draftSets,
-		DraftHub:    hub,
-		Auth:        authenticator,
-		AdminToken:  cfg.AdminToken,
-		Admins:      admins,
-		SessionTTL:  cfg.SessionTTL,
-		IdentityTTL: cfg.IdentityTTL,
-		Env:         cfg.Env,
-		Features:    cfg.Features,
-		Cards:       cardIdx,
-		Tokens:      effects.Tokens(),
-		Evictor:     hub,
-		Capacity:    cfg.Capacity,
-		Discord:     discordCfg,
-		DiscordBot:  discordBot,
+		Lobby:        l,
+		DraftSets:    draftSets,
+		DraftHub:     hub,
+		DraftHistory: draftHistory,
+		Auth:         authenticator,
+		AdminToken:   cfg.AdminToken,
+		Admins:       admins,
+		SessionTTL:   cfg.SessionTTL,
+		IdentityTTL:  cfg.IdentityTTL,
+		Env:          cfg.Env,
+		Features:     cfg.Features,
+		Cards:        cardIdx,
+		Tokens:       effects.Tokens(),
+		Evictor:      hub,
+		Capacity:     cfg.Capacity,
+		Discord:      discordCfg,
+		DiscordBot:   discordBot,
 		// GET /community (ADR 0156 §6).
 		CommunityInviteURL: cfg.CommunityInviteURL,
 		// GET /config's shop link templates (ADR 0179).
