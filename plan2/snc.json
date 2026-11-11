@@ -1,0 +1,6354 @@
+[
+{
+"name": "Reservoir Kraken",
+"oracle_id": "42e4d4d8-e4e0-4cf8-a6d0-887a17513280",
+"layout": "normal",
+"mana_cost": "{2}{U}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Kraken",
+"oracle_text": "Trample, ward {2}\nAt the beginning of each combat, if this creature is untapped, any opponent may tap an untapped creature they control. If they do, tap this creature and create a 1/1 blue Fish creature token with \"This token can't be blocked.\"",
+"power": "6",
+"toughness": "6",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Trample",
+"Ward"
+],
+"rarity": "rare",
+"collector_number": "413",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Fish",
+"type_line": "Token Creature — Fish",
+"oracle_text": "This creature can't be blocked.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Nimble Larcenist",
+"oracle_id": "abd839ab-8b08-4bc0-900a-3a161c62b06c",
+"layout": "normal",
+"mana_cost": "{W}{U}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Bird Rogue",
+"oracle_text": "Flying\nWhen this creature enters, target opponent reveals their hand. You choose an artifact, instant, or sorcery card from it and exile that card.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "205",
+"set": "snc"
+},
+{
+"name": "Evolving Door",
+"oracle_id": "30e4849e-c58c-4b65-9fb3-7aa40c944904",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "{1}, {T}, Sacrifice a creature: Count the colors of the sacrificed creature, then search your library for a creature card that's exactly that many colors plus one. Exile that card, then shuffle. You may cast the exiled card. Activate only as a sorcery.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "144",
+"set": "snc"
+},
+{
+"name": "Body Count",
+"oracle_id": "9041338d-b660-4fc2-922f-cdf9d1a25993",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Spectacle {B} (You may cast this spell for its spectacle cost rather than its mana cost if an opponent lost life this turn.)\nDraw a card for each creature that died under your control this turn.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Spectacle"
+],
+"rarity": "rare",
+"collector_number": "34",
+"set": "ncc"
+},
+{
+"name": "Midnight Assassin",
+"oracle_id": "f394d2bf-89aa-44c1-b473-8c7a8874a9a3",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Assassin",
+"oracle_text": "Flying\nDeathtouch (Any amount of damage this deals to a creature is enough to destroy it.)",
+"power": "1",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Deathtouch",
+"Flying"
+],
+"rarity": "common",
+"collector_number": "87",
+"set": "snc"
+},
+{
+"name": "Masked Bandits",
+"oracle_id": "84ac3096-098a-477a-8907-fc30ac15f00f",
+"layout": "normal",
+"mana_cost": "{3}{B}{R}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Raccoon Rogue",
+"oracle_text": "Vigilance\nMenace (This creature can't be blocked except by two or more creatures.)\n{2}, Exile this card from your hand: Target land gains \"{T}: Add {B}, {R}, or {G}\" until this card is cast from exile. You may cast this card for as long as it remains exiled.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [
+"Vigilance",
+"Menace"
+],
+"rarity": "common",
+"collector_number": "201",
+"set": "snc"
+},
+{
+"name": "Shakedown Heavy",
+"oracle_id": "77b24f10-93af-44b9-af78-3a2f5ab32251",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Ogre Warrior",
+"oracle_text": "Menace\nWhenever this creature attacks, defending player may have you draw a card. If they do, untap this creature and remove it from combat.",
+"power": "6",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "421",
+"set": "snc"
+},
+{
+"name": "Protection Racket",
+"oracle_id": "4b51edb1-37cc-4993-a8a5-2eb5f79fa191",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your upkeep, repeat the following process for each opponent in turn order. Reveal the top card of your library. That player may pay life equal to that card's mana value. If they do, exile that card. Otherwise, put it into your hand.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "140",
+"set": "ncc"
+},
+{
+"name": "Mr. Orfeo, the Boulder",
+"oracle_id": "58447f16-1df9-4e9a-bb22-b9aad042055a",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Rhino Warrior",
+"oracle_text": "Whenever you attack, double target creature's power until end of turn.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [
+"Double"
+],
+"rarity": "uncommon",
+"collector_number": "320",
+"set": "snc"
+},
+{
+"name": "For the Family",
+"oracle_id": "f6abd7e5-8c52-4b36-98c5-a4df8b5b6863",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 until end of turn. If you control four or more creatures, that creature gets +4/+4 until end of turn instead.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "146",
+"set": "snc"
+},
+{
+"name": "Anhelo, the Painter",
+"oracle_id": "d3c3f293-6790-4dce-900a-8af0464c2572",
+"layout": "normal",
+"mana_cost": "{U}{B}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Vampire Assassin",
+"oracle_text": "Deathtouch\nThe first instant or sorcery spell you cast each turn has casualty 2. (As you cast that spell, you may sacrifice a creature with power 2 or greater. When you do, copy the spell and you may choose new targets for the copy.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Deathtouch"
+],
+"rarity": "mythic",
+"collector_number": "186",
+"set": "ncc"
+},
+{
+"name": "The Beamtown Bullies",
+"oracle_id": "62d394e1-6e7d-4703-8fd8-494f0f043876",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Ogre Devil Warrior",
+"oracle_text": "Vigilance, haste\n{T}: Target opponent whose turn it is puts target nonlegendary creature card from your graveyard onto the battlefield under their control. It gains haste. Goad it. At the beginning of the next end step, exile it. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [
+"Goad",
+"Vigilance",
+"Haste"
+],
+"rarity": "mythic",
+"collector_number": "101",
+"set": "ncc"
+},
+{
+"name": "Obscura Interceptor",
+"oracle_id": "b0870f91-c544-446a-8f7b-a8d03fdb0a2a",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Octopus Wizard",
+"oracle_text": "Flash\nLifelink\nWhen this creature enters, it connives. When it connives this way, return up to one target spell to its owner's hand. (To have a creature connive, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)",
+"power": "3",
+"toughness": "1",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Lifelink",
+"Flash",
+"Connive"
+],
+"rarity": "rare",
+"collector_number": "209",
+"set": "snc"
+},
+{
+"name": "Bribe Taker",
+"oracle_id": "482889f4-6cf5-457f-9f52-a3f841e038b5",
+"layout": "normal",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Rhino Warrior",
+"oracle_text": "Trample\nWhen this creature enters, for each kind of counter on permanents you control, you may put your choice of a +1/+1 counter or a counter of that kind on this creature.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "155",
+"set": "ncc"
+},
+{
+"name": "Cabaretti Charm",
+"oracle_id": "36d8b701-f5dc-42c0-9869-268f8149cbd1",
+"layout": "normal",
+"mana_cost": "{R}{G}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Cabaretti Charm deals damage equal to the number of creatures you control to target creature or planeswalker.\n• Creatures you control get +1/+1 and gain trample until end of turn.\n• Create two 1/1 green and white Citizen creature tokens.",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "173",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Ceremonial Groundbreaker",
+"oracle_id": "5bb05573-7e8f-471f-908d-04bccead79e3",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +2/+1 and has trample.\nEquip Citizen {1}\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "175",
+"set": "snc"
+},
+{
+"name": "Brokers Charm",
+"oracle_id": "a90de2b8-4d71-4d0e-82b3-3b7ab194165b",
+"layout": "normal",
+"mana_cost": "{G}{W}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Target creature you control gets +1/+0 until end of turn. It deals damage equal to its power to target creature or planeswalker an opponent controls.\n• Destroy target enchantment.\n• Draw two cards.",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "298",
+"set": "snc"
+},
+{
+"name": "All-Seeing Arbiter",
+"oracle_id": "f15460d9-0133-436c-b0fe-1661989124f0",
+"layout": "normal",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Creature — Avatar",
+"oracle_text": "Flying\nWhenever this creature enters or attacks, draw two cards, then discard a card.\nWhenever you discard a card, target creature an opponent controls gets -X/-0 until your next turn, where X is the number of different mana values among cards in your graveyard.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "mythic",
+"collector_number": "286",
+"set": "snc"
+},
+{
+"name": "Boxing Ring",
+"oracle_id": "0e676904-17c3-40f2-9b5b-eb29cacc336f",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "Whenever a creature you control enters, it fights up to one target creature you don't control with the same mana value.\n{T}: Create a Treasure token. Activate only if you control a creature that fought this turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Treasure",
+"Fight"
+],
+"rarity": "rare",
+"collector_number": "99",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Smuggler's Buggy",
+"oracle_id": "e19e1e83-75e5-4cfa-8d50-8ed0b027a202",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Hideaway 4 (When this artifact enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nWhenever this Vehicle deals combat damage to a player, you may cast the exiled card without paying its mana cost. If you do, return this Vehicle to its owner's hand.\nCrew 2",
+"power": "5",
+"toughness": "5",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Crew",
+"Hideaway"
+],
+"rarity": "rare",
+"collector_number": "84",
+"set": "ncc"
+},
+{
+"name": "Rocco, Cabaretti Caterer",
+"oracle_id": "41c765a4-a9c9-4169-a9f1-74ededeb793c",
+"layout": "normal",
+"mana_cost": "{X}{R}{G}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Elf Druid",
+"oracle_text": "When Rocco enters, if you cast it, you may search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "332",
+"set": "snc"
+},
+{
+"name": "Mage's Attendant",
+"oracle_id": "94b1e7ed-87f3-44e6-bf34-186dd9a1a0d1",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Cat Rogue",
+"oracle_text": "When this creature enters, create a 1/1 blue Wizard creature token with \"{1}, Sacrifice this token: Counter target noncreature spell unless its controller pays {1}.\"",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "21",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Wizard",
+"type_line": "Token Creature — Wizard",
+"oracle_text": "{1}, Sacrifice this creature: Counter target noncreature spell unless its controller pays {1}.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Public Enemy",
+"oracle_id": "c5f360dc-fe4e-4796-b5c1-468cbd0f6d24",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nAll creatures attack enchanted creature's controller each combat if able.\nWhen enchanted creature dies, draw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "uncommon",
+"collector_number": "55",
+"set": "snc"
+},
+{
+"name": "Wiretapping",
+"oracle_id": "befc5986-f06c-40a4-98ee-ffcace4ceaa8",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "Hideaway 5 (When this enchantment enters, look at the top five cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nWhenever you draw your first card during each of your draw steps, draw a card. Then if you have nine or more cards in hand, you may play the exiled card without paying its mana cost.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Hideaway"
+],
+"rarity": "rare",
+"collector_number": "415",
+"set": "snc"
+},
+{
+"name": "Scuttling Butler",
+"oracle_id": "2b51d6e5-a4cd-4f2f-9762-6ad2cfd8b084",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "At the beginning of combat on your turn, if you control two or more multicolored permanents, this creature gains double strike until end of turn.",
+"power": "4",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "244",
+"set": "snc"
+},
+{
+"name": "Halo Fountain",
+"oracle_id": "36a9de4c-8073-475d-8679-e50844eef09e",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "{W}, {T}, Untap a tapped creature you control: Create a 1/1 green and white Citizen creature token.\n{W}{W}, {T}, Untap two tapped creatures you control: Draw a card.\n{W}{W}{W}{W}{W}, {T}, Untap fifteen tapped creatures you control: You win the game.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "15",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Case the Joint",
+"oracle_id": "575d067a-83a0-49e7-8a74-e3e46a946c8c",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Draw two cards, then look at the top card of each player's library.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "37",
+"set": "snc"
+},
+{
+"name": "Body Dropper",
+"oracle_id": "c0c465ea-4242-4737-9c3e-69222bdb8f1b",
+"layout": "normal",
+"mana_cost": "{B}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Devil Warrior",
+"oracle_text": "Whenever you sacrifice another creature, put a +1/+1 counter on this creature.\n{B}{R}, Sacrifice another creature: This creature gains menace until end of turn. (It can't be blocked except by two or more creatures.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "168",
+"set": "snc"
+},
+{
+"name": "Urabrask, Heretic Praetor",
+"oracle_id": "3fe61a65-b1c0-4d15-b379-e4ce22c96941",
+"layout": "normal",
+"mana_cost": "{3}{R}{R}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phyrexian Praetor",
+"oracle_text": "Haste\nAt the beginning of your upkeep, exile the top card of your library. You may play it this turn.\nAt the beginning of each opponent's upkeep, the next time they would draw a card this turn, instead they exile the top card of their library. They may play it this turn.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "mythic",
+"collector_number": "346",
+"set": "snc"
+},
+{
+"name": "Ognis, the Dragon's Lash",
+"oracle_id": "a6e50e06-6d1d-457d-8fbb-ec9a866960c3",
+"layout": "normal",
+"mana_cost": "{1}{B/R}{R}{R/G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Lizard Warrior",
+"oracle_text": "Haste\nWhenever a creature you control with haste attacks, create a tapped Treasure token.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [
+"Treasure",
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "325",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Kros, Defense Contractor",
+"oracle_id": "debeb004-3157-43cf-95fd-220777417ff7",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Cat Advisor",
+"oracle_text": "At the beginning of your upkeep, put a shield counter on target creature an opponent controls.\nWhenever you put one or more counters on a creature you don't control, tap that creature and goad it. It gains trample until your next turn. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)",
+"power": "2",
+"toughness": "4",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [
+"Goad"
+],
+"rarity": "mythic",
+"collector_number": "7",
+"set": "ncc"
+},
+{
+"name": "Ready to Rumble",
+"oracle_id": "04dd9395-847b-46f7-a669-9b0df89d01ff",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose one —\n• Ready to Rumble deals 5 damage to target creature or planeswalker.\n• Destroy target artifact.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "119",
+"set": "snc"
+},
+{
+"name": "Falco Spara, Pactweaver",
+"oracle_id": "b9c1ca24-5696-4777-8465-13a8f78e4fb5",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Bird Demon",
+"oracle_text": "Flying, trample\nFalco Spara enters with a shield counter on it.\nYou may look at the top card of your library any time.\nYou may cast spells from the top of your library by removing a counter from a creature you control in addition to paying their other costs.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Trample"
+],
+"rarity": "mythic",
+"collector_number": "307",
+"set": "snc"
+},
+{
+"name": "Incriminate",
+"oracle_id": "d8b59cc3-766f-4350-971f-edf721fcc5be",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose two target creatures controlled by the same player. That player sacrifices one of them of their choice.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "84",
+"set": "snc"
+},
+{
+"name": "Hoard Hauler",
+"oracle_id": "2578e8e4-a93c-4904-9037-92a1529c2c67",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Trample\nWhenever this Vehicle deals combat damage to a player, create a Treasure token for each artifact they control.\nCrew 3",
+"power": "5",
+"toughness": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure",
+"Crew",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "109",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Kamiz, Obscura Oculus",
+"oracle_id": "49da6a78-f3b2-4691-975c-efbb644311f3",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Octopus Rogue",
+"oracle_text": "Whenever you attack, target attacking creature can't be blocked this turn. It connives. Then choose another attacking creature with lesser power. That creature gains double strike until end of turn. (To have a creature connive, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)",
+"power": "2",
+"toughness": "4",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "mythic",
+"collector_number": "188",
+"set": "ncc"
+},
+{
+"name": "Glittermonger",
+"oracle_id": "184c763c-b52a-471c-bd87-d01729ebe5e4",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Elf Rogue",
+"oracle_text": "{T}: Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "1",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "common",
+"collector_number": "149",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Elspeth Resplendent",
+"oracle_id": "24591330-d038-478f-b89d-b7b66c0b5cc3",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Planeswalker — Elspeth",
+"oracle_text": "+1: Choose up to one target creature. Put a +1/+1 counter and a counter from among flying, first strike, lifelink, or vigilance on it.\n−3: Look at the top seven cards of your library. You may put a permanent card with mana value 3 or less from among them onto the battlefield with a shield counter on it. Put the rest on the bottom of your library in a random order.\n−7: Create five 3/3 white Angel creature tokens with flying.",
+"loyalty": "5",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "341",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Angel",
+"type_line": "Token Creature — Angel",
+"oracle_text": "Flying",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Flawless Forgery",
+"oracle_id": "0e3cb267-5704-4708-94c8-e2fbce4978af",
+"layout": "normal",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 3 (As you cast this spell, you may sacrifice a creature with power 3 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nExile target instant or sorcery card from an opponent's graveyard. Copy that card. You may cast the copy without paying its mana cost.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "rare",
+"collector_number": "26",
+"set": "ncc"
+},
+{
+"name": "Civil Servant",
+"oracle_id": "232e16f4-32ae-4f42-a377-6bdebc9a06c7",
+"layout": "normal",
+"mana_cost": "{G}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Cat Citizen",
+"oracle_text": "Whenever this creature attacks, you may tap another untapped Citizen you control. If you do, this creature gets +1/+0 and gains lifelink until end of turn.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "176",
+"set": "snc"
+},
+{
+"name": "Illicit Shipment",
+"oracle_id": "81d62f0a-b2ba-4e87-9003-e5472bd1101f",
+"layout": "normal",
+"mana_cost": "{3}{B}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 3 (As you cast this spell, you may sacrifice a creature with power 3 or greater. When you do, copy this spell.)\nSearch your library for a card, put it into your hand, then shuffle.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "uncommon",
+"collector_number": "83",
+"set": "snc"
+},
+{
+"name": "Unleash the Inferno",
+"oracle_id": "d305d2dd-578c-4964-a7c2-26490bb2ef2e",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}{G}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Unleash the Inferno deals 7 damage to target creature or planeswalker. When it deals excess damage this way, destroy target artifact or enchantment an opponent controls with mana value less than or equal to that amount of excess damage.",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "229",
+"set": "snc"
+},
+{
+"name": "Boon of Safety",
+"oracle_id": "34f0beae-a8e2-4474-9f7f-4735d3f26863",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Put a shield counter on target creature. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nScry 1.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "4",
+"set": "snc"
+},
+{
+"name": "Parnesse, the Subtle Brush",
+"oracle_id": "c6040e8d-dac3-4bed-8d1d-d7d44aa10c86",
+"layout": "normal",
+"mana_cost": "{2}{U}{B}{R}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Vampire Wizard",
+"oracle_text": "Whenever you or a permanent you control becomes the target of a spell or ability an opponent controls, counter that spell or ability unless that player pays 4 life.\nWhenever you copy a spell, up to one target opponent may also copy that spell. They may choose new targets for that copy.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "106",
+"set": "ncc"
+},
+{
+"name": "Riveteers Ascendancy",
+"oracle_id": "71f3168d-9eeb-4570-8437-a3ffc39667e9",
+"layout": "normal",
+"mana_cost": "{B}{R}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever you sacrifice a creature, you may return target creature card with lesser mana value from your graveyard to the battlefield tapped. Do this only once each turn.",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "216",
+"set": "snc"
+},
+{
+"name": "Xander's Pact",
+"oracle_id": "3df11e5c-19aa-441c-a889-6b40eb3fdabf",
+"layout": "normal",
+"mana_cost": "{4}{B}{B}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 2 (As you cast this spell, you may sacrifice a creature with power 2 or greater. When you do, copy this spell.)\nEach opponent exiles the top card of their library. You may cast spells from among those cards this turn. If you cast a spell this way, pay life equal to that spell's mana value rather than pay its mana cost.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "rare",
+"collector_number": "43",
+"set": "ncc"
+},
+{
+"name": "Out of the Way",
+"oracle_id": "9300874a-32a9-4869-b3e1-1b996403df4e",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {2} less to cast if it targets a green permanent.\nReturn target nonland permanent an opponent controls to its owner's hand.\nDraw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "52",
+"set": "snc"
+},
+{
+"name": "Cormela, Glamour Thief",
+"oracle_id": "3cd9bac9-0abc-43d8-9f84-94f965f7a2e0",
+"layout": "normal",
+"mana_cost": "{1}{U}{B}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Vampire Rogue",
+"oracle_text": "Haste\n{1}, {T}: Add {U}{B}{R}. Spend this mana only to cast instant and/or sorcery spells.\nWhen Cormela dies, return up to one target instant or sorcery card from your graveyard to your hand.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "177",
+"set": "snc"
+},
+{
+"name": "Rakish Revelers",
+"oracle_id": "7db1402e-a434-45d2-9d21-9e0faeeaff10",
+"layout": "normal",
+"mana_cost": "{2}{R}{G}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Elf Druid Rogue",
+"oracle_text": "When this creature enters, create a 1/1 green and white Citizen creature token.\n{2}, Exile this card from your hand: Target land gains \"{T}: Add {R}, {G}, or {W}\" until this card is cast from exile. You may cast this card for as long as it remains exiled.",
+"power": "5",
+"toughness": "3",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "328",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Riveteers Confluence",
+"oracle_id": "9f0bd777-f79d-47cd-83e3-85b80d5e7942",
+"layout": "normal",
+"mana_cost": "{2}{B}{R}{G}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose three. You may choose the same mode more than once.\n• You draw a card and you lose 1 life.\n• Riveteers Confluence deals 1 damage to each creature and planeswalker you don't control.\n• You may put a land card from your hand or graveyard onto the battlefield tapped.",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "179",
+"set": "ncc"
+},
+{
+"name": "Fleetfoot Dancer",
+"oracle_id": "8f606acf-db16-42cd-8907-dad88c4a1d54",
+"layout": "normal",
+"mana_cost": "{1}{R}{G}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Elf Druid",
+"oracle_text": "Trample, lifelink, haste",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [
+"Lifelink",
+"Haste",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "308",
+"set": "snc"
+},
+{
+"name": "High-Rise Sawjack",
+"oracle_id": "0049438b-e37e-4c57-820e-f2ddf3322170",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Elf Citizen",
+"oracle_text": "Reach (This creature can block creatures with flying.)\nWhenever this creature blocks a creature with flying, this creature gets +2/+0 until end of turn.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach"
+],
+"rarity": "common",
+"collector_number": "150",
+"set": "snc"
+},
+{
+"name": "Corpse Appraiser",
+"oracle_id": "bd3cdd9b-aa67-4bf5-80c8-53574d2c221e",
+"layout": "normal",
+"mana_cost": "{U}{B}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Rogue",
+"oracle_text": "When this creature enters, exile up to one target creature card from a graveyard. If a card is put into exile this way, look at the top three cards of your library, then put one of those cards into your hand and the rest into your graveyard.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "367",
+"set": "snc"
+},
+{
+"name": "Spellbinding Soprano",
+"oracle_id": "dffd5f0f-3a7b-47ed-864e-06c752bdcefc",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Human Bard",
+"oracle_text": "Whenever this creature attacks, instant and sorcery spells you cast this turn cost {1} less to cast.\nEncore {3}{R} ({3}{R}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Encore"
+],
+"rarity": "rare",
+"collector_number": "53",
+"set": "ncc"
+},
+{
+"name": "Body Launderer",
+"oracle_id": "eaca2576-020b-4af4-b348-6d1b56116c41",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Ogre Rogue",
+"oracle_text": "Deathtouch\nWhenever another nontoken creature you control dies, this creature connives.\nWhen this creature dies, return another target non-Rogue creature card with equal or lesser power from your graveyard to the battlefield.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Connive",
+"Deathtouch"
+],
+"rarity": "mythic",
+"collector_number": "68",
+"set": "snc"
+},
+{
+"name": "Celestial Regulator",
+"oracle_id": "3ee68758-9431-4446-8539-f42f545f3bd0",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Angel Advisor",
+"oracle_text": "Flying\nWhen this creature enters, choose target creature you don't control and tap it. If you control a creature with a counter on it, the chosen creature doesn't untap during its controller's next untap step.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "174",
+"set": "snc"
+},
+{
+"name": "Brazen Upstart",
+"oracle_id": "e0a9c4be-74fe-4984-9028-60380db1575b",
+"layout": "normal",
+"mana_cost": "{R}{G}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Elf Shaman",
+"oracle_text": "Vigilance\nWhen this creature dies, look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"power": "4",
+"toughness": "2",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "296",
+"set": "snc"
+},
+{
+"name": "Henzie \"Toolbox\" Torre",
+"oracle_id": "5320f5a6-8066-47d4-aa0a-4c879f39d413",
+"layout": "normal",
+"mana_cost": "{B}{R}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Devil Rogue",
+"oracle_text": "Each creature spell you cast with mana value 4 or greater has blitz. The blitz cost is equal to its mana cost. (You may choose to cast that spell for its blitz cost. If you do, it gains haste and \"When this creature dies, draw a card.\" Sacrifice it at the beginning of the next end step.)\nBlitz costs you pay cost {1} less for each time you've cast your commander from the command zone this game.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "102",
+"set": "ncc"
+},
+{
+"name": "Family's Favor",
+"oracle_id": "7f5bebfd-faf3-485f-b906-aa96d621d499",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever you attack, put a shield counter on target attacking creature. Until end of turn, it gains \"Whenever this creature deals combat damage to a player, remove a shield counter from it. If you do, draw a card.\" (If a creature with a shield counter on it would be dealt damage or destroyed, remove a shield counter from it instead.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "159",
+"set": "ncc"
+},
+{
+"name": "Black Market Tycoon",
+"oracle_id": "464968a8-865e-4ac8-927e-7c931e3dabb3",
+"layout": "normal",
+"mana_cost": "{R}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Cat Rogue",
+"oracle_text": "At the beginning of your upkeep, this creature deals 2 damage to you for each Treasure you control.\n{T}: Create a Treasure token.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "rare",
+"collector_number": "167",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Gathering Throng",
+"oracle_id": "bbd340ce-cf06-43df-a060-be80bc46e985",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "When this creature enters, you may search your library for any number of cards named Gathering Throng, reveal them, put them into your hand, then shuffle.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "13",
+"set": "snc"
+},
+{
+"name": "Spara's Adjudicators",
+"oracle_id": "02718076-4c71-4bf5-988f-e6f94fbf0aef",
+"layout": "normal",
+"mana_cost": "{2}{G}{W}{U}",
+"cmc": 5.0,
+"type_line": "Creature — Cat Citizen",
+"oracle_text": "When this creature enters, target creature an opponent controls can't attack or block until your next turn.\n{2}, Exile this card from your hand: Target land gains \"{T}: Add {G}, {W}, or {U}\" until this card is cast from exile. You may cast this card for as long as it remains exiled.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "224",
+"set": "snc"
+},
+{
+"name": "Racers' Ring",
+"oracle_id": "7e2eb4d5-22a3-43c1-8cf3-e85723da1b61",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {R} or {G}.\n{2}{R}{G}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "253",
+"set": "snc"
+},
+{
+"name": "Backup Agent",
+"oracle_id": "df9a3fe0-aca8-4adb-9ef6-45616025925b",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "When this creature enters, put a +1/+1 counter on target creature.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "2",
+"set": "snc"
+},
+{
+"name": "Brokers Ascendancy",
+"oracle_id": "809edfed-89a9-4327-b7db-1bcec63f3e66",
+"layout": "normal",
+"mana_cost": "{G}{W}{U}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your end step, put a +1/+1 counter on each creature you control and a loyalty counter on each planeswalker you control.",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "297",
+"set": "snc"
+},
+{
+"name": "Take to the Streets",
+"oracle_id": "b3606b80-8d1b-4417-8902-a7ccf6b97cbb",
+"layout": "normal",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Creatures you control get +2/+2 until end of turn. Citizens you control get an additional +1/+1 and gain vigilance until end of turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "158",
+"set": "snc"
+},
+{
+"name": "Perrie, the Pulverizer",
+"oracle_id": "41d408dc-f6fe-45b2-b225-2ac25db9ad0f",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Rhino Soldier",
+"oracle_text": "When Perrie enters, put a shield counter on target creature. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nWhenever Perrie attacks, target creature you control gains trample and gets +X/+X until end of turn, where X is the number of different kinds of counters among permanents you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "190",
+"set": "ncc"
+},
+{
+"name": "Patch Up",
+"oracle_id": "34a7026f-c6ca-4d89-8364-fd60fb613634",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Return up to three target creature cards with total mana value 3 or less from your graveyard to the battlefield.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "23",
+"set": "snc"
+},
+{
+"name": "Sanguine Spy",
+"oracle_id": "03af4b10-900e-4013-bd5d-dd8d132d50fb",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Rogue",
+"oracle_text": "Menace, lifelink\n{1}, Sacrifice another creature: Surveil 1. (Look at the top card of your library. You may put that card into your graveyard.)\nAt the beginning of your end step, if there are five or more mana values among cards in your graveyard, you may pay 2 life. If you do, draw a card.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Surveil",
+"Lifelink",
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "93",
+"set": "snc"
+},
+{
+"name": "Cabaretti Ascendancy",
+"oracle_id": "c35c39be-6db4-4a80-ace1-07932d1bb460",
+"layout": "normal",
+"mana_cost": "{R}{G}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your upkeep, look at the top card of your library. If it's a creature or planeswalker card, you may reveal it and put it into your hand. If you don't put the card into your hand, you may put it on the bottom of your library.",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "364",
+"set": "snc"
+},
+{
+"name": "Demon's Due",
+"oracle_id": "bf65a5f5-5536-4616-a09e-2416439c7bc6",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Scry 2, then draw two cards. You lose 2 life.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "75",
+"set": "snc"
+},
+{
+"name": "Crew Captain",
+"oracle_id": "0cca60c3-f0be-494d-8c2c-9b135ef83165",
+"layout": "normal",
+"mana_cost": "{B}{R}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Haste\nThis creature has indestructible as long as it entered this turn.",
+"power": "4",
+"toughness": "2",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "303",
+"set": "snc"
+},
+{
+"name": "Halo Scarab",
+"oracle_id": "1201c146-54af-4668-a544-cde3ece23f2e",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Insect",
+"oracle_text": "{2}, Exile this card from your graveyard: Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "2",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Treasure"
+],
+"rarity": "common",
+"collector_number": "239",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Courier's Briefcase",
+"oracle_id": "00cd3bf9-0dd6-4ec0-a841-1839a71604ab",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Artifact — Treasure",
+"oracle_text": "When this artifact enters, create a 1/1 green and white Citizen creature token.\n{T}, Sacrifice this artifact: Add one mana of any color.\n{W}{U}{B}{R}{G}, {T}, Sacrifice this artifact: Draw three cards.",
+"colors": [
+"G"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "142",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Life of the Party",
+"oracle_id": "b2d1f87b-a11f-43eb-8b89-b48945320d73",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Elemental",
+"oracle_text": "First strike, trample, haste\nWhenever this creature attacks, it gets +X/+0 until end of turn, where X is the number of creatures you control.\nWhen this creature enters, if it's not a token, each opponent creates a token that's a copy of it. The tokens are goaded for the rest of the game. (They attack each combat if able and attack a player other than you if able.)",
+"power": "0",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Goad",
+"First strike",
+"Haste",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "48",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Cut Your Losses",
+"oracle_id": "54530a84-8278-4c93-a2cb-f5c86619a053",
+"layout": "normal",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 2 (As you cast this spell, you may sacrifice a creature with power 2 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nTarget player mills half their library, rounded down.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Casualty",
+"Mill"
+],
+"rarity": "rare",
+"collector_number": "38",
+"set": "snc"
+},
+{
+"name": "Threefold Signal",
+"oracle_id": "bc48da27-77e0-440f-b47b-4bdea3c3cc5e",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, scry 3.\nEach spell you cast that's exactly three colors has replicate {3}. (When you cast it, copy it for each time you paid its replicate cost. You may choose new targets for the copies. A copy of a permanent spell becomes a token.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Scry"
+],
+"rarity": "mythic",
+"collector_number": "93",
+"set": "ncc"
+},
+{
+"name": "Dodgy Jalopy",
+"oracle_id": "469d820d-b7a6-414a-af18-71c1b1e42da5",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Trample\nDodgy Jalopy's power is equal to the greatest mana value among creatures you control.\nCrew 3\nScavenge {2}{G} ({2}{G}, Exile this card from your graveyard: Put a number of +1/+1 counters equal to this card's power on target creature. Scavenge only as a sorcery.)",
+"power": "*",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Scavenge",
+"Crew",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "158",
+"set": "ncc"
+},
+{
+"name": "Deal Gone Bad",
+"oracle_id": "e9ede348-f1dc-45ba-9e31-3129ccc182d1",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets -3/-3 until end of turn. Target player mills three cards. (They put the top three cards of their library into their graveyard.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "common",
+"collector_number": "74",
+"set": "snc"
+},
+{
+"name": "Pyre-Sledge Arsonist",
+"oracle_id": "7f42a05c-9e6d-4cbc-92f1-4433cd22f149",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Lizard Shaman",
+"oracle_text": "{1}, {T}: This creature deals X damage to any target, where X is the number of permanents you've sacrificed this turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "118",
+"set": "snc"
+},
+{
+"name": "Tainted Indulgence",
+"oracle_id": "6944092f-22c6-4b65-840d-8c1b70883127",
+"layout": "normal",
+"mana_cost": "{U}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Draw two cards. Then discard a card unless there are five or more mana values among cards in your graveyard.",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "227",
+"set": "snc"
+},
+{
+"name": "Spiteful Repossession",
+"oracle_id": "63fd77e2-348a-4f6c-88b4-465fbe339d29",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Spiteful Repossession deals damage to each opponent who controls more lands than you equal to the difference. Then create a number of Treasure tokens equal to the damage dealt this way.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "rare",
+"collector_number": "90",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Soul of Emancipation",
+"oracle_id": "e9666fd2-3ebf-4f57-a51d-a80e625f39fa",
+"layout": "normal",
+"mana_cost": "{4}{G}{W}{U}",
+"cmc": 7.0,
+"type_line": "Creature — Avatar",
+"oracle_text": "When this creature enters, destroy up to three other target nonland permanents. For each of those permanents, its controller creates a 3/3 white Angel creature token with flying.",
+"power": "5",
+"toughness": "7",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "223",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Angel",
+"type_line": "Token Creature — Angel",
+"oracle_text": "Flying",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "First Responder",
+"oracle_id": "8f5aed57-d0f3-4fa8-826c-0d94fa143f08",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Ogre Citizen",
+"oracle_text": "Vigilance\nAt the beginning of your end step, you may return another creature you control to its owner's hand, then put a number of +1/+1 counters equal to that creature's power on this creature.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "rare",
+"collector_number": "60",
+"set": "ncc"
+},
+{
+"name": "Cabaretti Confluence",
+"oracle_id": "99c32f20-da98-477d-9eb2-9c0b189d8d88",
+"layout": "normal",
+"mana_cost": "{3}{R}{G}{W}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose three. You may choose the same mode more than once.\n• Create a token that's a copy of target creature you control. It gains haste. Sacrifice it at the beginning of the next end step.\n• Exile target artifact or enchantment.\n• Creatures target player controls get +1/+1 and gain first strike until end of turn.",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "69",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Sleep with the Fishes",
+"oracle_id": "48533a2d-1bdb-40a6-939e-9c8337e0dc5a",
+"layout": "normal",
+"mana_cost": "{2}{U}{U}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nWhen this Aura enters, tap enchanted creature and you create a 1/1 blue Fish creature token with \"This token can't be blocked.\"\nEnchanted creature doesn't untap during its controller's untap step.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "uncommon",
+"collector_number": "61",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Fish",
+"type_line": "Token Creature — Fish",
+"oracle_text": "This creature can't be blocked.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Graveyard Shift",
+"oracle_id": "da8a93c6-66e2-492d-8894-397ba9ec5a87",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "This spell has flash as long as there are five or more mana values among cards in your graveyard.\nReturn target creature card from your graveyard to the battlefield.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "81",
+"set": "snc"
+},
+{
+"name": "Vivien on the Hunt",
+"oracle_id": "f6f927f3-dc3f-446c-aa7b-81048eb73243",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Legendary Planeswalker — Vivien",
+"oracle_text": "+2: You may sacrifice a creature. If you do, search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put it onto the battlefield, then shuffle.\n+1: Mill five cards, then put any number of creature cards milled this way into your hand.\n−1: Create a 4/4 green Rhino Warrior creature token.",
+"loyalty": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "mythic",
+"collector_number": "283",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Rhino Warrior",
+"type_line": "Token Creature — Rhino Warrior",
+"oracle_text": "",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Maestros Charm",
+"oracle_id": "3b207754-9172-426a-8efc-a9c3912d94bb",
+"layout": "normal",
+"mana_cost": "{U}{B}{R}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Look at the top five cards of your library. Put one of those cards into your hand and the rest into your graveyard.\n• Each opponent loses 3 life and you gain 3 life.\n• Maestros Charm deals 5 damage to target creature or planeswalker.",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "317",
+"set": "snc"
+},
+{
+"name": "Lord Xander, the Collector",
+"oracle_id": "d17bfa94-5046-46ae-80af-be5d1d35af13",
+"layout": "normal",
+"mana_cost": "{4}{U}{B}{R}",
+"cmc": 7.0,
+"type_line": "Legendary Creature — Vampire Demon Noble",
+"oracle_text": "When Lord Xander enters, target opponent discards half the cards in their hand, rounded down.\nWhenever Lord Xander attacks, defending player mills half their library, rounded down.\nWhen Lord Xander dies, target opponent sacrifices half the nonland permanents they control of their choice, rounded down.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "mythic",
+"collector_number": "380",
+"set": "snc"
+},
+{
+"name": "Riveteers Charm",
+"oracle_id": "54e1b7f3-096a-4eb0-bcce-cce036d6cbe5",
+"layout": "normal",
+"mana_cost": "{B}{R}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Target opponent sacrifices a creature or planeswalker they control with the greatest mana value among creatures and planeswalkers they control.\n• Exile the top three cards of your library. Until your next end step, you may play those cards.\n• Exile target player's graveyard.",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "331",
+"set": "snc"
+},
+{
+"name": "Daring Escape",
+"oracle_id": "c777002d-dcd4-4d75-8175-5440a8bb118e",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +1/+0 and gains first strike until end of turn. Scry 1.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "104",
+"set": "snc"
+},
+{
+"name": "Phabine, Boss's Confidant",
+"oracle_id": "70697ad7-d4bb-4b63-b895-bbb69e9d04e1",
+"layout": "normal",
+"mana_cost": "{3}{R}{G}{W}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Cat Advisor",
+"oracle_text": "Creature tokens you control have haste.\nParley — At the beginning of combat on your turn, each player reveals the top card of their library. For each land card revealed this way, you create a 1/1 green and white Citizen creature token. Then creatures you control get +1/+1 until end of turn for each nonland card revealed this way. Then each player draws a card.",
+"power": "3",
+"toughness": "6",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [
+"Parley"
+],
+"rarity": "mythic",
+"collector_number": "108",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Jetmir's Fixer",
+"oracle_id": "f87df7d4-99e2-4340-9d0a-b96c397555db",
+"layout": "normal",
+"mana_cost": "{R}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Cat Warrior",
+"oracle_text": "{R}{G}: This creature gets +1/+1 until end of turn. If mana from a Treasure was spent to activate this ability, put a +1/+1 counter on this creature instead.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "194",
+"set": "snc"
+},
+{
+"name": "Toluz, Clever Conductor",
+"oracle_id": "005c181a-05db-4c15-9893-65103cca338e",
+"layout": "normal",
+"mana_cost": "{W/U}{U}{U/B}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Rogue",
+"oracle_text": "When Toluz enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)\nWhenever you discard one or more cards, exile them from your graveyard.\nWhen Toluz dies, put the cards exiled with it into their owner's hand.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "rare",
+"collector_number": "401",
+"set": "snc"
+},
+{
+"name": "Make Disappear",
+"oracle_id": "5f12f665-f083-48ae-b61a-541051c996ec",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nCounter target spell unless its controller pays {2}.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "common",
+"collector_number": "49",
+"set": "snc"
+},
+{
+"name": "Scepter of Celebration",
+"oracle_id": "c930b1f3-9bc3-4708-8d05-02295483c9d8",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +2/+0 and has trample.\nWhenever equipped creature deals combat damage to a player, create that many 1/1 green and white Citizen creature tokens.\nEquip {3}",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "64",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Make an Example",
+"oracle_id": "591edddc-3736-44cf-9719-117c24ff3980",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Each opponent separates the creatures they control into two piles. For each opponent, you choose one of their piles. Each opponent sacrifices the creatures in their chosen pile. (Piles can be empty.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "138",
+"set": "ncc"
+},
+{
+"name": "Sinister Concierge",
+"oracle_id": "9b14c20f-c4ee-42ea-99cd-099b4eb25883",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Human Wizard",
+"oracle_text": "When this creature dies, you may exile it and put three time counters on it. If you do, exile up to one target creature and put three time counters on it. Each card exiled this way that doesn't have suspend gains suspend. (For each card with suspend, its owner removes a time counter from it at the beginning of their upkeep. When the last is removed, they may cast it without paying its mana cost. Those creature spells have haste.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "30",
+"set": "ncc"
+},
+{
+"name": "Glamorous Outlaw",
+"oracle_id": "cd4f7912-81c0-44dd-87c2-a98e955fe5a8",
+"layout": "normal",
+"mana_cost": "{3}{U}{B}{R}",
+"cmc": 6.0,
+"type_line": "Creature — Vampire Rogue",
+"oracle_text": "When this creature enters, it deals 2 damage to each opponent and you scry 2.\n{2}, Exile this card from your hand: Target land gains \"{T}: Add {U}, {B}, or {R}\" until this card is cast from exile. You may cast this card for as long as it remains exiled.",
+"power": "4",
+"toughness": "5",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "190",
+"set": "snc"
+},
+{
+"name": "Maestros Ascendancy",
+"oracle_id": "d1438681-241b-4d53-9470-4d04a7797ea8",
+"layout": "normal",
+"mana_cost": "{U}{B}{R}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Once during each of your turns, you may cast an instant or sorcery spell from your graveyard by sacrificing a creature in addition to paying its other costs. If a spell cast this way would be put into your graveyard, exile it instead.",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "198",
+"set": "snc"
+},
+{
+"name": "Syrix, Carrier of the Flame",
+"oracle_id": "ec97bb0e-0dc8-4b9b-8762-2f1649cc9044",
+"layout": "normal",
+"mana_cost": "{2}{B}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Phoenix",
+"oracle_text": "Flying, haste\nAt the beginning of each end step, if a creature card left your graveyard this turn, target Phoenix you control deals damage equal to its power to any target.\nWhenever another Phoenix you control dies, you may cast this card from your graveyard.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Flying",
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "80",
+"set": "ncc"
+},
+{
+"name": "Agent's Toolkit",
+"oracle_id": "a87abe7a-fee9-45fd-b3d8-896e43ed6b3c",
+"layout": "normal",
+"mana_cost": "{1}{G}{U}",
+"cmc": 3.0,
+"type_line": "Artifact — Clue",
+"oracle_text": "This artifact enters with a +1/+1 counter, a flying counter, a deathtouch counter, and a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nWhenever a creature you control enters, you may move a counter from this artifact onto that creature.\n{2}, Sacrifice this artifact: Draw a card.",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "166",
+"set": "ncc"
+},
+{
+"name": "Obscura Charm",
+"oracle_id": "884eaa3f-b6af-4f0e-b0e7-cd40666986ce",
+"layout": "normal",
+"mana_cost": "{W}{U}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Return target multicolored permanent card with mana value 3 or less from your graveyard to the battlefield tapped.\n• Counter target instant or sorcery spell.\n• Destroy target creature or planeswalker with mana value 3 or less.",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "323",
+"set": "snc"
+},
+{
+"name": "Bess, Soul Nourisher",
+"oracle_id": "df72b5d6-6f9e-4d6b-acf6-7dec4ff35468",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Citizen",
+"oracle_text": "Whenever one or more other creatures you control with base power and toughness 1/1 enter, put a +1/+1 counter on Bess.\nWhenever Bess attacks, each other creature you control with base power and toughness 1/1 gets +X/+X until end of turn, where X is the number of +1/+1 counters on Bess.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "167",
+"set": "ncc"
+},
+{
+"name": "Strangle",
+"oracle_id": "1f570526-7fb0-4fe5-8014-b5793eb65f87",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Strangle deals 3 damage to target creature or planeswalker.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "125",
+"set": "snc"
+},
+{
+"name": "Raffine's Silencer",
+"oracle_id": "2901948c-2a5a-4135-9135-27406e9d8652",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Human Assassin",
+"oracle_text": "When this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)\nWhen this creature dies, target creature an opponent controls gets -X/-X until end of turn, where X is this creature's power.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "uncommon",
+"collector_number": "90",
+"set": "snc"
+},
+{
+"name": "Obscura Confluence",
+"oracle_id": "1f2fb1dd-82e4-45fa-b2a9-7df7b8a4d533",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Choose three. You may choose the same mode more than once.\n• Until end of turn, target creature loses all abilities and has base power and toughness 1/1.\n• Target creature connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)\n• Target player returns a creature card from their graveyard to their hand.",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "rare",
+"collector_number": "176",
+"set": "ncc"
+},
+{
+"name": "A Little Chat",
+"oracle_id": "1167fe30-32b8-4381-8067-a05cd345977b",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell.)\nLook at the top two cards of your library. Put one of them into your hand and the other on the bottom of your library.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "uncommon",
+"collector_number": "47",
+"set": "snc"
+},
+{
+"name": "Sanctuary Warden",
+"oracle_id": "713bcfb6-e5ea-411e-b4b3-52e5eed5cdf1",
+"layout": "normal",
+"mana_cost": "{4}{W}{W}",
+"cmc": 6.0,
+"type_line": "Creature — Angel Soldier",
+"oracle_text": "Flying\nThis creature enters with two shield counters on it.\nWhenever this creature enters or attacks, you may remove a counter from a creature or planeswalker you control. If you do, draw a card and create a 1/1 green and white Citizen creature token.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "mythic",
+"collector_number": "30",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Raffine's Informant",
+"oracle_id": "838c4831-7d5c-4025-92b3-46eee59d6b34",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Human Wizard",
+"oracle_text": "When this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "common",
+"collector_number": "26",
+"set": "snc"
+},
+{
+"name": "Incandescent Aria",
+"oracle_id": "d031b482-b33d-4eb4-a5bc-ea96e66a1d99",
+"layout": "normal",
+"mana_cost": "{R}{G}{W}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Incandescent Aria deals 3 damage to each nontoken creature.",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "376",
+"set": "snc"
+},
+{
+"name": "Undercover Operative",
+"oracle_id": "0bd57503-b544-45f8-bcd2-f5b2170010f6",
+"layout": "normal",
+"mana_cost": "{2}{U}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Shapeshifter Rogue",
+"oracle_text": "You may have this creature enter as a copy of any creature on the battlefield, except it enters with a shield counter on it if you control that creature. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",
+"power": "0",
+"toughness": "0",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "63",
+"set": "snc"
+},
+{
+"name": "Forge Boss",
+"oracle_id": "c234d2ab-21d5-41a9-9ab8-47a8bd53a686",
+"layout": "normal",
+"mana_cost": "{2}{B}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Whenever you sacrifice one or more other creatures, this creature deals 2 damage to each opponent. This ability triggers only once each turn.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "189",
+"set": "snc"
+},
+{
+"name": "Next of Kin",
+"oracle_id": "5b079914-1302-40b5-8060-7c3e5b6e9eae",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nWhen enchanted creature dies, you may put a creature card you own with lesser mana value from your hand or from the command zone onto the battlefield. If you do, return this card to the battlefield attached to that creature at the beginning of the next end step.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "rare",
+"collector_number": "62",
+"set": "ncc"
+},
+{
+"name": "Darling of the Masses",
+"oracle_id": "96818698-c104-48f4-b73f-c8722d1d1be4",
+"layout": "normal",
+"mana_cost": "{2}{G}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Elf Citizen",
+"oracle_text": "Other Citizens you control get +1/+0.\nWhenever this creature attacks, create a 1/1 green and white Citizen creature token.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "181",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Illuminator Virtuoso",
+"oracle_id": "ed2af15e-955b-43a1-80af-2484be373db3",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Human Rogue",
+"oracle_text": "Double strike\nWhenever this creature becomes the target of a spell you control, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Double strike",
+"Connive"
+],
+"rarity": "uncommon",
+"collector_number": "17",
+"set": "snc"
+},
+{
+"name": "Cleanup Crew",
+"oracle_id": "12e0321b-1cd7-4519-8929-3261cf11a1a9",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "When this creature enters, choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Exile target card from a graveyard.\n• You gain 4 life.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "141",
+"set": "snc"
+},
+{
+"name": "Hold for Ransom",
+"oracle_id": "0c9336c0-c0ec-4fb4-af7c-a7766265e927",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nEnchanted creature can't attack or block and has \"{7}: Hold for Ransom's controller sacrifices it and draws a card. Activate only as a sorcery.\"",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "16",
+"set": "snc"
+},
+{
+"name": "Prizefight",
+"oracle_id": "c0c4ecf6-84e6-443e-8a81-e395b31c631d",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control fights target creature you don't control. (Each deals damage equal to its power to the other.)\nCreate a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Treasure",
+"Fight"
+],
+"rarity": "common",
+"collector_number": "154",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Ob Nixilis, the Adversary",
+"oracle_id": "a6abb6af-7ea2-43f3-8718-2a077ad0c947",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Planeswalker — Nixilis",
+"oracle_text": "Casualty X. The copy isn't legendary and has starting loyalty X. (As you cast this spell, you may sacrifice a creature with power X. When you do, copy this spell. The copy becomes a token.)\n+1: Each opponent loses 2 life unless they discard a card. If you control a Demon or Devil, you gain 2 life.\n−2: Create a 1/1 red Devil creature token with \"When this token dies, it deals 1 damage to any target.\"\n−7: Target player draws seven cards and loses 7 life.",
+"loyalty": "3",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "mythic",
+"collector_number": "448",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Devil",
+"type_line": "Token Creature — Devil",
+"oracle_text": "When this creature dies, it deals 1 damage to any target.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Bellowing Mauler",
+"oracle_id": "fa0a4765-5799-4464-88b6-6d1b15889eb5",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Ogre Warrior",
+"oracle_text": "At the beginning of your end step, each player loses 4 life unless they sacrifice a nontoken creature of their choice.",
+"power": "4",
+"toughness": "6",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "134",
+"set": "ncc"
+},
+{
+"name": "Vazi, Keen Negotiator",
+"oracle_id": "7446c013-63b0-402b-b8b9-dd25ccc553df",
+"layout": "normal",
+"mana_cost": "{2}{B}{R}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Human Advisor",
+"oracle_text": "Haste\n{T}: Target opponent creates X Treasure tokens, where X is the number of Treasure tokens you created this turn.\nWhenever an opponent casts a spell or activates an ability, if mana from a Treasure was spent to cast it or activate it, put a +1/+1 counter on target creature, then draw a card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [
+"Treasure",
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "92",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Meeting of the Five",
+"oracle_id": "60fc4c2d-1bf9-4c9a-a240-ab9b1c9c6817",
+"layout": "normal",
+"mana_cost": "{3}{W}{U}{B}{R}{G}",
+"cmc": 8.0,
+"type_line": "Sorcery",
+"oracle_text": "Exile the top ten cards of your library. You may cast spells with exactly three colors from among them this turn. Add {W}{W}{U}{U}{B}{B}{R}{R}{G}{G}. Spend this mana only to cast spells with exactly three colors.",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "436",
+"set": "snc"
+},
+{
+"name": "Freelance Muscle",
+"oracle_id": "8a749efc-e333-448e-8652-2dc4e6633e6b",
+"layout": "normal",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Rhino Warrior",
+"oracle_text": "Whenever this creature attacks or blocks, it gets +X/+X until end of turn, where X is the greatest power and/or toughness among other creatures you control.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "147",
+"set": "snc"
+},
+{
+"name": "Most Wanted",
+"oracle_id": "140d38cc-0ae6-4e9b-a60f-a51d2947e07b",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant creature\nEnchanted creature gets +2/+1.\nWhen enchanted creature dies, create two Treasure tokens.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Treasure",
+"Enchant",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "153",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Even the Score",
+"oracle_id": "25f5cca6-a414-46d9-82e3-ce2fa21b14ca",
+"layout": "normal",
+"mana_cost": "{X}{U}{U}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {U}{U}{U} less to cast if an opponent has drawn four or more cards this turn.\nDraw X cards.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "411",
+"set": "snc"
+},
+{
+"name": "Jailbreak",
+"oracle_id": "169cf74a-07bf-4841-83f3-904df8a0a39b",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target permanent card in an opponent's graveyard to the battlefield under their control. When that permanent enters, return up to one target permanent card with equal or lesser mana value from your graveyard to the battlefield.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "17",
+"set": "ncc"
+},
+{
+"name": "Jinnie Fay, Jetmir's Second",
+"oracle_id": "61fbaaf2-4286-4e9a-b9cb-aa31262b596a",
+"layout": "normal",
+"mana_cost": "{R/G}{G}{G/W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Elf Druid",
+"oracle_text": "If you would create one or more tokens, you may instead create that many 2/2 green Cat creature tokens with haste or that many 3/1 green Dog creature tokens with vigilance.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "378",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Dog",
+"type_line": "Token Creature — Dog",
+"oracle_text": "Vigilance",
+"power": "3",
+"toughness": "1",
+"colors": [
+"G"
+],
+"keywords": [
+"Vigilance"
+]
+},
+{
+"component": "token",
+"name": "Cat",
+"type_line": "Token Creature — Cat",
+"oracle_text": "Haste",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"keywords": [
+"Haste"
+]
+}
+]
+},
+{
+"name": "Lagrella, the Magpie",
+"oracle_id": "6a98b586-5187-48a1-bde3-f6141f3e9cb1",
+"layout": "normal",
+"mana_cost": "{G}{W}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Soldier",
+"oracle_text": "When Lagrella enters, exile any number of other target creatures controlled by different players until Lagrella leaves the battlefield. When an exiled card enters under your control this way, put two +1/+1 counters on it.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "314",
+"set": "snc"
+},
+{
+"name": "Celebrity Fencer",
+"oracle_id": "39f7e59e-28dd-477e-be38-3fa515838ca4",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Elf Druid",
+"oracle_text": "Alliance — Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Alliance"
+],
+"rarity": "common",
+"collector_number": "7",
+"set": "snc"
+},
+{
+"name": "Security Bypass",
+"oracle_id": "cb660c6d-dc8b-4779-8613-6acf19418baa",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nAs long as enchanted creature is attacking alone, it can't be blocked.\nEnchanted creature has \"Whenever this creature deals combat damage to a player, it connives.\" (Its controller draws a card, then discards a card. If they discarded a nonland card, they put a +1/+1 counter on this creature.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Connive"
+],
+"rarity": "common",
+"collector_number": "59",
+"set": "snc"
+},
+{
+"name": "Widespread Thieving",
+"oracle_id": "2c2e4b19-ac88-426a-9f1b-ac305cd512e8",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Hideaway 5 (When this enchantment enters, look at the top five cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nWhenever you cast a multicolored spell, create a Treasure token. Then you may pay {W}{U}{B}{R}{G}. If you do, you may play the exiled card without paying its mana cost.",
+"colors": [
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Treasure",
+"Hideaway"
+],
+"rarity": "rare",
+"collector_number": "428",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Light 'Em Up",
+"oracle_id": "c6932bcf-d66b-42c1-8ca4-6a4573e0f6bf",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 2 (As you cast this spell, you may sacrifice a creature with power 2 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nLight 'Em Up deals 2 damage to target creature or planeswalker.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "common",
+"collector_number": "466",
+"set": "snc"
+},
+{
+"name": "Mask of the Schemer",
+"oracle_id": "584f9c45-9737-47bb-8ba4-a7cd9b0b2c1f",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Whenever equipped creature deals combat damage to a player, it connives X, where X is the amount of damage it dealt to that player. (Draw X cards, then discard X cards. Put a +1/+1 counter on that creature for each nonland card discarded this way.)\nEquip {2}",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Equip",
+"Connive"
+],
+"rarity": "rare",
+"collector_number": "28",
+"set": "ncc"
+},
+{
+"name": "Turf War",
+"oracle_id": "8e1b84d7-b0ae-4e9d-bc1a-c84832fea9f9",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, for each player, put a contested counter on target land that player controls.\nWhenever a creature deals combat damage to a player, if that player controls one or more lands with contested counters on them, that creature's controller gains control of one of those lands of their choice and untaps it.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "54",
+"set": "ncc"
+},
+{
+"name": "Storm of Forms",
+"oracle_id": "e9a08492-3d2c-4c7a-8198-ef4193f5758a",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "When you cast this spell, copy it for each kind of counter among permanents you control. You may choose new targets for the copies.\nReturn target nonland permanent to its owner's hand.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "32",
+"set": "ncc"
+},
+{
+"name": "Jolene, the Plunder Queen",
+"oracle_id": "8215f4a2-7131-426b-ad9c-6427caabd715",
+"layout": "normal",
+"mana_cost": "{2}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Warrior",
+"oracle_text": "Whenever a player attacks one or more of your opponents, that attacking player creates a Treasure token.\nIf you would create one or more Treasure tokens, instead create those tokens plus an additional Treasure token.\nSacrifice five Treasures: Put five +1/+1 counters on Jolene.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "rare",
+"collector_number": "73",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Errant, Street Artist",
+"oracle_id": "23e6df25-90db-42a4-8658-e592e67be15e",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Legendary Creature — Human Rogue",
+"oracle_text": "Flash\nDefender, haste\n{1}{U}, {T}: Copy target spell you control that wasn't cast. You may choose new targets for the copy.",
+"power": "0",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Haste",
+"Flash",
+"Defender"
+],
+"rarity": "rare",
+"collector_number": "41",
+"set": "snc"
+},
+{
+"name": "Rigo, Streetwise Mentor",
+"oracle_id": "1f42a809-bbfc-4225-9c31-f7d0fa8fa17a",
+"layout": "normal",
+"mana_cost": "{G/W}{W}{W/U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Cat Citizen",
+"oracle_text": "Rigo enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nWhenever you attack a player or planeswalker with one or more creatures with power 1 or less, draw a card.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "394",
+"set": "snc"
+},
+{
+"name": "Grisly Sigil",
+"oracle_id": "b9d9d118-a073-4e73-90fe-026462d1d895",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nChoose target creature or planeswalker. If it was dealt noncombat damage this turn, Grisly Sigil deals 3 damage to it and you gain 3 life. Otherwise, Grisly Sigil deals 1 damage to it and you gain 1 life.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "uncommon",
+"collector_number": "82",
+"set": "snc"
+},
+{
+"name": "Metropolis Angel",
+"oracle_id": "c29b592c-7115-4464-beba-e79f62691593",
+"layout": "normal",
+"mana_cost": "{2}{W}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Angel Soldier",
+"oracle_text": "Flying\nWhenever you attack with one or more creatures with counters on them, draw a card.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "203",
+"set": "snc"
+},
+{
+"name": "Brokers Confluence",
+"oracle_id": "d9c6c9cc-2dbf-48ac-ad3a-c500e7074c62",
+"layout": "normal",
+"mana_cost": "{2}{G}{W}{U}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "Choose three. You may choose the same mode more than once.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\n• Target creature phases out. (Treat it and anything attached to it as though they don't exist until its controller's next turn.)\n• Counter target activated or triggered ability.",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "68",
+"set": "ncc"
+},
+{
+"name": "False Floor",
+"oracle_id": "f6828a87-eebe-48dd-873e-251624107e38",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters tapped.\nCreatures enter tapped.\n{2}, {T}, Exile this artifact: Exile all untapped creatures. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "182",
+"set": "ncc"
+},
+{
+"name": "Obscura Initiate",
+"oracle_id": "bdc3a563-86e0-4457-b00b-85c03e62a930",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Bird Citizen",
+"oracle_text": "Flying\n{1}{W/B}: This creature gains lifelink until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "50",
+"set": "snc"
+},
+{
+"name": "Tramway Station",
+"oracle_id": "e90e519d-023e-4d19-85ad-9972a76df3ba",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {B} or {R}.\n{2}{B}{R}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "356",
+"set": "snc"
+},
+{
+"name": "Hypnotic Grifter",
+"oracle_id": "5df80355-b12a-4989-94e5-1e0fa27350e8",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature — Human Rogue",
+"oracle_text": "{3}: This creature connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+"power": "1",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "uncommon",
+"collector_number": "45",
+"set": "snc"
+},
+{
+"name": "Cutthroat Contender",
+"oracle_id": "43192553-0db9-48ec-ae88-a2605a6608d8",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature — Vampire Warrior",
+"oracle_text": "Pay 1 life: This creature gets +1/+0 until end of turn. Activate only once each turn.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "73",
+"set": "snc"
+},
+{
+"name": "Cabaretti Initiate",
+"oracle_id": "5e0d877c-6ce3-462b-9746-7fc921c93be9",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature — Raccoon Citizen",
+"oracle_text": "{2}{R/W}: This creature gains double strike until end of turn.",
+"power": "1",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "137",
+"set": "snc"
+},
+{
+"name": "Maestros Diabolist",
+"oracle_id": "68d61090-a97f-47e9-bc64-7e5c7f8acbf7",
+"layout": "normal",
+"mana_cost": "{U}{B}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Warrior",
+"oracle_text": "Deathtouch, haste\nWhenever this creature attacks, if you don't control a Devil token, create a tapped and attacking 1/1 red Devil creature token with \"When this token dies, it deals 1 damage to any target.\"",
+"power": "1",
+"toughness": "4",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Haste",
+"Deathtouch"
+],
+"rarity": "rare",
+"collector_number": "318",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Devil",
+"type_line": "Token Creature — Devil",
+"oracle_text": "When this creature dies, it deals 1 damage to any target.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Vampire Scrivener",
+"oracle_id": "a945710e-fab6-4b54-ba40-586f2e54baf4",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Vampire Warlock",
+"oracle_text": "Flying\nWhenever you gain life during your turn, put a +1/+1 counter on this creature.\nWhenever you lose life during your turn, put a +1/+1 counter on this creature.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "98",
+"set": "snc"
+},
+{
+"name": "Mysterious Limousine",
+"oracle_id": "864a9276-2fec-49b3-bc53-008608de5ab6",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Whenever this Vehicle enters or attacks, exile up to one other target creature until this Vehicle leaves the battlefield. If a creature is put into exile this way, return each other card exiled with this Vehicle to the battlefield under its owner's control.\nCrew 2",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "462",
+"set": "snc"
+},
+{
+"name": "Crooked Custodian",
+"oracle_id": "9c39bc53-52d3-4610-920e-5607a625b01f",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Ogre Rogue",
+"oracle_text": "This creature enters tapped.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "71",
+"set": "snc"
+},
+{
+"name": "In Too Deep",
+"oracle_id": "2829ae08-9964-4679-80e8-46d5d33d10b9",
+"layout": "normal",
+"mana_cost": "{U}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Split second (As long as this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities.)\nEnchant creature, planeswalker, or Clue\nEnchanted permanent is a colorless Clue artifact with \"{2}, Sacrifice this artifact: Draw a card\" and loses all other abilities. (It's no longer a creature or planeswalker.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Split second"
+],
+"rarity": "rare",
+"collector_number": "128",
+"set": "ncc"
+},
+{
+"name": "Jewel Thief",
+"oracle_id": "470f0bbf-a0c9-4216-96f0-d400dac17aef",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Cat Rogue",
+"oracle_text": "Vigilance, trample\nWhen this creature enters, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Vigilance",
+"Treasure",
+"Trample"
+],
+"rarity": "common",
+"collector_number": "151",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Oskar, Rubbish Reclaimer",
+"oracle_id": "14c2c818-0ce2-4809-a5ff-ee4a6253defa",
+"layout": "normal",
+"mana_cost": "{3}{U}{B}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Human Wizard",
+"oracle_text": "This spell costs {1} less to cast for each different mana value among cards in your graveyard.\nWhenever you discard a nonland card, you may cast it from your graveyard.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "177",
+"set": "ncc"
+},
+{
+"name": "Obscura Ascendancy",
+"oracle_id": "34ec084d-2c16-452f-8dcc-06641c80f7d1",
+"layout": "normal",
+"mana_cost": "{W}{U}{B}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever you cast a spell, if its mana value is equal to 1 plus the number of soul counters on this enchantment, put a soul counter on this enchantment, then create a 2/2 white Spirit creature token with flying.\nAs long as there are five or more soul counters on this enchantment, Spirits you control get +3/+3.",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "387",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "Flying",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Crash the Party",
+"oracle_id": "337e322b-6144-4e0b-b998-df475166fcf6",
+"layout": "normal",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Create a tapped 4/4 green Rhino Warrior creature token for each tapped creature you control.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "157",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Rhino Warrior",
+"type_line": "Token Creature — Rhino Warrior",
+"oracle_text": "",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Evelyn, the Covetous",
+"oracle_id": "4ab6f615-1f04-4ed2-88b2-49faa8356dd0",
+"layout": "normal",
+"mana_cost": "{2}{U/B}{B}{B/R}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Vampire Rogue",
+"oracle_text": "Flash\nWhenever Evelyn or another Vampire you control enters, exile the top card of each player's library with a collection counter on it.\nOnce each turn, you may play a card from exile with a collection counter on it if it was exiled by an ability you controlled, and you may spend mana as though it were mana of any color to cast it.",
+"power": "2",
+"toughness": "5",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Flash"
+],
+"rarity": "rare",
+"collector_number": "306",
+"set": "snc"
+},
+{
+"name": "Aven Courier",
+"oracle_id": "a01746f3-8e6f-47ce-a95b-e44556d1f73e",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Bird Advisor",
+"oracle_text": "Flying\nWhenever this creature attacks, choose a counter on a permanent you control. Put a counter of that kind on target permanent you control if it doesn't have a counter of that kind on it.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "22",
+"set": "ncc"
+},
+{
+"name": "Change of Plans",
+"oracle_id": "b2f43df5-ec64-4375-b67f-b198732ab0b1",
+"layout": "normal",
+"mana_cost": "{X}{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Each of X target creatures you control connive. You may have any number of them phase out. (To have a creature connive, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature. Treat phased-out permanents and anything attached to them as though they don't exist until their controller's next turn.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "rare",
+"collector_number": "24",
+"set": "ncc"
+},
+{
+"name": "Run Out of Town",
+"oracle_id": "96189b18-8cab-4709-b3b6-c4f2003829eb",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "The owner of target nonland permanent puts it on their choice of the top or bottom of their library.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "58",
+"set": "snc"
+},
+{
+"name": "Skyway Robber",
+"oracle_id": "58aac732-3f03-4551-a684-6cb0e3b31c09",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Bird Rogue",
+"oracle_text": "Flying\nEscape—{3}{U}, Exile five other cards from your graveyard. (You may cast this card from your graveyard for its escape cost.)\nThis creature escapes with \"Whenever this creature deals combat damage to a player, you may cast an artifact, instant, or sorcery spell from among cards exiled with this creature without paying its mana cost.\"",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Escape"
+],
+"rarity": "rare",
+"collector_number": "31",
+"set": "ncc"
+},
+{
+"name": "Revelation of Power",
+"oracle_id": "287f60a6-e83b-487b-add9-2048a06dcca1",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 until end of turn. If it has a counter on it, it also gains flying and lifelink until end of turn.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "28",
+"set": "snc"
+},
+{
+"name": "Corpse Explosion",
+"oracle_id": "ab715312-0103-4681-b559-520026abd350",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "As an additional cost to cast this spell, exile a creature card from your graveyard.\nCorpse Explosion deals damage equal to the exiled card's power to each creature and each planeswalker.",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "435",
+"set": "snc"
+},
+{
+"name": "Cut of the Profits",
+"oracle_id": "8ce63f60-0211-46c7-8fb6-c5484ebfa029",
+"layout": "normal",
+"mana_cost": "{X}{B}{B}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 3 (As you cast this spell, you may sacrifice a creature with power 3 or greater. When you do, copy this spell.)\nYou draw X cards and you lose X life.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "rare",
+"collector_number": "72",
+"set": "snc"
+},
+{
+"name": "Hostile Takeover",
+"oracle_id": "5c7f91af-8bac-4da1-b9e5-f15989c9d53c",
+"layout": "normal",
+"mana_cost": "{2}{U}{B}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Up to one target creature has base power and toughness 1/1 until end of turn. Up to one other target creature has base power and toughness 4/4 until end of turn. Then Hostile Takeover deals 3 damage to each creature.",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "310",
+"set": "snc"
+},
+{
+"name": "Audacious Swap",
+"oracle_id": "40b0b93d-4075-42d6-bcd8-b2f9910cc7d2",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Casualty 2 (As you cast this spell, you may sacrifice a creature with power 2 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nThe owner of target nonenchantment permanent shuffles it into their library, then exiles the top card of their library. If it's a land card, they put it onto the battlefield. Otherwise, they may cast it without paying its mana cost.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "rare",
+"collector_number": "44",
+"set": "ncc"
+},
+{
+"name": "Industrial Advancement",
+"oracle_id": "7a0aa9ea-610e-4910-b66d-fdac69e88adf",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your end step, you may sacrifice a creature. If you do, look at the top X cards of your library, where X is that creature's mana value. You may put a creature card from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "47",
+"set": "ncc"
+},
+{
+"name": "Chrome Cat",
+"oracle_id": "0e2f8758-7457-4b54-ae61-a9c68cea4a23",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Cat",
+"oracle_text": "When this creature enters, scry 1.",
+"power": "3",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "236",
+"set": "snc"
+},
+{
+"name": "Master of Ceremonies",
+"oracle_id": "18ed0c8a-db8f-4247-87c4-544b833f01bd",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Rhino Druid",
+"oracle_text": "At the beginning of your upkeep, each opponent chooses money, friends, or secrets. For each player who chose money, you and that player each create a Treasure token. For each player who chose friends, you and that player each create a 1/1 green and white Citizen creature token. For each player who chose secrets, you and that player each draw a card.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "rare",
+"collector_number": "119",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Swooping Protector",
+"oracle_id": "094689cc-617a-426e-beb9-3f8de692cd5b",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Bird Citizen",
+"oracle_text": "Flash\nFlying\nThis creature enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Flash"
+],
+"rarity": "uncommon",
+"collector_number": "33",
+"set": "snc"
+},
+{
+"name": "Maestros Confluence",
+"oracle_id": "ef67a41b-a2a6-4f1b-a0d5-15560e99e387",
+"layout": "normal",
+"mana_cost": "{3}{U}{B}{R}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose three. You may choose the same mode more than once.\n• Return target monocolored instant or sorcery card from your graveyard to your hand.\n• Target creature gets -3/-3 until end of turn.\n• Goad each creature target player controls. (Until your next turn, those creatures attack each combat if able and attack a player other than you if able.)",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [
+"Goad"
+],
+"rarity": "rare",
+"collector_number": "175",
+"set": "ncc"
+},
+{
+"name": "Vivien's Stampede",
+"oracle_id": "b0700c79-f948-4235-ad87-f8c6079a368a",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Each creature you control gains vigilance, trample, and melee until end of turn. (Whenever a creature with melee attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)\nAt the beginning of the next main phase this turn, draw a card for each player who was dealt combat damage this turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "165",
+"set": "ncc"
+},
+{
+"name": "Rogues' Gallery",
+"oracle_id": "7ea1b0e8-a577-47e2-b4cb-a6ca973742d0",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "For each color, return up to one target creature card of that color from your graveyard to your hand.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "92",
+"set": "snc"
+},
+{
+"name": "Antagonize",
+"oracle_id": "f4e860f1-e637-4640-b257-57c2e42793ce",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +4/+3 until end of turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "100",
+"set": "snc"
+},
+{
+"name": "Attended Socialite",
+"oracle_id": "5f7c6fa9-4208-4dc8-a75b-9586200d8e19",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Elf Druid",
+"oracle_text": "Alliance — Whenever another creature you control enters, this creature gets +1/+1 until end of turn.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Alliance"
+],
+"rarity": "common",
+"collector_number": "133",
+"set": "snc"
+},
+{
+"name": "Buy Your Silence",
+"oracle_id": "2fd01a30-0c0e-4ac5-b96d-b2a6dad31f0c",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Exile target nonland permanent. Its controller creates a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "common",
+"collector_number": "6",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Backstreet Bruiser",
+"oracle_id": "354d9db1-18a6-4701-be3c-c4ded900e2ff",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Octopus Rogue",
+"oracle_text": "Defender\nAs long as there are two or more counters among creatures you control, this creature can attack as though it didn't have defender.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Defender"
+],
+"rarity": "common",
+"collector_number": "35",
+"set": "snc"
+},
+{
+"name": "Dig Up the Body",
+"oracle_id": "144e3d90-8ed8-4c21-941d-fc59cec042a2",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell.)\nMill two cards, then you may return a creature card from your graveyard to your hand. (To mill a card, put the top card of your library into your graveyard.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Casualty",
+"Mill"
+],
+"rarity": "common",
+"collector_number": "76",
+"set": "snc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Syndicate Recruiter",
+"type_line": "Creature — Vampire Rogue",
+"oracle_text": "Flying, ward {1}\nWhen Syndicate Recruiter enters the battlefield, mill four cards. Then if there are five or more mana values among cards in your graveyard, conjure a card named Dig Up the Body into your hand.",
+"power": "4",
+"toughness": "5",
+"colors": [
+"B",
+"U"
+],
+"keywords": [
+"Flying",
+"Ward",
+"Mill",
+"Conjure"
+]
+}
+]
+},
+{
+"name": "Exotic Pets",
+"oracle_id": "497cb281-e057-42fc-937d-512855b74159",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Create two 1/1 blue Fish creature tokens with \"This token can't be blocked.\" Then for each kind of counter among creatures you control, put a counter of that kind on either of those tokens.",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "185",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Fish",
+"type_line": "Token Creature — Fish",
+"oracle_text": "This creature can't be blocked.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Denry Klin, Editor in Chief",
+"oracle_id": "ba477a45-84cc-4a85-98e4-50dca3e58788",
+"layout": "normal",
+"mana_cost": "{2}{W}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Cat Advisor",
+"oracle_text": "Denry Klin enters with your choice of a +1/+1, first strike, or vigilance counter on it.\nWhenever a nontoken creature you control enters, if Denry Klin has counters on it, put the same number of each kind of counter on that creature.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "171",
+"set": "ncc"
+},
+{
+"name": "Wrecking Crew",
+"oracle_id": "533c4956-87f8-4bae-8924-166fc2e9ec1f",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Reach (This creature can block creatures with flying.)\nTrample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)",
+"power": "4",
+"toughness": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Reach",
+"Trample"
+],
+"rarity": "common",
+"collector_number": "132",
+"set": "snc"
+},
+{
+"name": "Paragon of Modernity",
+"oracle_id": "c1c62704-1f20-48cf-8588-47e7fca85f7b",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Angel Warrior",
+"oracle_text": "Flying\n{3}: This creature gets +1/+1 until end of turn. If exactly three colors of mana were spent to activate this ability, put a +1/+1 counter on it instead.",
+"power": "2",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "242",
+"set": "snc"
+},
+{
+"name": "Expendable Lackey",
+"oracle_id": "6f6cbcd4-7a4b-4a38-bf29-995e82e658ce",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "{1}{U}, Exile this card from your graveyard: Create a 1/1 blue Fish creature token with \"This token can't be blocked.\" Activate only as a sorcery.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "43",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Fish",
+"type_line": "Token Creature — Fish",
+"oracle_text": "This creature can't be blocked.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Swindler's Scheme",
+"oracle_id": "e3ff6134-10dd-4565-afcb-0f41a2933d19",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever an opponent casts a spell from their hand, you may reveal the top card of your library. If it shares a card type with that spell, counter that spell and that opponent may cast the revealed card without paying its mana cost.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "96",
+"set": "ncc"
+},
+{
+"name": "Psychic Pickpocket",
+"oracle_id": "60ead8a5-11fb-4eeb-99bf-0caaf1de1731",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature — Octopus Rogue",
+"oracle_text": "When this creature enters, it connives. When it connives this way, return up to one target nonland permanent to its owner's hand. (To have a creature connive, draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on that creature.)",
+"power": "3",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Connive"
+],
+"rarity": "uncommon",
+"collector_number": "54",
+"set": "snc"
+},
+{
+"name": "Sizzling Soloist",
+"oracle_id": "f8975d81-d373-49b1-be00-9513b92877d9",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "Alliance — Whenever another creature you control enters, target creature an opponent controls can't block this turn. If this is the second time this ability has resolved this turn, that creature attacks during its controller's next combat phase if able.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Alliance"
+],
+"rarity": "uncommon",
+"collector_number": "123",
+"set": "snc"
+},
+{
+"name": "Sky Crier",
+"oracle_id": "d88c2375-65ec-4909-aef3-ee1a658a07cc",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Bird Citizen",
+"oracle_text": "Flying, lifelink\n{3}{W}: You and target opponent each draw a card.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Lifelink"
+],
+"rarity": "common",
+"collector_number": "31",
+"set": "snc"
+},
+{
+"name": "Knockout Blow",
+"oracle_id": "7068637c-b025-41a5-be31-df1850f33b68",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {2} less to cast if it targets a red creature.\nKnockout Blow deals 4 damage to target attacking or blocking creature and you gain 2 life.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "20",
+"set": "snc"
+},
+{
+"name": "Kitt Kanto, Mayhem Diva",
+"oracle_id": "b6e3af71-0d68-4bf0-b886-c29dae15e9ae",
+"layout": "normal",
+"mana_cost": "{1}{R}{G}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Cat Bard Druid",
+"oracle_text": "When Kitt Kanto enters, create a 1/1 green and white Citizen creature token.\nAt the beginning of combat on each player's turn, you may tap two untapped creatures you control. When you do, target creature that player controls gets +2/+2 and gains trample until end of turn. Goad that creature.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [
+"Goad"
+],
+"rarity": "mythic",
+"collector_number": "4",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Brokers Veteran",
+"oracle_id": "feee1926-0b63-404f-9b01-df965de26b5f",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Human Soldier",
+"oracle_text": "When this creature dies, put a shield counter on target creature you control. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "36",
+"set": "snc"
+},
+{
+"name": "Botanical Plaza",
+"oracle_id": "19e6ebaf-7148-428f-8c79-1e9e57a4e659",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {G} or {W}.\n{2}{G}{W}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "247",
+"set": "snc"
+},
+{
+"name": "Sewer Crocodile",
+"oracle_id": "b01e9ff2-865a-401e-a839-568cd4a0451d",
+"layout": "normal",
+"mana_cost": "{5}{U}",
+"cmc": 6.0,
+"type_line": "Creature — Crocodile",
+"oracle_text": "{3}{U}: This creature can't be blocked this turn. This ability costs {3} less to activate if there are five or more mana values among cards in your graveyard.",
+"power": "4",
+"toughness": "6",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "60",
+"set": "snc"
+},
+{
+"name": "Aven Heartstabber",
+"oracle_id": "fee73267-b0ef-4f43-a0bd-7728691d6f17",
+"layout": "normal",
+"mana_cost": "{U}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Bird Assassin",
+"oracle_text": "Flying\nAs long as there are five or more mana values among cards in your graveyard, this creature gets +2/+2 and has deathtouch.\nWhen this creature dies, mill two cards, then draw a card.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Flying",
+"Mill"
+],
+"rarity": "rare",
+"collector_number": "433",
+"set": "snc"
+},
+{
+"name": "Extraction Specialist",
+"oracle_id": "4164034a-5e59-4e40-a150-2c1000b0bd0d",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Human Rogue",
+"oracle_text": "Lifelink\nWhen this creature enters, return target creature card with mana value 2 or less from your graveyard to the battlefield. That creature can't attack or block for as long as you control this creature.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Lifelink"
+],
+"rarity": "rare",
+"collector_number": "407",
+"set": "snc"
+},
+{
+"name": "Rob the Archives",
+"oracle_id": "df45a344-5937-4a3f-a80f-581ea456ea05",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell.)\nExile the top two cards of your library. You may play those cards this turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "uncommon",
+"collector_number": "122",
+"set": "snc"
+},
+{
+"name": "Prosperous Partnership",
+"oracle_id": "a40de3b1-b24b-4da4-b550-9ac9838aecba",
+"layout": "normal",
+"mana_cost": "{1}{R}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, create two 1/1 green and white Citizen creature tokens.\nTap three untapped creatures you control: Create a Treasure token.",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "rare",
+"collector_number": "78",
+"set": "ncc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Skyboon Evangelist",
+"oracle_id": "def2087a-5020-41e8-aa7b-d1f0c1f0fdb6",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Bird Advisor",
+"oracle_text": "Flying\nWhen this creature enters, support 6. (Put a +1/+1 counter on each of up to six other target creatures.)\nWhenever a creature with a counter on it attacks one of your opponents, that creature gains flying until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Support"
+],
+"rarity": "rare",
+"collector_number": "20",
+"set": "ncc"
+},
+{
+"name": "Cephalid Facetaker",
+"oracle_id": "cfb41a2b-4d8b-47e3-a074-95a1bd502227",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Octopus Rogue",
+"oracle_text": "This creature can't be blocked.\nAt the beginning of combat on your turn, you may have this creature become a copy of another target creature until end of turn, except it's 1/4 and has \"This creature can't be blocked.\"",
+"power": "1",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "23",
+"set": "ncc"
+},
+{
+"name": "Brokers Initiate",
+"oracle_id": "9bdf033e-87d4-4bc4-ba08-4b497cc1b559",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature — Cat Citizen",
+"oracle_text": "{4}{G/U}: This creature has base power and toughness 5/5 until end of turn.",
+"power": "0",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "5",
+"set": "snc"
+},
+{
+"name": "Refuse to Yield",
+"oracle_id": "d05aeada-2a9f-464d-8a66-b6e90f43bae3",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+7 until end of turn. Untap it.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "27",
+"set": "snc"
+},
+{
+"name": "Cryptic Pursuit",
+"oracle_id": "214cfbc8-369e-4035-9b65-80d0e0024889",
+"layout": "normal",
+"mana_cost": "{2}{U}{R}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever you cast an instant or sorcery spell from your hand, manifest the top card of your library. (Put that card onto the battlefield face down as a 2/2 creature. Turn it face up any time for its mana cost if it's a creature card.)\nWhenever a face-down creature you control dies, exile it if it's an instant or sorcery card. You may cast that card until the end of your next turn.",
+"colors": [
+"R",
+"U"
+],
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [
+"Manifest"
+],
+"rarity": "rare",
+"collector_number": "70",
+"set": "ncc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Manifest",
+"type_line": "Creature",
+"oracle_text": "(You can cover a face-down manifested creature with this reminder card.\nA manifested creature card can be turned face up any time for its mana cost. A face-down card can also be turned face up for its morph cost.)",
+"power": "2",
+"toughness": "2",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Social Climber",
+"oracle_id": "70af9a03-20d6-44e3-a181-b60e80bff643",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Human Druid",
+"oracle_text": "Alliance — Whenever another creature you control enters, you gain 1 life.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Alliance"
+],
+"rarity": "common",
+"collector_number": "157",
+"set": "snc"
+},
+{
+"name": "Waterfront District",
+"oracle_id": "18b0b583-d17b-4c67-bc67-c4d9aad155c7",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {U} or {B}.\n{2}{U}{B}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "357",
+"set": "snc"
+},
+{
+"name": "Cement Shoes",
+"oracle_id": "52d04c36-9d38-42b2-9e47-905ab06cb708",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +3/+3 and has \"At the beginning of your end step, tap this creature.\"\nEquipped creature doesn't untap during its controller's untap step.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "235",
+"set": "snc"
+},
+{
+"name": "Psionic Snoop",
+"oracle_id": "a4e8d2ad-cce2-45de-b9a2-7ba3b1546efb",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Human Rogue",
+"oracle_text": "Flash\nWhen this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+"power": "0",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flash",
+"Connive"
+],
+"rarity": "common",
+"collector_number": "53",
+"set": "snc"
+},
+{
+"name": "Luxurious Libation",
+"oracle_id": "aa4f9618-8106-451e-889a-79a5e8159256",
+"layout": "normal",
+"mana_cost": "{X}{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +X/+X until end of turn. Create a 1/1 green and white Citizen creature token.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "152",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Capenna Express",
+"oracle_id": "568432d1-c7fb-4da6-922a-22d4fa26284e",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Sacrifice a Treasure: This Vehicle becomes an artifact creature until end of turn.\nCrew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "common",
+"collector_number": "139",
+"set": "snc"
+},
+{
+"name": "Citizen's Crowbar",
+"oracle_id": "64c7e03d-ba38-4979-8889-9bf0e7b8c66e",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "When this Equipment enters, create a 1/1 green and white Citizen creature token, then attach this Equipment to it.\nEquipped creature gets +1/+1 and has \"{W}, {T}, Sacrifice Citizen's Crowbar: Destroy target artifact or enchantment.\"\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "8",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Dusk Mangler",
+"oracle_id": "74de3356-9779-40f9-9881-fe795a1d5bbd",
+"layout": "normal",
+"mana_cost": "{5}{B}{B}",
+"cmc": 7.0,
+"type_line": "Creature — Horror",
+"oracle_text": "As an additional cost to cast this spell, sacrifice a creature, discard a card, or pay 4 life.\nWhen this creature enters, each opponent sacrifices a creature of their choice, discards a card, and loses 4 life.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "77",
+"set": "snc"
+},
+{
+"name": "Skybridge Towers",
+"oracle_id": "46466819-3c8b-4f7e-82c2-93cb0118a6e6",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {W} or {U}.\n{2}{W}{U}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "354",
+"set": "snc"
+},
+{
+"name": "Wingshield Agent",
+"oracle_id": "513034fc-873a-4877-afb2-39ece1ea6a7c",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Human Soldier",
+"oracle_text": "This creature enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nWhenever this creature attacks, up to one other target creature gains flying until end of turn.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "64",
+"set": "snc"
+},
+{
+"name": "Warm Welcome",
+"oracle_id": "53807ded-5bbb-44a1-9c22-ffdd4b8523e0",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in a random order. Create a 1/1 green and white Citizen creature token.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "164",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Park Heights Pegasus",
+"oracle_id": "fd92b588-f273-4206-9887-34e6877fc14f",
+"layout": "normal",
+"mana_cost": "{G}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Pegasus",
+"oracle_text": "Flying, trample\nWhenever this creature deals combat damage to a player, draw a card if you had two or more creatures enter the battlefield under your control this turn.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Flying",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "211",
+"set": "snc"
+},
+{
+"name": "Majestic Metamorphosis",
+"oracle_id": "5779d9b2-4de1-4aa4-a56d-0da05146743a",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Until end of turn, target artifact or creature becomes a 4/4 Angel artifact creature and gains flying.\nDraw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "48",
+"set": "snc"
+},
+{
+"name": "Snooping Newsie",
+"oracle_id": "347a5faa-5656-4a36-af44-ab5a3ed267f4",
+"layout": "normal",
+"mana_cost": "{U}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Human Rogue",
+"oracle_text": "When this creature enters, mill two cards. (Put the top two cards of your library into your graveyard.)\nAs long as there are five or more mana values among cards in your graveyard, this creature gets +1/+1 and has lifelink.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "common",
+"collector_number": "222",
+"set": "snc"
+},
+{
+"name": "Ballroom Brawlers",
+"oracle_id": "c87dff29-fa4c-44f4-9de6-d85a347c1720",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Whenever this creature attacks, this creature and up to one other target creature you control both gain your choice of first strike or lifelink until end of turn.",
+"power": "3",
+"toughness": "5",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "3",
+"set": "snc"
+},
+{
+"name": "Syndicate Infiltrator",
+"oracle_id": "0d6be8a4-b05b-40fb-a653-5aabf71809e0",
+"layout": "normal",
+"mana_cost": "{2}{U}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Vampire Wizard",
+"oracle_text": "Flying\nAs long as there are five or more mana values among cards in your graveyard, this creature gets +2/+2.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "226",
+"set": "snc"
+},
+{
+"name": "Voice of the Vermin",
+"oracle_id": "73829ae3-c8de-4e6d-9607-4b2e980ff144",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "This creature enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nWhenever this creature attacks, target creature you control has base power and toughness 4/4 until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "163",
+"set": "snc"
+},
+{
+"name": "Goldhound",
+"oracle_id": "b5eb72bb-897f-4911-a797-3153c31df3e0",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Artifact Creature — Treasure Dog",
+"oracle_text": "First strike\nMenace (This creature can't be blocked except by two or more creatures.)\n{T}, Sacrifice this creature: Add one mana of any color.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"First strike",
+"Menace"
+],
+"rarity": "common",
+"collector_number": "108",
+"set": "snc"
+},
+{
+"name": "Contractual Safeguard",
+"oracle_id": "8ac43884-9f03-4945-98ea-c744d0403f32",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Addendum — If you cast this spell during your main phase, put a shield counter on a creature you control. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nChoose a kind of counter on a creature you control. Put a counter of that kind on each other creature you control.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Addendum"
+],
+"rarity": "rare",
+"collector_number": "115",
+"set": "ncc"
+},
+{
+"name": "Disciplined Duelist",
+"oracle_id": "c650f497-92d6-48cf-8b59-5d61eb184dc0",
+"layout": "normal",
+"mana_cost": "{G}{W}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "Double strike\nThis creature enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [
+"Double strike"
+],
+"rarity": "uncommon",
+"collector_number": "304",
+"set": "snc"
+},
+{
+"name": "Whack",
+"oracle_id": "19becb14-3774-4732-b792-d2d0e5a94b35",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "This spell costs {3} less to cast if it targets a white creature.\nTarget creature gets -4/-4 until end of turn.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "99",
+"set": "snc"
+},
+{
+"name": "Rhox Pummeler",
+"oracle_id": "898c8415-8769-48c4-ad16-a4ba8c3d5d7d",
+"layout": "normal",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Rhino Soldier",
+"oracle_text": "This creature enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nThis creature has trample as long as it has a shield counter on it.",
+"power": "6",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "155",
+"set": "snc"
+},
+{
+"name": "Exhibition Magician",
+"oracle_id": "758e68fd-76ba-467e-a756-c5daa7db16d5",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Human Wizard",
+"oracle_text": "When this creature enters, choose one —\n• Create a 1/1 green and white Citizen creature token.\n• Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "2",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "common",
+"collector_number": "106",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Structural Assault",
+"oracle_id": "23cf22fe-483f-4841-882e-e1513bb1d495",
+"layout": "normal",
+"mana_cost": "{3}{R}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy all artifacts, then Structural Assault deals damage to each creature equal to the number of artifacts that were put into graveyards from the battlefield this turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "126",
+"set": "snc"
+},
+{
+"name": "Shattered Seraph",
+"oracle_id": "92eae6af-b915-4eb8-93c4-527f732bb712",
+"layout": "normal",
+"mana_cost": "{4}{W}{U}{B}",
+"cmc": 7.0,
+"type_line": "Creature — Angel Rogue",
+"oracle_text": "Flying\nWhen this creature enters, you gain 3 life.\n{2}, Exile this card from your hand: Target land gains \"{T}: Add {W}, {U}, or {B}\" until this card is cast from exile. You may cast this card for as long as it remains exiled.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "221",
+"set": "snc"
+},
+{
+"name": "Rumor Gatherer",
+"oracle_id": "3ceca713-38de-4428-a4f1-2146f6e98393",
+"layout": "normal",
+"mana_cost": "{1}{W}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Elf Wizard",
+"oracle_text": "Alliance — Whenever another creature you control enters, scry 1. If this is the second time this ability has resolved this turn, draw a card instead.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Alliance",
+"Scry"
+],
+"rarity": "uncommon",
+"collector_number": "463",
+"set": "snc"
+},
+{
+"name": "Quick-Draw Dagger",
+"oracle_id": "47b4dd69-0b2a-4dc3-99e8-f572fe049327",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Flash\nWhen this Equipment enters, attach it to target creature you control. That creature gains first strike until end of turn.\nEquipped creature gets +1/+1.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "243",
+"set": "snc"
+},
+{
+"name": "Indulge // Excess",
+"oracle_id": "abcb5b99-bf5e-402f-97a2-abb1ab39dd72",
+"layout": "split",
+"mana_cost": "{2}{R} // {1}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery // Sorcery",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure",
+"Aftermath"
+],
+"rarity": "rare",
+"collector_number": "46",
+"set": "ncc",
+"card_faces": [
+{
+"name": "Indulge",
+"mana_cost": "{2}{R}",
+"type_line": "Sorcery",
+"oracle_text": "Whenever a creature you control attacks this turn, create a 1/1 green and white Citizen creature token that's tapped and attacking."
+},
+{
+"name": "Excess",
+"mana_cost": "{1}{R}",
+"type_line": "Sorcery",
+"oracle_text": "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nCreate a Treasure token for each creature you controlled that dealt combat damage to a player this turn."
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Dapper Shieldmate",
+"oracle_id": "3cdd795b-13b8-4812-89ee-d248368f915b",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Human Soldier",
+"oracle_text": "This creature enters with a shield counter on it. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\nDuring your turn, this creature gets +2/+0.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "9",
+"set": "snc"
+},
+{
+"name": "Jackhammer",
+"oracle_id": "f73d89ec-05c9-4998-a24b-bc675b04ec16",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +2/+0.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "common",
+"collector_number": "111",
+"set": "snc"
+},
+{
+"name": "Rooftop Nuisance",
+"oracle_id": "8843faa9-0cd5-4ef3-8e7b-b8833db9dc84",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 1 (As you cast this spell, you may sacrifice a creature with power 1 or greater. When you do, copy this spell and you may choose a new target for the copy.)\nTap target creature. It doesn't untap during its controller's next untap step.\nDraw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "common",
+"collector_number": "57",
+"set": "snc"
+},
+{
+"name": "Echo Inspector",
+"oracle_id": "d7ae0009-3747-4f3a-a613-3e640b0219a0",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Bird Rogue",
+"oracle_text": "Flying\nWhen this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Connive"
+],
+"rarity": "common",
+"collector_number": "40",
+"set": "snc"
+},
+{
+"name": "Torch Breath",
+"oracle_id": "b6d61d96-a56a-4f4c-a196-05e03fe16ed2",
+"layout": "normal",
+"mana_cost": "{X}{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {2} less to cast if it targets a blue permanent.\nThis spell can't be countered.\nTorch Breath deals X damage to target creature or planeswalker.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "127",
+"set": "snc"
+},
+{
+"name": "Maestros Initiate",
+"oracle_id": "85905607-dceb-4c37-81a3-ab441ce9490c",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "{4}{U/R}, Exile this card from your graveyard: Draw two cards, then discard a card.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "86",
+"set": "snc"
+},
+{
+"name": "Gilded Pinions",
+"oracle_id": "8a7c3718-74a1-4f26-8e06-0e17db4b0077",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "When this Equipment enters, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\nEquipped creature has flying.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Treasure",
+"Equip"
+],
+"rarity": "common",
+"collector_number": "238",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Speakeasy Server",
+"oracle_id": "4e08e07f-ca30-4e34-b207-d8fe62c03777",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Bird Citizen",
+"oracle_text": "Flying\nWhen this creature enters, you gain 1 life for each other creature you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "32",
+"set": "snc"
+},
+{
+"name": "Ominous Parcel",
+"oracle_id": "be3c138b-045b-4b08-a12f-a5679d972051",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{2}, {T}, Sacrifice this artifact: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n{5}, {T}, Sacrifice this artifact: It deals 4 damage to target creature.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "241",
+"set": "snc"
+},
+{
+"name": "Riveteers Initiate",
+"oracle_id": "c756d786-9aff-4d2e-9c06-6ae01d5fca2e",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Lizard Citizen",
+"oracle_text": "{1}{B/G}: This creature gains deathtouch until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "120",
+"set": "snc"
+},
+{
+"name": "Revel Ruiner",
+"oracle_id": "adfb28ca-2ba6-4104-b731-f8fd9367f7ec",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Octopus Rogue",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)",
+"power": "3",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Menace",
+"Connive"
+],
+"rarity": "common",
+"collector_number": "91",
+"set": "snc"
+},
+{
+"name": "Angelic Observer",
+"oracle_id": "17df0fda-d726-4c9d-bf44-6f2e3a347117",
+"layout": "normal",
+"mana_cost": "{5}{W}",
+"cmc": 6.0,
+"type_line": "Creature — Angel Advisor",
+"oracle_text": "Affinity for Citizens (This spell costs {1} less to cast for each Citizen you control.)\nFlying",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Affinity"
+],
+"rarity": "uncommon",
+"collector_number": "1",
+"set": "snc"
+},
+{
+"name": "Grime Gorger",
+"oracle_id": "7271c442-2bd1-4d78-a049-b28bd5ee6876",
+"layout": "normal",
+"mana_cost": "{2}{B}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Horror",
+"oracle_text": "Menace\nWhenever this creature attacks, exile up to one card of each card type from defending player's graveyard. Put a +1/+1 counter on this creature for each card exiled this way.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G"
+],
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "172",
+"set": "ncc"
+},
+{
+"name": "Elegant Entourage",
+"oracle_id": "e049eb22-a01a-463e-8de9-705d6eaf84e2",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Elf Druid",
+"oracle_text": "Alliance — Whenever another creature you control enters, target creature other than this creature gets +1/+1 and gains trample until end of turn.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Alliance"
+],
+"rarity": "uncommon",
+"collector_number": "143",
+"set": "snc"
+},
+{
+"name": "Stimulus Package",
+"oracle_id": "ce76d17e-d536-46f0-98e2-3e1b1b4f61a4",
+"layout": "normal",
+"mana_cost": "{2}{R}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")\nSacrifice a Treasure: Create a 1/1 green and white Citizen creature token.",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "uncommon",
+"collector_number": "225",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Citizen",
+"type_line": "Token Creature — Citizen",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Park Heights Maverick",
+"oracle_id": "5dd54b2a-7d6a-44f5-8827-ff3660a4b12b",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Human Soldier",
+"oracle_text": "Dethrone (Whenever this creature attacks the player with the most life or tied for most life, put a +1/+1 counter on it.)\nThis creature can't be blocked by creatures with power 2 or less.\nWhenever this creature deals combat damage to a player or dies, proliferate.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Dethrone",
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "163",
+"set": "ncc"
+},
+{
+"name": "Civic Gardener",
+"oracle_id": "9eb7f301-b9b6-48c3-9dad-e7df9cc15355",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Human Citizen",
+"oracle_text": "Whenever this creature attacks, untap target creature or land.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "140",
+"set": "snc"
+},
+{
+"name": "Arc Spitter",
+"oracle_id": "9376ccf6-1b18-44e9-8f9d-c5ad38927e2f",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature has \"{1}: This creature deals 1 damage to target creature that's blocking it.\"\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "233",
+"set": "snc"
+},
+{
+"name": "Brass Knuckles",
+"oracle_id": "5a8630a8-804e-4789-b9a3-96d9ede5e188",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "When you cast this spell, copy it. (The copy becomes a token.)\nEquipped creature has double strike as long as two or more Equipment are attached to it.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "234",
+"set": "snc"
+},
+{
+"name": "Join the Maestros",
+"oracle_id": "849a7ae8-2b4e-4fa5-9607-2bfc961fee40",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Casualty 2 (As you cast this spell, you may sacrifice a creature with power 2 or greater. When you do, copy this spell.)\nCreate a 4/3 black Ogre Warrior creature token.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Casualty"
+],
+"rarity": "common",
+"collector_number": "85",
+"set": "snc",
+"related": [
+{
+"component": "token",
+"name": "Ogre Warrior",
+"type_line": "Token Creature — Ogre Warrior",
+"oracle_text": "",
+"power": "4",
+"toughness": "3",
+"colors": [
+"B"
+],
+"keywords": []
+}
+]
+}
+]

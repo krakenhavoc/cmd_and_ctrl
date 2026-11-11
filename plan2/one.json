@@ -1,0 +1,6201 @@
+[
+{
+"name": "Jor Kadeen, First Goldwarden",
+"oracle_id": "967897db-a34b-493c-bd48-04e2650902d2",
+"layout": "normal",
+"mana_cost": "{R}{W}",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Human Rebel",
+"oracle_text": "Trample\nWhenever Jor Kadeen attacks, it gets +X/+X until end of turn, where X is the number of equipped creatures you control. Then if Jor Kadeen's power is 4 or greater, draw a card.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "332",
+"set": "one"
+},
+{
+"name": "Vraska's Fall",
+"oracle_id": "33fd9192-3e9b-4d3a-92aa-06de29d449df",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Each opponent sacrifices a creature or planeswalker of their choice and gets a poison counter.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "116",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Archfiend of the Dross",
+"oracle_id": "9188031e-1c24-4981-a3d2-461a2bf917b6",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Demon",
+"oracle_text": "Flying\nThis creature enters with four oil counters on it.\nAt the beginning of your upkeep, remove an oil counter from this creature. Then if it has no oil counters on it, you lose the game.\nWhenever a creature an opponent controls dies, its controller loses 2 life.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "434",
+"set": "one"
+},
+{
+"name": "The Fair Basilica",
+"oracle_id": "8618f8e8-fd86-47e3-905d-e6624b599b9b",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "This land enters tapped.\n{T}: Add {W}.\n{1}{W}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "252",
+"set": "one"
+},
+{
+"name": "Porcelain Zealot",
+"oracle_id": "4c11bda3-903f-4b7c-9e5e-f6c5c91977cf",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Soldier",
+"oracle_text": "At the beginning of combat on your turn, target creature you control gets +1/+1 until end of turn. If that creature has toxic, instead it gets +2/+2 until end of turn.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "30",
+"set": "one"
+},
+{
+"name": "Annex Sentry",
+"oracle_id": "be31fa46-d5ac-4c85-9c19-3f0e2b1f223b",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Cleric",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, exile target artifact or creature an opponent controls with mana value 3 or less until this creature leaves the battlefield.",
+"power": "1",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "2",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Quicksilver Fisher",
+"oracle_id": "b3e3d037-992b-4718-913d-7ab509d2047e",
+"layout": "normal",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Drake",
+"oracle_text": "Flying\nWhen this creature enters, draw a card, then discard a card.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "430",
+"set": "one"
+},
+{
+"name": "Glimmer Lens",
+"oracle_id": "bb7cebb7-a979-4879-b834-deab13f2a22c",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nWhenever equipped creature and at least one other creature attack, draw a card.\nEquip {1}{W}",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "44",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Kaito, Dancing Shadow",
+"oracle_id": "17fd42f6-f388-4ffc-8fec-ca9ada2506ee",
+"layout": "normal",
+"mana_cost": "{2}{U}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Planeswalker — Kaito",
+"oracle_text": "Whenever one or more creatures you control deal combat damage to a player, you may return one of them to its owner's hand. If you do, you may activate loyalty abilities of Kaito twice this turn rather than only once.\n+1: Up to one target creature can't attack or block until your next turn.\n0: Draw a card.\n−2: Create a 2/2 colorless Drone artifact creature token with deathtouch and \"When this token leaves the battlefield, each opponent loses 2 life and you gain 2 life.\"",
+"loyalty": "3",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "340",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Drone",
+"type_line": "Token Artifact Creature — Drone",
+"oracle_text": "Deathtouch\nWhen this creature leaves the battlefield, each opponent loses 2 life and you gain 2 life.",
+"power": "2",
+"toughness": "2",
+"colors": [],
+"keywords": [
+"Deathtouch"
+]
+}
+]
+},
+{
+"name": "Ichorspit Basilisk",
+"oracle_id": "5a2f8474-b032-4567-a569-3f9725805f10",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Basilisk",
+"oracle_text": "Deathtouch\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Deathtouch"
+],
+"rarity": "common",
+"collector_number": "170",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Infectious Inquiry",
+"oracle_id": "66051196-53ea-4461-b241-205df9395b3b",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "You draw two cards and you lose 2 life. Each opponent gets a poison counter.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "97",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Fleshless Gladiator",
+"oracle_id": "8e33d6e5-30a2-48b4-826c-09aa75bbba27",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Skeleton",
+"oracle_text": "Corrupted — {2}{B}: Return this card from your graveyard to the battlefield tapped. You lose 1 life. Activate only if an opponent has three or more poison counters.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "94",
+"set": "one"
+},
+{
+"name": "Ria Ivor, Bane of Bladehold",
+"oracle_id": "785f55bb-d47c-470c-94d4-95f69055e35f",
+"layout": "normal",
+"mana_cost": "{2}{W}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Phyrexian Knight",
+"oracle_text": "Battle cry (Whenever this creature attacks, each other attacking creature gets +1/+0 until end of turn.)\nAt the beginning of combat on your turn, the next time target creature would deal combat damage to one or more players this combat, prevent that damage. If damage is prevented this way, create that many 1/1 colorless Phyrexian Mite artifact creature tokens with toxic 1 and \"This token can't block.\"",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Battle Cry"
+],
+"rarity": "rare",
+"collector_number": "475",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Bladed Ambassador",
+"oracle_id": "3088ee75-3b51-4cbc-8987-76cb93f416b1",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Soldier",
+"oracle_text": "This creature enters with an oil counter on it.\n{1}, Remove an oil counter from this creature: This creature gains indestructible until end of turn.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "5",
+"set": "one"
+},
+{
+"name": "Churning Reservoir",
+"oracle_id": "9d1c5987-3572-4bf9-b01c-eb6e98a7da77",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "At the beginning of your upkeep, put an oil counter on another target nontoken artifact or creature you control.\n{2}, {T}: Create a 1/1 red Phyrexian Goblin creature token. Activate only if an oil counter was removed from a permanent you controlled this turn or a permanent with an oil counter on it was put into a graveyard this turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "127",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Goblin",
+"type_line": "Token Creature — Phyrexian Goblin",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Goldwardens' Gambit",
+"oracle_id": "cf113674-f809-4b97-9e8d-e22385446ddb",
+"layout": "normal",
+"mana_cost": "{6}{R}{R}",
+"cmc": 8.0,
+"type_line": "Sorcery",
+"oracle_text": "Affinity for Equipment (This spell costs {1} less to cast for each Equipment you control.)\nCreate five 2/2 red Rebel creature tokens. They gain haste until end of turn. For each of those tokens, you may attach an Equipment you control to it.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Affinity"
+],
+"rarity": "rare",
+"collector_number": "13",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Goliath Hatchery",
+"oracle_id": "c4d65bcd-f6c5-40c3-825d-06b5183e7dbe",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, create two 3/3 green Phyrexian Beast creature tokens with toxic 1. (Players dealt combat damage by them also get a poison counter.)\nCorrupted — At the beginning of your upkeep, if an opponent has three or more poison counters, choose a creature you control, then draw cards equal to its total toxic value.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "rare",
+"collector_number": "413",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Phyrexian Beast",
+"type_line": "Token Creature — Phyrexian Beast",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"keywords": [
+"Toxic"
+]
+}
+]
+},
+{
+"name": "Hexgold Slash",
+"oracle_id": "573a3afb-3a2a-41b7-ac1a-9685b90bffa3",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Hexgold Slash deals 2 damage to target creature. If that creature has toxic, Hexgold Slash deals 4 damage to that creature instead.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "137",
+"set": "one"
+},
+{
+"name": "Contaminant Grafter",
+"oracle_id": "ba922414-878f-4261-9bce-500c5c9e9506",
+"layout": "normal",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Druid",
+"oracle_text": "Trample, toxic 1\nWhenever one or more creatures you control deal combat damage to one or more players, proliferate.\nCorrupted — At the beginning of your end step, if an opponent has three or more poison counters, draw a card, then you may put a land card from your hand onto the battlefield.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Trample",
+"Corrupted",
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "17",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Tyrranax Rex",
+"oracle_id": "6e42da0c-151e-468d-91cb-5a5b117a9298",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}{G}",
+"cmc": 7.0,
+"type_line": "Creature — Phyrexian Dinosaur",
+"oracle_text": "This spell can't be countered.\nTrample, ward {4}, haste\nToxic 4 (Players dealt combat damage by this creature also get four poison counters.)",
+"power": "8",
+"toughness": "8",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Haste",
+"Trample",
+"Ward"
+],
+"rarity": "mythic",
+"collector_number": "189",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Maze Skullbomb",
+"oracle_id": "3cb91e96-285d-4191-97cd-ee7ce5d86eb2",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{1}, Sacrifice this artifact: Draw a card.\n{2}{G}, Sacrifice this artifact: Target creature you control gets +3/+3 and gains trample until end of turn. Draw a card. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "231",
+"set": "one"
+},
+{
+"name": "Nahiri, the Unforgiving",
+"oracle_id": "d71d42e0-cd56-4f53-95ff-ecab7f8c6552",
+"layout": "normal",
+"mana_cost": "{1}{R}{R/W/P}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Planeswalker — Nahiri",
+"oracle_text": "Compleated ({R/W/P} can be paid with {R}, {W}, or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n+1: Until your next turn, up to one target creature attacks a player each combat if able.\n+1: Discard a card, then draw a card.\n0: Exile target creature or Equipment card with mana value less than Nahiri's loyalty from your graveyard. Create a token that's a copy of it. That token gains haste. Exile it at the beginning of the next end step.",
+"loyalty": "5",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Compleated"
+],
+"rarity": "mythic",
+"collector_number": "343",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Ruthless Predation",
+"oracle_id": "478e59b8-03ad-4f8e-8c18-6ab5ad77a6f8",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Target creature you control gets +1/+2 until end of turn. It fights target creature you don't control. (Each deals damage equal to its power to the other.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Fight"
+],
+"rarity": "common",
+"collector_number": "182",
+"set": "one"
+},
+{
+"name": "Evolving Adaptive",
+"oracle_id": "e350c2d5-0ca2-4b9c-b01f-a3c31cbf8d10",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "This creature enters with an oil counter on it.\nThis creature gets +1/+1 for each oil counter on it.\nWhenever another creature you control enters, if that creature has greater power or toughness than this creature, put an oil counter on this creature.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "167",
+"set": "one"
+},
+{
+"name": "Flensing Raptor",
+"oracle_id": "5d55c397-3828-4e4b-8a61-8c7272ba4800",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Bird",
+"oracle_text": "Flying\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, another target creature you control with toxic gets +1/+1 and gains flying until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "12",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "The Monumental Facade",
+"oracle_id": "63e8d282-d038-4a8c-a0cb-f51ddf87d8ea",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "This land enters with two oil counters on it.\n{T}: Add {C}.\n{T}, Remove an oil counter from this land: Put an oil counter on target artifact or creature you control. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "401",
+"set": "one"
+},
+{
+"name": "Argentum Masticore",
+"oracle_id": "3ceee5c2-321c-49ec-ba49-1fac7f6ee2cc",
+"layout": "normal",
+"mana_cost": "{5}",
+"cmc": 5.0,
+"type_line": "Artifact Creature — Phyrexian Masticore",
+"oracle_text": "First strike, protection from multicolored\nAt the beginning of your upkeep, sacrifice this creature unless you discard a card. When you discard a card this way, destroy target nonland permanent an opponent controls with mana value less than or equal to the mana value of the discarded card.",
+"power": "5",
+"toughness": "5",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"First strike",
+"Protection"
+],
+"rarity": "rare",
+"collector_number": "393",
+"set": "one"
+},
+{
+"name": "Bonepicker Skirge",
+"oracle_id": "c42833e6-3e42-4bd6-acbc-d8e284e9833e",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Imp",
+"oracle_text": "Flying\nCorrupted — As long as an opponent has three or more poison counters, this creature has deathtouch and lifelink.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "436",
+"set": "one"
+},
+{
+"name": "Slobad, Iron Goblin",
+"oracle_id": "72062fb6-0329-424d-936a-882b638d6d57",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Phyrexian Goblin Artificer",
+"oracle_text": "{T}, Sacrifice an artifact: Add an amount of {R} equal to the sacrificed artifact's mana value. Spend this mana only to cast artifact spells or activate abilities of artifacts.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "448",
+"set": "one"
+},
+{
+"name": "Tyrranax Atrocity",
+"oracle_id": "08261b68-b261-4e47-a085-c489ba394108",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Dinosaur",
+"oracle_text": "Haste\nToxic 3 (Players dealt combat damage by this creature also get three poison counters.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Haste"
+],
+"rarity": "common",
+"collector_number": "188",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Unctus, Grand Metatect",
+"oracle_id": "54c18f09-5c5a-46e7-9f66-ff91bc12537c",
+"layout": "normal",
+"mana_cost": "{1}{U}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Artifact Creature — Phyrexian Vedalken",
+"oracle_text": "Other blue creatures you control have \"Whenever this creature becomes tapped, draw a card, then discard a card.\"\nOther artifact creatures you control get +1/+1.\n{U/P}: Until end of turn, target creature you control becomes a blue artifact in addition to its other colors and types. Activate only as a sorcery. ({U/P} can be paid with either {U} or 2 life.)",
+"power": "2",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "75",
+"set": "one"
+},
+{
+"name": "Jace, the Perfected Mind",
+"oracle_id": "03dafab4-841f-41cb-8f2e-8188f5177837",
+"layout": "normal",
+"mana_cost": "{2}{U}{U/P}",
+"cmc": 4.0,
+"type_line": "Legendary Planeswalker — Jace",
+"oracle_text": "Compleated ({U/P} can be paid with {U} or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n+1: Until your next turn, up to one target creature gets -3/-0.\n−2: Target player mills three cards. Then if a graveyard has twenty or more cards in it, you draw three cards. Otherwise, you draw a card.\n−X: Target player mills three times X cards.",
+"loyalty": "5",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Mill",
+"Compleated"
+],
+"rarity": "mythic",
+"collector_number": "360",
+"set": "one"
+},
+{
+"name": "Green Sun's Twilight",
+"oracle_id": "0221330a-3e7a-40aa-9c78-85c88a4c1a53",
+"layout": "normal",
+"mana_cost": "{X}{G}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Reveal the top X plus one cards of your library. Choose a creature card and/or a land card from among them. Put those cards into your hand and the rest on the bottom of your library in a random order. If X is 5 or more, instead put the chosen cards onto the battlefield or into your hand and the rest on the bottom of your library in a random order.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "169",
+"set": "one"
+},
+{
+"name": "Contagious Vorrac",
+"oracle_id": "1b6da140-0d91-4fae-a3ee-33e6808acf34",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Boar Beast",
+"oracle_text": "When this creature enters, look at the top four cards of your library. You may reveal a land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order. If you didn't put a card into your hand this way, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "164",
+"set": "one"
+},
+{
+"name": "Kemba, Kha Enduring",
+"oracle_id": "93c97e1a-bd7e-4307-8ada-58f53a887cf8",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Cat Cleric",
+"oracle_text": "Whenever Kemba or another Cat you control enters, attach up to one target Equipment you control to that creature.\nEquipped creatures you control get +1/+1.\n{3}{W}{W}: Create a 2/2 white Cat creature token.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "330",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Cat",
+"type_line": "Token Creature — Cat",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Myr Convert",
+"oracle_id": "6abf433e-27da-4abb-b262-3af792a1db23",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Myr",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\n{T}, Pay 2 life: Add one mana of any color.",
+"power": "2",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "479",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Norn's Wellspring",
+"oracle_id": "56a55f45-2cc6-407d-b212-5619c98456d9",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "Whenever a creature you control dies, scry 1 and put an oil counter on this artifact.\n{1}, {T}, Remove two oil counters from this artifact: Draw a card.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "rare",
+"collector_number": "375",
+"set": "one"
+},
+{
+"name": "The Dross Pits",
+"oracle_id": "8110fe69-c66c-4e2c-86ee-dcc8dc9a13d1",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "This land enters tapped.\n{T}: Add {B}.\n{1}{B}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "251",
+"set": "one"
+},
+{
+"name": "The Surgical Bay",
+"oracle_id": "db9c155f-b342-41bb-9e1a-50358fb9f40e",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "This land enters tapped.\n{T}: Add {U}.\n{1}{U}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "260",
+"set": "one"
+},
+{
+"name": "Venser, Corpse Puppet",
+"oracle_id": "17c934a7-3480-4309-a217-ca2550538ae7",
+"layout": "normal",
+"mana_cost": "{U}{B}",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Phyrexian Zombie Wizard",
+"oracle_text": "Lifelink, toxic 1\nWhenever you proliferate, choose one —\n• If you don't control a creature named The Hollow Sentinel, create The Hollow Sentinel, a legendary 3/3 colorless Phyrexian Golem artifact creature token.\n• Target artifact creature you control gains flying and lifelink until end of turn.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Lifelink",
+"Toxic",
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "219",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "The Hollow Sentinel",
+"type_line": "Token Legendary Artifact Creature — Phyrexian Golem",
+"oracle_text": "",
+"power": "3",
+"toughness": "3",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Nissa, Ascended Animist",
+"oracle_id": "9c8845d6-fa65-4731-b348-dc724fc2d285",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}{G/P}{G/P}",
+"cmc": 7.0,
+"type_line": "Legendary Planeswalker — Nissa",
+"oracle_text": "Compleated ({G/P} can be paid with {G} or 2 life. For each {G/P} paid with life, this planeswalker enters with two fewer loyalty counters.)\n+1: Create an X/X green Phyrexian Horror creature token, where X is Nissa's loyalty.\n−1: Destroy target artifact or enchantment.\n−7: Until end of turn, creatures you control get +1/+1 for each Forest you control and gain trample.",
+"loyalty": "7",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Compleated"
+],
+"rarity": "mythic",
+"collector_number": "175",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Horror",
+"type_line": "Token Creature — Phyrexian Horror",
+"oracle_text": "",
+"power": "*",
+"toughness": "*",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Ribskiff",
+"oracle_id": "8f761657-7127-4552-a200-532e063e2419",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters.)\nWhen this Vehicle enters, draw a card.\nCrew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "4",
+"toughness": "4",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Toxic",
+"Crew"
+],
+"rarity": "uncommon",
+"collector_number": "240",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Veil of Assimilation",
+"oracle_id": "3dd81e3e-e57a-4b6f-9043-bba0cebb3e90",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "Whenever this artifact or another artifact you control enters, target creature you control gets +1/+1 and gains vigilance until end of turn.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "37",
+"set": "one"
+},
+{
+"name": "Blightbelly Rat",
+"oracle_id": "b0102259-7a2c-470e-b04b-4a1f615d057c",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Rat",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature dies, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Toxic",
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "289",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Capricious Hellraiser",
+"oracle_id": "eb7b024c-da9b-4544-8648-0ac0395cf7fc",
+"layout": "normal",
+"mana_cost": "{3}{R}{R}{R}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Dragon",
+"oracle_text": "This spell costs {3} less to cast if you have nine or more cards in your graveyard.\nFlying\nWhen this creature enters, exile three cards at random from your graveyard. Choose a noncreature, nonland card from among them and copy it. You may cast the copy without paying its mana cost.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "mythic",
+"collector_number": "125",
+"set": "one"
+},
+{
+"name": "The Filigree Sylex",
+"oracle_id": "38347ab3-ae43-4d10-b665-8520ace0eb76",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Legendary Artifact",
+"oracle_text": "{T}: Put an oil counter on The Filigree Sylex.\n{T}, Sacrifice The Filigree Sylex: Destroy each nonland permanent with mana value equal to the number of oil counters on The Filigree Sylex.\n{T}, Remove ten oil counters from among permanents you control and sacrifice The Filigree Sylex: It deals 10 damage to any target.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "394",
+"set": "one"
+},
+{
+"name": "Font of Progress",
+"oracle_id": "ec1fcec2-ba7a-44d7-b251-22a7cd417493",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters with two oil counters on it.\n{3}, {T}: Target player mills X cards, where X is the number of oil counters on this artifact.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "uncommon",
+"collector_number": "51",
+"set": "one"
+},
+{
+"name": "Blade of Shared Souls",
+"oracle_id": "bfecd486-8326-426b-ac2b-54946f6ae707",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nWhenever this Equipment becomes attached to a creature, for as long as this Equipment remains attached to it, you may have that creature become a copy of another target creature you control.\nEquip {2}",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "42",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Kinzu of the Bleak Coven",
+"oracle_id": "e4f4c41b-2533-497f-96bb-7083ef597268",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phyrexian Vampire",
+"oracle_text": "Flying\nWhenever another nontoken creature you control dies, you may pay 2 life and exile it. If you do, create a token that's a copy of that creature, except it's 1/1 and has toxic 1. (Players dealt combat damage by it also get a poison counter.)",
+"power": "5",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "406",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Gulping Scraptrap",
+"oracle_id": "d9e48750-d930-4095-abf0-dec2ac53be81",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Horror",
+"oracle_text": "When this creature enters or dies, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "96",
+"set": "one"
+},
+{
+"name": "Dune Mover",
+"oracle_id": "38d2176c-1a1e-4030-9c63-e28ba4a69b6d",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Golem",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, you may search your library for a basic land card, reveal it, then shuffle and put that card on top.",
+"power": "2",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "226",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Venerated Rotpriest",
+"oracle_id": "eafd7ba5-691d-4f8d-94bb-70a5612245a1",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Druid",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhenever a creature you control becomes the target of a spell, target opponent gets a poison counter.",
+"power": "1",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "rare",
+"collector_number": "392",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Koth, Fire of Resistance",
+"oracle_id": "2c75b870-263b-41ab-9ece-6e3845bc3d8d",
+"layout": "normal",
+"mana_cost": "{2}{R}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Planeswalker — Koth",
+"oracle_text": "+2: Search your library for a basic Mountain card, reveal it, put it into your hand, then shuffle.\n−3: Koth deals damage to target creature equal to the number of Mountains you control.\n−7: You get an emblem with \"Whenever a Mountain you control enters, this emblem deals 4 damage to any target.\"",
+"loyalty": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "338",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Koth, Fire of Resistance Emblem",
+"type_line": "Emblem",
+"oracle_text": "Whenever a Mountain enters the battlefield under your control, this emblem deals 4 damage to any target.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Necrogen Rotpriest",
+"oracle_id": "7d9a424e-cab1-410f-9c04-ee0025d04169",
+"layout": "normal",
+"mana_cost": "{2}{B}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Zombie Cleric",
+"oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters.)\nWhenever a creature you control with toxic deals combat damage to a player, that player gets an additional poison counter.\n{1}{B}{G}: Target creature you control with toxic gains deathtouch until end of turn.",
+"power": "1",
+"toughness": "5",
+"colors": [
+"B",
+"G"
+],
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "473",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Mirrex",
+"oracle_id": "5502741a-e3b9-454e-8121-4360a6db6750",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Activate only if this land entered this turn.\n{3}, {T}: Create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\" (Players dealt combat damage by it also get a poison counter.)",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "400",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Compleat Devotion",
+"oracle_id": "c2a6cfb7-e5bd-49c8-aa51-fd5203eca8b8",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control gets +2/+2 until end of turn. If that creature has toxic, draw a card.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "7",
+"set": "one"
+},
+{
+"name": "Kethek, Crucible Goliath",
+"oracle_id": "26747bdc-6bd4-4218-ae83-bd46c7668880",
+"layout": "normal",
+"mana_cost": "{2}{B}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Phyrexian Beast",
+"oracle_text": "At the beginning of your end step, you may sacrifice another creature. If you do, reveal cards from the top of your library until you reveal a nonlegendary creature card with lesser mana value, put it onto the battlefield, then put the rest on the bottom of your library in a random order.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "465",
+"set": "one"
+},
+{
+"name": "Free from Flesh",
+"oracle_id": "e4a96cc7-8a4f-4007-8477-e1f30720db7b",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 until end of turn. Put two oil counters on it.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "131",
+"set": "one"
+},
+{
+"name": "Bladegraft Aspirant",
+"oracle_id": "644c785d-3061-44bc-9f78-bc939c565bf4",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "Menace\nEquipment spells you cast cost {1} less to cast.\nActivated abilities of Equipment you control that target this creature cost {1} less to activate.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "common",
+"collector_number": "122",
+"set": "one"
+},
+{
+"name": "Monumental Corruption",
+"oracle_id": "0b49924b-cf83-46d9-b665-9c718a40e16c",
+"layout": "normal",
+"mana_cost": "{3}{B}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Target player draws X cards and loses X life, where X is the number of artifacts you control.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "24",
+"set": "onc"
+},
+{
+"name": "Sword of Forge and Frontier",
+"oracle_id": "c6331ce3-21f7-4784-80fe-df1f541a4c46",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +2/+2 and has protection from red and from green.\nWhenever equipped creature deals combat damage to a player, exile the top two cards of your library. You may play those cards this turn. You may play an additional land this turn.\nEquip {2}",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "mythic",
+"collector_number": "244",
+"set": "one"
+},
+{
+"name": "Ezuri, Stalker of Spheres",
+"oracle_id": "cffec16f-373b-43e7-a04c-4452987d7e02",
+"layout": "normal",
+"mana_cost": "{2}{G}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Phyrexian Elf Warrior",
+"oracle_text": "When Ezuri enters, you may pay {3}. If you do, proliferate twice.\nWhenever you proliferate, draw a card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "460",
+"set": "one"
+},
+{
+"name": "Magmatic Sprinter",
+"oracle_id": "85d025d9-158d-4bf1-b3b2-361f3fe59663",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "Haste\nWhen this creature enters, put two oil counters on target artifact or creature you control.\nAt the beginning of your end step, return this creature to its owner's hand unless you remove two oil counters from it.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "140",
+"set": "one"
+},
+{
+"name": "Mirran Bardiche",
+"oracle_id": "1fd04d9e-cf89-49ba-a932-5d278f65bf77",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +2/+1 and has vigilance.\nEquip {3}{W} ({3}{W}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "common",
+"collector_number": "22",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Unctus's Retrofitter",
+"oracle_id": "998d8d8a-743d-43f9-8e9b-42460f170243",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Artificer",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, up to one target artifact you control becomes an artifact creature with base power and toughness 4/4 for as long as this creature remains on the battlefield.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "76",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Cephalopod Sentry",
+"oracle_id": "e8270c29-1887-4d3f-b70f-6b79ada8fe47",
+"layout": "normal",
+"mana_cost": "{2}{W}{U}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Phyrexian Squid",
+"oracle_text": "Flying\nCephalopod Sentry's power is equal to the number of artifacts you control.",
+"power": "*",
+"toughness": "5",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "198",
+"set": "one"
+},
+{
+"name": "Serum-Core Chimera",
+"oracle_id": "ed54a59b-b24c-4681-b862-fa634fe759fd",
+"layout": "normal",
+"mana_cost": "{2}{U}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Chimera",
+"oracle_text": "Flying\nWhenever you cast a noncreature spell, put an oil counter on this creature.\nRemove three oil counters from this creature: Draw a card. Then you may discard a nonland card. When you discard a card this way, this creature deals 3 damage to target creature or planeswalker. Activate only as a sorcery.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"R",
+"U"
+],
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "215",
+"set": "one"
+},
+{
+"name": "Otharri, Suns' Glory",
+"oracle_id": "b081352b-d17b-4031-bbcc-c5c02cbfa6b6",
+"layout": "normal",
+"mana_cost": "{3}{R}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phoenix",
+"oracle_text": "Flying, lifelink, haste\nWhenever Otharri attacks, you get an experience counter. Then create a 2/2 red Rebel creature token that's tapped and attacking for each experience counter you have.\n{2}{R}{W}, Tap an untapped Rebel you control: Return this card from your graveyard to the battlefield tapped.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Flying",
+"Lifelink",
+"Haste"
+],
+"rarity": "mythic",
+"collector_number": "39",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Experience",
+"type_line": "Card",
+"oracle_text": "(Place your experience counters here.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Cacophony Scamp",
+"oracle_id": "4854a41e-db49-462f-ae57-0ba4005bae75",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Goblin Warrior",
+"oracle_text": "Whenever this creature deals combat damage to a player, you may sacrifice it. If you do, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nWhen this creature dies, it deals damage equal to its power to any target.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "124",
+"set": "one"
+},
+{
+"name": "Minor Misstep",
+"oracle_id": "d91b3c6f-f8a1-4859-90ca-22cd79517552",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Counter target spell with mana value 1 or less.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "64",
+"set": "one"
+},
+{
+"name": "Malcator, Purity Overseer",
+"oracle_id": "0d1c6a82-943a-46bd-97ed-6055226ef2ab",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Phyrexian Elephant Wizard",
+"oracle_text": "When Malcator enters, create a 3/3 colorless Phyrexian Golem artifact creature token.\nAt the beginning of your end step, if three or more artifacts entered the battlefield under your control this turn, create a 3/3 colorless Phyrexian Golem artifact creature token.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "208",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Golem",
+"type_line": "Token Artifact Creature — Phyrexian Golem",
+"oracle_text": "",
+"power": "3",
+"toughness": "3",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Thrun, Breaker of Silence",
+"oracle_id": "789b7af5-ac15-40b6-b5b7-f3fcdcfb52e1",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Troll Shaman",
+"oracle_text": "This spell can't be countered.\nTrample\nThrun can't be the target of nongreen spells your opponents control or abilities from nongreen sources your opponents control.\nDuring your turn, Thrun has indestructible.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "331",
+"set": "one"
+},
+{
+"name": "Kemba's Banner",
+"oracle_id": "bd31c248-8b3f-4fa5-a639-19b0e37b15c3",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +1/+1 for each creature you control.\nEquip {2}{W}",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "45",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Vat Emergence",
+"oracle_id": "03e59169-d8f8-40da-b5f7-645d16365e7b",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Put target creature card from a graveyard onto the battlefield under your control. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "112",
+"set": "one"
+},
+{
+"name": "Zealot's Conviction",
+"oracle_id": "79ab207f-e7ff-4236-b260-5a109a73fbed",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant creature\nEnchanted creature gets +1/+1.\nCorrupted — As long as an opponent has three or more poison counters, enchanted creature gets an additional +1/+0 and has first strike.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Enchant",
+"Corrupted",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "39",
+"set": "one"
+},
+{
+"name": "Hexplate Wallbreaker",
+"oracle_id": "f7f78825-10d6-441a-ae26-51b77cc271cd",
+"layout": "normal",
+"mana_cost": "{3}{R}{R}",
+"cmc": 5.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +2/+2.\nWhenever equipped creature attacks, if it's the first combat phase of the turn, untap each attacking creature. After this phase, there is an additional combat phase.\nEquip {3}{R}",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "52",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Blue Sun's Twilight",
+"oracle_id": "11e637b4-6ce0-4514-98d6-02a2d073f73b",
+"layout": "normal",
+"mana_cost": "{X}{U}{U}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Gain control of target creature with mana value X or less. If X is 5 or more, create a token that's a copy of that creature.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "43",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Mercurial Spelldancer",
+"oracle_id": "5b90f8ed-84b2-4306-9dfa-b5654ea0e4cd",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Rogue",
+"oracle_text": "This creature can't be blocked.\nWhenever you cast a noncreature spell, put an oil counter on this creature.\nWhenever this creature deals combat damage to a player, you may remove two oil counters from it. If you do, when you next cast an instant or sorcery spell this turn, copy that spell. You may choose new targets for the copy.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "381",
+"set": "one"
+},
+{
+"name": "Awaken the Sleeper",
+"oracle_id": "d4df1710-7402-45a7-966f-b51ddc087fbe",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. If it's equipped, you may destroy all Equipment attached to that creature.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "119",
+"set": "one"
+},
+{
+"name": "Against All Odds",
+"oracle_id": "f4a73cde-58bf-4719-8eb0-e039fdde4f62",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose one or both —\n• Exile target artifact or creature you control, then return it to the battlefield under its owner's control.\n• Return target artifact or creature card with mana value 3 or less from your graveyard to the battlefield.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "1",
+"set": "one"
+},
+{
+"name": "Adaptive Sporesinger",
+"oracle_id": "f6311b7a-7482-4b13-9f8f-13e80c98e98e",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Druid",
+"oracle_text": "Vigilance\nWhen this creature enters, choose one —\n• Target creature gets +2/+2 and gains vigilance until end of turn.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Vigilance",
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "157",
+"set": "one"
+},
+{
+"name": "Phyresis Outbreak",
+"oracle_id": "47148b5d-3850-4614-822e-6ef2755996f8",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Each opponent gets a poison counter. Then each creature your opponents control gets -1/-1 until end of turn for each poison counter its controller has.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "50",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Predation Steward",
+"oracle_id": "5e3d2b03-4c44-49a3-ab11-871ca9c372f7",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Elf Warrior",
+"oracle_text": "This creature enters with two oil counters on it.\n{2}{G}, {T}, Remove an oil counter from this creature: Target creature gets +2/+2 until end of turn. Activate only as a sorcery.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "180",
+"set": "one"
+},
+{
+"name": "Charge of the Mites",
+"oracle_id": "fa47c190-d66a-41b0-aa08-21036cda4223",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Charge of the Mites deals damage equal to the number of creatures you control to target creature or planeswalker.\n• Create two 1/1 colorless Phyrexian Mite artifact creature tokens with toxic 1 and \"This token can't block.\" (Players dealt combat damage by them also get a poison counter.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "6",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Ambulatory Edifice",
+"oracle_id": "b46351cf-73c7-493c-b8a7-5d7bedc8b205",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Construct",
+"oracle_text": "When this creature enters, you may pay 2 life. When you do, target creature gets -1/-1 until end of turn.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "79",
+"set": "one"
+},
+{
+"name": "Charforger",
+"oracle_id": "d6ded5b0-1309-4f1e-be10-d84ca0a5dd20",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "When this creature enters, create a 1/1 red Phyrexian Goblin creature token.\nWhenever another creature or artifact you control is put into a graveyard from the battlefield, put an oil counter on this creature.\nRemove three oil counters from this creature: Exile the top card of your library. You may play that card this turn.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "199",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Goblin",
+"type_line": "Token Creature — Phyrexian Goblin",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Plated Onslaught",
+"oracle_id": "1589d90d-411a-4e77-9771-51518b2b224b",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nCreatures you control get +2/+1 until end of turn.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Affinity"
+],
+"rarity": "uncommon",
+"collector_number": "29",
+"set": "one"
+},
+{
+"name": "Synthesis Pod",
+"oracle_id": "55e42539-3fe2-4c84-9978-c071d6fc6aa0",
+"layout": "normal",
+"mana_cost": "{3}{U/P}",
+"cmc": 4.0,
+"type_line": "Artifact",
+"oracle_text": "({U/P} can be paid with either {U} or 2 life.)\n{1}{U/P}, {T}, Exile a spell you control: Target opponent reveals cards from the top of their library until they reveal a card with mana value equal to 1 plus the exiled spell's mana value. Exile that card, then that player shuffles. You may cast that exiled card without paying its mana cost.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "33",
+"set": "onc"
+},
+{
+"name": "Serum Sovereign",
+"oracle_id": "d52ecb32-26ed-484b-b1a7-ee47b66f0f94",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Sphinx",
+"oracle_text": "Flying\nWhenever you cast a noncreature spell, put an oil counter on this creature.\n{U}, Remove an oil counter from this creature: Draw a card, then scry 2.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Scry",
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "410",
+"set": "one"
+},
+{
+"name": "Slaughter Singer",
+"oracle_id": "1c832491-6b78-49c6-baf2-63f17847f5f5",
+"layout": "normal",
+"mana_cost": "{G}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters.)\nWhenever another creature you control with toxic attacks, it gets +1/+1 until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "216",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Glistening Sphere",
+"oracle_id": "15679808-baba-4a11-b111-f313ce24197f",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters tapped.\nWhen this artifact enters, proliferate.\n{T}: Add one mana of any color.\nCorrupted — {T}: Add three mana of any one color. Activate only if an opponent has three or more poison counters.",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Corrupted",
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "58",
+"set": "onc"
+},
+{
+"name": "Unnatural Restoration",
+"oracle_id": "05d1e797-bda2-4411-a546-919493768650",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target permanent card from your graveyard to your hand. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "191",
+"set": "one"
+},
+{
+"name": "Gitaxian Raptor",
+"oracle_id": "6096b221-7b6e-4528-8b5d-8ad0fcef3fba",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Bird",
+"oracle_text": "Flying\nThis creature enters with three oil counters on it.\nRemove an oil counter from this creature: This creature gets +1/-1 until end of turn.",
+"power": "1",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "53",
+"set": "one"
+},
+{
+"name": "Melira, the Living Cure",
+"oracle_id": "6bb8c22c-8b01-45f8-8c9e-f683e6b4f022",
+"layout": "normal",
+"mana_cost": "{G}{W}",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Human Scout",
+"oracle_text": "If you would get one or more poison counters, instead you get one poison counter and you can't get additional poison counters this turn.\nExile Melira: Choose another target creature or artifact. When it's put into a graveyard this turn, return that card to the battlefield under its owner's control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "469",
+"set": "one"
+},
+{
+"name": "Mandible Justiciar",
+"oracle_id": "ee8f3dbd-6e86-46c2-9393-7da6c3c4b46d",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Cleric",
+"oracle_text": "Lifelink\nWhenever another artifact you control enters, this creature gets +1/+1 until end of turn.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Lifelink"
+],
+"rarity": "common",
+"collector_number": "21",
+"set": "one"
+},
+{
+"name": "Dragonwing Glider",
+"oracle_id": "4cd4c6da-a84e-4cba-893b-799a7cb5c411",
+"layout": "normal",
+"mana_cost": "{3}{R}{R}",
+"cmc": 5.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +2/+2 and has flying and haste.\nEquip {3}{R}{R}",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "128",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Bladehold War-Whip",
+"oracle_id": "d3142c6b-86e9-42b7-916c-ce7c34e7bd53",
+"layout": "normal",
+"mana_cost": "{1}{R}{W}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquip abilities you activate of other Equipment cost {1} less to activate.\nEquipped creature has double strike.\nEquip {3}{R}{W}",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "197",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Duelist of Deep Faith",
+"oracle_id": "30d69e88-2bf6-43b8-8678-2cf37f6a5cf5",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Soldier",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nDuring your turn, this creature has first strike.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "9",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Chimney Rabble",
+"oracle_id": "f6b499d5-0e39-46ce-9de9-f64a2cc2cb32",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Goblin Warrior",
+"oracle_text": "Haste\nWhen this creature enters, create a 1/1 red Phyrexian Goblin creature token.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "common",
+"collector_number": "126",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Goblin",
+"type_line": "Token Creature — Phyrexian Goblin",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Myr Custodian",
+"oracle_id": "43923f24-7e95-4934-9a5c-8d9a5e06ddea",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Myr",
+"oracle_text": "When this creature enters, scry 2. Then each opponent may scry 1. (To scry X, a player looks at the top X cards of their library, then puts any number of them on the bottom and the rest on top in any order.)",
+"power": "2",
+"toughness": "3",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "235",
+"set": "one"
+},
+{
+"name": "Expand the Sphere",
+"oracle_id": "0fac3187-9b86-4854-854b-a4c203526a64",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Look at the top six cards of your library. Put up to two land cards from among them onto the battlefield tapped and the rest on the bottom of your library in a random order. If you put fewer than two lands onto the battlefield this way, proliferate a number of times equal to the difference. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "168",
+"set": "one"
+},
+{
+"name": "Aspirant's Ascent",
+"oracle_id": "ed9c488a-9d44-4d2d-bcf8-81352193b8c2",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Until end of turn, target creature gets +1/+3 and gains flying and toxic 1. (Players dealt combat damage by that creature also get a poison counter.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "40",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Whisper of the Dross",
+"oracle_id": "23c2cdc9-2b16-423a-b932-2daadeb1021b",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets -1/-1 until end of turn. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "117",
+"set": "one"
+},
+{
+"name": "Rustvine Cultivator",
+"oracle_id": "7a49731b-bd95-4f0a-ac47-1aa318c12fec",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Elf Druid",
+"oracle_text": "{T}: Put an oil counter on this creature.\n{T}, Remove an oil counter from this creature: Untap target land.",
+"power": "1",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "455",
+"set": "one"
+},
+{
+"name": "Migloz, Maze Crusher",
+"oracle_id": "85eb890e-a5e1-48f8-b813-e8424d18b28a",
+"layout": "normal",
+"mana_cost": "{1}{R}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Phyrexian Beast",
+"oracle_text": "Migloz enters with five oil counters on it.\n{1}, Remove an oil counter from Migloz: It gains vigilance and menace until end of turn.\n{2}, Remove two oil counters from Migloz: It gets +2/+2 until end of turn.\n{3}, Remove three oil counters from Migloz: Destroy target artifact or enchantment.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "321",
+"set": "one"
+},
+{
+"name": "Plague Nurse",
+"oracle_id": "af7abd22-3134-4872-bbe2-0ad84742d9e5",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Toxic 2\n{2}{G}: Each other creature you control with toxic gains toxic 1 until end of turn. Activate only once each turn. (A player dealt combat damage by a creature with toxic also gets poison counters equal to that creature's total toxic value.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "179",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Myr Kinsmith",
+"oracle_id": "97bb382b-16b2-44db-a2bd-de09ca90bfcc",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Myr",
+"oracle_text": "When this creature enters, you may search your library for a Myr card, reveal it, put it into your hand, then shuffle.",
+"power": "3",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "236",
+"set": "one"
+},
+{
+"name": "Escaped Experiment",
+"oracle_id": "d1faaa3e-8e99-48e9-bb04-98bd46b7217c",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Beast",
+"oracle_text": "Whenever this creature attacks, target creature an opponent controls gets -X/-0 until end of turn, where X is the number of artifacts you control.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "48",
+"set": "one"
+},
+{
+"name": "Armored Scrapgorger",
+"oracle_id": "0d3a4db2-df79-4946-8f87-b174cf9c293c",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "This creature gets +3/+0 as long as it has three or more oil counters on it.\n{T}: Add one mana of any color.\nWhenever this creature becomes tapped, exile target card from a graveyard and put an oil counter on this creature.",
+"power": "0",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "158",
+"set": "one"
+},
+{
+"name": "Resistance Skywarden",
+"oracle_id": "419e9ab0-fe79-4a4f-8bcb-fe4e5373e292",
+"layout": "normal",
+"mana_cost": "{3}{R}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Ogre Rebel",
+"oracle_text": "Reach (This creature can block creatures with flying.)\nMenace (This creature can't be blocked except by two or more creatures.)",
+"power": "5",
+"toughness": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Reach",
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "146",
+"set": "one"
+},
+{
+"name": "Vivisection Evangelist",
+"oracle_id": "007f3b20-d58b-4986-8de8-9e419af88628",
+"layout": "normal",
+"mana_cost": "{3}{W}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Vigilance\nCorrupted — When this creature enters, if an opponent has three or more poison counters, destroy target creature or planeswalker an opponent controls.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Vigilance",
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "220",
+"set": "one"
+},
+{
+"name": "Gitaxian Anatomist",
+"oracle_id": "aa9bde06-098c-41b3-b816-49daacc02c50",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "When this creature enters, you may tap it. If you do, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "2",
+"toughness": "5",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "52",
+"set": "one"
+},
+{
+"name": "The Hunter Maze",
+"oracle_id": "b0ea4975-a944-4585-8711-60f203cffa4a",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "This land enters tapped.\n{T}: Add {G}.\n{1}{G}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "253",
+"set": "one"
+},
+{
+"name": "Black Sun's Twilight",
+"oracle_id": "af105cda-1f7c-4868-9407-a97c46bd762d",
+"layout": "normal",
+"mana_cost": "{X}{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Up to one target creature gets -X/-X until end of turn. If X is 5 or more, return a creature card with mana value X or less from your graveyard to the battlefield tapped.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "383",
+"set": "one"
+},
+{
+"name": "Encroaching Mycosynth",
+"oracle_id": "1f0bb053-4967-4289-b2b1-f6309f2eca7d",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Artifact",
+"oracle_text": "Nonland permanents you control are artifacts in addition to their other types. The same is true for permanent spells you control and nonland permanent cards you own that aren't on the battlefield.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "47",
+"set": "one"
+},
+{
+"name": "Furnace Punisher",
+"oracle_id": "606af824-e711-4957-99c0-d02b0f6c729d",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "Menace\nAt the beginning of each player's upkeep, this creature deals 2 damage to that player unless they control two or more basic lands.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "132",
+"set": "one"
+},
+{
+"name": "Dross Skullbomb",
+"oracle_id": "0c43e9b4-013a-47ee-9805-f41afb0a3bde",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{1}, Sacrifice this artifact: Draw a card.\n{2}{B}, Sacrifice this artifact: Return target creature card from your graveyard to your hand. Draw a card. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "225",
+"set": "one"
+},
+{
+"name": "Tyvar, Jubilant Brawler",
+"oracle_id": "848c2b8f-8086-4047-8ad0-24b701dc4d0d",
+"layout": "normal",
+"mana_cost": "{1}{B}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Planeswalker — Tyvar",
+"oracle_text": "You may activate abilities of creatures you control as though those creatures had haste.\n+1: Untap up to one target creature.\n−2: Mill three cards, then you may return a creature card with mana value 2 or less from your graveyard to the battlefield.",
+"loyalty": "3",
+"colors": [
+"B",
+"G"
+],
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "rare",
+"collector_number": "218",
+"set": "one"
+},
+{
+"name": "Ixhel, Scion of Atraxa",
+"oracle_id": "9fb7982f-fe35-4dea-a515-a0039ddbbaec",
+"layout": "normal",
+"mana_cost": "{1}{W}{B}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Phyrexian Angel",
+"oracle_text": "Flying, vigilance, toxic 2\nCorrupted — At the beginning of your end step, each opponent who has three or more poison counters exiles the top card of their library face down. You may look at and play those cards for as long as they remain exiled, and you may spend mana as though it were mana of any color to cast those spells.",
+"power": "2",
+"toughness": "5",
+"colors": [
+"B",
+"G",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"W"
+],
+"keywords": [
+"Flying",
+"Toxic",
+"Vigilance",
+"Corrupted"
+],
+"rarity": "mythic",
+"collector_number": "29",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Kaya, Intangible Slayer",
+"oracle_id": "9260ae3d-59bf-4e46-a13e-930754c3f0d2",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}{B}{B}",
+"cmc": 7.0,
+"type_line": "Legendary Planeswalker — Kaya",
+"oracle_text": "Hexproof\n+2: Each opponent loses 3 life and you gain 3 life.\n0: You draw two cards. Then each opponent may scry 1.\n−3: Exile target creature or enchantment. If it wasn't an Aura, create a token that's a copy of it, except it's a 1/1 white Spirit creature with flying in addition to its other types.",
+"loyalty": "6",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Hexproof",
+"Scry"
+],
+"rarity": "rare",
+"collector_number": "205",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Urabrask's Forge",
+"oracle_id": "7c4b2203-a937-4d91-8e39-2283fe686b45",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "At the beginning of combat on your turn, put an oil counter on this artifact, then create an X/1 red Phyrexian Horror creature token with trample and haste, where X is the number of oil counters on this artifact. Sacrifice that token at the beginning of the next end step.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "153",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Horror",
+"type_line": "Token Creature — Phyrexian Horror",
+"oracle_text": "Trample, haste",
+"power": "*",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": [
+"Haste",
+"Trample"
+]
+}
+]
+},
+{
+"name": "Necrogen Communion",
+"oracle_id": "ff58459a-0015-4012-86c0-580da4e02676",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature you control\nEnchanted creature has toxic 2. (Players dealt combat damage by it also get two poison counters.)\nWhen enchanted creature dies, return that card to the battlefield under your control.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "uncommon",
+"collector_number": "99",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Vindictive Flamestoker",
+"oracle_id": "7ed9a887-9942-4482-942e-b3b05feb6342",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "Whenever you cast a noncreature spell, put an oil counter on this creature.\n{6}{R}, Sacrifice this creature: Discard your hand, then draw four cards. This ability costs {1} less to activate for each oil counter on this creature.",
+"power": "1",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "388",
+"set": "one"
+},
+{
+"name": "Sawblade Scamp",
+"oracle_id": "8cac286c-1a17-4ee1-9858-d7a2f8c09037",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "Haste\nWhenever you cast a noncreature spell, put an oil counter on this creature.\n{T}, Remove an oil counter from this creature: It deals 1 damage to each opponent.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "common",
+"collector_number": "292",
+"set": "one"
+},
+{
+"name": "Vishgraz, the Doomhive",
+"oracle_id": "7b1599c0-bb4f-48f8-a358-dc60166b13e7",
+"layout": "normal",
+"mana_cost": "{2}{W}{B}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phyrexian Insect",
+"oracle_text": "Menace, toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen Vishgraz enters, create three 1/1 colorless Phyrexian Mite artifact creature tokens with toxic 1 and \"This token can't block.\"\nVishgraz gets +1/+1 for each poison counter your opponents have.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"W"
+],
+"keywords": [
+"Toxic",
+"Menace"
+],
+"rarity": "mythic",
+"collector_number": "40",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Lukka, Bound to Ruin",
+"oracle_id": "8e68eba1-65ac-4c03-956f-45e7b5695e2a",
+"layout": "normal",
+"mana_cost": "{2}{R}{R/G/P}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Planeswalker — Lukka",
+"oracle_text": "Compleated ({R/G/P} can be paid with {R}, {G}, or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n+1: Add {R}{G}. Spend this mana only to cast creature spells or activate abilities of creatures.\n−1: Create a 3/3 green Phyrexian Beast creature token with toxic 1.\n−4: Lukka deals X damage divided as you choose among any number of target creatures and/or planeswalkers, where X is the greatest power among creatures you control as you activate this ability.",
+"loyalty": "5",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Compleated"
+],
+"rarity": "mythic",
+"collector_number": "207",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Phyrexian Beast",
+"type_line": "Token Creature — Phyrexian Beast",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"keywords": [
+"Toxic"
+]
+}
+]
+},
+{
+"name": "Oxidda Finisher",
+"oracle_id": "f308a1de-94a6-4f9f-8f46-6f2018959b40",
+"layout": "normal",
+"mana_cost": "{5}{R}{R}",
+"cmc": 7.0,
+"type_line": "Creature — Ogre Rebel",
+"oracle_text": "Affinity for Equipment (This spell costs {1} less to cast for each Equipment you control.)\nTrample",
+"power": "7",
+"toughness": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Affinity",
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "143",
+"set": "one"
+},
+{
+"name": "Sylvok Battle-Chair",
+"oracle_id": "2f6c21a1-d618-497c-bfde-c0f2e1014d99",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +4/+4 and has trample.\nEquip {5}{G}{G}",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "184",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Necrosquito",
+"oracle_id": "41dd7ec7-a238-4723-a244-9a112d4fbfd2",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Insect",
+"oracle_text": "Flying\nThis creature enters with two oil counters on it.\nThis creature gets +1/+1 for each oil counter on it.\nWhenever another creature or artifact you control is put into a graveyard from the battlefield, put an oil counter on this creature.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "100",
+"set": "one"
+},
+{
+"name": "Paladin of Predation",
+"oracle_id": "fb5a02ce-6080-47f9-815a-fef3758d753b",
+"layout": "normal",
+"mana_cost": "{5}{G}{G}",
+"cmc": 7.0,
+"type_line": "Creature — Phyrexian Knight",
+"oracle_text": "Toxic 6 (Players dealt combat damage by this creature also get six poison counters.)\nThis creature can't be blocked by creatures with power 2 or less.",
+"power": "6",
+"toughness": "7",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "178",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Prosthetic Injector",
+"oracle_id": "8026533d-c0e7-48b7-9e1a-9a370899aa57",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +0/+2 and has toxic 1. (Players dealt combat damage by equipped creature also get a poison counter.)\nEquip {1}",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "239",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Thirsting Roots",
+"oracle_id": "c0ef21d5-f4bf-4417-b701-d98c2dbbaa43",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose one —\n• Search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "185",
+"set": "one"
+},
+{
+"name": "Norn's Decree",
+"oracle_id": "92c43ee1-0f7d-4993-8d3a-689cc87d7480",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever one or more creatures an opponent controls deal combat damage to you, that opponent gets a poison counter.\nWhenever a player attacks, if one or more players being attacked are poisoned, the attacking player draws a card.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "9",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Sinew Dancer",
+"oracle_id": "a605864a-f46f-4ebc-8e56-ce7322c918b0",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Soldier",
+"oracle_text": "{3}{W}, {T}: Tap target creature.\nCorrupted — {W}, {T}: Tap target creature. Activate only if an opponent has three or more poison counters.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "286",
+"set": "one"
+},
+{
+"name": "Oil-Gorger Troll",
+"oracle_id": "238f2c86-4376-48f2-ae71-c10d3d785163",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Troll Warrior",
+"oracle_text": "When this creature enters, you gain 3 life. Then if you control a permanent with an oil counter on it, draw a card.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "177",
+"set": "one"
+},
+{
+"name": "Urtet, Remnant of Memnarch",
+"oracle_id": "6222fccf-fc08-4190-8d40-a56d6d1423df",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Legendary Artifact Creature — Myr",
+"oracle_text": "Whenever you cast a Myr spell, create a 1/1 colorless Myr artifact creature token.\nAt the beginning of combat on your turn, untap each Myr you control.\n{W}{U}{B}{R}{G}, {T}: Put three +1/+1 counters on each Myr you control. Activate only during your turn.",
+"power": "2",
+"toughness": "2",
+"colors": [],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "42",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Myr",
+"type_line": "Token Artifact Creature — Myr",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Carnivorous Canopy",
+"oracle_id": "b3360259-19df-43c6-95a9-e76770f2fb77",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy target artifact, enchantment, or creature with flying. If that permanent's mana value was 3 or less, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "162",
+"set": "one"
+},
+{
+"name": "Red Sun's Twilight",
+"oracle_id": "21c77cdb-9ba1-4621-b096-7eb94c076cef",
+"layout": "normal",
+"mana_cost": "{X}{R}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy up to X target artifacts. If X is 5 or more, for each artifact destroyed this way, create a token that's a copy of it. Those tokens gain haste. Exile them at the beginning of the next end step.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "145",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Eye of Malcator",
+"oracle_id": "7270b5b6-a571-4e6d-91de-03f7cc035b3c",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, scry 2. (Look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)\nWhenever another artifact you control enters, this artifact becomes a 4/4 Phyrexian Eye artifact creature until end of turn.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "50",
+"set": "one"
+},
+{
+"name": "Ichor Synthesizer",
+"oracle_id": "e82f46f3-143b-46ae-ab5d-4aa177437a64",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "Whenever you cast a noncreature spell, put an oil counter on this creature.\nAs long as this creature has four or more oil counters on it, it gets +2/+0 and can't be blocked.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "55",
+"set": "one"
+},
+{
+"name": "Glissa's Retriever",
+"oracle_id": "d099be2e-1879-4bb0-a27d-a386308387c0",
+"layout": "normal",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "Haste, toxic 3 (Players dealt combat damage by this creature also get three poison counters.)\nThis creature can't be blocked by creatures with power 2 or less.\nCorrupted — When this creature dies, exile it. When you do, return up to X target cards from your graveyard to your hand, where X is the number of opponents who have three or more poison counters.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Haste",
+"Corrupted"
+],
+"rarity": "rare",
+"collector_number": "18",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Basilica Shepherd",
+"oracle_id": "929c67aa-49ff-4401-85e8-76990fe1a369",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Angel",
+"oracle_text": "Flying\nWhen this creature enters, create two 1/1 colorless Phyrexian Mite artifact creature tokens with toxic 1 and \"This token can't block.\" (Players dealt combat damage by them also get a poison counter.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "4",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Infectious Bite",
+"oracle_id": "7b740cd6-e07d-4273-8a7f-e084bdaf0f1c",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "172",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Roar of Resistance",
+"oracle_id": "a0753b28-e693-4f5b-a4e4-846e933058d3",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "Creature tokens you control have haste.\nWhenever one or more creatures attack, you may pay {1}{R}. If you do, creatures attacking your opponents and/or planeswalkers they control get +2/+0 until end of turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "53",
+"set": "onc"
+},
+{
+"name": "Viral Spawning",
+"oracle_id": "9945c7eb-97a9-42df-a051-1ea514973280",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Create a 3/3 green Phyrexian Beast creature token with toxic 1. (Players dealt combat damage by it also get a poison counter.)\nCorrupted — As long as an opponent has three or more poison counters and this card is in your graveyard, it has flashback {2}{G}. (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "194",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Phyrexian Beast",
+"type_line": "Token Creature — Phyrexian Beast",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"keywords": [
+"Toxic"
+]
+}
+]
+},
+{
+"name": "Voidwing Hybrid",
+"oracle_id": "0dab592c-a230-408d-a383-044e561dbe5d",
+"layout": "normal",
+"mana_cost": "{U}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Bat",
+"oracle_text": "Flying\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen you proliferate, return this card from your graveyard to your hand.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Flying",
+"Toxic",
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "221",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Apostle of Invasion",
+"oracle_id": "d56f1543-2b2d-4ce3-bcfe-41224a0cece4",
+"layout": "normal",
+"mana_cost": "{4}{W}{W}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Angel",
+"oracle_text": "Flying\nCorrupted — As long as an opponent has three or more poison counters, this creature has double strike.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "3",
+"set": "one"
+},
+{
+"name": "Chiss-Goria, Forge Tyrant",
+"oracle_id": "3f4d1ae1-d5c6-4afb-94c8-8e0ae4891501",
+"layout": "normal",
+"mana_cost": "{6}{R}{R}{R}",
+"cmc": 9.0,
+"type_line": "Legendary Creature — Dragon",
+"oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nFlying, haste\nWhenever Chiss-Goria attacks, exile the top five cards of your library. You may cast an artifact spell from among them this turn. If you do, it has affinity for artifacts.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Flying",
+"Affinity",
+"Haste"
+],
+"rarity": "mythic",
+"collector_number": "35",
+"set": "onc"
+},
+{
+"name": "Sheoldred's Headcleaver",
+"oracle_id": "a7df9a4e-d556-4345-9884-0724a3f9d5f8",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "Menace\nToxic 2 (Players dealt combat damage by this creature also get two poison counters.)",
+"power": "2",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Toxic",
+"Menace"
+],
+"rarity": "common",
+"collector_number": "109",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Orthodoxy Enforcer",
+"oracle_id": "8e8875dc-72a4-47a4-bb99-ca817c177b82",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Vigilance\nThis creature gets +2/+0 as long as you control two or more artifacts.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "common",
+"collector_number": "25",
+"set": "one"
+},
+{
+"name": "Scheming Aspirant",
+"oracle_id": "cf4a3b1a-4b87-473e-be1f-3aa3da45c28e",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Advisor",
+"oracle_text": "Whenever you proliferate, each opponent loses 2 life and you gain 2 life.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "107",
+"set": "one"
+},
+{
+"name": "Basilica Skullbomb",
+"oracle_id": "43057d84-b424-489c-abec-3fb4cb823d80",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{1}, Sacrifice this artifact: Draw a card.\n{2}{W}, Sacrifice this artifact: Target creature you control gets +2/+2 and gains flying until end of turn. Draw a card. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "224",
+"set": "one"
+},
+{
+"name": "Planar Disruption",
+"oracle_id": "6128679e-7e54-41e4-ab6e-25aeeffed49f",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact, creature, or planeswalker\nEnchanted permanent can't attack or block, and its activated abilities can't be activated.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "28",
+"set": "one"
+},
+{
+"name": "Vanish into Eternity",
+"oracle_id": "c14e422b-6412-45ce-8e82-d47ba61557a0",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {3} more to cast if it targets a creature.\nExile target nonland permanent.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "36",
+"set": "one"
+},
+{
+"name": "Monument to Perfection",
+"oracle_id": "df4bb104-d939-434f-8a1c-e89beda27c90",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "{3}, {T}: Search your library for a basic, Sphere, or Locus land card, reveal it, put it into your hand, then shuffle.\n{3}: This artifact becomes a 9/9 Phyrexian Construct artifact creature, loses all abilities, and gains indestructible and toxic 9. Activate only if there are nine or more lands with different names among the basic, Sphere, and Locus lands you control.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "396",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Rhuk, Hexgold Nabber",
+"oracle_id": "06607cba-76ba-4145-a5b5-24d3428142ac",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Goblin Rebel",
+"oracle_text": "Trample, haste\nWhenever an equipped creature you control other than Rhuk attacks or dies, you may attach all Equipment attached to that creature to Rhuk.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "412",
+"set": "one"
+},
+{
+"name": "Pestilent Syphoner",
+"oracle_id": "1b27303b-756e-45b9-956f-6bbbd83d31ab",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Insect",
+"oracle_text": "Flying\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "103",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Wurmquake",
+"oracle_id": "0eeb9a62-1b36-42f5-8820-3331fa5ca3a6",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Corrupted — Create an X/X green Phyrexian Wurm creature token with trample and toxic 1, where X is the amount of mana spent to cast this spell. Then for each opponent with three or more poison counters, you create another one of those tokens.\nFlashback {8}{G}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Corrupted",
+"Flashback"
+],
+"rarity": "rare",
+"collector_number": "19",
+"set": "onc",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Phyrexian Wurm",
+"type_line": "Token Creature — Phyrexian Wurm",
+"oracle_text": "Trample\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "*",
+"toughness": "*",
+"colors": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Trample"
+]
+}
+]
+},
+{
+"name": "Malcator's Watcher",
+"oracle_id": "b0493924-dc6d-4655-865f-7e9b40f547ea",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Drone",
+"oracle_text": "Flying, vigilance\nWhen this creature dies, draw a card.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Vigilance"
+],
+"rarity": "common",
+"collector_number": "58",
+"set": "one"
+},
+{
+"name": "Noxious Assault",
+"oracle_id": "95c0611a-b6f1-4cb8-8b47-73aa9c2a7d2c",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Creatures you control get +2/+2 until end of turn. Whenever a creature blocks this turn, its controller gets a poison counter.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "176",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Leonin Lightbringer",
+"oracle_id": "1f874f7f-b959-4de5-a5db-e65a90ac2f9d",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Cat Rebel",
+"oracle_text": "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nAs long as this creature is equipped, it gets +1/+1.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Ward"
+],
+"rarity": "common",
+"collector_number": "20",
+"set": "one"
+},
+{
+"name": "Urabrask's Anointer",
+"oracle_id": "a09c134b-7802-4526-9250-ec5cc637d9c0",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Phyrexian Wizard",
+"oracle_text": "When this creature enters, it deals X damage to any target, where X is the number of permanents you control with oil counters on them.",
+"power": "4",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "450",
+"set": "one"
+},
+{
+"name": "Tablet of Compleation",
+"oracle_id": "6eca2ac9-16ba-4a11-b6ee-3caf2d7d8254",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "{T}: Put an oil counter on this artifact.\n{T}: Add {C}. Activate only if this artifact has two or more oil counters on it.\n{1}, {T}: Draw a card. Activate only if this artifact has five or more oil counters on it.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "245",
+"set": "one"
+},
+{
+"name": "Nahiri's Sacrifice",
+"oracle_id": "a84cc828-8d1b-4e61-a13f-60124e2ee35f",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "As an additional cost to cast this spell, sacrifice an artifact or creature with mana value X.\nNahiri's Sacrifice deals X damage divided as you choose among any number of target creatures.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "142",
+"set": "one"
+},
+{
+"name": "Surgical Skullbomb",
+"oracle_id": "6d364283-617a-4661-865d-abd9c304b2f9",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{1}, Sacrifice this artifact: Draw a card.\n{2}{U}, Sacrifice this artifact: Return target creature to its owner's hand. Draw a card. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "243",
+"set": "one"
+},
+{
+"name": "Evolved Spinoderm",
+"oracle_id": "482ec736-7d4a-49c6-a757-e134123329ca",
+"layout": "normal",
+"mana_cost": "{2}{G}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "This creature enters with four oil counters on it.\nThis creature has trample as long as it has two or fewer oil counters on it. Otherwise, it has hexproof.\nAt the beginning of your upkeep, remove an oil counter from this creature. Then if it has no oil counters on it, sacrifice it.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "452",
+"set": "one"
+},
+{
+"name": "Geth's Summons",
+"oracle_id": "c345be5e-243d-44c8-a7c7-280bdb235223",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Return up to one target creature card from your graveyard to the battlefield.\nCorrupted — For each opponent who has three or more poison counters as you cast this spell, put up to one target creature card from that player's graveyard onto the battlefield under your control.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "rare",
+"collector_number": "11",
+"set": "onc"
+},
+{
+"name": "Feed the Infection",
+"oracle_id": "405a2cf9-62a0-460c-bf2a-ce4c351b61ce",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "You draw three cards and you lose 3 life.\nCorrupted — Each opponent who has three or more poison counters loses 3 life.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "93",
+"set": "one"
+},
+{
+"name": "Infested Fleshcutter",
+"oracle_id": "e9c03ed6-34dd-46f7-ab41-8004348328cc",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +2/+0.\nWhenever equipped creature attacks, create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\" (Players dealt combat damage by it also get a poison counter.)\nEquip {2}{W}",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "17",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Gleeful Demolition",
+"oracle_id": "66465bc1-4a34-4951-be53-57f90002976a",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy target artifact. If you controlled that artifact, create three 1/1 red Phyrexian Goblin creature tokens.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "134",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Goblin",
+"type_line": "Token Creature — Phyrexian Goblin",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Testament Bearer",
+"oracle_id": "ce0f6cd6-35d5-4f52-b81e-6d15e3bf916e",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "When this creature dies, look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.",
+"power": "4",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "111",
+"set": "one"
+},
+{
+"name": "Mite Overseer",
+"oracle_id": "d92411b3-cb25-4123-a78e-4f785dfdae0c",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Soldier",
+"oracle_text": "First strike\nDuring your turn, creature tokens you control get +1/+0 and have first strike.\n{3}{W/P}: Create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\" (Players dealt combat damage by it also get a poison counter. {W/P} can be paid with either {W} or 2 life.)",
+"power": "4",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"First strike"
+],
+"rarity": "rare",
+"collector_number": "404",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Shrapnel Slinger",
+"oracle_id": "b400536c-ea8b-4237-90da-1d3ac139881d",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Beast",
+"oracle_text": "When this creature enters, you may sacrifice a creature. When you do, destroy target artifact an opponent controls.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "148",
+"set": "one"
+},
+{
+"name": "Incubation Sac",
+"oracle_id": "478cc55b-dd71-4adc-909d-c39d435587ee",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters with three oil counters on it.\n{4}, {T}, Remove an oil counter from this artifact: Create a 3/3 colorless Phyrexian Golem artifact creature token. Activate only as a sorcery.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "171",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Golem",
+"type_line": "Token Artifact Creature — Phyrexian Golem",
+"oracle_text": "",
+"power": "3",
+"toughness": "3",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Exuberant Fuseling",
+"oracle_id": "754e5238-00a2-45fa-9b20-40980b73f1cc",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Goblin Warrior",
+"oracle_text": "Trample\nThis creature gets +1/+0 for each oil counter on it.\nWhen this creature enters and whenever another creature or artifact you control is put into a graveyard from the battlefield, put an oil counter on this creature.",
+"power": "0",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "129",
+"set": "one"
+},
+{
+"name": "Watchful Blisterzoa",
+"oracle_id": "ca130ba1-a4a8-4225-9799-75d56bac6fb3",
+"layout": "normal",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Jellyfish",
+"oracle_text": "Flying\nThis creature enters with an oil counter on it.\nWhen this creature dies, draw cards equal to the number of oil counters on it.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "78",
+"set": "one"
+},
+{
+"name": "Chrome Prowler",
+"oracle_id": "6d16c2fa-4118-4b81-92ca-6c8e9efe03b6",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Cat",
+"oracle_text": "Flash\nWhen this creature enters, tap target creature an opponent controls.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flash"
+],
+"rarity": "common",
+"collector_number": "45",
+"set": "one"
+},
+{
+"name": "Nimraiser Paladin",
+"oracle_id": "c9daff24-1af8-4133-bff1-e0e4d1042db4",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Knight",
+"oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters.)\nWhen this creature enters, return target creature card with mana value 3 or less from your graveyard to your hand.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "uncommon",
+"collector_number": "101",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Furnace Strider",
+"oracle_id": "85488433-3c23-4a29-b063-53dba71f26c4",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "This creature enters with two oil counters on it.\nRemove an oil counter from this creature: Target creature you control gains haste until end of turn.",
+"power": "4",
+"toughness": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "133",
+"set": "one"
+},
+{
+"name": "Crawling Chorus",
+"oracle_id": "99ba0d4f-b2bf-48ea-95d6-b6b85ee077ab",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Horror",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature dies, create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\"",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "8",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Prologue to Phyresis",
+"oracle_id": "3f661b58-e8ca-412c-bdac-af151162de12",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Each opponent gets a poison counter.\nDraw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "65",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Jawbone Duelist",
+"oracle_id": "14af3ec5-d90a-4560-a70a-8645765f1253",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Soldier",
+"oracle_text": "Double strike\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Toxic",
+"Double strike"
+],
+"rarity": "uncommon",
+"collector_number": "18",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Vulshok Factory",
+"oracle_id": "c5b0d98b-9743-488e-a3be-07043d6ad78a",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "{T}: Add {R}. Put a charge counter on this artifact.\n{2}{R}, {T}, Sacrifice this artifact: Create an X/X colorless Golem artifact creature token with haste, where X is the number of charge counters on Vulshok Factory. Activate only as a sorcery.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "16",
+"set": "onc",
+"related": [
+{
+"component": "token",
+"name": "Golem",
+"type_line": "Token Artifact Creature — Golem",
+"oracle_text": "Haste",
+"power": "*",
+"toughness": "*",
+"colors": [],
+"keywords": [
+"Haste"
+]
+}
+]
+},
+{
+"name": "Cutthroat Centurion",
+"oracle_id": "5707c278-dab9-43bc-b3a3-a6b7923511f4",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Warrior",
+"oracle_text": "Sacrifice another artifact or creature: This creature gets +2/+2 until end of turn. Activate only once each turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "89",
+"set": "one"
+},
+{
+"name": "Incisor Glider",
+"oracle_id": "e51f89c8-3d7f-4f1a-bc35-67b92db20e10",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Phyrexian Construct",
+"oracle_text": "Flying\nCorrupted — Whenever this creature attacks, if an opponent has three or more poison counters, creatures you control get +1/+1 until end of turn.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "15",
+"set": "one"
+},
+{
+"name": "Phyrexian Atlas",
+"oracle_id": "b85d54e9-4f21-4440-9fd4-7b73b560c99d",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "{T}: Add one mana of any color.\nCorrupted — Whenever this artifact becomes tapped, each opponent who has three or more poison counters loses 1 life.",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "237",
+"set": "one"
+},
+{
+"name": "Swooping Lookout",
+"oracle_id": "0594f19c-c4c2-4812-8f4d-5630fc24c47a",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Artifact Creature — Phyrexian Construct",
+"oracle_text": "Flying, vigilance",
+"power": "1",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "35",
+"set": "one"
+},
+{
+"name": "Tainted Observer",
+"oracle_id": "420aaa77-f429-4f3d-a73e-91dc25cb38db",
+"layout": "normal",
+"mana_cost": "{1}{G}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Bird",
+"oracle_text": "Flying\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhenever another creature you control enters, you may pay {2}. If you do, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Flying",
+"Toxic",
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "217",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Bring the Ending",
+"oracle_id": "57b37690-0fb6-4e78-9210-4a529a6ade7c",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Counter target spell unless its controller pays {2}.\nCorrupted — Counter that spell instead if its controller has three or more poison counters.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "44",
+"set": "one"
+},
+{
+"name": "Resistance Reunited",
+"oracle_id": "e68fa0e6-9f55-498b-a13e-197cb30ca4aa",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 until end of turn.\nEquipped creatures you control gain indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy them.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "31",
+"set": "one"
+},
+{
+"name": "Maze's Mantle",
+"oracle_id": "b4e85b7c-3047-46d1-a6e6-2ec5eac0268a",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant creature\nWhen this Aura enters, if enchanted creature has toxic, that creature gains hexproof until end of turn.\nEnchanted creature gets +2/+2.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "174",
+"set": "one"
+},
+{
+"name": "Skyhunter Strike Force",
+"oracle_id": "8ade0824-9fd0-417d-94dd-ac399e35b582",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Cat Knight",
+"oracle_text": "Flying\nMelee (Whenever this creature attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)\nLieutenant — As long as you control your commander, other creatures you control have melee.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Melee",
+"Lieutenant"
+],
+"rarity": "rare",
+"collector_number": "21",
+"set": "onc"
+},
+{
+"name": "Drown in Ichor",
+"oracle_id": "e4912bc3-bee9-4a2f-a13e-3a99018f8a65",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Target creature gets -4/-4 until end of turn. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "91",
+"set": "one"
+},
+{
+"name": "Geth, Thane of Contracts",
+"oracle_id": "b868de48-3271-4f33-94a4-3dd9b67dd72c",
+"layout": "normal",
+"mana_cost": "{1}{B}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Phyrexian Zombie",
+"oracle_text": "Other creatures you control get -1/-1.\n{1}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains \"If this creature would leave the battlefield, exile it instead of putting it anywhere else.\" Activate only as a sorcery.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "306",
+"set": "one"
+},
+{
+"name": "The Autonomous Furnace",
+"oracle_id": "e2dd05d5-312e-47f1-873e-c0741ee6ef4a",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land — Sphere",
+"oracle_text": "This land enters tapped.\n{T}: Add {R}.\n{1}{R}, {T}, Sacrifice this land: Draw a card.",
+"colors": [],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "247",
+"set": "one"
+},
+{
+"name": "Glistener Seer",
+"oracle_id": "bcbb318d-0ebc-48a2-afd7-69cf5351893d",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Advisor",
+"oracle_text": "This creature enters with three oil counters on it.\n{T}, Remove an oil counter from this creature: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)",
+"power": "0",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "54",
+"set": "one"
+},
+{
+"name": "Hexgold Hoverwings",
+"oracle_id": "63018d1c-f7fb-44c8-bcd2-292e74ab5b54",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature has flying.\nCreatures you control that are equipped get +1/+0.\nEquip {2}{W}",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "14",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Forgehammer Centurion",
+"oracle_id": "fa519a46-11ab-4ab8-9286-904ce2746c03",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "Whenever another creature or artifact you control is put into a graveyard from the battlefield, put an oil counter on this creature.\nWhenever this creature attacks, you may remove two oil counters from it. When you do, target creature can't block this turn.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "130",
+"set": "one"
+},
+{
+"name": "Meldweb Strider",
+"oracle_id": "b66dd751-fef7-4310-9c09-8d1b1fc78fef",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Vigilance\nThis Vehicle enters with an oil counter on it.\nRemove an oil counter from this Vehicle: It becomes an artifact creature until end of turn.\nCrew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "5",
+"toughness": "5",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Vigilance",
+"Crew"
+],
+"rarity": "common",
+"collector_number": "60",
+"set": "one"
+},
+{
+"name": "Atmosphere Surgeon",
+"oracle_id": "af22ed78-7054-4f5c-84ab-2a274c3d47fb",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "Whenever you cast a noncreature spell, put an oil counter on this creature.\nRemove an oil counter from this creature: Target creature gains flying until end of turn. Activate only as a sorcery.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "41",
+"set": "one"
+},
+{
+"name": "Reject Imperfection",
+"oracle_id": "25781dc5-d6ea-4273-9fe3-06a8808b3718",
+"layout": "normal",
+"mana_cost": "{1}{U}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Counter target spell. If that spell's mana value was 3 or less, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "67",
+"set": "one"
+},
+{
+"name": "Axiom Engraver",
+"oracle_id": "a7ee67a6-0ac7-4079-a947-4e52d09ace8e",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "This creature enters with two oil counters on it.\n{T}, Remove an oil counter from this creature, Discard a card: Draw a card.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "120",
+"set": "one"
+},
+{
+"name": "Furnace Skullbomb",
+"oracle_id": "77e0c121-724c-43a0-84e3-1800e2d94a34",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{1}, Sacrifice this artifact: Draw a card.\n{1}{R}, Sacrifice this artifact: Put two oil counters on target artifact or creature you control. Draw a card. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "228",
+"set": "one"
+},
+{
+"name": "Vivisurgeon's Insight",
+"oracle_id": "cf6ff089-63d7-4a98-b95d-2837c017a866",
+"layout": "normal",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Draw three cards. Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "77",
+"set": "one"
+},
+{
+"name": "Rebel Salvo",
+"oracle_id": "a35b7fd3-fdef-4414-b720-978f7ce70bff",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Affinity for Equipment (This spell costs {1} less to cast for each Equipment you control.)\nRebel Salvo deals 5 damage to target creature or planeswalker. That permanent loses indestructible until end of turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Affinity"
+],
+"rarity": "uncommon",
+"collector_number": "144",
+"set": "one"
+},
+{
+"name": "Stinging Hivemaster",
+"oracle_id": "6b1f750c-0f01-4b1c-ad8f-260e26fbbfea",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Warlock",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature dies, create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\"",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "110",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Atraxa's Skitterfang",
+"oracle_id": "8255b408-cc8c-453f-982c-f361b5559cec",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Insect",
+"oracle_text": "This creature enters with three oil counters on it.\nAt the beginning of combat on your turn, you may remove an oil counter from this creature. When you do, target creature you control gains your choice of flying, vigilance, deathtouch, or lifelink until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "223",
+"set": "one"
+},
+{
+"name": "Ravenous Necrotitan",
+"oracle_id": "90109cb4-1e16-4d54-9332-b5fb1e71042c",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Horror",
+"oracle_text": "Corrupted — When this creature enters, sacrifice a creature unless an opponent has three or more poison counters.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "106",
+"set": "one"
+},
+{
+"name": "Indoctrination Attendant",
+"oracle_id": "9587bdb3-fb6a-47c0-898d-404bf60fcb6b",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nWhen this creature enters, you may return another permanent you control to its owner's hand. If you do, create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\"",
+"power": "3",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "16",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Mite",
+"type_line": "Token Artifact Creature — Phyrexian Mite",
+"oracle_text": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nThis creature can't block.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Toxic"
+]
+},
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Molten Rebuke",
+"oracle_id": "af05cc39-725b-4535-919a-ddbcb89c2210",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose one or both —\n• Molten Rebuke deals 5 damage to target creature or planeswalker.\n• Destroy target Equipment.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "141",
+"set": "one"
+},
+{
+"name": "Serum Snare",
+"oracle_id": "fbc7350c-d392-44bf-92f7-8dd4743a73b4",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Return target nonland permanent to its owner's hand. If that permanent had mana value 3 or less, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "68",
+"set": "one"
+},
+{
+"name": "Skyscythe Engulfer",
+"oracle_id": "b7cc831c-c1a1-4ea4-ae78-5be2b6173407",
+"layout": "normal",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "Reach, trample\nThis creature can't be blocked by creatures with flying.",
+"power": "6",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Trample"
+],
+"rarity": "common",
+"collector_number": "183",
+"set": "one"
+},
+{
+"name": "Tamiyo's Immobilizer",
+"oracle_id": "c2c7a9c2-28f8-4cf0-a042-420f6a4ba8bd",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters with four oil counters on it.\n{T}, Remove an oil counter from this artifact: Tap target artifact or creature.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "69",
+"set": "one"
+},
+{
+"name": "Mesmerizing Dose",
+"oracle_id": "195ab0c7-0848-4803-a299-9155e1f56a85",
+"layout": "normal",
+"mana_cost": "{1}{U}{U}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nWhen this Aura enters, tap enchanted creature, then proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nEnchanted creature doesn't untap during its controller's untap step.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "62",
+"set": "one"
+},
+{
+"name": "Venomous Brutalizer",
+"oracle_id": "766c3528-2c5c-4e92-aa85-b1e0e115d491",
+"layout": "normal",
+"mana_cost": "{2}{G}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Knight",
+"oracle_text": "Toxic 3 (Players dealt combat damage by this creature also get three poison counters.)\nWhen this creature enters, you may pay {1}{G}. If you do, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic",
+"Proliferate"
+],
+"rarity": "uncommon",
+"collector_number": "193",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Barbed Batterfist",
+"oracle_id": "93c2b91d-7d4e-483c-a11f-4a525f881503",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +1/-1.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "common",
+"collector_number": "121",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Bilious Skulldweller",
+"oracle_id": "83bf5610-a798-4508-88d2-c60d96f60d23",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Insect",
+"oracle_text": "Deathtouch\nToxic 1 (Players dealt combat damage by this creature also get a poison counter.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Toxic",
+"Deathtouch"
+],
+"rarity": "uncommon",
+"collector_number": "83",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Chittering Skitterling",
+"oracle_id": "864fc52a-e9f4-4254-901e-b949d96b34eb",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Rat",
+"oracle_text": "Corrupted — Sacrifice an artifact or creature: Draw a card. Activate only if an opponent has three or more poison counters and only once each turn.",
+"power": "1",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "87",
+"set": "one"
+},
+{
+"name": "Cruel Grimnarch",
+"oracle_id": "4c27b7cd-dcbf-45a7-9e15-a6d8dfd3a087",
+"layout": "normal",
+"mana_cost": "{5}{B}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Deathtouch\nWhen this creature enters, each opponent discards a card. For each opponent who can't, you gain 4 life.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Deathtouch"
+],
+"rarity": "common",
+"collector_number": "88",
+"set": "one"
+},
+{
+"name": "Branchblight Stalker",
+"oracle_id": "ae685a9b-4cb8-4a8a-935d-378102431c51",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Elf Scout",
+"oracle_text": "Toxic 2 (Players dealt combat damage by this creature also get two poison counters.)",
+"power": "3",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Toxic"
+],
+"rarity": "common",
+"collector_number": "160",
+"set": "one",
+"related": [
+{
+"component": "combo_piece",
+"name": "Poison Counter",
+"type_line": "Card",
+"oracle_text": "(A player with ten or more poison counters loses the game.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Ichorplate Golem",
+"oracle_id": "2feca0cd-6bd3-4e19-8cfd-81d7bd1118ee",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Golem",
+"oracle_text": "Whenever a creature you control enters, if it has one or more oil counters on it, put an oil counter on it.\nCreatures you control with oil counters on them get +1/+1.",
+"power": "2",
+"toughness": "3",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "230",
+"set": "one"
+},
+{
+"name": "Cinderslash Ravager",
+"oracle_id": "a1c6bd47-19ef-44f9-921a-e4ffa80b25e1",
+"layout": "normal",
+"mana_cost": "{4}{R}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Warrior",
+"oracle_text": "This spell costs {1} less to cast for each permanent you control with oil counters on it.\nVigilance\nWhen this creature enters, it deals 1 damage to each creature your opponents control.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "200",
+"set": "one"
+},
+{
+"name": "Vulshok Splitter",
+"oracle_id": "6253f9d4-83ff-4a0b-b465-e9f9a565f664",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +2/+0.\nEquip {2}{R} ({2}{R}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "common",
+"collector_number": "156",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Meldweb Curator",
+"oracle_id": "26d6a089-b867-4b89-be8e-2ad11bff0d64",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "When this creature enters, put up to one target instant or sorcery card from your graveyard on top of your library.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "59",
+"set": "one"
+},
+{
+"name": "Hexgold Halberd",
+"oracle_id": "c43b176a-9001-4fe4-bd9b-809880134067",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nDuring your turn, equipped creature has first strike and trample.\nEquip {2}{R}",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "136",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Goldwarden's Helm",
+"oracle_id": "4c35f41a-55e4-49ca-b211-f57d7b1b90f6",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "For Mirrodin! (When this Equipment enters, create a 2/2 red Rebel creature token, then attach this to it.)\nEquipped creature gets +0/+1.\nEquip {1}{W} ({1}{W}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"For Mirrodin!",
+"Equip"
+],
+"rarity": "common",
+"collector_number": "13",
+"set": "one",
+"related": [
+{
+"component": "token",
+"name": "Rebel",
+"type_line": "Token Creature — Rebel",
+"oracle_text": "",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Trawler Drake",
+"oracle_id": "4fe38c9e-6fa0-4e05-9d3f-8fd635c457fb",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Drake",
+"oracle_text": "Flying\nThis creature enters with an oil counter on it.\nThis creature gets +1/+1 for each oil counter on it.\nWhenever you cast a noncreature spell, put an oil counter on this creature.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "74",
+"set": "one"
+},
+{
+"name": "Kuldotha Cackler",
+"oracle_id": "e1a41091-6ff1-42bb-b248-90040107efe1",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Hyena",
+"oracle_text": "Trample\nWhenever this creature attacks, it gets +X/+0 until end of turn, where X is the number of permanents you control with oil counters on them.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "common",
+"collector_number": "139",
+"set": "one"
+},
+{
+"name": "Lattice-Blade Mantis",
+"oracle_id": "6755a7af-5b55-4245-a777-27e69979479b",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Insect",
+"oracle_text": "This creature enters with two oil counters on it.\nWhenever this creature attacks, you may remove an oil counter from it. If you do, untap it and it gets +1/+1 until end of turn.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "173",
+"set": "one"
+},
+{
+"name": "Anoint with Affliction",
+"oracle_id": "402c3afe-7041-41a3-8fcd-64a060c12d4a",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Exile target creature if it has mana value 3 or less.\nCorrupted — Exile that creature instead if its controller has three or more poison counters.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "common",
+"collector_number": "81",
+"set": "one"
+},
+{
+"name": "Copper Longlegs",
+"oracle_id": "066f6a3d-5e7b-40a4-b348-6dfb5d5239de",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Spider",
+"oracle_text": "Reach\n{1}{G}, Sacrifice this creature: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Proliferate"
+],
+"rarity": "common",
+"collector_number": "165",
+"set": "one"
+},
+{
+"name": "Transplant Theorist",
+"oracle_id": "4a60db66-0347-4efc-8507-ab7ed8d984fe",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Phyrexian Artificer",
+"oracle_text": "Whenever this creature or another artifact you control enters, you may draw a card. If you do, discard a card.\n{2}: Put target card from your graveyard on the bottom of your library.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "73",
+"set": "one"
+},
+{
+"name": "Distorted Curiosity",
+"oracle_id": "6ebbf025-2996-46f2-ac23-992909251525",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Corrupted — This spell costs {2} less to cast if an opponent has three or more poison counters.\nDraw two cards.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Corrupted"
+],
+"rarity": "uncommon",
+"collector_number": "46",
+"set": "one"
+}
+]

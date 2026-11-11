@@ -1,0 +1,5682 @@
+[
+{
+"name": "Thousand-Faced Shadow",
+"oracle_id": "98636623-bbc6-4935-a2bb-2234691eb6d8",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature — Human Ninja",
+"oracle_text": "Ninjutsu {2}{U}{U} ({2}{U}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nFlying\nWhen this creature enters from your hand, if it's attacking, create a token that's a copy of another target attacking creature. The token enters tapped and attacking.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Ninjutsu"
+],
+"rarity": "rare",
+"collector_number": "451",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Satsuki, the Living Lore",
+"oracle_id": "e41be9ad-3717-4f25-a8e0-c9947a2a0227",
+"layout": "normal",
+"mana_cost": "{G}{W}",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Human Druid",
+"oracle_text": "{T}: Put a lore counter on each Saga you control. Activate only as a sorcery.\nWhen Satsuki dies, choose up to one —\n• Return target Saga or enchantment creature you control to its owner's hand.\n• Return target Saga card from your graveyard to your hand.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "235",
+"set": "neo"
+},
+{
+"name": "Greasefang, Okiba Boss",
+"oracle_id": "0129ffe2-389f-4e05-8a04-96461bac39a5",
+"layout": "normal",
+"mana_cost": "{1}{W}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Rat Pilot",
+"oracle_text": "At the beginning of combat on your turn, return target Vehicle card from your graveyard to the battlefield. It gains haste. Return it to its owner's hand at the beginning of your next end step.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "485",
+"set": "neo"
+},
+{
+"name": "Reito Sentinel",
+"oracle_id": "e574bfdb-505b-4d61-a376-6d26f03cd9b1",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "Defender\nWhen this creature enters, target player mills three cards. (They put the top three cards of their library into their graveyard.)\n{3}: Put target card from a graveyard on the bottom of its owner's library.",
+"power": "3",
+"toughness": "3",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Mill",
+"Defender"
+],
+"rarity": "uncommon",
+"collector_number": "256",
+"set": "neo"
+},
+{
+"name": "Mirrorshell Crab",
+"oracle_id": "cd727e02-5064-4b89-9398-e3cc4463ba56",
+"layout": "normal",
+"mana_cost": "{5}{U}{U}",
+"cmc": 7.0,
+"type_line": "Artifact Creature — Crab",
+"oracle_text": "Ward {3} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {3}.)\nChannel — {2}{U}, Discard this card: Counter target spell or ability unless its controller pays {3}.",
+"power": "5",
+"toughness": "7",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Ward",
+"Channel"
+],
+"rarity": "common",
+"collector_number": "63",
+"set": "neo"
+},
+{
+"name": "March of Wretched Sorrow",
+"oracle_id": "6e638332-fba1-4e91-9237-fdff23826640",
+"layout": "normal",
+"mana_cost": "{X}{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may exile any number of black cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nMarch of Wretched Sorrow deals X damage to target creature or planeswalker and you gain X life.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "111",
+"set": "neo"
+},
+{
+"name": "Boon of Boseiju",
+"oracle_id": "44e1946d-01b5-45db-abdc-2f6d6480cf60",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +X/+X until end of turn, where X is the greatest mana value among permanents you control. Untap it.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "176",
+"set": "neo"
+},
+{
+"name": "Invoke Justice",
+"oracle_id": "3e5cd60f-8fef-4152-a957-0a803997b3da",
+"layout": "normal",
+"mana_cost": "{1}{W}{W}{W}{W}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target permanent card from your graveyard to the battlefield, then distribute four +1/+1 counters among any number of creatures and/or Vehicles target player controls.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "437",
+"set": "neo"
+},
+{
+"name": "Kura, the Boundless Sky",
+"oracle_id": "6426e73a-7e11-48ab-ac5c-15647c6cf9ba",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Dragon Spirit",
+"oracle_text": "Flying, deathtouch\nWhen Kura dies, choose one —\n• Search your library for up to three land cards, reveal them, put them into your hand, then shuffle.\n• Create an X/X green Spirit creature token, where X is the number of lands you control.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Deathtouch",
+"Flying"
+],
+"rarity": "mythic",
+"collector_number": "200",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "*",
+"toughness": "*",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "The Restoration of Eiganjo // Architect of Restoration",
+"oracle_id": "9d9b52b2-2edc-4f7f-a8d9-e024b1398847",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Fox Monk",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance",
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "442",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Restoration of Eiganjo",
+"mana_cost": "{2}{W}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Search your library for a basic Plains card, reveal it, put it into your hand, then shuffle.\nII — You may discard a card. When you do, return target permanent card with mana value 2 or less from your graveyard to the battlefield tapped.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"W"
+]
+},
+{
+"name": "Architect of Restoration",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Fox Monk",
+"oracle_text": "Vigilance\nWhenever this creature attacks or blocks, create a 1/1 colorless Spirit creature token.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Twinshot Sniper",
+"oracle_id": "b72fd535-0051-4f59-9d99-75895f751006",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Goblin Archer",
+"oracle_text": "Reach\nWhen this creature enters, it deals 2 damage to any target.\nChannel — {1}{R}, Discard this card: It deals 2 damage to any target.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Reach",
+"Channel"
+],
+"rarity": "uncommon",
+"collector_number": "168",
+"set": "neo"
+},
+{
+"name": "Norika Yamazaki, the Poet",
+"oracle_id": "6f143c8f-cb5c-4abc-a01b-b6813f5a524c",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Samurai",
+"oracle_text": "Vigilance\nWhenever a Samurai or Warrior you control attacks alone, you may cast target enchantment card from your graveyard this turn.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "31",
+"set": "neo"
+},
+{
+"name": "Go-Shintai of Shared Purpose",
+"oracle_id": "4cab6ea8-4a80-4b34-b758-7f2aa4d540e4",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Enchantment Creature — Shrine",
+"oracle_text": "Vigilance\nAt the beginning of your end step, you may pay {1}. If you do, create a 1/1 colorless Spirit creature token for each Shrine you control.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "14",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Mukotai Ambusher",
+"oracle_id": "3a3f0bf4-7a02-4a57-8a18-ff22f012e0ef",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Rat Ninja",
+"oracle_text": "Ninjutsu {1}{B} ({1}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nLifelink",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Lifelink",
+"Ninjutsu"
+],
+"rarity": "common",
+"collector_number": "112",
+"set": "neo"
+},
+{
+"name": "Flame Discharge",
+"oracle_id": "fa4755c2-e573-45c3-bd6a-61b2b35fbd24",
+"layout": "normal",
+"mana_cost": "{X}{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Flame Discharge deals X damage to target creature or planeswalker. If you controlled a modified creature as you cast this spell, it deals X plus 2 damage instead. (Equipment, Auras you control, and counters are modifications.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "142",
+"set": "neo"
+},
+{
+"name": "Searchlight Companion",
+"oracle_id": "426569c7-d868-4af1-bc83-5b5200532d17",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Drone",
+"oracle_text": "Flying\nWhen this creature enters, create a 1/1 colorless Spirit creature token.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "258",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Swift Reconfiguration",
+"oracle_id": "5d47e820-913f-441a-a6cc-37ab3181d79a",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant creature or Vehicle\nEnchanted permanent is a Vehicle artifact with crew 5 and it loses all other card types. (It's not a creature unless it's crewed.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Enchant",
+"Flash"
+],
+"rarity": "rare",
+"collector_number": "45",
+"set": "nec"
+},
+{
+"name": "March of Burgeoning Life",
+"oracle_id": "a81fd70c-c2bc-4863-97a0-facde86f024c",
+"layout": "normal",
+"mana_cost": "{X}{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may exile any number of green cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nChoose target creature with mana value less than X. Search your library for a creature card with the same name as that creature, put it onto the battlefield tapped, then shuffle.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "201",
+"set": "neo"
+},
+{
+"name": "Favor of Jukai",
+"oracle_id": "08af6fdc-4068-4652-b1fc-cda5309c7b71",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nAs long as enchanted permanent is a creature, it gets +3/+3 and has reach.\nChannel — {1}{G}, Discard this card: Target creature gets +3/+3 and gains reach until end of turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant",
+"Channel"
+],
+"rarity": "common",
+"collector_number": "184",
+"set": "neo"
+},
+{
+"name": "Raiyuu, Storm's Edge",
+"oracle_id": "9028f726-50c7-49f3-8386-e584415dcba2",
+"layout": "normal",
+"mana_cost": "{2}{R}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Samurai",
+"oracle_text": "First strike\nWhenever a Samurai or Warrior you control attacks alone, untap it. If it's the first combat phase of the turn, there is an additional combat phase after this phase.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"First strike"
+],
+"rarity": "rare",
+"collector_number": "329",
+"set": "neo"
+},
+{
+"name": "Boseiju Reaches Skyward // Branch of Boseiju",
+"oracle_id": "ec08aeb3-bba7-4982-9160-68d25bd411d6",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Plant",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "177",
+"set": "neo",
+"card_faces": [
+{
+"name": "Boseiju Reaches Skyward",
+"mana_cost": "{3}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Search your library for up to two basic Forest cards, reveal them, put them into your hand, then shuffle.\nII — Put up to one target land card from your graveyard on top of your library.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"G"
+]
+},
+{
+"name": "Branch of Boseiju",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Plant",
+"oracle_text": "Reach\nThis creature gets +1/+1 for each land you control.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Invoke Calamity",
+"oracle_id": "5b3f041e-ad4a-47ea-bdc4-1be2353f2e18",
+"layout": "normal",
+"mana_cost": "{1}{R}{R}{R}{R}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "You may cast up to two instant and/or sorcery spells with total mana value 6 or less from your graveyard and/or hand without paying their mana costs. If those spells would be put into your graveyard, exile them instead. Exile Invoke Calamity.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "384",
+"set": "neo"
+},
+{
+"name": "Imperial Subduer",
+"oracle_id": "bedf1dd5-b133-455b-bc3d-c7b1f469d91f",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Human Samurai",
+"oracle_text": "Whenever a Samurai or Warrior you control attacks alone, tap target creature you don't control.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "19",
+"set": "neo"
+},
+{
+"name": "Iron Apprentice",
+"oracle_id": "cd0c8db0-67ee-483b-8298-455cce35fef7",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "This creature enters with a +1/+1 counter on it.\nWhen this creature dies, if it had counters on it, put those counters on target creature you control.",
+"power": "0",
+"toughness": "0",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "248",
+"set": "neo"
+},
+{
+"name": "Scrap Welder",
+"oracle_id": "4ebce651-ef95-4a96-b720-a23757d641c8",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Goblin Artificer",
+"oracle_text": "{T}, Sacrifice an artifact with mana value X: Return target artifact card with mana value less than X from your graveyard to the battlefield. It gains haste until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "159",
+"set": "neo"
+},
+{
+"name": "Access Denied",
+"oracle_id": "353dd446-2ea6-41c9-a10f-5a03e4de19b4",
+"layout": "normal",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "Counter target spell. Create X 1/1 colorless Thopter artifact creature tokens with flying, where X is that spell's mana value.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "11",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Thopter",
+"type_line": "Token Artifact Creature — Thopter",
+"oracle_text": "Flying",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Jukai Trainee",
+"oracle_id": "cb9fa34d-1d5f-461c-acad-bc573d41ceb2",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Human Samurai",
+"oracle_text": "Whenever this creature blocks or becomes blocked, it gets +1/+1 until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "326",
+"set": "neo"
+},
+{
+"name": "Mukotai Soulripper",
+"oracle_id": "060d109f-2969-4f9e-a723-535d662a571a",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Whenever this Vehicle attacks, you may sacrifice another artifact or creature. If you do, put a +1/+1 counter on this Vehicle and it gains menace until end of turn.\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "4",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "113",
+"set": "neo"
+},
+{
+"name": "One with the Kami",
+"oracle_id": "006f4a62-8590-4ca0-9f51-3aea26cd1a54",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant creature you control\nWhenever enchanted creature or another modified creature you control dies, create X 1/1 colorless Spirit creature tokens, where X is that creature's power. (Equipment, Auras you control, and counters are modifications.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant",
+"Flash"
+],
+"rarity": "rare",
+"collector_number": "69",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Myojin of Cryptic Dreams",
+"oracle_id": "34da0b06-565f-4964-b8bc-dd106278e086",
+"layout": "normal",
+"mana_cost": "{5}{U}{U}{U}",
+"cmc": 8.0,
+"type_line": "Legendary Creature — Spirit",
+"oracle_text": "Myojin of Cryptic Dreams enters with an indestructible counter on it if you cast it from your hand.\nRemove an indestructible counter from Myojin of Cryptic Dreams: Copy target permanent spell you control three times. (The copies become tokens.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "52",
+"set": "nec"
+},
+{
+"name": "Mnemonic Sphere",
+"oracle_id": "53bfffae-b99e-44bd-8954-6cf236f93f26",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "{1}{U}, Sacrifice this artifact: Draw two cards.\nChannel — {U}, Discard this card: Draw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Channel"
+],
+"rarity": "common",
+"collector_number": "64",
+"set": "neo"
+},
+{
+"name": "Myojin of Roaring Blades",
+"oracle_id": "20d20254-0f77-429a-a74e-0aec08d18f2d",
+"layout": "normal",
+"mana_cost": "{5}{R}{R}{R}",
+"cmc": 8.0,
+"type_line": "Legendary Creature — Spirit",
+"oracle_text": "Myojin of Roaring Blades enters with an indestructible counter on it if you cast it from your hand.\nRemove an indestructible counter from Myojin of Roaring Blades: It deals 7 damage to each of up to three targets.",
+"power": "7",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "36",
+"set": "nec"
+},
+{
+"name": "Myojin of Grim Betrayal",
+"oracle_id": "896fc91a-1f57-45e2-b135-37bc9c2c80a7",
+"layout": "normal",
+"mana_cost": "{5}{B}{B}{B}",
+"cmc": 8.0,
+"type_line": "Legendary Creature — Spirit",
+"oracle_text": "Myojin of Grim Betrayal enters with an indestructible counter on it if you cast it from your hand.\nRemove an indestructible counter from Myojin of Grim Betrayal: Put onto the battlefield under your control all creature cards in all graveyards that were put there from anywhere this turn.",
+"power": "5",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "55",
+"set": "nec"
+},
+{
+"name": "Kami of Transience",
+"oracle_id": "7baffe00-78a4-4675-9c74-29eb3882bd01",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Trample\nWhenever you cast an enchantment spell, put a +1/+1 counter on this creature.\nAt the beginning of each end step, if an enchantment was put into your graveyard from the battlefield this turn, you may return this card from your graveyard to your hand.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "476",
+"set": "neo"
+},
+{
+"name": "Ecologist's Terrarium",
+"oracle_id": "04b33a43-57f1-46e9-b2c2-1dd3f8a4935c",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n{2}, {T}, Sacrifice this artifact: Put a +1/+1 counter on target creature. Activate only as a sorcery.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "246",
+"set": "neo"
+},
+{
+"name": "Soul Transfer",
+"oracle_id": "1e46c709-5278-44f3-9f0e-f71bd9558339",
+"layout": "normal",
+"mana_cost": "{1}{B}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose one. If you control an artifact and an enchantment as you cast this spell, you may choose both instead.\n• Exile target creature or planeswalker.\n• Return target creature or planeswalker card from your graveyard to your hand.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "122",
+"set": "neo"
+},
+{
+"name": "Moonsnare Specialist",
+"oracle_id": "ba858b68-ae93-4e1c-8a3a-3e4ac97282e8",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Human Ninja",
+"oracle_text": "Ninjutsu {2}{U} ({2}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhen this creature enters, return up to one target creature to its owner's hand.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "common",
+"collector_number": "70",
+"set": "neo"
+},
+{
+"name": "Katsumasa, the Animator",
+"oracle_id": "80ba76a6-cc48-4820-bc0b-c9ec18088a3b",
+"layout": "normal",
+"mana_cost": "{2}{U}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Moonfolk Artificer",
+"oracle_text": "Flying\n{2}{U}: Until end of turn, target noncreature artifact you control becomes an artifact creature and gains flying. If it's not a Vehicle, it has base power and toughness 1/1 until end of turn.\nAt the beginning of your upkeep, put a +1/+1 counter on each of up to three target noncreature artifacts.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "51",
+"set": "nec"
+},
+{
+"name": "Spring-Leaf Avenger",
+"oracle_id": "19797dd6-6f48-47bc-a9ac-84d4acad3fa5",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Insect Ninja",
+"oracle_text": "Ninjutsu {3}{G} ({3}{G}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever this creature deals combat damage to a player, return target permanent card from your graveyard to your hand.",
+"power": "6",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "rare",
+"collector_number": "481",
+"set": "neo"
+},
+{
+"name": "Tamiyo, Compleated Sage",
+"oracle_id": "021b4745-4a15-462c-a6b0-2dee1dc9d196",
+"layout": "normal",
+"mana_cost": "{2}{G}{G/U/P}{U}",
+"cmc": 5.0,
+"type_line": "Legendary Planeswalker — Tamiyo",
+"oracle_text": "Compleated ({G/U/P} can be paid with {G}, {U}, or 2 life. If life was paid, this planeswalker enters with two fewer loyalty counters.)\n+1: Tap up to one target artifact or creature. It doesn't untap during its controller's next untap step.\n−X: Exile target nonland permanent card with mana value X from your graveyard. Create a token that's a copy of that card.\n−7: Create Tamiyo's Notebook, a legendary colorless Book artifact token with \"Spells you cast cost {2} less to cast\" and \"{T}: Draw a card.\"",
+"loyalty": "5",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Compleated"
+],
+"rarity": "mythic",
+"collector_number": "238",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Tamiyo's Notebook",
+"type_line": "Token Legendary Artifact",
+"oracle_text": "Spells you cast cost {2} less to cast.\n{T}: Draw a card.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Peerless Samurai",
+"oracle_id": "fe3b0393-dc50-4fa6-9b3f-1175a6a825e4",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Human Samurai",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever a Samurai or Warrior you control attacks alone, the next spell you cast this turn costs {1} less to cast.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "common",
+"collector_number": "322",
+"set": "neo"
+},
+{
+"name": "Lucky Offering",
+"oracle_id": "cbb39e5c-e31a-44e9-be0c-2003c8bce599",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy target artifact with mana value 3 or less. You gain 3 life.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "27",
+"set": "neo"
+},
+{
+"name": "The Dragon-Kami Reborn // Dragon-Kami's Egg",
+"oracle_id": "c3a46eb3-38d9-4f47-9b71-26c9ea7ef1ce",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Egg",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "181",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Dragon-Kami Reborn",
+"mana_cost": "{2}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — You gain 2 life. Look at the top three cards of your library. Exile one of them face down with a hatching counter on it, then put the rest on the bottom of your library in any order.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"G"
+]
+},
+{
+"name": "Dragon-Kami's Egg",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Egg",
+"oracle_text": "Whenever this creature or a Dragon you control dies, you may cast a creature spell from among cards you own in exile with hatching counters on them without paying its mana cost.",
+"power": "0",
+"toughness": "1",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Tameshi, Reality Architect",
+"oracle_id": "b47b3cfe-7005-4b33-9d41-83b60808e12b",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Moonfolk Wizard",
+"oracle_text": "Whenever one or more noncreature permanents are returned to hand, draw a card. This ability triggers only once each turn.\n{X}{W}, Return a land you control to its owner's hand: Return target artifact or enchantment card with mana value X or less from your graveyard to the battlefield. Activate only as a sorcery.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "82",
+"set": "neo"
+},
+{
+"name": "Seven-Tail Mentor",
+"oracle_id": "301b8265-9e17-48c3-942d-b7243112b394",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Fox Samurai",
+"oracle_text": "When this creature enters or dies, put a +1/+1 counter on target creature or Vehicle you control.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "313",
+"set": "neo"
+},
+{
+"name": "Surgehacker Mech",
+"oracle_id": "bf9421d2-54e2-44d8-8b39-2e41192a6517",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Menace\nWhen this Vehicle enters, it deals damage equal to twice the number of Vehicles you control to target creature or planeswalker an opponent controls.\nCrew 4",
+"power": "5",
+"toughness": "5",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Crew",
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "500",
+"set": "neo"
+},
+{
+"name": "Reckoner Bankbuster",
+"oracle_id": "b6be94dc-7162-4887-b959-3bda709724eb",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "This Vehicle enters with three charge counters on it.\n{2}, {T}, Remove a charge counter from this Vehicle: Draw a card. Then if there are no charge counters on this Vehicle, create a Treasure token and a 1/1 colorless Pilot creature token with \"This token crews Vehicles as though its power were 2 greater.\"\nCrew 3",
+"power": "4",
+"toughness": "4",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Treasure",
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "255",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Pilot",
+"type_line": "Token Creature — Pilot",
+"oracle_text": "This creature crews Vehicles as though its power were 2 greater.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Mindlink Mech",
+"oracle_id": "009a4073-5946-4131-928c-c5c373745344",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Flying\nWhenever this Vehicle becomes crewed for the first time each turn, until end of turn, this Vehicle becomes a copy of target nonlegendary creature that crewed it this turn, except it's 4/3, it's a Vehicle artifact in addition to its other types, and it has flying.\nCrew 1",
+"power": "4",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "62",
+"set": "neo"
+},
+{
+"name": "Kumano Faces Kakkazan // Etching of Kumano",
+"oracle_id": "535916f8-b51a-4414-8ab0-fdccdefd9433",
+"layout": "transform",
+"cmc": 1.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Shaman",
+"color_identity": [
+"R"
+],
+"keywords": [
+"Transform",
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "152",
+"set": "neo",
+"card_faces": [
+{
+"name": "Kumano Faces Kakkazan",
+"mana_cost": "{R}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — This Saga deals 1 damage to each opponent and each planeswalker they control.\nII — When you next cast a creature spell this turn, that creature enters with an additional +1/+1 counter on it.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"R"
+]
+},
+{
+"name": "Etching of Kumano",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Shaman",
+"oracle_text": "Haste\nIf a creature dealt damage this turn by a source you controlled would die, exile it instead.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+]
+}
+]
+},
+{
+"name": "Jugan Defends the Temple // Remnant of the Rising Star",
+"oracle_id": "e70ac420-8540-4a69-820f-ae3e0274ca1a",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Dragon Spirit",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "mythic",
+"collector_number": "359",
+"set": "neo",
+"card_faces": [
+{
+"name": "Jugan Defends the Temple",
+"mana_cost": "{2}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Create a 1/1 green Human Monk creature token with \"{T}: Add {G}.\"\nII — Put a +1/+1 counter on each of up to two target creatures.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"G"
+]
+},
+{
+"name": "Remnant of the Rising Star",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Dragon Spirit",
+"oracle_text": "Flying\nWhenever another creature you control enters, you may pay {X}. When you do, put X +1/+1 counters on that creature.\nAs long as you control five or more modified creatures, this creature gets +5/+5 and has trample. (Equipment, Auras you control, and counters are modifications.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Human Monk",
+"type_line": "Token Creature — Human Monk",
+"oracle_text": "{T}: Add {G}.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "March of Otherworldly Light",
+"oracle_id": "ed06e421-480c-40c8-8c3e-1e466e5327b2",
+"layout": "normal",
+"mana_cost": "{X}{W}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may exile any number of white cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nExile target artifact, creature, or enchantment with mana value X or less.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "441",
+"set": "neo"
+},
+{
+"name": "Inventive Iteration // Living Breakthrough",
+"oracle_id": "e711a213-2a6b-4b34-a788-95b6c0b7ba48",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Moonfolk",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "443",
+"set": "neo",
+"card_faces": [
+{
+"name": "Inventive Iteration",
+"mana_cost": "{3}{U}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Return up to one target creature or planeswalker to its owner's hand.\nII — Return an artifact card from your graveyard to your hand. If you can't, draw a card.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"U"
+]
+},
+{
+"name": "Living Breakthrough",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Moonfolk",
+"oracle_text": "Flying\nWhenever you cast a spell, your opponents can't cast spells with the same mana value as that spell until your next turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+]
+}
+]
+},
+{
+"name": "Risona, Asari Commander",
+"oracle_id": "44c4839f-c92a-4535-817b-1838c47fcb5e",
+"layout": "normal",
+"mana_cost": "{1}{R}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Samurai",
+"oracle_text": "Haste\nWhenever Risona deals combat damage to a player, if it doesn't have an indestructible counter on it, put an indestructible counter on it.\nWhenever combat damage is dealt to you, remove an indestructible counter from Risona.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "330",
+"set": "neo"
+},
+{
+"name": "Tempered in Solitude",
+"oracle_id": "f4aedfd3-4414-493c-bbba-75db301c0737",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "Whenever a creature you control attacks alone, exile the top card of your library. You may play that card this turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "165",
+"set": "neo"
+},
+{
+"name": "Kaito Shizuki",
+"oracle_id": "ba48e067-f4d9-45b2-ade1-71cf8cda418c",
+"layout": "normal",
+"mana_cost": "{1}{U}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Planeswalker — Kaito",
+"oracle_text": "At the beginning of your end step, if Kaito entered this turn, he phases out.\n+1: Draw a card. Then discard a card unless you attacked this turn.\n−2: Create a 1/1 blue Ninja creature token with \"This token can't be blocked.\"\n−7: You get an emblem with \"Whenever a creature you control deals combat damage to a player, search your library for a blue or black creature card, put it onto the battlefield, then shuffle.\"",
+"loyalty": "3",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "226",
+"set": "neo",
+"related": [
+{
+"component": "combo_piece",
+"name": "Kaito Shizuki Emblem",
+"type_line": "Emblem",
+"oracle_text": "Whenever a creature you control deals combat damage to a player, search your library for a blue or black creature card, put it onto the battlefield, then shuffle.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Ninja",
+"type_line": "Token Creature — Ninja",
+"oracle_text": "This creature can't be blocked.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Fang of Shigeki",
+"oracle_id": "9e187d43-ae75-4589-81fc-476ae95ba5b9",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Enchantment Creature — Snake Ninja",
+"oracle_text": "Deathtouch",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Deathtouch"
+],
+"rarity": "common",
+"collector_number": "183",
+"set": "neo"
+},
+{
+"name": "Covert Technician",
+"oracle_id": "b713ee3a-b6cd-4cd7-b403-f0bbc683ea99",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Human Ninja",
+"oracle_text": "Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever this creature deals combat damage to a player, you may put an artifact card with mana value less than or equal to that damage from your hand onto the battlefield.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "uncommon",
+"collector_number": "332",
+"set": "neo"
+},
+{
+"name": "Biting-Palm Ninja",
+"oracle_id": "5c22447b-7a7f-4a27-8d3b-1bb664ea94c3",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Human Ninja",
+"oracle_text": "Ninjutsu {2}{B}\nThis creature enters with a menace counter on it.\nWhenever this creature deals combat damage to a player, you may remove a menace counter from it. When you do, that player reveals their hand and you choose a nonland card from it. Exile that card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "rare",
+"collector_number": "88",
+"set": "neo"
+},
+{
+"name": "Invoke the Winds",
+"oracle_id": "721c3255-953c-49cd-a5dd-852c3d09eae4",
+"layout": "normal",
+"mana_cost": "{1}{U}{U}{U}{U}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Gain control of target artifact or creature. Untap it.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "370",
+"set": "neo"
+},
+{
+"name": "Nezumi Bladeblesser",
+"oracle_id": "408512c7-5016-4df4-b708-b7467bcdf0ae",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Rat Samurai",
+"oracle_text": "This creature has deathtouch as long as you control an artifact.\nThis creature has menace as long as you control an enchantment. (It can't be blocked except by two or more creatures.)",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "318",
+"set": "neo"
+},
+{
+"name": "Chishiro, the Shattered Blade",
+"oracle_id": "c98a4af3-3e58-4927-9a60-d2664cf0b139",
+"layout": "normal",
+"mana_cost": "{2}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Snake Samurai",
+"oracle_text": "Whenever an Aura or Equipment you control enters, create a 2/2 red Spirit creature token with menace.\nAt the beginning of your end step, put a +1/+1 counter on each modified creature you control. (Equipment, Auras you control, and counters are modifications.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "77",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": [
+"Menace"
+]
+}
+]
+},
+{
+"name": "Return to Action",
+"oracle_id": "9c002b4d-bb6c-45a5-88e1-1df2958dff9f",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Until end of turn, target creature gets +1/+0 and gains lifelink and \"When this creature dies, return it to the battlefield tapped under its owner's control.\"",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "121",
+"set": "neo"
+},
+{
+"name": "Papercraft Decoy",
+"oracle_id": "b0494c34-f142-441f-b7f8-e981416f0bad",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Frog",
+"oracle_text": "When this creature leaves the battlefield, you may pay {2}. If you do, draw a card.",
+"power": "2",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "253",
+"set": "neo"
+},
+{
+"name": "Eater of Virtue",
+"oracle_id": "b6f8cc3b-b8f1-4b1a-8768-eddcb0631d80",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Legendary Artifact — Equipment",
+"oracle_text": "Whenever equipped creature dies, exile it.\nEquipped creature gets +2/+0.\nAs long as a card exiled with Eater of Virtue has flying, equipped creature has flying. The same is true for first strike, double strike, deathtouch, haste, hexproof, indestructible, lifelink, menace, protection, reach, trample, and vigilance.\nEquip {1}",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "245",
+"set": "neo"
+},
+{
+"name": "Eiganjo Uprising",
+"oracle_id": "fe2fe9f2-908b-49a9-9648-b01e0417a364",
+"layout": "normal",
+"mana_cost": "{X}{R}{W}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Create X 2/2 white Samurai creature tokens with vigilance. They gain menace and haste until end of turn.\nEach opponent creates X minus one 2/2 white Samurai creature tokens with vigilance.",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "217",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Samurai",
+"type_line": "Token Creature — Samurai",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Invoke Despair",
+"oracle_id": "f9ee4c80-20fb-4322-be02-1c78d37d7a99",
+"layout": "normal",
+"mana_cost": "{1}{B}{B}{B}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Target opponent sacrifices a creature of their choice. If they can't, they lose 2 life and you draw a card. Then repeat this process for an enchantment and a planeswalker.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "455",
+"set": "neo"
+},
+{
+"name": "The Kami War // O-Kagachi Made Manifest",
+"oracle_id": "4d23b22b-31a5-4eec-b894-2dd5a7138c5a",
+"layout": "transform",
+"cmc": 6.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Dragon Spirit",
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Transform",
+"Trample"
+],
+"rarity": "mythic",
+"collector_number": "227",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Kami War",
+"mana_cost": "{1}{W}{U}{B}{R}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Exile target nonland permanent an opponent controls.\nII — Return up to one other target nonland permanent to its owner's hand. Then each opponent discards a card.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+]
+},
+{
+"name": "O-Kagachi Made Manifest",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Dragon Spirit",
+"oracle_text": "O-Kagachi Made Manifest is all colors.\nFlying, trample\nWhenever this creature attacks, defending player chooses a nonland card in your graveyard. Return that card to your hand. This creature gets +X/+0 until end of turn, where X is the mana value of that card.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+]
+}
+]
+},
+{
+"name": "Brute Suit",
+"oracle_id": "bc64e396-7fa1-4a4e-a528-352737714a9c",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Vigilance\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "4",
+"toughness": "3",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Vigilance",
+"Crew"
+],
+"rarity": "common",
+"collector_number": "241",
+"set": "neo"
+},
+{
+"name": "Hidetsugu, Devouring Chaos",
+"oracle_id": "d56f24a1-04dc-4769-9941-05bd99508e40",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Ogre Demon",
+"oracle_text": "{B}, Sacrifice a creature: Scry 2.\n{2}{R}, {T}: Exile the top card of your library. You may play that card this turn. When you exile a nonland card this way, Hidetsugu deals damage equal to the exiled card's mana value to any target.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "rare",
+"collector_number": "378",
+"set": "neo"
+},
+{
+"name": "Light the Way",
+"oracle_id": "83917116-d2d8-4701-a79f-af17486706ae",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Put a +1/+1 counter on target creature or Vehicle. Untap it.\n• Return target permanent you control to its owner's hand.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "24",
+"set": "neo"
+},
+{
+"name": "Eiganjo Exemplar",
+"oracle_id": "8e0f4e22-0677-4246-a4c5-6fcc74cb54a3",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Enchantment Creature — Human Samurai",
+"oracle_text": "Whenever a Samurai or Warrior you control attacks alone, it gets +1/+1 until end of turn.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "10",
+"set": "neo"
+},
+{
+"name": "Gift of Wrath",
+"oracle_id": "9ba31dd0-d78e-4639-a550-bd72cac5898a",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nAs long as enchanted permanent is a creature, it gets +2/+2 and has menace. (It can't be blocked except by two or more creatures.)\nWhen this Aura leaves the battlefield, create a 2/2 red Spirit creature token with menace.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "143",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"keywords": [
+"Menace"
+]
+}
+]
+},
+{
+"name": "Tribute to Horobi // Echo of Death's Wail",
+"oracle_id": "81622cf6-3021-4ad4-933d-a7e3d8ac817f",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Spirit",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Transform",
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "356",
+"set": "neo",
+"card_faces": [
+{
+"name": "Tribute to Horobi",
+"mana_cost": "{1}{B}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Each opponent creates a 1/1 black Rat Rogue creature token.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"B"
+]
+},
+{
+"name": "Echo of Death's Wail",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Spirit",
+"oracle_text": "Flying, haste\nWhen this creature enters, gain control of all Rat tokens.\nWhenever this creature attacks, you may sacrifice another creature. If you do, draw a card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Rat Rogue",
+"type_line": "Token Creature — Rat Rogue",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Imperial Oath",
+"oracle_id": "4a4a061d-bc4e-49da-8d20-90fcb571b025",
+"layout": "normal",
+"mana_cost": "{5}{W}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Create three 2/2 white Samurai creature tokens with vigilance. Scry 3.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "17",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Samurai",
+"type_line": "Token Creature — Samurai",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Runaway Trash-Bot",
+"oracle_id": "93b0bd0e-414b-45bd-9d3d-7323140ef0c0",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "Trample\nThis creature gets +1/+0 for each artifact and/or enchantment card in your graveyard.",
+"power": "0",
+"toughness": "4",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "257",
+"set": "neo"
+},
+{
+"name": "Kami of Celebration",
+"oracle_id": "ecfabd06-c059-4f3d-9e5f-587364033cac",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Whenever a modified creature you control attacks, exile the top card of your library. You may play that card this turn. (Equipment, Auras you control, and counters are modifications.)\nWhenever you cast a spell from exile, put a +1/+1 counter on target creature you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "59",
+"set": "nec"
+},
+{
+"name": "Wanderer's Intervention",
+"oracle_id": "4497d0b9-cf4b-4c9d-bf7e-8ed85aa6b5b8",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Wanderer's Intervention deals 4 damage to target attacking or blocking creature.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "41",
+"set": "neo"
+},
+{
+"name": "Naomi, Pillar of Order",
+"oracle_id": "cd6018de-5791-4c13-b134-38c410f04872",
+"layout": "normal",
+"mana_cost": "{3}{W}{B}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Human Advisor",
+"oracle_text": "Whenever Naomi enters or attacks, if you control an artifact and an enchantment, create a 2/2 white Samurai creature token with vigilance.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "229",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Samurai",
+"type_line": "Token Creature — Samurai",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Kotori, Pilot Prodigy",
+"oracle_id": "0659a5b0-9807-4e4c-8af3-b6e233051ad6",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Moonfolk Pilot",
+"oracle_text": "Vehicles you control have crew 2.\nAt the beginning of combat on your turn, target artifact creature you control gains lifelink and vigilance until end of turn.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "78",
+"set": "nec"
+},
+{
+"name": "Go-Shintai of Hidden Cruelty",
+"oracle_id": "ff8cf669-a38a-44ae-baff-420f59492371",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Enchantment Creature — Shrine",
+"oracle_text": "Deathtouch\nAt the beginning of your end step, you may pay {1}. When you do, destroy target creature with toughness X or less, where X is the number of Shrines you control.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Deathtouch"
+],
+"rarity": "uncommon",
+"collector_number": "97",
+"set": "neo"
+},
+{
+"name": "Bronze Cudgels",
+"oracle_id": "82ebd4fa-9db1-4723-8305-8b8a9ce958e2",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "{2}: Until end of turn, equipped creature gets +X/+0, where X is the number of times this ability has resolved this turn.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "240",
+"set": "neo"
+},
+{
+"name": "Hinata, Dawn-Crowned",
+"oracle_id": "aee473c7-c659-421c-96b5-05f57ca2ed97",
+"layout": "normal",
+"mana_cost": "{1}{U}{R}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Kirin Spirit",
+"oracle_text": "Flying, trample\nSpells you cast cost {1} less to cast for each target.\nSpells your opponents cast cost {1} more to cast for each target.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "487",
+"set": "neo"
+},
+{
+"name": "Kaima, the Fractured Calm",
+"oracle_id": "3d8f9b58-d011-4ed2-99ae-c626243fab26",
+"layout": "normal",
+"mana_cost": "{2}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Spirit",
+"oracle_text": "At the beginning of your end step, goad each creature your opponents control that's enchanted by an Aura you control. Put a +1/+1 counter on Kaima for each creature goaded this way. (Until your next turn, the goaded creatures attack each combat if able and attack a player other than you if able.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Goad"
+],
+"rarity": "mythic",
+"collector_number": "3",
+"set": "nec"
+},
+{
+"name": "Unquenchable Fury",
+"oracle_id": "1c69a41e-122a-42c1-98d4-56035d68cfc8",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nEnchanted creature has \"Whenever this creature attacks, it deals X damage to defending player, where X is the number of cards in their hand.\"\nWhen this Aura is put into your graveyard from the battlefield, return it to your hand.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "rare",
+"collector_number": "63",
+"set": "nec"
+},
+{
+"name": "Replication Specialist",
+"oracle_id": "7ce7decb-1438-4c3d-88d2-26b0b3996b33",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature — Moonfolk Artificer",
+"oracle_text": "Flying\nWhenever a nontoken artifact you control enters, you may pay {1}{U}. If you do, create a token that's a copy of that artifact.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "76",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Futurist Operative",
+"oracle_id": "9f53aac8-f21f-4928-af8f-65b40cb9149c",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Human Ninja",
+"oracle_text": "As long as this creature is tapped, it's a Human Citizen with base power and toughness 1/1 and can't be blocked.\n{2}{U}: Untap this creature.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "333",
+"set": "neo"
+},
+{
+"name": "Dragonfly Suit",
+"oracle_id": "f242d66c-011c-4b5b-a7d6-5e0bce257f73",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Flying\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "3",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Crew"
+],
+"rarity": "common",
+"collector_number": "9",
+"set": "neo",
+"related": [
+{
+"component": "combo_piece",
+"name": "Dragonfly Pilot",
+"type_line": "Creature — Fox Pilot",
+"oracle_text": "When this creature enters, conjure a card named Dragonfly Suit into your hand.\nThis creature crews Vehicles as though its power were 2 greater.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"keywords": [
+"Conjure"
+]
+}
+]
+},
+{
+"name": "Collision of Realms",
+"oracle_id": "40cbf2c0-041a-44df-a775-580012caab67",
+"layout": "normal",
+"mana_cost": "{6}{R}",
+"cmc": 7.0,
+"type_line": "Sorcery",
+"oracle_text": "Each player shuffles all creatures they own into their library. Each player who shuffled a nontoken creature into their library this way reveals cards from the top of their library until they reveal a creature card, then puts that card onto the battlefield and the rest on the bottom of their library in a random order.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "19",
+"set": "nec"
+},
+{
+"name": "Kosei, Penitent Warlord",
+"oracle_id": "41f7e725-bdb8-4c3a-adc7-a8184ec7c394",
+"layout": "normal",
+"mana_cost": "{1}{G}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Ogre Samurai",
+"oracle_text": "As long as Kosei is enchanted, equipped, and has a counter on it, Kosei has \"Whenever Kosei deals combat damage to an opponent, you draw that many cards and Kosei deals that much damage to each other opponent.\"",
+"power": "0",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "67",
+"set": "nec"
+},
+{
+"name": "Teachings of the Kirin // Kirin-Touched Orochi",
+"oracle_id": "cb7edb5e-3a90-41c7-ae52-dc564086bf22",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Snake Monk",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Transform",
+"Mill"
+],
+"rarity": "rare",
+"collector_number": "212",
+"set": "neo",
+"card_faces": [
+{
+"name": "Teachings of the Kirin",
+"mana_cost": "{1}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Mill three cards. Create a 1/1 colorless Spirit creature token.\nII — Put a +1/+1 counter on target creature you control.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"G"
+]
+},
+{
+"name": "Kirin-Touched Orochi",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Snake Monk",
+"oracle_text": "Whenever this creature attacks, choose one —\n• Exile target creature card from a graveyard. When you do, create a 1/1 colorless Spirit creature token.\n• Exile target noncreature card from a graveyard. When you do, put a +1/+1 counter on target creature you control.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "The Fall of Lord Konda // Fragment of Konda",
+"oracle_id": "6ba8e099-5871-4ee3-8a65-06fd8ccec340",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Noble",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Transform",
+"Defender"
+],
+"rarity": "uncommon",
+"collector_number": "12",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Fall of Lord Konda",
+"mana_cost": "{2}{W}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Exile target creature an opponent controls with mana value 4 or greater.\nII — Each player gains control of all permanents they own.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"W"
+]
+},
+{
+"name": "Fragment of Konda",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Noble",
+"oracle_text": "Defender\nWhen this creature dies, draw a card.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"W"
+]
+}
+]
+},
+{
+"name": "Akki Ember-Keeper",
+"oracle_id": "8df42f4a-022c-4fcb-a953-fb165fdbfc13",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment Creature — Goblin Warrior",
+"oracle_text": "Whenever a nontoken modified creature you control dies, create a 1/1 colorless Spirit creature token. (Equipment, Auras you control, and counters are modifications.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "130",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "The Long Reach of Night // Animus of Night's Reach",
+"oracle_id": "8b1e453a-35a6-4dff-bd37-498f34d0470e",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Spirit",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Transform",
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "109",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Long Reach of Night",
+"mana_cost": "{3}{B}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Each opponent sacrifices a creature of their choice unless they discard a card.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"B"
+]
+},
+{
+"name": "Animus of Night's Reach",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Spirit",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever this creature attacks, it gets +X/+0 until end of turn, where X is the number of creature cards in defending player's graveyard.",
+"power": "0",
+"toughness": "4",
+"colors": [
+"B"
+]
+}
+]
+},
+{
+"name": "Okiba Reckoner Raid // Nezumi Road Captain",
+"oracle_id": "54257132-c67a-4c19-bada-08e7025c2929",
+"layout": "transform",
+"cmc": 1.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Rat Rogue",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Transform",
+"Menace"
+],
+"rarity": "common",
+"collector_number": "117",
+"set": "neo",
+"card_faces": [
+{
+"name": "Okiba Reckoner Raid",
+"mana_cost": "{B}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Each opponent loses 1 life and you gain 1 life.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"B"
+]
+},
+{
+"name": "Nezumi Road Captain",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Rat Rogue",
+"oracle_text": "Menace\nVehicles you control have menace. (They can't be blocked except by two or more creatures.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+]
+}
+]
+},
+{
+"name": "Suit Up",
+"oracle_id": "29bbbbfe-77cb-411f-9c1b-f7e4724685c6",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Until end of turn, target creature or Vehicle becomes an artifact creature with base power and toughness 4/5.\nDraw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "81",
+"set": "neo"
+},
+{
+"name": "Mechtitan Core",
+"oracle_id": "f1eb489d-104c-4801-b6d2-3f1a7ee73a75",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "{5}, Exile this Vehicle and four other artifact creatures and/or Vehicles you control: Create Mechtitan, a legendary 10/10 Construct artifact creature token with flying, vigilance, trample, lifelink, and haste that's all colors. When that token leaves the battlefield, return all cards exiled with this Vehicle except this card to the battlefield tapped under their owners' control.\nCrew 2",
+"power": "2",
+"toughness": "4",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "402",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Mechtitan",
+"type_line": "Token Legendary Artifact Creature — Construct",
+"oracle_text": "Mechtitan is all colors.\nFlying, vigilance, trample, lifelink, haste",
+"power": "10",
+"toughness": "10",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Lifelink",
+"Vigilance",
+"Haste",
+"Trample"
+]
+}
+]
+},
+{
+"name": "Storyweave",
+"oracle_id": "94389047-4976-4be2-aaca-25dcdc538abe",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Put two +1/+1 counters on target creature you control.\n• Put two lore counters on target Saga you control. The next time one or more enchantment creatures you control enter this turn, each enters with two additional +1/+1 counters on it.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "209",
+"set": "neo"
+},
+{
+"name": "Tales of Master Seshiro // Seshiro's Living Legacy",
+"oracle_id": "096fbb51-be73-4edc-a051-770a12c09005",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Snake Warrior",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Vigilance",
+"Transform",
+"Haste"
+],
+"rarity": "common",
+"collector_number": "210",
+"set": "neo",
+"card_faces": [
+{
+"name": "Tales of Master Seshiro",
+"mana_cost": "{4}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Put a +1/+1 counter on target creature or Vehicle you control. It gains vigilance until end of turn.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"G"
+]
+},
+{
+"name": "Seshiro's Living Legacy",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Snake Warrior",
+"oracle_text": "Vigilance, haste",
+"power": "5",
+"toughness": "5",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Awakened Awareness",
+"oracle_id": "6629e5f3-ac59-48f8-b09c-3b98f59b9922",
+"layout": "normal",
+"mana_cost": "{X}{U}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nWhen this Aura enters, put X +1/+1 counters on enchanted permanent.\nAs long as enchanted permanent is a creature, it has base power and toughness 1/1.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "uncommon",
+"collector_number": "47",
+"set": "neo"
+},
+{
+"name": "Kairi, the Swirling Sky",
+"oracle_id": "85aa53e8-f062-4d02-bc69-1413f7f0dcf1",
+"layout": "normal",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Dragon Spirit",
+"oracle_text": "Flying, ward {3}\nWhen Kairi dies, choose one —\n• Return any number of target nonland permanents with total mana value 6 or less to their owners' hands.\n• Mill six cards, then return up to two instant and/or sorcery cards from your graveyard to your hand.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Ward",
+"Mill"
+],
+"rarity": "mythic",
+"collector_number": "408",
+"set": "neo"
+},
+{
+"name": "The Shattered States Era // Nameless Conqueror",
+"oracle_id": "99473461-3c6f-4f7f-8ba2-d6c090ddb567",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Samurai",
+"color_identity": [
+"R"
+],
+"keywords": [
+"Transform",
+"Haste",
+"Trample"
+],
+"rarity": "common",
+"collector_number": "162",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Shattered States Era",
+"mana_cost": "{4}{R}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Gain control of target creature until end of turn. Untap it. It gains haste until end of turn.\nII — Creatures you control get +1/+0 until end of turn.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"R"
+]
+},
+{
+"name": "Nameless Conqueror",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Samurai",
+"oracle_text": "Trample, haste",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+]
+}
+]
+},
+{
+"name": "Upriser Renegade",
+"oracle_id": "9f9b3ef8-e0ce-4906-96b3-a7727d7cc662",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Human Samurai",
+"oracle_text": "This creature gets +2/+0 for each other modified creature you control. (Equipment, Auras you control, and counters are modifications.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "324",
+"set": "neo"
+},
+{
+"name": "Tatsunari, Toad Rider",
+"oracle_id": "e87be082-eafd-480e-b150-d27fd937e1b1",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Ninja",
+"oracle_text": "Whenever you cast an enchantment spell, if you don't control a creature named Keimi, create Keimi, a legendary 3/3 black and green Frog creature token with \"Whenever you cast an enchantment spell, each opponent loses 1 life and you gain 1 life.\"\n{1}{G/U}: Tatsunari and target Frog you control can't be blocked this turn except by creatures with flying or reach.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B",
+"G",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "461",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Keimi",
+"type_line": "Token Legendary Creature — Frog",
+"oracle_text": "Whenever you cast an enchantment spell, each opponent loses 1 life and you gain 1 life.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Gravelighter",
+"oracle_id": "45ef5ea9-70a6-4999-8778-6a11cb97d28e",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Flying\nWhen this creature enters, draw a card if a creature died this turn. Otherwise, each player sacrifices a creature of their choice.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "uncommon",
+"collector_number": "98",
+"set": "neo"
+},
+{
+"name": "Blade-Blizzard Kitsune",
+"oracle_id": "84fb1c2f-cf1b-4166-834f-a887aa182d09",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Fox Ninja",
+"oracle_text": "Ninjutsu {3}{W} ({3}{W}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDouble strike",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Ninjutsu",
+"Double strike"
+],
+"rarity": "uncommon",
+"collector_number": "331",
+"set": "neo"
+},
+{
+"name": "Bearer of Memory",
+"oracle_id": "51e76d8f-95c6-428f-9030-3f8718139f93",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment Creature — Human Monk",
+"oracle_text": "{5}{G}: Put a +1/+1 counter on target enchantment creature. It gains trample until end of turn.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "174",
+"set": "neo"
+},
+{
+"name": "Heir of the Ancient Fang",
+"oracle_id": "6bcdbded-46f0-44b9-86ad-edd6414e7ef6",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Snake Samurai",
+"oracle_text": "This creature enters with a +1/+1 counter on it if you control a modified creature. (Equipment, Auras you control, and counters are modifications.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "325",
+"set": "neo"
+},
+{
+"name": "Myojin of Towering Might",
+"oracle_id": "1cb42cf5-ae69-46c5-b2ff-d2c1cd60099b",
+"layout": "normal",
+"mana_cost": "{5}{G}{G}{G}",
+"cmc": 8.0,
+"type_line": "Legendary Creature — Spirit",
+"oracle_text": "Myojin of Towering Might enters with an indestructible counter on it if you cast it from your hand.\nRemove an indestructible counter from Myojin of Towering Might: Distribute eight +1/+1 counters among any number of target creatures you control. They gain trample until end of turn.",
+"power": "8",
+"toughness": "8",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "38",
+"set": "nec"
+},
+{
+"name": "Invoke the Ancients",
+"oracle_id": "868b3c65-d753-4f32-b6ca-31e58782ea92",
+"layout": "normal",
+"mana_cost": "{1}{G}{G}{G}{G}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Create two 4/5 green Spirit creature tokens. For each of them, put your choice of a reach counter, a vigilance counter, or a trample counter on it.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "474",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "4",
+"toughness": "5",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Geothermal Kami",
+"oracle_id": "fbf8fdf5-0d7d-41a3-a6b9-27bb7a644c20",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "When this creature enters, you may return an enchantment you control to its owner's hand. If you do, you gain 3 life.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "186",
+"set": "neo"
+},
+{
+"name": "Scrapyard Steelbreaker",
+"oracle_id": "172e7250-94a4-466f-9438-159174925012",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Human Warrior",
+"oracle_text": "{1}, Sacrifice another artifact: This creature gets +2/+1 until end of turn.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "160",
+"set": "neo"
+},
+{
+"name": "Kami of Terrible Secrets",
+"oracle_id": "d7d8784f-8d2d-4f7b-a6fb-5c841936d9e5",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "When this creature enters, if you control an artifact and an enchantment, you draw a card and you gain 1 life.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "105",
+"set": "neo"
+},
+{
+"name": "Invigorating Hot Spring",
+"oracle_id": "a972630e-651e-439d-9412-5be50da9b934",
+"layout": "normal",
+"mana_cost": "{1}{R}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "This enchantment enters with four +1/+1 counters on it.\nModified creatures you control have haste. (Equipment, Auras you control, and counters are modifications.)\nRemove a +1/+1 counter from this enchantment: Put a +1/+1 counter on target creature you control. Activate only as a sorcery and only once each turn.",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "223",
+"set": "neo"
+},
+{
+"name": "Imposter Mech",
+"oracle_id": "f434e266-d9d6-4058-96ff-a1bd4029d8dc",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "You may have this Vehicle enter as a copy of a creature an opponent controls, except it's a Vehicle artifact with crew 3 and it loses all other card types.\nCrew 3",
+"power": "3",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "13",
+"set": "nec"
+},
+{
+"name": "Network Disruptor",
+"oracle_id": "0d64d150-1716-4da4-9cfe-ee7749b89918",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Artifact Creature — Moonfolk Rogue",
+"oracle_text": "Flying\nWhen this creature enters, tap target permanent.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "71",
+"set": "neo"
+},
+{
+"name": "Assassin's Ink",
+"oracle_id": "a6d95d26-48d8-4a97-9a42-f492a61300c9",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {1} less to cast if you control an artifact and {1} less to cast if you control an enchantment.\nDestroy target creature or planeswalker.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "87",
+"set": "neo"
+},
+{
+"name": "Voltage Surge",
+"oracle_id": "1779af8e-38fc-4043-b5fa-ee16a7ea840c",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may sacrifice an artifact.\nVoltage Surge deals 2 damage to target creature or planeswalker. If this spell's additional cost was paid, Voltage Surge deals 4 damage instead.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "171",
+"set": "neo"
+},
+{
+"name": "Go-Shintai of Ancient Wars",
+"oracle_id": "d145e4d4-a190-4c0b-8dfd-401c0111e995",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Enchantment Creature — Shrine",
+"oracle_text": "First strike\nAt the beginning of your end step, you may pay {1}. When you do, Go-Shintai of Ancient Wars deals X damage to target player or planeswalker, where X is the number of Shrines you control.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"First strike"
+],
+"rarity": "uncommon",
+"collector_number": "144",
+"set": "neo"
+},
+{
+"name": "Reality Heist",
+"oracle_id": "569da5d3-6af2-4021-a464-b30ebaaf6fa0",
+"layout": "normal",
+"mana_cost": "{5}{U}{U}",
+"cmc": 7.0,
+"type_line": "Instant",
+"oracle_text": "Affinity for artifacts (This spell costs {1} less to cast for each artifact you control.)\nLook at the top seven cards of your library. You may reveal up to two artifact cards from among them and put them into your hand. Put the rest on the bottom of your library in a random order.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Affinity"
+],
+"rarity": "uncommon",
+"collector_number": "75",
+"set": "neo"
+},
+{
+"name": "Aerial Surveyor",
+"oracle_id": "92c9b2fd-95d6-4937-aee2-67b4bb8ca29d",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Flying\nWhenever this Vehicle attacks, if defending player controls more lands than you, search your library for a basic Plains card, put it onto the battlefield tapped, then shuffle.\nCrew 2",
+"power": "3",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "39",
+"set": "nec"
+},
+{
+"name": "Silver-Fur Master",
+"oracle_id": "60ec735d-c9be-4776-beb7-f603ae22edbf",
+"layout": "normal",
+"mana_cost": "{U}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Rat Ninja",
+"oracle_text": "Ninjutsu {U}{B} ({U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nNinjutsu abilities you activate cost {1} less to activate.\nOther Ninja and Rogue creatures you control get +1/+1.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "uncommon",
+"collector_number": "353",
+"set": "neo"
+},
+{
+"name": "Spinning Wheel Kick",
+"oracle_id": "ed37ce4e-d84e-442a-ac4e-0512f358c138",
+"layout": "normal",
+"mana_cost": "{X}{X}{G}{G}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Target creature you control deals damage equal to its power to each of X target creatures and/or planeswalkers.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "207",
+"set": "neo"
+},
+{
+"name": "Clawing Torment",
+"oracle_id": "0ac5c149-f6af-46b6-974e-14689e9a583d",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nAs long as enchanted permanent is a creature, it gets -1/-1 and can't block.\nEnchanted permanent has \"At the beginning of your upkeep, you lose 1 life.\"",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "91",
+"set": "neo"
+},
+{
+"name": "Kami of Restless Shadows",
+"oracle_id": "7e770c08-910e-4394-88c5-79c874750b6a",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "When this creature enters, choose one —\n• Return up to one target Ninja or Rogue creature card from your graveyard to your hand.\n• Put target creature card from your graveyard on top of your library.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "104",
+"set": "neo"
+},
+{
+"name": "Undercity Scrounger",
+"oracle_id": "2750451f-348e-452f-88d0-bc921c46e8cc",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Human Rogue",
+"oracle_text": "{T}: Create a Treasure token. Activate only if a creature died this turn. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "1",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "common",
+"collector_number": "126",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Go-Shintai of Boundless Vigor",
+"oracle_id": "183cfd35-c18a-4838-94e5-1ad66e6bd325",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Legendary Enchantment Creature — Shrine",
+"oracle_text": "Trample\nAt the beginning of your end step, you may pay {1}. When you do, put a +1/+1 counter on target Shrine for each Shrine you control.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "187",
+"set": "neo"
+},
+{
+"name": "Dokuchi Shadow-Walker",
+"oracle_id": "1e79b7bf-8a2d-4585-81d0-755dce78a4ea",
+"layout": "normal",
+"mana_cost": "{4}{B}{B}",
+"cmc": 6.0,
+"type_line": "Creature — Ogre Ninja",
+"oracle_text": "Ninjutsu {3}{B} ({3}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "common",
+"collector_number": "339",
+"set": "neo"
+},
+{
+"name": "When We Were Young",
+"oracle_id": "1f27aa69-d17e-4f1f-9aba-cee205036f93",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Up to two target creatures each get +2/+2 until end of turn. If you control an artifact and an enchantment, those creatures also gain lifelink until end of turn.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "43",
+"set": "neo"
+},
+{
+"name": "Coiling Stalker",
+"oracle_id": "54dc1c02-2d71-465b-a285-d6d11113991c",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Snake Ninja",
+"oracle_text": "Ninjutsu {1}{G} ({1}{G}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever this creature deals combat damage to a player, put a +1/+1 counter on target creature you control that doesn't have a +1/+1 counter on it.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "common",
+"collector_number": "179",
+"set": "neo"
+},
+{
+"name": "Crackling Emergence",
+"oracle_id": "c984787c-f883-42c9-ae5d-9277c84dba01",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant land you control\nEnchanted land is a 3/3 red Spirit creature with haste. It's still a land.\nIf enchanted land would be destroyed, instead sacrifice this Aura and that land gains indestructible until end of turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "136",
+"set": "neo"
+},
+{
+"name": "Unstoppable Ogre",
+"oracle_id": "1733777d-87fe-4975-b099-1ff803a721e8",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Ogre Warrior",
+"oracle_text": "When this creature enters, target creature can't block this turn.",
+"power": "4",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "169",
+"set": "neo"
+},
+{
+"name": "Orochi Merge-Keeper",
+"oracle_id": "53e39011-3d77-4883-9c8e-4707f6fc5c47",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Snake Druid",
+"oracle_text": "{T}: Add {G}.\nAs long as this creature is modified, it has \"{T}: Add {G}{G}.\" (Equipment, Auras you control, and counters are modifications.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "203",
+"set": "neo"
+},
+{
+"name": "Ironhoof Boar",
+"oracle_id": "90266ce6-4360-4de4-9b06-adff7d6c378b",
+"layout": "normal",
+"mana_cost": "{5}{R}",
+"cmc": 6.0,
+"type_line": "Artifact Creature — Boar",
+"oracle_text": "Trample, haste\nChannel — {1}{R}, Discard this card: Target creature gets +3/+1 and gains trample until end of turn.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste",
+"Trample",
+"Channel"
+],
+"rarity": "common",
+"collector_number": "148",
+"set": "neo"
+},
+{
+"name": "Michiko's Reign of Truth // Portrait of Michiko",
+"oracle_id": "94794f7c-62e7-43c8-ba7f-ac5c0bc9a712",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Noble",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "29",
+"set": "neo",
+"card_faces": [
+{
+"name": "Michiko's Reign of Truth",
+"mana_cost": "{1}{W}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Target creature gets +1/+1 until end of turn for each artifact and/or enchantment you control.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"W"
+]
+},
+{
+"name": "Portrait of Michiko",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Noble",
+"oracle_text": "This creature gets +1/+1 for each artifact and/or enchantment you control.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"W"
+]
+}
+]
+},
+{
+"name": "Era of Enlightenment // Hand of Enlightenment",
+"oracle_id": "a6d646e8-0d84-489b-a46a-3bd5b1141864",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Monk",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Transform",
+"First strike",
+"Scry"
+],
+"rarity": "common",
+"collector_number": "11",
+"set": "neo",
+"card_faces": [
+{
+"name": "Era of Enlightenment",
+"mana_cost": "{1}{W}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Scry 2.\nII — You gain 2 life.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"W"
+]
+},
+{
+"name": "Hand of Enlightenment",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Monk",
+"oracle_text": "First strike",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+]
+}
+]
+},
+{
+"name": "Short Circuit",
+"oracle_id": "5ea0e3a5-9c38-4da4-98a6-41c14be512d9",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant artifact or creature\nAs long as enchanted permanent is a creature, it gets -3/-0 and loses flying.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "78",
+"set": "neo"
+},
+{
+"name": "Sokenzan Smelter",
+"oracle_id": "dd645241-2992-4c4e-a6a8-c2215d2340ae",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Goblin Artificer",
+"oracle_text": "At the beginning of combat on your turn, you may pay {1} and sacrifice an artifact. If you do, create a 3/1 red Construct artifact creature token with haste.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "164",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Construct",
+"type_line": "Token Artifact Creature — Construct",
+"oracle_text": "Haste",
+"power": "3",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": [
+"Haste"
+]
+}
+]
+},
+{
+"name": "Moon-Circuit Hacker",
+"oracle_id": "7cd8b017-8d59-4b55-bb9a-8d8e492ef1ac",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment Creature — Human Ninja",
+"oracle_text": "Ninjutsu {U} ({U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever this creature deals combat damage to a player, you may draw a card. If you do, discard a card unless this creature entered this turn.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "common",
+"collector_number": "334",
+"set": "neo"
+},
+{
+"name": "Shrine Steward",
+"oracle_id": "993a91fa-84ed-4688-9884-e03cbad6c791",
+"layout": "normal",
+"mana_cost": "{5}",
+"cmc": 5.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "When this creature enters, you may search your library for an Aura or Shrine card, reveal it, put it into your hand, then shuffle.",
+"power": "3",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "259",
+"set": "neo"
+},
+{
+"name": "You Are Already Dead",
+"oracle_id": "c1157d79-38ea-4a88-b346-7b12614ff78a",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Destroy target creature that was dealt damage this turn.\nDraw a card.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "129",
+"set": "neo"
+},
+{
+"name": "Selfless Samurai",
+"oracle_id": "20c9fb06-3941-456f-ba02-4fbde9deb1e2",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Fox Samurai",
+"oracle_text": "Whenever a Samurai or Warrior you control attacks alone, it gains lifelink until end of turn.\nSacrifice this creature: Another target creature you control gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "35",
+"set": "neo"
+},
+{
+"name": "March of Reckless Joy",
+"oracle_id": "3b3ecaf2-7e95-4b62-9bc0-a61985508808",
+"layout": "normal",
+"mana_cost": "{X}{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may exile any number of red cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nExile the top X cards of your library. You may play up to two of those cards until the end of your next turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "154",
+"set": "neo"
+},
+{
+"name": "Regent's Authority",
+"oracle_id": "54402930-84ea-4c3e-9880-ca631e47485f",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 until end of turn. If it's an enchantment creature or legendary creature, instead put a +1/+1 counter on it and it gets +1/+1 until end of turn.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "32",
+"set": "neo"
+},
+{
+"name": "Patchwork Automaton",
+"oracle_id": "0ba86a50-13df-4b26-8b3a-9e3917ff850f",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nWhenever you cast an artifact spell, put a +1/+1 counter on this creature.",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Ward"
+],
+"rarity": "uncommon",
+"collector_number": "254",
+"set": "neo"
+},
+{
+"name": "Explosive Entry",
+"oracle_id": "57544b37-fd5d-4da5-bbb6-7b4a09501dd1",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy up to one target artifact. Put a +1/+1 counter on up to one target creature.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "139",
+"set": "neo"
+},
+{
+"name": "High-Speed Hoverbike",
+"oracle_id": "9bf2f0d9-57fb-4e44-90a5-260d735076a0",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Flash\nFlying\nWhen this Vehicle enters, tap up to one target creature.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "2",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Flying",
+"Crew",
+"Flash"
+],
+"rarity": "uncommon",
+"collector_number": "247",
+"set": "neo"
+},
+{
+"name": "Go-Shintai of Lost Wisdom",
+"oracle_id": "f6a2092a-093e-4cd6-9eb0-d8ed32da896c",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Legendary Enchantment Creature — Shrine",
+"oracle_text": "Flying\nAt the beginning of your end step, you may pay {1}. When you do, target player mills X cards, where X is the number of Shrines you control. (To mill a card, a player puts the top card of their library into their graveyard.)",
+"power": "0",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Mill"
+],
+"rarity": "uncommon",
+"collector_number": "55",
+"set": "neo"
+},
+{
+"name": "Asari Captain",
+"oracle_id": "32e7385e-525e-4925-8cfd-bfea21fcd1bf",
+"layout": "normal",
+"mana_cost": "{3}{R}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Human Samurai",
+"oracle_text": "Haste\nWhenever a Samurai or Warrior you control attacks alone, it gets +1/+0 until end of turn for each Samurai or Warrior you control.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "215",
+"set": "neo"
+},
+{
+"name": "Season of Renewal",
+"oracle_id": "410ce48e-d907-4bc5-ad90-2067161a0e04",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one or both —\n• Return target creature card from your graveyard to your hand.\n• Return target enchantment card from your graveyard to your hand.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "205",
+"set": "neo"
+},
+{
+"name": "Futurist Sentinel",
+"oracle_id": "78d9faff-2ad9-4cf9-a239-27c50435d007",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Crew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "6",
+"toughness": "6",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "common",
+"collector_number": "54",
+"set": "neo"
+},
+{
+"name": "Hidetsugu Consumes All // Vessel of the All-Consuming",
+"oracle_id": "5b8be856-c08d-4356-925d-fce843565189",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Ogre Shaman",
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Transform",
+"Trample"
+],
+"rarity": "mythic",
+"collector_number": "361",
+"set": "neo",
+"card_faces": [
+{
+"name": "Hidetsugu Consumes All",
+"mana_cost": "{1}{B}{R}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Destroy each nonland permanent with mana value 1 or less.\nII — Exile all graveyards.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"B",
+"R"
+]
+},
+{
+"name": "Vessel of the All-Consuming",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Ogre Shaman",
+"oracle_text": "Trample\nWhenever this creature deals damage, put a +1/+1 counter on it.\nWhenever this creature deals damage to a player, if it has dealt 10 or more damage to that player this turn, they lose the game.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"R"
+]
+}
+]
+},
+{
+"name": "Reinforced Ronin",
+"oracle_id": "5e891927-b6cb-40ae-8270-0e72820fd7f5",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Artifact Creature — Human Samurai",
+"oracle_text": "Haste\nAt the beginning of your end step, return this creature to its owner's hand.\nChannel — {1}{R}, Discard this card: Draw a card.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste",
+"Channel"
+],
+"rarity": "uncommon",
+"collector_number": "158",
+"set": "neo"
+},
+{
+"name": "Befriending the Moths // Imperial Moth",
+"oracle_id": "2ee5f5ad-2f16-40d9-831a-2aefece31b36",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Insect",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "common",
+"collector_number": "4",
+"set": "neo",
+"card_faces": [
+{
+"name": "Befriending the Moths",
+"mana_cost": "{3}{W}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Target creature you control gets +1/+1 and gains flying until end of turn.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"W"
+]
+},
+{
+"name": "Imperial Moth",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Insect",
+"oracle_text": "Flying",
+"power": "2",
+"toughness": "4",
+"colors": [
+"W"
+]
+}
+]
+},
+{
+"name": "Bamboo Grove Archer",
+"oracle_id": "657f6318-aa09-46f1-ab69-896b17a48950",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Enchantment Creature — Snake Archer",
+"oracle_text": "Defender, reach\nChannel — {4}{G}, Discard this card: Destroy target creature with flying.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Defender",
+"Channel"
+],
+"rarity": "common",
+"collector_number": "173",
+"set": "neo"
+},
+{
+"name": "Discover the Impossible",
+"oracle_id": "1c2a3f13-6bcb-42ad-98f6-642151ad54f1",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Look at the top five cards of your library. Exile one of them face down and put the rest on the bottom of your library in a random order. You may cast the exiled card without paying its mana cost if it's an instant spell with mana value 2 or less. If you don't, put that card into your hand.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "50",
+"set": "neo"
+},
+{
+"name": "Roaring Earth",
+"oracle_id": "43abfce5-b1dd-4784-bb91-d57b2c28f6a6",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature or Vehicle you control.\nChannel — {X}{G}{G}, Discard this card: Put X +1/+1 counters on target land you control. It becomes a 0/0 green Spirit creature with haste. It's still a land.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Channel",
+"Landfall"
+],
+"rarity": "uncommon",
+"collector_number": "204",
+"set": "neo"
+},
+{
+"name": "Lethal Exploit",
+"oracle_id": "61dfb656-1cdd-4ab3-b533-93718cc66b15",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets -2/-2 until end of turn. It gets an additional -1/-1 until end of turn for each modified creature you controlled as you cast this spell. (Equipment, Auras you control, and counters are modifications.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "107",
+"set": "neo"
+},
+{
+"name": "Planar Incision",
+"oracle_id": "a959a91a-3e1d-4bd4-9e14-5ee977540146",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Exile target artifact or creature, then return it to the battlefield under its owner's control with a +1/+1 counter on it.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "72",
+"set": "neo"
+},
+{
+"name": "Ascendant Acolyte",
+"oracle_id": "8b9918c3-1135-4c63-991f-f0a38340a33b",
+"layout": "normal",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Human Monk",
+"oracle_text": "This creature enters with a +1/+1 counter on it for each +1/+1 counter among other creatures you control.\nAt the beginning of your upkeep, double the number of +1/+1 counters on this creature.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Double"
+],
+"rarity": "rare",
+"collector_number": "24",
+"set": "nec"
+},
+{
+"name": "Sky-Blessed Samurai",
+"oracle_id": "dad767d4-e7d4-4fe0-8a18-bb434c5268eb",
+"layout": "normal",
+"mana_cost": "{6}{W}",
+"cmc": 7.0,
+"type_line": "Enchantment Creature — Human Samurai",
+"oracle_text": "Affinity for enchantments (This spell costs {1} less to cast for each enchantment you control.)\nFlying",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Affinity"
+],
+"rarity": "uncommon",
+"collector_number": "314",
+"set": "neo"
+},
+{
+"name": "Historian's Wisdom",
+"oracle_id": "7c2c460d-8059-41ff-b2d7-374aa498f011",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nWhen this Aura enters, if enchanted permanent is a creature with the greatest power among creatures on the battlefield, draw a card.\nAs long as enchanted permanent is a creature, it gets +2/+1.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "uncommon",
+"collector_number": "192",
+"set": "neo"
+},
+{
+"name": "Go-Shintai of Life's Origin",
+"oracle_id": "6dbcd542-ddb0-434e-b8ee-3e31e1a8b051",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Enchantment Creature — Shrine",
+"oracle_text": "{W}{U}{B}{R}{G}, {T}: Return target enchantment card from your graveyard to the battlefield.\nWhenever Go-Shintai of Life's Origin or another nontoken Shrine you control enters, create a 1/1 colorless Shrine enchantment creature token.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "37",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Shrine",
+"type_line": "Token Enchantment Creature — Shrine",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Walking Skyscraper",
+"oracle_id": "90c763b9-6173-46ff-b31c-7dcafc774170",
+"layout": "normal",
+"mana_cost": "{8}",
+"cmc": 8.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "This spell costs {1} less to cast for each modified creature you control. (Equipment, Auras you control, and counters are modifications.)\nTrample\nThis creature has hexproof as long as it's untapped. (It can't be the target of spells or abilities your opponents control.)",
+"power": "8",
+"toughness": "8",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "263",
+"set": "neo"
+},
+{
+"name": "Guardians of Oboro",
+"oracle_id": "42b28dfb-de4d-4005-b0d7-1db3917cf159",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Moonfolk Samurai",
+"oracle_text": "Defender\nModified creatures you control can attack as though they didn't have defender. (Equipment, Auras you control, and counters are modifications.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Defender"
+],
+"rarity": "common",
+"collector_number": "317",
+"set": "neo"
+},
+{
+"name": "Kyodai, Soul of Kamigawa",
+"oracle_id": "d89bd776-8489-4c34-94ea-db1b088d9379",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Dragon Spirit",
+"oracle_text": "Flash\nFlying\nWhen Kyodai enters, another target permanent gains indestructible for as long as you control Kyodai.\n{W}{U}{B}{R}{G}: Kyodai gets +5/+5 until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Flash"
+],
+"rarity": "rare",
+"collector_number": "438",
+"set": "neo"
+},
+{
+"name": "Akki Ronin",
+"oracle_id": "4b4c76e1-c480-4d10-93d4-483ef2debc4b",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Goblin Samurai",
+"oracle_text": "Whenever a Samurai or Warrior you control attacks alone, you may discard a card. If you do, draw a card.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "131",
+"set": "neo"
+},
+{
+"name": "Enormous Energy Blade",
+"oracle_id": "7818e900-2f4e-4710-87a4-5a9ac170a677",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +4/+0.\nWhenever this Equipment becomes attached to a creature, tap that creature.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "96",
+"set": "neo"
+},
+{
+"name": "Repel the Vile",
+"oracle_id": "aa108554-f1a0-45b6-aa15-597d42be7a8a",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Exile target creature with power 4 or greater.\n• Exile target enchantment.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "33",
+"set": "neo"
+},
+{
+"name": "Nezumi Prowler",
+"oracle_id": "a93b5956-c11e-434e-bed5-94af9de55382",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Rat Ninja",
+"oracle_text": "Ninjutsu {1}{B} ({1}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhen this creature enters, target creature you control gains deathtouch and lifelink until end of turn.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "uncommon",
+"collector_number": "344",
+"set": "neo"
+},
+{
+"name": "Moonsnare Prototype",
+"oracle_id": "7346c266-19d8-4432-acf5-f00aff074ad5",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{T}, Tap an untapped artifact or creature you control: Add {C}.\nChannel — {4}{U}, Discard this card: The owner of target nonland permanent puts it on their choice of the top or bottom of their library.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Channel"
+],
+"rarity": "common",
+"collector_number": "69",
+"set": "neo"
+},
+{
+"name": "Heiko Yamazaki, the General",
+"oracle_id": "a4d67f2d-6b0f-4feb-bf7d-90ab4f2e46ab",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Samurai",
+"oracle_text": "Trample\nWhenever a Samurai or Warrior you control attacks alone, you may cast target artifact card from your graveyard this turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "146",
+"set": "neo"
+},
+{
+"name": "Ironsoul Enforcer",
+"oracle_id": "a613b00e-d6e8-4470-a7dc-5eab5e48dce0",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Artifact Creature — Human Samurai",
+"oracle_text": "Whenever this creature or a commander you control attacks alone, return target artifact card from your graveyard to the battlefield.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "41",
+"set": "nec"
+},
+{
+"name": "Dokuchi Silencer",
+"oracle_id": "d377b28f-c887-4937-9f14-74484b612551",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Human Ninja",
+"oracle_text": "Ninjutsu {1}{B} ({1}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nWhenever this creature deals combat damage to a player, you may discard a creature card. When you do, destroy target creature or planeswalker that player controls.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "uncommon",
+"collector_number": "95",
+"set": "neo"
+},
+{
+"name": "Gloomshrieker",
+"oracle_id": "b58737a4-180e-4e2f-95ae-afd6d446d608",
+"layout": "normal",
+"mana_cost": "{1}{B}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment Creature — Cat Beast",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature enters, return target permanent card from your graveyard to your hand.\nIf this creature would die, exile it instead.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"B",
+"G"
+],
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "219",
+"set": "neo"
+},
+{
+"name": "Sunblade Samurai",
+"oracle_id": "b767bd0a-a8fe-49d7-a3e7-4f9ac6a3280f",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Enchantment Creature — Human Samurai",
+"oracle_text": "Vigilance (Attacking doesn't cause this creature to tap.)\nChannel — {2}, Discard this card: Search your library for a basic Plains card, reveal it, put it into your hand, then shuffle. You gain 2 life.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance",
+"Channel"
+],
+"rarity": "common",
+"collector_number": "315",
+"set": "neo"
+},
+{
+"name": "Commune with Spirits",
+"oracle_id": "68f8ed23-024e-414f-bbb2-ab73fbe21b69",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Look at the top four cards of your library. You may reveal an enchantment or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "180",
+"set": "neo"
+},
+{
+"name": "Imperial Recovery Unit",
+"oracle_id": "18ad0dd1-2d0e-46b4-8ab1-ece07180267f",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Whenever this Vehicle attacks, return target creature or Vehicle card with mana value 2 or less from your graveyard to your hand.\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "uncommon",
+"collector_number": "18",
+"set": "neo"
+},
+{
+"name": "Tamiyo's Compleation",
+"oracle_id": "71d8b7f5-a5da-4528-815e-51c65626b681",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant artifact, creature, or planeswalker\nWhen this Aura enters, tap enchanted permanent. If it's an Equipment, unattach it.\nEnchanted permanent loses all abilities and doesn't untap during its controller's untap step.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "83",
+"set": "neo"
+},
+{
+"name": "Ninja's Kunai",
+"oracle_id": "fa5aefaf-432f-41d0-8e54-0e8b7bc7ba98",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature has \"{1}, {T}, Sacrifice Ninja's Kunai: Ninja's Kunai deals 3 damage to any target.\"\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Equip"
+],
+"rarity": "common",
+"collector_number": "252",
+"set": "neo"
+},
+{
+"name": "Myojin of Blooming Dawn",
+"oracle_id": "bfb75b28-0e51-4829-b104-f1679e63c126",
+"layout": "normal",
+"mana_cost": "{5}{W}{W}{W}",
+"cmc": 8.0,
+"type_line": "Legendary Creature — Spirit",
+"oracle_text": "Myojin of Blooming Dawn enters with an indestructible counter on it if you cast it from your hand.\nRemove an indestructible counter from Myojin of Blooming Dawn: Create a 1/1 colorless Spirit creature token for each permanent you control.",
+"power": "4",
+"toughness": "6",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "31",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Akki Battle Squad",
+"oracle_id": "5bd81d2f-46a1-4536-92e7-28c7e1892735",
+"layout": "normal",
+"mana_cost": "{5}{R}",
+"cmc": 6.0,
+"type_line": "Creature — Goblin Samurai",
+"oracle_text": "Whenever one or more modified creatures you control attack, untap all modified creatures you control. After this phase, there is an additional combat phase. This ability triggers only once each turn. (Equipment, Auras you control, and counters are modifications.)",
+"power": "6",
+"toughness": "6",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "57",
+"set": "nec"
+},
+{
+"name": "Dramatist's Puppet",
+"oracle_id": "e3473ed5-f2b2-4a41-aed9-ee37caa9d7be",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "When this creature enters, for each kind of counter on target permanent, put another counter of that kind on it or remove one from it.",
+"power": "2",
+"toughness": "4",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "244",
+"set": "neo"
+},
+{
+"name": "Thundersteel Colossus",
+"oracle_id": "9cef3013-6a84-4edd-9a47-e842df2200e3",
+"layout": "normal",
+"mana_cost": "{7}",
+"cmc": 7.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Trample, haste\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "7",
+"toughness": "7",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Haste",
+"Crew",
+"Trample"
+],
+"rarity": "common",
+"collector_number": "261",
+"set": "neo"
+},
+{
+"name": "Automated Artificer",
+"oracle_id": "600e1093-5619-49b3-b193-bd263e4fde33",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Artificer",
+"oracle_text": "{T}: Add {C}. Spend this mana only to activate an ability or cast an artifact spell.",
+"power": "1",
+"toughness": "3",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "239",
+"set": "neo"
+},
+{
+"name": "Kappa Tech-Wrecker",
+"oracle_id": "2bc92c16-cd1e-4c32-9102-4593d77a9a9f",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Turtle Ninja",
+"oracle_text": "Ninjutsu {1}{G}\nThis creature enters with a deathtouch counter on it.\nWhenever this creature deals combat damage to a player, you may remove a deathtouch counter from it. When you do, exile target artifact or enchantment that player controls.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Ninjutsu"
+],
+"rarity": "uncommon",
+"collector_number": "348",
+"set": "neo"
+},
+{
+"name": "Kami's Flare",
+"oracle_id": "d76fc3aa-3962-4d64-a082-765e09bcdf25",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Kami's Flare deals 3 damage to target creature or planeswalker. Kami's Flare also deals 2 damage to that permanent's controller if you control a modified creature. (Equipment, Auras you control, and counters are modifications.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "150",
+"set": "neo"
+},
+{
+"name": "Mech Hangar",
+"oracle_id": "abc04775-171d-41f3-83ea-4b4eb72723d5",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Pilot or Vehicle spell.\n{3}, {T}: Target Vehicle becomes an artifact creature until end of turn.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "270",
+"set": "neo"
+},
+{
+"name": "Debt to the Kami",
+"oracle_id": "c6c1e576-7197-4067-8cd1-aa535188e1b8",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Target opponent exiles a creature they control.\n• Target opponent exiles an enchantment they control.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "92",
+"set": "neo"
+},
+{
+"name": "Saiba Trespassers",
+"oracle_id": "d5cdfa86-a234-4ddd-bfa0-4a3bc51eebce",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Artifact Creature — Moonfolk Rogue",
+"oracle_text": "Channel — {3}{U}, Discard this card: Tap up to two target creatures you don't control. Those creatures don't untap during their controller's next untap step.",
+"power": "3",
+"toughness": "5",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Channel"
+],
+"rarity": "common",
+"collector_number": "77",
+"set": "neo"
+},
+{
+"name": "Concord with the Kami",
+"oracle_id": "bec04768-c573-4886-9ca1-2511abc05a14",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your end step, choose one or more —\n• Put a +1/+1 counter on target creature with a counter on it.\n• Draw a card if you control an enchanted creature.\n• Create a 1/1 colorless Spirit creature token if you control an equipped creature.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "25",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Experimental Synthesizer",
+"oracle_id": "11db299a-0918-46a3-b39b-16acc3f4e281",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters or leaves the battlefield, exile the top card of your library. Until end of turn, you may play that card.\n{2}{R}, Sacrifice this artifact: Create a 2/2 white Samurai creature token with vigilance. Activate only as a sorcery.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "138",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Samurai",
+"type_line": "Token Creature — Samurai",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Oni-Cult Anvil",
+"oracle_id": "c018f072-8f6d-4835-a717-ed4ecba70d97",
+"layout": "normal",
+"mana_cost": "{B}{R}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "Whenever one or more artifacts you control leave the battlefield during your turn, create a 1/1 colorless Construct artifact creature token. This ability triggers only once each turn.\n{T}, Sacrifice an artifact: This artifact deals 1 damage to each opponent. You gain 1 life.",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "230",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Construct",
+"type_line": "Token Artifact Creature — Construct",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Harmonious Emergence",
+"oracle_id": "ad8fd4e9-f6ae-4f24-b806-4509c8f4ee47",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant land you control\nEnchanted land is a 4/5 green Spirit creature with vigilance and haste. It's still a land.\nIf enchanted land would be destroyed, instead sacrifice this Aura and that land gains indestructible until end of turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "190",
+"set": "neo"
+},
+{
+"name": "Moonfolk Puzzlemaker",
+"oracle_id": "8ee2371c-e2c3-412e-b9e9-1ec511c9d537",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Moonfolk Wizard",
+"oracle_text": "Flying\nWhenever this creature becomes tapped, scry 1.",
+"power": "1",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Scry",
+"Flying"
+],
+"rarity": "common",
+"collector_number": "68",
+"set": "neo"
+},
+{
+"name": "Inkrise Infiltrator",
+"oracle_id": "6a45d09a-6af3-45fb-8f7c-cf630cb37f24",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Human Ninja",
+"oracle_text": "Flying\n{3}{B}: This creature gets +2/+2 until end of turn.",
+"power": "1",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "100",
+"set": "neo"
+},
+{
+"name": "Smoke Spirits' Aid",
+"oracle_id": "8fef58ff-4743-4065-9df0-c5edf9aa2502",
+"layout": "normal",
+"mana_cost": "{X}{R}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "For each of up to X target creatures, create a red Aura enchantment token named Smoke Blessing attached to that creature. Those tokens have enchant creature and \"When enchanted creature dies, it deals 1 damage to its controller and you create a Treasure token.\"",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "rare",
+"collector_number": "62",
+"set": "nec",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Smoke Blessing",
+"type_line": "Token Enchantment — Aura",
+"oracle_text": "Enchant creature\nWhen enchanted creature dies, it deals 1 damage to its controller and you create a Treasure token.",
+"colors": [
+"R"
+],
+"keywords": [
+"Treasure",
+"Enchant"
+]
+}
+]
+},
+{
+"name": "Thundering Raiju",
+"oracle_id": "3d713c11-36a7-4b19-8c42-a9b61ef5902c",
+"layout": "normal",
+"mana_cost": "{2}{R}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Haste\nWhenever this creature attacks, put a +1/+1 counter on target creature you control. Then this creature deals X damage to each opponent, where X is the number of modified creatures you control other than this creature. (Equipment, Auras you control, and counters are modifications.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "389",
+"set": "neo"
+},
+{
+"name": "Mobilizer Mech",
+"oracle_id": "3c1a2a2d-656f-4021-b046-59e14383a8c8",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Flying\nWhenever this Vehicle becomes crewed, up to one other target Vehicle you control becomes an artifact creature until end of turn.\nCrew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Crew"
+],
+"rarity": "uncommon",
+"collector_number": "65",
+"set": "neo"
+},
+{
+"name": "Unforgiving One",
+"oracle_id": "9ec2114c-023b-45c3-a44c-6a9f6462bc85",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever this creature attacks, return target creature card with mana value X or less from your graveyard to the battlefield, where X is the number of modified creatures you control. (Equipment, Auras you control, and counters are modifications.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "127",
+"set": "neo"
+},
+{
+"name": "Ambitious Assault",
+"oracle_id": "3fb399fa-123f-448e-a473-573a1fab2c78",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Creatures you control get +2/+0 until end of turn. If you control a modified creature, draw a card. (Equipment, Auras you control, and counters are modifications.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "133",
+"set": "neo"
+},
+{
+"name": "Generous Visitor",
+"oracle_id": "0629747e-8dd8-4150-95ee-9d860264ccb0",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Whenever you cast an enchantment spell, put a +1/+1 counter on target creature.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "185",
+"set": "neo"
+},
+{
+"name": "Blossom Prancer",
+"oracle_id": "69e92c4f-df05-4297-a453-8e4644c31a90",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Reach\nWhen this creature enters, look at the top five cards of your library. You may reveal a creature or enchantment card from among them and put it into your hand. Put the rest on the bottom of your library in a random order. If you didn't put a card into your hand this way, you gain 4 life.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach"
+],
+"rarity": "uncommon",
+"collector_number": "175",
+"set": "neo"
+},
+{
+"name": "Kami of Industry",
+"oracle_id": "b308fa9a-3f69-4e59-9d4b-8007d9a2b1f1",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "When this creature enters, return target artifact card with mana value 3 or less from your graveyard to the battlefield. It gains haste. Sacrifice it at the beginning of the next end step.",
+"power": "3",
+"toughness": "6",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "149",
+"set": "neo"
+},
+{
+"name": "Network Terminal",
+"oracle_id": "a0eb1d5b-2c54-44fa-b7ad-bdd4b1147929",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "{T}: Add one mana of any color.\n{1}, {T}, Tap another untapped artifact you control: Draw a card, then discard a card.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "251",
+"set": "neo"
+},
+{
+"name": "Golden-Tail Disciple",
+"oracle_id": "316f7091-0c75-4510-a89a-6b58bb7f0627",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment Creature — Fox Monk",
+"oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Lifelink"
+],
+"rarity": "common",
+"collector_number": "15",
+"set": "neo"
+},
+{
+"name": "Ancestral Katana",
+"oracle_id": "13a9b9fd-20fa-4734-9d95-3ab41ab9c7a0",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Whenever a Samurai or Warrior you control attacks alone, you may pay {1}. When you do, attach this Equipment to it.\nEquipped creature gets +2/+1.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "common",
+"collector_number": "1",
+"set": "neo"
+},
+{
+"name": "Okiba Salvage",
+"oracle_id": "142409ce-1187-4554-bc07-6432c4d22dbc",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target creature or Vehicle card from your graveyard to the battlefield. Then put two +1/+1 counters on that permanent if you control an artifact and an enchantment.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "118",
+"set": "neo"
+},
+{
+"name": "Towashi Guide-Bot",
+"oracle_id": "28bb9a58-f45a-4452-a1f4-c7609373085f",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "When this creature enters, put a +1/+1 counter on target creature you control.\n{4}, {T}: Draw a card. This ability costs {1} less to activate for each modified creature you control. (Equipment, Auras you control, and counters are modifications.)",
+"power": "2",
+"toughness": "1",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "262",
+"set": "neo"
+},
+{
+"name": "Skyswimmer Koi",
+"oracle_id": "53b9a2cf-2e6e-4ce0-bb9f-f33fb27b7b5e",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Fish",
+"oracle_text": "Flying\nWhenever an artifact you control enters, you may draw a card. If you do, discard a card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "79",
+"set": "neo"
+},
+{
+"name": "Kaito's Pursuit",
+"oracle_id": "23b7fd18-3129-448f-881f-947ba988f98d",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Target player discards two cards. Ninjas and Rogues you control gain menace until end of turn. (They can't be blocked except by two or more creatures.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "103",
+"set": "neo"
+},
+{
+"name": "Banishing Slash",
+"oracle_id": "2800830c-73c6-4097-be7b-d698c6813c38",
+"layout": "normal",
+"mana_cost": "{W}{W}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy up to one target artifact, enchantment, or tapped creature. Then if you control an artifact and an enchantment, create a 2/2 white Samurai creature token with vigilance.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "3",
+"set": "neo",
+"related": [
+{
+"component": "token",
+"name": "Samurai",
+"type_line": "Token Creature — Samurai",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Twisted Embrace",
+"oracle_id": "2e29efee-1eed-4bef-8574-0f6ff99d3cda",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature you control\nWhen this Aura enters, destroy target creature or planeswalker an opponent controls.\nAs long as enchanted permanent is a creature, it gets +1/+1.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "125",
+"set": "neo"
+},
+{
+"name": "Behold the Unspeakable // Vision of the Unspeakable",
+"oracle_id": "464372ef-0b16-4b8d-ba6f-fbf5c905c479",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Spirit",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Scry",
+"Flying",
+"Transform",
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "48",
+"set": "neo",
+"card_faces": [
+{
+"name": "Behold the Unspeakable",
+"mana_cost": "{3}{U}{U}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Creatures you don't control get -2/-0 until your next turn.\nII — If you have one or fewer cards in hand, draw four cards. Otherwise, scry 2, then draw two cards.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"U"
+]
+},
+{
+"name": "Vision of the Unspeakable",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Spirit",
+"oracle_text": "Flying, trample\nThis creature gets +1/+1 for each card in your hand.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"U"
+]
+}
+]
+},
+{
+"name": "Seismic Wave",
+"oracle_id": "6a56e2ef-75dd-47d5-b61c-11faaba8cd9a",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Seismic Wave deals 2 damage to any target and 1 damage to each nonartifact creature target opponent controls.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "161",
+"set": "neo"
+},
+{
+"name": "Jukai Preserver",
+"oracle_id": "a8ce90be-f0ab-4f8d-896a-cde8aaf24579",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment Creature — Human Druid",
+"oracle_text": "When this creature enters, put a +1/+1 counter on target creature you control.\nChannel — {2}{G}, Discard this card: Put a +1/+1 counter on each of up to two target creatures you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Channel"
+],
+"rarity": "common",
+"collector_number": "195",
+"set": "neo"
+},
+{
+"name": "Grafted Growth",
+"oracle_id": "c4525b1c-5c3d-494e-b660-ba5a5a28f621",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant land\nWhen this Aura enters, put a +1/+1 counter on target creature or Vehicle you control.\nEnchanted land has \"{T}: Add two mana of any one color.\"",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "188",
+"set": "neo"
+},
+{
+"name": "Intercessor's Arrest",
+"oracle_id": "d75357f4-d439-48ff-8fd7-52a02f07cc81",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant permanent\nEnchanted permanent can't attack, block, or crew Vehicles. Its activated abilities can't be activated unless they're mana abilities.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "20",
+"set": "neo"
+},
+{
+"name": "Azusa's Many Journeys // Likeness of the Seeker",
+"oracle_id": "02c60b8b-f665-4279-a00f-ae03991df4a6",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Monk",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "172",
+"set": "neo",
+"card_faces": [
+{
+"name": "Azusa's Many Journeys",
+"mana_cost": "{1}{G}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — You may play an additional land this turn.\nII — You gain 3 life.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"G"
+]
+},
+{
+"name": "Likeness of the Seeker",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Monk",
+"oracle_text": "Whenever this creature becomes blocked, untap up to three lands you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "The Modern Age // Vector Glider",
+"oracle_id": "a8995df6-99a7-41a7-bd3e-f34643b27947",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Spirit",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "common",
+"collector_number": "66",
+"set": "neo",
+"card_faces": [
+{
+"name": "The Modern Age",
+"mana_cost": "{1}{U}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Draw a card, then discard a card.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"U"
+]
+},
+{
+"name": "Vector Glider",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Spirit",
+"oracle_text": "Flying",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+]
+}
+]
+},
+{
+"name": "Kitsune Ace",
+"oracle_id": "1dbadf75-28cd-4525-8f51-9c53049b9b54",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Fox Pilot",
+"oracle_text": "Whenever a Vehicle you control attacks, choose one —\n• That Vehicle gains first strike until end of turn.\n• Untap this creature.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "22",
+"set": "neo"
+},
+{
+"name": "Akki War Paint",
+"oracle_id": "e01ab6d8-8419-436e-a8fb-10aa46ca3d05",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nAs long as enchanted permanent is a creature, it gets +2/+1.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "132",
+"set": "neo"
+},
+{
+"name": "Colossal Skyturtle",
+"oracle_id": "871e4c4e-8105-4cb9-b1cd-53c5f8e64494",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}{U}",
+"cmc": 7.0,
+"type_line": "Enchantment Creature — Turtle",
+"oracle_text": "Flying, ward {2}\nChannel — {2}{G}, Discard this card: Return target card from your graveyard to your hand.\nChannel — {1}{U}, Discard this card: Return target creature to its owner's hand.",
+"power": "6",
+"toughness": "5",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Flying",
+"Ward",
+"Channel"
+],
+"rarity": "uncommon",
+"collector_number": "216",
+"set": "neo"
+},
+{
+"name": "Mothrider Patrol",
+"oracle_id": "c4073754-7d92-4976-8e7d-d6eb85b91608",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature — Fox Warrior",
+"oracle_text": "Flying\n{3}{W}, {T}: Tap target creature.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "30",
+"set": "neo"
+},
+{
+"name": "Life of Toshiro Umezawa // Memory of Toshiro",
+"oracle_id": "0a708566-2994-47b3-8d89-0547cc115e7c",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Enchantment — Saga // Enchantment Creature — Human Samurai",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "108",
+"set": "neo",
+"card_faces": [
+{
+"name": "Life of Toshiro Umezawa",
+"mana_cost": "{1}{B}",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI, II — Choose one —\n• Target creature gets +2/+2 until end of turn.\n• Target creature gets -1/-1 until end of turn.\n• You gain 2 life.\nIII — Exile this Saga, then return it to the battlefield transformed under your control.",
+"colors": [
+"B"
+]
+},
+{
+"name": "Memory of Toshiro",
+"mana_cost": "",
+"type_line": "Enchantment Creature — Human Samurai",
+"oracle_text": "{T}, Pay 1 life: Add {B}. Spend this mana only to cast an instant or sorcery spell.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B"
+]
+}
+]
+},
+{
+"name": "Towashi Songshaper",
+"oracle_id": "d2c7d10e-86d9-4e2d-a0da-2e39c172aae2",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Human Artificer",
+"oracle_text": "Whenever another artifact you control enters, this creature gets +1/+0 until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "167",
+"set": "neo"
+}
+]

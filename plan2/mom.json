@@ -1,0 +1,7190 @@
+[
+{
+"name": "War Historian",
+"oracle_id": "2676d0c3-0a24-4e93-ae80-8f3fe03da483",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Human Monk",
+"oracle_text": "Reach\nThis creature has indestructible as long as it attacked a battle this turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach"
+],
+"rarity": "common",
+"collector_number": "214",
+"set": "mom"
+},
+{
+"name": "Invasion of Tolvada // The Broken Sky",
+"oracle_id": "7f8dad7f-a573-469f-9095-4ba3886b4f0b",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Enchantment",
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "241",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Tolvada",
+"mana_cost": "{3}{W}{B}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, return target nonbattle permanent card from your graveyard to the battlefield.",
+"defense": "5",
+"colors": [
+"B",
+"W"
+]
+},
+{
+"name": "The Broken Sky",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "Creature tokens you control get +1/+0 and have lifelink.\nAt the beginning of your end step, create a 1/1 white and black Spirit creature token with flying.",
+"colors": [
+"B",
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "Flying",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B",
+"W"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Darksteel Splicer",
+"oracle_id": "63a0f0a2-bafc-4cd0-a4ed-42ce58cd3e9b",
+"layout": "normal",
+"mana_cost": "{6}{W}",
+"cmc": 7.0,
+"type_line": "Creature — Phyrexian Artificer",
+"oracle_text": "Whenever this creature or another nontoken Phyrexian you control enters, create X 3/3 colorless Phyrexian Golem artifact creature tokens, where X is the number of opponents you have.\nGolems you control have indestructible.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "100",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Golem",
+"type_line": "Token Artifact Creature — Phyrexian Golem",
+"oracle_text": "",
+"power": "3",
+"toughness": "3",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Gloomfang Mauler",
+"oracle_id": "5437f560-7f61-4326-be8e-15d74bf4e6ec",
+"layout": "normal",
+"mana_cost": "{5}{B}{B}",
+"cmc": 7.0,
+"type_line": "Creature — Nightmare",
+"oracle_text": "Swampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.)\nBackup 2 (When this creature enters, put two +1/+1 counters on target creature. If that's another creature, it gains the following ability until end of turn.)\nMenace",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Backup",
+"Landcycling",
+"Menace",
+"Typecycling",
+"Cycling",
+"Swampcycling"
+],
+"rarity": "common",
+"collector_number": "108",
+"set": "mom"
+},
+{
+"name": "Bright-Palm, Soul Awakener",
+"oracle_id": "f74888ee-5086-49a6-ae74-fd9894f46332",
+"layout": "normal",
+"mana_cost": "{1}{R}{G}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Fox Shaman",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhenever this creature attacks, double the number of +1/+1 counters on target creature. That creature can't be blocked by creatures with power 2 or less this turn.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"G",
+"R",
+"W"
+],
+"color_identity": [
+"G",
+"R",
+"W"
+],
+"keywords": [
+"Backup",
+"Double"
+],
+"rarity": "mythic",
+"collector_number": "88",
+"set": "moc"
+},
+{
+"name": "Vulpine Harvester",
+"oracle_id": "cc5e3a21-4911-49f8-8e3c-ab23812c4004",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Fox",
+"oracle_text": "Whenever one or more Phyrexians you control attack, return target artifact card from your graveyard to the battlefield if its mana value is less than or equal to their total power.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "106",
+"set": "moc"
+},
+{
+"name": "Shatter the Source",
+"oracle_id": "d8b3bcf2-1be1-46ed-9531-ca4ce98e3b3c",
+"layout": "normal",
+"mana_cost": "{5}{R}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nChoose one —\n• Shatter the Source deals 6 damage to target creature, planeswalker, or battle.\n• Destroy target artifact.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "164",
+"set": "mom"
+},
+{
+"name": "Flockchaser Phantom",
+"oracle_id": "6471335e-e054-4e68-b02e-052d65a2fdfc",
+"layout": "normal",
+"mana_cost": "{4}{W}{U}",
+"cmc": 6.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFlying, vigilance\nWhenever this creature attacks, the next spell you cast this turn has convoke.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Vigilance",
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "128",
+"set": "moc"
+},
+{
+"name": "Kithkin Billyrider",
+"oracle_id": "142d2063-d692-42a6-b828-42d998914589",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Kithkin Knight",
+"oracle_text": "Double strike",
+"power": "1",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Double strike"
+],
+"rarity": "common",
+"collector_number": "24",
+"set": "mom"
+},
+{
+"name": "Collective Nightmare",
+"oracle_id": "fa7b7db2-c830-405c-a5e6-e5431d573ed3",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nTarget creature gets -3/-3 until end of turn.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "95",
+"set": "mom"
+},
+{
+"name": "Seed of Hope",
+"oracle_id": "863d6607-912b-4186-9874-87d5473ec481",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Mill two cards. You may put a permanent card from among the milled cards into your hand. You gain 2 life. (To mill two cards, put the top two cards of your library into your graveyard.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "common",
+"collector_number": "204",
+"set": "mom",
+"related": [
+{
+"component": "combo_piece",
+"name": "Selfless Germinator",
+"type_line": "Creature — Treefolk Druid",
+"oracle_text": "Exhaust — {1}: Conjure a card named Seed of Hope into your hand.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"G"
+],
+"keywords": [
+"Exhaust",
+"Conjure"
+]
+}
+]
+},
+{
+"name": "Seedpod Caretaker",
+"oracle_id": "257fbe05-b2cb-493c-a116-49f9000b2384",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "When this creature enters, choose one —\n• Put a +1/+1 counter on target artifact or creature you control.\n• Transform target Incubator token you control.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "325",
+"set": "mom"
+},
+{
+"name": "Path of the Enigma",
+"oracle_id": "602f3203-91ae-423c-8a19-c6c1a5034f27",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Target player draws four cards.\nWill of the Planeswalkers — Starting with you, each player votes for planeswalk or chaos. If planeswalk gets more votes, planeswalk. If chaos gets more votes or the vote is tied, chaos ensues.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Will of the Planeswalkers"
+],
+"rarity": "rare",
+"collector_number": "23",
+"set": "moc"
+},
+{
+"name": "Final Flourish",
+"oracle_id": "63a85361-56bc-4209-aea8-b49319bc7b92",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Kicker—Sacrifice an artifact or creature. (You may sacrifice an artifact or creature in addition to any other costs as you cast this spell.)\nTarget creature gets -2/-2 until end of turn. If this spell was kicked, that creature gets -6/-6 until end of turn instead.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Kicker"
+],
+"rarity": "common",
+"collector_number": "104",
+"set": "mom"
+},
+{
+"name": "Angelic Intervention",
+"oracle_id": "3d036f68-5f3a-4182-88f0-cdd685817dd0",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature or planeswalker you control gains protection from colorless or from the color of your choice until end of turn. If it's a creature, put a +1/+1 counter on it. (It can't be blocked, targeted, dealt damage, enchanted, or equipped by anything with that quality.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "5",
+"set": "mom"
+},
+{
+"name": "Path of the Ghosthunter",
+"oracle_id": "b79c3ae8-ac25-4a16-a981-a41721040fad",
+"layout": "normal",
+"mana_cost": "{X}{1}{W}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Create X 1/1 white Spirit creature tokens with flying.\nWill of the Planeswalkers — Starting with you, each player votes for planeswalk or chaos. If planeswalk gets more votes, planeswalk. If chaos gets more votes or the vote is tied, chaos ensues.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Will of the Planeswalkers"
+],
+"rarity": "rare",
+"collector_number": "18",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "Flying",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Inga and Esika",
+"oracle_id": "3431ee42-c34a-4972-9488-41b83ba5f943",
+"layout": "normal",
+"mana_cost": "{2}{G}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human God",
+"oracle_text": "Creatures you control have vigilance and \"{T}: Add one mana of any color. Spend this mana only to cast a creature spell.\"\nWhenever you cast a creature spell, if three or more mana from creatures was spent to cast it, draw a card.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "229",
+"set": "mom"
+},
+{
+"name": "Karsus Depthguard",
+"oracle_id": "dc8c6803-dd87-4f00-8a92-9613dbe90549",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Lizard Warrior",
+"oracle_text": "Defender\nAs long as this creature's power is 5 or greater, it can attack as though it didn't have defender.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Defender"
+],
+"rarity": "common",
+"collector_number": "150",
+"set": "mom"
+},
+{
+"name": "Exsanguinator Cavalry",
+"oracle_id": "a867be6f-46ce-4a12-a827-9429bd94243f",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Knight",
+"oracle_text": "Menace, lifelink\nWhenever a Knight you control deals combat damage to a player, put a +1/+1 counter on that creature and create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Lifelink",
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "113",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Blood",
+"type_line": "Token Artifact — Blood",
+"oracle_text": "{1}, {T}, Discard a card, Sacrifice this token: Draw a card.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Knight-Errant of Eos",
+"oracle_id": "4bd20d79-0861-494a-a8f2-f6ddb5088004",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Convoke\nWhen this creature enters, look at the top six cards of your library. You may reveal up to two creature cards with mana value X or less from among them, where X is the number of creatures that convoked this creature. Put the revealed cards into your hand, then shuffle.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "346",
+"set": "mom"
+},
+{
+"name": "Moment of Truth",
+"oracle_id": "ef61fb5c-2ea6-4f82-92c5-c4713dee45fa",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Look at the top three cards of your library. Put one of those cards into your hand, one into your graveyard, and one on the bottom of your library.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "67",
+"set": "mom"
+},
+{
+"name": "Tandem Takedown",
+"oracle_id": "e8b0edb8-6a69-4760-9bcd-969c6c898a16",
+"layout": "normal",
+"mana_cost": "{1}{G}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Up to two target creatures you control each get +1/+0 until end of turn. They each deal damage equal to their power to another target creature, planeswalker, or battle.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "208",
+"set": "mom"
+},
+{
+"name": "Pyretic Prankster // Glistening Goremonger",
+"oracle_id": "f810e185-4498-483b-ab37-0c583dae0eaf",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Devil // Creature — Phyrexian Devil",
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "common",
+"collector_number": "157",
+"set": "mom",
+"card_faces": [
+{
+"name": "Pyretic Prankster",
+"mana_cost": "{1}{R}",
+"type_line": "Creature — Devil",
+"oracle_text": "{3}{B/P}: Transform this creature. Activate only as a sorcery. ({B/P} can be paid with either {B} or 2 life.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"R"
+]
+},
+{
+"name": "Glistening Goremonger",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Devil",
+"oracle_text": "When this creature dies, each opponent sacrifices an artifact or creature of their choice.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B",
+"R"
+]
+}
+]
+},
+{
+"name": "Interdisciplinary Mascot",
+"oracle_id": "74d9331b-832b-420b-9249-f2a58253a361",
+"layout": "normal",
+"mana_cost": "{6}{U}{U}",
+"cmc": 8.0,
+"type_line": "Creature — Elemental Fractal",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nWard {3}\nWhen this creature enters, look at the top four cards of your library. Put one of them into your hand and the rest on the bottom of your library in a random order.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Ward",
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "326",
+"set": "mom"
+},
+{
+"name": "Ichor Shade",
+"oracle_id": "083ea8b0-ff2a-406e-90f1-668f33443747",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Shade",
+"oracle_text": "At the beginning of your end step, if an artifact or creature was put into a graveyard from the battlefield this turn, put a +1/+1 counter on this creature.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "112",
+"set": "mom"
+},
+{
+"name": "Order of the Mirror // Order of the Alabaster Host",
+"oracle_id": "d849be9d-0447-4f0b-a382-3f4ceb98f9a5",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Human Knight // Creature — Phyrexian Knight",
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "common",
+"collector_number": "72",
+"set": "mom",
+"card_faces": [
+{
+"name": "Order of the Mirror",
+"mana_cost": "{1}{U}",
+"type_line": "Creature — Human Knight",
+"oracle_text": "{3}{W/P}: Transform this creature. Activate only as a sorcery. ({W/P} can be paid with either {W} or 2 life.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+]
+},
+{
+"name": "Order of the Alabaster Host",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Knight",
+"oracle_text": "Whenever this creature becomes blocked by a creature, the blocking creature gets -1/-1 until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U",
+"W"
+]
+}
+]
+},
+{
+"name": "Invasion of Gobakhan // Lightshield Array",
+"oracle_id": "86c32a56-3272-4738-b0b3-a8aa49a17ce4",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Enchantment",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "22",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Gobakhan",
+"mana_cost": "{1}{W}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, look at target opponent's hand. You may exile a nonland card from it. For as long as that card remains exiled, its owner may play it. A spell cast this way costs {2} more to cast.",
+"defense": "3",
+"colors": [
+"W"
+]
+},
+{
+"name": "Lightshield Array",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your end step, put a +1/+1 counter on each creature that attacked this turn.\nSacrifice this enchantment: Creatures you control gain hexproof and indestructible until end of turn.",
+"colors": [
+"W"
+]
+}
+]
+},
+{
+"name": "Orthion, Hero of Lavabrink",
+"oracle_id": "31895957-5fa8-46dc-a76e-37bbdc6072ad",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Soldier",
+"oracle_text": "{1}{R}, {T}: Create a token that's a copy of another target creature you control. It gains haste. Sacrifice it at the beginning of the next end step. Activate only as a sorcery.\n{6}{R}{R}{R}, {T}: Create five tokens that are copies of another target creature you control. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "379",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Path of the Schemer",
+"oracle_id": "9cdb1cf6-2bf1-401b-83ae-6f3f7512e5a6",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Each player mills two cards. Then you put a creature card from a graveyard onto the battlefield under your control. It's an artifact in addition to its other types.\nWill of the Planeswalkers — Starting with you, each player votes for planeswalk or chaos. If planeswalk gets more votes, planeswalk. If chaos gets more votes or the vote is tied, chaos ensues.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Will of the Planeswalkers",
+"Mill"
+],
+"rarity": "rare",
+"collector_number": "115",
+"set": "moc"
+},
+{
+"name": "Nahiri's Warcrafting",
+"oracle_id": "48838239-bec4-4a57-9858-425f0a937dc9",
+"layout": "normal",
+"mana_cost": "{1}{R}{R}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Nahiri's Warcrafting deals 5 damage to target creature, planeswalker, or battle. Look at the top X cards of your library, where X is the excess damage dealt this way. You may exile one of those cards. Put the rest on the bottom of your library in a random order. You may play the exiled card this turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "365",
+"set": "mom"
+},
+{
+"name": "Kroxa and Kunoros",
+"oracle_id": "56679f06-982b-4f33-9e48-ecc64c802393",
+"layout": "normal",
+"mana_cost": "{3}{R}{W}{B}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Elder Giant Dog",
+"oracle_text": "Vigilance, menace, lifelink\nWhenever Kroxa and Kunoros enters or attacks, you may exile five cards from your graveyard. When you do, return target creature card from your graveyard to the battlefield.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B",
+"R",
+"W"
+],
+"color_identity": [
+"B",
+"R",
+"W"
+],
+"keywords": [
+"Lifelink",
+"Vigilance",
+"Menace"
+],
+"rarity": "mythic",
+"collector_number": "245",
+"set": "mom"
+},
+{
+"name": "Mistmeadow Vanisher",
+"oracle_id": "5d11ada1-6459-4a91-bd10-66673dc1ad3c",
+"layout": "normal",
+"mana_cost": "{2}{W/U}",
+"cmc": 3.0,
+"type_line": "Creature — Kithkin Wizard",
+"oracle_text": "Whenever this creature becomes tapped, exile up to one target nonland, nontoken permanent. Return that card to the battlefield under its owner's control at the beginning of the next end step.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "129",
+"set": "moc"
+},
+{
+"name": "Wicked Slumber",
+"oracle_id": "5b27b794-580c-472d-b63e-99b271eb115d",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nTap up to two target creatures. Put a stun counter on either of them. Then put a stun counter on either of them. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "84",
+"set": "mom"
+},
+{
+"name": "Zephyr Winder",
+"oracle_id": "13c4437e-48a9-4c51-9b76-9e83e3ec362f",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Elemental",
+"oracle_text": "Flying\nWhenever this creature deals combat damage to a player, untap up to one target creature.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "328",
+"set": "mom"
+},
+{
+"name": "Phyrexian Censor",
+"oracle_id": "4c77de57-29fd-45ba-b2c7-eef231c6b7c7",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "Each player can't cast more than one non-Phyrexian spell each turn.\nNon-Phyrexian creatures enter tapped.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "31",
+"set": "mom"
+},
+{
+"name": "Alabaster Host Intercessor",
+"oracle_id": "d1d719e9-9c02-40cf-8849-91a5c120a516",
+"layout": "normal",
+"mana_cost": "{5}{W}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Samurai",
+"oracle_text": "When this creature enters, exile target creature an opponent controls until this creature leaves the battlefield.\nPlainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand, then shuffle.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Plainscycling",
+"Landcycling",
+"Typecycling",
+"Cycling"
+],
+"rarity": "common",
+"collector_number": "3",
+"set": "mom"
+},
+{
+"name": "Sword of Once and Future",
+"oracle_id": "1e0cf860-6be6-4b4b-9a67-0c19b6018ae1",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +2/+2 and has protection from blue and from black.\nWhenever equipped creature deals combat damage to a player, surveil 2. Then you may cast an instant or sorcery spell with mana value 2 or less from your graveyard without paying its mana cost. If that spell would be put into your graveyard, exile it instead.\nEquip {2}",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Surveil",
+"Equip"
+],
+"rarity": "mythic",
+"collector_number": "265",
+"set": "mom"
+},
+{
+"name": "Vengeant Earth",
+"oracle_id": "237b8528-a199-45f4-8efc-96d67119f738",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature or land you control becomes a 4/4 Elemental creature with haste in addition to its other types until end of turn. It must be blocked this turn if able.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "212",
+"set": "mom"
+},
+{
+"name": "Moira and Teshar",
+"oracle_id": "445ad01c-c899-424d-8666-ee7bb2a6e535",
+"layout": "normal",
+"mana_cost": "{3}{W}{B}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phyrexian Spirit Bird",
+"oracle_text": "Flying\nWhenever you cast a historic spell, return target nonland permanent card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead of putting it anywhere else. (Artifacts, legendaries, and Sagas are historic.)",
+"power": "4",
+"toughness": "5",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "mythic",
+"collector_number": "7",
+"set": "moc"
+},
+{
+"name": "Invasion of Arcavios // Invocation of the Founders",
+"oracle_id": "9794e31f-e73d-4aa0-a421-dc496080c987",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Enchantment",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "61",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Arcavios",
+"mana_cost": "{3}{U}{U}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, search your library, graveyard, and/or outside the game for an instant or sorcery card you own, reveal it, and put it into your hand. If you search your library this way, shuffle.",
+"defense": "7",
+"colors": [
+"U"
+]
+},
+{
+"name": "Invocation of the Founders",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "Whenever you cast an instant or sorcery spell from your hand, you may copy that spell. You may choose new targets for the copy.",
+"colors": [
+"U"
+]
+}
+]
+},
+{
+"name": "Djeru and Hazoret",
+"oracle_id": "2c0061ab-4123-4b0c-8286-3207e8f9497d",
+"layout": "normal",
+"mana_cost": "{2}{R}{R}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Human God",
+"oracle_text": "As long as you have one or fewer cards in hand, Djeru and Hazoret has vigilance and haste.\nWhenever Djeru and Hazoret attacks, look at the top six cards of your library. You may exile a legendary creature card from among them. Put the rest on the bottom of your library in a random order. Until end of turn, you may cast the exiled card without paying its mana cost.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "221",
+"set": "mom"
+},
+{
+"name": "Voldaren Thrillseeker",
+"oracle_id": "b3cc2ed9-1da3-4ad2-a9a7-de7665d800ff",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Warrior",
+"oracle_text": "Backup 2 (When this creature enters, put two +1/+1 counters on target creature. If that's another creature, it gains the following ability until end of turn.)\n{1}, Sacrifice this creature: It deals damage equal to its power to any target.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "rare",
+"collector_number": "171",
+"set": "mom"
+},
+{
+"name": "Deadly Derision",
+"oracle_id": "4b74d2d9-d75b-496e-bbb4-2b95b3d3ba55",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Destroy target creature or planeswalker. Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "common",
+"collector_number": "99",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Grafted Butcher",
+"oracle_id": "6c4a0e3d-c63c-4acf-8386-b51f1ec37463",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Samurai",
+"oracle_text": "When this creature enters, Phyrexians you control gain menace until end of turn.\nOther Phyrexians you control get +1/+1.\n{3}{B}, Sacrifice an artifact or creature: Return this card from your graveyard to the battlefield. Activate only as a sorcery.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "359",
+"set": "mom"
+},
+{
+"name": "Kasla, the Broken Halo",
+"oracle_id": "b2d4ce3c-00b1-4a72-b652-4c129475080f",
+"layout": "normal",
+"mana_cost": "{3}{U}{R}{W}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Angel Ally",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFlying, vigilance, haste\nWhenever you cast another spell that has convoke, scry 2, then draw a card.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Scry",
+"Flying",
+"Vigilance",
+"Haste",
+"Convoke"
+],
+"rarity": "mythic",
+"collector_number": "92",
+"set": "moc"
+},
+{
+"name": "Burning Sun's Fury",
+"oracle_id": "9c0073d7-a12a-45ba-8ac3-9e2230e2fb06",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nUp to two target creatures each get +2/+0 and gain haste until end of turn.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "133",
+"set": "mom"
+},
+{
+"name": "Zhalfirin Lancer",
+"oracle_id": "5adcd0cb-9305-4e77-a117-31e9dca5c96d",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Whenever another Knight you control enters, this creature gets +1/+1 and gains vigilance until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "45",
+"set": "mom"
+},
+{
+"name": "Sandsteppe War Riders",
+"oracle_id": "461c0c37-7213-4ece-91f7-934e6a1a8d64",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Trample\nAt the beginning of combat on your turn, bolster X, where X is the number of differently named artifact tokens you control. (Choose a creature with the least toughness among creatures you control and put X +1/+1 counters on it.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Trample",
+"Bolster"
+],
+"rarity": "rare",
+"collector_number": "126",
+"set": "moc"
+},
+{
+"name": "Vorinclex // The Grand Evolution",
+"oracle_id": "166e5680-b8cf-47da-bcae-3591367c5fb4",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phyrexian Praetor // Enchantment — Saga",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Transform",
+"Trample",
+"Fight",
+"Mill"
+],
+"rarity": "mythic",
+"collector_number": "301",
+"set": "mom",
+"card_faces": [
+{
+"name": "Vorinclex",
+"mana_cost": "{3}{G}{G}",
+"type_line": "Legendary Creature — Phyrexian Praetor",
+"oracle_text": "Reach, trample\nWhen Vorinclex enters, search your library for up to two Forest cards, reveal them, put them into your hand, then shuffle.\n{6}{G}{G}: Exile Vorinclex, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G"
+]
+},
+{
+"name": "The Grand Evolution",
+"mana_cost": "",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — Mill ten cards. Put up to two creature cards from among the milled cards onto the battlefield.\nII — Distribute seven +1/+1 counters among any number of target creatures you control.\nIII — Until end of turn, creatures you control gain \"{1}: This creature fights target creature you don't control.\" Exile this Saga, then return it to the battlefield (front face up).",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Artistic Refusal",
+"oracle_id": "ff192482-3808-4291-a31e-3dfaeb49cda2",
+"layout": "normal",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nChoose one or both —\n• Counter target spell.\n• Draw two cards, then discard a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "46",
+"set": "mom"
+},
+{
+"name": "Infernal Sovereign",
+"oracle_id": "b08cb220-34fe-4c54-b654-64a3c24dba44",
+"layout": "normal",
+"mana_cost": "{4}{B}{B}",
+"cmc": 6.0,
+"type_line": "Creature — Demon",
+"oracle_text": "Flying, trample\nSkip your draw step.\nWhenever you play a land or cast a spell, you draw a card and you lose 1 life.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Trample"
+],
+"rarity": "mythic",
+"collector_number": "83",
+"set": "moc"
+},
+{
+"name": "Seal from Existence",
+"oracle_id": "72c4c682-df97-4408-997b-e849f54aba39",
+"layout": "normal",
+"mana_cost": "{1}{W}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "Ward {3} (Whenever this enchantment becomes the target of a spell or ability an opponent controls, counter it unless that player pays {3}.)\nWhen this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Ward"
+],
+"rarity": "uncommon",
+"collector_number": "35",
+"set": "mom"
+},
+{
+"name": "Furnace Host Charger",
+"oracle_id": "fea60c45-cc36-4dd1-8475-23a9361e370d",
+"layout": "normal",
+"mana_cost": "{5}{R}",
+"cmc": 6.0,
+"type_line": "Creature — Phyrexian Giant",
+"oracle_text": "Haste\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)",
+"power": "5",
+"toughness": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Mountaincycling",
+"Landcycling",
+"Haste",
+"Typecycling",
+"Cycling"
+],
+"rarity": "common",
+"collector_number": "140",
+"set": "mom"
+},
+{
+"name": "Tidal Terror",
+"oracle_id": "e7866ce6-d507-4221-bb19-d3e6fd7b57d8",
+"layout": "normal",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Creature — Octopus",
+"oracle_text": "Whenever this creature attacks, you may tap two other untapped creatures you control. If you do, this creature can't be blocked this turn.\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)",
+"power": "5",
+"toughness": "6",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Islandcycling",
+"Landcycling",
+"Typecycling",
+"Cycling"
+],
+"rarity": "common",
+"collector_number": "82",
+"set": "mom"
+},
+{
+"name": "Rashmi and Ragavan",
+"oracle_id": "bdef246c-cf66-40a1-aae4-a591846e73ca",
+"layout": "normal",
+"mana_cost": "{1}{G}{U}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Elf Monkey",
+"oracle_text": "Whenever you cast your first spell during each of your turns, exile the top card of target opponent's library and create a Treasure token. Then you may cast the exiled card without paying its mana cost if it's a spell with mana value less than the number of artifacts you control. If you don't cast it this way, you may cast it this turn.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"G",
+"R",
+"U"
+],
+"color_identity": [
+"G",
+"R",
+"U"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "mythic",
+"collector_number": "8",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Gimbal, Gremlin Prodigy",
+"oracle_id": "e7441404-71ff-449e-812b-18cd52eabb98",
+"layout": "normal",
+"mana_cost": "{2}{G}{U}{R}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Gremlin Artificer",
+"oracle_text": "Artifact creatures you control have trample.\nAt the beginning of your end step, create a 0/0 red Gremlin artifact creature token. Put X +1/+1 counters on it, where X is the number of differently named artifact tokens you control.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"R",
+"U"
+],
+"color_identity": [
+"G",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "91",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Gremlin",
+"type_line": "Token Artifact Creature — Gremlin",
+"oracle_text": "",
+"power": "0",
+"toughness": "0",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Schema Thief",
+"oracle_id": "9495b2b4-21bf-488b-a64e-74592bb277d9",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Vedalken Rogue Artificer",
+"oracle_text": "Flying\nWhenever this creature deals combat damage to a player, create a token that's a copy of target artifact that player controls.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "111",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Invasion of Kamigawa // Rooftop Saboteurs",
+"oracle_id": "462fa2a4-651b-4fc1-b73b-1bd4508c8f75",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Creature — Moonfolk Ninja",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "62",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Kamigawa",
+"mana_cost": "{3}{U}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, tap target artifact or creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+"defense": "4",
+"colors": [
+"U"
+]
+},
+{
+"name": "Rooftop Saboteurs",
+"mana_cost": "",
+"type_line": "Creature — Moonfolk Ninja",
+"oracle_text": "Flying\nWhenever this creature deals combat damage to a player or battle, draw a card.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+]
+}
+]
+},
+{
+"name": "Invasion of Alara // Awaken the Maelstrom",
+"oracle_id": "8faa4330-07bb-4b65-810a-bbce29d3cd42",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Sorcery",
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "230",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Alara",
+"mana_cost": "{W}{U}{B}{R}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "When this Siege enters, exile cards from the top of your library until you exile two nonland cards with mana value 4 or less. You may cast one of those two cards without paying its mana cost. Put one of them into your hand. Then put the other cards exiled this way on the bottom of your library in a random order.",
+"defense": "7",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+]
+},
+{
+"name": "Awaken the Maelstrom",
+"mana_cost": "",
+"type_line": "Sorcery",
+"oracle_text": "Awaken the Maelstrom is all colors.\nTarget player draws two cards. You may put an artifact card from your hand onto the battlefield. Create a token that's a copy of a permanent you control. Distribute three +1/+1 counters among one, two, or three creatures you control. Destroy target permanent an opponent controls.",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Chomping Kavu",
+"oracle_id": "20a362c3-d278-437f-881c-e7d9fe78fc2d",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Kavu",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nThis creature can't be blocked by creatures with power 2 or less.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "common",
+"collector_number": "179",
+"set": "mom"
+},
+{
+"name": "Transcendent Message",
+"oracle_id": "1f7f7765-aeb9-4e47-a6b9-ce823bb29e33",
+"layout": "normal",
+"mana_cost": "{X}{U}{U}{U}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDraw X cards.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "83",
+"set": "mom"
+},
+{
+"name": "Conclave Sledge-Captain",
+"oracle_id": "e09e7bb8-2665-4081-b75a-628a8bc0a3cd",
+"layout": "normal",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Elephant Soldier",
+"oracle_text": "Backup 1, backup 1, backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following abilities until end of turn. Each backup ability triggers separately.)\nTrample\nWhenever this creature deals combat damage to a player, put that many +1/+1 counters on it.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Backup",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "123",
+"set": "moc"
+},
+{
+"name": "Omnath, Locus of All",
+"oracle_id": "26445dc7-8363-4205-aee8-1cafeb4ba4c0",
+"layout": "normal",
+"mana_cost": "{W}{U}{B/P}{R}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Phyrexian Elemental",
+"oracle_text": "If you would lose unspent mana, that mana becomes black instead.\nAt the beginning of your first main phase, look at the top card of your library. You may reveal that card if it has three or more colored mana symbols in its mana cost. If you do, add three mana in any combination of its colors and put it into your hand. If you don't reveal it, put it into your hand.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "249",
+"set": "mom"
+},
+{
+"name": "Borborygmos and Fblthp",
+"oracle_id": "22d9eef5-0f86-4d1a-bde0-65b990d4be75",
+"layout": "normal",
+"mana_cost": "{2}{G}{U}{R}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Cyclops Homunculus",
+"oracle_text": "Whenever Borborygmos and Fblthp enters or attacks, draw a card, then you may discard any number of land cards. When you discard one or more cards this way, Borborygmos and Fblthp deals twice that much damage to target creature.\n{1}{U}: Put Borborygmos and Fblthp into its owner's library third from the top.",
+"power": "6",
+"toughness": "5",
+"colors": [
+"G",
+"R",
+"U"
+],
+"color_identity": [
+"G",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "219",
+"set": "mom"
+},
+{
+"name": "Failed Conversion",
+"oracle_id": "e0930791-72b0-4d8b-b242-7b4094fed14e",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nEnchanted creature gets -4/-4.\nWhen enchanted creature dies, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Surveil",
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "103",
+"set": "mom"
+},
+{
+"name": "Elenda and Azor",
+"oracle_id": "4b9f463f-3786-4374-bf77-739ae162b3ba",
+"layout": "normal",
+"mana_cost": "{3}{W}{U}{B}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Vampire Knight Sphinx",
+"oracle_text": "Flying, ward {2}\nWhenever Elenda and Azor attacks, you may pay {X}{W}{U}{B}. If you do, draw X cards.\nAt the beginning of each end step, you may pay 4 life. If you do, create a number of 1/1 black Vampire Knight creature tokens with lifelink equal to the number of cards you've drawn this turn.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"B",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Ward"
+],
+"rarity": "mythic",
+"collector_number": "6",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Vampire Knight",
+"type_line": "Token Creature — Vampire Knight",
+"oracle_text": "Lifelink",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"keywords": [
+"Lifelink"
+]
+}
+]
+},
+{
+"name": "Archangel Elspeth",
+"oracle_id": "0b2481d6-97a0-4f92-b7e5-3451863fd7fb",
+"layout": "normal",
+"mana_cost": "{2}{W}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Planeswalker — Elspeth",
+"oracle_text": "+1: Create a 1/1 white Soldier creature token with lifelink.\n−2: Put two +1/+1 counters on target creature. It becomes an Angel in addition to its other types and gains flying.\n−6: Return all nonland permanent cards with mana value 3 or less from your graveyard to the battlefield.",
+"loyalty": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "6",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Soldier",
+"type_line": "Token Creature — Soldier",
+"oracle_text": "Lifelink",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"keywords": [
+"Lifelink"
+]
+}
+]
+},
+{
+"name": "Stasis Field",
+"oracle_id": "83633ea1-a8d5-4351-9047-625d6905386d",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nEnchanted creature has base power and toughness 0/2, has defender, and loses all other abilities.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "79",
+"set": "mom"
+},
+{
+"name": "Saiba Cryptomancer",
+"oracle_id": "15f89b06-5025-4c9f-bf51-e25bc5c2dd6b",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Moonfolk Ninja",
+"oracle_text": "Flash\nBackup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nHexproof",
+"power": "0",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Backup",
+"Hexproof",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "76",
+"set": "mom"
+},
+{
+"name": "Katilda and Lier",
+"oracle_id": "1990012e-2a92-4e76-917a-f90fb7a4ed66",
+"layout": "normal",
+"mana_cost": "{G}{W}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human",
+"oracle_text": "Whenever you cast a Human spell, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost. (You may cast that card from your graveyard for its flashback cost. Then exile it.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"U",
+"W"
+],
+"color_identity": [
+"G",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "446",
+"set": "moc"
+},
+{
+"name": "Pain Distributor",
+"oracle_id": "435df16b-3dd4-446e-a643-f9478aaa47c0",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Devil Citizen",
+"oracle_text": "Menace\nWhenever a player casts their first spell each turn, they create a Treasure token.\nWhenever an artifact an opponent controls is put into a graveyard from the battlefield, this creature deals 1 damage to that player.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure",
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "33",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Stormclaw Rager",
+"oracle_id": "d1a77708-7ddf-4645-bf1e-1d8147a57f23",
+"layout": "normal",
+"mana_cost": "{1}{B}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Ogre Warrior",
+"oracle_text": "{1}, Sacrifice another creature or artifact: Put a +1/+1 counter on this creature and draw a card. Activate only as a sorcery.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "254",
+"set": "mom"
+},
+{
+"name": "Redcap Heelslasher",
+"oracle_id": "d2134b68-d73f-4090-aaec-b2ee5c9f9f04",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Goblin Rogue",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nFirst strike",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Backup",
+"First strike"
+],
+"rarity": "common",
+"collector_number": "161",
+"set": "mom"
+},
+{
+"name": "Wand of the Worldsoul",
+"oracle_id": "3d175a59-c1b4-43b8-8a1f-f7cbcefe130e",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters tapped.\n{T}: Add {W}.\n{T}: The next spell you cast this turn has convoke.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "20",
+"set": "moc"
+},
+{
+"name": "Cutthroat Negotiator",
+"oracle_id": "af14101a-9cc0-4bd3-a9f9-2726353e40ff",
+"layout": "normal",
+"mana_cost": "{2}{U}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Orc Pirate",
+"oracle_text": "Parley — Whenever this creature attacks, each player reveals the top card of their library. For each nonland card revealed this way, you create a tapped Treasure token. Then each player draws a card.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"R",
+"U"
+],
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [
+"Treasure",
+"Parley"
+],
+"rarity": "rare",
+"collector_number": "127",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Iridescent Blademaster",
+"oracle_id": "5e1fd76b-46c8-41b5-87b3-e078f7a47535",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Elf Warrior",
+"oracle_text": "{3}{G}: This creature gets +2/+2 until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "195",
+"set": "mom"
+},
+{
+"name": "Invasion of Mercadia // Kyren Flamewright",
+"oracle_id": "dd5a9ea5-0f27-4492-97d1-1a9970094c19",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Creature — Goblin Spellshaper",
+"color_identity": [
+"R"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "147",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Mercadia",
+"mana_cost": "{1}{R}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, you may discard a card. If you do, draw two cards.",
+"defense": "4",
+"colors": [
+"R"
+]
+},
+{
+"name": "Kyren Flamewright",
+"mana_cost": "",
+"type_line": "Creature — Goblin Spellshaper",
+"oracle_text": "{2}{R}, {T}, Discard a card: Create two 1/1 blue and red Elemental creature tokens. Creatures you control get +1/+0 and gain haste until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Elemental",
+"type_line": "Token Creature — Elemental",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R",
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Herbology Instructor // Malady Invoker",
+"oracle_id": "bf0ff4b9-3543-4cfa-bfcd-f9504d27f00f",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Treefolk Druid // Creature — Phyrexian Treefolk",
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "189",
+"set": "mom",
+"card_faces": [
+{
+"name": "Herbology Instructor",
+"mana_cost": "{1}{G}",
+"type_line": "Creature — Treefolk Druid",
+"oracle_text": "When this creature enters, you gain 3 life.\n{6}{B/P}: Transform this creature. Activate only as a sorcery. ({B/P} can be paid with either {B} or 2 life.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"G"
+]
+},
+{
+"name": "Malady Invoker",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Treefolk",
+"oracle_text": "When this creature transforms into Malady Invoker, target creature an opponent controls gets -0/-X until end of turn, where X is this creature's power.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G"
+]
+}
+]
+},
+{
+"name": "Zephyr Singer",
+"oracle_id": "1800ae74-0b54-4547-ab8f-ea61418d73e8",
+"layout": "normal",
+"mana_cost": "{2}{U}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Siren Pirate",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFlying, vigilance\nWhen this creature enters, put a flying counter on each creature that convoked it.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Vigilance",
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "355",
+"set": "mom"
+},
+{
+"name": "Archpriest of Shadows",
+"oracle_id": "7b03910a-2ca7-40cb-9c71-1c2cc856a287",
+"layout": "normal",
+"mana_cost": "{3}{B}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Human Warlock",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following abilities until end of turn.)\nDeathtouch\nWhenever this creature deals combat damage to a player or battle, return target creature card from your graveyard to the battlefield.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Backup",
+"Deathtouch"
+],
+"rarity": "rare",
+"collector_number": "356",
+"set": "mom"
+},
+{
+"name": "Invasion of Theros // Ephara, Ever-Sheltering",
+"oracle_id": "ba5f7f37-352a-4b9c-b648-0ba5c8d842fc",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Battle — Siege // Legendary Enchantment Creature — God",
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "23",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Theros",
+"mana_cost": "{2}{W}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, search your library for an Aura, God, or Demigod card, reveal it, put it into your hand, then shuffle.",
+"defense": "4",
+"colors": [
+"W"
+]
+},
+{
+"name": "Ephara, Ever-Sheltering",
+"mana_cost": "",
+"type_line": "Legendary Enchantment Creature — God",
+"oracle_text": "Ephara has lifelink and indestructible as long as you control at least three other enchantments.\nWhenever another enchantment you control enters, draw a card.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"U",
+"W"
+]
+}
+]
+},
+{
+"name": "Referee Squad",
+"oracle_id": "e14532e9-ecc2-4028-b99e-3629533962bc",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Homunculus",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nVigilance\nWhen this creature enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Vigilance",
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "327",
+"set": "mom"
+},
+{
+"name": "Thalia and The Gitrog Monster",
+"oracle_id": "422a76e1-97a2-4a90-b07d-f487a2d8c236",
+"layout": "normal",
+"mana_cost": "{1}{W}{B}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Frog Horror",
+"oracle_text": "First strike, deathtouch\nYou may play an additional land on each of your turns.\nCreatures and nonbasic lands your opponents control enter tapped.\nWhenever Thalia and The Gitrog Monster attacks, sacrifice a creature or land, then draw a card.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"G",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"W"
+],
+"keywords": [
+"First strike",
+"Deathtouch"
+],
+"rarity": "mythic",
+"collector_number": "316",
+"set": "mom"
+},
+{
+"name": "Preening Champion",
+"oracle_id": "e1c458ca-10f6-4da8-a93d-3adfb86fe97d",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Bird Knight",
+"oracle_text": "Flying\nWhen this creature enters, create a 1/1 blue and red Elemental creature token.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "73",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Elemental",
+"type_line": "Token Creature — Elemental",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R",
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Etched Familiar",
+"oracle_id": "e2bc064e-4739-4eb1-ba44-1fd92b2829d7",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Phyrexian Fox",
+"oracle_text": "When this creature dies, each opponent loses 2 life and you gain 2 life.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "101",
+"set": "mom"
+},
+{
+"name": "Scrappy Bruiser",
+"oracle_id": "2976f47b-9626-4934-bcee-7ee7f57944c3",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Raccoon Warrior",
+"oracle_text": "Whenever this creature attacks, up to one target attacking creature gets +2/+0 and gains trample until end of turn. Return that creature to its owner's hand at end of combat. (Return it only if it's on the battlefield.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "382",
+"set": "mom"
+},
+{
+"name": "Doomskar Warrior",
+"oracle_id": "7ac00312-8963-4fee-8561-1a54e533adbb",
+"layout": "normal",
+"mana_cost": "{2}{G}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Backup 1\nTrample\nWhenever this creature deals combat damage to a player or battle, look at that many cards from the top of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Backup",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "370",
+"set": "mom"
+},
+{
+"name": "Polukranos Reborn // Polukranos, Engine of Ruin",
+"oracle_id": "7a9fa906-b43e-4d98-b134-5936d3085851",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Hydra // Legendary Creature — Phyrexian Hydra",
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Lifelink",
+"Reach",
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "200",
+"set": "mom",
+"card_faces": [
+{
+"name": "Polukranos Reborn",
+"mana_cost": "{G}{G}{G}",
+"type_line": "Legendary Creature — Hydra",
+"oracle_text": "Reach\n{6}{W/P}: Transform Polukranos Reborn. Activate only as a sorcery. ({W/P} can be paid with either {W} or 2 life.)",
+"power": "4",
+"toughness": "5",
+"colors": [
+"G"
+]
+},
+{
+"name": "Polukranos, Engine of Ruin",
+"mana_cost": "",
+"type_line": "Legendary Creature — Phyrexian Hydra",
+"oracle_text": "Reach, lifelink\nWhenever Polukranos or another nontoken Hydra you control dies, create a 3/3 green and white Phyrexian Hydra creature token with reach and a 3/3 green and white Phyrexian Hydra creature token with lifelink.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G",
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Hydra",
+"type_line": "Token Creature — Phyrexian Hydra",
+"oracle_text": "Reach",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+],
+"keywords": [
+"Reach"
+]
+},
+{
+"component": "token",
+"name": "Phyrexian Hydra",
+"type_line": "Token Creature — Phyrexian Hydra",
+"oracle_text": "Lifelink",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+],
+"keywords": [
+"Lifelink"
+]
+}
+]
+},
+{
+"name": "Mirror-Shield Hoplite",
+"oracle_id": "23f01235-b5a5-4b2e-a90b-b49fc0c7b18d",
+"layout": "normal",
+"mana_cost": "{R}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Human Soldier",
+"oracle_text": "Vigilance\nWhenever a creature you control becomes the target of a backup ability, copy that ability. You may choose new targets for the copy. This ability triggers only once each turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "247",
+"set": "mom"
+},
+{
+"name": "Invasion of Ulgrotha // Grandmother Ravi Sengir",
+"oracle_id": "f1acb469-9d02-44e6-8c09-8b4157551b2c",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Legendary Creature — Human Wizard",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "116",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Ulgrotha",
+"mana_cost": "{4}{B}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, it deals 3 damage to any other target and you gain 3 life.",
+"defense": "5",
+"colors": [
+"B"
+]
+},
+{
+"name": "Grandmother Ravi Sengir",
+"mana_cost": "",
+"type_line": "Legendary Creature — Human Wizard",
+"oracle_text": "Flying\nWhenever a creature an opponent controls dies, put a +1/+1 counter on Grandmother Ravi Sengir and you gain 1 life.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+]
+}
+]
+},
+{
+"name": "Disturbing Conversion",
+"oracle_id": "adde6737-516c-4d6f-9363-388ad37d4114",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Flash\nEnchant creature\nWhen this Aura enters, each player mills two cards.\nEnchanted creature gets -X/-0, where X is the number of cards in its controller's graveyard.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Flash",
+"Mill"
+],
+"rarity": "common",
+"collector_number": "54",
+"set": "mom"
+},
+{
+"name": "Mutagen Connoisseur",
+"oracle_id": "07b4f5b5-47ef-43a5-af71-51693d775d4b",
+"layout": "normal",
+"mana_cost": "{1}{G}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Vedalken Mutant",
+"oracle_text": "Flying, vigilance\nThis creature gets +1/+0 for each transformed permanent you control.",
+"power": "0",
+"toughness": "5",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Flying",
+"Vigilance",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "248",
+"set": "mom"
+},
+{
+"name": "Deluxe Dragster",
+"oracle_id": "56ba8fe5-8693-4783-8406-9ced99de0b2a",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "This Vehicle can't be blocked except by Vehicles.\nWhenever this Vehicle deals combat damage to a player, you may cast target instant or sorcery card from that player's graveyard without paying its mana cost. If that spell would be put into a graveyard, exile it instead.\nCrew 2",
+"power": "4",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Crew"
+],
+"rarity": "rare",
+"collector_number": "21",
+"set": "moc"
+},
+{
+"name": "Fearless Skald",
+"oracle_id": "f055a941-8b83-464e-a57f-8f188dc69aaa",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Dwarf Berserker",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nDouble strike",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Backup",
+"Double strike"
+],
+"rarity": "uncommon",
+"collector_number": "138",
+"set": "mom"
+},
+{
+"name": "Path of the Pyromancer",
+"oracle_id": "b908fad9-25a6-441b-bba8-0d7fc12ee2dc",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Discard all the cards in your hand. Add {R} for each card discarded this way, then draw that many cards plus one.\nWill of the Planeswalkers — Starting with you, each player votes for planeswalk or chaos. If planeswalk gets more votes, planeswalk. If chaos gets more votes or the vote is tied, chaos ensues.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Will of the Planeswalkers"
+],
+"rarity": "rare",
+"collector_number": "34",
+"set": "moc"
+},
+{
+"name": "Dreg Recycler",
+"oracle_id": "556c4dad-002e-41a8-8ba3-8b4eda70232f",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "{T}, Sacrifice an artifact or creature: Each opponent loses 1 life and you gain 1 life.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "100",
+"set": "mom"
+},
+{
+"name": "Coming In Hot",
+"oracle_id": "9666729d-3a06-43f9-a957-d5cc4d25b974",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +1/+0 and gains first strike until end of turn. Scry 1. (Look at the top card of your library. You may put that card on the bottom.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Scry"
+],
+"rarity": "common",
+"collector_number": "136",
+"set": "mom"
+},
+{
+"name": "Invasion of Kaladesh // Aetherwing, Golden-Scale Flagship",
+"oracle_id": "bc6f4f73-e10c-44ae-926d-9e5f6ddc14be",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Legendary Artifact — Vehicle",
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [
+"Flying",
+"Transform",
+"Crew"
+],
+"rarity": "uncommon",
+"collector_number": "234",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Kaladesh",
+"mana_cost": "{U}{R}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, create a 1/1 colorless Thopter artifact creature token with flying.",
+"defense": "4",
+"colors": [
+"R",
+"U"
+]
+},
+{
+"name": "Aetherwing, Golden-Scale Flagship",
+"mana_cost": "",
+"type_line": "Legendary Artifact — Vehicle",
+"oracle_text": "Flying\nAetherwing's power is equal to the number of artifacts you control.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "*",
+"toughness": "4",
+"colors": [
+"R",
+"U"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Thopter",
+"type_line": "Token Artifact Creature — Thopter",
+"oracle_text": "Flying",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Invasion of Belenon // Belenon War Anthem",
+"oracle_id": "e462e78d-2d26-4a2d-8d8f-5f31abe5c924",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Battle — Siege // Enchantment",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "20",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Belenon",
+"mana_cost": "{2}{W}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, create a 2/2 white and blue Knight creature token with vigilance.",
+"defense": "5",
+"colors": [
+"W"
+]
+},
+{
+"name": "Belenon War Anthem",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "Creatures you control get +1/+1.",
+"colors": [
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Knight",
+"type_line": "Token Creature — Knight",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U",
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Invasion of Pyrulea // Gargantuan Slabhorn",
+"oracle_id": "323437f5-cc6c-4579-b591-499476dffb3c",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Creature — Beast",
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Transform",
+"Trample",
+"Ward",
+"Scry"
+],
+"rarity": "uncommon",
+"collector_number": "240",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Pyrulea",
+"mana_cost": "{G}{U}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, scry 3, then reveal the top card of your library. If it's a land or double-faced card, draw a card.",
+"defense": "4",
+"colors": [
+"G",
+"U"
+]
+},
+{
+"name": "Gargantuan Slabhorn",
+"mana_cost": "",
+"type_line": "Creature — Beast",
+"oracle_text": "Trample, ward {2}\nOther transformed permanents you control have trample and ward {2}.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"U"
+]
+}
+]
+},
+{
+"name": "Meeting of Minds",
+"oracle_id": "3b91dc3e-46ef-4a68-829f-ef7d79598cf7",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDraw two cards.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "66",
+"set": "mom"
+},
+{
+"name": "Conjurer's Mantle",
+"oracle_id": "21b520c6-c94a-475a-a824-dd96394ea55b",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +1/+1 and has vigilance.\nWhenever equipped creature attacks, look at the top six cards of your library. You may reveal a card that shares a creature type with that creature from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\nEquip {1}",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "rare",
+"collector_number": "12",
+"set": "moc"
+},
+{
+"name": "Urabrask // The Great Work",
+"oracle_id": "4b1da9aa-a30c-44b8-a10e-f9dc3fe70b6f",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Phyrexian Praetor // Enchantment — Saga",
+"color_identity": [
+"R"
+],
+"keywords": [
+"Transform",
+"First strike",
+"Treasure"
+],
+"rarity": "mythic",
+"collector_number": "299",
+"set": "mom",
+"card_faces": [
+{
+"name": "Urabrask",
+"mana_cost": "{2}{R}{R}",
+"type_line": "Legendary Creature — Phyrexian Praetor",
+"oracle_text": "First strike\nWhenever you cast an instant or sorcery spell, Urabrask deals 1 damage to target opponent. Add {R}.\n{R}: Exile Urabrask, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery and only if you've cast three or more instant and/or sorcery spells this turn.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R"
+]
+},
+{
+"name": "The Great Work",
+"mana_cost": "",
+"type_line": "Enchantment — Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI — This Saga deals 3 damage to target opponent and each creature they control.\nII — Create three Treasure tokens.\nIII — Until end of turn, you may cast instant and sorcery spells from any graveyard. If a spell cast this way would be put into a graveyard, exile it instead. Exile this Saga, then return it to the battlefield (front face up).",
+"colors": [
+"R"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Errant and Giada",
+"oracle_id": "24697554-02fa-48ba-b51d-6bba3f85c293",
+"layout": "normal",
+"mana_cost": "{1}{W}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Angel",
+"oracle_text": "Flash\nFlying\nYou may look at the top card of your library any time.\nYou may cast spells with flash or flying from the top of your library.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Flash"
+],
+"rarity": "rare",
+"collector_number": "224",
+"set": "mom"
+},
+{
+"name": "Saint Traft and Rem Karolus",
+"oracle_id": "3a1be8b3-16e2-4fae-bea7-3a98f2f9db38",
+"layout": "normal",
+"mana_cost": "{U}{R}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Spirit Human",
+"oracle_text": "Whenever Saint Traft and Rem Karolus becomes tapped, create a 1/1 red Human creature token if this is the first time this ability has resolved this turn. If it's the second time, create a 1/1 blue Spirit creature token with flying. If it's the third time, create a 4/4 white Angel creature token with flying.\nWhenever you cast a spell that has convoke, untap Saint Traft and Rem Karolus.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "9",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Angel",
+"type_line": "Token Creature — Angel",
+"oracle_text": "Flying",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"keywords": [
+"Flying"
+]
+},
+{
+"component": "token",
+"name": "Human",
+"type_line": "Token Creature — Human",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+},
+{
+"component": "token",
+"name": "Spirit",
+"type_line": "Token Creature — Spirit",
+"oracle_text": "Flying",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Knight of the New Coalition",
+"oracle_id": "30ab812f-a055-4c68-ad81-9dd23e38827f",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Vigilance\nWhen this creature enters, create a 2/2 white and blue Knight creature token with vigilance.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "common",
+"collector_number": "25",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Knight",
+"type_line": "Token Creature — Knight",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U",
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Oculus Whelp",
+"oracle_id": "89ff1b0a-0cf3-455e-a381-1d93ef86a41b",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Dragon",
+"oracle_text": "Flying\nAs long as you control a transformed permanent, this creature has \"When this creature dies, draw a card.\"",
+"power": "3",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "common",
+"collector_number": "69",
+"set": "mom"
+},
+{
+"name": "Bloodfeather Phoenix",
+"oracle_id": "f4490b09-dc55-47ed-a573-4ae0b95725b1",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Phoenix",
+"oracle_text": "Flying\nThis creature can't block.\nWhenever an instant or sorcery spell you control deals damage to an opponent or battle, you may pay {R}. If you do, return this card from your graveyard to the battlefield. It gains haste until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "362",
+"set": "mom"
+},
+{
+"name": "Goro-Goro and Satoru",
+"oracle_id": "854bdd4a-d549-41d5-af43-0e2154ed017e",
+"layout": "normal",
+"mana_cost": "{U}{B}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Goblin Human",
+"oracle_text": "Whenever one or more creatures you control that entered this turn deal combat damage to a player, create a 5/5 red Dragon Spirit creature token with flying.\n{1}{R}: Creatures you control gain haste until end of turn.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B",
+"R",
+"U"
+],
+"color_identity": [
+"B",
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "445",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Dragon Spirit",
+"type_line": "Token Creature — Dragon Spirit",
+"oracle_text": "Flying",
+"power": "5",
+"toughness": "5",
+"colors": [
+"R"
+],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Halo-Charged Skaab",
+"oracle_id": "d7dcd1a3-3163-4e26-94e8-f4072e477e6a",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature — Zombie",
+"oracle_text": "When this creature enters, each player mills two cards. Then you may put an instant, sorcery, or battle card from your graveyard on top of your library. (To mill two cards, a player puts the top two cards of their library into their graveyard.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "common",
+"collector_number": "60",
+"set": "mom"
+},
+{
+"name": "Deeproot Wayfinder",
+"oracle_id": "3ec767f2-40ba-46c9-b7cd-5821986dda0c",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Merfolk Scout",
+"oracle_text": "Whenever this creature deals combat damage to a player or battle, surveil 1, then you may return a land card from your graveyard to the battlefield tapped. (To surveil 1, look at the top card of your library. You may put that card into your graveyard.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Surveil"
+],
+"rarity": "rare",
+"collector_number": "369",
+"set": "mom"
+},
+{
+"name": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
+"oracle_id": "21d90735-5e04-4a8c-a546-ff26d4d5998d",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Legendary Creature — Dinosaur",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "190",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Ikoria",
+"mana_cost": "{X}{G}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, search your library and/or graveyard for a non-Human creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle.",
+"defense": "6",
+"colors": [
+"G"
+]
+},
+{
+"name": "Zilortha, Apex of Ikoria",
+"mana_cost": "",
+"type_line": "Legendary Creature — Dinosaur",
+"oracle_text": "Reach\nFor each non-Human creature you control, you may have that creature assign its combat damage as though it weren't blocked.",
+"power": "8",
+"toughness": "8",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Timberland Ancient",
+"oracle_id": "e71eca6f-388c-4750-b70e-3ee1832931f0",
+"layout": "normal",
+"mana_cost": "{4}{G}{G}",
+"cmc": 6.0,
+"type_line": "Creature — Treefolk",
+"oracle_text": "Reach, trample\nForestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand, then shuffle.)",
+"power": "6",
+"toughness": "5",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Landcycling",
+"Trample",
+"Forestcycling",
+"Typecycling",
+"Cycling"
+],
+"rarity": "common",
+"collector_number": "210",
+"set": "mom"
+},
+{
+"name": "Invasion of Shandalar // Leyline Surge",
+"oracle_id": "b5fe62f0-d914-4789-afd3-3831dcdbed7b",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Enchantment",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "mythic",
+"collector_number": "193",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Shandalar",
+"mana_cost": "{3}{G}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, return up to three target permanent cards from your graveyard to your hand.",
+"defense": "4",
+"colors": [
+"G"
+]
+},
+{
+"name": "Leyline Surge",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your upkeep, you may put a permanent card from your hand onto the battlefield.",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Ichor Elixir",
+"oracle_id": "81b06e8d-ed30-4f90-b729-0aa93b0d870f",
+"layout": "normal",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact",
+"oracle_text": "If you would roll one or more planar dice, instead roll that many planar dice plus one and ignore one.\n{T}: Add {C}{C}.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "46",
+"set": "moc"
+},
+{
+"name": "Bonded Herdbeast // Plated Kilnbeast",
+"oracle_id": "b06067e7-330e-47de-be59-c2874eedba1d",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Creature — Beast // Creature — Phyrexian Beast",
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Transform",
+"Menace"
+],
+"rarity": "common",
+"collector_number": "178",
+"set": "mom",
+"card_faces": [
+{
+"name": "Bonded Herdbeast",
+"mana_cost": "{4}{G}",
+"type_line": "Creature — Beast",
+"oracle_text": "{4}{R/P}: Transform this creature. Activate only as a sorcery. ({R/P} can be paid with either {R} or 2 life.)",
+"power": "4",
+"toughness": "5",
+"colors": [
+"G"
+]
+},
+{
+"name": "Plated Kilnbeast",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Beast",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)",
+"power": "7",
+"toughness": "5",
+"colors": [
+"G",
+"R"
+]
+}
+]
+},
+{
+"name": "Chandra, Hope's Beacon",
+"oracle_id": "53231b31-fb3c-4b30-bfe9-0ee8e754247b",
+"layout": "normal",
+"mana_cost": "{4}{R}{R}",
+"cmc": 6.0,
+"type_line": "Legendary Planeswalker — Chandra",
+"oracle_text": "Whenever you cast an instant or sorcery spell, copy it. You may choose new targets for the copy. This ability triggers only once each turn.\n+2: Add two mana in any combination of colors.\n+1: Exile the top five cards of your library. Until the end of your next turn, you may cast an instant or sorcery spell from among those exiled cards.\n−X: Chandra deals X damage to each of up to two targets.",
+"loyalty": "5",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "321",
+"set": "mom"
+},
+{
+"name": "Sun-Blessed Guardian // Furnace-Blessed Conqueror",
+"oracle_id": "0b34581e-66df-4e2f-91fb-dddba632d203",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Human Cleric // Creature — Phyrexian Cleric",
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "38",
+"set": "mom",
+"card_faces": [
+{
+"name": "Sun-Blessed Guardian",
+"mana_cost": "{1}{W}",
+"type_line": "Creature — Human Cleric",
+"oracle_text": "{5}{R/P}: Transform this creature. Activate only as a sorcery. ({R/P} can be paid with either {R} or 2 life.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+]
+},
+{
+"name": "Furnace-Blessed Conqueror",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Whenever this creature attacks, create a tapped and attacking token that's a copy of it. Put a +1/+1 counter on that token for each +1/+1 counter on this creature. Sacrifice that token at the beginning of the next end step.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R",
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Rampaging Raptor",
+"oracle_id": "450a07f5-709c-48a6-aaa8-ddbd7da4fd2e",
+"layout": "normal",
+"mana_cost": "{2}{R}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Dinosaur",
+"oracle_text": "Trample, haste\n{2}{R}: This creature gets +2/+0 until end of turn.\nWhenever this creature deals combat damage to an opponent, it deals that much damage to target planeswalker that player controls or battle that player protects.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "160",
+"set": "mom"
+},
+{
+"name": "Tenured Oilcaster",
+"oracle_id": "7fb837d7-e2c9-40f8-8a7d-156b3aa86830",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Wizard",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nThis creature gets +3/+0 as long as an opponent has eight or more cards in their graveyard.\nWhenever this creature attacks or blocks, each player mills a card.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Menace",
+"Mill"
+],
+"rarity": "common",
+"collector_number": "126",
+"set": "mom"
+},
+{
+"name": "Realmbreaker's Grasp",
+"oracle_id": "f2baa0b9-ab0b-4ae9-b5f0-d5b3fcd9cf37",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant artifact or creature\nEnchanted permanent can't attack or block, and its activated abilities can't be activated unless they're mana abilities.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "common",
+"collector_number": "33",
+"set": "mom"
+},
+{
+"name": "Ancient Imperiosaur",
+"oracle_id": "3fe95820-cd7f-4f28-82bf-eb4350ea4179",
+"layout": "normal",
+"mana_cost": "{5}{G}{G}",
+"cmc": 7.0,
+"type_line": "Creature — Dinosaur",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nTrample, ward {2}\nThis creature enters with two +1/+1 counters on it for each creature that convoked it.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Trample",
+"Ward",
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "174",
+"set": "mom"
+},
+{
+"name": "Volcanic Spite",
+"oracle_id": "10426070-2e6f-47a5-bc8d-16dcfb058b26",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Volcanic Spite deals 3 damage to target creature, planeswalker, or battle. You may put a card from your hand on the bottom of your library. If you do, draw a card.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "170",
+"set": "mom"
+},
+{
+"name": "Begin the Invasion",
+"oracle_id": "4feca1da-dcc8-440c-8933-bab91782b015",
+"layout": "normal",
+"mana_cost": "{X}{W}{U}{B}{R}{G}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Search your library for up to X battle cards with different names, put them onto the battlefield, then shuffle.",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "87",
+"set": "moc"
+},
+{
+"name": "Mirror-Style Master",
+"oracle_id": "6a871d70-a46d-4357-8c7d-876f7a004eb7",
+"layout": "normal",
+"mana_cost": "{4}{R}{R}",
+"cmc": 6.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhenever this creature attacks, for each attacking modified creature you control, create a tapped and attacking token that's a copy of that creature. Exile those tokens at end of combat. (Equipment, Auras you control, and counters are modifications.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "rare",
+"collector_number": "119",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Path of the Animist",
+"oracle_id": "85ccae95-92c4-41ff-96fd-dcb515dc568e",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nWill of the Planeswalkers — Starting with you, each player votes for planeswalk or chaos. If planeswalk gets more votes, planeswalk. If chaos gets more votes or the vote is tied, chaos ensues.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Will of the Planeswalkers"
+],
+"rarity": "rare",
+"collector_number": "125",
+"set": "moc"
+},
+{
+"name": "Invasion of Xerex // Vertex Paladin",
+"oracle_id": "8b5add91-2e82-4430-bfc5-f4a6366dbbdb",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Creature — Angel Knight",
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "242",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Xerex",
+"mana_cost": "{2}{W}{U}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, return up to one target creature to its owner's hand.",
+"defense": "4",
+"colors": [
+"U",
+"W"
+]
+},
+{
+"name": "Vertex Paladin",
+"mana_cost": "",
+"type_line": "Creature — Angel Knight",
+"oracle_text": "Flying\nVertex Paladin's power and toughness are each equal to the number of creatures you control.",
+"power": "*",
+"toughness": "*",
+"colors": [
+"U",
+"W"
+]
+}
+]
+},
+{
+"name": "Serpent-Blade Assailant",
+"oracle_id": "66a131ae-dbb2-4e7b-b6ce-7695f47c8f87",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Elf Warrior",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nDeathtouch",
+"power": "2",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Backup",
+"Deathtouch"
+],
+"rarity": "common",
+"collector_number": "205",
+"set": "mom"
+},
+{
+"name": "Scrollshift",
+"oracle_id": "9f762b9f-7525-4ff8-bc1d-fbab66fd4013",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Exile up to one target artifact, creature, or enchantment you control, then return it to the battlefield under its owner's control.\nDraw a card.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "34",
+"set": "mom"
+},
+{
+"name": "Captive Weird // Compleated Conjurer",
+"oracle_id": "ac5487ba-6d6e-47ee-ae29-776e186789cc",
+"layout": "transform",
+"cmc": 1.0,
+"type_line": "Creature — Weird // Creature — Phyrexian Weird",
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [
+"Transform",
+"Defender"
+],
+"rarity": "uncommon",
+"collector_number": "49",
+"set": "mom",
+"card_faces": [
+{
+"name": "Captive Weird",
+"mana_cost": "{U}",
+"type_line": "Creature — Weird",
+"oracle_text": "Defender\n{3}{R/P}: Transform this creature. Activate only as a sorcery. ({R/P} can be paid with either {R} or 2 life.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"U"
+]
+},
+{
+"name": "Compleated Conjurer",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Weird",
+"oracle_text": "When this creature transforms into Compleated Conjurer, exile the top card of your library. Until the end of your next turn, you may play that card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R",
+"U"
+]
+}
+]
+},
+{
+"name": "Gnottvold Hermit // Chrome Host Hulk",
+"oracle_id": "3bafc004-1c90-4939-9dcb-72667c170e39",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Creature — Troll // Creature — Phyrexian Troll",
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "188",
+"set": "mom",
+"card_faces": [
+{
+"name": "Gnottvold Hermit",
+"mana_cost": "{3}{G}",
+"type_line": "Creature — Troll",
+"oracle_text": "{5}{U/P}: Transform this creature. Activate only as a sorcery. ({U/P} can be paid with either {U} or 2 life.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+]
+},
+{
+"name": "Chrome Host Hulk",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Troll",
+"oracle_text": "Whenever this creature attacks, up to one other target creature has base power and toughness 5/5 until end of turn.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"G",
+"U"
+]
+}
+]
+},
+{
+"name": "Consuming Aetherborn",
+"oracle_id": "4d472308-5bc7-4a3c-81b5-0a757f00d9e2",
+"layout": "normal",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Aetherborn Vampire",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nLifelink",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Lifelink",
+"Backup"
+],
+"rarity": "common",
+"collector_number": "97",
+"set": "mom"
+},
+{
+"name": "Harried Artisan // Phyrexian Skyflayer",
+"oracle_id": "c4e51cba-e5f7-4f44-9ae9-9223a2efd004",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Creature — Human Artificer // Creature — Phyrexian Artificer",
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Flying",
+"Transform",
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "143",
+"set": "mom",
+"card_faces": [
+{
+"name": "Harried Artisan",
+"mana_cost": "{2}{R}",
+"type_line": "Creature — Human Artificer",
+"oracle_text": "Haste\n{3}{W/P}: Transform this creature. Activate only as a sorcery. ({W/P} can be paid with either {W} or 2 life.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R"
+]
+},
+{
+"name": "Phyrexian Skyflayer",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Artificer",
+"oracle_text": "Flying, haste",
+"power": "3",
+"toughness": "4",
+"colors": [
+"R",
+"W"
+]
+}
+]
+},
+{
+"name": "Invasion of Ravnica // Guildpact Paragon",
+"oracle_id": "78da7a38-0f08-4371-bda3-38f079f7724d",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Artifact Creature — Construct",
+"color_identity": [],
+"keywords": [
+"Transform"
+],
+"rarity": "mythic",
+"collector_number": "1",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Ravnica",
+"mana_cost": "{5}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, exile target nonland permanent an opponent controls that isn't exactly two colors.",
+"defense": "4",
+"colors": []
+},
+{
+"name": "Guildpact Paragon",
+"mana_cost": "",
+"type_line": "Artifact Creature — Construct",
+"oracle_text": "Whenever you cast a spell that's exactly two colors, look at the top six cards of your library. You may reveal a card that's exactly two colors from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"power": "5",
+"toughness": "5",
+"colors": []
+}
+]
+},
+{
+"name": "Locthwain Lancer",
+"oracle_id": "a9baa117-ab06-4af5-9a09-4be423d7cbbd",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Menace\nWhenever a nontoken Knight you control dies, each opponent loses 1 life and you draw a card.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "27",
+"set": "moc"
+},
+{
+"name": "Ral's Reinforcements",
+"oracle_id": "e7fa2fc2-8542-4069-b75f-5520dd30f74d",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Create two 1/1 blue and red Elemental creature tokens.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "158",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Elemental",
+"type_line": "Token Creature — Elemental",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R",
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Mirrodin Avenged",
+"oracle_id": "ec83f398-31af-484d-b6d2-8c7add142260",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Destroy target creature that was dealt damage this turn.\nDraw a card.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "118",
+"set": "mom"
+},
+{
+"name": "Nezumi Freewheeler // Hideous Fleshwheeler",
+"oracle_id": "e6fd0c7c-b164-4cf1-8910-0f8e680b2213",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Creature — Rat Samurai // Creature — Phyrexian Rat",
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Transform",
+"Menace",
+"Mill"
+],
+"rarity": "uncommon",
+"collector_number": "119",
+"set": "mom",
+"card_faces": [
+{
+"name": "Nezumi Freewheeler",
+"mana_cost": "{3}{B}",
+"type_line": "Creature — Rat Samurai",
+"oracle_text": "Menace\nWhen this creature enters, each player mills three cards. (To mill three cards, a player puts the top three cards of their library into their graveyard.)\n{5}{W/P}: Transform this creature. Activate only as a sorcery. ({W/P} can be paid with either {W} or 2 life.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+]
+},
+{
+"name": "Hideous Fleshwheeler",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Rat",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature transforms into Hideous Fleshwheeler, put target permanent card with mana value 2 or less from a graveyard onto the battlefield under your control.",
+"power": "4",
+"toughness": "5",
+"colors": [
+"B",
+"W"
+]
+}
+]
+},
+{
+"name": "Hidetsugu and Kairi",
+"oracle_id": "18591d9e-c9f5-4ae8-aee1-8580bc8fa600",
+"layout": "normal",
+"mana_cost": "{2}{U}{U}{B}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Ogre Demon Dragon",
+"oracle_text": "Flying\nWhen Hidetsugu and Kairi enters, draw three cards, then put two cards from your hand on top of your library in any order.\nWhen Hidetsugu and Kairi dies, exile the top card of your library. Target opponent loses life equal to its mana value. If it's an instant or sorcery card, you may cast it without paying its mana cost.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"B",
+"U"
+],
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "309",
+"set": "mom"
+},
+{
+"name": "Thrashing Frontliner",
+"oracle_id": "e75f1834-10b8-4362-adbe-847ad9909dee",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Lizard",
+"oracle_text": "Trample\nWhenever this creature attacks a battle, it gets +1/+1 until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "common",
+"collector_number": "167",
+"set": "mom"
+},
+{
+"name": "Scorn-Blade Berserker",
+"oracle_id": "93107139-b743-4d62-b0ac-9997202e0562",
+"layout": "normal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature — Human Berserker",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\n{1}, Sacrifice this creature: Draw a card.",
+"power": "0",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "uncommon",
+"collector_number": "124",
+"set": "mom"
+},
+{
+"name": "Placid Rottentail",
+"oracle_id": "502f8beb-0132-492f-bbfb-acf1ea532967",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature — Fungus Rabbit",
+"oracle_text": "Vigilance\n{2}{G}, Exile this card from your graveyard: Put two +1/+1 counters on target creature. Activate only as a sorcery.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "common",
+"collector_number": "199",
+"set": "mom"
+},
+{
+"name": "Herald of Hoofbeats",
+"oracle_id": "c9b40f24-c08e-4e05-a141-0a8a670d37c9",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Horsemanship (This creature can't be blocked except by creatures with horsemanship.)\nOther Knights you control have horsemanship.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Horsemanship"
+],
+"rarity": "rare",
+"collector_number": "22",
+"set": "moc"
+},
+{
+"name": "Death-Greeter's Champion",
+"oracle_id": "81abb451-5ee0-4f90-bacc-a8ff69726a27",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Human Warrior",
+"oracle_text": "Dash {3}{R} (You may cast this spell for its dash cost. If you do, it gains haste, and it's returned from the battlefield to its owner's hand at the beginning of the next end step.)\nBackup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nDouble strike",
+"power": "2",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Backup",
+"Double strike",
+"Dash"
+],
+"rarity": "rare",
+"collector_number": "30",
+"set": "moc"
+},
+{
+"name": "Ghalta and Mavren",
+"oracle_id": "756042c5-e444-45d7-8dc6-ae7c83c98438",
+"layout": "normal",
+"mana_cost": "{3}{G}{G}{W}{W}",
+"cmc": 7.0,
+"type_line": "Legendary Creature — Dinosaur Vampire",
+"oracle_text": "Trample\nWhenever you attack, choose one —\n• Create a tapped and attacking X/X green Dinosaur creature token with trample, where X is the greatest power among other attacking creatures.\n• Create X 1/1 white Vampire creature tokens with lifelink, where X is the number of other attacking creatures.",
+"power": "12",
+"toughness": "12",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "386",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Vampire",
+"type_line": "Token Creature — Vampire",
+"oracle_text": "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"keywords": [
+"Lifelink"
+]
+},
+{
+"component": "token",
+"name": "Dinosaur",
+"type_line": "Token Creature — Dinosaur",
+"oracle_text": "",
+"power": "*",
+"toughness": "*",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Expedition Lookout",
+"oracle_id": "f8ad2f88-72ae-4e47-beb5-25a6dacc709b",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Merfolk Rogue",
+"oracle_text": "Defender\nAs long as an opponent has eight or more cards in their graveyard, this creature can attack as though it didn't have defender and it can't be blocked.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Defender"
+],
+"rarity": "common",
+"collector_number": "56",
+"set": "mom"
+},
+{
+"name": "Invasion of Dominaria // Serra Faithkeeper",
+"oracle_id": "dcbd8b15-e5fd-4f0d-ba2d-06f018b64fb3",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Battle — Siege // Creature — Angel",
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Vigilance",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "21",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Dominaria",
+"mana_cost": "{2}{W}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, you gain 4 life and draw a card.",
+"defense": "5",
+"colors": [
+"W"
+]
+},
+{
+"name": "Serra Faithkeeper",
+"mana_cost": "",
+"type_line": "Creature — Angel",
+"oracle_text": "Flying, vigilance",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+]
+}
+]
+},
+{
+"name": "Sigiled Sentinel",
+"oracle_id": "79c90a68-1c31-4e16-be53-1304132da80f",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nVigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance",
+"Backup"
+],
+"rarity": "common",
+"collector_number": "37",
+"set": "mom"
+},
+{
+"name": "Boon-Bringer Valkyrie",
+"oracle_id": "8652d88f-edca-4235-b942-6e7467608de8",
+"layout": "normal",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Angel Warrior",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following abilities until end of turn.)\nFlying, first strike, lifelink",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Lifelink",
+"Backup",
+"First strike"
+],
+"rarity": "rare",
+"collector_number": "343",
+"set": "mom"
+},
+{
+"name": "Into the Fire",
+"oracle_id": "e7f735ce-e53b-40c0-b449-1f28fdfb2484",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose one —\n• Into the Fire deals 2 damage to each creature, planeswalker, and battle.\n• Put any number of cards from your hand on the bottom of your library, then draw that many cards plus one.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "144",
+"set": "mom"
+},
+{
+"name": "Wildfire Awakener",
+"oracle_id": "d22196b5-b111-45ce-ae51-a06ca02533b6",
+"layout": "normal",
+"mana_cost": "{X}{1}{R}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Human Wizard",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nWhen this creature enters, create X 1/1 red Elemental creature tokens with \"Whenever this token becomes tapped, it deals 1 damage to target player.\"",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "44",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Elemental",
+"type_line": "Token Creature — Elemental",
+"oracle_text": "Whenever this creature becomes tapped, it deals 1 damage to target player.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Arachnoid Adaptation",
+"oracle_id": "042cc9d9-ad13-401f-b2f5-c2f1558d7e44",
+"layout": "normal",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 and gains reach until end of turn. Untap it.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "175",
+"set": "mom"
+},
+{
+"name": "Glistening Deluge",
+"oracle_id": "706833f7-af50-45bf-8f1d-d3a5a31cf2c8",
+"layout": "normal",
+"mana_cost": "{1}{B}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "All creatures get -1/-1 until end of turn. Creatures that are green and/or white get an additional -2/-2 until end of turn.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "107",
+"set": "mom"
+},
+{
+"name": "Attentive Skywarden",
+"oracle_id": "896213bb-28a0-45a4-abbd-35af51f1d9aa",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Kor",
+"oracle_text": "Flying\nWhenever this creature deals combat damage to a player or battle, transform up to one target Incubator token you control.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "common",
+"collector_number": "7",
+"set": "mom"
+},
+{
+"name": "Botanical Brawler",
+"oracle_id": "d8d5d0a4-9a56-404c-b459-a37dc5ae6bc1",
+"layout": "normal",
+"mana_cost": "{G}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Elemental Warrior",
+"oracle_text": "Trample\nThis creature enters with two +1/+1 counters on it.\nWhenever one or more +1/+1 counters are put on another permanent you control, if it's the first time +1/+1 counters have been put on that permanent this turn, put a +1/+1 counter on this creature.",
+"power": "0",
+"toughness": "0",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "384",
+"set": "mom"
+},
+{
+"name": "Bola Slinger",
+"oracle_id": "6ff995f9-080d-4316-8fbe-39bf195db91b",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Cat Soldier",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhenever this creature attacks, tap target artifact or creature an opponent controls.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "common",
+"collector_number": "8",
+"set": "mom"
+},
+{
+"name": "Golden-Scale Aeronaut",
+"oracle_id": "d388080d-5ad4-4e27-b361-340f410423a7",
+"layout": "normal",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Creature — Dwarf Pilot",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nFlying",
+"power": "2",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying",
+"Backup"
+],
+"rarity": "common",
+"collector_number": "15",
+"set": "mom"
+},
+{
+"name": "Thunderhead Squadron",
+"oracle_id": "d74d6f6a-aff0-4a36-9a99-8b2281f5e29d",
+"layout": "normal",
+"mana_cost": "{5}{U}",
+"cmc": 6.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFlying",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "81",
+"set": "mom"
+},
+{
+"name": "Invasion of Zendikar // Awakened Skyclave",
+"oracle_id": "4b1874af-4ea5-4e22-a4d4-e718d75fe95e",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Creature — Elemental",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Vigilance",
+"Transform",
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "194",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Zendikar",
+"mana_cost": "{3}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+"defense": "3",
+"colors": [
+"G"
+]
+},
+{
+"name": "Awakened Skyclave",
+"mana_cost": "",
+"type_line": "Creature — Elemental",
+"oracle_text": "Vigilance, haste\nAs long as this creature is on the battlefield, it's a land in addition to its other types.\n{T}: Add one mana of any color.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Guardian of Ghirapur",
+"oracle_id": "2553ab57-ceb6-4654-a59d-bc61735da908",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Angel",
+"oracle_text": "Flying\nWhen this creature enters, exile up to one other target creature or artifact you control. Return it to the battlefield under its owner's control at the beginning of the next end step.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "345",
+"set": "mom"
+},
+{
+"name": "Flitting Guerrilla",
+"oracle_id": "24dbddad-998b-4755-b356-4c8aca3592b1",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Faerie Rogue",
+"oracle_text": "Flying\nWhen this creature dies, each player mills two cards. Then you may exile this card. When you do, put target creature or battle card from your graveyard on top of your library. (To mill two cards, a player puts the top two cards of their library into their graveyard.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Mill"
+],
+"rarity": "common",
+"collector_number": "105",
+"set": "mom"
+},
+{
+"name": "Invasion of Eldraine // Prickle Faeries",
+"oracle_id": "329fcb1e-7066-46c5-ba27-20ed2b18c1ba",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Creature — Faerie",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "113",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Eldraine",
+"mana_cost": "{3}{B}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, target opponent discards two cards.",
+"defense": "4",
+"colors": [
+"B"
+]
+},
+{
+"name": "Prickle Faeries",
+"mana_cost": "",
+"type_line": "Creature — Faerie",
+"oracle_text": "Flying\nAt the beginning of each opponent's upkeep, if that player has two or fewer cards in hand, this creature deals 2 damage to them.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+]
+}
+]
+},
+{
+"name": "Invasion of Muraganda // Primordial Plasm",
+"oracle_id": "2e0d12dc-55fa-4363-b28f-612e7cfa12c6",
+"layout": "transform",
+"cmc": 5.0,
+"type_line": "Battle — Siege // Creature — Ooze",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Transform",
+"Fight"
+],
+"rarity": "uncommon",
+"collector_number": "192",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Muraganda",
+"mana_cost": "{4}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, put a +1/+1 counter on target creature you control. Then that creature fights up to one target creature you don't control.",
+"defense": "6",
+"colors": [
+"G"
+]
+},
+{
+"name": "Primordial Plasm",
+"mana_cost": "",
+"type_line": "Creature — Ooze",
+"oracle_text": "At the beginning of combat on your turn, another target creature gets +2/+2 and loses all abilities until end of turn.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Phyrexian Archivist",
+"oracle_id": "cdef800d-033e-4095-964d-9b6066f9fd36",
+"layout": "normal",
+"mana_cost": "{6}",
+"cmc": 6.0,
+"type_line": "Artifact Creature — Phyrexian Construct",
+"oracle_text": "Reach\n{2}, {T}: Put target card from a graveyard on the bottom of its owner's library.",
+"power": "4",
+"toughness": "5",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Reach"
+],
+"rarity": "common",
+"collector_number": "262",
+"set": "mom"
+},
+{
+"name": "Invasion of Lorwyn // Winnowing Forces",
+"oracle_id": "c877a430-75bc-45ac-b11d-2365d11ed341",
+"layout": "transform",
+"cmc": 6.0,
+"type_line": "Battle — Siege // Creature — Elf Warrior",
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "236",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Lorwyn",
+"mana_cost": "{4}{B}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, destroy target non-Elf creature an opponent controls with power X or less, where X is the number of lands you control.",
+"defense": "5",
+"colors": [
+"B",
+"G"
+]
+},
+{
+"name": "Winnowing Forces",
+"mana_cost": "",
+"type_line": "Creature — Elf Warrior",
+"oracle_text": "Winnowing Forces's power and toughness are each equal to the number of lands you control.",
+"power": "*",
+"toughness": "*",
+"colors": [
+"B",
+"G"
+]
+}
+]
+},
+{
+"name": "Filigree Vector",
+"oracle_id": "44b90948-e85a-4f69-a9e2-aba63775ba40",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Artifact Creature — Phyrexian Construct",
+"oracle_text": "When this creature enters, put a +1/+1 counter on each of any number of target creatures and a charge counter on each of any number of target artifacts.\n{1}, {T}, Sacrifice another artifact: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Proliferate"
+],
+"rarity": "rare",
+"collector_number": "15",
+"set": "moc"
+},
+{
+"name": "Invasion of Amonkhet // Lazotep Convert",
+"oracle_id": "fd9b8889-a78a-4cda-9a6b-39f5536c3a0b",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Battle — Siege // Creature — Zombie",
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Transform",
+"Mill"
+],
+"rarity": "uncommon",
+"collector_number": "231",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Amonkhet",
+"mana_cost": "{1}{U}{B}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, each player mills three cards, then each opponent discards a card and you draw a card. (To mill three cards, a player puts the top three cards of their library into their graveyard.)",
+"defense": "4",
+"colors": [
+"B",
+"U"
+]
+},
+{
+"name": "Lazotep Convert",
+"mana_cost": "",
+"type_line": "Creature — Zombie",
+"oracle_text": "You may have this creature enter as a copy of any creature card in a graveyard, except it's a 4/4 black Zombie in addition to its other colors and types.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"U"
+]
+}
+]
+},
+{
+"name": "Vodalian Wave-Knight",
+"oracle_id": "148145ef-a368-4caf-921d-e3809adf03de",
+"layout": "normal",
+"mana_cost": "{2}{W}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Merfolk Knight",
+"oracle_text": "Whenever you draw a card, put a +1/+1 counter on each other Merfolk and/or Knight you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "43",
+"set": "moc"
+},
+{
+"name": "Furtive Analyst",
+"oracle_id": "e5c6bbee-5e6c-4a59-bc5d-285c5f5cf228",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Human Wizard",
+"oracle_text": "Vigilance\n{2}, {T}: Draw a card, then discard a card.",
+"power": "1",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "common",
+"collector_number": "59",
+"set": "mom"
+},
+{
+"name": "Ayara, Widow of the Realm // Ayara, Furnace Queen",
+"oracle_id": "f9ef90b9-a2b4-4a5b-92fb-2268ea7d709f",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Elf Noble // Legendary Creature — Phyrexian Elf Noble",
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "296",
+"set": "mom",
+"card_faces": [
+{
+"name": "Ayara, Widow of the Realm",
+"mana_cost": "{1}{B}{B}",
+"type_line": "Legendary Creature — Elf Noble",
+"oracle_text": "{T}, Sacrifice another creature or artifact: Ayara deals X damage to target opponent or battle and you gain X life, where X is the sacrificed permanent's mana value.\n{5}{R/P}: Transform Ayara. Activate only as a sorcery. ({R/P} can be paid with either {R} or 2 life.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B"
+]
+},
+{
+"name": "Ayara, Furnace Queen",
+"mana_cost": "",
+"type_line": "Legendary Creature — Phyrexian Elf Noble",
+"oracle_text": "At the beginning of combat on your turn, return up to one target artifact or creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"B",
+"R"
+]
+}
+]
+},
+{
+"name": "Terror of Towashi",
+"oracle_id": "c4b6dd8f-cdef-413a-a820-ec47e168b3bd",
+"layout": "normal",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Creature — Phyrexian Ogre",
+"oracle_text": "Deathtouch\nWhenever this creature attacks, you may pay {3}{B}. When you do, return target creature card from your graveyard to the battlefield. It's a Phyrexian in addition to its other types.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Deathtouch"
+],
+"rarity": "rare",
+"collector_number": "331",
+"set": "mom"
+},
+{
+"name": "Seer of Stolen Sight",
+"oracle_id": "b2bdccf1-857b-48f8-a9aa-8ef999ef0632",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Warlock",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever one or more artifacts and/or creatures you control are put into a graveyard from the battlefield, surveil 1. (Look at the top card of your library. You may put that card into your graveyard.)",
+"power": "2",
+"toughness": "3",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Surveil",
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "330",
+"set": "mom"
+},
+{
+"name": "Invasion of Segovia // Caetus, Sea Tyrant of Segovia",
+"oracle_id": "7b3c0d89-55ed-43d7-a00a-7b060857ec4e",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Battle — Siege // Legendary Creature — Serpent",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "63",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Segovia",
+"mana_cost": "{2}{U}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, create two 1/1 blue Kraken creature tokens with trample.",
+"defense": "4",
+"colors": [
+"U"
+]
+},
+{
+"name": "Caetus, Sea Tyrant of Segovia",
+"mana_cost": "",
+"type_line": "Legendary Creature — Serpent",
+"oracle_text": "Noncreature spells you cast have convoke. (Your creatures can help cast those spells. Each creature you tap while casting a noncreature spell pays for {1} or one mana of that creature's color.)\nAt the beginning of your end step, untap up to four target creatures.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"U"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Kraken",
+"type_line": "Token Creature — Kraken",
+"oracle_text": "Trample",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"keywords": [
+"Trample"
+]
+}
+]
+},
+{
+"name": "Slimefoot and Squee",
+"oracle_id": "5a6f4181-f5ad-4ecf-9566-e52870af14d0",
+"layout": "normal",
+"mana_cost": "{B}{R}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Fungus Goblin",
+"oracle_text": "Whenever Slimefoot and Squee enters or attacks, create a 1/1 green Saproling creature token.\n{1}{B}{R}{G}, Sacrifice a Saproling: Return this card and up to one other target creature card from your graveyard to the battlefield. Activate only as a sorcery.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "447",
+"set": "moc",
+"related": [
+{
+"component": "token",
+"name": "Saproling",
+"type_line": "Token Creature — Saproling",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Unseal the Necropolis",
+"oracle_id": "b3ea71d2-6298-452a-9c54-7c880b7e9cc0",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Each player mills three cards. Then you return up to two creature cards from your graveyard to your hand. (To mill three cards, a player puts the top three cards of their library into their graveyard.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "common",
+"collector_number": "128",
+"set": "mom"
+},
+{
+"name": "Overgrown Pest",
+"oracle_id": "ce84891f-07e1-4c72-a7b8-93b6afd1293e",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Pest",
+"oracle_text": "When this creature enters, look at the top five cards of your library. You may reveal a land or double-faced card from among them and put that card into your hand. Put the rest on the bottom of your library in a random order.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "197",
+"set": "mom"
+},
+{
+"name": "Ravenous Sailback",
+"oracle_id": "17e74c4b-435c-469e-a9a4-32bf0cb7634c",
+"layout": "normal",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Dinosaur",
+"oracle_text": "When this creature enters, choose one —\n• This creature gains haste until end of turn.\n• Destroy target artifact or enchantment.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "202",
+"set": "mom"
+},
+{
+"name": "Bladed Battle-Fan",
+"oracle_id": "c4614b6c-5e77-465f-996f-504121ea8eff",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Flash\nWhen this Equipment enters, attach it to target creature you control. That creature gains indestructible until end of turn.\nEquipped creature gets +1/+0.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Equip",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "91",
+"set": "mom"
+},
+{
+"name": "Kogla and Yidaro",
+"oracle_id": "fe8c2b7e-f80d-4acb-a976-edcf436a78a9",
+"layout": "normal",
+"mana_cost": "{2}{R}{R}{G}{G}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Ape Dinosaur Turtle",
+"oracle_text": "When Kogla and Yidaro enters, choose one —\n• It gains trample and haste until end of turn.\n• It fights target creature you don't control.\n{2}{R}{G}, Discard this card: Destroy up to one target artifact or enchantment. Shuffle this card into your library from your graveyard, then draw a card.",
+"power": "7",
+"toughness": "7",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Fight"
+],
+"rarity": "rare",
+"collector_number": "311",
+"set": "mom"
+},
+{
+"name": "Kor Halberd",
+"oracle_id": "450e84c7-afbe-4b30-a3e9-1dff968a5200",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Equipped creature gets +1/+1 and has vigilance.\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Equip"
+],
+"rarity": "common",
+"collector_number": "27",
+"set": "mom"
+},
+{
+"name": "Trailblazing Historian",
+"oracle_id": "399770b9-eab7-4512-aa1d-65c5bd81094f",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Human Shaman",
+"oracle_text": "Haste\n{T}: Another target creature gains haste until end of turn.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "common",
+"collector_number": "168",
+"set": "mom"
+},
+{
+"name": "Heliod, the Radiant Dawn // Heliod, the Warped Eclipse",
+"oracle_id": "c27c6ba9-8d72-4101-b3a5-1e8d81755568",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Legendary Enchantment Creature — God // Legendary Enchantment Creature — Phyrexian God",
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "17",
+"set": "mom",
+"card_faces": [
+{
+"name": "Heliod, the Radiant Dawn",
+"mana_cost": "{2}{W}{W}",
+"type_line": "Legendary Enchantment Creature — God",
+"oracle_text": "When Heliod enters, return target enchantment card that isn't a God from your graveyard to your hand.\n{3}{U/P}: Transform Heliod. Activate only as a sorcery. ({U/P} can be paid with either {U} or 2 life.)",
+"power": "4",
+"toughness": "4",
+"colors": [
+"W"
+]
+},
+{
+"name": "Heliod, the Warped Eclipse",
+"mana_cost": "",
+"type_line": "Legendary Enchantment Creature — Phyrexian God",
+"oracle_text": "You may cast spells as though they had flash.\nSpells you cast cost {1} less to cast for each card your opponents have drawn this turn.",
+"power": "4",
+"toughness": "6",
+"colors": [
+"U",
+"W"
+]
+}
+]
+},
+{
+"name": "Invasion of Kylem // Valor's Reach Tag Team",
+"oracle_id": "fee0aa18-5103-4814-94e3-87ad3eaf5a6f",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Sorcery",
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "235",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Kylem",
+"mana_cost": "{2}{R}{W}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, up to two target creatures each get +2/+0 and gain vigilance and haste until end of turn.",
+"defense": "5",
+"colors": [
+"R",
+"W"
+]
+},
+{
+"name": "Valor's Reach Tag Team",
+"mana_cost": "",
+"type_line": "Sorcery",
+"oracle_text": "Create two 3/2 red and white Warrior creature tokens with \"Whenever this token and at least one other creature token attack, put a +1/+1 counter on this token.\"",
+"colors": [
+"R",
+"W"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Warrior",
+"type_line": "Token Creature — Warrior",
+"oracle_text": "Whenever this creature and at least one other creature token attack, put a +1/+1 counter on this creature.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R",
+"W"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Wildwood Escort",
+"oracle_id": "ce807ee3-a27c-4f3b-92a4-37faaca42aa1",
+"layout": "normal",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature — Elf Warrior",
+"oracle_text": "When this creature enters, return target creature or battle card from your graveyard to your hand.\nIf this creature would die, exile it instead.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "216",
+"set": "mom"
+},
+{
+"name": "Rampaging Geoderm",
+"oracle_id": "e536e0d2-7117-4ca8-bdb4-e7dd380113c6",
+"layout": "normal",
+"mana_cost": "{2}{R}{G}",
+"cmc": 4.0,
+"type_line": "Creature — Dinosaur Beast",
+"oracle_text": "Trample, haste\nWhenever you attack, target attacking creature gets +1/+1 until end of turn. If it's attacking a battle, put a +1/+1 counter on it instead.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Haste",
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "251",
+"set": "mom"
+},
+{
+"name": "Swordsworn Cavalier",
+"oracle_id": "18aa69d5-9611-49fe-8aa4-7b91d5980dbc",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "This creature has first strike as long as another Knight entered the battlefield under your control this turn.",
+"power": "3",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "42",
+"set": "mom"
+},
+{
+"name": "Phyrexian Pegasus",
+"oracle_id": "30236ff8-f6d5-462d-9a2f-846b2d8a1ca6",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature — Phyrexian Pegasus",
+"oracle_text": "Flying\nWhenever this creature attacks, another target attacking creature without flying gains flying until end of turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "common",
+"collector_number": "324",
+"set": "mom"
+},
+{
+"name": "Invasion of Regatha // Disciples of the Inferno",
+"oracle_id": "4f0bcfe5-7e52-4249-a26a-482619716f18",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Battle — Siege // Creature — Human Monk",
+"color_identity": [
+"R"
+],
+"keywords": [
+"Prowess",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "148",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Regatha",
+"mana_cost": "{2}{R}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, it deals 4 damage to another target battle or opponent and 1 damage to up to one target creature.",
+"defense": "5",
+"colors": [
+"R"
+]
+},
+{
+"name": "Disciples of the Inferno",
+"mana_cost": "",
+"type_line": "Creature — Human Monk",
+"oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nIf a noncreature source you control would deal damage to a creature, battle, or opponent, it deals that much damage plus 2 instead.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R"
+]
+}
+]
+},
+{
+"name": "Invasion of Azgol // Ashen Reaper",
+"oracle_id": "1abcdddd-0022-4dfe-8c15-eb1fa86de614",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Creature — Zombie Elemental",
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Transform",
+"Menace"
+],
+"rarity": "uncommon",
+"collector_number": "232",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Azgol",
+"mana_cost": "{B}{R}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, target player sacrifices a creature or planeswalker of their choice and loses 1 life.",
+"defense": "4",
+"colors": [
+"B",
+"R"
+]
+},
+{
+"name": "Ashen Reaper",
+"mana_cost": "",
+"type_line": "Creature — Zombie Elemental",
+"oracle_text": "Menace\nAt the beginning of your end step, put a +1/+1 counter on this creature if a permanent was put into a graveyard from the battlefield this turn.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"B",
+"R"
+]
+}
+]
+},
+{
+"name": "Axgard Artisan",
+"oracle_id": "ce8ec966-ecff-425e-944c-36dc8d4aef23",
+"layout": "normal",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature — Dwarf Artificer",
+"oracle_text": "Whenever one or more +1/+1 counters are put on this creature for the first time each turn, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "2",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "uncommon",
+"collector_number": "332",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Emergent Woodwurm",
+"oracle_id": "a74e41b4-6284-453c-a586-d575735dca65",
+"layout": "normal",
+"mana_cost": "{6}{G}",
+"cmc": 7.0,
+"type_line": "Creature — Wurm",
+"oracle_text": "Backup 3 (When this creature enters, put three +1/+1 counters on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhenever this creature attacks, look at the top X cards of your library, where X is its power. You may put a permanent card with mana value X or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "rare",
+"collector_number": "37",
+"set": "moc"
+},
+{
+"name": "Copper Host Crusher",
+"oracle_id": "6971eac1-afd0-46c3-a37f-4a26d50ef656",
+"layout": "normal",
+"mana_cost": "{6}{G}{G}",
+"cmc": 8.0,
+"type_line": "Creature — Phyrexian Bear Rhino",
+"oracle_text": "Trample\nHexproof (This creature can't be the target of spells or abilities your opponents control.)",
+"power": "8",
+"toughness": "8",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Hexproof",
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "181",
+"set": "mom"
+},
+{
+"name": "Protocol Knight",
+"oracle_id": "ac935fad-2fa7-4afc-9db4-3cd30ec4aabd",
+"layout": "normal",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "When this creature enters, tap target creature an opponent controls. Put a stun counter on that creature if you control another Knight. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "74",
+"set": "mom"
+},
+{
+"name": "Cut Short",
+"oracle_id": "428d131c-b0fa-4e96-9c02-e2e6714357b9",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDestroy target planeswalker that was activated this turn or tapped creature.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "10",
+"set": "mom"
+},
+{
+"name": "Akki Scrapchomper",
+"oracle_id": "baea7cc5-15ec-4229-ad8b-d4b34c2e21e8",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature — Phyrexian Goblin",
+"oracle_text": "{1}{R}, {T}, Sacrifice an artifact or land: Draw a card.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "130",
+"set": "mom"
+},
+{
+"name": "Etched Host Doombringer",
+"oracle_id": "85c799e9-74d5-459e-b168-b95ed78cd4e9",
+"layout": "normal",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature — Phyrexian Demon",
+"oracle_text": "When this creature enters, choose one —\n• Target opponent loses 2 life and you gain 2 life.\n• Choose target battle. If an opponent protects it, remove three defense counters from it. Otherwise, put three defense counters on it.",
+"power": "3",
+"toughness": "5",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "102",
+"set": "mom"
+},
+{
+"name": "Invasion of Fiora // Marchesa, Resolute Monarch",
+"oracle_id": "7209f2b6-8851-42ab-bac6-5cf06e211e46",
+"layout": "transform",
+"cmc": 6.0,
+"type_line": "Battle — Siege // Legendary Creature — Human Noble",
+"color_identity": [
+"B"
+],
+"keywords": [
+"Transform",
+"Menace",
+"Deathtouch"
+],
+"rarity": "rare",
+"collector_number": "114",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Fiora",
+"mana_cost": "{4}{B}{B}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, choose one or both —\n• Destroy all legendary creatures.\n• Destroy all nonlegendary creatures.",
+"defense": "4",
+"colors": [
+"B"
+]
+},
+{
+"name": "Marchesa, Resolute Monarch",
+"mana_cost": "",
+"type_line": "Legendary Creature — Human Noble",
+"oracle_text": "Menace, deathtouch\nWhenever Marchesa attacks, remove all counters from up to one target permanent.\nAt the beginning of your upkeep, if you haven't been dealt combat damage since your last turn, you draw a card and you lose 1 life.",
+"power": "3",
+"toughness": "6",
+"colors": [
+"B"
+]
+}
+]
+},
+{
+"name": "Render Inert",
+"oracle_id": "e9ece3c6-81c2-441a-acce-c109aaa9026b",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Remove up to five counters from target permanent.\nDraw a card.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "123",
+"set": "mom"
+},
+{
+"name": "Invasion of Ergamon // Truga Cliffcharger",
+"oracle_id": "fe84933e-d98f-4cbc-b272-387a80894e31",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Creature — Rhino",
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Transform",
+"Treasure",
+"Trample"
+],
+"rarity": "uncommon",
+"collector_number": "233",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Ergamon",
+"mana_cost": "{R}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, create a Treasure token. Then you may discard a card. If you do, draw a card.",
+"defense": "5",
+"colors": [
+"G",
+"R"
+]
+},
+{
+"name": "Truga Cliffcharger",
+"mana_cost": "",
+"type_line": "Creature — Rhino",
+"oracle_text": "Trample\nWhen this creature enters, you may discard a card. If you do, search your library for a land or battle card, reveal it, put it into your hand, then shuffle.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"G",
+"R"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Cosmic Hunger",
+"oracle_id": "fe84ce0b-cd25-41ee-82c1-8ab03df5791b",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control deals damage equal to its power to another target creature, planeswalker, or battle.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "182",
+"set": "mom"
+},
+{
+"name": "Portent Tracker",
+"oracle_id": "ca49d6ad-97b1-4fd4-b1cf-fecd9cafee6d",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Satyr Scout",
+"oracle_text": "{T}: Untap target land.\n{T}: Choose target battle. If an opponent protects it, remove a defense counter from it. Otherwise, put a defense counter on it. Activate only as a sorcery.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "201",
+"set": "mom"
+},
+{
+"name": "Astral Wingspan",
+"oracle_id": "a054b6ed-f6ca-4436-a433-89771ffdd2d6",
+"layout": "normal",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nEnchant creature\nWhen this Aura enters, draw a card.\nEnchanted creature gets +2/+2 and has flying.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Enchant",
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "48",
+"set": "mom"
+},
+{
+"name": "Zimone and Dina",
+"oracle_id": "5bc66b18-22ac-4138-b527-fa711116e298",
+"layout": "normal",
+"mana_cost": "{B}{G}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Dryad",
+"oracle_text": "Whenever you draw your second card each turn, target opponent loses 2 life and you gain 2 life.\n{T}, Sacrifice another creature: Draw a card. You may put a land card from your hand onto the battlefield tapped. If you control eight or more lands, repeat this process once.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B",
+"G",
+"U"
+],
+"color_identity": [
+"B",
+"G",
+"U"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "257",
+"set": "mom"
+},
+{
+"name": "Storm the Seedcore",
+"oracle_id": "ae7643ea-ef1c-43a3-9605-4e8585239ea3",
+"layout": "normal",
+"mana_cost": "{2}{G}{G}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Distribute four +1/+1 counters among up to four target creatures you control. Creatures you control gain vigilance and trample until end of turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "206",
+"set": "mom"
+},
+{
+"name": "Ruins Recluse",
+"oracle_id": "d99efecd-1419-434b-9de6-5fbb04f57dda",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Spider",
+"oracle_text": "Reach, deathtouch\n{3}{G}: Put a +1/+1 counter on this creature.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Reach",
+"Deathtouch"
+],
+"rarity": "uncommon",
+"collector_number": "336",
+"set": "mom"
+},
+{
+"name": "Invasion of Vryn // Overloaded Mage-Ring",
+"oracle_id": "73c7fdb3-4742-4d08-8658-daa4435c49b1",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Artifact",
+"color_identity": [
+"U"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "64",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Vryn",
+"mana_cost": "{3}{U}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, draw three cards, then discard a card.",
+"defense": "4",
+"colors": [
+"U"
+]
+},
+{
+"name": "Overloaded Mage-Ring",
+"mana_cost": "",
+"type_line": "Artifact",
+"oracle_text": "{1}, {T}, Sacrifice this artifact: Copy target spell you control. You may choose new targets for the copy. (A copy of a permanent spell becomes a token.)",
+"colors": [
+"U"
+]
+}
+]
+},
+{
+"name": "Marshal of Zhalfir",
+"oracle_id": "9ad01fb2-2ba7-447a-a5ef-e57d46421635",
+"layout": "normal",
+"mana_cost": "{W}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Other Knights you control get +1/+1.\n{W}{U}, {T}: Tap another target creature.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "246",
+"set": "mom"
+},
+{
+"name": "Hangar Scrounger",
+"oracle_id": "d1b74fb9-8ef3-40be-bc79-45ffb4c597eb",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Dwarf Pilot",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhenever this creature becomes tapped, you may discard a card. If you do, draw a card.",
+"power": "2",
+"toughness": "1",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "common",
+"collector_number": "142",
+"set": "mom"
+},
+{
+"name": "War-Trained Slasher",
+"oracle_id": "bc89face-92b1-47d3-8cdb-360b7334d3b8",
+"layout": "normal",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature — Wolverine Dinosaur",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever this creature attacks a battle, double its power until end of turn.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Menace",
+"Double"
+],
+"rarity": "common",
+"collector_number": "172",
+"set": "mom"
+},
+{
+"name": "Lithomantic Barrage",
+"oracle_id": "5e414dc2-d0ff-43e5-9aa2-cd9d96de6d89",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "This spell can't be countered.\nLithomantic Barrage deals 1 damage to target creature or planeswalker. It deals 5 damage instead if that target is white and/or blue.",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "152",
+"set": "mom"
+},
+{
+"name": "Joyful Stormsculptor",
+"oracle_id": "39867856-c1f3-442a-abe9-53f8f73777d0",
+"layout": "normal",
+"mana_cost": "{3}{U}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Human Shaman",
+"oracle_text": "When this creature enters, create two 1/1 blue and red Elemental creature tokens.\nWhenever you cast a spell that has convoke, this creature deals 1 damage to each opponent and each battle they protect.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R",
+"U"
+],
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "243",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Elemental",
+"type_line": "Token Creature — Elemental",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"R",
+"U"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Complete the Circuit",
+"oracle_id": "402506fa-6bd5-4814-8353-90c148dd576c",
+"layout": "normal",
+"mana_cost": "{5}{U}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nYou may cast sorcery spells this turn as though they had flash.\nWhen you next cast an instant or sorcery spell this turn, copy that spell twice. You may choose new targets for the copies.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "rare",
+"collector_number": "351",
+"set": "mom"
+},
+{
+"name": "Flywheel Racer",
+"oracle_id": "0399b932-2a59-471c-828e-2b16614e0dae",
+"layout": "normal",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact — Vehicle",
+"oracle_text": "Vigilance\n{T}: Add one mana of any color. Activate only if this permanent is a creature.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)",
+"power": "3",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Vigilance",
+"Crew"
+],
+"rarity": "common",
+"collector_number": "259",
+"set": "mom"
+},
+{
+"name": "Skyclave Aerialist // Skyclave Invader",
+"oracle_id": "29e96c47-94ad-4740-ba86-66dc2cf9ae2f",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Merfolk Scout // Creature — Phyrexian Merfolk Scout",
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "78",
+"set": "mom",
+"card_faces": [
+{
+"name": "Skyclave Aerialist",
+"mana_cost": "{1}{U}",
+"type_line": "Creature — Merfolk Scout",
+"oracle_text": "Flying\n{4}{G/P}: Transform this creature. Activate only as a sorcery. ({G/P} can be paid with either {G} or 2 life.)",
+"power": "2",
+"toughness": "1",
+"colors": [
+"U"
+]
+},
+{
+"name": "Skyclave Invader",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Merfolk Scout",
+"oracle_text": "Flying\nWhen this creature transforms into Skyclave Invader, look at the top card of your library. If it's a land card, you may put it onto the battlefield. If you don't put the card onto the battlefield, put it into your hand.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"G",
+"U"
+]
+}
+]
+},
+{
+"name": "Omen Hawker",
+"oracle_id": "215fd0b4-5817-4335-a0ed-1694e44bde41",
+"layout": "normal",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature — Octopus Advisor",
+"oracle_text": "{T}: Add {C}{U}. Spend this mana only to activate abilities.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "70",
+"set": "mom"
+},
+{
+"name": "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+"oracle_id": "cf5bd3a4-3899-4c25-ad1f-f1778c1d9c60",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Human Wizard // Legendary Creature — Phyrexian Wizard",
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Transform",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "295",
+"set": "mom",
+"card_faces": [
+{
+"name": "Rona, Herald of Invasion",
+"mana_cost": "{1}{U}",
+"type_line": "Legendary Creature — Human Wizard",
+"oracle_text": "Whenever you cast a legendary spell, untap Rona.\n{T}: Draw a card, then discard a card.\n{5}{B/P}: Transform Rona. Activate only as a sorcery. ({B/P} can be paid with either {B} or 2 life.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"U"
+]
+},
+{
+"name": "Rona, Tolarian Obliterator",
+"mana_cost": "",
+"type_line": "Legendary Creature — Phyrexian Wizard",
+"oracle_text": "Trample\nWhenever a source deals damage to Rona, that source's controller exiles a card from their hand at random. If it's a land card, you may put it onto the battlefield under your control. Otherwise, you may cast it without paying its mana cost.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B",
+"U"
+]
+}
+]
+},
+{
+"name": "Rankle and Torbran",
+"oracle_id": "80d918b2-3a28-49ad-a485-496658bd7ac3",
+"layout": "normal",
+"mana_cost": "{1}{B}{B}{R}{R}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Faerie Dwarf",
+"oracle_text": "Flying, first strike, haste\nWhenever Rankle and Torbran deals combat damage to a player or battle, choose any number —\n• Each player creates a Treasure token.\n• Each player sacrifices a creature of their choice.\n• If a source would deal damage to a player or battle this turn, it deals that much damage plus 2 instead.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B",
+"R"
+],
+"color_identity": [
+"B",
+"R"
+],
+"keywords": [
+"Flying",
+"First strike",
+"Treasure",
+"Haste"
+],
+"rarity": "rare",
+"collector_number": "252",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Aetherblade Agent // Gitaxian Mindstinger",
+"oracle_id": "80ecb069-36e2-490d-9f6c-ef553c00e997",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Human Rogue // Creature — Phyrexian Rogue",
+"color_identity": [
+"B",
+"U"
+],
+"keywords": [
+"Transform",
+"Deathtouch"
+],
+"rarity": "common",
+"collector_number": "88",
+"set": "mom",
+"card_faces": [
+{
+"name": "Aetherblade Agent",
+"mana_cost": "{1}{B}",
+"type_line": "Creature — Human Rogue",
+"oracle_text": "Deathtouch\n{4}{U/P}: Transform this creature. Activate only as a sorcery. ({U/P} can be paid with either {U} or 2 life.)",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+]
+},
+{
+"name": "Gitaxian Mindstinger",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Rogue",
+"oracle_text": "Deathtouch\nWhenever this creature deals combat damage to a player or battle, draw a card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"U"
+]
+}
+]
+},
+{
+"name": "Khenra Spellspear // Gitaxian Spellstalker",
+"oracle_id": "f08d8fc5-c7fb-4913-92fc-06a0d4311d71",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Jackal Warrior // Creature — Phyrexian Jackal",
+"color_identity": [
+"R",
+"U"
+],
+"keywords": [
+"Prowess",
+"Transform",
+"Trample",
+"Ward"
+],
+"rarity": "uncommon",
+"collector_number": "151",
+"set": "mom",
+"card_faces": [
+{
+"name": "Khenra Spellspear",
+"mana_cost": "{1}{R}",
+"type_line": "Creature — Jackal Warrior",
+"oracle_text": "Trample\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\n{3}{U/P}: Transform this creature. Activate only as a sorcery. ({U/P} can be paid with either {U} or 2 life.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"R"
+]
+},
+{
+"name": "Gitaxian Spellstalker",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Jackal",
+"oracle_text": "Trample, ward {2}, prowess, prowess (Each instance of prowess triggers separately.)",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R",
+"U"
+]
+}
+]
+},
+{
+"name": "Halo Hopper",
+"oracle_id": "f48d30ee-bba6-4449-8c50-caf0d7f06528",
+"layout": "normal",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature — Frog",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)",
+"power": "3",
+"toughness": "2",
+"colors": [],
+"color_identity": [],
+"keywords": [
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "260",
+"set": "mom"
+},
+{
+"name": "Atraxa's Fall",
+"oracle_id": "22677153-bd87-4ff8-af92-ced4da2aac6c",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy target artifact, battle, enchantment, or creature with flying.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "176",
+"set": "mom"
+},
+{
+"name": "Fertilid's Favor",
+"oracle_id": "e2da8c3e-6ffc-41dd-a68a-62e64f7e9c60",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Target player searches their library for a basic land card, puts it onto the battlefield tapped, then shuffles. Put two +1/+1 counters on up to one target artifact or creature.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "186",
+"set": "mom"
+},
+{
+"name": "Crystal Carapace",
+"oracle_id": "06a6130f-f27b-4db0-915d-decd9a7d3c15",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant creature\nEnchanted creature gets +3/+3 and has ward {2}.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant",
+"Cycling"
+],
+"rarity": "common",
+"collector_number": "183",
+"set": "mom"
+},
+{
+"name": "Oracle of Tragedy",
+"oracle_id": "f88e1616-a7c7-4122-b626-bfa799cccaa4",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature — Human Wizard",
+"oracle_text": "When this creature enters or dies, choose one —\n• Draw a card, then discard a card.\n• Shuffle up to four target cards with mana value 3 or greater from your graveyard into your library.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "71",
+"set": "mom"
+},
+{
+"name": "Zurgo and Ojutai",
+"oracle_id": "941c9acd-2773-456a-88d5-0537735f93c6",
+"layout": "normal",
+"mana_cost": "{2}{U}{R}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Orc Dragon",
+"oracle_text": "Flying, haste\nZurgo and Ojutai has hexproof as long as it entered this turn.\nWhenever one or more Dragons you control deal combat damage to a player or battle, look at the top three cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order. You may return one of those Dragons to its owner's hand.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Haste"
+],
+"rarity": "mythic",
+"collector_number": "319",
+"set": "mom"
+},
+{
+"name": "Nezumi Informant",
+"oracle_id": "a70ffefb-840c-48c3-a59d-e12306086bb6",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Rat Rogue",
+"oracle_text": "When this creature enters, each opponent discards a card.",
+"power": "1",
+"toughness": "1",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "120",
+"set": "mom"
+},
+{
+"name": "Xerex Strobe-Knight",
+"oracle_id": "2e150f97-5688-4559-94b8-86c33fda28a0",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Flying, vigilance\n{T}: Create a 2/2 white and blue Knight creature token with vigilance. Activate only if you've cast two or more spells this turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying",
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "85",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Knight",
+"type_line": "Token Creature — Knight",
+"oracle_text": "Vigilance",
+"power": "2",
+"toughness": "2",
+"colors": [
+"U",
+"W"
+],
+"keywords": [
+"Vigilance"
+]
+}
+]
+},
+{
+"name": "Zhalfirin Shapecraft",
+"oracle_id": "cf459f47-e565-4bbb-89e4-ed54da8adae1",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature has base power and toughness 4/3 until end of turn.\nDraw a card.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "common",
+"collector_number": "87",
+"set": "mom"
+},
+{
+"name": "Invasion of Moag // Bloomwielder Dryads",
+"oracle_id": "a9855326-8958-4b03-b81b-1f9e4d1335b1",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Creature — Dryad",
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Transform",
+"Ward"
+],
+"rarity": "uncommon",
+"collector_number": "237",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Moag",
+"mana_cost": "{2}{G}{W}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, put a +1/+1 counter on each creature you control.",
+"defense": "5",
+"colors": [
+"G",
+"W"
+]
+},
+{
+"name": "Bloomwielder Dryads",
+"mana_cost": "",
+"type_line": "Creature — Dryad",
+"oracle_text": "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nAt the beginning of your end step, put a +1/+1 counter on target creature you control.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+]
+}
+]
+},
+{
+"name": "Onakke Javelineer",
+"oracle_id": "e834b281-279f-4df3-9c0e-764502b809c5",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature — Ogre Spirit",
+"oracle_text": "Reach\n{T}: This creature deals 2 damage to target player or battle.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Reach"
+],
+"rarity": "common",
+"collector_number": "156",
+"set": "mom"
+},
+{
+"name": "Shivan Branch-Burner",
+"oracle_id": "bf7f5e9d-de3d-4a29-af25-f0b56336cecb",
+"layout": "normal",
+"mana_cost": "{5}{R}{R}",
+"cmc": 7.0,
+"type_line": "Creature — Dragon",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nFlying, haste",
+"power": "4",
+"toughness": "4",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Flying",
+"Haste",
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "165",
+"set": "mom"
+},
+{
+"name": "Streetwise Negotiator",
+"oracle_id": "74b631c5-9420-496e-8845-3b050d3d5340",
+"layout": "normal",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature — Cat Citizen",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nThis creature assigns combat damage equal to its toughness rather than its power.",
+"power": "0",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "uncommon",
+"collector_number": "207",
+"set": "mom"
+},
+{
+"name": "Furnace Reins",
+"oracle_id": "b623e61a-cdb9-46b0-a443-547be05db877",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Gain control of target creature until end of turn. Untap that creature. Until end of turn, it gains haste and \"Whenever this creature deals combat damage to a player or battle, create a Treasure token.\" (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Treasure"
+],
+"rarity": "uncommon",
+"collector_number": "141",
+"set": "mom",
+"related": [
+{
+"component": "token",
+"name": "Treasure",
+"type_line": "Token Artifact — Treasure",
+"oracle_text": "{T}, Sacrifice this token: Add one mana of any color.",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Change the Equation",
+"oracle_id": "aba7e9e2-8df8-454e-a332-9abae1d95b6f",
+"layout": "normal",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Choose one —\n• Counter target spell with mana value 2 or less.\n• Counter target red or green spell with mana value 6 or less.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "50",
+"set": "mom"
+},
+{
+"name": "Enduring Bondwarden",
+"oracle_id": "c17d4818-5825-4bff-8fc5-5fd740cc0c70",
+"layout": "normal",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature — Human Scout",
+"oracle_text": "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.)\nWhen this creature dies, put its counters on target creature you control.",
+"power": "0",
+"toughness": "1",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Backup"
+],
+"rarity": "common",
+"collector_number": "14",
+"set": "mom"
+},
+{
+"name": "Sandstalker Moloch",
+"oracle_id": "f2a6dc8d-3c98-44ae-aff0-b838d7aee0b7",
+"layout": "normal",
+"mana_cost": "{1}{G}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Lizard",
+"oracle_text": "Flash\nWhen this creature enters, if an opponent cast a blue and/or black spell this turn, look at the top four cards of your library. You may reveal a permanent card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"power": "4",
+"toughness": "2",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Flash"
+],
+"rarity": "uncommon",
+"collector_number": "203",
+"set": "mom"
+},
+{
+"name": "Mirran Banesplitter",
+"oracle_id": "aeaf3ce8-6bdf-4a90-8b81-cdbce0f3bb12",
+"layout": "normal",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Flash\nWhen this Equipment enters, attach it to target creature you control.\nEquipped creature gets +2/+0.\nEquip {3} ({3}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Equip",
+"Flash"
+],
+"rarity": "common",
+"collector_number": "154",
+"set": "mom"
+},
+{
+"name": "Cragsmasher Yeti",
+"oracle_id": "57120486-0316-4591-abca-438ab8283d3f",
+"layout": "normal",
+"mana_cost": "{4}{R}{R}",
+"cmc": 6.0,
+"type_line": "Creature — Yeti",
+"oracle_text": "Mountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)\nBackup 2 (When this creature enters, put two +1/+1 counters on target creature. If that's another creature, it gains the following ability until end of turn.)\nTrample",
+"power": "4",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Mountaincycling",
+"Backup",
+"Landcycling",
+"Trample",
+"Typecycling",
+"Cycling"
+],
+"rarity": "common",
+"collector_number": "333",
+"set": "mom"
+},
+{
+"name": "Alabaster Host Sanctifier",
+"oracle_id": "ad172d4e-febf-4844-9544-861d03e27ab5",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Phyrexian Cleric",
+"oracle_text": "Lifelink",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Lifelink"
+],
+"rarity": "common",
+"collector_number": "4",
+"set": "mom"
+},
+{
+"name": "Ramosian Greatsword",
+"oracle_id": "8c53a177-c8c8-4b9f-a221-f205da67daa5",
+"layout": "normal",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Artifact — Equipment",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nEquipped creature gets +3/+1 and has trample.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Equip",
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "159",
+"set": "mom"
+},
+{
+"name": "Blightreaper Thallid // Blightsower Thallid",
+"oracle_id": "ea405cb4-a21b-4a26-98f3-251e65ea2aef",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Creature — Fungus // Creature — Phyrexian Fungus",
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "92",
+"set": "mom",
+"card_faces": [
+{
+"name": "Blightreaper Thallid",
+"mana_cost": "{1}{B}",
+"type_line": "Creature — Fungus",
+"oracle_text": "{3}{G/P}: Transform this creature. Activate only as a sorcery. ({G/P} can be paid with either {G} or 2 life.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+]
+},
+{
+"name": "Blightsower Thallid",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Fungus",
+"oracle_text": "When this creature transforms into Blightsower Thallid or dies, create a 1/1 green Phyrexian Saproling creature token.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"G"
+]
+}
+],
+"related": [
+{
+"component": "token",
+"name": "Phyrexian Saproling",
+"type_line": "Token Creature — Phyrexian Saproling",
+"oracle_text": "",
+"power": "1",
+"toughness": "1",
+"colors": [
+"G"
+],
+"keywords": []
+}
+]
+},
+{
+"name": "Invasion of New Capenna // Holy Frazzle-Cannon",
+"oracle_id": "530dc119-e266-4525-abe9-7fab599e9de2",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Artifact — Equipment",
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Transform",
+"Equip"
+],
+"rarity": "uncommon",
+"collector_number": "238",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of New Capenna",
+"mana_cost": "{W}{B}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, you may sacrifice an artifact or creature. When you do, exile target artifact or creature an opponent controls.",
+"defense": "4",
+"colors": [
+"B",
+"W"
+]
+},
+{
+"name": "Holy Frazzle-Cannon",
+"mana_cost": "",
+"type_line": "Artifact — Equipment",
+"oracle_text": "Whenever equipped creature attacks, put a +1/+1 counter on that creature and each other creature you control that shares a creature type with it.\nEquip {1}",
+"colors": [
+"B",
+"W"
+]
+}
+]
+},
+{
+"name": "Aerial Boost",
+"oracle_id": "d7fa5c42-7cd5-42e7-a42e-724c1a3df96a",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nTarget creature gets +2/+2 and gains flying until end of turn.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Convoke"
+],
+"rarity": "common",
+"collector_number": "2",
+"set": "mom"
+},
+{
+"name": "Invasion of Kaldheim // Pyre of the World Tree",
+"oracle_id": "66914a34-59b3-48a0-9305-ebd956d34f02",
+"layout": "transform",
+"cmc": 4.0,
+"type_line": "Battle — Siege // Enchantment",
+"color_identity": [
+"R"
+],
+"keywords": [
+"Transform"
+],
+"rarity": "rare",
+"collector_number": "145",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Kaldheim",
+"mana_cost": "{3}{R}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, exile all cards from your hand, then draw that many cards. Until the end of your next turn, you may play cards exiled this way.",
+"defense": "4",
+"colors": [
+"R"
+]
+},
+{
+"name": "Pyre of the World Tree",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "Discard a land card: This enchantment deals 2 damage to any target.\nWhenever you discard a land card, exile the top card of your library. You may play that card this turn.",
+"colors": [
+"R"
+]
+}
+]
+},
+{
+"name": "Invasion of Ixalan // Belligerent Regisaur",
+"oracle_id": "1e5a5a7d-2c34-4e56-96e9-ebcf7745a03c",
+"layout": "transform",
+"cmc": 2.0,
+"type_line": "Battle — Siege // Creature — Dinosaur",
+"color_identity": [
+"G"
+],
+"keywords": [
+"Transform",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "191",
+"set": "mom",
+"card_faces": [
+{
+"name": "Invasion of Ixalan",
+"mana_cost": "{1}{G}",
+"type_line": "Battle — Siege",
+"oracle_text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, look at the top five cards of your library. You may reveal a permanent card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"defense": "4",
+"colors": [
+"G"
+]
+},
+{
+"name": "Belligerent Regisaur",
+"mana_cost": "",
+"type_line": "Creature — Dinosaur",
+"oracle_text": "Trample\nWhenever you cast a spell, this creature gains indestructible until end of turn.",
+"power": "4",
+"toughness": "3",
+"colors": [
+"G"
+]
+}
+]
+},
+{
+"name": "Seraph of New Capenna // Seraph of New Phyrexia",
+"oracle_id": "08574d1b-4b76-42dd-884b-29c5a61cfdda",
+"layout": "transform",
+"cmc": 3.0,
+"type_line": "Creature — Angel Soldier // Creature — Phyrexian Angel",
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [
+"Flying",
+"Transform"
+],
+"rarity": "uncommon",
+"collector_number": "36",
+"set": "mom",
+"card_faces": [
+{
+"name": "Seraph of New Capenna",
+"mana_cost": "{2}{W}",
+"type_line": "Creature — Angel Soldier",
+"oracle_text": "Flying\n{4}{B/P}: Transform this creature. Activate only as a sorcery. ({B/P} can be paid with either {B} or 2 life.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+]
+},
+{
+"name": "Seraph of New Phyrexia",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Angel",
+"oracle_text": "Flying\nWhenever this creature attacks, you may sacrifice another creature or artifact. If you do, this creature gets +2/+1 until end of turn.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"B",
+"W"
+]
+}
+]
+},
+{
+"name": "Tarkir Duneshaper // Burnished Dunestomper",
+"oracle_id": "c554ae68-0201-4958-aa63-8159911acb50",
+"layout": "transform",
+"cmc": 1.0,
+"type_line": "Creature — Dog Warrior // Creature — Phyrexian Dog Warrior",
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Transform",
+"Trample"
+],
+"rarity": "common",
+"collector_number": "43",
+"set": "mom",
+"card_faces": [
+{
+"name": "Tarkir Duneshaper",
+"mana_cost": "{W}",
+"type_line": "Creature — Dog Warrior",
+"oracle_text": "{4}{G/P}: Transform this creature. Activate only as a sorcery. ({G/P} can be paid with either {G} or 2 life.)",
+"power": "1",
+"toughness": "2",
+"colors": [
+"W"
+]
+},
+{
+"name": "Burnished Dunestomper",
+"mana_cost": "",
+"type_line": "Creature — Phyrexian Dog Warrior",
+"oracle_text": "Trample",
+"power": "4",
+"toughness": "3",
+"colors": [
+"G",
+"W"
+]
+}
+]
+},
+{
+"name": "Urn of Godfire",
+"oracle_id": "420290d9-7bb9-4e5a-82ec-c777152ccc72",
+"layout": "normal",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact",
+"oracle_text": "{2}: Add one mana of any color.\n{6}, {T}, Sacrifice this artifact: Destroy target creature or enchantment.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "common",
+"collector_number": "266",
+"set": "mom"
+}
+]

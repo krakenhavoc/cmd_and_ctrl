@@ -1,0 +1,945 @@
+[
+{
+"name": "Danitha, New Benalia's Light",
+"oracle_id": "971b30a8-4ab4-4e96-9d50-597da4d52994",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Knight",
+"oracle_text": "Vigilance, trample, lifelink\nOnce during each of your turns, you may cast an Aura or Equipment spell from your graveyard.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Lifelink",
+"Vigilance",
+"Trample"
+],
+"rarity": "rare",
+"collector_number": "79",
+"set": "mat"
+},
+{
+"name": "Harnessed Snubhorn",
+"oracle_id": "e1dd9dca-cb5f-46b4-b16d-a61ae651d653",
+"layout": "normal",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature — Dinosaur",
+"oracle_text": "Vigilance\nWhenever this creature deals combat damage to a player, return target artifact or enchantment card from your graveyard to the battlefield.",
+"power": "2",
+"toughness": "5",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [
+"Vigilance"
+],
+"rarity": "uncommon",
+"collector_number": "103",
+"set": "mat"
+},
+{
+"name": "Ayara's Oathsworn",
+"oracle_id": "ff3936bb-3281-4260-84de-1f65dbfbe993",
+"layout": "normal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature — Human Knight",
+"oracle_text": "Menace\nWhenever this creature deals combat damage to a player, if it has fewer than four +1/+1 counters on it, put a +1/+1 counter on it. Then if it has exactly four +1/+1 counters on it, search your library for a card, put it into your hand, then shuffle.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Menace"
+],
+"rarity": "rare",
+"collector_number": "111",
+"set": "mat"
+},
+{
+"name": "Tyvar the Bellicose",
+"oracle_id": "a21d321b-2172-4577-a05b-399a019e3448",
+"layout": "normal",
+"mana_cost": "{2}{B}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Elf Warrior",
+"oracle_text": "Whenever one or more Elves you control attack, they gain deathtouch until end of turn.\nEach creature you control has \"Whenever a mana ability of this creature resolves, put a number of +1/+1 counters on it equal to the amount of mana this creature produced. This ability triggers only once each turn.\"",
+"power": "5",
+"toughness": "4",
+"colors": [
+"B",
+"G"
+],
+"color_identity": [
+"B",
+"G"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "48",
+"set": "mat"
+},
+{
+"name": "Deification",
+"oracle_id": "8c8f93d7-d89a-401b-8764-76be71ad16e3",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "As this enchantment enters, choose a planeswalker type.\nPlaneswalkers you control of the chosen type have hexproof.\nAs long as you control a creature, if damage dealt to a planeswalker you control of the chosen type would result in all loyalty counters on it being removed, instead all but one of those counters are removed.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "151",
+"set": "mat"
+},
+{
+"name": "Nahiri's Resolve",
+"oracle_id": "12bd2051-297b-4bab-ac64-6eb26a42e3e2",
+"layout": "normal",
+"mana_cost": "{3}{R}{W}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "Creatures you control get +1/+0 and have haste.\nAt the beginning of your end step, exile any number of nontoken artifacts and/or creatures you control. Return those cards to the battlefield under their owner's control at the beginning of your next upkeep.",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "172",
+"set": "mat"
+},
+{
+"name": "Drannith Ruins",
+"oracle_id": "d1f10cca-8dfa-4ea5-b227-4446cd8514a8",
+"layout": "normal",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}: Add {C}.\n{2}, {T}: Put two +1/+1 counters on target non-Human creature that entered this turn.",
+"colors": [],
+"color_identity": [],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "185",
+"set": "mat"
+},
+{
+"name": "Niv-Mizzet, Supreme",
+"oracle_id": "4c3a865a-88b1-43e0-b326-17c45670da54",
+"layout": "normal",
+"mana_cost": "{W}{U}{B}{R}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Dragon Avatar",
+"oracle_text": "Flying, hexproof from monocolored\nEach instant and sorcery card in your graveyard that's exactly two colors has jump-start. (You may cast that card from your graveyard by discarding a card in addition to paying its other costs. Then exile it.)",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Hexproof from",
+"Hexproof"
+],
+"rarity": "rare",
+"collector_number": "140",
+"set": "mat"
+},
+{
+"name": "Rebuild the City",
+"oracle_id": "2aac0ddc-1005-4049-a337-fe86e092b461",
+"layout": "normal",
+"mana_cost": "{3}{B}{R}{G}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Choose target land. Create three tokens that are copies of it, except they're 3/3 creatures in addition to their other types and they have vigilance and menace. (They're affected by summoning sickness.)",
+"colors": [
+"B",
+"G",
+"R"
+],
+"color_identity": [
+"B",
+"G",
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "93",
+"set": "mat",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Jolrael, Voice of Zhalfir",
+"oracle_id": "65e4fbd1-4935-495e-9897-bad5a0cfd935",
+"layout": "normal",
+"mana_cost": "{2}{G}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Druid",
+"oracle_text": "At the beginning of combat on your turn, up to one target land you control becomes an X/X green and blue Bird creature with flying and haste until end of turn, where X is the number of cards in your hand. It's still a land.\nWhenever a land creature you control deals combat damage to a player, draw a card.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "83",
+"set": "mat"
+},
+{
+"name": "Vesuvan Drifter",
+"oracle_id": "727ef984-1643-4a09-8283-a665508e85dd",
+"layout": "normal",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature — Shapeshifter",
+"oracle_text": "Flying\nYou may look at the top card of your library any time.\nAt the beginning of each combat, you may reveal the top card of your library. If you reveal a creature card this way, this creature becomes a copy of that card until end of turn, except it has flying.",
+"power": "2",
+"toughness": "4",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "194",
+"set": "mat"
+},
+{
+"name": "Narset, Enlightened Exile",
+"oracle_id": "d92725de-ead0-4a6c-83db-55ec3acc7184",
+"layout": "normal",
+"mana_cost": "{1}{U}{R}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Human Monk",
+"oracle_text": "Creatures you control have prowess.\nWhenever Narset attacks, exile target noncreature, nonland card with mana value less than Narset's power from a graveyard and copy it. You may cast the copy without paying its mana cost.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"R",
+"U",
+"W"
+],
+"color_identity": [
+"R",
+"U",
+"W"
+],
+"keywords": [],
+"rarity": "mythic",
+"collector_number": "217",
+"set": "mat"
+},
+{
+"name": "Calix, Guided by Fate",
+"oracle_id": "1bcc8ca6-5fd0-4fc9-8f0c-f81d8abf9249",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Enchantment Creature — Human Druid",
+"oracle_text": "Constellation — Whenever Calix or another enchantment you control enters, put a +1/+1 counter on target creature.\nWhenever Calix or an enchanted creature you control deals combat damage to a player, you may create a token that's a copy of a nonlegendary enchantment you control. Do this only once each turn.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Constellation"
+],
+"rarity": "mythic",
+"collector_number": "26",
+"set": "mat",
+"related": [
+{
+"component": "token",
+"name": "Copy",
+"type_line": "Token",
+"oracle_text": "(This token can be used to represent a token that's a copy of a permanent.)",
+"colors": [],
+"keywords": []
+}
+]
+},
+{
+"name": "Filter Out",
+"oracle_id": "8c95d823-6bbd-4484-8f38-b1bb20403085",
+"layout": "normal",
+"mana_cost": "{1}{U}{U}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Return all noncreature, nonland permanents to their owners' hands.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "107",
+"set": "mat"
+},
+{
+"name": "Nissa, Resurgent Animist",
+"oracle_id": "c1fc5923-c3cd-448a-98d1-c154661c2812",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Elf Scout",
+"oracle_text": "Landfall — Whenever a land you control enters, add one mana of any color. Then if this is the second time this ability has resolved this turn, reveal cards from the top of your library until you reveal an Elf or Elemental card. Put that card into your hand and the rest on the bottom of your library in a random order.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Landfall"
+],
+"rarity": "mythic",
+"collector_number": "122",
+"set": "mat"
+},
+{
+"name": "Pia Nalaar, Consul of Revival",
+"oracle_id": "65d4ebdb-8757-4e5e-9411-d78597e20d57",
+"layout": "normal",
+"mana_cost": "{R}{W}",
+"cmc": 2.0,
+"type_line": "Legendary Creature — Human Artificer",
+"oracle_text": "Thopters you control have haste.\nWhenever you play a land from exile or cast a spell from exile, create a 1/1 colorless Thopter artifact creature token with flying.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "42",
+"set": "mat",
+"related": [
+{
+"component": "token",
+"name": "Thopter",
+"type_line": "Token Artifact Creature — Thopter",
+"oracle_text": "Flying",
+"power": "1",
+"toughness": "1",
+"colors": [],
+"keywords": [
+"Flying"
+]
+}
+]
+},
+{
+"name": "Undercity Upheaval",
+"oracle_id": "c19f4a43-85bb-4070-a237-171597c94ec3",
+"layout": "normal",
+"mana_cost": "{1}{G}{G}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Undergrowth — Distribute X +1/+1 counters among any number of target creatures you control, where X is the number of creature cards in your graveyard as you cast this spell. Creatures you control gain vigilance until end of turn.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Undergrowth"
+],
+"rarity": "uncommon",
+"collector_number": "205",
+"set": "mat"
+},
+{
+"name": "Feast of the Victorious Dead",
+"oracle_id": "7e4e1d13-db1a-48e5-9b5f-f3e71d10c23e",
+"layout": "normal",
+"mana_cost": "{W}{B}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your end step, if one or more creatures died this turn, you gain that much life and distribute that many +1/+1 counters among any number of creatures you control.",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "130",
+"set": "mat"
+},
+{
+"name": "Tazri, Stalwart Survivor",
+"oracle_id": "13a3e61d-c9ff-447d-9016-09a183b7af1d",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Warrior",
+"oracle_text": "Each creature you control has \"{T}: Add one mana of any of this creature's colors. Spend this mana only to activate an ability of a creature. Activate only if this creature has another activated ability.\"\n{W}{U}{B}{R}{G}, {T}: Mill five cards. Put all creature cards with activated abilities that aren't mana abilities from among the milled cards into your hand.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"W"
+],
+"color_identity": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"keywords": [
+"Mill"
+],
+"rarity": "rare",
+"collector_number": "154",
+"set": "mat"
+},
+{
+"name": "Tolarian Contempt",
+"oracle_id": "831623c9-8279-439e-a42b-ac47cacdb058",
+"layout": "normal",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, put a rejection counter on each creature your opponents control.\nAt the beginning of your end step, for each opponent, choose up to one target creature they control with a rejection counter on it. That creature's owner puts it on their choice of the top or bottom of their library.",
+"colors": [
+"U"
+],
+"color_identity": [
+"U"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "192",
+"set": "mat"
+},
+{
+"name": "Nashi, Moon's Legacy",
+"oracle_id": "ffa6c14e-3d8e-47a2-b102-d37538d60ef6",
+"layout": "normal",
+"mana_cost": "{B}{G}{U}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Rat Shaman",
+"oracle_text": "Menace, ward {1}\nWhenever Nashi attacks, exile up to one target legendary or Rat card from your graveyard and copy it. You may cast the copy. (You still pay its costs. A copy of a permanent spell becomes a token.)",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B",
+"G",
+"U"
+],
+"color_identity": [
+"B",
+"G",
+"U"
+],
+"keywords": [
+"Menace",
+"Ward"
+],
+"rarity": "rare",
+"collector_number": "139",
+"set": "mat"
+},
+{
+"name": "Leyline Immersion",
+"oracle_id": "aa6c4079-72e1-4b2e-bd26-9399298c6105",
+"layout": "normal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment — Aura",
+"oracle_text": "Enchant legendary creature\nEnchanted creature has ward {2} and \"{T}: Add five mana in any combination of colors. Spend this mana only to cast spells.\"",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [
+"Enchant"
+],
+"rarity": "rare",
+"collector_number": "21",
+"set": "mat"
+},
+{
+"name": "Blot Out",
+"oracle_id": "9609cd5c-b537-4cb2-9dde-4b12795531f7",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Target opponent exiles a creature or planeswalker they control with the greatest mana value among creatures and planeswalkers they control.",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "112",
+"set": "mat"
+},
+{
+"name": "Coppercoat Vanguard",
+"oracle_id": "9f6fc734-4935-42d9-93a0-1b5ad8d8d277",
+"layout": "normal",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature — Human Soldier",
+"oracle_text": "Each other Human you control gets +1/+0 and has ward {1}. (Whenever it becomes the target of a spell or ability an opponent controls, counter it unless that player pays {1}.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "101",
+"set": "mat"
+},
+{
+"name": "The Kenriths' Royal Funeral",
+"oracle_id": "b4b0a4b7-b36f-4c96-b07b-a86c1efd333e",
+"layout": "normal",
+"mana_cost": "{2}{W}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Enchantment",
+"oracle_text": "When The Kenriths' Royal Funeral enters, exile up to two target legendary creature cards from your graveyard. You draw X cards and you lose X life, where X is the greatest mana value among cards exiled this way.\nLegendary spells you cast cost {1} less to cast for each card exiled with The Kenriths' Royal Funeral.",
+"colors": [
+"B",
+"W"
+],
+"color_identity": [
+"B",
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "84",
+"set": "mat"
+},
+{
+"name": "Sigarda, Font of Blessings",
+"oracle_id": "5fe07a76-f261-4f16-8a15-571bed707261",
+"layout": "normal",
+"mana_cost": "{2}{G}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature — Angel",
+"oracle_text": "Flying\nOther permanents you control have hexproof.\nYou may look at the top card of your library any time.\nYou may cast Angel spells and Human spells from the top of your library.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [
+"Flying"
+],
+"rarity": "rare",
+"collector_number": "147",
+"set": "mat"
+},
+{
+"name": "Animist's Might",
+"oracle_id": "4940783f-2534-41c1-b614-5dabb0dff405",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "This spell costs {2} less to cast if it targets a legendary creature you control.\nTarget creature you control deals damage equal to twice its power to target creature or planeswalker you don't control.",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "120",
+"set": "mat"
+},
+{
+"name": "Samut, Vizier of Naktamun",
+"oracle_id": "178b3fdf-dbee-4245-a811-b21ff8a24f66",
+"layout": "normal",
+"mana_cost": "{1}{R}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Warrior Cleric",
+"oracle_text": "First strike, vigilance, haste\nWhenever a creature you control deals combat damage to a player, if that creature entered this turn, draw a card.",
+"power": "2",
+"toughness": "3",
+"colors": [
+"G",
+"R"
+],
+"color_identity": [
+"G",
+"R"
+],
+"keywords": [
+"Vigilance",
+"First strike",
+"Haste"
+],
+"rarity": "mythic",
+"collector_number": "180",
+"set": "mat"
+},
+{
+"name": "Gold-Forged Thopteryx",
+"oracle_id": "c27e2d6f-498c-42d8-aa1a-ac6402bf3f9a",
+"layout": "normal",
+"mana_cost": "{W}{U}",
+"cmc": 2.0,
+"type_line": "Artifact Creature — Dinosaur Thopter",
+"oracle_text": "Flying, lifelink\nEach legendary permanent you control has ward {2}. (Whenever it becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+"power": "1",
+"toughness": "3",
+"colors": [
+"U",
+"W"
+],
+"color_identity": [
+"U",
+"W"
+],
+"keywords": [
+"Flying",
+"Lifelink"
+],
+"rarity": "uncommon",
+"collector_number": "211",
+"set": "mat"
+},
+{
+"name": "Tranquil Frillback",
+"oracle_id": "e87a4461-f3d1-443f-ad4c-dba91a993809",
+"layout": "normal",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature — Dinosaur",
+"oracle_text": "When this creature enters, you may pay {G} up to three times. When you pay this cost one or more times, choose up to that many —\n• Destroy target artifact or enchantment.\n• Exile target player's graveyard.\n• You gain 4 life.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"G"
+],
+"color_identity": [
+"G"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "164",
+"set": "mat"
+},
+{
+"name": "Kolaghan Warmonger",
+"oracle_id": "4c7e6520-d179-4590-afdc-92eb2c0740a6",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature — Ogre Warrior",
+"oracle_text": "Haste\nWhenever this creature attacks, look at the top six cards of your library. You may reveal a Dragon card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [
+"Haste"
+],
+"rarity": "uncommon",
+"collector_number": "201",
+"set": "mat"
+},
+{
+"name": "Kiora, Sovereign of the Deep",
+"oracle_id": "95df54e2-0196-4e54-8144-de5982ce07f5",
+"layout": "normal",
+"mana_cost": "{3}{G}{U}",
+"cmc": 5.0,
+"type_line": "Legendary Creature — Merfolk Noble",
+"oracle_text": "Vigilance, ward {3}\nWhenever you cast a Kraken, Leviathan, Octopus, or Serpent spell from your hand, look at the top X cards of your library, where X is that spell's mana value. You may cast a spell with mana value less than X from among them without paying its mana cost. Put the rest on the bottom of your library in a random order.",
+"power": "4",
+"toughness": "5",
+"colors": [
+"G",
+"U"
+],
+"color_identity": [
+"G",
+"U"
+],
+"keywords": [
+"Vigilance",
+"Ward"
+],
+"rarity": "mythic",
+"collector_number": "214",
+"set": "mat"
+},
+{
+"name": "Nahiri, Forged in Fury",
+"oracle_id": "87966759-206a-4a2d-bf78-86f727c29972",
+"layout": "normal",
+"mana_cost": "{4}{R}{W}",
+"cmc": 6.0,
+"type_line": "Legendary Creature — Kor Artificer",
+"oracle_text": "Affinity for Equipment (This spell costs {1} less to cast for each Equipment you control.)\nWhenever an equipped creature you control attacks, exile the top card of your library. You may play that card this turn. You may cast Equipment spells this way without paying their mana costs.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [
+"Affinity"
+],
+"rarity": "mythic",
+"collector_number": "171",
+"set": "mat"
+},
+{
+"name": "Campus Renovation",
+"oracle_id": "d34a3b58-a905-4e90-b35c-9f5c21149b04",
+"layout": "normal",
+"mana_cost": "{3}{R}{W}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Return up to one target artifact or enchantment card from your graveyard to the battlefield. Exile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+"colors": [
+"R",
+"W"
+],
+"color_identity": [
+"R",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "127",
+"set": "mat"
+},
+{
+"name": "Urborg Scavengers",
+"oracle_id": "d27f3338-4900-49eb-9d8b-994afd524abe",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Spirit",
+"oracle_text": "Whenever this creature enters or attacks, exile target card from a graveyard. Put a +1/+1 counter on this creature.\nThis creature has flying as long as a card exiled with it has flying. The same is true for first strike, double strike, deathtouch, haste, hexproof, indestructible, lifelink, menace, reach, trample, and vigilance.",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "15",
+"set": "mat"
+},
+{
+"name": "Arni Metalbrow",
+"oracle_id": "d799e58a-0032-4df8-a77f-0d824ec15214",
+"layout": "normal",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Creature — Human Berserker",
+"oracle_text": "Whenever a creature you control attacks or enters attacking, you may pay {1}{R}. If you do, you may put a creature card with mana value less than that creature's mana value from your hand onto the battlefield tapped and attacking.",
+"power": "3",
+"toughness": "3",
+"colors": [
+"R"
+],
+"color_identity": [
+"R"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "66",
+"set": "mat"
+},
+{
+"name": "Markov Baron",
+"oracle_id": "bafc2e11-5f1c-46f1-a852-2330e099b8e2",
+"layout": "normal",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature — Vampire Noble",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nLifelink\nOther Vampires you control get +1/+1.\nMadness {2}{B} (If you discard this card, discard it into exile. When you do, cast it for its madness cost or put it into your graveyard.)",
+"power": "2",
+"toughness": "2",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Lifelink",
+"Madness",
+"Convoke"
+],
+"rarity": "uncommon",
+"collector_number": "198",
+"set": "mat"
+},
+{
+"name": "Death-Rattle Oni",
+"oracle_id": "bea40c67-73ca-4b5e-b902-5de07f21585c",
+"layout": "normal",
+"mana_cost": "{6}{B}",
+"cmc": 7.0,
+"type_line": "Creature — Demon Spirit",
+"oracle_text": "Flash\nThis spell costs {2} less to cast for each creature that died this turn.\nWhen this creature enters, destroy all other creatures that were dealt damage this turn.",
+"power": "5",
+"toughness": "4",
+"colors": [
+"B"
+],
+"color_identity": [
+"B"
+],
+"keywords": [
+"Flash"
+],
+"rarity": "uncommon",
+"collector_number": "113",
+"set": "mat"
+},
+{
+"name": "Cosmic Rebirth",
+"oracle_id": "add60aad-2532-4f59-bfb9-f0168c2adda6",
+"layout": "normal",
+"mana_cost": "{1}{G}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose target permanent card in your graveyard. If it has mana value 3 or less, you may put it onto the battlefield. If you don't put it onto the battlefield, put it into your hand.\nYou gain 3 life.",
+"colors": [
+"G",
+"W"
+],
+"color_identity": [
+"G",
+"W"
+],
+"keywords": [],
+"rarity": "uncommon",
+"collector_number": "28",
+"set": "mat"
+},
+{
+"name": "Spark Rupture",
+"oracle_id": "82e5642a-0803-432c-85d3-091fca75c82f",
+"layout": "normal",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, draw a card.\nEach planeswalker with one or more loyalty counters on it loses all abilities and is a creature with power and toughness each equal to the number of loyalty counters on it.",
+"colors": [
+"W"
+],
+"color_identity": [
+"W"
+],
+"keywords": [],
+"rarity": "rare",
+"collector_number": "5",
+"set": "mat"
+}
+]
