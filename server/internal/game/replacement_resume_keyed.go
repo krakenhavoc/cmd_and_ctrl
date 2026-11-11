@@ -490,6 +490,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"auraHost":                  repFieldCarried,
 	"auraHostFixed":             repFieldCarried,
 	"auraHostSettled":           repFieldCarried,
+	"auraHostCreaturesOnly":     repFieldCarried,
 	"entersAsAura":              repFieldCarried,
 	"entersAs":                  repFieldCarried,
 	"exchangeTextWith":          repFieldCarried,
@@ -814,6 +815,7 @@ type replacementEventSnapshot struct {
 	AuraHost                  *TargetRef          `json:"auraHost,omitempty"`
 	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
 	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
+	AuraHostCreaturesOnly     bool                `json:"auraHostCreaturesOnly,omitempty"`
 	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
 	EntersAs                  *EntersAs           `json:"entersAs,omitempty"`
 	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
@@ -1278,6 +1280,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		CopyUntilEndOfTurn:        ev.copyUntilEndOfTurn,
 		AuraHostFixed:             ev.auraHostFixed,
 		AuraHostSettled:           ev.auraHostSettled,
+		AuraHostCreaturesOnly:     ev.auraHostCreaturesOnly,
 		EntersAsAura:              ev.entersAsAura,
 		EntersAs:                  copyEntersAs(ev.entersAs),
 		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
@@ -1454,6 +1457,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		copyUntilEndOfTurn:        s.CopyUntilEndOfTurn,
 		auraHostFixed:             s.AuraHostFixed,
 		auraHostSettled:           s.AuraHostSettled,
+		auraHostCreaturesOnly:     s.AuraHostCreaturesOnly,
 		entersAsAura:              s.EntersAsAura,
 		entersAs:                  copyEntersAs(s.EntersAs),
 		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),

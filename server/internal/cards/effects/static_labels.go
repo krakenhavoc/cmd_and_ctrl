@@ -164,6 +164,8 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack unless you control more of a certain permanent than defending player."
 	case r.ControllerMustHaveCitysBlessing:
 		return "Can't attack unless you have the city's blessing."
+	case r.ControllerHandAtLeast > 0:
+		return fmt.Sprintf("Can't attack unless you have %d or more cards in hand.", r.ControllerHandAtLeast)
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
 	case r.PlayerMustHaveActedLastTurn:

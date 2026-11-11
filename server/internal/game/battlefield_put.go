@@ -147,6 +147,13 @@ type ZoneEntryOptions struct {
 	// they enter (aura_host.go).
 	AttachedTo TargetRef
 
+	// AuraHostsCreaturesOnly is the putting effect's "only creatures can be
+	// enchanted this way" (Retether): an Aura that chooses its host as it
+	// enters (CR 303.4f) chooses among the creatures its enchant clause
+	// admits, and one with no such creature stays where it was (CR 303.4g).
+	// Ignored with AttachedTo, which names the host.
+	AuraHostsCreaturesOnly bool
+
 	// EntersAs is the putting effect's "they are <types> with
 	// <ability>" (Supper for Spiders' Food artifacts, Tom, Bert, and
 	// William's artifact; ADR 0210). Seeded onto every card's entry

@@ -141,6 +141,13 @@ type AttackTargetRestriction struct {
 	// Swordtooth, #2696, CR 702.131c). Read live at declaration, like
 	// every clause here; the blessing is never lost once earned.
 	ControllerMustHaveCitysBlessing bool `json:",omitempty"`
+	// ControllerHandAtLeast, when above zero, forbids attacking anything
+	// while the attacking creature's controller has fewer cards than this
+	// in hand: "can't attack unless you have seven or more cards in hand"
+	// (Kefnet the Mindful, CR 508.1c). Read live at declaration, and like
+	// the city's blessing a fact about the controller alone, so it refuses
+	// every target while it is unmet.
+	ControllerHandAtLeast int `json:",omitempty"`
 	// NotAlreadyAttackedThisTurn forbids attacking a player this object
 	// has already attacked this turn: "can't attack a player it has
 	// already attacked this turn" (Bloodthirster, #2171, CR 508.1c). It
@@ -163,6 +170,12 @@ type AttackTargetRestriction struct {
 	// you" (Storm, Windrider, #4601) says "you", not "or planeswalkers you
 	// control", so a flier may still attack one.
 	NotPlayerOnly bool `json:",omitempty"`
+	// NotPlayerBattles widens NotPlayer to every permanent the player
+	// controls that can be attacked: "can't attack you or a permanent you
+	// control" (Immortal Obligation) also closes a battle that player
+	// CONTROLS, whoever protects it (CR 310.9b). Meaningless with
+	// NotPlayerOnly.
+	NotPlayerBattles bool `json:",omitempty"`
 	// OnlyAttackersMatching, when set, makes the whole restriction bind
 	// only an attacker that matches ANY of these queries, judged on its
 	// effective characteristics at the moment of declaration (CR 508.1c):
@@ -196,9 +209,10 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
 		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
 		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn && r.NotPlayer == o.NotPlayer &&
-		r.NotPlayerOnly == o.NotPlayerOnly &&
+		r.NotPlayerOnly == o.NotPlayerOnly && r.NotPlayerBattles == o.NotPlayerBattles &&
 		samePermanentQueries(r.OnlyAttackersMatching, o.OnlyAttackersMatching) &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
+		r.ControllerHandAtLeast == o.ControllerHandAtLeast &&
 		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn
 }
 
@@ -222,7 +236,7 @@ func inactiveLastTurnReason(name string) string {
 func (r AttackTargetRestriction) asksOfTheDefender() bool {
 	return len(r.DefenderMustControl) > 0 || r.DefenderMustBePoisoned || r.DefenderMustBeMonarch ||
 		r.DefenderGraveyardAtLeast > 0 || len(r.ControllerMustControlMore) > 0 ||
-		r.ControllerMustHaveCitysBlessing
+		r.ControllerMustHaveCitysBlessing || r.ControllerHandAtLeast > 0
 }
 
 // unmetDefenderClauseLocked is the first of r's defending-player clauses
@@ -253,6 +267,11 @@ func (r AttackTargetRestriction) unmetDefenderClauseLocked(g *Game, you, defende
 	}
 	if r.ControllerMustHaveCitysBlessing && !g.CitysBlessingForEffect(you) {
 		return g.playerNameLocked(you) + " doesn't have the city's blessing"
+	}
+	if n := r.ControllerHandAtLeast; n > 0 {
+		if yp := g.playerByIDLocked(you); yp == nil || yp.Hand == nil || yp.Hand.Size() < n {
+			return g.playerNameLocked(you) + " has fewer than " + countWord(n) + " cards in hand"
+		}
 	}
 	return ""
 }
@@ -415,6 +434,12 @@ func (r AttackTargetRestriction) notPlayerRefuses(g *Game, target uuid.UUID) boo
 		}
 		pw := findBattlefieldCard(g, target)
 		return pw != nil && pw.Controller == r.NotPlayer
+	case AttackTargetBattle:
+		if !r.NotPlayerBattles {
+			return false
+		}
+		b := findBattlefieldCard(g, target)
+		return b != nil && b.Controller == r.NotPlayer
 	}
 	return false
 }

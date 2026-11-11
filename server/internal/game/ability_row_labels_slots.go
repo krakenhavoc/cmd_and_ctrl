@@ -130,6 +130,11 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 		// The granted keyword, in the printed words: Molecule Man's
 		// "Nonland cards …", or the card's own subject (Lorehold, the
 		// Historian's "Each instant and sorcery card in your hand").
+		if gr.PricedAtManaCost && gr.SpellsText != "" {
+			// Aminatou, Veil Piercer: the price is the card's own cost less.
+			return fmt.Sprintf("%s has miracle. Its miracle cost is equal to its mana cost reduced by {%d}.",
+				gr.SpellsText, gr.ManaCostReducedBy)
+		}
 		if gr.SpellsText != "" {
 			return gr.SpellsText + " has miracle " + o.ManaCost + "."
 		}

@@ -17,16 +17,6 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordAssist},
 		Targets:         TargetPlayer("two target players").WithCount(2, 2),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetPlayer {
-					continue
-				}
-				if err := (DrawCards{Player: t.ID, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		OnResolve:       func(_ *game.StackItem, ctx *Context) error { return cmdr2B23EachTargetPlayerDraws(ctx) },
 	})
 }

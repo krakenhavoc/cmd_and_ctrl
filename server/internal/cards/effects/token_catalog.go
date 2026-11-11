@@ -329,6 +329,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// when he attacks.
 	printedGalactusToken,
 
+	// Careful Cultivation's Human Monk (Commander wave 2, #5368): a 1/1
+	// green Human Monk with "{T}: Add {G}."
+	printedCmdr2B19HumanMonkToken,
+
 	// Dora Milaje Elite's Vibranium: indestructible, restricted {C}.
 	printedVibraniumToken,
 
@@ -352,6 +356,11 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Ixalan, #4470).
 	printedFungusCantBlockToken,
 
+	// Batch 34 (#5368): Rite of the Raging Storm's Lightning Rager and
+	// Nettling Nuisance's Pirate that can't block.
+	printedCmdr2S34LightningRagerToken,
+	printedCmdr2S34PirateToken,
+
 	// Thousand Moons Smithy's Gnome Soldier: a */* artifact creature whose
 	// size is its controller's artifacts and creatures (#4470).
 	printedGnomeSoldierToken,
@@ -359,6 +368,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// Garruk, Cursed Huntsman's Wolf and Wrenn and Seven's Treefolk (batch 51).
 	printedCmdr2S51WolfToken,
 	printedCmdr2S51TreefolkToken,
+
+	// Vernal Sovereign's Elemental (Lorwyn Eclipsed Commander, #5368): a green
+	// and white */* whose size is the creatures its controller controls.
+	printedCreatureCountElementalToken,
 
 	// Outlaws of Thunder Junction's Mercenary (#4468): a 1/1 red Mercenary
 	// with a sorcery-speed "+1/+0 to a creature you control".

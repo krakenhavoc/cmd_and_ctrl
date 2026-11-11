@@ -509,6 +509,13 @@ const (
 	// the blocker's controller is compared to Player live, so a creature
 	// that changes hands joins or leaves the barred set.
 	ModCantBeBlockedByPlayer ModKind = "cantBeBlockedByPlayer"
+	// ModCantBlockPlayersCreatures is "<creature> can't block creatures
+	// that player controls" (Immortal Obligation, CR 509.1b). Reads Player,
+	// the attackers' controller, and Text, the clause as the refusal
+	// sentence reads it. The pinned BLOCKER(s). Pure data: the attacker's
+	// controller is compared to Player live, so an attacker that changes
+	// hands joins or leaves the barred set.
+	ModCantBlockPlayersCreatures ModKind = "cantBlockPlayersCreatures"
 	// ModCantBeBlockedByPower is "<creature> can't be blocked by
 	// creatures with power N or less this turn" (Rhonas's Stalwart,
 	// #2600, CR 509.1b). Reads Amount, N, and Text, the clause as the
@@ -1233,6 +1240,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeBlockedExceptBy:       {reader: readerBlockRule},
 	ModLimitBlockersPerDefender:    {reader: readerBlockRule},
 	ModCantBeBlockedByPlayer:       {reader: readerBlockRule},
+	ModCantBlockPlayersCreatures:   {reader: readerBlockRule},
 	ModCantBeBlockedByPower:        {reader: readerBlockRule},
 	ModCantBeBlockedByPowerAtLeast: {reader: readerBlockRule},
 	ModCantBeBlockedByColor:        {reader: readerBlockRule},
@@ -1570,6 +1578,18 @@ func CantAttackUnlessDefenderControlsMod(qs ...PermanentQuery) Mod {
 // control" from a resolved effect (#3400). Reads Player.
 func CantAttackPlayerMod(player uuid.UUID) Mod {
 	return Mod{Kind: ModCantAttackPlayer, Player: player}
+}
+
+// cantAttackPlayerAndPermanents is the Amount that makes a ModCantAttackPlayer
+// also close the battles the player controls (CantAttackPlayerOrPermanentsMod).
+const cantAttackPlayerAndPermanents = 1
+
+// CantAttackPlayerOrPermanentsMod is "can't attack you or a permanent you
+// control" from a resolved effect (Immortal Obligation, CR 508.1c): the
+// player, the planeswalkers they control and the battles they control.
+// Reads Player.
+func CantAttackPlayerOrPermanentsMod(player uuid.UUID) Mod {
+	return Mod{Kind: ModCantAttackPlayer, Player: player, Amount: cantAttackPlayerAndPermanents}
 }
 
 // CantAttackOwnerMod is "gains 'This creature can't attack its owner'"
@@ -2407,8 +2427,9 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		}
 	case ModCantAttackPlayer:
 		protected := m.Player
+		battles := m.Amount == cantAttackPlayerAndPermanents
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
-			r := AttackTargetRestriction{NotPlayer: protected}
+			r := AttackTargetRestriction{NotPlayer: protected, NotPlayerBattles: battles}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
