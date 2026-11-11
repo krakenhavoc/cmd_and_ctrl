@@ -620,6 +620,7 @@ generates and opens no pack: drafting is #5438.
       "code": "blb",
       "name": "Bloomburrow",
       "released": "2024-08-02",
+      "booster": "play",
       "cards": 266,
       "draftable": false,
       "blockers": ["A Card Name", "Another Card Name"]
@@ -635,22 +636,39 @@ generates and opens no pack: drafting is #5438.
   `expansion`, `masters` or `draft_innovation` set whose booster cards
   (Scryfall's `booster` flag) include a common, an uncommon, and a rare or
   mythic.
+- `booster` is the kind of retail booster the set's packs are modelled on,
+  the draftable booster of the set's era, chosen from its `released` date:
+  `"play"` for a set released on or after 2024-02-09, `"draft"` for an older
+  one. Set and collector boosters were never draft products and are not
+  modelled.
 - `cards` counts the different cards the set's packs can contain, basic
-  lands included.
+  lands included when the booster has a basic land slot.
 - `draftable` is true only when every one of those cards is in the catalog
   as Full. `blockers` names the ones that are not, sorted; it is empty for a
-  draftable set. Basic lands never block (the catalog registers none: the
+  draftable set. The check uses the set's own booster, so a slot it does not
+  have cannot block (a draft booster from before mythic rares holds no
+  mythic). Basic lands never block (the catalog registers none: the
   engine plays them as they are). The verdict is computed from the catalog
   and the dump on the first request after a boot or a dump reload, never
   from a list someone keeps.
 - The top-level `draftable` is the number of draftable sets.
 - With no dump loaded the body is `{"sets":[],"draftable":0}`.
 
-A pack is an approximation of a retail play booster: 14 cards in slots by
-rarity (`draftpacks/recipe.go` holds the rates as named constants, and
-`draftpacks/overrides.json` corrects one set), one printing of each card,
-no foils or other treatments, no tokens. The client's `#/draft/sets` page
-renders this list and says so.
+A pack is an approximation of the retail booster the set was drafted with,
+by release date (`draftpacks.Eras`):
+
+| Released | Booster | Cards | Slots |
+|---|---|---|---|
+| on or after 2024-02-09 | play | 14 | 6 commons, 1 common that may be a bonus-sheet card, 3 uncommons, 1 rare or mythic (1 mythic in 7), 1 basic land, 2 wildcards |
+| 2008-10-03 to 2024-02-08 | draft | 15 | 10 commons, 3 uncommons, 1 rare or mythic (1 mythic in 8), 1 basic land |
+| before 2008-10-03 | draft | 15 | 11 commons, 3 uncommons, 1 rare |
+
+The dates and rates are named constants in `draftpacks/recipe.go` and have
+not been checked against a Wizards source; `draftpacks/overrides.json`
+corrects one set. A set with no release date in the data gets the play
+booster. One printing of each card, no foils or other treatments, no
+tokens. The client's `#/draft/sets` page renders this list, names each
+set's booster and says packs are approximations.
 
 ### `POST /deck-coverage`
 
