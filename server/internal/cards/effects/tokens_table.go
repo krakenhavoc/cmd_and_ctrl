@@ -256,6 +256,7 @@ var tokenTable = map[string]game.Card{
 	"2/2 white Pegasus with flying":                                    {Name: "Pegasus", TypeLine: "Token Creature — Pegasus", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"flying"}},
 	"2/2 white Soldier with vigilance":                                 {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 2, Toughness: 2, Colors: []string{"W"}, Keywords: []string{"vigilance"}},
 	"2/1 black Skeleton":                                               {Name: "Skeleton", TypeLine: "Token Creature — Skeleton", Power: 2, Toughness: 1, Colors: []string{"B"}},
+	"2/2 black Pirate with menace":                                     {Name: "Pirate", TypeLine: "Token Creature — Pirate", Power: 2, Toughness: 2, Colors: []string{"B"}, Keywords: []string{"menace"}},
 	"2/2 black Skeleton Pirate":                                        {Name: "Skeleton Pirate", TypeLine: "Token Creature — Skeleton Pirate", Power: 2, Toughness: 2, Colors: []string{"B"}},
 	"2/2 white and blue Knight with vigilance":                         {Name: "Knight", TypeLine: "Token Creature — Knight", Power: 2, Toughness: 2, Colors: []string{"W", "U"}, Keywords: []string{"vigilance"}},
 	"2/2 white and blue Detective":                                     {Name: "Detective", TypeLine: "Token Creature — Detective", Power: 2, Toughness: 2, Colors: []string{"W", "U"}},
@@ -416,6 +417,9 @@ var tokenTable = map[string]game.Card{
 	"2/1 colorless Construct artifact with flying named Ballistic Boulder": {Name: "Ballistic Boulder", TypeLine: "Token Artifact Creature — Construct", Power: 2, Toughness: 1, Keywords: []string{"flying"}},
 
 	// #5075 batch 34: Avatar Eternal's plain Soldier (Fire Nation Archers, TTLE).
+
+	// #5368: Lost Caverns of Ixalan Commander's white and black Vampire (Glass-Cast Heart).
+	"1/1 white and black Vampire with lifelink": {Name: "Vampire", TypeLine: "Token Creature — Vampire", Power: 1, Toughness: 1, Colors: []string{"W", "B"}, Keywords: []string{"lifelink"}},
 
 	// #4470: The Lost Caverns of Ixalan's Vampire Demon (Vito, Fanatic of Aclazotz).
 	"4/3 white and black Vampire Demon with flying": {Name: "Vampire Demon", TypeLine: "Token Creature — Vampire Demon", Power: 4, Toughness: 3, Colors: []string{"W", "B"}, Keywords: []string{"flying"}},

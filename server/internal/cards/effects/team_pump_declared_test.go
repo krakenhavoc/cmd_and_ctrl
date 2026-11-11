@@ -82,6 +82,9 @@ var teamPumpTails = map[string]string{
 	// "Soldiers you control gain vigilance until end of turn.": a grant
 	// to a subtype, left out, so the declaration is a floor.
 	"The Howling Commandos": "a subtype's grant left out",
+	// "Activate only as a sorcery.": a timing restriction, SorcerySpeed
+	// on the row, not an effect.
+	"Shefet Dunes": "a timing restriction",
 }
 
 // TestTeamPumpRowsDeclareTheirPump holds every catalog activated row of

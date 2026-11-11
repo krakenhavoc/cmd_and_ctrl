@@ -3871,7 +3871,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			// judged for the controller. A walk with no such player, or
 			// one who has left, has nobody to choose: CR 603.3d removes
 			// the ability for a required clause.
-			who := triggerActorOf(src)
+			who := triggerChooserOf(src)
 			if who == uuid.Nil || !g.playerInGameLocked(who) {
 				if clause.Min > 0 {
 					return

@@ -1250,6 +1250,13 @@ type DamageDealtRecord struct {
 	Epoch  int       `json:"epoch,omitempty"`
 	Victim uuid.UUID `json:"victim"`
 	Combat bool      `json:"combat,omitempty"`
+	// Types is the dealer's creature types as it dealt the damage
+	// (CR 608.2h, last known information), lower case and fenced by "|"
+	// ("|human|pirate|"; "|*|" for every creature type, CR 702.73a), so
+	// "dealt combat damage by three or more Pirates" can be counted after
+	// the dealers have died or, for tokens, ceased to exist. Additive:
+	// omitted on a record taken before it existed.
+	Types string `json:"types,omitempty"`
 }
 
 // NoncombatDamageRecord is one amount of noncombat damage dealt
@@ -1342,13 +1349,61 @@ func (g *Game) recordDamageDealerLocked(dealer *Card, victim uuid.UUID, combat b
 	if dealer == nil || victim == uuid.Nil || !dealer.IsCreature() {
 		return
 	}
-	rec := DamageDealtRecord{Source: dealer.InstanceID, Epoch: dealer.ObjectEpoch, Victim: victim, Combat: combat}
+	rec := DamageDealtRecord{Source: dealer.InstanceID, Epoch: dealer.ObjectEpoch, Victim: victim, Combat: combat,
+		Types: damageDealerTypesKey(dealer)}
 	for _, r := range g.TurnTally.DamageDealers {
 		if r == rec {
 			return
 		}
 	}
 	g.TurnTally.DamageDealers = append(g.TurnTally.DamageDealers, rec)
+}
+
+// damageDealerTypesKey is DamageDealtRecord.Types for `dealer`: its
+// effective subtypes now, or "|*|" with every creature type.
+func damageDealerTypesKey(dealer *Card) string {
+	if HasAllCreatureTypes(dealer) {
+		return "|*|"
+	}
+	subs := dealer.Effective().Subtypes
+	if len(subs) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteByte('|')
+	for _, st := range subs {
+		b.WriteString(strings.ToLower(st))
+		b.WriteByte('|')
+	}
+	return b.String()
+}
+
+// CountCreaturesOfTypeThatDealtCombatDamageToThisTurn is how many
+// different creature objects of creature type `subtype`, whoever
+// controlled them, dealt combat damage to `victim` this turn, each read
+// as the type it had as it dealt the damage — Admiral Beckett Brass's
+// "dealt combat damage by three or more Pirates this turn". One object
+// that dealt damage twice (first strike, then regular) counts once; a
+// creature with every creature type counts for any type (CR 702.73a).
+//
+// Caller must hold g.mu.
+func (g *Game) CountCreaturesOfTypeThatDealtCombatDamageToThisTurn(victim uuid.UUID, subtype string) int {
+	if victim == uuid.Nil || subtype == "" {
+		return 0
+	}
+	want := "|" + strings.ToLower(subtype) + "|"
+	allTypes := IsCreatureType(subtype)
+	seen := map[ObjectRef]bool{}
+	for _, r := range g.TurnTally.DamageDealers {
+		if r.Victim != victim || !r.Combat {
+			continue
+		}
+		if !strings.Contains(r.Types, want) && !(allTypes && r.Types == "|*|") {
+			continue
+		}
+		seen[ObjectRef{ID: r.Source, Epoch: r.Epoch}] = true
+	}
+	return len(seen)
 }
 
 // creaturesThatDealtDamageToLocked is the objects recorded against
