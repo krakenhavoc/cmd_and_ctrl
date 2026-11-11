@@ -40,3 +40,36 @@ func cmdr2B15RevealTopTakeAllMatching(g *game.Game, player, source uuid.UUID, n 
 		Key:    takeRestGraveyard,
 	}.applyKeyed(NewContext(g, nil), player, source)
 }
+
+// cmdr2B15SearchBasicLand is "Search your library for a basic land card, put it
+// onto the battlefield [tapped], then shuffle" (Topiary Stomper, Greater Tanuki's
+// channel, Fertile Footsteps). A basic land card is read by supertype, so a snow
+// basic qualifies.
+func cmdr2B15SearchBasicLand(reason string, tapped bool) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		return SearchLibrary{
+			Player:        item.Controller,
+			Predicate:     IsBasicLand,
+			Dest:          game.ZoneBattlefield,
+			Limit:         1,
+			Shuffle:       true,
+			TappedOnEntry: tapped,
+			Reason:        reason,
+		}.Apply(NewContext(g, item))
+	}
+}
+
+// cmdr2B15AnOpponentControlsMoreLands is Verge Rangers' condition, "an opponent
+// controls more lands than you", read live by the permission's liveness test.
+func cmdr2B15AnOpponentControlsMoreLands(g *game.Game, controller, _ uuid.UUID) bool {
+	mine := len(g.LandsControlledForEffect(controller))
+	for _, p := range g.Seats {
+		if p == nil || p.ID == controller || p.Eliminated {
+			continue
+		}
+		if len(g.LandsControlledForEffect(p.ID)) > mine {
+			return true
+		}
+	}
+	return false
+}
