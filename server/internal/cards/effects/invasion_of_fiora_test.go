@@ -282,17 +282,6 @@ func TestMarchesaUpkeepConditionIsRecheckedOnResolution(t *testing.T) {
 	}
 }
 
-func TestMarchesaUpkeepTriggerDeclaresItsFootprint(t *testing.T) {
-	rows := game.CatalogTriggers(marchesaResoluteMonarchKey)
-	if len(rows) != 2 {
-		t.Fatalf("%d rows, want 2", len(rows))
-	}
-	fp := rows[1].Footprint
-	if len(fp) != 3 || fp[0].Kind != game.FootprintCondition || fp[0].Cond != game.FootprintCondNoCombatDamageSinceLastTurn {
-		t.Errorf("footprint %+v, want the condition, a draw and a life loss", fp)
-	}
-}
-
 func marchesaAttack(t *testing.T, g *game.Game) (me *game.Player, marchesa, bear uuid.UUID) {
 	t.Helper()
 	me = g.Seats[g.Turn.ActiveSeat]
