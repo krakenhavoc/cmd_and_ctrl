@@ -942,7 +942,6 @@ func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, 
 // offer that removes no counters, is refused rather than ignored (the
 // validator's nil-cost branch), as a stray alt_cost_ids is.
 //
-//
 // `x` is the X the cast announces. Only an offer that removes X counters
 // reads it (#5679, CountersDefineX): the counters named must total
 // exactly X (CR 107.3a, 601.2b), and the validator has already held that

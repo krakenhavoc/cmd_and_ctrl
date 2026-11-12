@@ -136,6 +136,8 @@ describe("a flashback that removes X counters (Light Up the Night)", () => {
     };
     expect(altCostCountersDefineX(fixed)).toBe(false);
     expect(altCostPayDefinesX(fixed)).toBe(false);
-    expect(altCostCounterX(fixed, { counter_source_ids: ["a"], counter_counts: [6] })).toBeUndefined();
+    expect(
+      altCostCounterX(fixed, { counter_source_ids: ["a"], counter_counts: [6] }),
+    ).toBeUndefined();
   });
 });
