@@ -924,7 +924,11 @@ func (g *Game) validateAdditionalCostLocked(playerID, castID uuid.UUID, plan []c
 	// CanPayLifeLocked is the one reader of CR 119.4 and of "you can't
 	// pay life" statements, the same predicate the alternative cost's
 	// life asks (lifePayableBy).
-	if owed := planLife(plan, xValue); owed > 0 && !g.CanPayLifeLocked(p, owed) {
+	//
+	// #5660: through the cast's form of it, which also refuses every
+	// life payment while "players can't pay life to cast spells" is
+	// live (life_cost_bar.go). "Pay X life" at X = 0 owes nothing.
+	if owed := planLife(plan, xValue); owed > 0 && !g.CanPayLifeToCastOrActivateLocked(p, owed) {
 		return ErrInvalidParam
 	}
 	for _, pay := range plan {
@@ -1167,7 +1171,7 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	if p == nil || cost == nil {
 		return false
 	}
-	if cost.PayLife > 0 && !g.CanPayLifeLocked(p, cost.PayLife) {
+	if cost.PayLife > 0 && !g.CanPayLifeToCastOrActivateLocked(p, cost.PayLife) {
 		return false
 	}
 	if cost.DiscardCards > 0 {

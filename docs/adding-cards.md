@@ -2091,6 +2091,33 @@ A caveat that says "pays 2 life instead of {B}" goes stale the day a card
 declares `LifeForMana`; the `paying 2 life instead of black mana`
 coverage mechanic (`cards/coverage/caveats.go`) fails the build on it.
 
+### "Players can't pay life to cast spells or to activate abilities" (#5660)
+
+"Players can't pay life to cast spells or to activate abilities that
+aren't mana abilities." (Karn's Sylex) is a world rule the source carries
+on itself:
+
+```go
+Static: []game.StaticAbility{PlayersCantPayLifeToCastOrActivate()}, // Karn's Sylex
+```
+
+The helper (`effects/life_cost_bar.go`) writes the
+`game.PlayersCantPayLifeToCastOrActivate` restriction bit, the way
+`RestrictSelf(game.PermanentsCantPhaseIn)` does. While any permanent on
+the battlefield has it, `game.CanPayLifeToCastOrActivateLocked` refuses
+every life component of a spell's cost and of a non-mana activation's
+(CR 101.2, CR 118.3): a Phyrexian symbol's or a life-for-mana grant's
+2 life, an additional or alternative cost's life, a targeting tax, and a
+printed "Pay N life" or "Pay X life" above X = 0 (CR 119.4b). The legal
+enumerator and the view read the same predicate, so no such payment is
+offered. It is not on the wire.
+
+A mana ability's cost (CR 605.1a), a ward cost, a pay-unless, a land's
+"you may pay 2 life" and an attack tax still ask `CanPayLifeLocked`: the
+printed text names casts and non-mana activations only. A new life
+component of a cast or of a non-mana activation asks
+`CanPayLifeToCastOrActivateLocked`, never `CanPayLifeLocked`.
+
 ### Adding a replacement effect (S17+)
 
 Replacement effects ("enters tapped", "if that would place counters,

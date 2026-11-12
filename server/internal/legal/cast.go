@@ -951,7 +951,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// can pay for (CR 119.4, less one so the seat survives its own
 	// sweep). Both live in x.go.
 	xFloor := enumeratedXFloor(game.CatalogKey(card), game.OptionalCostsXFloor(optional, chosen))
-	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
+	// #5660: under "players can't pay life to cast spells" a "pay X life"
+	// cost is payable at X = 0 only, which is what no life to spend says.
+	payableLife := p.Life
+	if e.g.CantPayLifeToCastOrActivateForEffect() {
+		payableLife = 0
+	}
+	xLifeCeiling := xCeilingFromCost(addCost, payableLife)
 	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
@@ -1457,10 +1463,10 @@ modeLoop:
 			setReserved, setLifeCeiling := lifeReserved, xLifeCeiling
 			if taxLife > 0 {
 				setReserved += taxLife
-				if !e.g.CanPayLifeLocked(e.p, setReserved) {
+				if !e.g.CanPayLifeToCastOrActivateLocked(e.p, setReserved) {
 					continue
 				}
-				if lc := xCeilingFromCost(addCost, e.p.Life-taxLife); lc < setLifeCeiling {
+				if lc := xCeilingFromCost(addCost, payableLife-taxLife); lc < setLifeCeiling {
 					setLifeCeiling = lc
 				}
 			}
@@ -2322,7 +2328,9 @@ func (e *enumerator) castPayment(
 	priced = e.g.LifeGrantedCostForEffect(e.seat, priced)
 	for n := 1; n <= priced.PhyrexianSymbols(); n++ {
 		reduced, life := game.PhyrexianLifePlan(priced, e.p.ManaPool, spend, n)
-		if !e.g.CanPayLifeLocked(e.p, reserved+life) {
+		// #5660: the cast's form, which refuses every life payment under
+		// "players can't pay life to cast spells".
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, reserved+life) {
 			break
 		}
 		if x, ok := e.announcedX(reduced, spend, floor, lifeCeiling); ok {
@@ -2348,7 +2356,7 @@ func (e *enumerator) allLifePayment(first *announcedCast, spend game.ManaSpendCo
 		return 0, game.ParsedCost{}, false
 	}
 	reduced, life := game.PhyrexianLifePlan(printed, e.p.ManaPool, spend, n)
-	if !e.g.CanPayLifeLocked(e.p, reserved+life) {
+	if !e.g.CanPayLifeToCastOrActivateLocked(e.p, reserved+life) {
 		return 0, game.ParsedCost{}, false
 	}
 	if !e.canPayExcluding(reduced, first.x, spend, first.autoTapExclusions(first.alt)) {

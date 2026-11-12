@@ -149,6 +149,16 @@ const (
 	// such source remains. Deliberately absent from Names: it is no
 	// badge on the permanent that carries it, so it is not on the wire.
 	PermanentsCantPhaseIn
+
+	// PlayersCantPayLifeToCastOrActivate is "Players can't pay life to
+	// cast spells or to activate abilities that aren't mana abilities."
+	// (Karn's Sylex, #5660). A world rule the SOURCE carries on itself
+	// (RestrictSelf), like PermanentsCantPhaseIn: while any permanent on
+	// the battlefield has it, CanPayLifeToCastOrActivateLocked refuses
+	// every life component of a spell's cost and of a non-mana
+	// activation's (life_cost_bar.go). Absent from Names for the same
+	// reason: it is no badge on the permanent that carries it.
+	PlayersCantPayLifeToCastOrActivate
 )
 
 // CantAttackOrBlock is the pair every "can't attack or block" card

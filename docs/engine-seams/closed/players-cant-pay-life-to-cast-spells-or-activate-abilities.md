@@ -1,0 +1,6 @@
+---
+title: "Players can't pay life to cast spells or activate non-mana abilities"
+date: 2026-11-12
+issues: [5660]
+---
+**Players can't pay life to cast spells or activate non-mana abilities** (#5660) — "Players can't pay life to cast spells or to activate abilities that aren't mana abilities." is the restriction bit `PlayersCantPayLifeToCastOrActivate`, a world rule its source carries on itself (`PlayersCantPayLifeToCastOrActivate()` in `effects/life_cost_bar.go`), derived from the battlefield and stored nowhere. `CanPayLifeToCastOrActivateLocked` is `CanPayLifeLocked` for a life component of a cast or of a non-mana activation, and refuses it while the rule is live (CR 101.2, CR 118.3): the life half of a Phyrexian symbol and of a life-for-mana grant (CR 107.4f), an additional or alternative cost's life, a targeting tax paid in life, and a printed "Pay N life" or "Pay X life" above X = 0 (CR 119.4b). Mana abilities (CR 605.1a), ward and pay-unless costs, a land's entry payment and attack taxes keep `CanPayLifeLocked`. The legal enumerator and the view read the same predicate, so `phyrexian_symbols` is 0 and a life offer is withheld; no snapshot or wire field. **Cards:** Karn's Sylex (Full).
