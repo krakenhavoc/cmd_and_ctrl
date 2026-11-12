@@ -348,6 +348,7 @@ func Register(spec Spec) {
 			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
+	checkCasualtyX(spec)
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
 	for i, oc := range spec.OptionalCosts {
 		// Without the flag the cast path prices it and never offers

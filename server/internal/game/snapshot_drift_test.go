@@ -404,6 +404,10 @@ var cardFields = plan(
 	"Colors", carried, "",
 	"ColorIdentity", carried, "",
 	"StartingLoyalty", carried, "",
+	// #5668: travels with StartingLoyalty. A restore that dropped it
+	// would let a copy with starting loyalty 0 enter with the printed
+	// number.
+	"StartingLoyaltyKnown", carried, "",
 	"Keywords", carried, "",
 	// Multi-face model (#357). Printed per-face data: which face is
 	// up decides TypeLine, ManaCost and P/T, so a restore that lost
