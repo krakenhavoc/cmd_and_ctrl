@@ -3951,8 +3951,11 @@ export type ExilePlayUntil =
 // Attendant): the options are cards in the shared `exile` zone that an
 // opponent owns, and each pick goes to its owner's graveyard. A
 // face-down option stands for its group: the server moves a card chosen
-// at random from the cards exiled face down with it.
-export type ExileCostZone = "hand" | "graveyard" | "exile";
+// at random from the cards exiled face down with it. #5655: "stack" is
+// "Exile a spell you control" (Synthesis Pod): the options are spells on
+// the shared `stack` that the viewer controls, and the pick is exiled
+// without resolving.
+export type ExileCostZone = "hand" | "graveyard" | "exile" | "stack";
 
 // ActivatedAbilityView is one CR 602 activated ability on a
 // battlefield permanent (S21 sub-PR 2). Public information, so it

@@ -5451,6 +5451,20 @@ pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
 
+**"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
+composed with `Plus` — Synthesis Pod is
+`Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl())`. It is
+the same component read against the stack
+(`game.ExileCost{From: ZoneStack}`): the pick rides `exile_ids`, it must
+be a spell the activator controls (a copy of a spell is one, an ability
+is not), and it is exiled as the cost is paid, without resolving and
+without being countered. The effect reads which spell through
+`ctx.Exiled()` and "the exiled spell's mana value" through
+`g.LastKnownSpellManaValueForEffect(id)`: the spell as it last existed on
+the stack (CR 608.2h), an announced X counted (CR 202.3e). Do not read
+the card in exile for it, where X is 0 and a copy is gone. A CR 602
+ability's cost only, one spell, no link: `Register` refuses the rest.
+
 **"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
 or `ExileAPermanentYouControl(label, preds...)` for another clause,
 composed with `Plus` — The Soul Stone's harness is

@@ -2813,6 +2813,7 @@ tail survival-cache/compare
 tail sword-of-hearth-and-home/put-both
 tail sword-of-hearth-and-home/search-basic
 tail sword-of-hearth-and-home/shuffle
+tail synthesis-pod/exiled
 tail systems-override/schedule-charge-removal
 tail tablet-of-discovery/after-mill
 tail tail/anzrags-rampage-after-sweep
