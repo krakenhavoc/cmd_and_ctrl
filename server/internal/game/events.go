@@ -622,6 +622,20 @@ const (
 	// Emitted only by noteForageLocked (forage.go).
 	EventForage EventKind = "forage"
 
+	// EventProliferate — a player proliferated (CR 701.34a, #5653): one
+	// proliferate is finished, its choice made and every counter it gave
+	// placed. Actor is the player who proliferated, Source the card whose
+	// effect it was. One event per proliferate, so "proliferate twice"
+	// raises two, each after its own counters, and also for a
+	// proliferate that chose nothing or had nothing to choose: the
+	// player still proliferated. Not raised for a proliferate a
+	// replacement took away entirely. The counters emit their own events
+	// first; this one is the keyword action, which "whenever you
+	// proliferate" (Ezuri, Stalker of Spheres) watches.
+	//
+	// Emitted only by noteProliferateLocked (proliferate_keyed.go).
+	EventProliferate EventKind = "proliferate"
+
 	// EventCollectEvidence — a player collected evidence (CR 701.59a,
 	// #5223): exiled cards from their graveyard with the total mana value
 	// a collect evidence N or X asked for, as an optional additional cost
@@ -884,8 +898,8 @@ const (
 	// woken by a proliferate. Reusing EventScry and EventSurveil here
 	// would key a PRE-event window on the names of two POST-event
 	// facts — those fire after the player has put the cards back,
-	// with the count this window settled on — and there is no
-	// EventProliferate at all. #976.
+	// with the count this window settled on — and EventProliferate
+	// (#5653) is the same kind of POST-event fact. #976.
 	EventKeywordAction EventKind = "keyword_action"
 
 	// EventBeginUpkeep — the active player's upkeep step began.

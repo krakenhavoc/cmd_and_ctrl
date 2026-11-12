@@ -459,4 +459,7 @@ var tokenTable = map[string]game.Card{
 	// #5368: Lost Caverns of Ixalan Commander's Ragavan (Kari Zev, Skyship Raider).
 	"2/1 red Legendary Monkey named Ragavan":                   {Name: "Ragavan", TypeLine: "Token Legendary Creature — Monkey", Power: 2, Toughness: 1, Colors: []string{"R"}},
 	"2/1 red Legendary Monkey Pirate named First Mate Ragavan": {Name: "First Mate Ragavan", TypeLine: "Token Legendary Creature — Monkey Pirate", Power: 2, Toughness: 1, Colors: []string{"R"}},
+
+	// Venser, Corpse Puppet (#5653): The Hollow Sentinel.
+	"3/3 colorless Legendary Phyrexian Golem artifact named The Hollow Sentinel": {Name: "The Hollow Sentinel", TypeLine: "Token Legendary Artifact Creature — Phyrexian Golem", Power: 3, Toughness: 3},
 }
