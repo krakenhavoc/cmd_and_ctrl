@@ -12885,9 +12885,9 @@ Register(Spec{
 - An ability that reads "this creature's power" or "its power" must read
   it as it resolves (`ctx.SourcePermanent()`, `GainLifeEqualToSubject`,
   a mana ability's `ProducedAmount`), never a number from the card file:
-  the prototyped permanent is smaller. `bro_prototype_helpers.go` has
-  "scry X, where X is its power" and "target creature gets +X/+0, where X
-  is this creature's power".
+  the prototyped permanent is smaller. Spotter Thopter ("scry X, where X
+  is its power") and Iron-Craw Crusher ("gets +X/+0 …, where X is this
+  creature's power") are the precedents.
 - `card.Prototyped()` answers "is this a prototyped spell or a permanent
   that was one", for a card that asks.
 - In a test, build the card as the importer does: `game.PrototypeFaces`

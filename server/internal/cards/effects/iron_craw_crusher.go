@@ -22,8 +22,20 @@ func init() {
 		Name:         "Iron-Craw Crusher",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(WheneverThisAttacks(ironCrawCrusherLabel, broPumpTargetBySourcePower(ironCrawCrusherLabel)),
+			Targeting(WheneverThisAttacks(ironCrawCrusherLabel, ironCrawCrusherPump),
 				TargetCreature("target attacking creature", AttackingCreature())),
 		},
 	})
+}
+
+// ironCrawCrusherPump reads the Crusher's power as the trigger resolves:
+// the permanent as it is now, or as it last existed if it has left. A
+// power of zero or less, or an illegal target, does nothing.
+func ironCrawCrusherPump(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, ok := ctx.SourcePermanent()
+	if !ok || info.Power <= 0 {
+		return nil
+	}
+	return vsPumpTheTarget(ctx, info.Power, 0, ironCrawCrusherLabel)
 }

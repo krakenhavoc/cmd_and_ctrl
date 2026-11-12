@@ -45,13 +45,13 @@ func blitzAutomaton(t *testing.T, owner uuid.UUID) game.Card {
 		"Prototype {2}{R} — 3/2 (You may cast this spell with different mana cost, color, and size. It keeps its abilities and types.)\nHaste")
 }
 
-// prototypeGame seats the active player at a main phase with the card
-// in hand.
-func prototypeGame(t *testing.T, build func(*testing.T, uuid.UUID) game.Card) (*game.Game, *game.Player, uuid.UUID) {
+// prototypeGame seats the active player at a main phase with Blitz
+// Automaton in hand.
+func prototypeGame(t *testing.T) (*game.Game, *game.Player, uuid.UUID) {
 	t.Helper()
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	c := build(t, me.ID)
+	c := blitzAutomaton(t, me.ID)
 	me.Hand.PushTop(c)
 	for g.Turn.Step != game.StepPrecombatMain {
 		if _, err := g.AdvanceStep(); err != nil {
@@ -65,7 +65,7 @@ func prototypeGame(t *testing.T, build func(*testing.T, uuid.UUID) game.Card) (*
 // power and toughness, and so does the permanent it becomes. CR 718.5:
 // it keeps its name, types and abilities.
 func TestBlitzAutomatonPrototypedIsARedThreeTwoForThree(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
+	g, me, id := prototypeGame(t)
 	floatMana(t, g, me, "{R}{C}{C}")
 
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Face: game.PrototypeFace, Strict: true}); err != nil {
@@ -114,7 +114,7 @@ func TestBlitzAutomatonPrototypedIsARedThreeTwoForThree(t *testing.T) {
 // Cast normally it is the colourless 6/4 for {7}, and the prototype
 // cost does not pay for it.
 func TestBlitzAutomatonCastNormally(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
+	g, me, id := prototypeGame(t)
 	floatMana(t, g, me, "{R}{C}{C}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true}); err == nil {
 		t.Fatal("cast the {7} Automaton with three mana")
@@ -139,7 +139,7 @@ func TestBlitzAutomatonCastNormally(t *testing.T) {
 // CR 718.4: in every zone but the stack and the battlefield the card
 // has only its normal characteristics.
 func TestPrototypedPermanentThatLeavesIsTheNormalCard(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
+	g, me, id := prototypeGame(t)
 	floatMana(t, g, me, "{R}{C}{C}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Face: game.PrototypeFace, Strict: true}); err != nil {
 		t.Fatalf("cast prototyped: %v", err)
@@ -159,12 +159,12 @@ func TestPrototypedPermanentThatLeavesIsTheNormalCard(t *testing.T) {
 	}
 }
 
-// castPrototyped casts the card prototyped with exactly its inset cost
-// floating, and leaves the spell on the stack.
-func castPrototyped(t *testing.T, g *game.Game, me *game.Player, id uuid.UUID, mana string) {
+// castPrototyped casts Blitz Automaton prototyped with exactly its inset
+// cost floating, and leaves the spell on the stack.
+func castPrototyped(t *testing.T, g *game.Game, me *game.Player, id uuid.UUID) {
 	t.Helper()
 	me.ManaPool = nil
-	floatMana(t, g, me, mana)
+	floatMana(t, g, me, "{R}{C}{C}")
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Face: game.PrototypeFace, Strict: true}); err != nil {
 		t.Fatalf("cast prototyped: %v", err)
 	}
@@ -186,8 +186,8 @@ func wantPrototypedAutomaton(t *testing.T, what string, c game.Card) {
 // alternative characteristics. CR 400.7: the Clone that leaves is a
 // Clone again.
 func TestCloneOfAPrototypedPermanentCopiesTheInset(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
-	castPrototyped(t, g, me, id, "{R}{C}{C}")
+	g, me, id := prototypeGame(t)
+	castPrototyped(t, g, me, id)
 	passPriorityAroundTable(t, g)
 
 	cloneID := castCatalogSpell(t, g, "Clone", "Creature — Shapeshifter", oracleClone, nil)
@@ -224,8 +224,8 @@ func TestCloneOfAPrototypedPermanentCopiesTheInset(t *testing.T) {
 // CR 718.3c: a copy of a prototyped spell is a prototyped spell, and
 // the token it becomes has the alternative characteristics.
 func TestCopyOfAPrototypedSpellIsPrototyped(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
-	castPrototyped(t, g, me, id, "{R}{C}{C}")
+	g, me, id := prototypeGame(t)
+	castPrototyped(t, g, me, id)
 	g.WithWriteLock(func() {
 		if err := g.CopySpellForEffect(id, me.ID, false, nil); err != nil {
 			t.Fatalf("copy: %v", err)
@@ -261,8 +261,8 @@ func TestCopyOfAPrototypedSpellIsPrototyped(t *testing.T) {
 // A prototyped spell and the permanent it becomes both survive a
 // restore: the face that is up is carried by the snapshot.
 func TestPrototypedSpellAndPermanentSurviveARestore(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
-	castPrototyped(t, g, me, id, "{R}{C}{C}")
+	g, me, id := prototypeGame(t)
+	castPrototyped(t, g, me, id)
 
 	g = restoreThroughJSON(t, g)
 	spell, ok := g.LookupCardForEffect(id)
@@ -286,8 +286,8 @@ func TestPrototypedSpellAndPermanentSurviveARestore(t *testing.T) {
 // CR 718.4: a prototyped spell that is countered is the normal card in
 // the graveyard.
 func TestCounteredPrototypedSpellIsTheNormalCard(t *testing.T) {
-	g, me, id := prototypeGame(t, blitzAutomaton)
-	castPrototyped(t, g, me, id, "{R}{C}{C}")
+	g, me, id := prototypeGame(t)
+	castPrototyped(t, g, me, id)
 	g.WithWriteLock(func() {
 		if err := g.CounterTargetForEffect(id); err != nil {
 			t.Fatalf("counter: %v", err)
@@ -298,4 +298,39 @@ func TestCounteredPrototypedSpellIsTheNormalCard(t *testing.T) {
 		t.Errorf("countered card: in graveyard=%v prototyped=%v mv=%d power=%d, want the normal 6/4 with mana value 7",
 			me.Graveyard.Contains(id), card.Prototyped(), card.ManaValue(), card.Effective().Power)
 	}
+}
+
+// CR 718.3a: while casting a prototyped spell only its alternative
+// characteristics are evaluated to see if it can be cast. A permission
+// that opens the library to spells with mana value 3 or less
+// casts the Automaton prototyped and not normally; prototype is not an
+// alternative cost, so it applies under a permission.
+func TestPrototypedCastUnderAPermissionWithAManaValueCap(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	toMainForCost(t, g)
+	limit := 3
+	g.WithWriteLock(func() {
+		g.GrantCastPermissionForEffect(game.CastPermission{
+			Player: me.ID, Zone: game.ZoneLibrary, Scope: game.ScopeStanding,
+			MaxSpellManaValue: &limit,
+			Label:             "Cast spells with mana value 3 or less from your library",
+		})
+	})
+	c := blitzAutomaton(t, me.ID)
+	id := c.InstanceID
+	g.WithWriteLock(func() { me.Library.PushTop(c) })
+
+	me.ManaPool = nil
+	floatMana(t, g, me, "{C}{C}{C}{C}{C}{C}{C}")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "library", Strict: true}); err == nil {
+		t.Fatal("the mana value 7 Automaton was cast under a mana value 3 cap")
+	}
+	me.ManaPool = nil
+	floatMana(t, g, me, "{R}{C}{C}")
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "library", Strict: true, Face: game.PrototypeFace}); err != nil {
+		t.Fatalf("cast prototyped from the library: %v", err)
+	}
+	spell, _ := g.LookupCardForEffect(id)
+	wantPrototypedAutomaton(t, "the spell cast from the library", spell)
 }

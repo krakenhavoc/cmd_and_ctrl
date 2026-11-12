@@ -20,7 +20,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Spotter Thopter — scry X, where X is its power", broScryEqualToSourcePower),
+			WhenThisEnters("Spotter Thopter — scry X, where X is its power", spotterThopterScry),
 		},
 	})
+}
+
+// spotterThopterScry reads the Thopter's power as the trigger resolves:
+// the permanent as it is now, or as it last existed if it has left. A
+// power of zero or less scries nothing.
+func spotterThopterScry(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	info, ok := ctx.SourcePermanent()
+	if !ok || info.Power <= 0 {
+		return nil
+	}
+	return Scry{Player: ctx.Controller(), N: info.Power}.Apply(ctx)
 }
