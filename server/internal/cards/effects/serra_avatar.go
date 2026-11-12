@@ -26,16 +26,7 @@ func init() {
 		OracleID:     "c363725f-15cf-4955-aaf1-536b1f8daaed",
 		Name:         "Serra Avatar",
 		Completeness: CompletenessFull,
-		Static: []game.StaticAbility{{
-			Label:     "Power and toughness are each equal to your life total.",
-			Layer:     game.Layer7PT,
-			SubLayer:  game.SubLayer7A_CDA,
-			AppliesTo: selfOnly,
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := yourLifeTotal(g, source)
-				c.Power, c.Toughness = n, n
-			},
-		}},
+		Static:       []game.StaticAbility{powerAndToughnessEqualToYourLifeTotal()},
 		Triggered: []game.TriggeredAbility{
 			WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn("Serra Avatar — shuffle it into its owner's library"),
 		},
