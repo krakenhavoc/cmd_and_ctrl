@@ -586,6 +586,10 @@ export interface GameView {
   // by the server to this viewer's own part. Absent until one is offered,
   // and for a spectator.
   rematch?: RematchView;
+  // When the server will close this started game for having had no move
+  // by a person (ADR 0211 §6), RFC 3339 UTC. Absent until the game is
+  // warned; the next person's move clears it. lib/idleClose.ts words it.
+  idle_close_at?: string;
   // Where this viewer dragged the stack panel to (#3429, ADR 0176), keyed
   // by seat id. The server keeps only the viewer's own entry; absent when
   // the panel is at its default and for a spectator.

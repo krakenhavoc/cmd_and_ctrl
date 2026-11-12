@@ -11,11 +11,13 @@ import (
 //
 //	cmdctrl_dm_notifications_total{kind, result}
 
-// Kinds of cmdctrl_dm_notifications_total: the three switches.
+// Kinds of cmdctrl_dm_notifications_total: the three switches, and the
+// idle-close warning (ADR 0211 §6), which rides the turn switch.
 const (
 	DMKindTurn        = "turn"
 	DMKindTableReady  = "table_ready"
 	DMKindTableFilled = "table_filled"
+	DMKindIdleWarning = "idle_warning"
 )
 
 // Results of cmdctrl_dm_notifications_total.
@@ -31,7 +33,7 @@ const (
 )
 
 var (
-	dmKindLabels   = []string{DMKindTurn, DMKindTableReady, DMKindTableFilled}
+	dmKindLabels   = []string{DMKindTurn, DMKindTableReady, DMKindTableFilled, DMKindIdleWarning}
 	dmResultLabels = []string{DMSent, DMRefused, DMError}
 
 	dmNotifications = prometheus.NewCounterVec(prometheus.CounterOpts{
