@@ -10431,6 +10431,27 @@ phase-in, at an untap step and from a "phases out until ~ leaves" lock
 alike (CR 101.2); the permanents stay out until a later untap step of the
 player they phased out under. It is not on the wire.
 
+**"It can't phase in for as long as you control this Saga."** (The
+Phasing of Zhalfir, #5664) is `CantPhaseInWhileYouControl`, applied after
+the `PhaseOut` that the sentence before it prints:
+
+```go
+targets := legalTargetCards(item, g)
+if err := (PhaseOut{Targets: targets}).Apply(ctx); err != nil {
+    return err
+}
+return CantPhaseInWhileYouControl{Targets: targets, Source: item.SourceCardID}.Apply(ctx)
+```
+
+It is a prohibition, not the "until ~ leaves" clock: while the ability's
+controller controls `Source`, the permanent sits out every untap step,
+and when that stops (the source leaves, phases out or changes controller)
+the permanent phases in during the next untap step of the player it
+phased out under, not at once. If that player does not control `Source`
+as it applies, nothing is recorded (CR 611.2b). The record is three
+additive `Card` fields (`PhaseInBarredBy` / `Epoch` / `For`), so a table
+holding one is a restore point. It is not on the wire.
+
 Still missing, and named in the ADR rather than here: CR 702.26e /
 702.26f's continuous-effect corners — a "gain control until end of
 turn" whose object phases out keeps its `ScopedEffect` record

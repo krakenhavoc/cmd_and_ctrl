@@ -5603,6 +5603,10 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.sweepPhaseInLocksLocked() {
 		fired = true
 	}
+	// #5664: a "can't phase in for as long as you control ~" effect
+	// whose source left or changed controller ends here too. It
+	// phases nothing in, so it is not a reason to run another round.
+	g.sweepPhaseInBarsLocked()
 	// S16: refresh effective characteristics before any toughness /
 	// loyalty / battle-defense check. Counter mutations + zone moves
 	// from prior SBA iterations bump layerVersion; this fast-paths

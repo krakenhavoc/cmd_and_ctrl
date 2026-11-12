@@ -407,3 +407,26 @@ Concealment, Oubliette. **Card improved:** Teferi's Protection, from two caveats
 one. **Cards reachable with no further engine work:** every printed-phasing
 permanent through Decision 5, and the "phases out until this leaves the battlefield"
 family (Out of Time) through Decision 2's `PhaseInLockedBy`.
+
+## Amendment 2026-11-12 — "it can't phase in for as long as you control ~" (#5664)
+
+Decision 2's `PhaseInLockedBy` is a clock: the permanent phases in the moment the
+named object leaves the battlefield. The Phasing of Zhalfir prints a different
+sentence, "It can't phase in for as long as you control this Saga", which is a
+prohibition with a CR 611.2b duration. Three more fields on `Card` carry it:
+`PhaseInBarredBy` (the source), `PhaseInBarredEpoch` (its `ObjectEpoch`, CR 400.7)
+and `PhaseInBarredFor` (the player who must control it).
+
+- While the source is on the battlefield as that object under that player's
+  control, CR 502.1's phase-in skips the permanent, and `phaseInLocked` refuses it
+  whoever asks. Its indirectly phased attachments stay out with it (CR 702.26g).
+- When the condition stops holding, nothing phases in on the spot. The record is
+  cleared (`sweepPhaseInBarsLocked`, beside the lock sweep) and the permanent phases
+  in during the next untap step of the player it phased out under. A cleared
+  record does not come back when control does (CR 611.2b).
+- A source that phases out is not on the battlefield slice, so the duration ends
+  (CR 702.26f).
+- The fields are additive in the snapshot and cleared by `MoveCard` with the rest
+  of the phasing status.
+
+**Card unlocked** (`full`): The Phasing of Zhalfir.
