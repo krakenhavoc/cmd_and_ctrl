@@ -116,7 +116,10 @@ func abilityRowsOf(c *Card, onBattlefield bool) []AbilityRow {
 		// chip, because it is not a canonicalKeywords token, so the row
 		// is where the tile shows it — as it did before the trigger
 		// carried a Keyword.
-		if t.Keyword != "" && t.Keyword != KeywordCumulativeUpkeep {
+		// So does backup (#5651), for the same reason, and because the
+		// row is where the tile says how many counters and which
+		// abilities.
+		if t.Keyword != "" && t.Keyword != KeywordCumulativeUpkeep && t.Keyword != KeywordBackup {
 			continue
 		}
 		label, generic := abilityRowText(t.Key, names, "Triggered ability")
