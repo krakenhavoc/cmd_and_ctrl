@@ -57,7 +57,7 @@ func (g *Game) SacrificedManaCostForEffect(mandatory *AdditionalCost, optional [
 		if !SacrificeCostVariable(pay.cost.Sacrifice) {
 			n = SacrificeCostCount(pay.cost.Sacrifice)
 		}
-		if n < 0 || si+n > len(sacrificeIDs) {
+		if si+n > len(sacrificeIDs) {
 			return ParsedCost{}
 		}
 		if pay.cost.ReducedBySacrificedManaCost {
