@@ -46359,6 +46359,8 @@ pendingChoices[].lifeCost	number:int
 pendingChoices[].loopShortcutCount	number:int
 pendingChoices[].loopShortcutKey	string
 pendingChoices[].loopShortcutRepeat	bool
+pendingChoices[].manaAbilityAmount	number:int
+pendingChoices[].manaAbilityRun	string
 pendingChoices[].manaAmounts	map:string
 pendingChoices[].manaAmounts{}	number:int
 pendingChoices[].manaChosen	array
