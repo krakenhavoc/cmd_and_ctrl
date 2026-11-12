@@ -38,6 +38,7 @@ anyplayer any-player/tuck-this-on-top-of-library
 anyplayer any-player/wild-might-extra
 anyplayer any-player/worms-of-the-earth-destroy
 body aang-at-the-crossroads/transform
+body activation-count/sacrifice-this-creature
 body agathas-soul-cauldron/counter
 body all-out-assault/untap-each-creature-you-control
 body angel-of-suffering/mill-twice
