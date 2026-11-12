@@ -170,6 +170,11 @@ const (
 	// has not been dealt combat damage since their last turn (Marchesa,
 	// Resolute Monarch, #5652; Player.CombatDamagedSinceLastTurn).
 	FootprintCondNoCombatDamageSinceLastTurn FootprintCond = "no_combat_damage_since_last_turn"
+	// FootprintCondOpponentPermanentDealtExcessDamage: a creature or
+	// planeswalker an opponent of the item's controller controlled was
+	// dealt excess damage this turn (Rith, Liberated Primeval, #5663).
+	// The tally only rises within a turn.
+	FootprintCondOpponentPermanentDealtExcessDamage FootprintCond = "opponent_permanent_dealt_excess_damage"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -832,6 +837,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return tally.PermanentsEnteredFaceDown > 0
 	case FootprintCondNoCombatDamageSinceLastTurn:
 		return !g.DealtCombatDamageSinceLastTurnForEffect(you)
+	case FootprintCondOpponentPermanentDealtExcessDamage:
+		return g.OpponentPermanentDealtExcessDamageThisTurn(you)
 	case FootprintCondMonarch:
 		a.monarchRead = true
 	case FootprintCondInitiative:

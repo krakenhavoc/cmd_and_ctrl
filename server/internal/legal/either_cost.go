@@ -56,3 +56,15 @@ func branchLife(c *game.AdditionalCost) int {
 	}
 	return c.PayLife
 }
+
+// optionalLife is the fixed life the announced optional costs owe: each
+// chosen index's PayLife, once per time it is announced.
+func optionalLife(optional []game.AdditionalCost, chosen []int) int {
+	n := 0
+	for _, i := range chosen {
+		if i >= 0 && i < len(optional) {
+			n += optional[i].PayLife
+		}
+	}
+	return n
+}

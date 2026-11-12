@@ -267,6 +267,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
 		c.ExertOnAttack = false
+		c.EnlistOnAttack = uuid.Nil
 		c.clearBlocking()
 		c.Goads = nil
 		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch
@@ -438,6 +439,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// leaves behind must not remember a status it no longer has.
 		c.PhasedOutBy = uuid.Nil
 		c.PhaseInLockedBy = uuid.Nil
+		c.PhaseInBarredBy, c.PhaseInBarredEpoch, c.PhaseInBarredFor = uuid.Nil, 0, uuid.Nil
 		c.PhasedOutIndirect = false
 		c.TapOnPhaseIn = false
 	}

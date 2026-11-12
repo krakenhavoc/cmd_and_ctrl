@@ -389,6 +389,29 @@ type Card struct {
 	// See phasing.go and ADR 0084. Added in S46 (#1199).
 	PhaseInLockedBy uuid.UUID
 
+	// PhaseInBarredBy, PhaseInBarredEpoch and PhaseInBarredFor are
+	// "It can't phase in for as long as you control this Saga" (The
+	// Phasing of Zhalfir, #5664): the object whose control is the
+	// duration, the ObjectEpoch it had when the effect began (CR 400.7:
+	// one that left and came back is a new object), and the player who
+	// must still control it.
+	//
+	// Unlike PhaseInLockedBy this is a prohibition, not a clock. While
+	// it holds, the permanent is skipped by the untap step's phase-in
+	// (CR 502.1) and by everything else that would phase it in. When
+	// it ends (the source leaves, phases out or changes controller)
+	// nothing phases in on the spot: the permanent is back on the
+	// ordinary clock and phases in during the next untap step of the
+	// player it phased out under. A duration that has ended does not
+	// start again (CR 611.2b), so sweepPhaseInBarsLocked clears the
+	// three fields as soon as it sees the condition false.
+	//
+	// uuid.Nil in PhaseInBarredBy is "no such effect". Meaningful only
+	// while the card sits in Game.PhasedOut. See phasing.go.
+	PhaseInBarredBy    uuid.UUID
+	PhaseInBarredEpoch int
+	PhaseInBarredFor   uuid.UUID
+
 	// DamageMarked is the damage currently noted on the creature this
 	// turn, used by the lethal-damage state-based action (CR 704.5g).
 	// Combat damage and direct-damage spells (resolved manually) write
@@ -1938,6 +1961,14 @@ type Card struct {
 	// before that. True only between the verb and the lock-in.
 	ExertOnAttack bool
 
+	// EnlistOnAttack is a staged choice of the creature this attacker
+	// enlists (CR 702.154a, 508.1g; enlist.go): set by a declaration
+	// verb beside AttackingTarget, paid and cleared by
+	// commitAttackDeclarationLocked as the declaration locks in, and
+	// cleared with AttackingTarget wherever the creature leaves combat
+	// before that. Non-nil only between the verb and the lock-in.
+	EnlistOnAttack uuid.UUID
+
 	// Suspected is the CR 701.60 designation described above
 	// (SuspectedAt). Here for alignment, beside the other bools.
 	Suspected bool
@@ -2630,33 +2661,49 @@ func equalFoldASCII(a, b string) bool {
 	return true
 }
 
-// typeLineHas does a case-insensitive substring check against the
-// given lowercase needle. The needle MUST be lowercase (callers in
-// this file always pass a literal). Returns false for an empty
-// TypeLine (placeholder cards from the demo seed are conservatively
-// treated as no-type).
-func typeLineHas(typeLine, lowerNeedle string) bool {
-	if typeLine == "" {
+// typeLineHas reports whether one WORD of the type line is `needle`,
+// case-insensitively. The words are the supertypes and card types
+// before the dash and the subtypes after it: the line splits on
+// whitespace, the em dash and the "//" between faces. A whole-word
+// match, not a substring one (#5213): "Token Artifact — Lander" has
+// the subtype Lander and is not a land, and "Land" is not "Island".
+// A hyphenated subtype (Assembly-Worker) is one word. The needle is
+// one word; a needle with a space in it matches nothing. Returns
+// false for an empty TypeLine (placeholder cards from the demo seed
+// are conservatively treated as no-type).
+func typeLineHas(typeLine, needle string) bool {
+	if typeLine == "" || needle == "" {
 		return false
 	}
-	n := len(lowerNeedle)
-	for i := 0; i+n <= len(typeLine); i++ {
-		match := true
-		for j := 0; j < n; j++ {
-			c := typeLine[i+j]
-			if c >= 'A' && c <= 'Z' {
-				c += 'a' - 'A'
-			}
-			if c != lowerNeedle[j] {
-				match = false
-				break
-			}
+	start := 0
+	for i := 0; i < len(typeLine); {
+		sep := typeLineSeparatorLen(typeLine, i)
+		if sep == 0 {
+			i++
+			continue
 		}
-		if match {
+		if equalFoldASCII(typeLine[start:i], needle) {
 			return true
 		}
+		i += sep
+		start = i
 	}
-	return false
+	return equalFoldASCII(typeLine[start:], needle)
+}
+
+// typeLineSeparatorLen is the byte length of the word separator that
+// starts at typeLine[i], or 0 when a word character is there. The em
+// dash (U+2014) is three bytes in UTF-8.
+func typeLineSeparatorLen(typeLine string, i int) int {
+	switch typeLine[i] {
+	case ' ', '\t', '\n', '/':
+		return 1
+	case 0xE2:
+		if i+2 < len(typeLine) && typeLine[i+1] == 0x80 && typeLine[i+2] == 0x94 {
+			return 3
+		}
+	}
+	return 0
 }
 
 // NewCard constructs a fresh Card instance with a new InstanceID, owned

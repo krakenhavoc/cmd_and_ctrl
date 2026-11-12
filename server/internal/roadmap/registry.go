@@ -382,6 +382,15 @@ var items = []Item{
 		Examples: []string{"Titania, Proud Pummeler"},
 	},
 	{
+		Slug: "enlist", Name: "Enlist", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "As a creature with enlist attacks, you may tap another creature you control that isn't attacking and could have attacked. The attacker gets that creature's power added to its own until end of turn.",
+		Rules:    []string{"702.154", "508.1g", "607.2h"},
+		Issue:    5658,
+		Keywords: []string{game.KeywordEnlist},
+		Probe:    hasKeyword(game.KeywordEnlist),
+		Examples: []string{"Guardian of New Benalia", "Keldon Flamesage"},
+	},
+	{
 		Slug: "decayed", Name: "Decayed", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "A creature with decayed can't block, and when it attacks it is sacrificed at end of combat. Decayed tokens, decayed another permanent gives and decayed counters all work.",
 		Rules:    []string{"702.147", "122.1b"},

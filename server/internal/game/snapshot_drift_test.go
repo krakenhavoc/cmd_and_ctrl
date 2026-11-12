@@ -147,6 +147,7 @@ var gameFields = plan(
 	"LoyaltyActivatedTwiceThisTurn", carried, "",
 	"LoyaltyExtraActivationsThisTurn", carried, "",
 	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
+	"LoyaltyTwiceThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"DilemmasFacedThisTurn", carried, "", // #4973
@@ -453,6 +454,8 @@ var cardFields = plan(
 	// ADR 0130 §8: a staged exert not yet paid. Carried: a restore
 	// point written between the verb and the lock-in must still pay it.
 	"ExertOnAttack", carried, "",
+	// #5658: a staged enlist not yet paid, carried for the same reason.
+	"EnlistOnAttack", carried, "",
 	"BlockingTarget", carried, "",
 	// #1706: a multi-blocker's further attackers.
 	"AlsoBlocking", carried, "",
@@ -721,6 +724,9 @@ var cardFields = plan(
 	// untap step, or an Aura back without its host.
 	"PhasedOutBy", carried, "",
 	"PhaseInLockedBy", carried, "",
+	"PhaseInBarredBy", carried, "",
+	"PhaseInBarredEpoch", carried, "",
+	"PhaseInBarredFor", carried, "",
 	"PhasedOutIndirect", carried, "",
 	"TapOnPhaseIn", carried, "",
 	// S27 battles. Both are printed / chosen state with no other

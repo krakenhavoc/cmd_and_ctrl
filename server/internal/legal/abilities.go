@@ -408,7 +408,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// AbilityLifeCostLocked, so the move the bot is offered and
 		// the payment the engine charges are the same number.
 		life, lifeOK := g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
-		if !lifeOK || !g.CanPayLifeLocked(p, life) {
+		// #5660: the non-mana activation's form of it, which also
+		// refuses under "players can't pay life to activate abilities
+		// that aren't mana abilities".
+		if !lifeOK || !g.CanPayLifeToCastOrActivateLocked(p, life) {
 			continue
 		}
 		// ADR 0129 §7, CR 118.3: the energy component, through the
@@ -1913,7 +1916,9 @@ func (e *enumerator) affordablePayment(
 		// subtraction that knew only the first half, so a seat under
 		// a life lock is not offered a Phyrexian activation the
 		// strike refuses.
-		if !e.g.CanPayLifeLocked(e.p, reservedLife+life) {
+		// #5660: and "players can't pay life to activate abilities that
+		// aren't mana abilities" (this prices no mana ability).
+		if !e.g.CanPayLifeToCastOrActivateLocked(e.p, reservedLife+life) {
 			break
 		}
 		if x, ok := e.affordableXExcluding(reduced, spend, floor, excluded); ok {

@@ -768,6 +768,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
+	// #5660: "Players can't pay life to cast spells" (Karn's Sylex)
+	// reaches the life half of a Phyrexian symbol and of a life-for-mana
+	// grant (CR 107.4f, CR 601.2b). Refused here, once the layers are fresh and
+	// before anything reads the claim, so every payment path below sees a cast that pays those
+	// symbols with mana or not at all.
+	if params.PhyrexianLife > 0 && g.cantPayLifeToCastOrActivateLocked() {
+		return fmt.Errorf("%w: players can't pay life to cast spells", ErrInvalidParam)
+	}
 	src, err := g.castSourceZoneLocked(p, cardID, params.FromZone)
 	if err != nil {
 		return err
@@ -1564,7 +1572,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if alt != nil {
 			owed += alt.Life
 		}
-		if !g.CanPayLifeLocked(p, owed) {
+		if !g.CanPayLifeToCastOrActivateLocked(p, owed) {
 			slog.Warn("cast_spell rejected: can't pay the targeting tax",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
@@ -4989,6 +4997,9 @@ func (g *Game) resolveTopAbilityLocked() {
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
+	// CR 702.122e (#5671): a crew ability has resolved, so its Vehicle
+	// "becomes crewed".
+	g.noteCrewAbilityResolvedLocked(top)
 	// #3613: an ability that asked something has not resolved until the
 	// answer is in; its log line waits for it (resolution_tail.go).
 	g.holdResolutionTailLocked(top, resolveSeq)
@@ -5606,6 +5617,10 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.sweepPhaseInLocksLocked() {
 		fired = true
 	}
+	// #5664: a "can't phase in for as long as you control ~" effect
+	// whose source left or changed controller ends here too. It
+	// phases nothing in, so it is not a reason to run another round.
+	g.sweepPhaseInBarsLocked()
 	// S16: refresh effective characteristics before any toughness /
 	// loyalty / battle-defense check. Counter mutations + zone moves
 	// from prior SBA iterations bump layerVersion; this fast-paths
@@ -10287,6 +10302,9 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.attackHandoffRefusalLocked(card, one.Exert); err != nil {
 				return err
 			}
+			if one.Enlist != uuid.Nil && g.attackTaxDeferredLocked() {
+				return ErrDeclarerCantEnlist
+			}
 			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
 			// restrictions ("can't attack its owner") ride the same
 			// check, refused with a sentence naming them.
@@ -10349,6 +10367,11 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.validateExertChoicesLocked([]AttackDeclaration{one}); err != nil {
 				return err
 			}
+			// #5658: and the creature it enlists (CR 702.154a), the
+			// same way.
+			if err := g.validateEnlistChoicesLocked([]AttackDeclaration{one}); err != nil {
+				return err
+			}
 			// #4154: under a chosen declaration the costs are the
 			// active player's, paid as they confirm the attacks.
 			if !g.attackTaxDeferredLocked() {
@@ -10362,6 +10385,9 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			// back.
 			if one.Exert {
 				card.ExertOnAttack = true
+			}
+			if one.Enlist != uuid.Nil {
+				card.EnlistOnAttack = one.Enlist
 			}
 			// #859: staging, not announcing. A creature is declared
 			// as an attacker once (CR 508.1), and the sandbox lets a
@@ -10405,6 +10431,12 @@ type AttackDeclaration struct {
 	// exerted as it attacks refuses the whole declaration with
 	// ErrCantExert. False is every declaration made before exert.
 	Exert bool
+	// Enlist is the creature the attacker enlists as it attacks
+	// (CR 702.154a, 508.1g; enlist.go), or uuid.Nil for none. Staged on
+	// Card.EnlistOnAttack and paid as the declaration locks in. A
+	// creature the attacker can't enlist refuses the whole declaration
+	// with ErrCantEnlist.
+	Enlist uuid.UUID
 }
 
 // DeclareAttackers declares an entire attacking set in ONE mutation.
@@ -10506,6 +10538,9 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			if d.Exert {
 				return nil, ErrDeclarerCantExert
 			}
+			if d.Enlist != uuid.Nil {
+				return nil, ErrDeclarerCantEnlist
+			}
 		}
 	}
 
@@ -10590,6 +10625,11 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.validateExertChoicesLocked(eligible); err != nil {
 		return nil, err
 	}
+	// #5658: and an enlist the attacker can't make (CR 702.154a), for
+	// the same reason.
+	if err := g.validateEnlistChoicesLocked(eligible); err != nil {
+		return nil, err
+	}
 	// CR 508.1h, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
@@ -10630,6 +10670,9 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 		// ADR 0130 §2: staged, paid by the lock-in below.
 		if d.Exert {
 			card.ExertOnAttack = true
+		}
+		if d.Enlist != uuid.Nil {
+			card.EnlistOnAttack = d.Enlist
 		}
 		// CR 508.1f: declaring an attacker taps it unless it has
 		// vigilance (CR 702.20).
@@ -11416,6 +11459,7 @@ func (g *Game) clearCombatLocked() {
 		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].ExertOnAttack = false
+		g.Battlefield.Cards[i].EnlistOnAttack = uuid.Nil
 		g.Battlefield.Cards[i].clearBlocking()
 	}
 	if attackerLeft {

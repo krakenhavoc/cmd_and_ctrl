@@ -288,6 +288,12 @@ var canonicalKeywords = map[string]bool{
 	// Proud Pummeler) all trigger. CUMULATIVE (CR 702.121b: each
 	// instance triggers separately).
 	KeywordMelee: true,
+	// enlist (CR 702.154) joins with #5658, in the same change that
+	// teaches the engine to honour it (enlist.go): the optional cost to
+	// attack is read off the attacker with HasKeyword, and the linked
+	// "when you do" is a keyword trigger (keywordTriggersFor). Not
+	// cumulative: an attacker enlists at most one creature.
+	KeywordEnlist: true,
 	// rebound (CR 702.88) joins with #1854 (ADR 0107 §3), in the same
 	// change that teaches the engine to honour it. Its consumer is the
 	// stack's graveyard route (routeStackCardToGraveyardLocked, through
