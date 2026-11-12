@@ -569,6 +569,7 @@ var cardFields = plan(
 	// #2322 / CR 707.9d: a colour-setting copy exception dropped the
 	// copied devoid. Carried: nothing else on the card says so.
 	"ColorCDADropped", carried, "",
+	"LostKeywords", carried, "",
 	// S26: the creature type named as the permanent entered. A
 	// player's choice, so nothing can rebuild it.
 	"NamedTribe", carried, "",
@@ -673,6 +674,7 @@ var cardFields = plan(
 	// for Monstrous's reason.
 	"Suspected", carried, "",
 	"SuspectedAt", carried, "",
+	"PairedWith", carried, "",
 	// ADR 0114 §8: the CR 701.54b Ring-bearer designation and the Ring
 	// emblem's count of temptations, carried for Harnessed's reason.
 	"RingBearer", carried, "",
