@@ -54,3 +54,34 @@ describe("abilityBlocked with a tap-another cost", () => {
     expect(abilityBlocked(payable, false, true)).toBe("");
   });
 });
+
+// #5669: "Untap N tapped creatures you control" (Halo Fountain) rides
+// the same option list, with the tapped permanents on it.
+describe("an untap-tapped-creatures cost", () => {
+  const fountain = {
+    tap_cost: true,
+    tap_others_untap: true,
+    tap_others_label: "two tapped creatures you control",
+    tap_others_options: { cards: ["a"], min: 2, max: 2 },
+  };
+
+  it("names the clause with the verb untap when too few are tapped", () => {
+    expect(tapOthersShortfall(fountain.tap_others_options, fountain.tap_others_label, true)).toBe(
+      "nothing to untap (two tapped creatures you control)",
+    );
+    expect(abilityBlocked(fountain, false, false)).toBe(
+      "nothing to untap (two tapped creatures you control)",
+    );
+  });
+
+  it("is open when enough tapped creatures can pay", () => {
+    const payable = { ...fountain, tap_others_options: { cards: ["a", "b"], min: 2, max: 2 } };
+    expect(abilityBlocked(payable, false, false)).toBe("");
+  });
+
+  it("greys a tapped source, unless naming it for the clause untaps it first", () => {
+    const payable = { ...fountain, tap_others_options: { cards: ["a", "b"], min: 2, max: 2 } };
+    expect(abilityBlocked(payable, true, false)).toBe("already tapped");
+    expect(abilityBlocked({ ...payable, tap_others_frees_source: true }, true, false)).toBe("");
+  });
+});
