@@ -2085,6 +2085,13 @@ type ActivatedAbility struct {
 	// reduction itself (game/power_up.go). Set it through the PowerUp
 	// constructor (power_up.go), which also writes the label.
 	PowerUp bool
+	// Ninjutsu marks a ninjutsu or commander ninjutsu ability (CR
+	// 702.49a, 702.49d; #5672). It gates nothing; it names the keyword
+	// for a cost modifier that prices "ninjutsu abilities"
+	// (ANinjutsuAbilityCost, Silver-Fur Master). Set it through the
+	// Ninjutsu and CommanderNinjutsu constructors (ninjutsu.go), which
+	// also write the label.
+	Ninjutsu bool
 	// OnlyOnce is the printed "Activate only once." on an ability that
 	// is not an exhaust ability (CR 602.5b, #5221): Possessed Goat,
 	// Haunted Screen. One bit, no card logic: the engine reads the

@@ -5717,6 +5717,17 @@ Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
 Berserker, with `ActivationCostsLessEach`). `Register` panics when the
 label prints "Boast —" without the bit or the bit without the label.
 
+**Ninjutsu abilities, as a class (CR 702.49, #5672):** `Ninjutsu(cost)`
+and `CommanderNinjutsu(cost)` set a keyword bit as well as the label, so
+a card that prices ninjutsu abilities matches on the bit, never on the
+label: `ANinjutsuAbilityCost()` on a cost query, with
+`ActivatedByTheModifiersController()` for "you activate" (Silver-Fur
+Master: `ActivationCostsLess(1, label, ANinjutsuAbilityCost(),
+ActivatedByTheModifiersController())`). It matches commander ninjutsu
+(CR 702.49d) and a ninjutsu a static grants to a card in hand. The bit
+gates nothing. `Register` panics when a label starts with the keyword
+without the bit or the bit is set without the keyword.
+
 **Power-up (CR 702.193, #4527):** never spell "activate only once" or
 the reduction by hand. `PowerUp(text, cost, effect)` in
 [power_up.go](../server/internal/cards/effects/power_up.go) writes the

@@ -1055,6 +1055,17 @@ type ActivatedAbilityShape struct {
 	//     and the payment price it from one function.
 	PowerUp bool
 
+	// Ninjutsu marks a NINJUTSU ability (CR 702.49a) or a commander
+	// ninjutsu ability, the variant of it (CR 702.49d), #5672. Built by
+	// effects.Ninjutsu and effects.CommanderNinjutsu.
+	//
+	// Unlike Exhaust, Boast and PowerUp it gates nothing: the keyword's
+	// rules are its cost, its zones and its effect, which the shape
+	// already carries. The bit is the keyword's NAME, for a cost
+	// modifier that prices "ninjutsu abilities" (Silver-Fur Master,
+	// AbilityCostSubject.Ninjutsu) and must not match on label prose.
+	Ninjutsu bool
+
 	// OnlyOnce is the ability's own "Activate only once." without the
 	// exhaust keyword (#5221, CR 602.1b / 602.5b): Possessed Goat,
 	// Haunted Screen. Once per OBJECT for as long as it stays one, read
