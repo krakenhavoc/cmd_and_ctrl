@@ -71863,6 +71863,7 @@ seats[].citysBlessing	bool
 seats[].combatAttacks	array
 seats[].combatAttacks[]	object
 seats[].combatAttacks[].attacker	custom(uuid.UUID)
+seats[].combatAttacks[].battle	bool
 seats[].combatAttacks[].defender	custom(uuid.UUID)
 seats[].combatAttacks[].epoch	number:int
 seats[].combatAttacks[].phaseId	number:int
@@ -74447,6 +74448,7 @@ seats[].landDropsPerTurn	number:int
 seats[].lastCombatAttacks	array
 seats[].lastCombatAttacks[]	object
 seats[].lastCombatAttacks[].attacker	custom(uuid.UUID)
+seats[].lastCombatAttacks[].battle	bool
 seats[].lastCombatAttacks[].defender	custom(uuid.UUID)
 seats[].lastCombatAttacks[].epoch	number:int
 seats[].lastCombatAttacks[].phaseId	number:int
@@ -74454,6 +74456,7 @@ seats[].lastCombatAttacks[].planeswalkerController	custom(uuid.UUID)
 seats[].lastTurnAttacks	array
 seats[].lastTurnAttacks[]	object
 seats[].lastTurnAttacks[].attacker	custom(uuid.UUID)
+seats[].lastTurnAttacks[].battle	bool
 seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
 seats[].lastTurnAttacks[].epoch	number:int
 seats[].lastTurnAttacks[].phaseId	number:int
@@ -76464,6 +76467,7 @@ turnTally.attackedSubtypes{}	number:int
 turnTally.attacks	array
 turnTally.attacks[]	object
 turnTally.attacks[].attacker	custom(uuid.UUID)
+turnTally.attacks[].battle	bool
 turnTally.attacks[].defender	custom(uuid.UUID)
 turnTally.attacks[].epoch	number:int
 turnTally.attacks[].phaseId	number:int
