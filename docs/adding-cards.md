@@ -4553,6 +4553,18 @@ Built for the last three world enchantments:
   triggering event names (the player whose upkeep it is) answers the
   prompt, and legality is judged for the trigger's controller. Triggers
   only.
+- **"Its controller chooses target permanent another player controls
+  that shares a card type with it"** on an enters trigger (Confusion in
+  the Ranks, #5739): wrap the clause as
+  `AnotherPlayerControls(OfThatPlayersChoice(SharesACardTypeWithIt(TargetPermanent(…))))`.
+  On an `EventETB` the chooser is the entering permanent's controller, as
+  the trigger's own snapshot (`TriggerContext.Object.Controller`) recorded
+  it, not the event's Actor (who put it there). `AnotherPlayerControls`
+  excludes the chooser's permanents, not the trigger controller's;
+  `SharesACardTypeWithIt` reads the event's object live while it is on
+  the battlefield and its last-known types once it has left. Both are
+  re-checked on resolution (CR 608.2b). The body checks
+  `ctx.TriggeringPermanent()` is not `Left` before it exchanges.
 - **Two card names, one chosen by an opponent, and "other than a basic
   land card name"** (Null Chamber): queue
   `g.QueueCardNamePromptForEffect(game.CardNamePrompt{…, SecondName: true,
