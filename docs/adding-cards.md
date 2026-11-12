@@ -2833,6 +2833,20 @@ g.CantBeRegeneratedIfDealtDamageByForEffect(src, ref, true, label)
 g.ExileIfDealtDamageByWouldDieThisTurnForEffect(src, ref, uuid.Nil, false, label)
 ```
 
+**"If it has dealt N or more damage to that player this turn"** (#5674).
+The turn also keeps how much each source object dealt to each player,
+combat and noncombat together (`TurnTally.DamagedPlayers`; the amount is
+the damage dealt after prevention, whether or not it cost life, and a
+source that left and came back is a new object that has dealt nothing,
+CR 400.7). Read it with
+`g.DamageDealtToPlayerThisTurnByObjectForEffect(ref, player)`. The record
+is written before triggers are harvested, so a trigger on the damage
+already counts that damage. An intervening "if" asks it twice (CR 603.4):
+in `AppliesTo` with `game.ObjectRef{ID: source.InstanceID, Epoch:
+source.ObjectEpoch}`, and as the trigger resolves with `ctx.SourceRef()`,
+which still names the object if it has left (CR 608.2h). Vessel of the
+All-Consuming (`hidetsugu_consumes_all.go`) is the precedent.
+
 **"It deals double (triple) that damage instead" from a resolving spell
 or ability** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
 §3, #1890). A static doubler on a permanent (Angrath's Marauders,
