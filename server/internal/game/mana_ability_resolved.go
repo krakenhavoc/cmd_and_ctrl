@@ -25,6 +25,14 @@ import (
 // nothing (CR 903.4f, a commander with no colour identity) still
 // resolved, with Amount 0.
 //
+// # Only while something watches it
+//
+// A turn has dozens of mana abilities and almost no board has a card
+// that reads this, so the event is written only while a permanent on the
+// battlefield has a triggered ability watching it (battlefieldWatchesLocked,
+// the gate EventTriggerPlaced and EventAbilityCopied use). The log of a
+// game with no such card is what it was before the kind existed.
+//
 // # Where it is emitted
 //
 // Once per resolution, by the five places a mana ability finishes:
@@ -43,8 +51,12 @@ import (
 // emitManaAbilityResolvedLocked announces that a mana ability of `source`
 // finished resolving and produced `amount` mana. `actor` is the player
 // who activated it, or for a triggered mana ability the player whose
-// pool its mana went to. Caller must hold g.mu in write mode.
+// pool its mana went to. Nothing is written when no permanent watches
+// the kind. Caller must hold g.mu in write mode, with the layers current.
 func (g *Game) emitManaAbilityResolvedLocked(actor, source uuid.UUID, label string, amount int) {
+	if !g.battlefieldWatchesLocked(EventManaAbilityResolved) {
+		return
+	}
 	if amount < 0 {
 		amount = 0
 	}

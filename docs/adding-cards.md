@@ -9236,6 +9236,11 @@ On(game.EventManaAbilityResolved,
   resolved and added nothing has `Amount` 0.
 - `Actor` is the activator, or the player a triggered mana ability added
   its mana to; `Label` is the ability's label.
+- **It is written only while a permanent on the battlefield watches it**
+  (`battlefieldWatchesLocked`), so a board without such a card logs
+  nothing new and existing fixtures are unaffected. A watcher in another
+  zone, or on an emblem, joins that gate in the change that adds it. In an
+  engine test, put a watching permanent on the battlefield first.
 - It is not `EventManaAbilityActivated`, which is emitted when the cost
   is paid, before the mana exists, and carries no amount. "Whenever you
   tap this creature for mana, it deals 1 damage" still watches that one

@@ -982,7 +982,8 @@ const (
 	// route: the hand click, the answered colour pick, the auto-tapper
 	// and a triggered mana ability (mana_ability_resolved.go). What
 	// "whenever a mana ability of this creature resolves" watches
-	// (Tyvar the Bellicose).
+	// (Tyvar the Bellicose), and written only while a permanent on the
+	// battlefield has an ability watching it.
 	EventManaAbilityResolved EventKind = "mana_ability_resolved"
 
 	// EventManaAdded — one mana token landed in a player's pool.

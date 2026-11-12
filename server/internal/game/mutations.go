@@ -7248,8 +7248,9 @@ func (g *Game) triggerPlacedWatchedLocked() bool {
 // the same enumeration harvestFromZone walks (triggersOf, so an
 // ability-removing effect or an unmet designation gate counts as no
 // watcher). Only the battlefield: no emblem and no other-zone ability
-// watches EventTriggerPlaced or EventAbilityCopied, and one that does
-// joins this check in the change that declares it.
+// watches EventTriggerPlaced, EventAbilityCopied or
+// EventManaAbilityResolved, and one that does joins this check in the
+// change that declares it.
 //
 // Caller must hold g.mu.
 func (g *Game) battlefieldWatchesLocked(kind EventKind) bool {

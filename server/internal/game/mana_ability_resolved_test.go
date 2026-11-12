@@ -11,6 +11,38 @@ import (
 // mana that ability produced. Tyvar the Bellicose (cards/effects) is the
 // card that reads it.
 
+// watchManaResolutions puts a permanent on the battlefield whose
+// triggered ability watches EventManaAbilityResolved and never applies:
+// the event is written only while something watches it.
+func watchManaResolutions(t *testing.T, g *Game) {
+	t.Helper()
+	const oracle = "test-mana-resolution-watcher"
+	pushBattlefieldForTest(g, g.Seats[0].ID, "Watcher", "Enchantment", oracle)
+	withCatalogTriggers(t, func(oracleID string) []TriggeredAbility {
+		if oracleID != oracle {
+			return nil
+		}
+		return []TriggeredAbility{{
+			Watches:   []EventKind{EventManaAbilityResolved},
+			AppliesTo: func(Event, *Card, Characteristic, *Game) bool { return false },
+			Key:       "Watcher — never applies",
+		}}
+	})
+}
+
+// With nothing watching, a mana ability writes no resolution event: the
+// log of a game without such a card is unchanged.
+func TestManaAbilityResolvedIsWrittenOnlyWhileWatched(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	p := g.Seats[0]
+	forest := pushBattlefieldForTest(g, p.ID, "Forest", "Basic Land — Forest", "")
+	if err := g.ActivateManaAbility(p.ID, forest, 0, ManaAbilityParams{}); err != nil {
+		t.Fatalf("ActivateManaAbility: %v", err)
+	}
+	wantManaResolutions(t, g)
+}
+
 // manaResolutions is every EventManaAbilityResolved in the log, in
 // order.
 func manaResolutions(g *Game) []Event {
@@ -56,6 +88,7 @@ func pushReadyBirds(g *Game, p *Player) uuid.UUID {
 func TestManaAbilityResolvedCarriesTheAmount(t *testing.T) {
 	withCatalogHook(t, solRingHook)
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	advanceTo(t, g, StepPrecombatMain)
 	p := g.Seats[0]
 	ring := pushBattlefieldForTest(g, p.ID, "Sol Ring", "Artifact", "6ad8011d-3471-4369-9d68-b264cc027487")
@@ -86,6 +119,7 @@ func TestManaAbilityResolvedCarriesTheAmount(t *testing.T) {
 // replacement, not what it prints.
 func TestManaAbilityResolvedCountsReplacedMana(t *testing.T) {
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	advanceTo(t, g, StepPrecombatMain)
 	p := g.Seats[0]
 	forest := pushBattlefieldForTest(g, p.ID, "Forest", "Basic Land — Forest", "")
@@ -102,6 +136,7 @@ func TestManaAbilityResolvedCountsReplacedMana(t *testing.T) {
 // An ability that resolves and adds nothing still resolved.
 func TestManaAbilityResolvedWithNoMana(t *testing.T) {
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	advanceTo(t, g, StepPrecombatMain)
 	p := g.Seats[0]
 	forest := pushBattlefieldForTest(g, p.ID, "Forest", "Basic Land — Forest", "")
@@ -120,6 +155,7 @@ func TestManaAbilityResolvedWithNoMana(t *testing.T) {
 func TestManaAbilityResolvedWaitsForThePickAcrossARestore(t *testing.T) {
 	withCatalogHook(t, birdsHook)
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	advanceTo(t, g, StepPrecombatMain)
 	p := g.Seats[0]
 	birds := pushReadyBirds(g, p)
@@ -162,6 +198,7 @@ func TestManaAbilityResolvedWaitsForThePickAcrossARestore(t *testing.T) {
 // nothing.
 func TestManaAbilityResolvedIsNotASpellsMana(t *testing.T) {
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	advanceTo(t, g, StepPrecombatMain)
 	p := g.Seats[0]
 	g.WithWriteLock(func() {
@@ -183,6 +220,7 @@ func TestManaAbilityResolvedIsNotASpellsMana(t *testing.T) {
 // ability that triggered it, and counts only its own mana.
 func TestManaAbilityResolvedForATriggeredManaAbility(t *testing.T) {
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	me := g.Seats[0]
 	forest := pushForest(g, me)
 	aura := pushAuraOn(g, me, "Overgrowth", wildGrowthTestOracle, forest)
@@ -205,6 +243,7 @@ func TestManaAbilityResolvedForATriggeredManaAbility(t *testing.T) {
 // of its picks is answered, with the mana it added before them counted.
 func TestManaAbilityResolvedForATriggeredPick(t *testing.T) {
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	me := g.Seats[0]
 	forest := pushForest(g, me)
 	aura := pushAuraOn(g, me, "Fertile Ground", wildGrowthTestOracle, forest)
@@ -243,6 +282,7 @@ func TestManaAbilityResolvedForATriggeredPick(t *testing.T) {
 // way, triggered mana abilities included.
 func TestManaAbilityResolvedFromTheAutoTapper(t *testing.T) {
 	g := newActiveGame(t)
+	watchManaResolutions(t, g)
 	me := g.Seats[0]
 	forest := pushForest(g, me)
 	aura := pushAuraOn(g, me, "Fertile Ground", wildGrowthTestOracle, forest)

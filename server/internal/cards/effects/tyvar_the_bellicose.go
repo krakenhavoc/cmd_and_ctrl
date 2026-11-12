@@ -17,7 +17,8 @@ import (
 //	 once each turn.\""
 //
 // The first ability is one trigger per attack declaration that includes
-// an Elf you control (OncePerBatch, CR 603.2c), Tyvar among them. "They"
+// an Elf you control (OncePerBatch, CR 603.2c; Arboreal Alliance's
+// condition), Tyvar among them. "They"
 // are that declaration's attackers you control that are Elves, read from
 // the declaration's own batch as the trigger resolves: a creature that
 // only entered attacking was not declared (CR 508.4) and gets nothing.
@@ -29,7 +30,8 @@ import (
 // controller controls it, an ability removal on the creature takes it,
 // and "only once each turn" is the engine's per-object trigger tally. It
 // watches game.EventManaAbilityResolved (#5644), which every route
-// through a mana ability emits once the ability has finished resolving:
+// through a mana ability emits once the ability has finished resolving
+// (while a permanent on the battlefield watches it):
 // the hand click, the answered colour pick, the auto-tapper, and a
 // triggered mana ability of the creature (CR 605.1b, Badgermole Cub's).
 // The event's Amount is the mana that ability produced, after a
@@ -54,7 +56,7 @@ func init() {
 		Name:         "Tyvar the Bellicose",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventAttack, tyvarAnElfYouControlAttacked, tyvarTouchLabel, tyvarDeathtouch)),
+			OncePerBatch(On(game.EventAttack, hobB6AttackWithAnElf, tyvarTouchLabel, tyvarDeathtouch)),
 		},
 		Grants: []AbilityGrant{{
 			Key: tyvarGrant,
@@ -70,17 +72,6 @@ func init() {
 		}},
 		Static: []game.StaticAbility{GrantAbilities(CreaturesYouControl, tyvarGrant)},
 	})
-}
-
-// tyvarAnElfYouControlAttacked is "one or more Elves you control attack":
-// the source's controller declared a creature that is an Elf as it
-// attacks.
-func tyvarAnElfYouControlAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Elf"))
 }
 
 // tyvarDeathtouch gives deathtouch until end of turn to every Elf of the
