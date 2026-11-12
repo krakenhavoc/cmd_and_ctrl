@@ -12953,7 +12953,9 @@ The pair is `game.Card.PairedWith` on both creatures
 `g.PairForEffect(controller, a, b)`, which refuses anything CR 702.95c
 and 702.95d refuse. It ends when either creature changes controller, stops
 being a creature or leaves the battlefield (CR 702.95e), and it does not
-come back. It is not copiable.
+come back. Phasing out ends nothing (CR 702.26d): the pair is kept, and
+`PairedPartner` answers nil until the partner phases back in. It is not
+copiable.
 
 **"Except it … loses soulbond"** (Mirage Phalanx's token copy) is
 `tmpl.LoseCopiedKeyword(game.KeywordSoulbond)` on a token copy template, or
