@@ -91,6 +91,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Leveler cards: level up and level bands (#5426, CR 702.87 / CR 711)](#leveler-cards-level-up-and-level-bands-5426-cr-70287--cr-711)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
+  - [Prototype (ADR 0034 amendment 2026-11-12, #5656, CR 718)](#prototype-adr-0034-amendment-2026-11-12-5656-cr-718)
   - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
   - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
   - [Meld (ADR 0145, #2699, CR 701.42)](#meld-adr-0145-2699-cr-70142)
@@ -12856,6 +12857,43 @@ Static: []game.StaticAbility{PumpSelfCreatureOrAttachedPer(1, 1, count)}, // "Th
   (CR 702.103e), and keeps it as a creature when it becomes unattached
   (CR 702.103f). Write none of that.
 - Never build the offer by hand: `Bestow` is what sets `AlternativeCost.Bestow`.
+
+### Prototype (ADR 0034 amendment 2026-11-12, #5656, CR 718)
+
+A prototype card ("Prototype {2}{R} — 3/2") needs **nothing in its card
+file** for the keyword. The deck importer reads the inset out of the
+oracle text and gives the card a second face (`game.PrototypeFaces`): the
+same card with the inset's mana cost, power and toughness and the colours
+of that cost. A cast of face 1 is the prototyped spell, the permanent
+keeps that face, and every other zone turns the card back (CR 718.4). The
+rules side is `game/prototype.go`.
+
+```go
+Register(Spec{
+    OracleID:        "19f344ee-031d-4346-9553-c5d32b02df43",
+    Name:            "Blitz Automaton",
+    Completeness:    CompletenessFull,
+    PrintedKeywords: []string{"haste"},   // the rest of the text, as for any card
+})
+```
+
+- Register ONE entry under the bare oracle ID. Both faces read it (CR
+  718.5); there is no `<id>#1` entry.
+- Do not declare an `AlternativeCost` for the prototype cost. Prototype is
+  not one (CR 702.160a): the prototyped spell's mana cost, mana value and
+  colour are the inset's.
+- An ability that reads "this creature's power" or "its power" must read
+  it as it resolves (`ctx.SourcePermanent()`, `GainLifeEqualToSubject`,
+  a mana ability's `ProducedAmount`), never a number from the card file:
+  the prototyped permanent is smaller. `bro_prototype_helpers.go` has
+  "scry X, where X is its power" and "target creature gets +X/+0, where X
+  is this creature's power".
+- `card.Prototyped()` answers "is this a prototyped spell or a permanent
+  that was one", for a card that asks.
+- In a test, build the card as the importer does: `game.PrototypeFaces`
+  over the printed face, `Layout: game.LayoutPrototype`, then
+  `SettleImported()` (`prototypeCard` in `prototype_test.go`), and cast it
+  with `CastSpellParams{Face: game.PrototypeFace}`.
 
 ### Auras that enchant a card in a graveyard (ADR 0154, #1780)
 

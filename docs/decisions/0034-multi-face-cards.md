@@ -1084,3 +1084,59 @@ devoid keyword (the importer dropped it as unenforced), so an
 uncatalogued devoid card in such a game stays coloured until the game
 ends. The ten catalogued devoid cards are covered anyway, because the
 catalog answer is read live.
+
+## Amendment (2026-11-12, #5656): a prototype card is a card with two faces (CR 718)
+
+Scryfall's `prototype` layout is one face. The inset that gives the card
+a second mana cost, power and toughness is only in its oracle text
+("Prototype {2}{R} — 3/2"), and until now nothing read it, so Blitz
+Automaton could only be cast for {7}.
+
+### Decision: the inset is `Faces[1]`
+
+`game.PrototypeFaces` builds two faces from the printed card: face 0 is
+the card as printed, and face 1 (`game.PrototypeFace`) is the same card
+with the inset's mana cost, power and toughness and the colours of that
+cost (CR 718.3b, 105.2). Name, type line, text and keywords are the same
+on both (CR 718.5). `deck.printedFaces` calls it for the `prototype`
+layout. `game.LayoutPrototype` joins the layouts the engine branches on:
+
+| Question | Answer for `prototype` |
+|---|---|
+| Which faces may a cast choose (`CastableFaces`) | both: CR 718.3, normally or prototyped |
+| Which face does the permanent have (`faceOnResolve`) | the one cast (CR 718.3b) |
+| Which face in every other zone (`MoveCard`) | face 0, the rule every layout already follows (CR 718.4) |
+| Which catalog entry (`CatalogKey`) | the bare oracle ID for either face (CR 718.5); never `<id>#1` |
+| Is it double-faced, can it transform | no |
+
+### Why a face, and not an alternative cost
+
+CR 702.160a calls prototype a static ability, not an alternative cost,
+and the difference shows. The prototyped spell's mana cost IS the inset
+cost: its mana value is 3 on the stack and on the battlefield, it is
+red, an effect that reads "its mana cost" or "its power" reads the
+inset, and a cast permission or a real alternative cost still applies on
+top of it (CR 718.3a: only the alternative characteristics are evaluated
+to see whether it can be cast). An `AlternativeCost` would have kept the
+printed mana value and colour, could not be combined with another
+alternative cost, and would not have been claimable under a permission
+that opens exile or a library. The face is chosen before every announce
+gate, so all of those read the prototyped spell with no code of their
+own.
+
+The copy rules come for free the same way. `Faces` and `ActiveFace` are
+already copiable values (ADR 0043), which is CR 718.2a: a copy of a
+prototyped spell or permanent has the inset's characteristics (CR
+718.3c, 718.3d), and a Clone that leaves is a Clone again.
+
+### What this does not change
+
+No snapshot field (`Faces` and `ActiveFace` are already carried), no
+wire field (`layout: "prototype"` and the existing `faces` /
+`active_face`), no new cast parameter (`face: 1`). The client's face
+picker asks "not prototyped or prototyped" for the layout, and both
+faces show the card's one image.
+
+**Known limit.** A card imported before this change has the `prototype`
+layout and no faces, so in a game restored from an older snapshot it can
+only be cast normally. A new game imports it with both.
