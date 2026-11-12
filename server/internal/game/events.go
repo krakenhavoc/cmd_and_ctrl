@@ -611,6 +611,17 @@ const (
 	// triggers (CR 508.1j, 508.1m).
 	EventExert EventKind = "exert"
 
+	// EventEnlist — a creature enlisted another creature (CR 702.154c,
+	// #5658): the cost of its enlist ability was paid by tapping the
+	// other creature. Actor is the attacking player; CardID and Source
+	// are the attacker that enlisted; Target is the enlisted creature.
+	//
+	// Emitted only by payEnlistLocked, as the declaration locks in,
+	// ahead of the EventAttacks of the same declaration and in the same
+	// event batch (CR 508.1j, 508.1m). The enlisted creature's own
+	// EventTapCard precedes it.
+	EventEnlist EventKind = "enlist"
+
 	// EventForage — a player foraged (CR 701.61a, #5184): exiled three
 	// cards from their graveyard or sacrificed a Food, as a cost, an
 	// additional cost or an effect's "you may forage". Actor is the

@@ -231,6 +231,7 @@ func (g *Game) phaseOutLocked(source uuid.UUID, ids []uuid.UUID, opts phaseOutOp
 		// is removed from combat. (See rule 506.4.)"
 		c.AttackingTarget = uuid.Nil
 		c.ExertOnAttack = false
+		c.EnlistOnAttack = uuid.Nil
 		c.clearBlocking()
 		g.forgetCombatRecordLocked(id)
 		// CR 702.26a: it phases in during the untap step of the player

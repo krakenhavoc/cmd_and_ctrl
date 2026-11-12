@@ -267,6 +267,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.BattleY = 0
 		c.AttackingTarget = uuid.Nil
 		c.ExertOnAttack = false
+		c.EnlistOnAttack = uuid.Nil
 		c.clearBlocking()
 		c.Goads = nil
 		// #816 / CR 400.7: marked damage and the CR 702.2c deathtouch

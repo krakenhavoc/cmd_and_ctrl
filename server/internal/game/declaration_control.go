@@ -660,6 +660,9 @@ func (g *Game) confirmAttackTargetsLocked(decls []AttackDeclaration, params Decl
 	if err := g.validateExertChoicesLocked(decls); err != nil {
 		return nil, err
 	}
+	if err := g.validateEnlistChoicesLocked(decls); err != nil {
+		return nil, err
+	}
 	ap := g.activeSeatIDLocked()
 	price := g.priceAttackDeclarationLocked(decls)
 	if err := g.attackTaxAffordableLocked(ap, price, params); err != nil {
@@ -677,6 +680,9 @@ func (g *Game) confirmAttackTargetsLocked(decls []AttackDeclaration, params Decl
 		g.setAttackTargetLocked(c, d.Target)
 		if d.Exert {
 			c.ExertOnAttack = true
+		}
+		if d.Enlist != uuid.Nil {
+			c.EnlistOnAttack = d.Enlist
 		}
 		out = append(out, d.Attacker)
 	}

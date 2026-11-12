@@ -1128,8 +1128,12 @@ type cardSnapshot struct {
 	// exert this attacker, staged and not yet paid. A restore point can
 	// be written between the verb and the lock-in. Additive within v7;
 	// omitted when false.
-	ExertOnAttack  bool      `json:"exertOnAttack,omitempty"`
-	BlockingTarget uuid.UUID `json:"blockingTarget"`
+	ExertOnAttack bool `json:"exertOnAttack,omitempty"`
+	// EnlistOnAttack is Card.EnlistOnAttack (#5658, enlist.go): the
+	// creature this attacker enlists, staged and not yet paid.
+	// Additive within the version; omitted when nil.
+	EnlistOnAttack *uuid.UUID `json:"enlistOnAttack,omitempty"`
+	BlockingTarget uuid.UUID  `json:"blockingTarget"`
 	// AlsoBlocking is Card.AlsoBlocking (#1706): the attackers a
 	// multi-blocker blocks after blockingTarget. Omitted for every
 	// ordinary blocker, so an older file restores exactly as before.
@@ -3112,6 +3116,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
+		EnlistOnAttack:           uuidPtrOrNil(c.EnlistOnAttack),
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		GoadedBy:                 c.LatestGoader(),
@@ -4262,6 +4267,7 @@ func restoreCard(c *cardSnapshot) Card {
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
+		EnlistOnAttack:           uuidOrNil(c.EnlistOnAttack),
 		BlockingTarget:           c.BlockingTarget,
 		AlsoBlocking:             copyUUIDSlice(c.AlsoBlocking),
 		Goads:                    restoreGoads(c.Goads, c.GoadedBy),

@@ -10284,6 +10284,9 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.attackHandoffRefusalLocked(card, one.Exert); err != nil {
 				return err
 			}
+			if one.Enlist != uuid.Nil && g.attackTaxDeferredLocked() {
+				return ErrDeclarerCantEnlist
+			}
 			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
 			// restrictions ("can't attack its owner") ride the same
 			// check, refused with a sentence naming them.
@@ -10346,6 +10349,11 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.validateExertChoicesLocked([]AttackDeclaration{one}); err != nil {
 				return err
 			}
+			// #5658: and the creature it enlists (CR 702.154a), the
+			// same way.
+			if err := g.validateEnlistChoicesLocked([]AttackDeclaration{one}); err != nil {
+				return err
+			}
 			// #4154: under a chosen declaration the costs are the
 			// active player's, paid as they confirm the attacks.
 			if !g.attackTaxDeferredLocked() {
@@ -10359,6 +10367,9 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			// back.
 			if one.Exert {
 				card.ExertOnAttack = true
+			}
+			if one.Enlist != uuid.Nil {
+				card.EnlistOnAttack = one.Enlist
 			}
 			// #859: staging, not announcing. A creature is declared
 			// as an attacker once (CR 508.1), and the sandbox lets a
@@ -10402,6 +10413,12 @@ type AttackDeclaration struct {
 	// exerted as it attacks refuses the whole declaration with
 	// ErrCantExert. False is every declaration made before exert.
 	Exert bool
+	// Enlist is the creature the attacker enlists as it attacks
+	// (CR 702.154a, 508.1g; enlist.go), or uuid.Nil for none. Staged on
+	// Card.EnlistOnAttack and paid as the declaration locks in. A
+	// creature the attacker can't enlist refuses the whole declaration
+	// with ErrCantEnlist.
+	Enlist uuid.UUID
 }
 
 // DeclareAttackers declares an entire attacking set in ONE mutation.
@@ -10503,6 +10520,9 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 			if d.Exert {
 				return nil, ErrDeclarerCantExert
 			}
+			if d.Enlist != uuid.Nil {
+				return nil, ErrDeclarerCantEnlist
+			}
 		}
 	}
 
@@ -10587,6 +10607,11 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.validateExertChoicesLocked(eligible); err != nil {
 		return nil, err
 	}
+	// #5658: and an enlist the attacker can't make (CR 702.154a), for
+	// the same reason.
+	if err := g.validateEnlistChoicesLocked(eligible); err != nil {
+		return nil, err
+	}
 	// CR 508.1h, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
@@ -10627,6 +10652,9 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 		// ADR 0130 §2: staged, paid by the lock-in below.
 		if d.Exert {
 			card.ExertOnAttack = true
+		}
+		if d.Enlist != uuid.Nil {
+			card.EnlistOnAttack = d.Enlist
 		}
 		// CR 508.1f: declaring an attacker taps it unless it has
 		// vigilance (CR 702.20).
@@ -11413,6 +11441,7 @@ func (g *Game) clearCombatLocked() {
 		}
 		g.Battlefield.Cards[i].AttackingTarget = uuid.Nil
 		g.Battlefield.Cards[i].ExertOnAttack = false
+		g.Battlefield.Cards[i].EnlistOnAttack = uuid.Nil
 		g.Battlefield.Cards[i].clearBlocking()
 	}
 	if attackerLeft {

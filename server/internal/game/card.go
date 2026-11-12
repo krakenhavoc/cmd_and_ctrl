@@ -1927,6 +1927,14 @@ type Card struct {
 	// before that. True only between the verb and the lock-in.
 	ExertOnAttack bool
 
+	// EnlistOnAttack is a staged choice of the creature this attacker
+	// enlists (CR 702.154a, 508.1g; enlist.go): set by a declaration
+	// verb beside AttackingTarget, paid and cleared by
+	// commitAttackDeclarationLocked as the declaration locks in, and
+	// cleared with AttackingTarget wherever the creature leaves combat
+	// before that. Non-nil only between the verb and the lock-in.
+	EnlistOnAttack uuid.UUID
+
 	// Suspected is the CR 701.60 designation described above
 	// (SuspectedAt). Here for alignment, beside the other bools.
 	Suspected bool

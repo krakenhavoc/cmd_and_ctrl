@@ -157,6 +157,7 @@ battlefield.cards[].encodedAt	number:int64
 battlefield.cards[].encodedOn	object
 battlefield.cards[].encodedOn.epoch	number:int
 battlefield.cards[].encodedOn.id	custom(uuid.UUID)
+battlefield.cards[].enlistOnAttack	custom(uuid.UUID)
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
 battlefield.cards[].exertOnAttack	bool
@@ -713,6 +714,7 @@ enteringTokens[].encodedAt	number:int64
 enteringTokens[].encodedOn	object
 enteringTokens[].encodedOn.epoch	number:int
 enteringTokens[].encodedOn.id	custom(uuid.UUID)
+enteringTokens[].enlistOnAttack	custom(uuid.UUID)
 enteringTokens[].enteredBattlefieldAt	number:int64
 enteringTokens[].entryOrdinal	number:int64
 enteringTokens[].exertOnAttack	bool
@@ -1230,6 +1232,7 @@ exile.cards[].encodedAt	number:int64
 exile.cards[].encodedOn	object
 exile.cards[].encodedOn.epoch	number:int
 exile.cards[].encodedOn.id	custom(uuid.UUID)
+exile.cards[].enlistOnAttack	custom(uuid.UUID)
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
 exile.cards[].exertOnAttack	bool
@@ -8638,6 +8641,7 @@ frozenEntries[].event.keywordActionTail.armyToken.encodedAt	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.encodedOn	object
 frozenEntries[].event.keywordActionTail.armyToken.encodedOn.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.enteredBattlefieldAt	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.entryOrdinal	number:int64
 frozenEntries[].event.keywordActionTail.armyToken.exertOnAttack	bool
@@ -10961,6 +10965,7 @@ frozenEntries[].event.millTail.run.planned[].encodedAt	number:int64
 frozenEntries[].event.millTail.run.planned[].encodedOn	object
 frozenEntries[].event.millTail.run.planned[].encodedOn.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.millTail.run.planned[].entryOrdinal	number:int64
 frozenEntries[].event.millTail.run.planned[].exertOnAttack	bool
@@ -11369,6 +11374,7 @@ frozenEntries[].event.millTail.run.seen[].encodedAt	number:int64
 frozenEntries[].event.millTail.run.seen[].encodedOn	object
 frozenEntries[].event.millTail.run.seen[].encodedOn.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.millTail.run.seen[].entryOrdinal	number:int64
 frozenEntries[].event.millTail.run.seen[].exertOnAttack	bool
@@ -13593,6 +13599,7 @@ frozenEntries[].event.tokenGroups[].template.encodedAt	number:int64
 frozenEntries[].event.tokenGroups[].template.encodedOn	object
 frozenEntries[].event.tokenGroups[].template.encodedOn.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.enteredBattlefieldAt	number:int64
 frozenEntries[].event.tokenGroups[].template.entryOrdinal	number:int64
 frozenEntries[].event.tokenGroups[].template.exertOnAttack	bool
@@ -14647,6 +14654,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.encodedAt	number:int64
 frozenEntries[].event.tokensAfterMove[].groups[].template.encodedOn	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.encodedOn.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.enteredBattlefieldAt	number:int64
 frozenEntries[].event.tokensAfterMove[].groups[].template.entryOrdinal	number:int64
 frozenEntries[].event.tokensAfterMove[].groups[].template.exertOnAttack	bool
@@ -15068,6 +15076,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].encodedAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].encodedOn	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].encodedOn.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].entryOrdinal	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].exertOnAttack	bool
@@ -15476,6 +15485,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].encodedAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].encodedOn	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].encodedOn.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].entryOrdinal	number:int64
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].exertOnAttack	bool
@@ -19146,6 +19156,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].encodedAt	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].encodedOn	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].encodedOn.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].encodedOn.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].enlistOnAttack	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].enteredBattlefieldAt	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].entryOrdinal	number:int64
 frozenEntries[].event.zoneRoute.simultaneousExit[].exertOnAttack	bool
@@ -20200,6 +20211,7 @@ lastKnownStack[].card.encodedAt	number:int64
 lastKnownStack[].card.encodedOn	object
 lastKnownStack[].card.encodedOn.epoch	number:int
 lastKnownStack[].card.encodedOn.id	custom(uuid.UUID)
+lastKnownStack[].card.enlistOnAttack	custom(uuid.UUID)
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
 lastKnownStack[].card.exertOnAttack	bool
@@ -21075,6 +21087,7 @@ match.decks[].fixed[].encodedAt	number:int64
 match.decks[].fixed[].encodedOn	object
 match.decks[].fixed[].encodedOn.epoch	number:int
 match.decks[].fixed[].encodedOn.id	custom(uuid.UUID)
+match.decks[].fixed[].enlistOnAttack	custom(uuid.UUID)
 match.decks[].fixed[].enteredBattlefieldAt	number:int64
 match.decks[].fixed[].entryOrdinal	number:int64
 match.decks[].fixed[].exertOnAttack	bool
@@ -21481,6 +21494,7 @@ match.decks[].main[].encodedAt	number:int64
 match.decks[].main[].encodedOn	object
 match.decks[].main[].encodedOn.epoch	number:int
 match.decks[].main[].encodedOn.id	custom(uuid.UUID)
+match.decks[].main[].enlistOnAttack	custom(uuid.UUID)
 match.decks[].main[].enteredBattlefieldAt	number:int64
 match.decks[].main[].entryOrdinal	number:int64
 match.decks[].main[].exertOnAttack	bool
@@ -21890,6 +21904,7 @@ match.decks[].side[].encodedAt	number:int64
 match.decks[].side[].encodedOn	object
 match.decks[].side[].encodedOn.epoch	number:int
 match.decks[].side[].encodedOn.id	custom(uuid.UUID)
+match.decks[].side[].enlistOnAttack	custom(uuid.UUID)
 match.decks[].side[].enteredBattlefieldAt	number:int64
 match.decks[].side[].entryOrdinal	number:int64
 match.decks[].side[].exertOnAttack	bool
@@ -28428,6 +28443,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.encodedAt	number:int64
 movesAwaitingTokens[].keywordActionTail.armyToken.encodedOn	object
 movesAwaitingTokens[].keywordActionTail.armyToken.encodedOn.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].keywordActionTail.armyToken.entryOrdinal	number:int64
 movesAwaitingTokens[].keywordActionTail.armyToken.exertOnAttack	bool
@@ -30751,6 +30767,7 @@ movesAwaitingTokens[].millTail.run.planned[].encodedAt	number:int64
 movesAwaitingTokens[].millTail.run.planned[].encodedOn	object
 movesAwaitingTokens[].millTail.run.planned[].encodedOn.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].millTail.run.planned[].entryOrdinal	number:int64
 movesAwaitingTokens[].millTail.run.planned[].exertOnAttack	bool
@@ -31159,6 +31176,7 @@ movesAwaitingTokens[].millTail.run.seen[].encodedAt	number:int64
 movesAwaitingTokens[].millTail.run.seen[].encodedOn	object
 movesAwaitingTokens[].millTail.run.seen[].encodedOn.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].millTail.run.seen[].entryOrdinal	number:int64
 movesAwaitingTokens[].millTail.run.seen[].exertOnAttack	bool
@@ -33383,6 +33401,7 @@ movesAwaitingTokens[].tokenGroups[].template.encodedAt	number:int64
 movesAwaitingTokens[].tokenGroups[].template.encodedOn	object
 movesAwaitingTokens[].tokenGroups[].template.encodedOn.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].tokenGroups[].template.entryOrdinal	number:int64
 movesAwaitingTokens[].tokenGroups[].template.exertOnAttack	bool
@@ -34437,6 +34456,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.encodedAt	number:int64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.encodedOn	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.encodedOn.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.entryOrdinal	number:int64
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.exertOnAttack	bool
@@ -34858,6 +34878,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].encodedAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].encodedOn	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].encodedOn.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].entryOrdinal	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].exertOnAttack	bool
@@ -35266,6 +35287,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].encodedAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].encodedOn	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].encodedOn.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].entryOrdinal	number:int64
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].exertOnAttack	bool
@@ -38936,6 +38958,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].encodedAt	number:int64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].encodedOn	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].encodedOn.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].encodedOn.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].enlistOnAttack	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].enteredBattlefieldAt	number:int64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].entryOrdinal	number:int64
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].exertOnAttack	bool
@@ -40805,6 +40828,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.encodedAt	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.encodedOn	object
 pendingChoices[].attackSplit.settled.chosen[].template.encodedOn.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.entryOrdinal	number:int64
 pendingChoices[].attackSplit.settled.chosen[].template.exertOnAttack	bool
@@ -41233,6 +41257,7 @@ pendingChoices[].attackSplit.settled.groups[].template.encodedAt	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.encodedOn	object
 pendingChoices[].attackSplit.settled.groups[].template.encodedOn.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.entryOrdinal	number:int64
 pendingChoices[].attackSplit.settled.groups[].template.exertOnAttack	bool
@@ -42267,6 +42292,7 @@ pendingChoices[].attackSplit.template.encodedAt	number:int64
 pendingChoices[].attackSplit.template.encodedOn	object
 pendingChoices[].attackSplit.template.encodedOn.epoch	number:int
 pendingChoices[].attackSplit.template.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.enteredBattlefieldAt	number:int64
 pendingChoices[].attackSplit.template.entryOrdinal	number:int64
 pendingChoices[].attackSplit.template.exertOnAttack	bool
@@ -43065,6 +43091,7 @@ pendingChoices[].copyWalk.src.encodedAt	number:int64
 pendingChoices[].copyWalk.src.encodedOn	object
 pendingChoices[].copyWalk.src.encodedOn.epoch	number:int
 pendingChoices[].copyWalk.src.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.enteredBattlefieldAt	number:int64
 pendingChoices[].copyWalk.src.entryOrdinal	number:int64
 pendingChoices[].copyWalk.src.exertOnAttack	bool
@@ -54564,6 +54591,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.encodedAt	n
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.encodedOn	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.exertOnAttack	bool
@@ -56887,6 +56915,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].encodedAt	number
 pendingChoices[].replacementResume.event.millTail.run.planned[].encodedOn	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.millTail.run.planned[].exertOnAttack	bool
@@ -57295,6 +57324,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].encodedAt	number:in
 pendingChoices[].replacementResume.event.millTail.run.seen[].encodedOn	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.millTail.run.seen[].exertOnAttack	bool
@@ -59519,6 +59549,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.encodedAt	number
 pendingChoices[].replacementResume.event.tokenGroups[].template.encodedOn	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.exertOnAttack	bool
@@ -60573,6 +60604,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.enc
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.encodedOn	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.exertOnAttack	bool
@@ -60994,6 +61026,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].enco
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].encodedOn	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].exertOnAttack	bool
@@ -61402,6 +61435,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].encoded
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].encodedOn	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].exertOnAttack	bool
@@ -65072,6 +65106,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].encodedAt	
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].encodedOn	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].encodedOn.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].encodedOn.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].enteredBattlefieldAt	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].entryOrdinal	number:int64
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].exertOnAttack	bool
@@ -67280,6 +67315,7 @@ pendingChoices[].targetWalk.frame.source.encodedAt	number:int64
 pendingChoices[].targetWalk.frame.source.encodedOn	object
 pendingChoices[].targetWalk.frame.source.encodedOn.epoch	number:int
 pendingChoices[].targetWalk.frame.source.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.enteredBattlefieldAt	number:int64
 pendingChoices[].targetWalk.frame.source.entryOrdinal	number:int64
 pendingChoices[].targetWalk.frame.source.exertOnAttack	bool
@@ -68045,6 +68081,7 @@ pendingChoices[].triggerFrame.source.encodedAt	number:int64
 pendingChoices[].triggerFrame.source.encodedOn	object
 pendingChoices[].triggerFrame.source.encodedOn.epoch	number:int
 pendingChoices[].triggerFrame.source.encodedOn.id	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.enlistOnAttack	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.enteredBattlefieldAt	number:int64
 pendingChoices[].triggerFrame.source.entryOrdinal	number:int64
 pendingChoices[].triggerFrame.source.exertOnAttack	bool
@@ -69177,6 +69214,7 @@ phasedOut.cards[].encodedAt	number:int64
 phasedOut.cards[].encodedOn	object
 phasedOut.cards[].encodedOn.epoch	number:int
 phasedOut.cards[].encodedOn.id	custom(uuid.UUID)
+phasedOut.cards[].enlistOnAttack	custom(uuid.UUID)
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
 phasedOut.cards[].exertOnAttack	bool
@@ -69588,6 +69626,7 @@ planechase.deck.cards[].encodedAt	number:int64
 planechase.deck.cards[].encodedOn	object
 planechase.deck.cards[].encodedOn.epoch	number:int
 planechase.deck.cards[].encodedOn.id	custom(uuid.UUID)
+planechase.deck.cards[].enlistOnAttack	custom(uuid.UUID)
 planechase.deck.cards[].enteredBattlefieldAt	number:int64
 planechase.deck.cards[].entryOrdinal	number:int64
 planechase.deck.cards[].exertOnAttack	bool
@@ -69999,6 +70038,7 @@ planechase.faceUp.cards[].encodedAt	number:int64
 planechase.faceUp.cards[].encodedOn	object
 planechase.faceUp.cards[].encodedOn.epoch	number:int
 planechase.faceUp.cards[].encodedOn.id	custom(uuid.UUID)
+planechase.faceUp.cards[].enlistOnAttack	custom(uuid.UUID)
 planechase.faceUp.cards[].enteredBattlefieldAt	number:int64
 planechase.faceUp.cards[].entryOrdinal	number:int64
 planechase.faceUp.cards[].exertOnAttack	bool
@@ -70647,6 +70687,7 @@ resolving.card.encodedAt	number:int64
 resolving.card.encodedOn	object
 resolving.card.encodedOn.epoch	number:int
 resolving.card.encodedOn.id	custom(uuid.UUID)
+resolving.card.enlistOnAttack	custom(uuid.UUID)
 resolving.card.enteredBattlefieldAt	number:int64
 resolving.card.entryOrdinal	number:int64
 resolving.card.exertOnAttack	bool
@@ -71656,6 +71697,7 @@ seats[].attractionDeck.cards[].encodedAt	number:int64
 seats[].attractionDeck.cards[].encodedOn	object
 seats[].attractionDeck.cards[].encodedOn.epoch	number:int
 seats[].attractionDeck.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].attractionDeck.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].attractionDeck.cards[].enteredBattlefieldAt	number:int64
 seats[].attractionDeck.cards[].entryOrdinal	number:int64
 seats[].attractionDeck.cards[].exertOnAttack	bool
@@ -72231,6 +72273,7 @@ seats[].command.cards[].encodedAt	number:int64
 seats[].command.cards[].encodedOn	object
 seats[].command.cards[].encodedOn.epoch	number:int
 seats[].command.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].command.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
 seats[].command.cards[].exertOnAttack	bool
@@ -72644,6 +72687,7 @@ seats[].companion.cards[].encodedAt	number:int64
 seats[].companion.cards[].encodedOn	object
 seats[].companion.cards[].encodedOn.epoch	number:int
 seats[].companion.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].companion.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].companion.cards[].enteredBattlefieldAt	number:int64
 seats[].companion.cards[].entryOrdinal	number:int64
 seats[].companion.cards[].exertOnAttack	bool
@@ -73066,6 +73110,7 @@ seats[].emblems.cards[].encodedAt	number:int64
 seats[].emblems.cards[].encodedOn	object
 seats[].emblems.cards[].encodedOn.epoch	number:int
 seats[].emblems.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].emblems.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
 seats[].emblems.cards[].exertOnAttack	bool
@@ -73575,6 +73620,7 @@ seats[].graveyard.cards[].encodedAt	number:int64
 seats[].graveyard.cards[].encodedOn	object
 seats[].graveyard.cards[].encodedOn.epoch	number:int
 seats[].graveyard.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].graveyard.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
 seats[].graveyard.cards[].exertOnAttack	bool
@@ -73984,6 +74030,7 @@ seats[].hand.cards[].encodedAt	number:int64
 seats[].hand.cards[].encodedOn	object
 seats[].hand.cards[].encodedOn.epoch	number:int
 seats[].hand.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].hand.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
 seats[].hand.cards[].exertOnAttack	bool
@@ -74398,6 +74445,7 @@ seats[].junkyard.cards[].encodedAt	number:int64
 seats[].junkyard.cards[].encodedOn	object
 seats[].junkyard.cards[].encodedOn.epoch	number:int
 seats[].junkyard.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].junkyard.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].junkyard.cards[].enteredBattlefieldAt	number:int64
 seats[].junkyard.cards[].entryOrdinal	number:int64
 seats[].junkyard.cards[].exertOnAttack	bool
@@ -74825,6 +74873,7 @@ seats[].library.cards[].encodedAt	number:int64
 seats[].library.cards[].encodedOn	object
 seats[].library.cards[].encodedOn.epoch	number:int
 seats[].library.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].library.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
 seats[].library.cards[].exertOnAttack	bool
@@ -75275,6 +75324,7 @@ seats[].sideboard.cards[].encodedAt	number:int64
 seats[].sideboard.cards[].encodedOn	object
 seats[].sideboard.cards[].encodedOn.epoch	number:int
 seats[].sideboard.cards[].encodedOn.id	custom(uuid.UUID)
+seats[].sideboard.cards[].enlistOnAttack	custom(uuid.UUID)
 seats[].sideboard.cards[].enteredBattlefieldAt	number:int64
 seats[].sideboard.cards[].entryOrdinal	number:int64
 seats[].sideboard.cards[].exertOnAttack	bool
@@ -76045,6 +76095,7 @@ stack.cards[].encodedAt	number:int64
 stack.cards[].encodedOn	object
 stack.cards[].encodedOn.epoch	number:int
 stack.cards[].encodedOn.id	custom(uuid.UUID)
+stack.cards[].enlistOnAttack	custom(uuid.UUID)
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
 stack.cards[].exertOnAttack	bool

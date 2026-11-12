@@ -184,6 +184,7 @@ func (g *Game) removeFromCombatLocked(c *Card) {
 	}
 	c.AttackingTarget = uuid.Nil
 	c.ExertOnAttack = false
+	c.EnlistOnAttack = uuid.Nil
 	c.clearBlocking()
 	delete(g.announcedAttacks, c.InstanceID)
 	g.forgetAttackDefenderLocked(c.InstanceID)

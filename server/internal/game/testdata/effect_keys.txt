@@ -135,6 +135,7 @@ body electro-assaulting-battery/damage
 body elektra-femme-fatale/damage
 body elkin-lair/unplayed-card-to-graveyard
 body end-blaze-epiphany/exile-and-choose
+body enlist/pump
 body erica-ortegas/return-a-land-you-control
 body esoteric-duplicator/copy-the-artifact
 body espers-to-magicite/copy
