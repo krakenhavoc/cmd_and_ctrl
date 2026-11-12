@@ -105,6 +105,19 @@ type AdditionalCost struct {
 	// mandatory slot.
 	SacrificeHalfRoundedUp bool
 
+	// CasualtyX marks "Casualty X. The copy isn't legendary and has
+	// starting loyalty X." (Ob Nixilis, the Adversary, #5668; CR
+	// 702.153a with a variable N, CR 107.3a). The Sacrifice clause is one
+	// creature with power 0 or greater, and X is the sacrificed
+	// creature's power as it last existed (CR 608.2h): the greatest X
+	// that creature can pay for. The casualty trigger (casualty.go) reads
+	// the sacrificed object off PaidCost.SacrificedObjects and makes the
+	// copy with those two exceptions. effects.Register allows it only on
+	// the card's own optional cost keyed CasualtyKey with a one-creature
+	// sacrifice, on a card with no other sacrifice in its plan, so the
+	// first sacrificed object is this cost's.
+	CasualtyX bool
+
 	// PayLifeX is "As an additional cost to cast this spell, pay X
 	// life" (Toxic Deluge), where X is the value announced on
 	// CastSpellParams.XValue. Added in S23.

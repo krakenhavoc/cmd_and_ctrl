@@ -13906,6 +13906,13 @@ ctx.SourcePermanent()                                                           
   `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
   (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
   key, never among the card's own indices.
+- **Casualty X** ("Casualty X. The copy isn't legendary and has starting loyalty X.", Ob Nixilis, the Adversary, #5668)
+  is `OptionalCosts: []game.AdditionalCost{CasualtyX()}`. The caster may sacrifice any creature with power 0 or greater
+  and X is that creature's power as it last existed; the engine's casualty trigger makes the copy with both exceptions,
+  so declare nothing else. `Register` allows it once, on a card with no other sacrifice among its additional costs, and
+  never as a granted cost. A copy exception that sets a planeswalker's loyalty is `v.SetStartingLoyalty(n)` on the
+  `game.PrintedValues`, never a write to `v.StartingLoyalty`: it marks a 0 as the real number
+  (`Card.StartingLoyaltyKnown`), so the copy enters with no counters instead of the printed loyalty.
 - **Conspire** (CR 702.78, #4690) is `OptionalCosts: []game.AdditionalCost{Conspire()}` (`conspire.go`), and
   "each noncreature spell you cast has conspire" is `ConspireForSpellsYouCast(label, Noncreature())` (Raiding
   Schemes). The two creatures are a `TapOthersCost` flagged `SharesColorWithSource` on `conspire_ids`, a list apart

@@ -151,6 +151,11 @@ type PrintedValues struct {
 	Toughness       int
 	StartingLoyalty int
 
+	// StartingLoyaltyKnown is Card.StartingLoyaltyKnown: an exception set
+	// the starting loyalty (SetStartingLoyalty), so a 0 is real. Copiable
+	// with the number it describes (CR 707.9b).
+	StartingLoyaltyKnown bool `json:",omitempty"`
+
 	// VariableToughness travels with Toughness: a Clone of a `*`
 	// creature copies the 0 stand-in, so it copies the bit that says
 	// the 0 is a stand-in too.
@@ -273,29 +278,30 @@ func faceDownCopiableValues(src Card) PrintedValues {
 // values, which are the card's whatever state the object is in.
 func printedValuesOf(src Card) PrintedValues {
 	return PrintedValues{
-		OracleID:          src.OracleID,
-		TokenKey:          src.TokenKey,
-		ScryfallID:        src.ScryfallID,
-		Name:              src.Name,
-		TypeLine:          src.TypeLine,
-		ManaCost:          src.ManaCost,
-		Colors:            copyStringSlice(src.Colors),
-		ColorIdentity:     copyStringSlice(src.ColorIdentity),
-		ProducedMana:      copyStringSlice(src.ProducedMana),
-		Keywords:          copyStringSlice(src.Keywords),
-		GrantedAbilities:  copyStringSlice(src.GrantedAbilities),
-		ColorCDADropped:   src.ColorCDADropped,
-		PrintsTapAbility:  src.PrintsTapAbility,
-		ManaAbilityText:   src.ManaAbilityText,
-		NoAbilitiesText:   src.NoAbilitiesText,
-		Power:             src.Power,
-		Toughness:         src.Toughness,
-		VariableToughness: src.VariableToughness,
-		PrintedPTKnown:    src.PrintedPTKnown,
-		StartingLoyalty:   src.StartingLoyalty,
-		Layout:            src.Layout,
-		Faces:             copyFaceSlice(src.Faces),
-		ActiveFace:        src.ActiveFace,
+		OracleID:             src.OracleID,
+		TokenKey:             src.TokenKey,
+		ScryfallID:           src.ScryfallID,
+		Name:                 src.Name,
+		TypeLine:             src.TypeLine,
+		ManaCost:             src.ManaCost,
+		Colors:               copyStringSlice(src.Colors),
+		ColorIdentity:        copyStringSlice(src.ColorIdentity),
+		ProducedMana:         copyStringSlice(src.ProducedMana),
+		Keywords:             copyStringSlice(src.Keywords),
+		GrantedAbilities:     copyStringSlice(src.GrantedAbilities),
+		ColorCDADropped:      src.ColorCDADropped,
+		PrintsTapAbility:     src.PrintsTapAbility,
+		ManaAbilityText:      src.ManaAbilityText,
+		NoAbilitiesText:      src.NoAbilitiesText,
+		Power:                src.Power,
+		Toughness:            src.Toughness,
+		VariableToughness:    src.VariableToughness,
+		PrintedPTKnown:       src.PrintedPTKnown,
+		StartingLoyalty:      src.StartingLoyalty,
+		StartingLoyaltyKnown: src.StartingLoyaltyKnown,
+		Layout:               src.Layout,
+		Faces:                copyFaceSlice(src.Faces),
+		ActiveFace:           src.ActiveFace,
 	}
 }
 
@@ -331,6 +337,24 @@ func (v *PrintedValues) SetName(name string) {
 	v.Name = name
 	if v.ActiveFace >= 0 && v.ActiveFace < len(v.Faces) {
 		v.Faces[v.ActiveFace].Name = name
+	}
+}
+
+// SetStartingLoyalty overrides the copied starting loyalty: "The copy
+// ... has starting loyalty X" (Ob Nixilis, the Adversary, #5668; CR
+// 707.9b). Marks the number as known, so a starting loyalty of 0 enters
+// with no loyalty counters (CR 306.5b) and is put into the graveyard by
+// CR 704.5i, instead of reading as "nothing stamped" and falling back to
+// the printed number. Also rewrites the active face's loyalty, so the
+// flat printed fields still equal Faces[ActiveFace].
+func (v *PrintedValues) SetStartingLoyalty(n int) {
+	if n < 0 {
+		n = 0
+	}
+	v.StartingLoyalty = n
+	v.StartingLoyaltyKnown = true
+	if v.ActiveFace >= 0 && v.ActiveFace < len(v.Faces) {
+		v.Faces[v.ActiveFace].StartingLoyalty = n
 	}
 }
 
@@ -729,6 +753,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.VariableToughness = v.VariableToughness
 	c.PrintedPTKnown = v.PrintedPTKnown
 	c.StartingLoyalty = v.StartingLoyalty
+	c.StartingLoyaltyKnown = v.StartingLoyaltyKnown
 	c.Layout = v.Layout
 	c.Faces = v.Faces
 	c.ActiveFace = v.ActiveFace
@@ -782,6 +807,7 @@ func (c *Card) restorePrintedSelf() {
 	c.VariableToughness = v.VariableToughness
 	c.PrintedPTKnown = v.PrintedPTKnown
 	c.StartingLoyalty = v.StartingLoyalty
+	c.StartingLoyaltyKnown = v.StartingLoyaltyKnown
 	c.Layout = v.Layout
 	c.Faces = v.Faces
 	c.ActiveFace = v.ActiveFace
