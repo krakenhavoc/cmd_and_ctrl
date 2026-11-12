@@ -19,6 +19,7 @@
     type DraftCard,
   } from "../../draft";
   import { ratedCardName } from "../../draftRatings.svelte";
+  import { sortPack } from "../../draftOrder";
   import { L } from "../../labels";
   import Icon from "../Icon.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
@@ -36,7 +37,12 @@
     /** The pick timer, drawn at the start of the bar. */
     timer?: Snippet;
   }
-  const { pack, take, busy = false, blocked = "", onpick, timer }: Props = $props();
+  const { pack: dealt, take, busy = false, blocked = "", onpick, timer }: Props = $props();
+
+  // Shown mythic, rare, uncommon, common, then basic land, and by colour
+  // and name inside a rarity (#5701). The order follows the cards, not
+  // their places in the pack, so it holds as the pack thins.
+  const pack = $derived(sortPack(dealt));
 
   let selected = $state<string[]>([]);
 

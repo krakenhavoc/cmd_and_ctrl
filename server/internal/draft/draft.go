@@ -162,8 +162,12 @@ type Card struct {
 	Rarity      string `json:"rarity"`
 	// Colors is the card's colours as Scryfall spells them (W, U, B, R,
 	// G), empty for a colourless card.
-	Colors   []string `json:"colors"`
-	ManaCost string   `json:"mana_cost"`
+	Colors []string `json:"colors"`
+	// ColorIdentity is the card's colour identity, W U B R G, from the
+	// printing. It is what colours a land, whose own colours are none
+	// (#5704). Absent for a colourless identity.
+	ColorIdentity []string `json:"color_identity,omitempty"`
+	ManaCost      string   `json:"mana_cost"`
 	// ManaValue is computed from ManaCost (ManaValue).
 	ManaValue int    `json:"mana_value"`
 	TypeLine  string `json:"type_line"`
@@ -252,6 +256,12 @@ type Config struct {
 	// BuildTimeout is the deckbuilding timer. Zero is
 	// DefaultBuildTimeout.
 	BuildTimeout time.Duration
+	// BuildUntimed has the build run with no timer (#5700): there is
+	// no deadline, nobody is built for on time, and the rounds begin
+	// when the last person has submitted, or a person who has been
+	// away for UntimedBuildAwayGrace is built for (Room). It
+	// overrides BuildTimeout.
+	BuildUntimed bool
 	// BestOf is the length of the draft's matches, 1 or 3. Zero is 1.
 	BestOf int
 	// Builder builds a deck for a bot seat and for a person whose build

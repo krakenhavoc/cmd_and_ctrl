@@ -2057,7 +2057,8 @@ rises.
     ],
     "pack": [ { "id": "c41", "scryfall_id": "…", "oracle_id": "…", "name": "Shoreline Looter",
                 "set": "blb", "collector_number": "70", "rarity": "uncommon",
-                "colors": ["U"], "mana_cost": "{1}{U}", "mana_value": 2,
+                "colors": ["U"], "color_identity": ["U"],
+                "mana_cost": "{1}{U}", "mana_value": 2,
                 "type_line": "Creature — Rat Rogue",
                 "rating": { "source": "17lands", "value": 58.3, "tier": "B+", "games": 12345,
                             "avg_pick": 6.3, "avg_seen": 9.1, "set": "blb",
@@ -2066,6 +2067,12 @@ rises.
   }
 }
 ```
+
+- A card's `color_identity` (#5704, additive, `omitempty`) is the printing's
+  colour identity, W U B R G; it is absent when the identity is colourless.
+  It is what colours a land, whose own `colors` are empty. The client draws
+  a slight edge on each card from it, falling back to `colors` when it is
+  absent.
 
 - `cube` is `true` for a draft of a saved card list ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md) §8,
   #5441) and absent otherwise. `set` is then `""`, `set_name` is the cube's
@@ -2118,9 +2125,12 @@ rises.
   `finished` (#5440). `best_of` is the length of the draft's matches, 1 or
   3.
 - `build` appears while `phase` is `building`:
-  `{ "deadline", "now", "seconds", "deck_min": 40, "submitted" }`. Count
-  down from `deadline` minus `now`. `submitted` is true once the viewer has
-  submitted a deck of their own.
+  `{ "deadline", "now", "seconds", "untimed", "deck_min": 40, "submitted" }`.
+  Count down from `deadline` minus `now`. `submitted` is true once the
+  viewer has submitted a deck of their own. For an untimed build (#5700)
+  `untimed` is true, `deadline` is absent and `seconds` is 0: show no
+  countdown, and say the rounds begin when everyone has submitted. `untimed`
+  is absent otherwise.
 - `deck` is the viewer's own deck once they have one, submitted or built
   for them: `{ "main": ["c41", …], "basics": { "Forest": 9 } }`. `main`
   names cards of their `pool` by `id`; every pool card not in it is their

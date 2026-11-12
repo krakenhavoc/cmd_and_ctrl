@@ -181,4 +181,12 @@ describe("the build timer", () => {
     expect(buildSecondsLeft(undefined, 0)).toBeNull();
     expect(buildSecondsLeft({ ...build, deadline: "soon" }, 0)).toBeNull();
   });
+
+  it("has nothing to count when the build is untimed, with or without a stray deadline", () => {
+    const untimed = { now: build.now, seconds: 0, untimed: true, deck_min: 40, submitted: false };
+    expect(buildSecondsLeft(untimed, 0)).toBeNull();
+    expect(buildSecondsLeft({ ...untimed, deadline: build.deadline }, 0)).toBeNull();
+    // An older server's frame has a deadline and no flag, and counts as ever.
+    expect(buildSecondsLeft({ ...build, untimed: undefined }, 0)).toBe(900);
+  });
 });

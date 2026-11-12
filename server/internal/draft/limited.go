@@ -74,6 +74,16 @@ const (
 	DefaultBuildTimeout = 15 * time.Minute
 	MinBuildTimeout     = 2 * time.Minute
 	MaxBuildTimeout     = 30 * time.Minute
+	// UntimedBuildAwayGrace is how long an untimed build waits for a
+	// person with no socket (#5700). It runs from the build's start or
+	// from the moment the person's last socket went, whichever is
+	// later, and a person who comes back starts it again. When it is
+	// over the DeckBuilder builds their deck, as the timer would have,
+	// so one person who has left for good cannot hold the draft's
+	// rounds forever. A person with a socket open is never built for,
+	// but the lobby's idle rule (IdleGameAfter) still closes a draft
+	// nobody has touched.
+	UntimedBuildAwayGrace = 10 * time.Minute
 )
 
 // Errors of the build and the rounds.
@@ -145,7 +155,7 @@ func (d *Draft) Phase() Phase {
 }
 
 // BuildDeadline is when the build timer runs out, zero outside the
-// build.
+// build and for an untimed one.
 func (d *Draft) BuildDeadline() time.Time {
 	if d.Phase() != PhaseBuilding {
 		return time.Time{}
@@ -168,6 +178,9 @@ func (d *Draft) builder() DeckBuilder {
 	return BotDeckBuilder{Seed: d.cfg.Seed}
 }
 
+// BuildUntimed says the draft's build has no timer (#5700).
+func (d *Draft) BuildUntimed() bool { return d.cfg.BuildUntimed }
+
 func (d *Draft) buildTimeout() time.Duration {
 	if d.cfg.BuildTimeout > 0 {
 		return d.cfg.BuildTimeout
@@ -181,13 +194,15 @@ func (d *Draft) buildTimeout() time.Duration {
 func (d *Draft) beginBuilding(now time.Time) {
 	n := len(d.seats)
 	p := &play{
-		phase:         PhaseBuilding,
-		buildAt:       now,
-		buildDeadline: now.Add(d.buildTimeout()),
-		decks:         make([]LimitedDeck, n),
-		built:         make([]bool, n),
-		auto:          make([]bool, n),
-		person:        make([]bool, n),
+		phase:   PhaseBuilding,
+		buildAt: now,
+		decks:   make([]LimitedDeck, n),
+		built:   make([]bool, n),
+		auto:    make([]bool, n),
+		person:  make([]bool, n),
+	}
+	if !d.cfg.BuildUntimed {
+		p.buildDeadline = now.Add(d.buildTimeout())
 	}
 	d.play = p
 	for i, s := range d.seats {
@@ -293,9 +308,10 @@ func (d *Draft) SubmitDeck(seatID uuid.UUID, built LimitedDeck, _ time.Time) err
 
 // ExpireBuild ends the build when its timer has run out: every person
 // who has not submitted gets the DeckBuilder's deck, and the rounds
-// begin. It does nothing before the deadline.
+// begin. It does nothing before the deadline, and nothing at all for
+// an untimed build, which has none.
 func (d *Draft) ExpireBuild(now time.Time) {
-	if d.Phase() != PhaseBuilding || now.Before(d.play.buildDeadline) {
+	if d.Phase() != PhaseBuilding || d.cfg.BuildUntimed || now.Before(d.play.buildDeadline) {
 		return
 	}
 	for i := range d.seats {
@@ -303,6 +319,47 @@ func (d *Draft) ExpireBuild(now time.Time) {
 			d.autoBuild(i)
 		}
 	}
+	d.seq++
+	d.afterBuild()
+}
+
+// BuildAt is when the build began, zero outside the build.
+func (d *Draft) BuildAt() time.Time {
+	if d.Phase() != PhaseBuilding {
+		return time.Time{}
+	}
+	return d.play.buildAt
+}
+
+// Unbuilt is the seats of people who have not submitted a deck, while
+// the build is open.
+func (d *Draft) Unbuilt() []*Seat {
+	if d.Phase() != PhaseBuilding {
+		return nil
+	}
+	var out []*Seat
+	for i, s := range d.seats {
+		if !s.Bot && !d.play.built[i] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// BuildFor gives one person's seat the DeckBuilder's deck, as the
+// timer would, and begins the rounds if that was the last deck the
+// build waited for. It is how an untimed build lets go of a person
+// who is away (Room, UntimedBuildAwayGrace). A seat that has a deck
+// already, or is not a person's, is left alone.
+func (d *Draft) BuildFor(seatID uuid.UUID) {
+	if d.Phase() != PhaseBuilding {
+		return
+	}
+	i, s := d.seat(seatID)
+	if s == nil || s.Bot || d.play.built[i] {
+		return
+	}
+	d.autoBuild(i)
 	d.seq++
 	d.afterBuild()
 }

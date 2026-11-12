@@ -127,3 +127,28 @@ export function fetchArchetypes(set: string): Promise<Archetypes> {
 export function clearArchetypeCache(): void {
   cache.clear();
 }
+
+// Open or closed, kept in localStorage: a per-viewer convenience. Every
+// read and write is guarded, because the storage can be missing or refuse
+// (a private window, blocked site data); without it the panel is open.
+
+export const ARCHETYPES_OPEN_KEY = "c2.draft.archetypes";
+
+/** Whether the viewer wants the colour-pair panel open. Open unless they closed it. */
+export function loadArchetypesOpen(): boolean {
+  try {
+    return localStorage.getItem(ARCHETYPES_OPEN_KEY) !== "closed";
+  } catch {
+    return true;
+  }
+}
+
+/** Remembers the choice; a failure is silent, the choice lasts the page. */
+export function saveArchetypesOpen(open: boolean): void {
+  try {
+    if (open) localStorage.removeItem(ARCHETYPES_OPEN_KEY);
+    else localStorage.setItem(ARCHETYPES_OPEN_KEY, "closed");
+  } catch {
+    // storage unavailable: the choice holds until the page is reloaded
+  }
+}

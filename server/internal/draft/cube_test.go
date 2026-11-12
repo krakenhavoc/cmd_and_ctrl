@@ -40,6 +40,21 @@ func cubeSource(t *testing.T, n, size int) *CubeSource {
 	return src
 }
 
+// A land has no colours of its own, but a colour identity (#5704): the
+// card on the wire carries it, and a card with none leaves it off.
+func TestFillPrintedCarriesTheColourIdentity(t *testing.T) {
+	var forest Card
+	fillPrinted(&forest, cards.Card{TypeLine: "Basic Land — Forest", ColorIdentity: []string{"G"}})
+	if len(forest.ColorIdentity) != 1 || forest.ColorIdentity[0] != "G" || len(forest.Colors) != 0 {
+		t.Fatalf("a Forest: identity %v colours %v", forest.ColorIdentity, forest.Colors)
+	}
+	var rock Card
+	fillPrinted(&rock, cards.Card{TypeLine: "Artifact"})
+	if rock.ColorIdentity != nil {
+		t.Fatalf("a colourless card has identity %v", rock.ColorIdentity)
+	}
+}
+
 // The packs of a cube are a partition of the front of one seeded
 // shuffle: every pack is the chosen size, no card is dealt twice, the
 // same seed deals the same packs and another seed deals others.

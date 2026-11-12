@@ -216,6 +216,21 @@ func (r *Room) dueLocked(s *Seat) time.Time {
 	return due
 }
 
+// buildDueLocked is when an untimed build stops waiting for a person
+// who has not submitted: UntimedBuildAwayGrace after the build began,
+// or after their last socket went if that was later. away is false for
+// a person with a socket open, who is never built for.
+func (r *Room) buildDueLocked(s *Seat) (due time.Time, away bool) {
+	if r.connectedLocked(s.ID) {
+		return time.Time{}, false
+	}
+	from := r.d.BuildAt()
+	if left, ok := r.leftAt[s.ID]; ok && left.After(from) {
+		from = left
+	}
+	return from.Add(UntimedBuildAwayGrace), true
+}
+
 // armLocked sets the timer for the earliest pending pick.
 func (r *Room) armLocked() {
 	if r.stop != nil {
@@ -230,6 +245,21 @@ func (r *Room) armLocked() {
 		// The build timer (limited.go).
 		gen := r.gen
 		r.stop = r.after(max(deadline.Sub(r.clock()), 0), func() { r.fire(gen) })
+		return
+	}
+	if r.d.Phase() == PhaseBuilding && r.d.BuildUntimed() {
+		// An untimed build has no deadline, only the grace of a person
+		// who is away (buildDueLocked).
+		next, ok := time.Time{}, false
+		for _, s := range r.d.Unbuilt() {
+			if due, away := r.buildDueLocked(s); away && (!ok || due.Before(next)) {
+				next, ok = due, true
+			}
+		}
+		if ok {
+			gen := r.gen
+			r.stop = r.after(max(next.Sub(r.clock()), 0), func() { r.fire(gen) })
+		}
 		return
 	}
 	pending := r.d.Pending()
@@ -270,6 +300,14 @@ func (r *Room) tickLocked() {
 	}
 	now := r.clock()
 	r.d.ExpireBuild(now)
+	if r.d.Phase() == PhaseBuilding && r.d.BuildUntimed() {
+		// BuildFor can end the build, so the seats are read first.
+		for _, s := range r.d.Unbuilt() {
+			if due, away := r.buildDueLocked(s); away && !due.After(now) {
+				r.d.BuildFor(s.ID)
+			}
+		}
+	}
 	// Each AutoPick can pass the packs and start a new pick, so the
 	// pending list is read again after every one. A seat is picked for
 	// at most once per pick, and a pick that begins at now is not yet

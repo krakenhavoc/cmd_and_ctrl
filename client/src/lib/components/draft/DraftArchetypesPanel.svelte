@@ -2,11 +2,13 @@
   // DraftArchetypesPanel — a set's colour pairs as a collapsible panel
   // for the draft room (ADR 0222 §7, #5703): a heading that opens and
   // closes, over the pair list. The room puts it to the left of the pack
-  // on a wide screen and under it on a narrow one; that is the room's
-  // layout, not this panel's.
+  // on a wide screen and under everything on a narrow one; that is the
+  // room's layout, not this panel's.
   //
-  // It starts open and keeps its own state. The pairs are fetched when
-  // it is first open, so a viewer who keeps it closed never asks.
+  // It starts open and remembers the viewer's choice in this browser
+  // (draftArchetypes.ts, guarded). The pairs are fetched when it is
+  // first open, so a viewer who keeps it closed never asks.
+  import { loadArchetypesOpen, saveArchetypesOpen } from "../../draftArchetypes";
   import { L } from "../../labels";
   import DraftArchetypes from "./DraftArchetypes.svelte";
 
@@ -15,21 +17,25 @@
     set: string;
     /** The set's name, for the panel's description. */
     setName?: string;
+    /** Overrides the remembered choice, for a page that wants it open or shut. */
     open?: boolean;
   }
-  const { set, setName = "", open = true }: Props = $props();
+  const { set, setName = "", open }: Props = $props();
 
-  // The panel opens as asked and then follows the viewer; the prop is
-  // only its starting state.
+  // The panel opens as remembered and then follows the viewer; the prop
+  // is only its starting state.
   // svelte-ignore state_referenced_locally
-  let shown = $state(open);
+  let shown = $state(open ?? loadArchetypesOpen());
 </script>
 
 <details
   class="archetypes-panel"
   data-testid="archetypes-panel"
   open={shown}
-  ontoggle={(e) => (shown = e.currentTarget.open)}
+  ontoggle={(e) => {
+    shown = e.currentTarget.open;
+    saveArchetypesOpen(shown);
+  }}
 >
   <summary>
     <h2>{L.draftArchetypesTitle}</h2>

@@ -354,6 +354,76 @@ describe("the create form", () => {
     expect(location.hash).toBe(`#/draft/${ID}`);
   });
 
+  it("offers timed or untimed deck building, timed for 15 minutes by default", async () => {
+    serve({ "GET /draft/sets": { body: SETS } });
+    const { container } = render(Draft as never, {} as never);
+    await settle();
+    const radio = (v: string) =>
+      container.querySelector<HTMLInputElement>(`input[name="draft-build-time"][value="${v}"]`)!;
+    const minutes = (): HTMLSelectElement | null =>
+      container.querySelector<HTMLSelectElement>("#draft-build-minutes");
+    expect(radio("timed").checked).toBe(true);
+    expect(radio("untimed").checked).toBe(false);
+    expect(minutes()!.value).toBe("15");
+    expect([...minutes()!.options].map((o) => o.value)).toEqual(
+      Array.from({ length: 29 }, (_, i) => String(i + 2)),
+    );
+    expect(container.textContent).toContain(L.draftBuildTime);
+    expect(container.textContent).toContain(L.draftBuildTimed);
+    expect(container.textContent).toContain(L.draftBuildUntimed);
+    // Untimed has no length to choose.
+    radio("untimed").checked = true;
+    radio("untimed").dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    expect(radio("untimed").checked).toBe(true);
+    expect(minutes()).toBeNull();
+  });
+
+  it("posts build_seconds for a chosen length, and build_untimed for an untimed draft", async () => {
+    serve({
+      "GET /draft/sets": { body: SETS },
+      "POST /draft": {
+        status: 201,
+        body: {
+          token: "seat-token",
+          expires_at: "2099-01-01T00:00:00Z",
+          draft: view({ state: "lobby" }),
+        },
+      },
+    });
+    const { container } = render(Draft as never, { set: "dmu" } as never);
+    await settle();
+    const submit = async (): Promise<void> => {
+      container
+        .querySelector("form")!
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await settle();
+    };
+    const radio = (v: string) =>
+      container.querySelector<HTMLInputElement>(`input[name="draft-build-time"][value="${v}"]`)!;
+
+    const minutes = container.querySelector<HTMLSelectElement>("#draft-build-minutes")!;
+    minutes.value = "20";
+    minutes.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    await submit();
+    const first = sent("POST", "/draft")[0].body as Record<string, unknown>;
+    expect(first).toMatchObject({ set: "dmu", build_seconds: 1200 });
+    expect(first).not.toHaveProperty("build_untimed");
+
+    location.hash = "#/draft";
+    await settle();
+    const again = container.querySelector("form");
+    expect(again).not.toBeNull();
+    radio("untimed").checked = true;
+    radio("untimed").dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    await submit();
+    const last = sent("POST", "/draft").at(-1)!.body as Record<string, unknown>;
+    expect(last.build_untimed).toBe(true);
+    expect(last).not.toHaveProperty("build_seconds");
+  });
+
   it("says so when the link's set cannot be drafted, and picks one that can", async () => {
     serve({ "GET /draft/sets": { body: SETS } });
     const { container } = render(Draft as never, { set: "new" } as never);
@@ -1226,45 +1296,92 @@ describe("building a deck", () => {
   const zone = (c: HTMLElement, id: "draft-deck" | "draft-side"): HTMLElement =>
     c.querySelector(`[data-testid="${id}"]`)!;
 
-  it("opens on the whole pool in the sideboard, with the build timer and the count", async () => {
+  // The button that moves the named card, in one of the two areas.
+  const moveBtn = (c: HTMLElement, id: "draft-deck" | "draft-side", name: string): HTMLElement =>
+    [...zone(c, id).querySelectorAll("button")].find((b) =>
+      b.getAttribute("aria-label")!.includes(`: ${name}, `),
+    )!;
+
+  it("opens on the whole pool in main, with the build timer and the count", async () => {
     const c = await room(building());
     expect(text(c.querySelector("#draft-build-h"))).toBe(L.draftBuildDeck);
-    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 0`);
-    expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 4`);
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 4`);
+    expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 0`);
     const timer = c.querySelector(`[aria-label="${L.draftBuildTimer}"]`)!;
     expect(timer.getAttribute("data-seconds")).toBe("900");
     expect(text(timer)).toContain("15:00");
     expect(c.querySelector(`[aria-label="${L.draftTimer}"]`)).toBeNull();
-    expect(text(c.querySelector('[data-testid="draft-deck-count"]'))).toContain("0/40");
+    expect(text(c.querySelector('[data-testid="draft-deck-count"]'))).toContain("4/40");
     // Below the minimum the one primary is disabled and the page says why.
     expect(button(c, L.draftSubmitDeck).disabled).toBe(true);
     expect(text(c.querySelector('[data-testid="draft-build-status"]'))).toBe(
-      "Your deck has 0 cards. Add 40 more to reach 40.",
+      "Your deck has 4 cards. Add 36 more to reach 40.",
     );
     expect(text(c.querySelector('[data-testid="draft-announce"]'))).toBe(
       "The picks are done. Build your deck.",
     );
   });
 
+  it("shows no countdown when the build is untimed, and says the rounds wait for everyone", async () => {
+    const c = await room(
+      building({
+        build: {
+          now: "2026-11-11T19:00:00Z",
+          seconds: 0,
+          untimed: true,
+          deck_min: 40,
+          submitted: false,
+        },
+      }),
+    );
+    expect(text(c.querySelector("#draft-build-h"))).toBe(L.draftBuildDeck);
+    expect(c.querySelector(`[aria-label="${L.draftBuildTimer}"]`)).toBeNull();
+    expect(c.querySelector('[role="timer"]')).toBeNull();
+    const help = text(c.querySelector('[data-testid="draft-build"] .help'));
+    expect(help).toContain("the rounds begin when everyone has submitted a deck");
+    expect(help).not.toContain("When the timer ends");
+    // The deck is built and submitted as ever.
+    expect(button(c, L.draftSubmitDeck).disabled).toBe(true);
+  });
+
+  it("says a deck is built when the timer ends, for a timed build", async () => {
+    const c = await room(building());
+    const help = text(c.querySelector('[data-testid="draft-build"] .help'));
+    expect(help).toContain(
+      "When the timer ends, a deck is built for anyone who has not submitted one",
+    );
+    expect(help).not.toContain("There is no timer");
+  });
+
   it("moves a card with a click, adds basics with the steppers, and submits the deck", async () => {
     const c = await room(building());
     // Each card is a button named for what a click does and for the card.
-    const add = [...zone(c, "draft-side").querySelectorAll("button")].find((b) =>
-      b.getAttribute("aria-label")!.startsWith("Add to deck: Shoreline Looter, costs "),
-    )!;
-    expect(add.getAttribute("aria-label")).toContain("Creature — Rat Rogue");
-    expect(add.getAttribute("draggable")).toBe("true");
-    click(add);
-    expect(zone(c, "draft-deck").querySelector("button")!.getAttribute("aria-label")).toMatch(
-      /^Move to sideboard: Shoreline Looter/,
+    const out = moveBtn(c, "draft-deck", "Shoreline Looter");
+    expect(out.getAttribute("aria-label")).toMatch(/^Move to sideboard: Shoreline Looter, costs /);
+    expect(out.getAttribute("aria-label")).toContain("Creature — Rat Rogue");
+    expect(out.getAttribute("draggable")).toBe("true");
+    click(out);
+    expect(moveBtn(c, "draft-side", "Shoreline Looter").getAttribute("aria-label")).toMatch(
+      /^Move to main: Shoreline Looter/,
     );
-    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 1`);
-    expect(text(zone(c, "draft-deck"))).toContain("Shoreline Looter");
-    expect(text(zone(c, "draft-side"))).not.toContain("Shoreline Looter");
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 3`);
+    expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 1`);
+    expect(text(zone(c, "draft-side"))).toContain("Shoreline Looter");
+    expect(text(zone(c, "draft-deck"))).not.toContain("Shoreline Looter");
+    // Focus follows the card to the area it went to, and the move is said once.
+    await settle();
+    expect(document.activeElement).toBe(moveBtn(c, "draft-side", "Shoreline Looter"));
+    expect(text(c.querySelector('[data-testid="draft-split-said"]'))).toBe(
+      "Moved Shoreline Looter to sideboard.",
+    );
     // And back again.
-    click(zone(c, "draft-deck").querySelector("button")!);
-    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 0`);
-    click(zone(c, "draft-side").querySelector("button")!);
+    click(moveBtn(c, "draft-side", "Shoreline Looter"));
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 4`);
+    // Everything but the first card goes to the sideboard.
+    for (const name of ["Bonecache Overseer", "Fountainport Bell", "Forest"]) {
+      click(moveBtn(c, "draft-deck", name));
+    }
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 1`);
 
     const forest = c.querySelector(`[aria-label="${L.draftBasicStepper("Forest")}"]`)!;
     expect(
@@ -1326,7 +1443,7 @@ describe("building a deck", () => {
 
   it("suggests a land count from the deck and sets the steppers to it", async () => {
     const c = await room(building());
-    for (const b of [...zone(c, "draft-side").querySelectorAll("button")].slice(0, 2)) click(b);
+    for (const name of ["Fountainport Bell", "Forest"]) click(moveBtn(c, "draft-deck", name));
     // Two cards that are not lands: a blue one and a black one. 38 lands
     // make 40, split evenly.
     expect(text(c.querySelector('[data-testid="draft-land-suggestion"]'))).toBe(
@@ -1693,20 +1810,23 @@ describe("card ratings and colour pairs in the room", () => {
 
   it("puts a badge on each rated card, names the source in the card's name, and credits 17Lands", async () => {
     const c = await open(rated());
+    // The pack is shown in its own order (#5701), so cards are found by name.
     const buttons = cardButtons(c);
-    const badges = buttons.map((b) => b.querySelector('[data-testid="rating-badge"]'));
-    expect(badges.map((b) => b?.getAttribute("data-source") ?? null)).toEqual([
-      "17lands",
-      "c2",
-      null,
-    ]);
-    expect(text(badges[0])).toBe("B+ 58.3%");
-    expect(text(badges[1])).toBe("3.4 C2");
-    expect(buttons[0].getAttribute("aria-label")).toContain(
-      "17Lands win rate 58.3 percent, grade B+",
-    );
-    expect(buttons[1].getAttribute("aria-label")).toContain("C2 rating 3.4");
-    expect(buttons[2].getAttribute("aria-label")).not.toContain("rating");
+    const byName = (name: string): HTMLElement =>
+      buttons.find((b) => b.getAttribute("aria-label")?.startsWith(name))!;
+    const looter = byName("Shoreline Looter");
+    const overseer = byName("Bonecache Overseer");
+    const bell = byName("Fountainport Bell");
+    const badge = (b: HTMLElement): Element | null =>
+      b.querySelector('[data-testid="rating-badge"]');
+    expect(badge(looter)?.getAttribute("data-source")).toBe("17lands");
+    expect(badge(overseer)?.getAttribute("data-source")).toBe("c2");
+    expect(badge(bell)).toBeNull();
+    expect(text(badge(looter))).toBe("B+ 58.3%");
+    expect(text(badge(overseer))).toBe("3.4 C2");
+    expect(looter.getAttribute("aria-label")).toContain("17Lands win rate 58.3 percent, grade B+");
+    expect(overseer.getAttribute("aria-label")).toContain("C2 rating 3.4");
+    expect(bell.getAttribute("aria-label")).not.toContain("rating");
     const credit = [...c.querySelectorAll<HTMLAnchorElement>("a")].find(
       (a) => text(a) === L.draftRatingsCredit,
     )!;
@@ -1746,5 +1866,347 @@ describe("card ratings and colour pairs in the room", () => {
   it("shows no colour pairs in the lobby", async () => {
     const c = await open(view({ state: "lobby", pack: undefined }));
     expect(c.querySelector('[data-testid="draft-pairs"]')).toBeNull();
+  });
+
+  it("puts a badge on each pick in Main and in the Sideboard, inside the move button", async () => {
+    const picks = [
+      card("p1", "Thundertrap Trainer", { colors: ["U"], mana_value: 2, rating: LANDS }),
+      card("p2", "Mindwhisker", { colors: ["U"], rating: { source: "c2", value: 2.1 } }),
+    ];
+    localStorage.setItem(
+      `cmdctrl.draftSplit.${ID}`,
+      JSON.stringify({ side: ["p2"], at: Date.now() }),
+    );
+    const c = await open(view({ picks }));
+    const inArea = (area: string, id: string): HTMLElement =>
+      c.querySelector(`[data-testid="${area}"] [data-move-id="${id}"]`)!;
+    const main = inArea("draft-picks-main", "p1");
+    const side = inArea("draft-picks-side", "p2");
+    // The badge is inside the row's button, so a click on it moves the card,
+    // and the colour edge is a separate element before it.
+    expect(text(main.querySelector('[data-testid="rating-badge"]'))).toBe("B+ 58.3%");
+    expect(text(side.querySelector('[data-testid="rating-badge"]'))).toBe("2.1 C2");
+    expect(main.getAttribute("aria-label")).toContain("17Lands win rate 58.3 percent");
+    click(main);
+    expect(c.querySelector('[data-testid="draft-picks-side"] [data-move-id="p1"]')).not.toBeNull();
+    // One credit and one switch for the whole screen.
+    expect(c.querySelectorAll('[data-testid="ratings-bar"]').length).toBe(1);
+  });
+
+  it("puts a badge on each card of the build screen, inside its move button", async () => {
+    const picks = [
+      card("p1", "Thundertrap Trainer", { colors: ["U"], mana_value: 2, rating: LANDS }),
+      card("p2", "Mindwhisker", { colors: ["U"], rating: { source: "c2", value: 2.1 } }),
+    ];
+    const c = await open(
+      view({
+        state: "done",
+        phase: "building",
+        pack: undefined,
+        take: 0,
+        deadline: undefined,
+        now: undefined,
+        picks,
+        pool: picks,
+        build: {
+          deadline: "2026-11-11T19:15:00Z",
+          now: "2026-11-11T19:00:00Z",
+          seconds: 900,
+          deck_min: 40,
+          submitted: false,
+        },
+      }),
+    );
+    const badges = [
+      ...c.querySelectorAll('[data-testid="draft-deck"] button [data-testid="rating-badge"]'),
+    ];
+    expect(badges.map((b) => b.getAttribute("data-source")).sort()).toEqual(["17lands", "c2"]);
+    expect(c.querySelectorAll('[data-testid="ratings-bar"]').length).toBe(1);
+    // The pairs are still there, after the stage, for the wide layout to put on the left.
+    const stage = c.querySelector(".stage")!;
+    const pairs = c.querySelector('[data-testid="draft-pairs"]')!;
+    expect(stage.compareDocumentPosition(pairs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(stage.contains(pairs)).toBe(false);
+  });
+
+  it("keeps the colour-pair panel closed once the viewer closed it", async () => {
+    try {
+      localStorage.removeItem("c2.draft.archetypes");
+    } catch {
+      // no storage: the panel stays open, which the first assertion allows
+    }
+    const c = await open(rated());
+    const details = c.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!;
+    expect(details.open).toBe(true);
+    details.open = false;
+    details.dispatchEvent(new Event("toggle"));
+    flushSync();
+    expect(localStorage.getItem("c2.draft.archetypes")).toBe("closed");
+    cleanup();
+
+    const again = await open(rated());
+    expect(again.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!.open).toBe(
+      false,
+    );
+    localStorage.removeItem("c2.draft.archetypes");
+  });
+});
+
+// ---- Order, picks beside the pack, stats, colour edges (#5699, #5701, #5702, #5704) ----
+
+describe("the pack's order", () => {
+  it("shows mythic, rare, uncommon, common, then basic land, by colour and name inside a rarity", async () => {
+    const pack = [
+      card("a1", "Forest", {
+        colors: [],
+        mana_cost: undefined,
+        type_line: "Basic Land — Forest",
+        basic: true,
+      }),
+      card("a2", "Zesty Common", { colors: ["W"] }),
+      card("a3", "Green Rare", { colors: ["G"], rarity: "rare" }),
+      card("a4", "Blue Rare", { colors: ["U"], rarity: "rare" }),
+      card("a5", "Mythic Gold", { colors: ["W", "B"], rarity: "mythic" }),
+      card("a6", "Plain Uncommon", { colors: ["R"], rarity: "uncommon" }),
+    ];
+    const c = await room(view({ pack }));
+    expect(cardButtons(c).map((b) => b.getAttribute("aria-label")!.split(",")[0])).toEqual([
+      "Mythic Gold",
+      "Blue Rare",
+      "Green Rare",
+      "Plain Uncommon",
+      "Zesty Common",
+      "Forest",
+    ]);
+  });
+
+  it("keeps the order as cards leave the pack", async () => {
+    const pack = [
+      card("a1", "Alpha", { rarity: "rare", colors: ["W"] }),
+      card("a2", "Beta", { rarity: "common", colors: ["U"] }),
+      card("a3", "Gamma", { rarity: "mythic", colors: ["B"] }),
+    ];
+    const c = await room(view({ pack }));
+    const names = (): string[] =>
+      cardButtons(c).map((b) => b.getAttribute("aria-label")!.split(",")[0]);
+    expect(names()).toEqual(["Gamma", "Alpha", "Beta"]);
+    socket().frame("draft", view({ seq: 13, pack: pack.filter((p) => p.id !== "a1") }));
+    expect(names()).toEqual(["Gamma", "Beta"]);
+  });
+});
+
+describe("the colour edge", () => {
+  it("is on each card of the pack and each pick, from its colour identity", async () => {
+    const pack = [
+      card("a1", "Mono", { colors: ["R"] }),
+      card("a2", "Gold", { colors: ["U", "R"] }),
+      card("a3", "Rock", { colors: [], type_line: "Artifact" }),
+    ];
+    const picks = [
+      card("p1", "Forest", {
+        colors: [],
+        color_identity: ["G"],
+        mana_cost: undefined,
+        type_line: "Basic Land — Forest",
+        basic: true,
+      }),
+    ];
+    const c = await room(view({ pack, picks }));
+    const identity = (id: string): string | null =>
+      c
+        .querySelector(`[aria-label="${L.draftPack}"] [data-card="${id}"]`)!
+        .getAttribute("data-identity");
+    expect(identity("a1")).toBe("R");
+    expect(identity("a2")).toBe("UR");
+    expect(identity("a3")).toBe("");
+    // A land in the picks takes its colour identity.
+    const row = c.querySelector('[data-testid="draft-picks-main"] [data-move-id="p1"]')!;
+    expect(row.getAttribute("data-identity")).toBe("G");
+    expect(row.querySelector(".edge")!.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("the picks beside the pack", () => {
+  const picks = [
+    card("p1", "Thundertrap Trainer", { colors: ["U"], mana_value: 2 }),
+    card("p2", "Mindwhisker", {
+      colors: ["U"],
+      mana_value: 3,
+      mana_cost: "{2}{U}",
+      type_line: "Instant",
+    }),
+    card("p3", "Wall of Bark", {
+      colors: ["G"],
+      mana_value: 1,
+      mana_cost: "{G}",
+      type_line: "Artifact Creature — Wall",
+    }),
+  ];
+  type Area = "draft-picks-main" | "draft-picks-side";
+  const area = (c: HTMLElement, id: Area): HTMLElement => c.querySelector(`[data-testid="${id}"]`)!;
+  const moveBtn = (c: HTMLElement, id: Area, name: string): HTMLElement =>
+    [...area(c, id).querySelectorAll("button")].find((b) =>
+      b.getAttribute("aria-label")!.includes(`: ${name}, `),
+    )!;
+
+  it("puts the picks in the area beside the pack, with every pick in Main", async () => {
+    const c = await room(view({ picks }));
+    const beside = c.querySelector("aside")!;
+    expect(beside.getAttribute("aria-labelledby")).toBe("draft-picks-h");
+    expect(text(c.querySelector("#draft-picks-h"))).toBe(`${L.draftYourPicks} 3`);
+    expect(text(c.querySelector("#draft-picks-main-h"))).toBe(`${L.draftDeckZone} 3`);
+    expect(text(c.querySelector("#draft-picks-side-h"))).toBe(`${L.draftSideboardZone} 0`);
+    // The pack comes before the picks in the page, so a narrow screen has them below.
+    const pack = c.querySelector(`[aria-label="${L.draftPack}"]`)!;
+    expect(pack.compareDocumentPosition(beside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("moves a pick to the sideboard and back with a click, and keeps the split for a reload", async () => {
+    const c = await room(view({ picks }));
+    click(moveBtn(c, "draft-picks-main", "Mindwhisker"));
+    expect(text(c.querySelector("#draft-picks-main-h"))).toBe(`${L.draftDeckZone} 2`);
+    expect(text(c.querySelector("#draft-picks-side-h"))).toBe(`${L.draftSideboardZone} 1`);
+    expect(text(area(c, "draft-picks-side"))).toContain("Mindwhisker");
+    expect(JSON.parse(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)!).side).toEqual(["p2"]);
+
+    // A reload: a new page for the same seat finds the split where it was.
+    cleanup();
+    const again = await room(view({ picks, seq: 14 }));
+    expect(text(again.querySelector("#draft-picks-side-h"))).toBe(`${L.draftSideboardZone} 1`);
+    expect(text(area(again, "draft-picks-side"))).toContain("Mindwhisker");
+
+    // A card picked since lands in Main.
+    socket().frame(
+      "draft",
+      view({ seq: 15, picks: [...picks, card("p4", "New Pick", { colors: ["B"] })] }),
+    );
+    expect(text(area(again, "draft-picks-main"))).toContain("New Pick");
+    expect(text(area(again, "draft-picks-side"))).not.toContain("New Pick");
+
+    click(moveBtn(again, "draft-picks-side", "Mindwhisker"));
+    expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
+  });
+
+  it("moves a pick by dropping it on the other area", async () => {
+    const c = await room(view({ picks }));
+    const data = new Map<string, string>();
+    const transfer = {
+      types: ["application/x-c2-draft-card"],
+      setData: (k: string, v: string) => data.set(k, v),
+      getData: (k: string) => data.get(k) ?? "",
+      effectAllowed: "",
+    };
+    const fire = (el: Element, type: string): void => {
+      const ev = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(ev, "dataTransfer", { value: transfer });
+      el.dispatchEvent(ev);
+      flushSync();
+    };
+    const row = moveBtn(c, "draft-picks-main", "Thundertrap Trainer");
+    expect(row.getAttribute("draggable")).toBe("true");
+    fire(row, "dragstart");
+    fire(area(c, "draft-picks-side"), "dragover");
+    fire(area(c, "draft-picks-side"), "drop");
+    expect(text(area(c, "draft-picks-side"))).toContain("Thundertrap Trainer");
+    expect(text(c.querySelector("#draft-picks-main-h"))).toBe(`${L.draftDeckZone} 2`);
+  });
+
+  it("drops the split of a draft whose seat is gone", async () => {
+    localStorage.setItem(
+      "cmdctrl.draftSplit.over",
+      JSON.stringify({ side: ["x"], at: Date.now() }),
+    );
+    await room(view({ picks }));
+    expect(localStorage.getItem("cmdctrl.draftSplit.over")).toBeNull();
+  });
+
+  it("tallies the picks for Main and for the whole pool, and follows a move", async () => {
+    const c = await room(view({ picks }));
+    const stat = (scope: "main" | "pool", sel: string): string =>
+      text(c.querySelector(`[data-testid="draft-stats"] [data-scope="${scope}"] ${sel}`));
+    expect(text(c.querySelector("#draft-stats-h"))).toBe(L.draftStats);
+    expect(stat("main", '[data-stat="creatures"]')).toBe("2");
+    expect(stat("main", '[data-stat="non-creatures"]')).toBe("1");
+    expect(stat("pool", '[data-type="artifact"]')).toBe("1");
+    expect(stat("pool", '[data-colour="U"]')).toBe("2");
+    expect(c.querySelector('[data-scope="main"] [role="img"]')!.getAttribute("aria-label")).toBe(
+      `${L.draftCurve}: 0 at 0, 1 at 1, 1 at 2, 1 at 3, 0 at 4, 0 at 5, 0 at 6 or more`,
+    );
+
+    // Setting Wall of Bark aside takes it out of Main's counts, not the pool's.
+    click(moveBtn(c, "draft-picks-main", "Wall of Bark"));
+    expect(stat("main", '[data-type="artifact"]')).toBe("0");
+    expect(stat("main", '[data-colour="G"]')).toBe("0");
+    expect(stat("pool", '[data-type="artifact"]')).toBe("1");
+    expect(stat("pool", '[data-colour="G"]')).toBe("1");
+  });
+});
+
+describe("the build screen starts from the split", () => {
+  const picksBefore = [
+    card("p1", "Thundertrap Trainer", { colors: ["U"], mana_value: 2 }),
+    card("p2", "Mindwhisker", { colors: ["U"], mana_value: 3, mana_cost: "{2}{U}" }),
+  ];
+  const buildView = (over: Partial<DraftView> = {}): DraftView =>
+    view({
+      state: "done",
+      phase: "building",
+      seq: 80,
+      pack: undefined,
+      take: 0,
+      deadline: undefined,
+      now: undefined,
+      picks: picksBefore,
+      pool: picksBefore,
+      build: {
+        deadline: "2026-11-11T19:15:00Z",
+        now: "2026-11-11T19:00:00Z",
+        seconds: 900,
+        deck_min: 40,
+        submitted: false,
+      },
+      ...over,
+    });
+  const stat = (c: HTMLElement, scope: "main" | "pool"): string =>
+    text(
+      c.querySelector(
+        `[data-testid="draft-stats"] [data-scope="${scope}"] [data-stat="creatures"]`,
+      ),
+    );
+
+  it("opens with the sideboard the picks screen left, and shows the stats", async () => {
+    localStorage.setItem(
+      `cmdctrl.draftSplit.${ID}`,
+      JSON.stringify({ side: ["p2"], at: Date.now() }),
+    );
+    const c = await room(buildView());
+    expect(text(c.querySelector("#draft-deck-h"))).toBe(`${L.draftDeckZone} 1`);
+    expect(text(c.querySelector("#draft-side-h"))).toBe(`${L.draftSideboardZone} 1`);
+    expect(text(c.querySelector('[data-testid="draft-deck"]'))).toContain("Thundertrap Trainer");
+    expect(text(c.querySelector('[data-testid="draft-side"]'))).toContain("Mindwhisker");
+    expect(stat(c, "main")).toBe("1");
+    expect(stat(c, "pool")).toBe("2");
+  });
+
+  it("keeps a move made here, for a reload, and the stats follow it", async () => {
+    const c = await room(buildView());
+    expect(stat(c, "main")).toBe("2");
+    const move = [...c.querySelectorAll<HTMLElement>('[data-testid="draft-deck"] button')].find(
+      (b) => b.getAttribute("aria-label")!.includes(": Mindwhisker, "),
+    )!;
+    click(move);
+    await settle();
+    expect(JSON.parse(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)!).side).toEqual(["p2"]);
+    expect(stat(c, "main")).toBe("1");
+  });
+
+  it("forgets the split once the rounds begin", async () => {
+    localStorage.setItem(
+      `cmdctrl.draftSplit.${ID}`,
+      JSON.stringify({ side: ["p2"], at: Date.now() }),
+    );
+    await room(buildView({ phase: "rounds", deck: { main: ["p1"], basics: {} } }));
+    await settle();
+    expect(localStorage.getItem(`cmdctrl.draftSplit.${ID}`)).toBeNull();
   });
 });

@@ -52,6 +52,7 @@
 
 <style>
   .rating {
+    flex: none;
     display: inline-flex;
     align-items: baseline;
     gap: 5px;
