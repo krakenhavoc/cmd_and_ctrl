@@ -36,10 +36,10 @@ import (
 // damage-source prevention see each), face-down Cybermen included.
 // Option B draws a card.
 //
-// "Chaos ensues" is Planechase's planar die (CR 901): it does
-// something only with a planar deck and a planar die in the game. Neither
-// exists in a Commander game on this engine, and no card of the catalog
-// cares, so the clause has nothing to do and nothing is left out.
+// "Chaos ensues" is CR 311.7's "a resolving spell or ability says that
+// chaos ensues" (game.ChaosEnsuesForEffect, #5648): each face-up plane's
+// chaos ability triggers. At a table that is not playing Planechase
+// there is no plane, and the clause does nothing.
 //
 // No simplifications.
 var missyChoice = NewVillainousChoice("missy",
@@ -66,7 +66,11 @@ var missyChoice = NewVillainousChoice("missy",
 		Label: "The controller of Missy draws a card and chaos ensues",
 		Harm:  1,
 		Body: func(ctx *Context, _ Facing) error {
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+			if err := (DrawCards{Player: ctx.Controller(), N: 1}).Apply(ctx); err != nil {
+				return err
+			}
+			ctx.Game.ChaosEnsuesForEffect(ctx.Controller(), ctx.Source())
+			return nil
 		},
 	})
 
