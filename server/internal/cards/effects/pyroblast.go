@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Pyroblast — Instant {R} (EDHREC rank 469):
 //
 //	"Choose one —
@@ -17,7 +15,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cast at a non-blue target at all.
 //
 // The clause is honoured exactly: the target specs are unrestricted
-// and OnResolve reads the target's colour before acting.
+// and OnResolve reads the target's colour before acting. The body is
+// counterOrDestroyTheTargetIfItIs, which Hydroblast shares (#5636).
 //
 // No simplification.
 func init() {
@@ -29,25 +28,6 @@ func init() {
 			Mode("Counter target spell if it's blue.", TargetSpell("target spell")),
 			Mode("Destroy target permanent if it's blue.", TargetPermanent("target permanent")),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 {
-				return nil
-			}
-			target := item.Targets[0].ID
-			card, ok := ctx.Game.LookupCardForEffect(target)
-			if !ok || !card.HasColor(ctx.TextColor("U")) {
-				return nil
-			}
-			switch {
-			case ctx.HasMode(0):
-				return CounterTarget{StackID: target}.Apply(ctx)
-			case ctx.HasMode(1):
-				if item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				return DestroyTarget{Target: target}.Apply(ctx)
-			}
-			return nil
-		},
+		OnResolve: counterOrDestroyTheTargetIfItIs("U"),
 	})
 }

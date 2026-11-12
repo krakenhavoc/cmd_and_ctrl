@@ -2264,12 +2264,15 @@ tail cumulative-upkeep/breath-of-dreams-cumulative-upkeep-u
 tail cumulative-upkeep/cumulative-upkeep-1
 tail cumulative-upkeep/cumulative-upkeep-2
 tail cumulative-upkeep/cumulative-upkeep-pay-1-life
+tail cumulative-upkeep/illusionary-forces-cumulative-upkeep-u
 tail cumulative-upkeep/illusionary-terrain-cumulative-upkeep-2
+tail cumulative-upkeep/illusionary-wall-cumulative-upkeep-u
 tail cumulative-upkeep/karplusan-minotaur-cumulative-upkeep-flip-a-coin
 tail cumulative-upkeep/mystic-remora-cumulative-upkeep-1
 tail cumulative-upkeep/phyrexian-soulgorger-cumulative-upkeep-sacrifice-a-creature
 tail cumulative-upkeep/polar-kraken-cumulative-upkeep-sacrifice-a-land
 tail cumulative-upkeep/prismatic-circle-cumulative-upkeep-1
+tail cumulative-upkeep/soldevi-simulacrum-cumulative-upkeep-1
 tail cumulative-upkeep/tidal-control-cumulative-upkeep-2
 tail cumulative-upkeep/tombstone-stairwell-cumulative-upkeep-1-b
 tail cumulative-upkeep/vexing-sphinx-cumulative-upkeep-discard-a-card
