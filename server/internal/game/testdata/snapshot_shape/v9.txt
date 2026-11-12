@@ -76929,6 +76929,11 @@ turnTally.enteredFliers[].controller	custom(uuid.UUID)
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int
+turnTally.excessDamaged	array
+turnTally.excessDamaged[]	object
+turnTally.excessDamaged[].controller	custom(uuid.UUID)
+turnTally.excessDamaged[].creature	bool
+turnTally.excessDamaged[].planeswalker	bool
 turnTally.exerts	array
 turnTally.exerts[]	object
 turnTally.exerts[].epoch	number:int

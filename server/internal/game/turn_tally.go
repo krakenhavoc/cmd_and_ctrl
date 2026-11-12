@@ -477,6 +477,14 @@ type TurnTally struct {
 	// DamageSourcesDealtThisTurnForEffect; see damage_sources_tally.go.
 	// Additive: omitted when empty.
 	DamageSources []DamageSourceRecord `json:"damageSources,omitempty"`
+	// ExcessDamaged lists the controllers whose creature or planeswalker
+	// was dealt excess damage this turn (CR 120.10, #5663), each as of
+	// the damage: "if a creature or planeswalker an opponent controlled
+	// was dealt excess damage this turn" (Rith, Liberated Primeval). Read
+	// through OpponentPermanentDealtExcessDamageThisTurn; see
+	// excess_damage_tally.go. Additive: omitted when empty, so an older
+	// snapshot reads back as no excess damage.
+	ExcessDamaged []ExcessDamageRecord `json:"excessDamaged,omitempty"`
 	// DamagedObjects records which permanent OBJECTS each source dealt
 	// damage to this turn (#1946): one entry per damage event to a
 	// permanent, in the order the damage was dealt, each side named by
@@ -1991,6 +1999,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	if len(t.DamageSources) > 0 {
 		out.DamageSources = append([]DamageSourceRecord(nil), t.DamageSources...)
+	}
+	if len(t.ExcessDamaged) > 0 {
+		out.ExcessDamaged = append([]ExcessDamageRecord(nil), t.ExcessDamaged...)
 	}
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)
