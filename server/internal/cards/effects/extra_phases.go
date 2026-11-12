@@ -43,6 +43,26 @@ type AddPhases struct {
 	// combat, not even a newer added combat that runs first (CR 500.8).
 	// When no combat was added nothing is bound, as for AtThatCombat.
 	DuringThatCombat *CombatRule
+
+	// ThoseCreaturesThatCombat is a requirement or restriction "that
+	// combat" over creatures the card fixed as it resolved (Illusionist's
+	// Gambit: "Each of those creatures attacks that combat if able. They
+	// can't attack you or planeswalkers you control that combat"): bound
+	// to the first combat phase this added (#5685, ADR 0188 Decision 14)
+	// and to no other, as DuringThatCombat is. A creature that has left
+	// the battlefield or changed controller when that combat begins is
+	// dropped. Built at resolution, because the creatures are known only
+	// then.
+	ThoseCreaturesThatCombat *CombatObjectsRule
+}
+
+// CombatObjectsRule is a rule for the whole of one combat phase over
+// named creatures. Mods are attack requirements and restrictions only
+// (game.DuringCombatPhaseObjectsEffectForEffect refuses anything else).
+type CombatObjectsRule struct {
+	Objects []uuid.UUID
+	Mods    []game.Mod
+	Label   string
 }
 
 // CombatRule is a "can't" rule for the whole of one combat phase,
@@ -76,6 +96,9 @@ func (a AddPhases) Apply(ctx *Context) error {
 	if r := a.DuringThatCombat; r != nil {
 		ctx.Game.DuringCombatPhaseRuleEffectForEffect(combat, ctx.Source(), r.Scope, ctx.Controller(),
 			[]game.Mod{game.AddRestrictionsMod(r.Restrictions)}, r.Label)
+	}
+	if r := a.ThoseCreaturesThatCombat; r != nil {
+		ctx.Game.DuringCombatPhaseObjectsEffectForEffect(combat, ctx.Source(), r.Objects, ctx.Controller(), r.Mods, r.Label)
 	}
 	if a.AtThatCombat == nil {
 		return nil

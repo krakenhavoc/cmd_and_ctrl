@@ -723,6 +723,11 @@ func corpusBoards() []corpusBoard {
 		// an older binary must refuse or drop, never read as more.
 		{"bumi_combat_rule_waiting", corpusBumiCombatRuleWaiting},
 		{"bumi_combat_rule_in_force", corpusBumiCombatRuleInForce},
+		// #5685, ADR 0188 Decision 14: a waiting phaseEffects[] record
+		// over named objects (affected[] members pinned by stamp and
+		// controller, no scope), made by Illusionist's Gambit. No new
+		// field; the board pins the shape an older binary also reads.
+		{"gambit_combat_rule_waiting", corpusGambitCombatRuleWaiting},
 	}
 }
 
@@ -741,6 +746,32 @@ func corpusBumiCombatRuleWaiting(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if len(g.PhaseEffects) != 1 || g.PhaseEffects[0].Effect.Scope != game.ScopeCreaturesThatArentLands {
 		t.Fatalf("setup: waiting rules %+v, want one creaturesThatArentLands record", g.PhaseEffects)
+	}
+	return g
+}
+
+// corpusGambitCombatRuleWaiting is #5685's waiting rule: an opponent cast
+// Illusionist's Gambit in the declare blockers step, so the two removed
+// attackers are named by one phaseEffects[] record waiting for the
+// combat the spell added.
+func corpusGambitCombatRuleWaiting(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	s := g.Turn.ActiveSeat
+	me, caster := g.Seats[s], g.Seats[(s+1)%len(g.Seats)]
+	a := b12Creature(g, me.ID, "First Attacker", "Creature — Bear", 2, 2)
+	b := b12Creature(g, me.ID, "Second Attacker", "Creature — Bear", 2, 2)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{a, b} {
+		if err := g.DeclareAttacker(id, caster.ID); err != nil {
+			t.Fatalf("setup: DeclareAttacker: %v", err)
+		}
+	}
+	advanceTo(t, g, game.StepDeclareBlockers)
+	finishBlockDeclarations(t, g)
+	castInPlace(t, g, caster.ID, "Illusionist's Gambit", illusionistsGambitOracle)
+	passPriorityAroundTable(t, g)
+	if len(g.PhaseEffects) != 1 || g.PhaseEffects[0].Effect.Scope != game.ScopeNone || len(g.PhaseEffects[0].Effect.Affected) != 2 {
+		t.Fatalf("setup: waiting rules %+v, want one record naming two creatures", g.PhaseEffects)
 	}
 	return g
 }

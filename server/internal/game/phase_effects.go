@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // phase_effects.go — a rules effect bound to ONE future combat phase of
 // this turn (#5277, ADR 0188 amendment 2026-11-07, Decision 13).
@@ -24,6 +28,12 @@ import "github.com/google/uuid"
 // A record whose combat never begins (the turn ends early, CR 724.1, or
 // every step of the phase is skipped) is dropped as the next turn
 // begins, beside the delayed triggers bound to a phase of that turn.
+//
+// Since #5685 (ADR 0188 amendment 2026-11-11, Decision 14) a waiting
+// record may instead name objects, fixed as the spell resolves:
+// Illusionist's Gambit's "Each of those creatures attacks that combat if
+// able. They can't attack you or planeswalkers you control that combat."
+// See DuringCombatPhaseObjectsEffectForEffect.
 
 // PhaseEffect is one deferred rules effect waiting for a phase instance.
 type PhaseEffect struct {
@@ -92,6 +102,135 @@ func (g *Game) combatPhaseAheadLocked(id int) bool {
 	return false
 }
 
+// DuringCombatPhaseObjectsEffectForEffect attaches an attack requirement
+// or an attack restriction to combat phase `phaseID` of this turn, over
+// the permanents `objects` as the objects they are now: "Each of those
+// creatures attacks that combat if able. They can't attack you or
+// planeswalkers you control that combat" (Illusionist's Gambit, #5685,
+// ADR 0188 Decision 14). The effect is created now and starts as that
+// combat begins.
+//
+// The set is the card's own text ("those creatures"), fixed as the spell
+// resolves, so it never grows. Each member is pinned as the object it is
+// (CR 400.7) under the player who controls it now. A member whose
+// controller changes while the record waits is dropped at once
+// (dropPhaseEffectMemberLocked), and as that combat begins so is one
+// that has left the battlefield or that another player controls. A
+// record left with no member is not registered.
+//
+// Only a mod that changes no characteristic and no controller is taken
+// (phaseObjectsModKinds): CR 611.2c fixes the set of a characteristic-
+// changing effect "when that continuous effect begins", which for a
+// waiting record is later than the moment the card names its objects.
+// Any other kind panics, as a programming error in the card.
+//
+// The phase is held to DuringCombatPhaseRuleEffectForEffect's rule: a
+// combat phase still to come in this turn's plan. Returns false, writing
+// nothing, for such a phase id, for no mods, or when none of `objects`
+// is on the battlefield. `controller` is the effect's "you". Copy on
+// write.
+//
+// Caller must hold g.mu (write).
+func (g *Game) DuringCombatPhaseObjectsEffectForEffect(phaseID int, sourceID uuid.UUID, objects []uuid.UUID, controller uuid.UUID, mods []Mod, label string) bool {
+	if len(mods) == 0 || !g.combatPhaseAheadLocked(phaseID) {
+		return false
+	}
+	for _, m := range mods {
+		if !phaseObjectsModKinds[m.Kind] {
+			panic(fmt.Sprintf("game: phase effect %q: a rule over named objects carries only an attack requirement or restriction, got %q", label, m.Kind))
+		}
+	}
+	var affected []AffectedObject
+	seen := make(map[uuid.UUID]bool, len(objects))
+	for _, id := range objects {
+		c, ok := g.battlefieldCardLocked(id)
+		if !ok || seen[id] {
+			continue
+		}
+		seen[id] = true
+		pin := PinObject(id, c.EnteredBattlefieldAt)
+		pin.Controller = c.Controller
+		affected = append(affected, pin)
+	}
+	if len(affected) == 0 {
+		return false
+	}
+	e := g.buildScopedEffectLocked(sourceID, affected, ScopeNone, controller, mods, IndefiniteDuration(), label, timeNowUnixNano())
+	next := clonePhaseEffects(g.PhaseEffects)
+	next = append(next, PhaseEffect{Turn: g.Turn.Seq, PhaseID: phaseID, Effect: e})
+	g.PhaseEffects = next
+	return true
+}
+
+// phaseObjectsModKinds are the mods a waiting record over named objects
+// may carry: each changes a rule of the declaration (CR 508.1c, 508.1d),
+// never a characteristic or a controller.
+var phaseObjectsModKinds = map[ModKind]bool{
+	ModAddAttackRequirement: true,
+	ModCantAttackPlayer:     true,
+	ModAddRestrictions:      true,
+}
+
+// phaseEffectMembersStillBoundLocked is the affected set of a waiting
+// record over named objects as its combat begins: each member that is
+// still that object on the battlefield under the controller it was
+// pinned with. The rest are dropped (ADR 0188 Decision 14).
+//
+// Caller must hold g.mu.
+func (g *Game) phaseEffectMembersStillBoundLocked(set []AffectedObject) []AffectedObject {
+	var out []AffectedObject
+	for _, a := range set {
+		c, ok := g.battlefieldCardLocked(a.ID)
+		if !ok || !memberMatches(a, c) {
+			continue
+		}
+		if a.Controller != uuid.Nil && c.Controller != a.Controller {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// dropPhaseEffectMemberLocked takes the permanent `id` out of every
+// waiting record that names it, and drops a record left naming nothing.
+// Called when a permanent's controller changes (emitControlChangesLocked):
+// a control change before that combat begins frees the creature for good
+// (ADR 0188 Decision 14). A live-scope record names no objects and is
+// untouched. Copy on write.
+//
+// Caller must hold g.mu (write).
+func (g *Game) dropPhaseEffectMemberLocked(id uuid.UUID) {
+	named := false
+	for _, pe := range g.PhaseEffects {
+		for _, a := range pe.Effect.Affected {
+			named = named || a.ID == id
+		}
+	}
+	if !named {
+		return
+	}
+	var kept []PhaseEffect
+	for _, pe := range clonePhaseEffects(g.PhaseEffects) {
+		if pe.Effect.Scope != ScopeNone {
+			kept = append(kept, pe)
+			continue
+		}
+		var members []AffectedObject
+		for _, a := range pe.Effect.Affected {
+			if a.ID != id {
+				members = append(members, a)
+			}
+		}
+		if len(members) == 0 {
+			continue
+		}
+		pe.Effect.Affected = members
+		kept = append(kept, pe)
+	}
+	g.PhaseEffects = kept
+}
+
 // registerPhaseEffectsLocked puts the deferred effects bound to the
 // combat phase that has just begun on the registry, each lasting until
 // the end of this combat (CR 511.3) and keeping the timestamp it was
@@ -117,6 +256,14 @@ func (g *Game) registerPhaseEffectsLocked() {
 		e := pe.Effect
 		e.Duration = d
 		e.Affected = append([]AffectedObject(nil), e.Affected...)
+		if e.Scope == ScopeNone {
+			// #5685, Decision 14: a record over named objects keeps only
+			// the members still bound, and is spent unregistered when
+			// none is.
+			if e.Affected = g.phaseEffectMembersStillBoundLocked(e.Affected); len(e.Affected) == 0 {
+				continue
+			}
+		}
 		e.Mods = cloneMods(e.Mods)
 		g.appendBuiltScopedEffectLocked(e)
 	}
