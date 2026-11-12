@@ -14509,7 +14509,8 @@ Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
 - **`ev.LifeThenLoses`** is the card the loss of the game comes from. Never call `LoseTheGameForEffect` from a life
   `Replace`: the event has not landed, other replacements may still apply, and a CR 616 prompt may park it. The place
   the event lands carries the loss out (CR 104.3e, gated by "can't lose"), for damage after the damage has landed. The
-  field is carried by the snapshot.
+  field is carried by the snapshot. When the player who left controls the spell or ability resolving at that moment,
+  the life change returns `game.ErrStopResolution`: return it from the effect as it is, like any other error.
 - **A `Replace` on this window that does more than rewrite the event asks `ReplacementIsPreviewForEffect` first.** The
   auto-tapper previews the life window without touching the game (`lifeChangePreviewLocked`), and it calls the same
   `Replace` functions.
