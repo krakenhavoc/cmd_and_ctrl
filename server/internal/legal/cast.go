@@ -1083,6 +1083,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	altCostSets := [][]uuid.UUID{nil}
 	// #3175: the X each payment in altCostSets announces, for an offer
 	// whose card is bound to X (Shining Shoal); nil for every other offer.
+	// #5679: or the one X an offer that removes X counters announces.
 	var altXs []int
 	if offer.CollectsEvidence() {
 		// Conspiracy Unraveler's "collect evidence 10 rather than pay the
@@ -1156,6 +1157,16 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// able to emit a cast with an unpayable cost.
 			return
 		}
+	}
+	if offer.CountersDefineX() {
+		// #5679: "Remove X loyalty counters from among planeswalkers you
+		// control" — the counters removed ARE the X this cast announces,
+		// so the one payment the emitter writes fixes it.
+		counters, ok := castCounterChoice(g, e.seat, card, offer)
+		if !ok {
+			return
+		}
+		altXs = []int{counters.total}
 	}
 	// ADR 0135 §4: the reduction the FIRST payment buys, priced into
 	// every announcement below; the other payments are repriced on their
@@ -1842,14 +1853,10 @@ func (e *enumerator) castMoveEmitter(
 	// most first), from the walk the engine validates against. An offer
 	// the board cannot pay was dropped by CastOffersForLocked; the check
 	// is kept because this is the function that writes the payment.
-	var counters counterChoice
-	if offer != nil && offer.RemoveCounters != nil {
-		choices := counterPaymentChoices(g.CounterCostOptionsForEffect(e.seat, card.InstanceID, offer.RemoveCounters), offer.RemoveCounters)
-		if len(choices) == 0 {
-			return func([]uuid.UUID, []int, []game.TargetRef, int, int, game.ParsedCost, map[uuid.UUID]int, []uuid.UUID, []uuid.UUID, []uuid.UUID, *MoveValue) {
-			}
+	counters, ok := castCounterChoice(g, e.seat, card, offer)
+	if !ok {
+		return func([]uuid.UUID, []int, []game.TargetRef, int, int, game.ParsedCost, map[uuid.UUID]int, []uuid.UUID, []uuid.UUID, []uuid.UUID, *MoveValue) {
 		}
-		counters = choices[0]
 	}
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		// #1948: an "exile X cards" cost names exactly the announced X.
@@ -2027,6 +2034,50 @@ func (e *enumerator) castMoveEmitter(
 			}),
 		})
 	}
+}
+
+// castCounterChoice is the one counter payment a cast under `offer`
+// writes (#5390): the activation's own rule (counterPaymentChoices: drain
+// the permanents holding the most first), from the walk the engine
+// validates against. The zero choice and true for an offer that removes
+// no counters; false when the board cannot pay.
+//
+// #5679: an offer that removes X counters (Light Up the Night's
+// flashback) has no printed count to cover, and the activation's answer
+// for a variable among cost, every counter there is, would spend every
+// planeswalker the seat controls. The cast's payment leaves one counter
+// on each permanent instead, so a planeswalker pays without dying, and
+// falls back to every counter only when that would remove fewer than the
+// floor. The total is the X the cast announces.
+func castCounterChoice(g *game.Game, seat uuid.UUID, card game.Card, offer *game.AlternativeCost) (counterChoice, bool) {
+	if offer == nil || offer.RemoveCounters == nil {
+		return counterChoice{}, true
+	}
+	rc := offer.RemoveCounters
+	opts := g.CounterCostOptionsForEffect(seat, card.InstanceID, rc)
+	if offer.CountersDefineX() {
+		spare := counterChoice{fromOther: true, explicitCounts: true}
+		for _, o := range opts {
+			for _, k := range o.Kinds {
+				if k.Kind != rc.Counter || k.Count < 2 {
+					continue
+				}
+				spare.parts = append(spare.parts, counterPart{cardID: o.CardID, kind: k.Kind, n: k.Count - 1})
+				spare.total += k.Count - 1
+				if k.Count > spare.count {
+					spare.count = k.Count
+				}
+			}
+		}
+		if spare.total >= rc.N && spare.total > 0 {
+			return spare, true
+		}
+	}
+	choices := counterPaymentChoices(opts, rc)
+	if len(choices) == 0 {
+		return counterChoice{}, false
+	}
+	return choices[0], true
 }
 
 // castCounterLabel names the counters a cast's counter removal takes

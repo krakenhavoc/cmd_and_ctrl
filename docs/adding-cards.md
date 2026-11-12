@@ -7940,6 +7940,28 @@ count). An additional cost of "behold a … and exile it" (#4687) is not
 this shape, because that card is spent: it is `BeholdAndExileCost` on the
 mandatory slot.
 
+**X counters as part of the price (#5679, CR 107.3a, 107.3b).**
+"Flashback—{3}{R}, Remove X loyalty counters from among planeswalkers you
+control. If you cast this spell this way, X can't be 0." (Light Up the
+Night) is `AlternativeCost.RemoveCounters` with `Variable` and a floor of
+1, built with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},                       // Light Up the Night
+AlternativeCosts: []game.AlternativeCost{FlashbackRemoveXCounters("{3}{R}", game.CounterLoyalty, "planeswalkers you control", Planeswalker())},
+```
+
+It keeps flashback's graveyard binding and `ExileOnLeavingStack`. The
+counters removed are the spell's X: the offer is an alternative cost that
+includes X (`AlternativeCost.CountersDefineX`), so X is not locked at 0,
+the cast announces X and its counter payment (`counter_source_ids` /
+`counter_counts`) must total exactly that, at least 1. The effect reads
+`ctx.X()` as for a cast that paid {X}. The split across the caster's
+matching permanents is theirs, nothing is targeted, and a caster with no
+such counter is not offered the cast. `Register` allows the variable form
+only for one printed kind with a floor of at least 1; a fixed count is
+`CastFromGraveyardByRemovingCounters`' shape (#5390).
+
 **Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
 card that prints "Harmonize {cost}" opens the graveyard as flashback
 does and declares the offer with one constructor:
