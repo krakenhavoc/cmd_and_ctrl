@@ -281,6 +281,18 @@ type PermissionFilter struct {
 	// to a creature spell).
 	ColorsAny string `json:"colorsAny,omitempty"`
 
+	// ColorCountExactly is Niv-Mizzet, Supreme's "each instant and sorcery
+	// card in your graveyard that's EXACTLY TWO COLORS" (#5645): a card
+	// qualifies when it has exactly this many colours (CR 105.2), counted
+	// off its effective colours as ColorsAny reads them. A hybrid card is
+	// every colour of its symbols (CR 202.2), a split card in a graveyard
+	// is the colours of both halves (CR 709.4b), a colourless or
+	// monocoloured card is never "exactly two". Zero constrains nothing,
+	// so the clause cannot say "colorless" (ArtifactOrColorlessOnly reads
+	// that). It composes with every other clause as a further AND.
+	// Additive.
+	ColorCountExactly int `json:"colorCountExactly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -517,6 +529,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ColorsAny != "" && !cardHasAnyColor(c, f.ColorsAny) {
+		return false
+	}
+	if f.ColorCountExactly != 0 && len(c.EffectiveColors()) != f.ColorCountExactly {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
@@ -812,6 +827,18 @@ type CastPermission struct {
 	// from the holder's hand, discarded as a cost (CR 701.9a), so a
 	// discard payoff sees it. Any card but the one being cast.
 	DiscardCard bool `json:"discardCard,omitempty"`
+
+	// DiscardCardInAddition is jump-start's "by discarding a card in
+	// addition to paying its other costs" (CR 702.133a), Niv-Mizzet,
+	// Supreme's grant (#5645): the synthesised offer charges the card's
+	// PRINTED mana cost (the permission names no Cost) and one card from
+	// the holder's hand, any card but the one being cast, discarded as a
+	// cost (CR 701.9a) and named in CastSpellParams.AltCostIDs.
+	// DiscardLandCard's shape with no land clause; DiscardCard is the
+	// other reading, "rather than paying its mana cost", and wins when
+	// both are set. Read only with an AltCostKey. Additive within a
+	// snapshot version.
+	DiscardCardInAddition bool `json:"discardCardInAddition,omitempty"`
 
 	// LifeInAddition is "You may cast ... by paying N life in addition to
 	// paying its other costs" (Noctis, Prince of Lucis, #4462): N life the
@@ -1663,6 +1690,11 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.SacrificeNonlandPermanentInAddition {
 		out.Sacrifice = sacrificeANonlandPermanentSpec()
 		out.PayLabel = "a nonland permanent"
+	}
+	if p.DiscardCardInAddition {
+		// CR 702.133a: the printed mana cost stays owed.
+		out.DiscardFromHand = discardAnyCardSpec()
+		out.PayLabel = "a card"
 	}
 	if p.DiscardCard {
 		// ADR 0135 §2: "by discarding a card rather than paying its

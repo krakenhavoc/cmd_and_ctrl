@@ -59,6 +59,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
+  - ["Whenever a mana ability of this creature resolves" (#5644)](#whenever-a-mana-ability-of-this-creature-resolves-5644)
   - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
   - ["Activates a mana ability of each land" (ADR 0200, #3952)](#activates-a-mana-ability-of-each-land-adr-0200-3952)
   - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
@@ -7769,6 +7770,19 @@ cards" is a union: Deeproot Historian uses
 permissions are derived from the battlefield or the owner's emblems on
 every query, so they end when the source does.
 
+**Granted jump-start (#5645, CR 702.133a).** A card that gives jump-start
+to others declares a `CastPermission` with
+`AltCostKey: game.AltCostKeyJumpStart`, `DiscardCardInAddition: true` and
+`ExileOnResolution: true`: the card's own mana cost, one card from hand
+discarded as a cost (any card, named in `alt_cost_ids`), and exile as the
+spell leaves the stack. `DiscardCardInAddition` is `DiscardLandCard`
+without the land clause; `DiscardCard` is "rather than paying its mana
+cost" and charges no mana. "That's exactly two colors" is
+`PermissionFilter{ColorCountExactly: 2}`, read off the card's effective
+colours (a hybrid card is every colour of its symbols), and it composes
+with the other clauses: Niv-Mizzet, Supreme is
+`PermissionFilter{CardInZone: true, InstantOrSorceryOnly: true, ColorCountExactly: 2}`.
+
 **Disturb (#1855, [ADR 0107 §4](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#4-disturb-1855))**
 is flashback's cast path with one more clause: `Disturb("{1}{U}")` sets
 `AlternativeCost.CastsFace: 1`, so the spell is the card's **back
@@ -9254,6 +9268,44 @@ What the planner makes of a card is tested through the real catalog in
 stubbed triggers, in
 [autotap_trigger_mana_test.go](../server/internal/game/autotap_trigger_mana_test.go)
 in `game`.
+
+### "Whenever a mana ability of this creature resolves" (#5644)
+
+A STACK trigger that fires because a mana ability finished, and reads how
+much mana that ability made (Tyvar the Bellicose: "put a number of +1/+1
+counters on it equal to the amount of mana this creature produced").
+Watch `game.EventManaAbilityResolved`
+([mana_ability_resolved.go](../server/internal/game/mana_ability_resolved.go)):
+
+```go
+On(game.EventManaAbilityResolved,
+    func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+        return ev.CardID == source.InstanceID // "of this creature"
+    }, label, effect) // the effect reads item.Trigger.Event.Amount
+```
+
+- **One event per resolution, on every route**: the hand click, the last
+  answered colour pick (a Birds of Paradise has not resolved until its
+  colour is named), the auto-tapper, and each triggered mana ability
+  (CR 605.1b), whose `Source` is the trigger's own permanent.
+- **`Amount` is the mana that ability produced**, after a CR 106.12b
+  replacement (three from a Llanowar Elves under Nyxbloom Ancient). Mana
+  another ability added because of it (Wild Growth's) is not in it: that
+  ability resolves afterwards and has its own event. An ability that
+  resolved and added nothing has `Amount` 0.
+- `Actor` is the activator, or the player a triggered mana ability added
+  its mana to; `Label` is the ability's label.
+- **It is written only while a permanent on the battlefield watches it**
+  (`battlefieldWatchesLocked`), so a board without such a card logs
+  nothing new and existing fixtures are unaffected. A watcher in another
+  zone, or on an emblem, joins that gate in the change that adds it. In an
+  engine test, put a watching permanent on the battlefield first.
+- It is not `EventManaAbilityActivated`, which is emitted when the cost
+  is paid, before the mana exists, and carries no amount. "Whenever you
+  tap this creature for mana, it deals 1 damage" still watches that one
+  (`manaActivationPing`).
+- The watching ability is not a mana ability (it adds no mana), so it
+  goes on the stack the next time a player would receive priority.
 
 ### State triggers (ADR 0107, #1858)
 
@@ -11878,6 +11930,19 @@ Lurker) is `ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()` on the `Sp
 CR 704.5i applying, not indestructible and not a replacement: every other state-based action still does, and a
 walker at 0 can use a plus ability and no minus. Read live off the battlefield, so a source that loses its
 abilities or leaves exempts nothing.
+
+**"As this enters, choose a planeswalker type"** (Deification) is `AsEnters: ChoosePlaneswalkerTypeAsEnters(name)`.
+It offers CR 205.3j's types, yours first, and stores the answer on `Card.ChosenOption`.
+`PlaneswalkersYouControlOfTheChosenType` is the predicate that reads it for a static ("… have hexproof"); it
+matches nothing until the choice is answered.
+
+**"If damage dealt to a planeswalker you control of the chosen type would result in all loyalty counters on
+it being removed, instead all but one of those counters are removed"** (Deification) is
+`DamageLastLoyalty: DamageLeavesChosenTypeAPlaneswalkersLastLoyaltyWhileYouControlACreature()` on the `Spec`
+(#5646). It replaces a result of the damage, not the damage (CR 120.4c): the damage is dealt in full, so
+lifelink and "is dealt damage" triggers see all of it, and only the loyalty removed is capped. Do not write it
+as a prevention shield. A new sentence of this shape (another scope or condition) is a field on
+`game.DamageLastLoyaltyStatic` and a constructor beside this one.
 
 **"Whenever you put one or more loyalty counters on a planeswalker"** (Inspired Tethermage) is
 `WheneverYouPutLoyaltyCountersOnAPlaneswalker(label, effect)`. One trigger per placement EVENT, so a +2 is one

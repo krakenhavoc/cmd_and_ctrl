@@ -1770,7 +1770,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"PlayerKeywordsIf":      defFieldRules,
 	"PlayerLifeTotalLocked": defFieldRules, "DamageCantBePrevented": defFieldRules,
 	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
-	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules,
+	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules, "DamageLastLoyalty": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules, "CoinFlipRules": defFieldRules,
 	"DealtDamageCantBeRegenerated": defFieldRules,
 }
