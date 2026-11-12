@@ -77027,6 +77027,10 @@ turnTally.attacks[].defender	custom(uuid.UUID)
 turnTally.attacks[].epoch	number:int
 turnTally.attacks[].phaseId	number:int
 turnTally.attacks[].planeswalkerController	custom(uuid.UUID)
+turnTally.becameCrewed	array
+turnTally.becameCrewed[]	object
+turnTally.becameCrewed[].epoch	number:int
+turnTally.becameCrewed[].id	custom(uuid.UUID)
 turnTally.becameTapped	map:string
 turnTally.becameTapped{}	number:int
 turnTally.casts	array
@@ -77070,6 +77074,13 @@ turnTally.damagedObjects[].victim	object
 turnTally.damagedObjects[].victim.epoch	number:int
 turnTally.damagedObjects[].victim.id	custom(uuid.UUID)
 turnTally.damagedObjects[].victimCreature	bool
+turnTally.damagedPlayers	array
+turnTally.damagedPlayers[]	object
+turnTally.damagedPlayers[].amount	number:int
+turnTally.damagedPlayers[].source	object
+turnTally.damagedPlayers[].source.epoch	number:int
+turnTally.damagedPlayers[].source.id	custom(uuid.UUID)
+turnTally.damagedPlayers[].victim	custom(uuid.UUID)
 turnTally.diedPowerBySubtype	map:string
 turnTally.diedPowerBySubtype{}	number:int
 turnTally.diedSubtypes	map:string

@@ -495,6 +495,15 @@ type TurnTally struct {
 	// index into it is a moment in the turn (Mod.DamageSince). Additive:
 	// omitted when empty, so an older snapshot reads back as no records.
 	DamagedObjects []ObjectDamageRecord `json:"damagedObjects,omitempty"`
+	// DamagedPlayers records how much damage each source OBJECT dealt to
+	// each player this turn (#5674): one entry per damage event to a
+	// player, combat or not, in the order the damage was dealt, the
+	// source named by instance ID and ObjectEpoch (CR 400.7). Read through
+	// DamageDealtToPlayerThisTurnByObjectForEffect
+	// (damage_to_player_by.go): "if it has dealt 10 or more damage to
+	// that player this turn" (Vessel of the All-Consuming). Additive:
+	// omitted when empty, so an older snapshot reads back as no records.
+	DamagedPlayers []PlayerDamageRecord `json:"damagedPlayers,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 732 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -668,6 +677,14 @@ type TurnTally struct {
 	// through CrewRecordsForEffect and the two creature readers built on
 	// it. Additive within v8: omitted when empty.
 	Crews []CrewRecord `json:"crews,omitempty"`
+	// BecameCrewed is every Vehicle whose crew ability resolved this
+	// turn, one entry per resolution, as the OBJECT it was (CR 702.122e,
+	// #5671). Written only by noteCrewAbilityResolvedLocked; it is what
+	// EventBecameCrewed's Amount counts, so "becomes crewed for the
+	// first time each turn" (Mindlink Mech) holds whether or not the
+	// first trigger found a target. Additive within v9: omitted when
+	// empty.
+	BecameCrewed []ObjectRef `json:"becameCrewed,omitempty"`
 	// StepsBegun and PhasesBegun count the steps and phase families
 	// that have begun this turn; PhaseStarted is the PhaseID of the
 	// phase the last count opened. They are what Turn.StepOrdinal and
@@ -1990,6 +2007,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	if len(t.DamagedObjects) > 0 {
 		out.DamagedObjects = append([]ObjectDamageRecord(nil), t.DamagedObjects...)
 	}
+	if len(t.DamagedPlayers) > 0 {
+		out.DamagedPlayers = append([]PlayerDamageRecord(nil), t.DamagedPlayers...)
+	}
 	if len(t.NoncombatDamage) > 0 {
 		out.NoncombatDamage = make([]NoncombatDamageRecord, len(t.NoncombatDamage))
 		for i, r := range t.NoncombatDamage {
@@ -2022,6 +2042,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	if len(t.Crews) > 0 {
 		out.Crews = append([]CrewRecord(nil), t.Crews...)
+	}
+	if len(t.BecameCrewed) > 0 {
+		out.BecameCrewed = append([]ObjectRef(nil), t.BecameCrewed...)
 	}
 	if len(t.StepsBegun) > 0 {
 		out.StepsBegun = make(map[Step]int, len(t.StepsBegun))
@@ -2080,6 +2103,9 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			g.recordDamagedObjectLocked(ev)
 			return
 		}
+		// #5674: how much this source object has dealt to this player,
+		// for "if it has dealt 10 or more damage to that player this turn".
+		g.recordDamagedPlayerLocked(ev)
 		// #2105: the life the damage COST, not the damage — infect
 		// damage and damage to a locked life total lose no life.
 		if lost := ev.DamageLifeLoss(); lost > 0 {

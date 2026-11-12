@@ -2872,6 +2872,20 @@ g.CantBeRegeneratedIfDealtDamageByForEffect(src, ref, true, label)
 g.ExileIfDealtDamageByWouldDieThisTurnForEffect(src, ref, uuid.Nil, false, label)
 ```
 
+**"If it has dealt N or more damage to that player this turn"** (#5674).
+The turn also keeps how much each source object dealt to each player,
+combat and noncombat together (`TurnTally.DamagedPlayers`; the amount is
+the damage dealt after prevention, whether or not it cost life, and a
+source that left and came back is a new object that has dealt nothing,
+CR 400.7). Read it with
+`g.DamageDealtToPlayerThisTurnByObjectForEffect(ref, player)`. The record
+is written before triggers are harvested, so a trigger on the damage
+already counts that damage. An intervening "if" asks it twice (CR 603.4):
+in `AppliesTo` with `game.ObjectRef{ID: source.InstanceID, Epoch:
+source.ObjectEpoch}`, and as the trigger resolves with `ctx.SourceRef()`,
+which still names the object if it has left (CR 608.2h). Vessel of the
+All-Consuming (`hidetsugu_consumes_all.go`) is the precedent.
+
 **"It deals double (triple) that damage instead" from a resolving spell
 or ability** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
 §3, #1890). A static doubler on a permanent (Angrath's Marauders,
@@ -5716,6 +5730,17 @@ on the activation event ("whenever you activate a boast ability",
 Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
 Berserker, with `ActivationCostsLessEach`). `Register` panics when the
 label prints "Boast —" without the bit or the bit without the label.
+
+**Ninjutsu abilities, as a class (CR 702.49, #5672):** `Ninjutsu(cost)`
+and `CommanderNinjutsu(cost)` set a keyword bit as well as the label, so
+a card that prices ninjutsu abilities matches on the bit, never on the
+label: `ANinjutsuAbilityCost()` on a cost query, with
+`ActivatedByTheModifiersController()` for "you activate" (Silver-Fur
+Master: `ActivationCostsLess(1, label, ANinjutsuAbilityCost(),
+ActivatedByTheModifiersController())`). It matches commander ninjutsu
+(CR 702.49d) and a ninjutsu a static grants to a card in hand. The bit
+gates nothing. `Register` panics when a label starts with the keyword
+without the bit or the bit is set without the keyword.
 
 **Power-up (CR 702.193, #4527):** never spell "activate only once" or
 the reduction by hand. `PowerUp(text, cost, effect)` in
@@ -12739,6 +12764,27 @@ false when it left and came back as a new object (CR 400.7). Canyon
 Vaulter and Reckless Velocitaur are the proof cards. The Vehicle is not a
 creature yet when the trigger resolves (CR 208.3a), so grant keywords and
 pumps to it as a permanent, not as a creature.
+
+**"Whenever this Vehicle becomes crewed" (CR 702.122e, #5671).** The
+rule reads it as "whenever a crew ability of this Vehicle resolves", so it
+is the other end of the ability from the paragraph above: the engine emits
+`EventBecameCrewed` after a crew ability's effect, once per ability
+however many creatures paid, and only while the Vehicle is still on the
+battlefield as the object the ability came from. Write it with
+`WhenBecomesCrewed(label, effect)`
+([becomes_crewed.go](../server/internal/cards/effects/becomes_crewed.go));
+the Vehicle is already an artifact creature when the trigger goes on the
+stack. "For the first time each turn" is
+`WhenBecomesCrewedFirstTimeEachTurn(label, effect)`: the event's `Amount`
+counts the crew abilities of that object that resolved this turn
+(`TurnTally.BecameCrewed`), so a first crew whose trigger had no legal
+target still used the turn's one chance. Do not write it with a
+triggered-this-turn tally. A countered crew ability made nothing become
+crewed, though its creatures still crewed the Vehicle. "Target creature
+that crewed it this turn" is `CrewedThis(...)` as on any other Vehicle.
+An effect that says "target Vehicle becomes an artifact creature"
+(`BecomeCreatureUntilEOT`) is not crewing and emits nothing. Mobilizer
+Mech and Mindlink Mech are the proof cards.
 
 **A creature that counts for more when it crews or saddles (ADR 0186
 Decision 4, #3549).** "This creature crews Vehicles as though its power

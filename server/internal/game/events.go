@@ -1172,6 +1172,20 @@ const (
 	// Mount when the ability resolves.
 	EventSaddledMount EventKind = "saddled_mount"
 
+	// EventBecameCrewed — a Vehicle became crewed (CR 702.122e, #5671):
+	// "Whenever [this Vehicle] becomes crewed" means "Whenever a crew
+	// ability of [this Vehicle] resolves." One event per crew ability
+	// that resolves while its Vehicle is still on the battlefield as
+	// the object the ability came from, emitted after the ability's
+	// effect: Source / CardID / Target = the Vehicle, Actor = the
+	// ability's controller, Amount = how many crew abilities of that
+	// object have resolved this turn, this one included, so 1 is "for
+	// the first time each turn". A crew ability that was countered, or
+	// whose Vehicle left, emits nothing. Distinct from
+	// EventCrewedVehicle, which fires once per creature while the cost
+	// is paid.
+	EventBecameCrewed EventKind = "became_crewed"
+
 	// EventFacedDilemma — a player chose one or more modes for a spell
 	// or ability (#4973, Star Trek's "you face a dilemma as you choose
 	// one or more modes for a spell or ability"; CR 700.2a, 700.2b).
