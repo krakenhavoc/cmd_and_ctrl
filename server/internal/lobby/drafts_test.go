@@ -841,7 +841,9 @@ func TestNoDraftFrameCarriesAnotherSeatsCards(t *testing.T) {
 		sent := append(httpBodies[i], c.raw...)
 		for _, raw := range sent {
 			frames++
-			text := string(raw)
+			// A card's rating names its source ("c2", the in-house kind), which is
+			// no card ID: the rating object holds no card (docs/protocol.md).
+			text := strings.ReplaceAll(string(raw), `"source":"c2"`, `"source":"house"`)
 			for _, k := range all {
 				if allowed[i][k.id] {
 					continue

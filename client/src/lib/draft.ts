@@ -13,6 +13,7 @@
 // because nothing about another seat's cards is ever sent.
 
 import type { CardImageSize } from "./cardImage";
+import type { DraftRating } from "./draftRatings";
 import { L } from "./labels";
 import { costWords } from "./manaSymbol";
 import { currentSession, type Session } from "./session";
@@ -74,6 +75,12 @@ export interface DraftCard {
   type_line?: string;
   /** A basic land. */
   basic?: boolean;
+  /**
+   * What a screen shows beside the card (ADR 0222 §7, #5703): 17Lands'
+   * number where it has one, the in-house rating otherwise. Absent for a
+   * basic land and from an older server.
+   */
+  rating?: DraftRating | null;
 }
 
 /** One seat, as everyone may see it: a name and a status, never cards. */

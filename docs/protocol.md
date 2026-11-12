@@ -2059,7 +2059,10 @@ rises.
                 "set": "blb", "collector_number": "70", "rarity": "uncommon",
                 "colors": ["U"], "color_identity": ["U"],
                 "mana_cost": "{1}{U}", "mana_value": 2,
-                "type_line": "Creature — Rat Rogue" } ],
+                "type_line": "Creature — Rat Rogue",
+                "rating": { "source": "17lands", "value": 58.3, "tier": "B+", "games": 12345,
+                            "avg_pick": 6.3, "avg_seen": 9.1, "set": "blb",
+                            "format": "PremierDraft", "fetched": "2026-11-11" } } ],
     "picks": [ ]
   }
 }
@@ -2095,6 +2098,27 @@ rises.
 - `pack` is the pack the viewer holds, absent once they have picked from
   it and are waiting for the others. `picks` is the viewer's own picks in
   the order taken.
+- Each card of `pack`, `picks` and `pool` carries a `rating` object
+  ([ADR 0222](decisions/0222-formats-beyond-commander-standard-1v1-and-booster-draft.md)
+  §7, amendment 2026-11-11, #5703): what a screen shows beside the card. It is
+  absent for a basic land and from an older server, so a client treats it as
+  optional. `source` is `"17lands"` or `"c2"`, and the two are not on one scale:
+  - `"17lands"`: `value` is the card's games-in-hand win rate in percent, one
+    decimal (58.3); `tier` is a letter grade ("A+" to "F") from where it ranks
+    among the rated cards of its set; `games` is the sample behind it;
+    `avg_pick` and `avg_seen` are the pick number it is taken at and last seen
+    at on average; `set` is the set whose numbers they are (the card's own, or
+    for a cube card or a reprint the most recent set that rated it); `format`
+    is the 17Lands format and `fetched` the date the numbers were fetched. A
+    screen showing one carries the credit "Card ratings from 17Lands" and links
+    to 17lands.com.
+  - `"c2"`: this server's own rating from the card's printed text, for a card
+    17Lands has no win rate for. `value` is points on the draft bots' scale, one
+    decimal (a two-mana 2/2 is about 2.7, a bomb is above 5). It has no `tier`
+    and is not a win rate.
+  The same numbers are what the bots draft by where 17Lands has the card (see
+  `draft.RatingFromZ`). The rating is data about the card by name, public, and
+  adds nothing about another seat (CR 905.1c).
 - `pool` appears when `state` is `done`: the viewer's whole card pool
   (CR 905.1d). `done` means the picks are done; `phase` says what follows.
 - `phase` is absent until `state` is `done`, then `building`, `rounds` or

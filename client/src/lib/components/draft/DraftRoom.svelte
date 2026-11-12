@@ -62,10 +62,12 @@
   import { session, setSession } from "../../session";
   import Icon from "../Icon.svelte";
   import Page from "../Page.svelte";
+  import DraftArchetypesPanel from "./DraftArchetypesPanel.svelte";
   import DraftBuild from "./DraftBuild.svelte";
   import DraftPack from "./DraftPack.svelte";
   import DraftRounds from "./DraftRounds.svelte";
   import DraftPool from "./DraftPool.svelte";
+  import DraftRatingsBar from "./DraftRatingsBar.svelte";
   import DraftSeats from "./DraftSeats.svelte";
   import DraftSplit from "./DraftSplit.svelte";
   import DraftStats from "./DraftStats.svelte";
@@ -90,6 +92,14 @@
   let clock = $state(0);
   // The build timer (#5440) counts the same way, from `build`.
   const building = $derived(view?.state === "done" && view.phase === "building");
+  // The set's colour pairs and the ratings beside its cards (#5703). A
+  // cube has no set to show pairs of.
+  const pairsSet = $derived(
+    view && !view.cube && view.set && (view.state === "picking" || building) ? view.set : "",
+  );
+  const ratedCards = $derived(
+    view ? [...(view.pack ?? []), ...(view.picks ?? []), ...(view.pool ?? [])] : [],
+  );
   const seconds = $derived(
     !view
       ? null
@@ -485,6 +495,10 @@
         </p>
       {/if}
 
+      {#if view.state !== "lobby"}
+        <DraftRatingsBar cards={ratedCards} />
+      {/if}
+
       {#if view.state === "lobby"}
         <div class="cols">
           <section class="card" aria-labelledby="draft-seats-h">
@@ -559,90 +573,112 @@
             {/if}
           </section>
         </div>
-      {:else if view.state === "picking"}
-        <!-- The pack, and the picks beside it when there is room (#5699). -->
-        <div class="pickgrid">
-          <section class="packarea" aria-labelledby="draft-pick-h">
-            <h2 class="progress" id="draft-pick-h" data-testid="draft-progress">
-              {progressLine(view)}{#if target}{" "}<span class="to">to {target.name}</span>{/if}
-            </h2>
+      {:else}
+        <!-- Pick, build and the rounds share one frame: on a wide screen the
+             set's colour pairs (#5703) take a column on the left and the
+             stage the rest; on a narrow one the pairs come last. -->
+        <div class="roomgrid" class:withpairs={pairsSet !== ""}>
+          <div class="stage">
+            {#if view.state === "picking"}
+              <!-- The pack, and the picks beside it when there is room (#5699). -->
+              <div class="pickgrid">
+                <section class="packarea" aria-labelledby="draft-pick-h">
+                  <h2 class="progress" id="draft-pick-h" data-testid="draft-progress">
+                    {progressLine(view)}{#if target}{" "}<span class="to">to {target.name}</span
+                      >{/if}
+                  </h2>
 
-            {#if pickError}
-              <p class="notice err" role="alert">
-                <Icon name="x" size={14} />
-                <span>{pickError}</span>
-              </p>
-            {/if}
+                  {#if pickError}
+                    <p class="notice err" role="alert">
+                      <Icon name="x" size={14} />
+                      <span>{pickError}</span>
+                    </p>
+                  {/if}
 
-            {#if view.pack && view.pack.length > 0 && take > 0}
-              <DraftPack
-                pack={view.pack}
-                {take}
-                busy={pendingPick !== null || !live}
-                blocked={!live ? "Reconnecting…" : pendingPick !== null ? "Sending your pick…" : ""}
-                onpick={pick}
+                  {#if view.pack && view.pack.length > 0 && take > 0}
+                    <DraftPack
+                      pack={view.pack}
+                      {take}
+                      busy={pendingPick !== null || !live}
+                      blocked={!live
+                        ? "Reconnecting…"
+                        : pendingPick !== null
+                          ? "Sending your pick…"
+                          : ""}
+                      onpick={pick}
+                      {timer}
+                    />
+                  {:else}
+                    <div class="card waiting" data-testid="draft-waiting">
+                      <h3 tabindex="-1" bind:this={waitingEl}>{L.draftWaiting}</h3>
+                      <p class="help">{waitingLine(view)}</p>
+                      {@render timer()}
+                    </div>
+                  {/if}
+                </section>
+
+                <aside class="picksarea" aria-labelledby="draft-picks-h">
+                  <h2 id="draft-picks-h">
+                    {L.draftYourPicks} <span class="n">{picks.length}</span>
+                  </h2>
+                  <DraftSplit
+                    cards={picks}
+                    side={sideIDs}
+                    onmove={moveCard}
+                    ids={{ main: "draft-picks-main", side: "draft-picks-side" }}
+                    emptyMain="No picks yet."
+                    emptySide="Drag a card here, or click it, to set it aside."
+                  />
+                </aside>
+
+                <div class="statsarea">
+                  <DraftStats main={picks.filter((c) => !sideIDs.includes(c.id))} pool={picks} />
+                </div>
+
+                <section class="card side seatsarea" aria-labelledby="draft-seats-h">
+                  <h2 id="draft-seats-h">Seats</h2>
+                  <DraftSeats {view} />
+                </section>
+              </div>
+            {:else if building}
+              <DraftBuild
+                {view}
+                {live}
+                pending={pendingDeck !== null}
+                error={deckError}
+                onsubmit={submitDeck}
+                side={sideIDs}
+                onside={setSide}
                 {timer}
               />
             {:else}
-              <div class="card waiting" data-testid="draft-waiting">
-                <h3 tabindex="-1" bind:this={waitingEl}>{L.draftWaiting}</h3>
-                <p class="help">{waitingLine(view)}</p>
-                {@render timer()}
-              </div>
+              <DraftRounds
+                {view}
+                {live}
+                {busy}
+                error=""
+                {closed}
+                {kept}
+                onplay={() => void playMatch()}
+              />
+
+              <section aria-labelledby="draft-pool-h">
+                <h2 id="draft-pool-h">
+                  {L.draftYourPool} <span class="n">{(view.pool ?? view.picks ?? []).length}</span>
+                </h2>
+                <DraftPool cards={view.pool ?? view.picks ?? []} images />
+              </section>
             {/if}
-          </section>
-
-          <aside class="picksarea" aria-labelledby="draft-picks-h">
-            <h2 id="draft-picks-h">
-              {L.draftYourPicks} <span class="n">{picks.length}</span>
-            </h2>
-            <DraftSplit
-              cards={picks}
-              side={sideIDs}
-              onmove={moveCard}
-              ids={{ main: "draft-picks-main", side: "draft-picks-side" }}
-              emptyMain="No picks yet."
-              emptySide="Drag a card here, or click it, to set it aside."
-            />
-          </aside>
-
-          <div class="statsarea">
-            <DraftStats main={picks.filter((c) => !sideIDs.includes(c.id))} pool={picks} />
           </div>
 
-          <section class="card side seatsarea" aria-labelledby="draft-seats-h">
-            <h2 id="draft-seats-h">Seats</h2>
-            <DraftSeats {view} />
-          </section>
+          <!-- After the stage in the page, so the pick comes first by
+               keyboard; the grid puts it on the left on a wide screen. -->
+          {#if pairsSet}
+            <aside class="pairs-aside" data-testid="draft-pairs">
+              <DraftArchetypesPanel set={pairsSet} setName={view.set_name} />
+            </aside>
+          {/if}
         </div>
-      {:else if building}
-        <DraftBuild
-          {view}
-          {live}
-          pending={pendingDeck !== null}
-          error={deckError}
-          onsubmit={submitDeck}
-          side={sideIDs}
-          onside={setSide}
-          {timer}
-        />
-      {:else}
-        <DraftRounds
-          {view}
-          {live}
-          {busy}
-          error=""
-          {closed}
-          {kept}
-          onplay={() => void playMatch()}
-        />
-
-        <section aria-labelledby="draft-pool-h">
-          <h2 id="draft-pool-h">
-            {L.draftYourPool} <span class="n">{(view.pool ?? view.picks ?? []).length}</span>
-          </h2>
-          <DraftPool cards={view.pool ?? view.picks ?? []} images />
-        </section>
       {/if}
     {/if}
   </div>
@@ -665,6 +701,49 @@
     flex-direction: column;
     gap: 22px;
     min-width: 0;
+  }
+  /* The room's frame (#5703). Wide (1100px and up) with the set's colour
+     pairs: pairs on the left, the stage (pack, stats and seats in the
+     middle, picks on the right; or the build) taking the rest. Under
+     1100px the pairs go below the stage, and under 820px the stage
+     itself is one column (.pickgrid, DraftBuild). */
+  .roomgrid {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
+  }
+  .pairs-aside {
+    min-width: 0;
+  }
+  @media (min-width: 1100px) {
+    .roomgrid.withpairs {
+      display: grid;
+      grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+      grid-template-areas: "pairs stage";
+      align-items: start;
+      /* Three columns share the page, so a pack card is a step narrower:
+         three across at 1440px, two at 1100px. */
+      --pack-tile: 170px;
+    }
+    .roomgrid.withpairs > .stage {
+      grid-area: stage;
+    }
+    .roomgrid.withpairs > .pairs-aside {
+      grid-area: pairs;
+      /* Stays in view as the pack scrolls, under the site header (z 30,
+         about 56px tall), and scrolls on its own if it outgrows the window. */
+      position: sticky;
+      top: 72px;
+      max-height: calc(100vh - 88px);
+      overflow-y: auto;
+    }
   }
   .cols {
     display: grid;
@@ -800,7 +879,7 @@
      reading order: pack, picks, stats, seats. */
   .pickgrid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
     grid-template-areas:
       "pack picks"
       "stats picks"

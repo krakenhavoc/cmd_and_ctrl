@@ -54,7 +54,8 @@ type View struct {
 	You     int          `json:"you"`
 	Players []PlayerView `json:"players"`
 
-	// Pack is the pack the viewer holds, absent once it has picked.
+	// Pack is the pack the viewer holds, absent once it has picked. A
+	// card of Pack, Picks and Pool carries a `rating` (ratings.go).
 	Pack []Card `json:"pack,omitempty"`
 	// Picks is the viewer's own picks in the order taken.
 	Picks []Card `json:"picks"`
@@ -193,7 +194,7 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		PickSeconds:  int(d.cfg.PickTimeout / time.Second),
 		You:          you,
 		Players:      make([]PlayerView, 0, len(d.seats)),
-		Picks:        append([]Card{}, me.picks...),
+		Picks:        withRatings(append([]Card{}, me.picks...)),
 		Phase:        d.Phase(),
 		BestOf:       d.BestOf(),
 	}
@@ -215,11 +216,11 @@ func (d *Draft) ViewFor(seatID uuid.UUID, now time.Time, connected func(uuid.UUI
 		deadline, at := d.deadline, now
 		v.Deadline, v.Now = &deadline, &at
 		if !me.picked {
-			v.Pack = append([]Card(nil), me.pack...)
+			v.Pack = withRatings(append([]Card(nil), me.pack...))
 			v.Take = d.take(len(me.pack))
 		}
 	case StateDone:
-		v.Pool = append([]Card{}, me.picks...)
+		v.Pool = withRatings(append([]Card{}, me.picks...))
 		d.playView(&v, you, now)
 	}
 	return v, true

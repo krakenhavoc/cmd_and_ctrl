@@ -340,6 +340,9 @@ registered, or when this file is stale.
 | `holdShiftToFlip` | `Hold Shift to flip` | note | text | `lib/components/board/HoverZoomOverlay.svelte` | the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big |
 | `draftPlayBooster` | `Play booster` | generic | text | `lib/draftSets.ts` | the draftable sets page: a set whose packs are modelled on a play booster (sets released from February 2024 on) |
 | `draftDraftBooster` | `Draft booster` | generic | text | `lib/draftSets.ts` | the draftable sets page: a set whose packs are modelled on a draft booster (sets before play boosters) |
+| `draftRatingsCredit` | `Card ratings from 17Lands` | link | text | `lib/components/draft/DraftRatingsBar.svelte` | the credit 17Lands' data is used on: shown wherever a 17Lands rating shows beside a draft card; links to 17lands.com (the owner's condition, 2026-11-11) |
+| `draftRatingsShow` | `Show card ratings` | checkbox | text | `lib/components/draft/DraftRatingsBar.svelte` | the viewer's switch for the rating beside each draft card, kept in this browser only; on by default |
+| `draftArchetypesTitle` | `Colour pairs` | heading | text | `routes/DraftSets.svelte`<br>`lib/components/draft/DraftArchetypesPanel.svelte` | a set's ten colour pairs with a short label and the gold uncommons that name each: the disclosure on the draftable sets page and the panel beside a draft |
 | `draftThisSet` | `Draft this set` | link | text | `routes/DraftSets.svelte` | the draftable sets page: a ready set's link to the create form with that set chosen (#/draft?set=<code>) |
 | `draftAgainstBots` | `Draft against bots` | link | text | `routes/FrontPage.svelte` | the front page's way into a draft without an account: #/draft, a solo draft against bots when signed out |
 | `draftNewTitle` | `Start a draft` | heading | text | `lib/components/draft/DraftCreate.svelte` | the create form's page title, at #/draft |

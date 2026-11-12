@@ -10,7 +10,6 @@
   // `cards` is the viewer's `picks` or `pool`. No other seat's cards
   // exist on the wire (CR 905.1c).
   import {
-    cardAccessibleName,
     DRAG_TYPE,
     groupPool,
     stackCopies,
@@ -18,8 +17,10 @@
     type PoolGroupKey,
   } from "../../draft";
   import { cardEdge } from "../../draftEdge";
+  import { ratedCardName } from "../../draftRatings.svelte";
   import ManaCost from "../board/ManaCost.svelte";
   import DraftCardArt from "./DraftCardArt.svelte";
+  import DraftRatingBadge from "./DraftRatingBadge.svelte";
 
   interface Props {
     cards: DraftCard[];
@@ -79,7 +80,7 @@
                   <button
                     type="button"
                     class="move"
-                    aria-label={`${verb}: ${cardAccessibleName(card)}`}
+                    aria-label={`${verb}: ${ratedCardName(card)}`}
                     title={`${verb}: ${card.name}`}
                     data-move-id={card.id}
                     draggable="true"
@@ -87,9 +88,12 @@
                     onclick={() => onpick(card)}
                   >
                     <DraftCardArt {card} />
+                    <!-- Inside the button, so a click on the chip still moves the card. -->
+                    <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
                   </button>
                 {:else}
                   <DraftCardArt {card} alt={card.name} />
+                  <DraftRatingBadge rating={card.rating} cardSet={card.set} overlay />
                 {/if}
               </li>
             {/each}
@@ -105,7 +109,7 @@
                     <button
                       type="button"
                       class="row"
-                      aria-label={`${verb}: ${cardAccessibleName(s.card)}`}
+                      aria-label={`${verb}: ${ratedCardName(s.card)}`}
                       data-move-id={s.card.id}
                       data-identity={edge.key}
                       draggable="true"
@@ -120,6 +124,7 @@
                         {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
                       </span>
                       {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                      <DraftRatingBadge rating={s.card.rating} cardSet={s.card.set} />
                     </button>
                   {:else}
                     <span class="edge" style:--edge={edge.background} aria-hidden="true"></span>
@@ -130,6 +135,7 @@
                       {#if s.count > 1}<span class="x">{s.count}×</span>{" "}{/if}{s.card.name}
                     </span>
                     {#if s.card.mana_cost}<ManaCost cost={s.card.mana_cost} size={12} />{/if}
+                    <DraftRatingBadge rating={s.card.rating} cardSet={s.card.set} />
                   {/if}
                 </li>
               {/each}
@@ -268,6 +274,7 @@
   /* A card that moves between the deck and the sideboard. The button
      is the card: no chrome of its own, a ring on hover and focus. */
   .move {
+    position: relative;
     display: block;
     width: 100%;
     padding: 0;
@@ -282,6 +289,11 @@
   .move:focus-visible {
     outline: 2px solid var(--accent-strong);
     outline-offset: 2px;
+  }
+  /* The rating badge sits on the foot of the card, clear of the colour
+     edge (a border) and of the move button's focus ring. */
+  .imgs li {
+    position: relative;
   }
   .imgs {
     display: grid;

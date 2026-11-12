@@ -18,6 +18,8 @@ import {
   type DraftCard,
   type DraftView,
 } from "../lib/draft";
+import { clearArchetypeCache } from "../lib/draftArchetypes";
+import { ratingsPref } from "../lib/draftRatings.svelte";
 import { PACKS_ARE_APPROXIMATIONS } from "../lib/draftSets";
 import { L } from "../lib/labels";
 import { currentSession, sessionFromOAuth, setSession } from "../lib/session";
@@ -1763,6 +1765,190 @@ describe("a draft that is gone, and a lost connection", () => {
     expect(text(main(c))).toContain(
       "The server is full right now. Please try again in a few minutes.",
     );
+  });
+});
+
+// #5703 (ADR 0222 §7): the rating beside each card, its credit and switch,
+// and the set's colour pairs beside the pack.
+describe("card ratings and colour pairs in the room", () => {
+  const LANDS = {
+    source: "17lands",
+    value: 58.3,
+    tier: "B+",
+    games: 900,
+    set: "blb",
+    format: "PremierDraft",
+    fetched: "2026-11-11",
+  };
+  const rated = (): DraftView =>
+    view({
+      pack: [
+        card("c1", "Shoreline Looter", { rating: LANDS }),
+        card("c2", "Bonecache Overseer", { rating: { source: "c2", value: 3.4 } }),
+        card("c3", "Fountainport Bell"),
+      ],
+    });
+  const pairs = {
+    set: "blb",
+    name: "Bloomburrow",
+    pairs: [{ colors: "WU", label: "Birds and flyers", signposts: [] }],
+  };
+  const open = async (v: DraftView): Promise<HTMLElement> => {
+    serve({ "GET /draft/sets/blb/archetypes": { body: pairs } });
+    rememberDraftSeat(ID, { token: "seat-token", expires_at: "2099-01-01T00:00:00Z" });
+    const { container } = render(Draft as never, { id: ID } as never);
+    await settle();
+    socket().frame("draft", v);
+    await settle();
+    return container;
+  };
+
+  afterEach(() => {
+    ratingsPref.set(true);
+    clearArchetypeCache();
+  });
+
+  it("puts a badge on each rated card, names the source in the card's name, and credits 17Lands", async () => {
+    const c = await open(rated());
+    // The pack is shown in its own order (#5701), so cards are found by name.
+    const buttons = cardButtons(c);
+    const byName = (name: string): HTMLElement =>
+      buttons.find((b) => b.getAttribute("aria-label")?.startsWith(name))!;
+    const looter = byName("Shoreline Looter");
+    const overseer = byName("Bonecache Overseer");
+    const bell = byName("Fountainport Bell");
+    const badge = (b: HTMLElement): Element | null =>
+      b.querySelector('[data-testid="rating-badge"]');
+    expect(badge(looter)?.getAttribute("data-source")).toBe("17lands");
+    expect(badge(overseer)?.getAttribute("data-source")).toBe("c2");
+    expect(badge(bell)).toBeNull();
+    expect(text(badge(looter))).toBe("B+ 58.3%");
+    expect(text(badge(overseer))).toBe("3.4 C2");
+    expect(looter.getAttribute("aria-label")).toContain("17Lands win rate 58.3 percent, grade B+");
+    expect(overseer.getAttribute("aria-label")).toContain("C2 rating 3.4");
+    expect(bell.getAttribute("aria-label")).not.toContain("rating");
+    const credit = [...c.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (a) => text(a) === L.draftRatingsCredit,
+    )!;
+    expect(credit.getAttribute("href")).toBe("https://www.17lands.com/");
+  });
+
+  it("hides the badges and the credit when the viewer switches ratings off", async () => {
+    const c = await open(rated());
+    const box = [...c.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].find((i) =>
+      text(i.closest("label")).includes(L.draftRatingsShow),
+    )!;
+    box.checked = false;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+    flushSync();
+    expect(c.querySelectorAll('[data-testid="rating-badge"]')).toHaveLength(0);
+    expect(cardButtons(c)[0].getAttribute("aria-label")).not.toContain("17Lands");
+    expect([...c.querySelectorAll("a")].some((a) => text(a) === L.draftRatingsCredit)).toBe(false);
+  });
+
+  it("shows no ratings bar for a pack of cards with none", async () => {
+    const c = await open(view());
+    expect(c.querySelector('[data-testid="ratings-bar"]')).toBeNull();
+  });
+
+  it("shows the set's colour pairs beside the pick, and not in a cube", async () => {
+    const c = await open(rated());
+    const panel = c.querySelector('[data-testid="draft-pairs"]')!;
+    expect(text(panel)).toContain(L.draftArchetypesTitle);
+    expect(text(panel)).toContain("Birds and flyers");
+    expect(calls.some((x) => x.url === "/draft/sets/blb/archetypes")).toBe(true);
+    cleanup();
+
+    const cube = await open(view({ cube: true, set: "", set_name: "My cube", booster: "cube" }));
+    expect(cube.querySelector('[data-testid="draft-pairs"]')).toBeNull();
+  });
+
+  it("shows no colour pairs in the lobby", async () => {
+    const c = await open(view({ state: "lobby", pack: undefined }));
+    expect(c.querySelector('[data-testid="draft-pairs"]')).toBeNull();
+  });
+
+  it("puts a badge on each pick in Main and in the Sideboard, inside the move button", async () => {
+    const picks = [
+      card("p1", "Thundertrap Trainer", { colors: ["U"], mana_value: 2, rating: LANDS }),
+      card("p2", "Mindwhisker", { colors: ["U"], rating: { source: "c2", value: 2.1 } }),
+    ];
+    localStorage.setItem(
+      `cmdctrl.draftSplit.${ID}`,
+      JSON.stringify({ side: ["p2"], at: Date.now() }),
+    );
+    const c = await open(view({ picks }));
+    const inArea = (area: string, id: string): HTMLElement =>
+      c.querySelector(`[data-testid="${area}"] [data-move-id="${id}"]`)!;
+    const main = inArea("draft-picks-main", "p1");
+    const side = inArea("draft-picks-side", "p2");
+    // The badge is inside the row's button, so a click on it moves the card,
+    // and the colour edge is a separate element before it.
+    expect(text(main.querySelector('[data-testid="rating-badge"]'))).toBe("B+ 58.3%");
+    expect(text(side.querySelector('[data-testid="rating-badge"]'))).toBe("2.1 C2");
+    expect(main.getAttribute("aria-label")).toContain("17Lands win rate 58.3 percent");
+    click(main);
+    expect(c.querySelector('[data-testid="draft-picks-side"] [data-move-id="p1"]')).not.toBeNull();
+    // One credit and one switch for the whole screen.
+    expect(c.querySelectorAll('[data-testid="ratings-bar"]').length).toBe(1);
+  });
+
+  it("puts a badge on each card of the build screen, inside its move button", async () => {
+    const picks = [
+      card("p1", "Thundertrap Trainer", { colors: ["U"], mana_value: 2, rating: LANDS }),
+      card("p2", "Mindwhisker", { colors: ["U"], rating: { source: "c2", value: 2.1 } }),
+    ];
+    const c = await open(
+      view({
+        state: "done",
+        phase: "building",
+        pack: undefined,
+        take: 0,
+        deadline: undefined,
+        now: undefined,
+        picks,
+        pool: picks,
+        build: {
+          deadline: "2026-11-11T19:15:00Z",
+          now: "2026-11-11T19:00:00Z",
+          seconds: 900,
+          deck_min: 40,
+          submitted: false,
+        },
+      }),
+    );
+    const badges = [
+      ...c.querySelectorAll('[data-testid="draft-deck"] button [data-testid="rating-badge"]'),
+    ];
+    expect(badges.map((b) => b.getAttribute("data-source")).sort()).toEqual(["17lands", "c2"]);
+    expect(c.querySelectorAll('[data-testid="ratings-bar"]').length).toBe(1);
+    // The pairs are still there, after the stage, for the wide layout to put on the left.
+    const stage = c.querySelector(".stage")!;
+    const pairs = c.querySelector('[data-testid="draft-pairs"]')!;
+    expect(stage.compareDocumentPosition(pairs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(stage.contains(pairs)).toBe(false);
+  });
+
+  it("keeps the colour-pair panel closed once the viewer closed it", async () => {
+    try {
+      localStorage.removeItem("c2.draft.archetypes");
+    } catch {
+      // no storage: the panel stays open, which the first assertion allows
+    }
+    const c = await open(rated());
+    const details = c.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!;
+    expect(details.open).toBe(true);
+    details.open = false;
+    details.dispatchEvent(new Event("toggle"));
+    flushSync();
+    expect(localStorage.getItem("c2.draft.archetypes")).toBe("closed");
+    cleanup();
+
+    const again = await open(rated());
+    expect(again.querySelector<HTMLDetailsElement>('[data-testid="archetypes-panel"]')!.open).toBe(
+      false,
+    );
+    localStorage.removeItem("c2.draft.archetypes");
   });
 });
 

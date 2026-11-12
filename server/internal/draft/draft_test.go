@@ -586,7 +586,12 @@ func TestRandomPickerIsAFunctionOfTheSeedAndThePick(t *testing.T) {
 func collectStrings(v any, out map[string]bool) {
 	switch x := v.(type) {
 	case map[string]any:
-		for _, e := range x {
+		for k, e := range x {
+			// A card's rating (ratings.go) is its source and numbers: the
+			// source "c2" is no card ID.
+			if k == "rating" {
+				continue
+			}
 			collectStrings(e, out)
 		}
 	case []any:
