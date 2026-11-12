@@ -644,6 +644,33 @@ the `*Game` they receive, so undo operates on the restored game.
 another roll trigger is still pending. See ADR 0054 and the random card
 tests for compositions; clear any caveat made stale by the new mechanic.
 
+**A roll's modifier and its natural result** (#5681, CR 706.2). "Roll a
+d20 and add the number of cards in your hand" puts the number in
+`RollDice{…, Modifier: n}` (negative for "subtract"), read as the effect
+resolves; never add it inside the tail. The roll is then announced with
+both: on each `EventRollDie`, `Amount` is the natural result (the number
+the die shows) and `Modifier` the instruction's, and `ev.RollResult()` is
+their sum. The tail reads the result of the die as `DiceResult(o)` (a
+`CardTail`; `o.Rolls` stay natural, `o.RollModifier` is the modifier) and
+reads `o.Tail.N` / `o.Tail.Carry` for anything else it was handed
+(`RollDice.TailN`, `.TailCarry`). A results table has no row below 1
+unless the card prints one (The Deck of Many Things' "0 or less").
+
+- "If any of those results was 10 or higher" (Farideh) is a
+  `WheneverYouRollDice` effect that walks `RolledDice(g, item)` and tests
+  `RollResult()`. The helper's `total` is the sum of the results.
+- "Whenever you roll a die's highest natural result" (Netherese
+  Puzzle-Ward) is `On(game.EventRollDie, YouRolledADiesHighestNaturalResult, …)`:
+  once per kept die. "When you roll a natural 20" (Critical Hit) tests
+  `ev.Amount == 20` the same way. Natural-result triggers never read the
+  modifier.
+- "If you would roll one or more dice, instead roll that many dice plus
+  one and ignore the lowest roll" (Pixie Guide, Barbarian Class) is
+  `Replacements: []game.ReplacementEffect{RollOneMoreDieAndIgnoreTheLowest("<card>")}`.
+  Nobody is asked, two of them stack, and planar dice are left alone
+  (CR 706.7). "…and ignore one" with a chooser is Ichor Elixir's
+  `ev.RollOneMoreAndIgnoreOne`.
+
 ### Adding a mana ability (S15+)
 
 Mana abilities live on the same `Spec{}` struct via the optional
