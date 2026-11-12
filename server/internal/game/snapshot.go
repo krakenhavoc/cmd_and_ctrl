@@ -1405,6 +1405,16 @@ type cardSnapshot struct {
 	// nothing about it.
 	Suspected   bool  `json:"suspected,omitempty"`
 	SuspectedAt int64 `json:"suspectedAt,omitempty"`
+	// PairedWith is the creature a soulbond ability paired this one with
+	// (CR 702.95b, #5675), carried for Monstrous's reason: "unpaired" is
+	// a legal zero value, so a restore that dropped it would take the
+	// pair's shared ability away and say nothing about it. Additive.
+	PairedWith uuid.UUID `json:"pairedWith,omitempty"`
+	// LostKeywords are the printed keywords a copy exception took away
+	// (CR 707.9b, #5675), carried for ColorCDADropped's reason: a
+	// restore that dropped it would hand a token copy its keyword back.
+	// Additive.
+	LostKeywords []string `json:"lostKeywords,omitempty"`
 	// RingBearer is the CR 701.54b Ring-bearer designation and
 	// RingTemptations the Ring emblem's count of temptations (ADR 0114
 	// §8), both carried for Monstrous's reason: each zero value is a
@@ -3201,6 +3211,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,
@@ -4357,6 +4369,8 @@ func restoreCard(c *cardSnapshot) Card {
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
 		SuspectedAt:              c.SuspectedAt,
+		PairedWith:               c.PairedWith,
+		LostKeywords:             append([]string(nil), c.LostKeywords...),
 		RingBearer:               c.RingBearer,
 		RingTemptations:          c.RingTemptations,
 		Unlocked:                 c.Unlocked,

@@ -133,6 +133,8 @@ battlefield.cards[].durationCopyBase.GrantedAbilities[]	string
 battlefield.cards[].durationCopyBase.Keywords	array
 battlefield.cards[].durationCopyBase.Keywords[]	string
 battlefield.cards[].durationCopyBase.Layout	string
+battlefield.cards[].durationCopyBase.LostKeywords	array
+battlefield.cards[].durationCopyBase.LostKeywords[]	string
 battlefield.cards[].durationCopyBase.ManaAbilityText	number:uint8
 battlefield.cards[].durationCopyBase.ManaCost	string
 battlefield.cards[].durationCopyBase.Name	string
@@ -228,6 +230,8 @@ battlefield.cards[].layout	string
 battlefield.cards[].linkedPermanent	object
 battlefield.cards[].linkedPermanent.epoch	number:int
 battlefield.cards[].linkedPermanent.id	custom(uuid.UUID)
+battlefield.cards[].lostKeywords	array
+battlefield.cards[].lostKeywords[]	string
 battlefield.cards[].lostLastCounter	bool
 battlefield.cards[].manaAbilityCount	number:int
 battlefield.cards[].manaAbilityText	number:uint8
@@ -295,6 +299,7 @@ battlefield.cards[].noAbilitiesText	number:uint8
 battlefield.cards[].objectEpoch	number:int
 battlefield.cards[].oracleId	string
 battlefield.cards[].owner	custom(uuid.UUID)
+battlefield.cards[].pairedWith	custom(uuid.UUID)
 battlefield.cards[].phaseInBarredBy	custom(uuid.UUID)
 battlefield.cards[].phaseInBarredEpoch	number:int
 battlefield.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -335,6 +340,8 @@ battlefield.cards[].printedSelf.GrantedAbilities[]	string
 battlefield.cards[].printedSelf.Keywords	array
 battlefield.cards[].printedSelf.Keywords[]	string
 battlefield.cards[].printedSelf.Layout	string
+battlefield.cards[].printedSelf.LostKeywords	array
+battlefield.cards[].printedSelf.LostKeywords[]	string
 battlefield.cards[].printedSelf.ManaAbilityText	number:uint8
 battlefield.cards[].printedSelf.ManaCost	string
 battlefield.cards[].printedSelf.Name	string
@@ -696,6 +703,8 @@ enteringTokens[].durationCopyBase.GrantedAbilities[]	string
 enteringTokens[].durationCopyBase.Keywords	array
 enteringTokens[].durationCopyBase.Keywords[]	string
 enteringTokens[].durationCopyBase.Layout	string
+enteringTokens[].durationCopyBase.LostKeywords	array
+enteringTokens[].durationCopyBase.LostKeywords[]	string
 enteringTokens[].durationCopyBase.ManaAbilityText	number:uint8
 enteringTokens[].durationCopyBase.ManaCost	string
 enteringTokens[].durationCopyBase.Name	string
@@ -791,6 +800,8 @@ enteringTokens[].layout	string
 enteringTokens[].linkedPermanent	object
 enteringTokens[].linkedPermanent.epoch	number:int
 enteringTokens[].linkedPermanent.id	custom(uuid.UUID)
+enteringTokens[].lostKeywords	array
+enteringTokens[].lostKeywords[]	string
 enteringTokens[].lostLastCounter	bool
 enteringTokens[].manaAbilityCount	number:int
 enteringTokens[].manaAbilityText	number:uint8
@@ -858,6 +869,7 @@ enteringTokens[].noAbilitiesText	number:uint8
 enteringTokens[].objectEpoch	number:int
 enteringTokens[].oracleId	string
 enteringTokens[].owner	custom(uuid.UUID)
+enteringTokens[].pairedWith	custom(uuid.UUID)
 enteringTokens[].phaseInBarredBy	custom(uuid.UUID)
 enteringTokens[].phaseInBarredEpoch	number:int
 enteringTokens[].phaseInBarredFor	custom(uuid.UUID)
@@ -898,6 +910,8 @@ enteringTokens[].printedSelf.GrantedAbilities[]	string
 enteringTokens[].printedSelf.Keywords	array
 enteringTokens[].printedSelf.Keywords[]	string
 enteringTokens[].printedSelf.Layout	string
+enteringTokens[].printedSelf.LostKeywords	array
+enteringTokens[].printedSelf.LostKeywords[]	string
 enteringTokens[].printedSelf.ManaAbilityText	number:uint8
 enteringTokens[].printedSelf.ManaCost	string
 enteringTokens[].printedSelf.Name	string
@@ -1222,6 +1236,8 @@ exile.cards[].durationCopyBase.GrantedAbilities[]	string
 exile.cards[].durationCopyBase.Keywords	array
 exile.cards[].durationCopyBase.Keywords[]	string
 exile.cards[].durationCopyBase.Layout	string
+exile.cards[].durationCopyBase.LostKeywords	array
+exile.cards[].durationCopyBase.LostKeywords[]	string
 exile.cards[].durationCopyBase.ManaAbilityText	number:uint8
 exile.cards[].durationCopyBase.ManaCost	string
 exile.cards[].durationCopyBase.Name	string
@@ -1317,6 +1333,8 @@ exile.cards[].layout	string
 exile.cards[].linkedPermanent	object
 exile.cards[].linkedPermanent.epoch	number:int
 exile.cards[].linkedPermanent.id	custom(uuid.UUID)
+exile.cards[].lostKeywords	array
+exile.cards[].lostKeywords[]	string
 exile.cards[].lostLastCounter	bool
 exile.cards[].manaAbilityCount	number:int
 exile.cards[].manaAbilityText	number:uint8
@@ -1384,6 +1402,7 @@ exile.cards[].noAbilitiesText	number:uint8
 exile.cards[].objectEpoch	number:int
 exile.cards[].oracleId	string
 exile.cards[].owner	custom(uuid.UUID)
+exile.cards[].pairedWith	custom(uuid.UUID)
 exile.cards[].phaseInBarredBy	custom(uuid.UUID)
 exile.cards[].phaseInBarredEpoch	number:int
 exile.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -1424,6 +1443,8 @@ exile.cards[].printedSelf.GrantedAbilities[]	string
 exile.cards[].printedSelf.Keywords	array
 exile.cards[].printedSelf.Keywords[]	string
 exile.cards[].printedSelf.Layout	string
+exile.cards[].printedSelf.LostKeywords	array
+exile.cards[].printedSelf.LostKeywords[]	string
 exile.cards[].printedSelf.ManaAbilityText	number:uint8
 exile.cards[].printedSelf.ManaCost	string
 exile.cards[].printedSelf.Name	string
@@ -1623,6 +1644,8 @@ extraTurns[].effects[].mods[].copy[].GrantedAbilities[]	string
 extraTurns[].effects[].mods[].copy[].Keywords	array
 extraTurns[].effects[].mods[].copy[].Keywords[]	string
 extraTurns[].effects[].mods[].copy[].Layout	string
+extraTurns[].effects[].mods[].copy[].LostKeywords	array
+extraTurns[].effects[].mods[].copy[].LostKeywords[]	string
 extraTurns[].effects[].mods[].copy[].ManaAbilityText	number:uint8
 extraTurns[].effects[].mods[].copy[].ManaCost	string
 extraTurns[].effects[].mods[].copy[].Name	string
@@ -2254,6 +2277,8 @@ followUpParks[].then.records[].mods[].copy[].GrantedAbilities[]	string
 followUpParks[].then.records[].mods[].copy[].Keywords	array
 followUpParks[].then.records[].mods[].copy[].Keywords[]	string
 followUpParks[].then.records[].mods[].copy[].Layout	string
+followUpParks[].then.records[].mods[].copy[].LostKeywords	array
+followUpParks[].then.records[].mods[].copy[].LostKeywords[]	string
 followUpParks[].then.records[].mods[].copy[].ManaAbilityText	number:uint8
 followUpParks[].then.records[].mods[].copy[].ManaCost	string
 followUpParks[].then.records[].mods[].copy[].Name	string
@@ -2915,6 +2940,8 @@ frozenEntries[].event.counterTail.then.records[].mods[].copy[].GrantedAbilities[
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.counterTail.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.counterTail.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.counterTail.then.records[].mods[].copy[].Name	string
@@ -3554,6 +3581,8 @@ frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].GrantedAbilit
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].Layout	string
+frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.damageTail.each.each.records[].mods[].copy[].Name	string
@@ -4184,6 +4213,8 @@ frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].GrantedAbilit
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.damageTail.each.then.records[].mods[].copy[].Name	string
@@ -4997,6 +5028,8 @@ frozenEntries[].event.damageTail.then.records[].mods[].copy[].GrantedAbilities[]
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.damageTail.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.damageTail.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.damageTail.then.records[].mods[].copy[].Name	string
@@ -5231,6 +5264,8 @@ frozenEntries[].event.entersAsCopyOf.GrantedAbilities[]	string
 frozenEntries[].event.entersAsCopyOf.Keywords	array
 frozenEntries[].event.entersAsCopyOf.Keywords[]	string
 frozenEntries[].event.entersAsCopyOf.Layout	string
+frozenEntries[].event.entersAsCopyOf.LostKeywords	array
+frozenEntries[].event.entersAsCopyOf.LostKeywords[]	string
 frozenEntries[].event.entersAsCopyOf.ManaAbilityText	number:uint8
 frozenEntries[].event.entersAsCopyOf.ManaCost	string
 frozenEntries[].event.entersAsCopyOf.Name	string
@@ -5748,6 +5783,8 @@ frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Name	string
@@ -6454,6 +6491,8 @@ frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].GrantedAbilit
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.entryTail.batch.then.records[].mods[].copy[].Name	string
@@ -7084,6 +7123,8 @@ frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].GrantedAbilities[]
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].Layout	string
+frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.entryTail.keyed.records[].mods[].copy[].Name	string
@@ -7747,6 +7788,8 @@ frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].Gra
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].Layout	string
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.entryTail.search.spec.thenTail.records[].mods[].copy[].Name	string
@@ -8397,6 +8440,8 @@ frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].GrantedAbili
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.entryTail.tokens.then.records[].mods[].copy[].Name	string
@@ -8680,6 +8725,8 @@ frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.GrantedAbilit
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.Keywords	array
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.Keywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.Layout	string
+frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.LostKeywords	array
+frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.ManaCost	string
 frozenEntries[].event.keywordActionTail.armyToken.durationCopyBase.Name	string
@@ -8775,6 +8822,8 @@ frozenEntries[].event.keywordActionTail.armyToken.layout	string
 frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent	object
 frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent.epoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.lostKeywords	array
+frozenEntries[].event.keywordActionTail.armyToken.lostKeywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.lostLastCounter	bool
 frozenEntries[].event.keywordActionTail.armyToken.manaAbilityCount	number:int
 frozenEntries[].event.keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -8842,6 +8891,7 @@ frozenEntries[].event.keywordActionTail.armyToken.noAbilitiesText	number:uint8
 frozenEntries[].event.keywordActionTail.armyToken.objectEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.oracleId	string
 frozenEntries[].event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
+frozenEntries[].event.keywordActionTail.armyToken.pairedWith	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 frozenEntries[].event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
@@ -8882,6 +8932,8 @@ frozenEntries[].event.keywordActionTail.armyToken.printedSelf.GrantedAbilities[]
 frozenEntries[].event.keywordActionTail.armyToken.printedSelf.Keywords	array
 frozenEntries[].event.keywordActionTail.armyToken.printedSelf.Keywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.printedSelf.Layout	string
+frozenEntries[].event.keywordActionTail.armyToken.printedSelf.LostKeywords	array
+frozenEntries[].event.keywordActionTail.armyToken.printedSelf.LostKeywords[]	string
 frozenEntries[].event.keywordActionTail.armyToken.printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.keywordActionTail.armyToken.printedSelf.ManaCost	string
 frozenEntries[].event.keywordActionTail.armyToken.printedSelf.Name	string
@@ -9465,6 +9517,8 @@ frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].GrantedAbil
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.keywordActionTail.then.records[].mods[].copy[].Name	string
@@ -10118,6 +10172,8 @@ frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].GrantedAbilitie
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.lifeTail.each.then.records[].mods[].copy[].Name	string
@@ -10751,6 +10807,8 @@ frozenEntries[].event.lifeTail.then.records[].mods[].copy[].GrantedAbilities[]	s
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.lifeTail.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.lifeTail.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.lifeTail.then.records[].mods[].copy[].Name	string
@@ -11022,6 +11080,8 @@ frozenEntries[].event.millTail.run.planned[].durationCopyBase.GrantedAbilities[]
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.Keywords	array
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.Keywords[]	string
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.Layout	string
+frozenEntries[].event.millTail.run.planned[].durationCopyBase.LostKeywords	array
+frozenEntries[].event.millTail.run.planned[].durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.ManaCost	string
 frozenEntries[].event.millTail.run.planned[].durationCopyBase.Name	string
@@ -11117,6 +11177,8 @@ frozenEntries[].event.millTail.run.planned[].layout	string
 frozenEntries[].event.millTail.run.planned[].linkedPermanent	object
 frozenEntries[].event.millTail.run.planned[].linkedPermanent.epoch	number:int
 frozenEntries[].event.millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].lostKeywords	array
+frozenEntries[].event.millTail.run.planned[].lostKeywords[]	string
 frozenEntries[].event.millTail.run.planned[].lostLastCounter	bool
 frozenEntries[].event.millTail.run.planned[].manaAbilityCount	number:int
 frozenEntries[].event.millTail.run.planned[].manaAbilityText	number:uint8
@@ -11184,6 +11246,7 @@ frozenEntries[].event.millTail.run.planned[].noAbilitiesText	number:uint8
 frozenEntries[].event.millTail.run.planned[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].oracleId	string
 frozenEntries[].event.millTail.run.planned[].owner	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.planned[].pairedWith	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -11224,6 +11287,8 @@ frozenEntries[].event.millTail.run.planned[].printedSelf.GrantedAbilities[]	stri
 frozenEntries[].event.millTail.run.planned[].printedSelf.Keywords	array
 frozenEntries[].event.millTail.run.planned[].printedSelf.Keywords[]	string
 frozenEntries[].event.millTail.run.planned[].printedSelf.Layout	string
+frozenEntries[].event.millTail.run.planned[].printedSelf.LostKeywords	array
+frozenEntries[].event.millTail.run.planned[].printedSelf.LostKeywords[]	string
 frozenEntries[].event.millTail.run.planned[].printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.millTail.run.planned[].printedSelf.ManaCost	string
 frozenEntries[].event.millTail.run.planned[].printedSelf.Name	string
@@ -11437,6 +11502,8 @@ frozenEntries[].event.millTail.run.seen[].durationCopyBase.GrantedAbilities[]	st
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.Keywords	array
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.Keywords[]	string
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.Layout	string
+frozenEntries[].event.millTail.run.seen[].durationCopyBase.LostKeywords	array
+frozenEntries[].event.millTail.run.seen[].durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.ManaCost	string
 frozenEntries[].event.millTail.run.seen[].durationCopyBase.Name	string
@@ -11532,6 +11599,8 @@ frozenEntries[].event.millTail.run.seen[].layout	string
 frozenEntries[].event.millTail.run.seen[].linkedPermanent	object
 frozenEntries[].event.millTail.run.seen[].linkedPermanent.epoch	number:int
 frozenEntries[].event.millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].lostKeywords	array
+frozenEntries[].event.millTail.run.seen[].lostKeywords[]	string
 frozenEntries[].event.millTail.run.seen[].lostLastCounter	bool
 frozenEntries[].event.millTail.run.seen[].manaAbilityCount	number:int
 frozenEntries[].event.millTail.run.seen[].manaAbilityText	number:uint8
@@ -11599,6 +11668,7 @@ frozenEntries[].event.millTail.run.seen[].noAbilitiesText	number:uint8
 frozenEntries[].event.millTail.run.seen[].objectEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].oracleId	string
 frozenEntries[].event.millTail.run.seen[].owner	custom(uuid.UUID)
+frozenEntries[].event.millTail.run.seen[].pairedWith	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.millTail.run.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -11639,6 +11709,8 @@ frozenEntries[].event.millTail.run.seen[].printedSelf.GrantedAbilities[]	string
 frozenEntries[].event.millTail.run.seen[].printedSelf.Keywords	array
 frozenEntries[].event.millTail.run.seen[].printedSelf.Keywords[]	string
 frozenEntries[].event.millTail.run.seen[].printedSelf.Layout	string
+frozenEntries[].event.millTail.run.seen[].printedSelf.LostKeywords	array
+frozenEntries[].event.millTail.run.seen[].printedSelf.LostKeywords[]	string
 frozenEntries[].event.millTail.run.seen[].printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.millTail.run.seen[].printedSelf.ManaCost	string
 frozenEntries[].event.millTail.run.seen[].printedSelf.Name	string
@@ -12215,6 +12287,8 @@ frozenEntries[].event.millTail.run.then.records[].mods[].copy[].GrantedAbilities
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.millTail.run.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.millTail.run.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.millTail.run.then.records[].mods[].copy[].Name	string
@@ -12843,6 +12917,8 @@ frozenEntries[].event.millTail.then.records[].mods[].copy[].GrantedAbilities[]	s
 frozenEntries[].event.millTail.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.millTail.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.millTail.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.millTail.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.millTail.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.millTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.millTail.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.millTail.then.records[].mods[].copy[].Name	string
@@ -13683,6 +13759,8 @@ frozenEntries[].event.tokenGroups[].template.durationCopyBase.GrantedAbilities[]
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.Keywords	array
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.Keywords[]	string
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.Layout	string
+frozenEntries[].event.tokenGroups[].template.durationCopyBase.LostKeywords	array
+frozenEntries[].event.tokenGroups[].template.durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.ManaCost	string
 frozenEntries[].event.tokenGroups[].template.durationCopyBase.Name	string
@@ -13778,6 +13856,8 @@ frozenEntries[].event.tokenGroups[].template.layout	string
 frozenEntries[].event.tokenGroups[].template.linkedPermanent	object
 frozenEntries[].event.tokenGroups[].template.linkedPermanent.epoch	number:int
 frozenEntries[].event.tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.lostKeywords	array
+frozenEntries[].event.tokenGroups[].template.lostKeywords[]	string
 frozenEntries[].event.tokenGroups[].template.lostLastCounter	bool
 frozenEntries[].event.tokenGroups[].template.manaAbilityCount	number:int
 frozenEntries[].event.tokenGroups[].template.manaAbilityText	number:uint8
@@ -13845,6 +13925,7 @@ frozenEntries[].event.tokenGroups[].template.noAbilitiesText	number:uint8
 frozenEntries[].event.tokenGroups[].template.objectEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.oracleId	string
 frozenEntries[].event.tokenGroups[].template.owner	custom(uuid.UUID)
+frozenEntries[].event.tokenGroups[].template.pairedWith	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokenGroups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -13885,6 +13966,8 @@ frozenEntries[].event.tokenGroups[].template.printedSelf.GrantedAbilities[]	stri
 frozenEntries[].event.tokenGroups[].template.printedSelf.Keywords	array
 frozenEntries[].event.tokenGroups[].template.printedSelf.Keywords[]	string
 frozenEntries[].event.tokenGroups[].template.printedSelf.Layout	string
+frozenEntries[].event.tokenGroups[].template.printedSelf.LostKeywords	array
+frozenEntries[].event.tokenGroups[].template.printedSelf.LostKeywords[]	string
 frozenEntries[].event.tokenGroups[].template.printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.tokenGroups[].template.printedSelf.ManaCost	string
 frozenEntries[].event.tokenGroups[].template.printedSelf.Name	string
@@ -14462,6 +14545,8 @@ frozenEntries[].event.tokenTail.then.records[].mods[].copy[].GrantedAbilities[]	
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.tokenTail.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.tokenTail.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.tokenTail.then.records[].mods[].copy[].Name	string
@@ -14748,6 +14833,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.Grant
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.Keywords	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.Keywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.Layout	string
+frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.LostKeywords	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.ManaCost	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.durationCopyBase.Name	string
@@ -14843,6 +14930,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.layout	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.linkedPermanent	object
 frozenEntries[].event.tokensAfterMove[].groups[].template.linkedPermanent.epoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.lostKeywords	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.lostKeywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.lostLastCounter	bool
 frozenEntries[].event.tokensAfterMove[].groups[].template.manaAbilityCount	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.manaAbilityText	number:uint8
@@ -14910,6 +14999,7 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.noAbilitiesText	number
 frozenEntries[].event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.oracleId	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
+frozenEntries[].event.tokensAfterMove[].groups[].template.pairedWith	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 frozenEntries[].event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -14950,6 +15040,8 @@ frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.GrantedAbi
 frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.Keywords	array
 frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.Keywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.Layout	string
+frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.LostKeywords	array
+frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.LostKeywords[]	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.ManaCost	string
 frozenEntries[].event.tokensAfterMove[].groups[].template.printedSelf.Name	string
@@ -15176,6 +15268,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Grante
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Name	string
@@ -15271,6 +15365,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].layout	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].lostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].lostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -15338,6 +15434,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].pairedWith	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -15378,6 +15475,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.GrantedAbil
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.planned[].printedSelf.Name	string
@@ -15591,6 +15690,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.GrantedAb
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Name	string
@@ -15686,6 +15787,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].layout	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].lostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].lostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -15753,6 +15856,7 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uin
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].pairedWith	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -15793,6 +15897,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.GrantedAbiliti
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.seen[].printedSelf.Name	string
@@ -16369,6 +16475,8 @@ frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Gran
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Name	string
@@ -17032,6 +17140,8 @@ frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Name	string
@@ -17660,6 +17770,8 @@ frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].GrantedAb
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.zoneRoute.batchLegs.then.records[].mods[].copy[].Name	string
@@ -18308,6 +18420,8 @@ frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].Granted
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.zoneRoute.discardLegs.then.records[].mods[].copy[].Name	string
@@ -18508,6 +18622,8 @@ frozenEntries[].event.zoneRoute.exchange.copy.GrantedAbilities[]	string
 frozenEntries[].event.zoneRoute.exchange.copy.Keywords	array
 frozenEntries[].event.zoneRoute.exchange.copy.Keywords[]	string
 frozenEntries[].event.zoneRoute.exchange.copy.Layout	string
+frozenEntries[].event.zoneRoute.exchange.copy.LostKeywords	array
+frozenEntries[].event.zoneRoute.exchange.copy.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.exchange.copy.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.exchange.copy.ManaCost	string
 frozenEntries[].event.zoneRoute.exchange.copy.Name	string
@@ -19023,6 +19139,8 @@ frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Grante
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Keywords	array
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Keywords[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Layout	string
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].LostKeywords	array
+frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].LostKeywords[]	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].ManaCost	string
 frozenEntries[].event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Name	string
@@ -19289,6 +19407,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.GrantedAbili
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.Keywords	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.Keywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.Layout	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.LostKeywords	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.ManaCost	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].durationCopyBase.Name	string
@@ -19384,6 +19504,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].layout	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent	object
 frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].lostKeywords	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].lostKeywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].lostLastCounter	bool
 frozenEntries[].event.zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -19451,6 +19573,7 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
 frozenEntries[].event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].oracleId	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
+frozenEntries[].event.zoneRoute.simultaneousExit[].pairedWith	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 frozenEntries[].event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
@@ -19491,6 +19614,8 @@ frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.GrantedAbilities[
 frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.Keywords	array
 frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.Keywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.Layout	string
+frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.LostKeywords	array
+frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.LostKeywords[]	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.ManaAbilityText	number:uint8
 frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.ManaCost	string
 frozenEntries[].event.zoneRoute.simultaneousExit[].printedSelf.Name	string
@@ -20208,6 +20333,8 @@ lastKnownPermanents{}[].copiable.GrantedAbilities[]	string
 lastKnownPermanents{}[].copiable.Keywords	array
 lastKnownPermanents{}[].copiable.Keywords[]	string
 lastKnownPermanents{}[].copiable.Layout	string
+lastKnownPermanents{}[].copiable.LostKeywords	array
+lastKnownPermanents{}[].copiable.LostKeywords[]	string
 lastKnownPermanents{}[].copiable.ManaAbilityText	number:uint8
 lastKnownPermanents{}[].copiable.ManaCost	string
 lastKnownPermanents{}[].copiable.Name	string
@@ -20354,6 +20481,8 @@ lastKnownStack[].card.durationCopyBase.GrantedAbilities[]	string
 lastKnownStack[].card.durationCopyBase.Keywords	array
 lastKnownStack[].card.durationCopyBase.Keywords[]	string
 lastKnownStack[].card.durationCopyBase.Layout	string
+lastKnownStack[].card.durationCopyBase.LostKeywords	array
+lastKnownStack[].card.durationCopyBase.LostKeywords[]	string
 lastKnownStack[].card.durationCopyBase.ManaAbilityText	number:uint8
 lastKnownStack[].card.durationCopyBase.ManaCost	string
 lastKnownStack[].card.durationCopyBase.Name	string
@@ -20449,6 +20578,8 @@ lastKnownStack[].card.layout	string
 lastKnownStack[].card.linkedPermanent	object
 lastKnownStack[].card.linkedPermanent.epoch	number:int
 lastKnownStack[].card.linkedPermanent.id	custom(uuid.UUID)
+lastKnownStack[].card.lostKeywords	array
+lastKnownStack[].card.lostKeywords[]	string
 lastKnownStack[].card.lostLastCounter	bool
 lastKnownStack[].card.manaAbilityCount	number:int
 lastKnownStack[].card.manaAbilityText	number:uint8
@@ -20516,6 +20647,7 @@ lastKnownStack[].card.noAbilitiesText	number:uint8
 lastKnownStack[].card.objectEpoch	number:int
 lastKnownStack[].card.oracleId	string
 lastKnownStack[].card.owner	custom(uuid.UUID)
+lastKnownStack[].card.pairedWith	custom(uuid.UUID)
 lastKnownStack[].card.phaseInBarredBy	custom(uuid.UUID)
 lastKnownStack[].card.phaseInBarredEpoch	number:int
 lastKnownStack[].card.phaseInBarredFor	custom(uuid.UUID)
@@ -20556,6 +20688,8 @@ lastKnownStack[].card.printedSelf.GrantedAbilities[]	string
 lastKnownStack[].card.printedSelf.Keywords	array
 lastKnownStack[].card.printedSelf.Keywords[]	string
 lastKnownStack[].card.printedSelf.Layout	string
+lastKnownStack[].card.printedSelf.LostKeywords	array
+lastKnownStack[].card.printedSelf.LostKeywords[]	string
 lastKnownStack[].card.printedSelf.ManaAbilityText	number:uint8
 lastKnownStack[].card.printedSelf.ManaCost	string
 lastKnownStack[].card.printedSelf.Name	string
@@ -21244,6 +21378,8 @@ match.decks[].fixed[].durationCopyBase.GrantedAbilities[]	string
 match.decks[].fixed[].durationCopyBase.Keywords	array
 match.decks[].fixed[].durationCopyBase.Keywords[]	string
 match.decks[].fixed[].durationCopyBase.Layout	string
+match.decks[].fixed[].durationCopyBase.LostKeywords	array
+match.decks[].fixed[].durationCopyBase.LostKeywords[]	string
 match.decks[].fixed[].durationCopyBase.ManaAbilityText	number:uint8
 match.decks[].fixed[].durationCopyBase.ManaCost	string
 match.decks[].fixed[].durationCopyBase.Name	string
@@ -21339,6 +21475,8 @@ match.decks[].fixed[].layout	string
 match.decks[].fixed[].linkedPermanent	object
 match.decks[].fixed[].linkedPermanent.epoch	number:int
 match.decks[].fixed[].linkedPermanent.id	custom(uuid.UUID)
+match.decks[].fixed[].lostKeywords	array
+match.decks[].fixed[].lostKeywords[]	string
 match.decks[].fixed[].lostLastCounter	bool
 match.decks[].fixed[].manaAbilityCount	number:int
 match.decks[].fixed[].manaAbilityText	number:uint8
@@ -21406,6 +21544,7 @@ match.decks[].fixed[].noAbilitiesText	number:uint8
 match.decks[].fixed[].objectEpoch	number:int
 match.decks[].fixed[].oracleId	string
 match.decks[].fixed[].owner	custom(uuid.UUID)
+match.decks[].fixed[].pairedWith	custom(uuid.UUID)
 match.decks[].fixed[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].fixed[].phaseInBarredEpoch	number:int
 match.decks[].fixed[].phaseInBarredFor	custom(uuid.UUID)
@@ -21446,6 +21585,8 @@ match.decks[].fixed[].printedSelf.GrantedAbilities[]	string
 match.decks[].fixed[].printedSelf.Keywords	array
 match.decks[].fixed[].printedSelf.Keywords[]	string
 match.decks[].fixed[].printedSelf.Layout	string
+match.decks[].fixed[].printedSelf.LostKeywords	array
+match.decks[].fixed[].printedSelf.LostKeywords[]	string
 match.decks[].fixed[].printedSelf.ManaAbilityText	number:uint8
 match.decks[].fixed[].printedSelf.ManaCost	string
 match.decks[].fixed[].printedSelf.Name	string
@@ -21657,6 +21798,8 @@ match.decks[].main[].durationCopyBase.GrantedAbilities[]	string
 match.decks[].main[].durationCopyBase.Keywords	array
 match.decks[].main[].durationCopyBase.Keywords[]	string
 match.decks[].main[].durationCopyBase.Layout	string
+match.decks[].main[].durationCopyBase.LostKeywords	array
+match.decks[].main[].durationCopyBase.LostKeywords[]	string
 match.decks[].main[].durationCopyBase.ManaAbilityText	number:uint8
 match.decks[].main[].durationCopyBase.ManaCost	string
 match.decks[].main[].durationCopyBase.Name	string
@@ -21752,6 +21895,8 @@ match.decks[].main[].layout	string
 match.decks[].main[].linkedPermanent	object
 match.decks[].main[].linkedPermanent.epoch	number:int
 match.decks[].main[].linkedPermanent.id	custom(uuid.UUID)
+match.decks[].main[].lostKeywords	array
+match.decks[].main[].lostKeywords[]	string
 match.decks[].main[].lostLastCounter	bool
 match.decks[].main[].manaAbilityCount	number:int
 match.decks[].main[].manaAbilityText	number:uint8
@@ -21819,6 +21964,7 @@ match.decks[].main[].noAbilitiesText	number:uint8
 match.decks[].main[].objectEpoch	number:int
 match.decks[].main[].oracleId	string
 match.decks[].main[].owner	custom(uuid.UUID)
+match.decks[].main[].pairedWith	custom(uuid.UUID)
 match.decks[].main[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].main[].phaseInBarredEpoch	number:int
 match.decks[].main[].phaseInBarredFor	custom(uuid.UUID)
@@ -21859,6 +22005,8 @@ match.decks[].main[].printedSelf.GrantedAbilities[]	string
 match.decks[].main[].printedSelf.Keywords	array
 match.decks[].main[].printedSelf.Keywords[]	string
 match.decks[].main[].printedSelf.Layout	string
+match.decks[].main[].printedSelf.LostKeywords	array
+match.decks[].main[].printedSelf.LostKeywords[]	string
 match.decks[].main[].printedSelf.ManaAbilityText	number:uint8
 match.decks[].main[].printedSelf.ManaCost	string
 match.decks[].main[].printedSelf.Name	string
@@ -22073,6 +22221,8 @@ match.decks[].side[].durationCopyBase.GrantedAbilities[]	string
 match.decks[].side[].durationCopyBase.Keywords	array
 match.decks[].side[].durationCopyBase.Keywords[]	string
 match.decks[].side[].durationCopyBase.Layout	string
+match.decks[].side[].durationCopyBase.LostKeywords	array
+match.decks[].side[].durationCopyBase.LostKeywords[]	string
 match.decks[].side[].durationCopyBase.ManaAbilityText	number:uint8
 match.decks[].side[].durationCopyBase.ManaCost	string
 match.decks[].side[].durationCopyBase.Name	string
@@ -22168,6 +22318,8 @@ match.decks[].side[].layout	string
 match.decks[].side[].linkedPermanent	object
 match.decks[].side[].linkedPermanent.epoch	number:int
 match.decks[].side[].linkedPermanent.id	custom(uuid.UUID)
+match.decks[].side[].lostKeywords	array
+match.decks[].side[].lostKeywords[]	string
 match.decks[].side[].lostLastCounter	bool
 match.decks[].side[].manaAbilityCount	number:int
 match.decks[].side[].manaAbilityText	number:uint8
@@ -22235,6 +22387,7 @@ match.decks[].side[].noAbilitiesText	number:uint8
 match.decks[].side[].objectEpoch	number:int
 match.decks[].side[].oracleId	string
 match.decks[].side[].owner	custom(uuid.UUID)
+match.decks[].side[].pairedWith	custom(uuid.UUID)
 match.decks[].side[].phaseInBarredBy	custom(uuid.UUID)
 match.decks[].side[].phaseInBarredEpoch	number:int
 match.decks[].side[].phaseInBarredFor	custom(uuid.UUID)
@@ -22275,6 +22428,8 @@ match.decks[].side[].printedSelf.GrantedAbilities[]	string
 match.decks[].side[].printedSelf.Keywords	array
 match.decks[].side[].printedSelf.Keywords[]	string
 match.decks[].side[].printedSelf.Layout	string
+match.decks[].side[].printedSelf.LostKeywords	array
+match.decks[].side[].printedSelf.LostKeywords[]	string
 match.decks[].side[].printedSelf.ManaAbilityText	number:uint8
 match.decks[].side[].printedSelf.ManaCost	string
 match.decks[].side[].printedSelf.Name	string
@@ -22891,6 +23046,8 @@ movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].GrantedAbilities[
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].counterTail.then.records[].mods[].copy[].Name	string
@@ -23530,6 +23687,8 @@ movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].GrantedAbilit
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].damageTail.each.each.records[].mods[].copy[].Name	string
@@ -24160,6 +24319,8 @@ movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].GrantedAbilit
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].damageTail.each.then.records[].mods[].copy[].Name	string
@@ -24973,6 +25134,8 @@ movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].GrantedAbilities[]
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].damageTail.then.records[].mods[].copy[].Name	string
@@ -25207,6 +25370,8 @@ movesAwaitingTokens[].entersAsCopyOf.GrantedAbilities[]	string
 movesAwaitingTokens[].entersAsCopyOf.Keywords	array
 movesAwaitingTokens[].entersAsCopyOf.Keywords[]	string
 movesAwaitingTokens[].entersAsCopyOf.Layout	string
+movesAwaitingTokens[].entersAsCopyOf.LostKeywords	array
+movesAwaitingTokens[].entersAsCopyOf.LostKeywords[]	string
 movesAwaitingTokens[].entersAsCopyOf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].entersAsCopyOf.ManaCost	string
 movesAwaitingTokens[].entersAsCopyOf.Name	string
@@ -25724,6 +25889,8 @@ movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].entryTail.batch.discard.legs.then.records[].mods[].copy[].Name	string
@@ -26430,6 +26597,8 @@ movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].GrantedAbilit
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].entryTail.batch.then.records[].mods[].copy[].Name	string
@@ -27060,6 +27229,8 @@ movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].GrantedAbilities[]
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].entryTail.keyed.records[].mods[].copy[].Name	string
@@ -27723,6 +27894,8 @@ movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].Gra
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].entryTail.search.spec.thenTail.records[].mods[].copy[].Name	string
@@ -28373,6 +28546,8 @@ movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].GrantedAbili
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].entryTail.tokens.then.records[].mods[].copy[].Name	string
@@ -28656,6 +28831,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.GrantedAbilit
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.Keywords	array
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.Layout	string
+movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.ManaCost	string
 movesAwaitingTokens[].keywordActionTail.armyToken.durationCopyBase.Name	string
@@ -28751,6 +28928,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.layout	string
 movesAwaitingTokens[].keywordActionTail.armyToken.linkedPermanent	object
 movesAwaitingTokens[].keywordActionTail.armyToken.linkedPermanent.epoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.lostKeywords	array
+movesAwaitingTokens[].keywordActionTail.armyToken.lostKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.lostLastCounter	bool
 movesAwaitingTokens[].keywordActionTail.armyToken.manaAbilityCount	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -28818,6 +28997,7 @@ movesAwaitingTokens[].keywordActionTail.armyToken.noAbilitiesText	number:uint8
 movesAwaitingTokens[].keywordActionTail.armyToken.objectEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.oracleId	string
 movesAwaitingTokens[].keywordActionTail.armyToken.owner	custom(uuid.UUID)
+movesAwaitingTokens[].keywordActionTail.armyToken.pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
@@ -28858,6 +29038,8 @@ movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.GrantedAbilities[]
 movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.Keywords	array
 movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.Keywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.Layout	string
+movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.LostKeywords	array
+movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.ManaCost	string
 movesAwaitingTokens[].keywordActionTail.armyToken.printedSelf.Name	string
@@ -29441,6 +29623,8 @@ movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].GrantedAbil
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].keywordActionTail.then.records[].mods[].copy[].Name	string
@@ -30094,6 +30278,8 @@ movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].GrantedAbilitie
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].lifeTail.each.then.records[].mods[].copy[].Name	string
@@ -30727,6 +30913,8 @@ movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].GrantedAbilities[]	s
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].lifeTail.then.records[].mods[].copy[].Name	string
@@ -30998,6 +31186,8 @@ movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.GrantedAbilities[]
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.Keywords	array
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.Layout	string
+movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.ManaCost	string
 movesAwaitingTokens[].millTail.run.planned[].durationCopyBase.Name	string
@@ -31093,6 +31283,8 @@ movesAwaitingTokens[].millTail.run.planned[].layout	string
 movesAwaitingTokens[].millTail.run.planned[].linkedPermanent	object
 movesAwaitingTokens[].millTail.run.planned[].linkedPermanent.epoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].lostKeywords	array
+movesAwaitingTokens[].millTail.run.planned[].lostKeywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].lostLastCounter	bool
 movesAwaitingTokens[].millTail.run.planned[].manaAbilityCount	number:int
 movesAwaitingTokens[].millTail.run.planned[].manaAbilityText	number:uint8
@@ -31160,6 +31352,7 @@ movesAwaitingTokens[].millTail.run.planned[].noAbilitiesText	number:uint8
 movesAwaitingTokens[].millTail.run.planned[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].oracleId	string
 movesAwaitingTokens[].millTail.run.planned[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.planned[].pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -31200,6 +31393,8 @@ movesAwaitingTokens[].millTail.run.planned[].printedSelf.GrantedAbilities[]	stri
 movesAwaitingTokens[].millTail.run.planned[].printedSelf.Keywords	array
 movesAwaitingTokens[].millTail.run.planned[].printedSelf.Keywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].printedSelf.Layout	string
+movesAwaitingTokens[].millTail.run.planned[].printedSelf.LostKeywords	array
+movesAwaitingTokens[].millTail.run.planned[].printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].millTail.run.planned[].printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].millTail.run.planned[].printedSelf.ManaCost	string
 movesAwaitingTokens[].millTail.run.planned[].printedSelf.Name	string
@@ -31413,6 +31608,8 @@ movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.GrantedAbilities[]	st
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.Keywords	array
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.Layout	string
+movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.ManaCost	string
 movesAwaitingTokens[].millTail.run.seen[].durationCopyBase.Name	string
@@ -31508,6 +31705,8 @@ movesAwaitingTokens[].millTail.run.seen[].layout	string
 movesAwaitingTokens[].millTail.run.seen[].linkedPermanent	object
 movesAwaitingTokens[].millTail.run.seen[].linkedPermanent.epoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].lostKeywords	array
+movesAwaitingTokens[].millTail.run.seen[].lostKeywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].lostLastCounter	bool
 movesAwaitingTokens[].millTail.run.seen[].manaAbilityCount	number:int
 movesAwaitingTokens[].millTail.run.seen[].manaAbilityText	number:uint8
@@ -31575,6 +31774,7 @@ movesAwaitingTokens[].millTail.run.seen[].noAbilitiesText	number:uint8
 movesAwaitingTokens[].millTail.run.seen[].objectEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].oracleId	string
 movesAwaitingTokens[].millTail.run.seen[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].millTail.run.seen[].pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -31615,6 +31815,8 @@ movesAwaitingTokens[].millTail.run.seen[].printedSelf.GrantedAbilities[]	string
 movesAwaitingTokens[].millTail.run.seen[].printedSelf.Keywords	array
 movesAwaitingTokens[].millTail.run.seen[].printedSelf.Keywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].printedSelf.Layout	string
+movesAwaitingTokens[].millTail.run.seen[].printedSelf.LostKeywords	array
+movesAwaitingTokens[].millTail.run.seen[].printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].millTail.run.seen[].printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].millTail.run.seen[].printedSelf.ManaCost	string
 movesAwaitingTokens[].millTail.run.seen[].printedSelf.Name	string
@@ -32191,6 +32393,8 @@ movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].GrantedAbilities
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].millTail.run.then.records[].mods[].copy[].Name	string
@@ -32819,6 +33023,8 @@ movesAwaitingTokens[].millTail.then.records[].mods[].copy[].GrantedAbilities[]	s
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].millTail.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].millTail.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].millTail.then.records[].mods[].copy[].Name	string
@@ -33659,6 +33865,8 @@ movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.GrantedAbilities[]
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.Keywords	array
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.Layout	string
+movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.ManaCost	string
 movesAwaitingTokens[].tokenGroups[].template.durationCopyBase.Name	string
@@ -33754,6 +33962,8 @@ movesAwaitingTokens[].tokenGroups[].template.layout	string
 movesAwaitingTokens[].tokenGroups[].template.linkedPermanent	object
 movesAwaitingTokens[].tokenGroups[].template.linkedPermanent.epoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.lostKeywords	array
+movesAwaitingTokens[].tokenGroups[].template.lostKeywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.lostLastCounter	bool
 movesAwaitingTokens[].tokenGroups[].template.manaAbilityCount	number:int
 movesAwaitingTokens[].tokenGroups[].template.manaAbilityText	number:uint8
@@ -33821,6 +34031,7 @@ movesAwaitingTokens[].tokenGroups[].template.noAbilitiesText	number:uint8
 movesAwaitingTokens[].tokenGroups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.oracleId	string
 movesAwaitingTokens[].tokenGroups[].template.owner	custom(uuid.UUID)
+movesAwaitingTokens[].tokenGroups[].template.pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -33861,6 +34072,8 @@ movesAwaitingTokens[].tokenGroups[].template.printedSelf.GrantedAbilities[]	stri
 movesAwaitingTokens[].tokenGroups[].template.printedSelf.Keywords	array
 movesAwaitingTokens[].tokenGroups[].template.printedSelf.Keywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.printedSelf.Layout	string
+movesAwaitingTokens[].tokenGroups[].template.printedSelf.LostKeywords	array
+movesAwaitingTokens[].tokenGroups[].template.printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].tokenGroups[].template.printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].tokenGroups[].template.printedSelf.ManaCost	string
 movesAwaitingTokens[].tokenGroups[].template.printedSelf.Name	string
@@ -34438,6 +34651,8 @@ movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].GrantedAbilities[]	
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].tokenTail.then.records[].mods[].copy[].Name	string
@@ -34724,6 +34939,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.Grant
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.Keywords	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.Layout	string
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.ManaCost	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.durationCopyBase.Name	string
@@ -34819,6 +35036,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.layout	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.linkedPermanent	object
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.linkedPermanent.epoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.lostKeywords	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.lostKeywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.lostLastCounter	bool
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.manaAbilityCount	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.manaAbilityText	number:uint8
@@ -34886,6 +35105,7 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.noAbilitiesText	number
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.objectEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.oracleId	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -34926,6 +35146,8 @@ movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.GrantedAbi
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.Keywords	array
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.Keywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.Layout	string
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.LostKeywords	array
+movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.ManaCost	string
 movesAwaitingTokens[].tokensAfterMove[].groups[].template.printedSelf.Name	string
@@ -35152,6 +35374,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.Grante
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].durationCopyBase.Name	string
@@ -35247,6 +35471,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].layout	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].lostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].lostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -35314,6 +35540,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].noAbilitiesText	number:
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -35354,6 +35581,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.GrantedAbil
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.planned[].printedSelf.Name	string
@@ -35567,6 +35796,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.GrantedAb
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].durationCopyBase.Name	string
@@ -35662,6 +35893,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].layout	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].lostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].lostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -35729,6 +35962,7 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].noAbilitiesText	number:uin
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].oracleId	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -35769,6 +36003,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.GrantedAbiliti
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.seen[].printedSelf.Name	string
@@ -36345,6 +36581,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Gran
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Name	string
@@ -37008,6 +37246,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Name	string
@@ -37636,6 +37876,8 @@ movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].GrantedAb
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].zoneRoute.batchLegs.then.records[].mods[].copy[].Name	string
@@ -38284,6 +38526,8 @@ movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].Granted
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].zoneRoute.discardLegs.then.records[].mods[].copy[].Name	string
@@ -38484,6 +38728,8 @@ movesAwaitingTokens[].zoneRoute.exchange.copy.GrantedAbilities[]	string
 movesAwaitingTokens[].zoneRoute.exchange.copy.Keywords	array
 movesAwaitingTokens[].zoneRoute.exchange.copy.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.exchange.copy.Layout	string
+movesAwaitingTokens[].zoneRoute.exchange.copy.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.exchange.copy.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.exchange.copy.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.exchange.copy.ManaCost	string
 movesAwaitingTokens[].zoneRoute.exchange.copy.Name	string
@@ -38999,6 +39245,8 @@ movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].Grante
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].Keywords	array
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].Keywords[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].Layout	string
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].LostKeywords	array
+movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].ManaCost	string
 movesAwaitingTokens[].zoneRoute.faceDownLegs.then.records[].mods[].copy[].Name	string
@@ -39265,6 +39513,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.GrantedAbili
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.Keywords	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.Layout	string
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.ManaCost	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].durationCopyBase.Name	string
@@ -39360,6 +39610,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].layout	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].linkedPermanent	object
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].lostKeywords	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].lostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].lostLastCounter	bool
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -39427,6 +39679,7 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].noAbilitiesText	number:uint8
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].objectEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].oracleId	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].pairedWith	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
@@ -39467,6 +39720,8 @@ movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.GrantedAbilities[
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.Keywords	array
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.Keywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.Layout	string
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.LostKeywords	array
+movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.LostKeywords[]	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.ManaAbilityText	number:uint8
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.ManaCost	string
 movesAwaitingTokens[].zoneRoute.simultaneousExit[].printedSelf.Name	string
@@ -41161,6 +41416,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.GrantedA
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.Keywords	array
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.Keywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.Layout	string
+pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.LostKeywords	array
+pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.LostKeywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.ManaCost	string
 pendingChoices[].attackSplit.settled.chosen[].template.durationCopyBase.Name	string
@@ -41256,6 +41513,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.layout	string
 pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent	object
 pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent.epoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.lostKeywords	array
+pendingChoices[].attackSplit.settled.chosen[].template.lostKeywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.lostLastCounter	bool
 pendingChoices[].attackSplit.settled.chosen[].template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.manaAbilityText	number:uint8
@@ -41323,6 +41582,7 @@ pendingChoices[].attackSplit.settled.chosen[].template.noAbilitiesText	number:ui
 pendingChoices[].attackSplit.settled.chosen[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.oracleId	string
 pendingChoices[].attackSplit.settled.chosen[].template.owner	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.chosen[].template.pairedWith	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.chosen[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -41363,6 +41623,8 @@ pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.GrantedAbilit
 pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.Keywords	array
 pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.Keywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.Layout	string
+pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.LostKeywords	array
+pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.LostKeywords[]	string
 pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.ManaCost	string
 pendingChoices[].attackSplit.settled.chosen[].template.printedSelf.Name	string
@@ -41596,6 +41858,8 @@ pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.GrantedA
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.Keywords	array
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.Keywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.Layout	string
+pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.LostKeywords	array
+pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.LostKeywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.ManaCost	string
 pendingChoices[].attackSplit.settled.groups[].template.durationCopyBase.Name	string
@@ -41691,6 +41955,8 @@ pendingChoices[].attackSplit.settled.groups[].template.layout	string
 pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent	object
 pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent.epoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.lostKeywords	array
+pendingChoices[].attackSplit.settled.groups[].template.lostKeywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.lostLastCounter	bool
 pendingChoices[].attackSplit.settled.groups[].template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.settled.groups[].template.manaAbilityText	number:uint8
@@ -41758,6 +42024,7 @@ pendingChoices[].attackSplit.settled.groups[].template.noAbilitiesText	number:ui
 pendingChoices[].attackSplit.settled.groups[].template.objectEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.oracleId	string
 pendingChoices[].attackSplit.settled.groups[].template.owner	custom(uuid.UUID)
+pendingChoices[].attackSplit.settled.groups[].template.pairedWith	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.settled.groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -41798,6 +42065,8 @@ pendingChoices[].attackSplit.settled.groups[].template.printedSelf.GrantedAbilit
 pendingChoices[].attackSplit.settled.groups[].template.printedSelf.Keywords	array
 pendingChoices[].attackSplit.settled.groups[].template.printedSelf.Keywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.printedSelf.Layout	string
+pendingChoices[].attackSplit.settled.groups[].template.printedSelf.LostKeywords	array
+pendingChoices[].attackSplit.settled.groups[].template.printedSelf.LostKeywords[]	string
 pendingChoices[].attackSplit.settled.groups[].template.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.settled.groups[].template.printedSelf.ManaCost	string
 pendingChoices[].attackSplit.settled.groups[].template.printedSelf.Name	string
@@ -42379,6 +42648,8 @@ pendingChoices[].attackSplit.tail.records[].mods[].copy[].GrantedAbilities[]	str
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].Keywords	array
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].Layout	string
+pendingChoices[].attackSplit.tail.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].attackSplit.tail.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].ManaCost	string
 pendingChoices[].attackSplit.tail.records[].mods[].copy[].Name	string
@@ -42641,6 +42912,8 @@ pendingChoices[].attackSplit.template.durationCopyBase.GrantedAbilities[]	string
 pendingChoices[].attackSplit.template.durationCopyBase.Keywords	array
 pendingChoices[].attackSplit.template.durationCopyBase.Keywords[]	string
 pendingChoices[].attackSplit.template.durationCopyBase.Layout	string
+pendingChoices[].attackSplit.template.durationCopyBase.LostKeywords	array
+pendingChoices[].attackSplit.template.durationCopyBase.LostKeywords[]	string
 pendingChoices[].attackSplit.template.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.template.durationCopyBase.ManaCost	string
 pendingChoices[].attackSplit.template.durationCopyBase.Name	string
@@ -42736,6 +43009,8 @@ pendingChoices[].attackSplit.template.layout	string
 pendingChoices[].attackSplit.template.linkedPermanent	object
 pendingChoices[].attackSplit.template.linkedPermanent.epoch	number:int
 pendingChoices[].attackSplit.template.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.lostKeywords	array
+pendingChoices[].attackSplit.template.lostKeywords[]	string
 pendingChoices[].attackSplit.template.lostLastCounter	bool
 pendingChoices[].attackSplit.template.manaAbilityCount	number:int
 pendingChoices[].attackSplit.template.manaAbilityText	number:uint8
@@ -42803,6 +43078,7 @@ pendingChoices[].attackSplit.template.noAbilitiesText	number:uint8
 pendingChoices[].attackSplit.template.objectEpoch	number:int
 pendingChoices[].attackSplit.template.oracleId	string
 pendingChoices[].attackSplit.template.owner	custom(uuid.UUID)
+pendingChoices[].attackSplit.template.pairedWith	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].attackSplit.template.phaseInBarredEpoch	number:int
 pendingChoices[].attackSplit.template.phaseInBarredFor	custom(uuid.UUID)
@@ -42843,6 +43119,8 @@ pendingChoices[].attackSplit.template.printedSelf.GrantedAbilities[]	string
 pendingChoices[].attackSplit.template.printedSelf.Keywords	array
 pendingChoices[].attackSplit.template.printedSelf.Keywords[]	string
 pendingChoices[].attackSplit.template.printedSelf.Layout	string
+pendingChoices[].attackSplit.template.printedSelf.LostKeywords	array
+pendingChoices[].attackSplit.template.printedSelf.LostKeywords[]	string
 pendingChoices[].attackSplit.template.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].attackSplit.template.printedSelf.ManaCost	string
 pendingChoices[].attackSplit.template.printedSelf.Name	string
@@ -43452,6 +43730,8 @@ pendingChoices[].copyWalk.src.durationCopyBase.GrantedAbilities[]	string
 pendingChoices[].copyWalk.src.durationCopyBase.Keywords	array
 pendingChoices[].copyWalk.src.durationCopyBase.Keywords[]	string
 pendingChoices[].copyWalk.src.durationCopyBase.Layout	string
+pendingChoices[].copyWalk.src.durationCopyBase.LostKeywords	array
+pendingChoices[].copyWalk.src.durationCopyBase.LostKeywords[]	string
 pendingChoices[].copyWalk.src.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].copyWalk.src.durationCopyBase.ManaCost	string
 pendingChoices[].copyWalk.src.durationCopyBase.Name	string
@@ -43547,6 +43827,8 @@ pendingChoices[].copyWalk.src.layout	string
 pendingChoices[].copyWalk.src.linkedPermanent	object
 pendingChoices[].copyWalk.src.linkedPermanent.epoch	number:int
 pendingChoices[].copyWalk.src.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.lostKeywords	array
+pendingChoices[].copyWalk.src.lostKeywords[]	string
 pendingChoices[].copyWalk.src.lostLastCounter	bool
 pendingChoices[].copyWalk.src.manaAbilityCount	number:int
 pendingChoices[].copyWalk.src.manaAbilityText	number:uint8
@@ -43614,6 +43896,7 @@ pendingChoices[].copyWalk.src.noAbilitiesText	number:uint8
 pendingChoices[].copyWalk.src.objectEpoch	number:int
 pendingChoices[].copyWalk.src.oracleId	string
 pendingChoices[].copyWalk.src.owner	custom(uuid.UUID)
+pendingChoices[].copyWalk.src.pairedWith	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].copyWalk.src.phaseInBarredEpoch	number:int
 pendingChoices[].copyWalk.src.phaseInBarredFor	custom(uuid.UUID)
@@ -43654,6 +43937,8 @@ pendingChoices[].copyWalk.src.printedSelf.GrantedAbilities[]	string
 pendingChoices[].copyWalk.src.printedSelf.Keywords	array
 pendingChoices[].copyWalk.src.printedSelf.Keywords[]	string
 pendingChoices[].copyWalk.src.printedSelf.Layout	string
+pendingChoices[].copyWalk.src.printedSelf.LostKeywords	array
+pendingChoices[].copyWalk.src.printedSelf.LostKeywords[]	string
 pendingChoices[].copyWalk.src.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].copyWalk.src.printedSelf.ManaCost	string
 pendingChoices[].copyWalk.src.printedSelf.Name	string
@@ -44484,6 +44769,8 @@ pendingChoices[].diceRoll.then.records[].mods[].copy[].GrantedAbilities[]	string
 pendingChoices[].diceRoll.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].diceRoll.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].diceRoll.then.records[].mods[].copy[].Layout	string
+pendingChoices[].diceRoll.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].diceRoll.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].diceRoll.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].diceRoll.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].diceRoll.then.records[].mods[].copy[].Name	string
@@ -45515,6 +45802,8 @@ pendingChoices[].divideShield.walk.each.records[].mods[].copy[].GrantedAbilities
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].Keywords	array
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].Layout	string
+pendingChoices[].divideShield.walk.each.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].divideShield.walk.each.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].ManaCost	string
 pendingChoices[].divideShield.walk.each.records[].mods[].copy[].Name	string
@@ -46145,6 +46434,8 @@ pendingChoices[].divideShield.walk.then.records[].mods[].copy[].GrantedAbilities
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].Layout	string
+pendingChoices[].divideShield.walk.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].divideShield.walk.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].divideShield.walk.then.records[].mods[].copy[].Name	string
@@ -46781,6 +47072,8 @@ pendingChoices[].libraryOrder.then.records[].mods[].copy[].GrantedAbilities[]	st
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].Layout	string
+pendingChoices[].libraryOrder.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].libraryOrder.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].libraryOrder.then.records[].mods[].copy[].Name	string
@@ -47470,6 +47763,8 @@ pendingChoices[].nameThen.records[].mods[].copy[].GrantedAbilities[]	string
 pendingChoices[].nameThen.records[].mods[].copy[].Keywords	array
 pendingChoices[].nameThen.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].nameThen.records[].mods[].copy[].Layout	string
+pendingChoices[].nameThen.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].nameThen.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].nameThen.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].nameThen.records[].mods[].copy[].ManaCost	string
 pendingChoices[].nameThen.records[].mods[].copy[].Name	string
@@ -48586,6 +48881,8 @@ pendingChoices[].pickTail.records[].mods[].copy[].GrantedAbilities[]	string
 pendingChoices[].pickTail.records[].mods[].copy[].Keywords	array
 pendingChoices[].pickTail.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].pickTail.records[].mods[].copy[].Layout	string
+pendingChoices[].pickTail.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].pickTail.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].pickTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].pickTail.records[].mods[].copy[].ManaCost	string
 pendingChoices[].pickTail.records[].mods[].copy[].Name	string
@@ -49261,6 +49558,8 @@ pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.counterTail.then.records[].mods[].copy[].Name	string
@@ -49900,6 +50199,8 @@ pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].c
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.damageTail.each.each.records[].mods[].copy[].Name	string
@@ -50530,6 +50831,8 @@ pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].c
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.damageTail.each.then.records[].mods[].copy[].Name	string
@@ -51343,6 +51646,8 @@ pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[]
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.damageTail.then.records[].mods[].copy[].Name	string
@@ -51577,6 +51882,8 @@ pendingChoices[].replacementResume.event.entersAsCopyOf.GrantedAbilities[]	strin
 pendingChoices[].replacementResume.event.entersAsCopyOf.Keywords	array
 pendingChoices[].replacementResume.event.entersAsCopyOf.Keywords[]	string
 pendingChoices[].replacementResume.event.entersAsCopyOf.Layout	string
+pendingChoices[].replacementResume.event.entersAsCopyOf.LostKeywords	array
+pendingChoices[].replacementResume.event.entersAsCopyOf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.entersAsCopyOf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.entersAsCopyOf.ManaCost	string
 pendingChoices[].replacementResume.event.entersAsCopyOf.Name	string
@@ -52094,6 +52401,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.recor
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.entryTail.batch.discard.legs.then.records[].mods[].copy[].Name	string
@@ -52800,6 +53109,8 @@ pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].c
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.entryTail.batch.then.records[].mods[].copy[].Name	string
@@ -53430,6 +53741,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[]
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.records[].mods[].copy[].Name	string
@@ -54093,6 +54406,8 @@ pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.thenTail.records[].mods[].copy[].Name	string
@@ -54743,6 +55058,8 @@ pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.entryTail.tokens.then.records[].mods[].copy[].Name	string
@@ -55026,6 +55343,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCop
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.durationCopyBase.Name	string
@@ -55121,6 +55440,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.layout	stri
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent	object
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.lostKeywords	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.lostKeywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.lostLastCounter	bool
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.manaAbilityText	number:uint8
@@ -55188,6 +55509,7 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.noAbilities
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.objectEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.oracleId	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.phaseInBarredFor	custom(uuid.UUID)
@@ -55228,6 +55550,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.Layout	string
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.keywordActionTail.armyToken.printedSelf.Name	string
@@ -55811,6 +56135,8 @@ pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[]
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.keywordActionTail.then.records[].mods[].copy[].Name	string
@@ -56464,6 +56790,8 @@ pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].cop
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.lifeTail.each.then.records[].mods[].copy[].Name	string
@@ -57097,6 +57425,8 @@ pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].G
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.lifeTail.then.records[].mods[].copy[].Name	string
@@ -57368,6 +57698,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].durationCopyBase.Name	string
@@ -57463,6 +57795,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].layout	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent	object
 pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].lostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].lostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.millTail.run.planned[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].manaAbilityText	number:uint8
@@ -57530,6 +57864,7 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].noAbilitiesText	
 pendingChoices[].replacementResume.event.millTail.run.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.planned[].pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -57570,6 +57905,8 @@ pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.Gran
 pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.Layout	string
+pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.millTail.run.planned[].printedSelf.Name	string
@@ -57783,6 +58120,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.Gr
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].durationCopyBase.Name	string
@@ -57878,6 +58217,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].layout	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent	object
 pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].lostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].lostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.millTail.run.seen[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].manaAbilityText	number:uint8
@@ -57945,6 +58286,7 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].noAbilitiesText	num
 pendingChoices[].replacementResume.event.millTail.run.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].oracleId	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.millTail.run.seen[].pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.millTail.run.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -57985,6 +58327,8 @@ pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.Granted
 pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.Layout	string
+pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.millTail.run.seen[].printedSelf.Name	string
@@ -58561,6 +58905,8 @@ pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.millTail.run.then.records[].mods[].copy[].Name	string
@@ -59189,6 +59535,8 @@ pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].G
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.millTail.then.records[].mods[].copy[].Name	string
@@ -60029,6 +60377,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.durationCopyBase.Name	string
@@ -60124,6 +60474,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.layout	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent	object
 pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.lostKeywords	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.lostKeywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.lostLastCounter	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.manaAbilityText	number:uint8
@@ -60191,6 +60543,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.noAbilitiesText	
 pendingChoices[].replacementResume.event.tokenGroups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -60231,6 +60584,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.Gran
 pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.Layout	string
+pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.tokenGroups[].template.printedSelf.Name	string
@@ -60808,6 +61163,8 @@ pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.tokenTail.then.records[].mods[].copy[].Name	string
@@ -61094,6 +61451,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.dur
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.durationCopyBase.Name	string
@@ -61189,6 +61548,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.lay
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.linkedPermanent	object
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.lostKeywords	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.lostKeywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.lostLastCounter	bool
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.manaAbilityText	number:uint8
@@ -61256,6 +61617,7 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.noA
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.objectEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.oracleId	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.phaseInBarredFor	custom(uuid.UUID)
@@ -61296,6 +61658,8 @@ pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.pri
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.Layout	string
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.tokensAfterMove[].groups[].template.printedSelf.Name	string
@@ -61522,6 +61886,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].dura
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].durationCopyBase.Name	string
@@ -61617,6 +61983,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].layo
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].lostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].lostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].manaAbilityText	number:uint8
@@ -61684,6 +62052,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].noAb
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].phaseInBarredFor	custom(uuid.UUID)
@@ -61724,6 +62093,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].prin
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.planned[].printedSelf.Name	string
@@ -61937,6 +62308,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].duratio
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].durationCopyBase.Name	string
@@ -62032,6 +62405,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].layout	
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].lostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].lostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].manaAbilityText	number:uint8
@@ -62099,6 +62474,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].noAbili
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].phaseInBarredFor	custom(uuid.UUID)
@@ -62139,6 +62515,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printed
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.seen[].printedSelf.Name	string
@@ -62715,6 +63093,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[]
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.mill.then.records[].mods[].copy[].Name	string
@@ -63378,6 +63758,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.rec
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.thenTail.records[].mods[].copy[].Name	string
@@ -64006,6 +64388,8 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.then.records[].mods[].copy[].Name	string
@@ -64654,6 +65038,8 @@ pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mo
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.discardLegs.then.records[].mods[].copy[].Name	string
@@ -64854,6 +65240,8 @@ pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.GrantedAbilitie
 pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.exchange.copy.Name	string
@@ -65369,6 +65757,8 @@ pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].m
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.faceDownLegs.then.records[].mods[].copy[].Name	string
@@ -65635,6 +66025,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCo
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].durationCopyBase.Name	string
@@ -65730,6 +66122,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].layout	str
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent	object
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent.epoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].lostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].lostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].lostLastCounter	bool
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].manaAbilityCount	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].manaAbilityText	number:uint8
@@ -65797,6 +66191,7 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].noAbilitie
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].objectEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].oracleId	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].owner	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].pairedWith	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredEpoch	number:int
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].phaseInBarredFor	custom(uuid.UUID)
@@ -65837,6 +66232,8 @@ pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSel
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.Keywords	array
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.Keywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.Layout	string
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.LostKeywords	array
+pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.LostKeywords[]	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.ManaCost	string
 pendingChoices[].replacementResume.event.zoneRoute.simultaneousExit[].printedSelf.Name	string
@@ -66443,6 +66840,8 @@ pendingChoices[].scryThen.records[].mods[].copy[].GrantedAbilities[]	string
 pendingChoices[].scryThen.records[].mods[].copy[].Keywords	array
 pendingChoices[].scryThen.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].scryThen.records[].mods[].copy[].Layout	string
+pendingChoices[].scryThen.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].scryThen.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].scryThen.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].scryThen.records[].mods[].copy[].ManaCost	string
 pendingChoices[].scryThen.records[].mods[].copy[].Name	string
@@ -67119,6 +67518,8 @@ pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].GrantedAbili
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].Keywords	array
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].Keywords[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].Layout	string
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].LostKeywords	array
+pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].LostKeywords[]	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].ManaAbilityText	number:uint8
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].ManaCost	string
 pendingChoices[].searchPrompt.spec.thenTail.records[].mods[].copy[].Name	string
@@ -67859,6 +68260,8 @@ pendingChoices[].targetWalk.frame.source.durationCopyBase.GrantedAbilities[]	str
 pendingChoices[].targetWalk.frame.source.durationCopyBase.Keywords	array
 pendingChoices[].targetWalk.frame.source.durationCopyBase.Keywords[]	string
 pendingChoices[].targetWalk.frame.source.durationCopyBase.Layout	string
+pendingChoices[].targetWalk.frame.source.durationCopyBase.LostKeywords	array
+pendingChoices[].targetWalk.frame.source.durationCopyBase.LostKeywords[]	string
 pendingChoices[].targetWalk.frame.source.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].targetWalk.frame.source.durationCopyBase.ManaCost	string
 pendingChoices[].targetWalk.frame.source.durationCopyBase.Name	string
@@ -67954,6 +68357,8 @@ pendingChoices[].targetWalk.frame.source.layout	string
 pendingChoices[].targetWalk.frame.source.linkedPermanent	object
 pendingChoices[].targetWalk.frame.source.linkedPermanent.epoch	number:int
 pendingChoices[].targetWalk.frame.source.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.lostKeywords	array
+pendingChoices[].targetWalk.frame.source.lostKeywords[]	string
 pendingChoices[].targetWalk.frame.source.lostLastCounter	bool
 pendingChoices[].targetWalk.frame.source.manaAbilityCount	number:int
 pendingChoices[].targetWalk.frame.source.manaAbilityText	number:uint8
@@ -68021,6 +68426,7 @@ pendingChoices[].targetWalk.frame.source.noAbilitiesText	number:uint8
 pendingChoices[].targetWalk.frame.source.objectEpoch	number:int
 pendingChoices[].targetWalk.frame.source.oracleId	string
 pendingChoices[].targetWalk.frame.source.owner	custom(uuid.UUID)
+pendingChoices[].targetWalk.frame.source.pairedWith	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].targetWalk.frame.source.phaseInBarredEpoch	number:int
 pendingChoices[].targetWalk.frame.source.phaseInBarredFor	custom(uuid.UUID)
@@ -68061,6 +68467,8 @@ pendingChoices[].targetWalk.frame.source.printedSelf.GrantedAbilities[]	string
 pendingChoices[].targetWalk.frame.source.printedSelf.Keywords	array
 pendingChoices[].targetWalk.frame.source.printedSelf.Keywords[]	string
 pendingChoices[].targetWalk.frame.source.printedSelf.Layout	string
+pendingChoices[].targetWalk.frame.source.printedSelf.LostKeywords	array
+pendingChoices[].targetWalk.frame.source.printedSelf.LostKeywords[]	string
 pendingChoices[].targetWalk.frame.source.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].targetWalk.frame.source.printedSelf.ManaCost	string
 pendingChoices[].targetWalk.frame.source.printedSelf.Name	string
@@ -68634,6 +69042,8 @@ pendingChoices[].triggerFrame.source.durationCopyBase.GrantedAbilities[]	string
 pendingChoices[].triggerFrame.source.durationCopyBase.Keywords	array
 pendingChoices[].triggerFrame.source.durationCopyBase.Keywords[]	string
 pendingChoices[].triggerFrame.source.durationCopyBase.Layout	string
+pendingChoices[].triggerFrame.source.durationCopyBase.LostKeywords	array
+pendingChoices[].triggerFrame.source.durationCopyBase.LostKeywords[]	string
 pendingChoices[].triggerFrame.source.durationCopyBase.ManaAbilityText	number:uint8
 pendingChoices[].triggerFrame.source.durationCopyBase.ManaCost	string
 pendingChoices[].triggerFrame.source.durationCopyBase.Name	string
@@ -68729,6 +69139,8 @@ pendingChoices[].triggerFrame.source.layout	string
 pendingChoices[].triggerFrame.source.linkedPermanent	object
 pendingChoices[].triggerFrame.source.linkedPermanent.epoch	number:int
 pendingChoices[].triggerFrame.source.linkedPermanent.id	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.lostKeywords	array
+pendingChoices[].triggerFrame.source.lostKeywords[]	string
 pendingChoices[].triggerFrame.source.lostLastCounter	bool
 pendingChoices[].triggerFrame.source.manaAbilityCount	number:int
 pendingChoices[].triggerFrame.source.manaAbilityText	number:uint8
@@ -68796,6 +69208,7 @@ pendingChoices[].triggerFrame.source.noAbilitiesText	number:uint8
 pendingChoices[].triggerFrame.source.objectEpoch	number:int
 pendingChoices[].triggerFrame.source.oracleId	string
 pendingChoices[].triggerFrame.source.owner	custom(uuid.UUID)
+pendingChoices[].triggerFrame.source.pairedWith	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phaseInBarredBy	custom(uuid.UUID)
 pendingChoices[].triggerFrame.source.phaseInBarredEpoch	number:int
 pendingChoices[].triggerFrame.source.phaseInBarredFor	custom(uuid.UUID)
@@ -68836,6 +69249,8 @@ pendingChoices[].triggerFrame.source.printedSelf.GrantedAbilities[]	string
 pendingChoices[].triggerFrame.source.printedSelf.Keywords	array
 pendingChoices[].triggerFrame.source.printedSelf.Keywords[]	string
 pendingChoices[].triggerFrame.source.printedSelf.Layout	string
+pendingChoices[].triggerFrame.source.printedSelf.LostKeywords	array
+pendingChoices[].triggerFrame.source.printedSelf.LostKeywords[]	string
 pendingChoices[].triggerFrame.source.printedSelf.ManaAbilityText	number:uint8
 pendingChoices[].triggerFrame.source.printedSelf.ManaCost	string
 pendingChoices[].triggerFrame.source.printedSelf.Name	string
@@ -69523,6 +69938,8 @@ phaseEffects[].effect.mods[].copy[].GrantedAbilities[]	string
 phaseEffects[].effect.mods[].copy[].Keywords	array
 phaseEffects[].effect.mods[].copy[].Keywords[]	string
 phaseEffects[].effect.mods[].copy[].Layout	string
+phaseEffects[].effect.mods[].copy[].LostKeywords	array
+phaseEffects[].effect.mods[].copy[].LostKeywords[]	string
 phaseEffects[].effect.mods[].copy[].ManaAbilityText	number:uint8
 phaseEffects[].effect.mods[].copy[].ManaCost	string
 phaseEffects[].effect.mods[].copy[].Name	string
@@ -69782,6 +70199,8 @@ phasedOut.cards[].durationCopyBase.GrantedAbilities[]	string
 phasedOut.cards[].durationCopyBase.Keywords	array
 phasedOut.cards[].durationCopyBase.Keywords[]	string
 phasedOut.cards[].durationCopyBase.Layout	string
+phasedOut.cards[].durationCopyBase.LostKeywords	array
+phasedOut.cards[].durationCopyBase.LostKeywords[]	string
 phasedOut.cards[].durationCopyBase.ManaAbilityText	number:uint8
 phasedOut.cards[].durationCopyBase.ManaCost	string
 phasedOut.cards[].durationCopyBase.Name	string
@@ -69877,6 +70296,8 @@ phasedOut.cards[].layout	string
 phasedOut.cards[].linkedPermanent	object
 phasedOut.cards[].linkedPermanent.epoch	number:int
 phasedOut.cards[].linkedPermanent.id	custom(uuid.UUID)
+phasedOut.cards[].lostKeywords	array
+phasedOut.cards[].lostKeywords[]	string
 phasedOut.cards[].lostLastCounter	bool
 phasedOut.cards[].manaAbilityCount	number:int
 phasedOut.cards[].manaAbilityText	number:uint8
@@ -69944,6 +70365,7 @@ phasedOut.cards[].noAbilitiesText	number:uint8
 phasedOut.cards[].objectEpoch	number:int
 phasedOut.cards[].oracleId	string
 phasedOut.cards[].owner	custom(uuid.UUID)
+phasedOut.cards[].pairedWith	custom(uuid.UUID)
 phasedOut.cards[].phaseInBarredBy	custom(uuid.UUID)
 phasedOut.cards[].phaseInBarredEpoch	number:int
 phasedOut.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -69984,6 +70406,8 @@ phasedOut.cards[].printedSelf.GrantedAbilities[]	string
 phasedOut.cards[].printedSelf.Keywords	array
 phasedOut.cards[].printedSelf.Keywords[]	string
 phasedOut.cards[].printedSelf.Layout	string
+phasedOut.cards[].printedSelf.LostKeywords	array
+phasedOut.cards[].printedSelf.LostKeywords[]	string
 phasedOut.cards[].printedSelf.ManaAbilityText	number:uint8
 phasedOut.cards[].printedSelf.ManaCost	string
 phasedOut.cards[].printedSelf.Name	string
@@ -70200,6 +70624,8 @@ planechase.deck.cards[].durationCopyBase.GrantedAbilities[]	string
 planechase.deck.cards[].durationCopyBase.Keywords	array
 planechase.deck.cards[].durationCopyBase.Keywords[]	string
 planechase.deck.cards[].durationCopyBase.Layout	string
+planechase.deck.cards[].durationCopyBase.LostKeywords	array
+planechase.deck.cards[].durationCopyBase.LostKeywords[]	string
 planechase.deck.cards[].durationCopyBase.ManaAbilityText	number:uint8
 planechase.deck.cards[].durationCopyBase.ManaCost	string
 planechase.deck.cards[].durationCopyBase.Name	string
@@ -70295,6 +70721,8 @@ planechase.deck.cards[].layout	string
 planechase.deck.cards[].linkedPermanent	object
 planechase.deck.cards[].linkedPermanent.epoch	number:int
 planechase.deck.cards[].linkedPermanent.id	custom(uuid.UUID)
+planechase.deck.cards[].lostKeywords	array
+planechase.deck.cards[].lostKeywords[]	string
 planechase.deck.cards[].lostLastCounter	bool
 planechase.deck.cards[].manaAbilityCount	number:int
 planechase.deck.cards[].manaAbilityText	number:uint8
@@ -70362,6 +70790,7 @@ planechase.deck.cards[].noAbilitiesText	number:uint8
 planechase.deck.cards[].objectEpoch	number:int
 planechase.deck.cards[].oracleId	string
 planechase.deck.cards[].owner	custom(uuid.UUID)
+planechase.deck.cards[].pairedWith	custom(uuid.UUID)
 planechase.deck.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.deck.cards[].phaseInBarredEpoch	number:int
 planechase.deck.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -70402,6 +70831,8 @@ planechase.deck.cards[].printedSelf.GrantedAbilities[]	string
 planechase.deck.cards[].printedSelf.Keywords	array
 planechase.deck.cards[].printedSelf.Keywords[]	string
 planechase.deck.cards[].printedSelf.Layout	string
+planechase.deck.cards[].printedSelf.LostKeywords	array
+planechase.deck.cards[].printedSelf.LostKeywords[]	string
 planechase.deck.cards[].printedSelf.ManaAbilityText	number:uint8
 planechase.deck.cards[].printedSelf.ManaCost	string
 planechase.deck.cards[].printedSelf.Name	string
@@ -70618,6 +71049,8 @@ planechase.faceUp.cards[].durationCopyBase.GrantedAbilities[]	string
 planechase.faceUp.cards[].durationCopyBase.Keywords	array
 planechase.faceUp.cards[].durationCopyBase.Keywords[]	string
 planechase.faceUp.cards[].durationCopyBase.Layout	string
+planechase.faceUp.cards[].durationCopyBase.LostKeywords	array
+planechase.faceUp.cards[].durationCopyBase.LostKeywords[]	string
 planechase.faceUp.cards[].durationCopyBase.ManaAbilityText	number:uint8
 planechase.faceUp.cards[].durationCopyBase.ManaCost	string
 planechase.faceUp.cards[].durationCopyBase.Name	string
@@ -70713,6 +71146,8 @@ planechase.faceUp.cards[].layout	string
 planechase.faceUp.cards[].linkedPermanent	object
 planechase.faceUp.cards[].linkedPermanent.epoch	number:int
 planechase.faceUp.cards[].linkedPermanent.id	custom(uuid.UUID)
+planechase.faceUp.cards[].lostKeywords	array
+planechase.faceUp.cards[].lostKeywords[]	string
 planechase.faceUp.cards[].lostLastCounter	bool
 planechase.faceUp.cards[].manaAbilityCount	number:int
 planechase.faceUp.cards[].manaAbilityText	number:uint8
@@ -70780,6 +71215,7 @@ planechase.faceUp.cards[].noAbilitiesText	number:uint8
 planechase.faceUp.cards[].objectEpoch	number:int
 planechase.faceUp.cards[].oracleId	string
 planechase.faceUp.cards[].owner	custom(uuid.UUID)
+planechase.faceUp.cards[].pairedWith	custom(uuid.UUID)
 planechase.faceUp.cards[].phaseInBarredBy	custom(uuid.UUID)
 planechase.faceUp.cards[].phaseInBarredEpoch	number:int
 planechase.faceUp.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -70820,6 +71256,8 @@ planechase.faceUp.cards[].printedSelf.GrantedAbilities[]	string
 planechase.faceUp.cards[].printedSelf.Keywords	array
 planechase.faceUp.cards[].printedSelf.Keywords[]	string
 planechase.faceUp.cards[].printedSelf.Layout	string
+planechase.faceUp.cards[].printedSelf.LostKeywords	array
+planechase.faceUp.cards[].printedSelf.LostKeywords[]	string
 planechase.faceUp.cards[].printedSelf.ManaAbilityText	number:uint8
 planechase.faceUp.cards[].printedSelf.ManaCost	string
 planechase.faceUp.cards[].printedSelf.Name	string
@@ -71275,6 +71713,8 @@ resolving.card.durationCopyBase.GrantedAbilities[]	string
 resolving.card.durationCopyBase.Keywords	array
 resolving.card.durationCopyBase.Keywords[]	string
 resolving.card.durationCopyBase.Layout	string
+resolving.card.durationCopyBase.LostKeywords	array
+resolving.card.durationCopyBase.LostKeywords[]	string
 resolving.card.durationCopyBase.ManaAbilityText	number:uint8
 resolving.card.durationCopyBase.ManaCost	string
 resolving.card.durationCopyBase.Name	string
@@ -71370,6 +71810,8 @@ resolving.card.layout	string
 resolving.card.linkedPermanent	object
 resolving.card.linkedPermanent.epoch	number:int
 resolving.card.linkedPermanent.id	custom(uuid.UUID)
+resolving.card.lostKeywords	array
+resolving.card.lostKeywords[]	string
 resolving.card.lostLastCounter	bool
 resolving.card.manaAbilityCount	number:int
 resolving.card.manaAbilityText	number:uint8
@@ -71437,6 +71879,7 @@ resolving.card.noAbilitiesText	number:uint8
 resolving.card.objectEpoch	number:int
 resolving.card.oracleId	string
 resolving.card.owner	custom(uuid.UUID)
+resolving.card.pairedWith	custom(uuid.UUID)
 resolving.card.phaseInBarredBy	custom(uuid.UUID)
 resolving.card.phaseInBarredEpoch	number:int
 resolving.card.phaseInBarredFor	custom(uuid.UUID)
@@ -71477,6 +71920,8 @@ resolving.card.printedSelf.GrantedAbilities[]	string
 resolving.card.printedSelf.Keywords	array
 resolving.card.printedSelf.Keywords[]	string
 resolving.card.printedSelf.Layout	string
+resolving.card.printedSelf.LostKeywords	array
+resolving.card.printedSelf.LostKeywords[]	string
 resolving.card.printedSelf.ManaAbilityText	number:uint8
 resolving.card.printedSelf.ManaCost	string
 resolving.card.printedSelf.Name	string
@@ -72038,6 +72483,8 @@ scopedEffects[].mods[].copy[].GrantedAbilities[]	string
 scopedEffects[].mods[].copy[].Keywords	array
 scopedEffects[].mods[].copy[].Keywords[]	string
 scopedEffects[].mods[].copy[].Layout	string
+scopedEffects[].mods[].copy[].LostKeywords	array
+scopedEffects[].mods[].copy[].LostKeywords[]	string
 scopedEffects[].mods[].copy[].ManaAbilityText	number:uint8
 scopedEffects[].mods[].copy[].ManaCost	string
 scopedEffects[].mods[].copy[].Name	string
@@ -72298,6 +72745,8 @@ seats[].attractionDeck.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].attractionDeck.cards[].durationCopyBase.Keywords	array
 seats[].attractionDeck.cards[].durationCopyBase.Keywords[]	string
 seats[].attractionDeck.cards[].durationCopyBase.Layout	string
+seats[].attractionDeck.cards[].durationCopyBase.LostKeywords	array
+seats[].attractionDeck.cards[].durationCopyBase.LostKeywords[]	string
 seats[].attractionDeck.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].attractionDeck.cards[].durationCopyBase.ManaCost	string
 seats[].attractionDeck.cards[].durationCopyBase.Name	string
@@ -72393,6 +72842,8 @@ seats[].attractionDeck.cards[].layout	string
 seats[].attractionDeck.cards[].linkedPermanent	object
 seats[].attractionDeck.cards[].linkedPermanent.epoch	number:int
 seats[].attractionDeck.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].attractionDeck.cards[].lostKeywords	array
+seats[].attractionDeck.cards[].lostKeywords[]	string
 seats[].attractionDeck.cards[].lostLastCounter	bool
 seats[].attractionDeck.cards[].manaAbilityCount	number:int
 seats[].attractionDeck.cards[].manaAbilityText	number:uint8
@@ -72460,6 +72911,7 @@ seats[].attractionDeck.cards[].noAbilitiesText	number:uint8
 seats[].attractionDeck.cards[].objectEpoch	number:int
 seats[].attractionDeck.cards[].oracleId	string
 seats[].attractionDeck.cards[].owner	custom(uuid.UUID)
+seats[].attractionDeck.cards[].pairedWith	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].attractionDeck.cards[].phaseInBarredEpoch	number:int
 seats[].attractionDeck.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -72500,6 +72952,8 @@ seats[].attractionDeck.cards[].printedSelf.GrantedAbilities[]	string
 seats[].attractionDeck.cards[].printedSelf.Keywords	array
 seats[].attractionDeck.cards[].printedSelf.Keywords[]	string
 seats[].attractionDeck.cards[].printedSelf.Layout	string
+seats[].attractionDeck.cards[].printedSelf.LostKeywords	array
+seats[].attractionDeck.cards[].printedSelf.LostKeywords[]	string
 seats[].attractionDeck.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].attractionDeck.cards[].printedSelf.ManaCost	string
 seats[].attractionDeck.cards[].printedSelf.Name	string
@@ -72881,6 +73335,8 @@ seats[].command.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].command.cards[].durationCopyBase.Keywords	array
 seats[].command.cards[].durationCopyBase.Keywords[]	string
 seats[].command.cards[].durationCopyBase.Layout	string
+seats[].command.cards[].durationCopyBase.LostKeywords	array
+seats[].command.cards[].durationCopyBase.LostKeywords[]	string
 seats[].command.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].command.cards[].durationCopyBase.ManaCost	string
 seats[].command.cards[].durationCopyBase.Name	string
@@ -72976,6 +73432,8 @@ seats[].command.cards[].layout	string
 seats[].command.cards[].linkedPermanent	object
 seats[].command.cards[].linkedPermanent.epoch	number:int
 seats[].command.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].command.cards[].lostKeywords	array
+seats[].command.cards[].lostKeywords[]	string
 seats[].command.cards[].lostLastCounter	bool
 seats[].command.cards[].manaAbilityCount	number:int
 seats[].command.cards[].manaAbilityText	number:uint8
@@ -73043,6 +73501,7 @@ seats[].command.cards[].noAbilitiesText	number:uint8
 seats[].command.cards[].objectEpoch	number:int
 seats[].command.cards[].oracleId	string
 seats[].command.cards[].owner	custom(uuid.UUID)
+seats[].command.cards[].pairedWith	custom(uuid.UUID)
 seats[].command.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].command.cards[].phaseInBarredEpoch	number:int
 seats[].command.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -73083,6 +73542,8 @@ seats[].command.cards[].printedSelf.GrantedAbilities[]	string
 seats[].command.cards[].printedSelf.Keywords	array
 seats[].command.cards[].printedSelf.Keywords[]	string
 seats[].command.cards[].printedSelf.Layout	string
+seats[].command.cards[].printedSelf.LostKeywords	array
+seats[].command.cards[].printedSelf.LostKeywords[]	string
 seats[].command.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].command.cards[].printedSelf.ManaCost	string
 seats[].command.cards[].printedSelf.Name	string
@@ -73301,6 +73762,8 @@ seats[].companion.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].companion.cards[].durationCopyBase.Keywords	array
 seats[].companion.cards[].durationCopyBase.Keywords[]	string
 seats[].companion.cards[].durationCopyBase.Layout	string
+seats[].companion.cards[].durationCopyBase.LostKeywords	array
+seats[].companion.cards[].durationCopyBase.LostKeywords[]	string
 seats[].companion.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].companion.cards[].durationCopyBase.ManaCost	string
 seats[].companion.cards[].durationCopyBase.Name	string
@@ -73396,6 +73859,8 @@ seats[].companion.cards[].layout	string
 seats[].companion.cards[].linkedPermanent	object
 seats[].companion.cards[].linkedPermanent.epoch	number:int
 seats[].companion.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].companion.cards[].lostKeywords	array
+seats[].companion.cards[].lostKeywords[]	string
 seats[].companion.cards[].lostLastCounter	bool
 seats[].companion.cards[].manaAbilityCount	number:int
 seats[].companion.cards[].manaAbilityText	number:uint8
@@ -73463,6 +73928,7 @@ seats[].companion.cards[].noAbilitiesText	number:uint8
 seats[].companion.cards[].objectEpoch	number:int
 seats[].companion.cards[].oracleId	string
 seats[].companion.cards[].owner	custom(uuid.UUID)
+seats[].companion.cards[].pairedWith	custom(uuid.UUID)
 seats[].companion.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].companion.cards[].phaseInBarredEpoch	number:int
 seats[].companion.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -73503,6 +73969,8 @@ seats[].companion.cards[].printedSelf.GrantedAbilities[]	string
 seats[].companion.cards[].printedSelf.Keywords	array
 seats[].companion.cards[].printedSelf.Keywords[]	string
 seats[].companion.cards[].printedSelf.Layout	string
+seats[].companion.cards[].printedSelf.LostKeywords	array
+seats[].companion.cards[].printedSelf.LostKeywords[]	string
 seats[].companion.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].companion.cards[].printedSelf.ManaCost	string
 seats[].companion.cards[].printedSelf.Name	string
@@ -73730,6 +74198,8 @@ seats[].emblems.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].emblems.cards[].durationCopyBase.Keywords	array
 seats[].emblems.cards[].durationCopyBase.Keywords[]	string
 seats[].emblems.cards[].durationCopyBase.Layout	string
+seats[].emblems.cards[].durationCopyBase.LostKeywords	array
+seats[].emblems.cards[].durationCopyBase.LostKeywords[]	string
 seats[].emblems.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].emblems.cards[].durationCopyBase.ManaCost	string
 seats[].emblems.cards[].durationCopyBase.Name	string
@@ -73825,6 +74295,8 @@ seats[].emblems.cards[].layout	string
 seats[].emblems.cards[].linkedPermanent	object
 seats[].emblems.cards[].linkedPermanent.epoch	number:int
 seats[].emblems.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].emblems.cards[].lostKeywords	array
+seats[].emblems.cards[].lostKeywords[]	string
 seats[].emblems.cards[].lostLastCounter	bool
 seats[].emblems.cards[].manaAbilityCount	number:int
 seats[].emblems.cards[].manaAbilityText	number:uint8
@@ -73892,6 +74364,7 @@ seats[].emblems.cards[].noAbilitiesText	number:uint8
 seats[].emblems.cards[].objectEpoch	number:int
 seats[].emblems.cards[].oracleId	string
 seats[].emblems.cards[].owner	custom(uuid.UUID)
+seats[].emblems.cards[].pairedWith	custom(uuid.UUID)
 seats[].emblems.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].emblems.cards[].phaseInBarredEpoch	number:int
 seats[].emblems.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -73932,6 +74405,8 @@ seats[].emblems.cards[].printedSelf.GrantedAbilities[]	string
 seats[].emblems.cards[].printedSelf.Keywords	array
 seats[].emblems.cards[].printedSelf.Keywords[]	string
 seats[].emblems.cards[].printedSelf.Layout	string
+seats[].emblems.cards[].printedSelf.LostKeywords	array
+seats[].emblems.cards[].printedSelf.LostKeywords[]	string
 seats[].emblems.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].emblems.cards[].printedSelf.ManaCost	string
 seats[].emblems.cards[].printedSelf.Name	string
@@ -74246,6 +74721,8 @@ seats[].graveyard.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].graveyard.cards[].durationCopyBase.Keywords	array
 seats[].graveyard.cards[].durationCopyBase.Keywords[]	string
 seats[].graveyard.cards[].durationCopyBase.Layout	string
+seats[].graveyard.cards[].durationCopyBase.LostKeywords	array
+seats[].graveyard.cards[].durationCopyBase.LostKeywords[]	string
 seats[].graveyard.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].graveyard.cards[].durationCopyBase.ManaCost	string
 seats[].graveyard.cards[].durationCopyBase.Name	string
@@ -74341,6 +74818,8 @@ seats[].graveyard.cards[].layout	string
 seats[].graveyard.cards[].linkedPermanent	object
 seats[].graveyard.cards[].linkedPermanent.epoch	number:int
 seats[].graveyard.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].graveyard.cards[].lostKeywords	array
+seats[].graveyard.cards[].lostKeywords[]	string
 seats[].graveyard.cards[].lostLastCounter	bool
 seats[].graveyard.cards[].manaAbilityCount	number:int
 seats[].graveyard.cards[].manaAbilityText	number:uint8
@@ -74408,6 +74887,7 @@ seats[].graveyard.cards[].noAbilitiesText	number:uint8
 seats[].graveyard.cards[].objectEpoch	number:int
 seats[].graveyard.cards[].oracleId	string
 seats[].graveyard.cards[].owner	custom(uuid.UUID)
+seats[].graveyard.cards[].pairedWith	custom(uuid.UUID)
 seats[].graveyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].graveyard.cards[].phaseInBarredEpoch	number:int
 seats[].graveyard.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -74448,6 +74928,8 @@ seats[].graveyard.cards[].printedSelf.GrantedAbilities[]	string
 seats[].graveyard.cards[].printedSelf.Keywords	array
 seats[].graveyard.cards[].printedSelf.Keywords[]	string
 seats[].graveyard.cards[].printedSelf.Layout	string
+seats[].graveyard.cards[].printedSelf.LostKeywords	array
+seats[].graveyard.cards[].printedSelf.LostKeywords[]	string
 seats[].graveyard.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].graveyard.cards[].printedSelf.ManaCost	string
 seats[].graveyard.cards[].printedSelf.Name	string
@@ -74662,6 +75144,8 @@ seats[].hand.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].hand.cards[].durationCopyBase.Keywords	array
 seats[].hand.cards[].durationCopyBase.Keywords[]	string
 seats[].hand.cards[].durationCopyBase.Layout	string
+seats[].hand.cards[].durationCopyBase.LostKeywords	array
+seats[].hand.cards[].durationCopyBase.LostKeywords[]	string
 seats[].hand.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].hand.cards[].durationCopyBase.ManaCost	string
 seats[].hand.cards[].durationCopyBase.Name	string
@@ -74757,6 +75241,8 @@ seats[].hand.cards[].layout	string
 seats[].hand.cards[].linkedPermanent	object
 seats[].hand.cards[].linkedPermanent.epoch	number:int
 seats[].hand.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].hand.cards[].lostKeywords	array
+seats[].hand.cards[].lostKeywords[]	string
 seats[].hand.cards[].lostLastCounter	bool
 seats[].hand.cards[].manaAbilityCount	number:int
 seats[].hand.cards[].manaAbilityText	number:uint8
@@ -74824,6 +75310,7 @@ seats[].hand.cards[].noAbilitiesText	number:uint8
 seats[].hand.cards[].objectEpoch	number:int
 seats[].hand.cards[].oracleId	string
 seats[].hand.cards[].owner	custom(uuid.UUID)
+seats[].hand.cards[].pairedWith	custom(uuid.UUID)
 seats[].hand.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].hand.cards[].phaseInBarredEpoch	number:int
 seats[].hand.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -74864,6 +75351,8 @@ seats[].hand.cards[].printedSelf.GrantedAbilities[]	string
 seats[].hand.cards[].printedSelf.Keywords	array
 seats[].hand.cards[].printedSelf.Keywords[]	string
 seats[].hand.cards[].printedSelf.Layout	string
+seats[].hand.cards[].printedSelf.LostKeywords	array
+seats[].hand.cards[].printedSelf.LostKeywords[]	string
 seats[].hand.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].hand.cards[].printedSelf.ManaCost	string
 seats[].hand.cards[].printedSelf.Name	string
@@ -75083,6 +75572,8 @@ seats[].junkyard.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].junkyard.cards[].durationCopyBase.Keywords	array
 seats[].junkyard.cards[].durationCopyBase.Keywords[]	string
 seats[].junkyard.cards[].durationCopyBase.Layout	string
+seats[].junkyard.cards[].durationCopyBase.LostKeywords	array
+seats[].junkyard.cards[].durationCopyBase.LostKeywords[]	string
 seats[].junkyard.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].junkyard.cards[].durationCopyBase.ManaCost	string
 seats[].junkyard.cards[].durationCopyBase.Name	string
@@ -75178,6 +75669,8 @@ seats[].junkyard.cards[].layout	string
 seats[].junkyard.cards[].linkedPermanent	object
 seats[].junkyard.cards[].linkedPermanent.epoch	number:int
 seats[].junkyard.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].junkyard.cards[].lostKeywords	array
+seats[].junkyard.cards[].lostKeywords[]	string
 seats[].junkyard.cards[].lostLastCounter	bool
 seats[].junkyard.cards[].manaAbilityCount	number:int
 seats[].junkyard.cards[].manaAbilityText	number:uint8
@@ -75245,6 +75738,7 @@ seats[].junkyard.cards[].noAbilitiesText	number:uint8
 seats[].junkyard.cards[].objectEpoch	number:int
 seats[].junkyard.cards[].oracleId	string
 seats[].junkyard.cards[].owner	custom(uuid.UUID)
+seats[].junkyard.cards[].pairedWith	custom(uuid.UUID)
 seats[].junkyard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].junkyard.cards[].phaseInBarredEpoch	number:int
 seats[].junkyard.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -75285,6 +75779,8 @@ seats[].junkyard.cards[].printedSelf.GrantedAbilities[]	string
 seats[].junkyard.cards[].printedSelf.Keywords	array
 seats[].junkyard.cards[].printedSelf.Keywords[]	string
 seats[].junkyard.cards[].printedSelf.Layout	string
+seats[].junkyard.cards[].printedSelf.LostKeywords	array
+seats[].junkyard.cards[].printedSelf.LostKeywords[]	string
 seats[].junkyard.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].junkyard.cards[].printedSelf.ManaCost	string
 seats[].junkyard.cards[].printedSelf.Name	string
@@ -75517,6 +76013,8 @@ seats[].library.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].library.cards[].durationCopyBase.Keywords	array
 seats[].library.cards[].durationCopyBase.Keywords[]	string
 seats[].library.cards[].durationCopyBase.Layout	string
+seats[].library.cards[].durationCopyBase.LostKeywords	array
+seats[].library.cards[].durationCopyBase.LostKeywords[]	string
 seats[].library.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].library.cards[].durationCopyBase.ManaCost	string
 seats[].library.cards[].durationCopyBase.Name	string
@@ -75612,6 +76110,8 @@ seats[].library.cards[].layout	string
 seats[].library.cards[].linkedPermanent	object
 seats[].library.cards[].linkedPermanent.epoch	number:int
 seats[].library.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].library.cards[].lostKeywords	array
+seats[].library.cards[].lostKeywords[]	string
 seats[].library.cards[].lostLastCounter	bool
 seats[].library.cards[].manaAbilityCount	number:int
 seats[].library.cards[].manaAbilityText	number:uint8
@@ -75679,6 +76179,7 @@ seats[].library.cards[].noAbilitiesText	number:uint8
 seats[].library.cards[].objectEpoch	number:int
 seats[].library.cards[].oracleId	string
 seats[].library.cards[].owner	custom(uuid.UUID)
+seats[].library.cards[].pairedWith	custom(uuid.UUID)
 seats[].library.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].library.cards[].phaseInBarredEpoch	number:int
 seats[].library.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -75719,6 +76220,8 @@ seats[].library.cards[].printedSelf.GrantedAbilities[]	string
 seats[].library.cards[].printedSelf.Keywords	array
 seats[].library.cards[].printedSelf.Keywords[]	string
 seats[].library.cards[].printedSelf.Layout	string
+seats[].library.cards[].printedSelf.LostKeywords	array
+seats[].library.cards[].printedSelf.LostKeywords[]	string
 seats[].library.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].library.cards[].printedSelf.ManaCost	string
 seats[].library.cards[].printedSelf.Name	string
@@ -75974,6 +76477,8 @@ seats[].sideboard.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].sideboard.cards[].durationCopyBase.Keywords	array
 seats[].sideboard.cards[].durationCopyBase.Keywords[]	string
 seats[].sideboard.cards[].durationCopyBase.Layout	string
+seats[].sideboard.cards[].durationCopyBase.LostKeywords	array
+seats[].sideboard.cards[].durationCopyBase.LostKeywords[]	string
 seats[].sideboard.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].sideboard.cards[].durationCopyBase.ManaCost	string
 seats[].sideboard.cards[].durationCopyBase.Name	string
@@ -76069,6 +76574,8 @@ seats[].sideboard.cards[].layout	string
 seats[].sideboard.cards[].linkedPermanent	object
 seats[].sideboard.cards[].linkedPermanent.epoch	number:int
 seats[].sideboard.cards[].linkedPermanent.id	custom(uuid.UUID)
+seats[].sideboard.cards[].lostKeywords	array
+seats[].sideboard.cards[].lostKeywords[]	string
 seats[].sideboard.cards[].lostLastCounter	bool
 seats[].sideboard.cards[].manaAbilityCount	number:int
 seats[].sideboard.cards[].manaAbilityText	number:uint8
@@ -76136,6 +76643,7 @@ seats[].sideboard.cards[].noAbilitiesText	number:uint8
 seats[].sideboard.cards[].objectEpoch	number:int
 seats[].sideboard.cards[].oracleId	string
 seats[].sideboard.cards[].owner	custom(uuid.UUID)
+seats[].sideboard.cards[].pairedWith	custom(uuid.UUID)
 seats[].sideboard.cards[].phaseInBarredBy	custom(uuid.UUID)
 seats[].sideboard.cards[].phaseInBarredEpoch	number:int
 seats[].sideboard.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -76176,6 +76684,8 @@ seats[].sideboard.cards[].printedSelf.GrantedAbilities[]	string
 seats[].sideboard.cards[].printedSelf.Keywords	array
 seats[].sideboard.cards[].printedSelf.Keywords[]	string
 seats[].sideboard.cards[].printedSelf.Layout	string
+seats[].sideboard.cards[].printedSelf.LostKeywords	array
+seats[].sideboard.cards[].printedSelf.LostKeywords[]	string
 seats[].sideboard.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].sideboard.cards[].printedSelf.ManaCost	string
 seats[].sideboard.cards[].printedSelf.Name	string
@@ -76751,6 +77261,8 @@ stack.cards[].durationCopyBase.GrantedAbilities[]	string
 stack.cards[].durationCopyBase.Keywords	array
 stack.cards[].durationCopyBase.Keywords[]	string
 stack.cards[].durationCopyBase.Layout	string
+stack.cards[].durationCopyBase.LostKeywords	array
+stack.cards[].durationCopyBase.LostKeywords[]	string
 stack.cards[].durationCopyBase.ManaAbilityText	number:uint8
 stack.cards[].durationCopyBase.ManaCost	string
 stack.cards[].durationCopyBase.Name	string
@@ -76846,6 +77358,8 @@ stack.cards[].layout	string
 stack.cards[].linkedPermanent	object
 stack.cards[].linkedPermanent.epoch	number:int
 stack.cards[].linkedPermanent.id	custom(uuid.UUID)
+stack.cards[].lostKeywords	array
+stack.cards[].lostKeywords[]	string
 stack.cards[].lostLastCounter	bool
 stack.cards[].manaAbilityCount	number:int
 stack.cards[].manaAbilityText	number:uint8
@@ -76913,6 +77427,7 @@ stack.cards[].noAbilitiesText	number:uint8
 stack.cards[].objectEpoch	number:int
 stack.cards[].oracleId	string
 stack.cards[].owner	custom(uuid.UUID)
+stack.cards[].pairedWith	custom(uuid.UUID)
 stack.cards[].phaseInBarredBy	custom(uuid.UUID)
 stack.cards[].phaseInBarredEpoch	number:int
 stack.cards[].phaseInBarredFor	custom(uuid.UUID)
@@ -76953,6 +77468,8 @@ stack.cards[].printedSelf.GrantedAbilities[]	string
 stack.cards[].printedSelf.Keywords	array
 stack.cards[].printedSelf.Keywords[]	string
 stack.cards[].printedSelf.Layout	string
+stack.cards[].printedSelf.LostKeywords	array
+stack.cards[].printedSelf.LostKeywords[]	string
 stack.cards[].printedSelf.ManaAbilityText	number:uint8
 stack.cards[].printedSelf.ManaCost	string
 stack.cards[].printedSelf.Name	string
