@@ -1010,6 +1010,9 @@ var stackItemFields = plan(
 	// marked on the spell. Carried: a restore that lost it would drop
 	// the counter Savage Summoning promised.
 	"PromisedCounters", carried, "",
+	// #5647: the spell had convoke as it became cast. Carried: the
+	// promise that gave it is spent, so nothing could rebuild it.
+	"HadConvoke", carried, "",
 	"Seq", carried, "",
 	"Ordered", carried, "",
 	// #1511: which pending triggers may skip the CR 603.3b prompt.
