@@ -2318,6 +2318,11 @@ func (e *enumerator) crewPayment(crew int, except uuid.UUID, use game.CostPowerU
 		if c.Controller != e.seat || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
+		// CR 702.122d: a creature that can't crew Vehicles pays no crew
+		// cost. Saddle and teamwork (use 0) still take it.
+		if use == game.CostPowerCrew && !game.CanCrewVehicles(c) {
+			continue
+		}
 		pool = append(pool, candidate{id: c.InstanceID, power: c.CountedPower(use), real: c.CurrentPower()})
 	}
 	sort.SliceStable(pool, func(i, j int) bool {

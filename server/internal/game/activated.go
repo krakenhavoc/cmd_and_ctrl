@@ -2865,6 +2865,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 //     get wrong in the strict direction; getting it wrong the other
 //     way is impossible here, because the check simply isn't made.
 //   - Overshooting is legal. The printed number is a floor.
+//   - A creature that "can't crew Vehicles" can't be tapped to pay a
+//     crew cost (CR 702.122d, CanCrewVehicles), and naming one refuses
+//     the whole payment with ErrCantCrew. A saddle cost still takes it.
 //
 // The clause is "creatures you control", with no "another", so a
 // Vehicle that something else has already animated is a legal
@@ -2921,6 +2924,9 @@ func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost Ability
 		}
 		if c.Tapped {
 			return nil, ErrAlreadyTapped
+		}
+		if !saddle && !CanCrewVehicles(c) {
+			return nil, ErrCantCrew
 		}
 		// CountedPower, not CurrentPower: "crews Vehicles as though its
 		// power were 2 greater" changes what the creature counts for

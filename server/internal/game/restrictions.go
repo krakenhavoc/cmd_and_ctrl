@@ -42,6 +42,8 @@ import "github.com/google/uuid"
 //	  mana abilities)         CantActivateMana mana activations
 //	"can't become suspected"  CantBecomeSuspected  the suspect action
 //	                          (CR 701.60, #2733)
+//	"can't crew Vehicles"     CantCrew         paying a crew cost
+//	                          (CR 702.122d, #5673)
 //
 // CantBeBlocked lives on the attacker because that is the permanent
 // the effect is attached to, but it is consumed on the defender's
@@ -149,6 +151,20 @@ const (
 	// such source remains. Deliberately absent from Names: it is no
 	// badge on the permanent that carries it, so it is not on the wire.
 	PermanentsCantPhaseIn
+
+	// CantCrew is "~ can't crew Vehicles" (Intercessor's Arrest,
+	// #5673). CR 702.122d: "that creature can't be tapped to pay the
+	// crew cost of a Vehicle." A restriction on what the creature may
+	// PAY, so it is read where a crew cost picks its creatures
+	// (CanCrewVehicles: the validator, the view's crew_options and the
+	// move enumerator) and nowhere else: a saddle cost (CR 702.171a), a
+	// teamwork cost and any other "tap an untapped creature you
+	// control" are different costs and still take the creature. Like
+	// every bit here it belongs to the SOURCE (the Aura), so a layer-6
+	// "loses all abilities" leaves it.
+	//
+	// This is the eighth bit of a uint8: the next one widens the type.
+	CantCrew
 )
 
 // CantAttackOrBlock is the pair every "can't attack or block" card
@@ -181,6 +197,7 @@ func (r Restriction) Names() []string {
 		{CantActivate, "cant_activate"},
 		{CantActivateMana, "cant_activate_mana"},
 		{CantBecomeSuspected, "cant_become_suspected"},
+		{CantCrew, "cant_crew"},
 	} {
 		if r&e.bit != 0 {
 			out = append(out, e.name)
@@ -234,6 +251,19 @@ func CanActivateAbilities(c *Card) bool {
 // because Faith's Fetters stops one and not the other.
 func CanActivateManaAbilities(c *Card) bool {
 	return !Restricted(c, CantActivateMana)
+}
+
+// CanCrewVehicles reports whether this permanent may be tapped to pay
+// a Vehicle's crew cost under the RESTRICTION vocabulary alone
+// (CR 702.122d, "can't crew Vehicles": Intercessor's Arrest, #5673).
+//
+// The one predicate the three crew walks share: the engine's
+// validateCrewCostLocked, the view's crew_options and the move
+// enumerator's crewPayment. Being an untapped creature the payer
+// controls is each walk's own test; a saddle or teamwork cost never
+// asks this. Layers must be fresh.
+func CanCrewVehicles(c *Card) bool {
+	return !Restricted(c, CantCrew)
 }
 
 // AttackerEligible reports whether card `a` could be declared as an

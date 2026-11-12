@@ -581,6 +581,10 @@ var (
 	// all. Distinct from ErrInvalidParam so the client can say "tap
 	// more power" rather than "bad request". Added in S27.
 	ErrInsufficientCrew = errors.New("game: crewing creatures' total power is below the crew number")
+	// ErrCantCrew is returned when a creature named to pay a Vehicle's
+	// crew cost is under a "can't crew Vehicles" effect (CR 702.122d,
+	// Intercessor's Arrest). Nothing is tapped. Added for #5673.
+	ErrCantCrew = errors.New("game: that creature can't crew Vehicles")
 	// ErrInsufficientCounters is returned when the permanent named to
 	// pay a "remove N counters" cost holds fewer than N counters of
 	// the kind — including, for "remove a counter" of any kind, the

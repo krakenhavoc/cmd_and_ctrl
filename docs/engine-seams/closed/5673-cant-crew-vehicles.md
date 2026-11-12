@@ -1,0 +1,6 @@
+---
+title: "Can't crew Vehicles"
+date: 2026-11-12
+issues: [5673]
+---
+**Can't crew Vehicles** (#5673, CR 702.122d / 602.5; part of #5493) — "enchanted permanent can't … crew Vehicles" is an eighth restriction bit, `game.CantCrew` (wire token `cant_crew`), written by the ordinary `RestrictAttached` / `RestrictSelf` / `RestrictUntilEOT` primitives and so carried by a scoped record through a restore like the other bits. CR 702.122d makes it a rule about one payment ("that creature can't be tapped to pay the crew cost of a Vehicle"), so the one predicate `game.CanCrewVehicles` is read where a crew cost picks its creatures and nowhere else: `validateCrewCostLocked` refuses a payment naming such a creature with `game.ErrCantCrew` and taps nothing, the view leaves it out of the crew row's `crew_options` and `crew_power` (the client's picker reads only those), and the enumerator's `crewPayment` skips it, so a bot is never offered the move. A saddle cost (CR 702.171a) and a teamwork cost run the same walks and still take the creature. The tile label words the set as printed ("Can't attack, block, or crew Vehicles."). `game.Restriction` is a `uint8` and this is its last bit: the next one widens the type. **Cards:** Intercessor's Arrest (Full).

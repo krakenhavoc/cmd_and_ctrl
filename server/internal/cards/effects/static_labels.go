@@ -96,6 +96,7 @@ func restrictionClause(r game.Restriction) string {
 	}{
 		{game.CantAttack, "attack"},
 		{game.CantBlock, "block"},
+		{game.CantCrew, "crew Vehicles"},
 	} {
 		if rest&p.bit != 0 {
 			parts = append(parts, p.text)
@@ -104,7 +105,7 @@ func restrictionClause(r game.Restriction) string {
 	}
 	var clauses []string
 	if len(parts) > 0 {
-		clauses = append(clauses, "can't "+strings.Join(parts, " or "))
+		clauses = append(clauses, "can't "+joinOrSerial(parts))
 	}
 	if rest&game.CantBeBlocked != 0 {
 		clauses = append(clauses, "can't be blocked")
@@ -114,6 +115,15 @@ func restrictionClause(r game.Restriction) string {
 		return ""
 	}
 	return strings.Join(clauses, " and ")
+}
+
+// joinOrSerial is "attack", "attack or block", "attack, block, or crew
+// Vehicles": the printed list form.
+func joinOrSerial(parts []string) string {
+	if len(parts) < 3 {
+		return strings.Join(parts, " or ")
+	}
+	return strings.Join(parts[:len(parts)-1], ", ") + ", or " + parts[len(parts)-1]
 }
 
 // queryNoun renders a PermanentQuery as the thing a player sees on the

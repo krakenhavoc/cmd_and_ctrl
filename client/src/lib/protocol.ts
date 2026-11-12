@@ -5662,7 +5662,8 @@ export interface CardView extends CastSurfaceView {
   // S24 — the restriction set the server computed for this
   // permanent: "cant_attack", "cant_block", "cant_be_blocked",
   // "cant_activate", "cant_activate_mana", and (#2733)
-  // "cant_become_suspected". Absent for the permanent
+  // "cant_become_suspected", and (#5673) "cant_crew" (the server
+  // leaves it out of every crew cost's crew_options). Absent for the permanent
   // nothing is restricting, which is nearly all of them.
   //
   // Deliberately separate from `abilities`. A restriction is not a
