@@ -24,19 +24,18 @@ const (
 )
 
 type hopliteTable struct {
-	g             *game.Game
-	me, opp       *game.Player
-	hoplite       uuid.UUID
-	bear, wolf    uuid.UUID
-	oppBear       uuid.UUID
-	scalelordCast uuid.UUID
+	g          *game.Game
+	me         *game.Player
+	hoplite    uuid.UUID
+	bear, wolf uuid.UUID
+	oppBear    uuid.UUID
 }
 
 func newHopliteTable(t *testing.T) *hopliteTable {
 	t.Helper()
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	h := &hopliteTable{g: g, me: me, opp: opp}
+	h := &hopliteTable{g: g, me: me}
 	h.hoplite = b12Push(g, me.ID, "Mirror-Shield Hoplite", hopliteTypeLine, hopliteOracle, 2, 2)
 	h.bear = b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	h.wolf = b12Creature(g, me.ID, "Wolf", "Creature — Wolf", 2, 2)
@@ -52,7 +51,6 @@ func (h *hopliteTable) castBackupAt(t *testing.T, target uuid.UUID) uuid.UUID {
 	active := h.g.Seats[h.g.Turn.ActiveSeat]
 	id := castHoldCreature(t, h.g, hopliteScalelordNm, hopliteDragonLine, hopliteScalelord, 3, 4)
 	answerTriggerTargets(t, h.g, active.ID, target)
-	h.scalelordCast = id
 	return id
 }
 
