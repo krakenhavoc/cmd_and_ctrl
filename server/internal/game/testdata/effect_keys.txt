@@ -480,6 +480,7 @@ choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
 choose choose-cards/break-out-reveal
 choose choose-cards/breeches-the-blastmaker-sacrifice
+choose choose-cards/bull-elephant-return-two-forests
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
 choose choose-cards/calamity-galloping-inferno-copy
@@ -817,6 +818,7 @@ choose choose-cards/ordered-pick-leg
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
+choose choose-cards/ovinomancer-return-three-basic-lands
 choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perforating-artist-punisher-discarded
@@ -2569,6 +2571,8 @@ tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail meek-attack/entered
 tail memory-vessel/ban-hands
+tail mgb/bull-elephant-after-return
+tail mgb/ovinomancer-after-return
 tail mill-then-take/cache-grab
 tail mill-then-take/first-contact
 tail mill-then-take/first-contact-first-spell
