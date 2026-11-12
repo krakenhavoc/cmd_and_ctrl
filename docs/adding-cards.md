@@ -28,6 +28,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Granting an ability to another permanent (ADR 0093, #754)](#granting-an-ability-to-another-permanent-adr-0093-754)
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](#abilities-any-player-may-activate-adr-0106-1793)
+  - [A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)](#a-token-with-all-triggered-abilities-of-other-cards-and-exiling-by-name-as-a-cost-5683)
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
@@ -1517,6 +1518,52 @@ See `borrowed_lender_cards_test.go` and `borrowed_last_cards_test.go`.
 
 The client groups lent rows under "From <lender>" and shows identical rows
 once (`client/src/lib/borrowedRows.ts`); nothing per card.
+
+### A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)
+
+The Book of Vile Darkness: "{T}, Exile The Book of Vile Darkness and
+artifacts you control named Eye of Vecna and Hand of Vecna: Create Vecna,
+… with indestructible and all triggered abilities of the exiled cards."
+
+**The cost.** "… and <card type>s you control named A and B" is
+`ExileYourPermanentsNamed("artifact", "Eye of Vecna", "Hand of Vecna")`
+(`game.AbilityCost.ExileNamed`), composed with `ExileThis()` for the
+source. The board decides the set: every permanent the activator controls
+with the card type and one of the names, the source left out. Nothing is
+picked or sent by the client, an empty set still pays, and what was
+exiled is on `ctx.Paid().Exiled` after any picked exiles. It is an
+activated ability's component only.
+
+**The token.** This is not a borrow. A borrow is a layer-6 effect, re-read
+on every pass; here the creating effect defines the token's text (CR
+111.3), so the abilities are fixed as the ability resolves, are copied by
+a Clone and are removed with the token's other abilities. Collect the
+lender cards as they are now and call
+
+```go
+CreateTokenWithTriggeredAbilitiesOf(ctx, TokenCard("8/8 black Legendary Zombie God named Vecna with indestructible"), lenders)
+```
+
+Each lender adds one part to the template's `GrantedAbilities`,
+`game.TriggersOfKey(<its catalog key>)`, which the catalog answers with
+that card's triggered rows and triggered mana abilities and nothing else
+(`game/triggers_of_key.go`). The rows keep the lender's catalog identity,
+so a harvested trigger restores without the lender and adds no effect
+key. A triggered keyword the engine derives from the ability list joins
+the template's `Keywords` (prowess, exalted, undying); decayed and
+modular lend their trigger alone. A card with no triggered ability, a
+face-down card and a card the catalog does not know add nothing. The
+token enters with the abilities, so a lent "when this enters" triggers
+for its own arrival.
+
+Hand of Vecna's "Equip—Pay 1 life for each card in your hand" is the
+computed life cost on an equip:
+`EquipPayingAbility(label, PayLifeCount(handOfVecnaLifePerCardInHand))`,
+with the count registered once by `game.LifeCount` in the card's file.
+
+A test reads the token's `GrantedAbilities`, counts
+`game.TriggersForCard`, checks `game.ActivatedAbilitiesForCard` is empty,
+and lets a lent trigger fire (`vecna_cards_test.go`).
 
 ### Abilities any player may activate (ADR 0106, #1793)
 
