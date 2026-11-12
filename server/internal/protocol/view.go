@@ -5288,7 +5288,10 @@ type ActivatedAbilityView struct {
 	//   - ExileCostOptions is what could pay right now: the matching
 	//     cards in the activator's own hand or graveyard, in pile
 	//     order, the source excluded. Absent when nothing can pay.
-	//   - ExileCostZone is that pile, "hand" or "graveyard".
+	//   - ExileCostZone is that pile, "hand" or "graveyard"; "exile"
+	//     for a processing cost (#5457) and "stack" for "exile a spell
+	//     you control" (#5655), whose options are the activator's own
+	//     spells on the stack.
 	//
 	// NOT the discard triple: an exiled card is not discarded, so the
 	// picks ride back as `exile_ids`, never `discard_ids`. The client

@@ -2517,6 +2517,16 @@ permanents), across every pass of "proliferate twice", after every counter
 has landed (#3930, #4253). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
 `answerProliferate(t, g, picks…)` takes a chosen one.
 
+**"Whenever you proliferate"** (#5653, CR 701.34a) is
+`WheneverYouProliferate(label, effect)`, off `game.EventProliferate`: one
+event per finished proliferate, raised after its counters have landed,
+with Actor the proliferating player. "Proliferate twice" is two events,
+and a proliferate that chose nothing, or had nothing to choose, still
+raises one; a proliferate a replacement took away raises none. A card
+that proliferates needs nothing new. Wrap the row in `InGraveyard` for an
+ability that works from the graveyard (Voidwing Hybrid), and give it
+`Modes` for "choose one —" (Venser, Corpse Puppet).
+
 **The mill AMOUNT is a replaceable quantity too** (#569,
 [ADR 0013 §5u](decisions/0013-replacement-effects.md)). "If an
 opponent would mill one or more cards, they mill twice that many cards
@@ -4590,6 +4600,28 @@ information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
 
+### An Equipment that arrives on its own token (#5654)
+
+"When this Equipment enters, create a <token>, then attach this to it" is
+one enters trigger, and the keyword that prints it has a helper:
+`LivingWeapon(name)` (CR 702.92a, the 0/0 black Phyrexian Germ),
+`ForMirrodin(name)` (CR 702.163a, the 2/2 red Rebel) and `JobSelect(name)`
+(the 1/1 colorless Hero). Put it in `Spec.Triggered` beside the card's
+statics and its `EquipAbility`:
+
+```go
+Triggered: []game.TriggeredAbility{ForMirrodin("Vulshok Splitter")},
+Static:    []game.StaticAbility{PumpAttached(2, 0)},
+Activated: []ActivatedAbility{EquipAbility("{2}{R}")},
+```
+
+All three share `createTokenAndAttachSource`, whose attach rides the token
+creation's keyed tail. Never create the token and attach on the next line
+of Go: a token doubler pauses the creation for a CR 616 order prompt, and
+the IDs are not known until it is answered. A card that spells the
+sentence out with its own token (Hook Swords) calls the same body with
+`described` true, so the token is read through the card's text.
+
 ### Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)
 
 `Plus(ManaCost("{3}"), UnattachAnEquipment())` is Captain America, First Avenger's "{3}, Unattach an Equipment from
@@ -5419,6 +5451,20 @@ as the cost is paid. Nothing is recorded on `ctx.Exiled()`. A face-down
 pick stands for its group (same owner, same "exiled with" link) and the
 card moved is drawn at random from it. A CR 602 ability's cost only:
 `Register` refuses it on a mana ability and on a cast.
+
+**"Exile a spell you control" (#5655):** `ExileASpellYouControl()`,
+composed with `Plus` — Synthesis Pod is
+`Plus(ManaCost("{1}{U/P}"), TapCost(), ExileASpellYouControl())`. It is
+the same component read against the stack
+(`game.ExileCost{From: ZoneStack}`): the pick rides `exile_ids`, it must
+be a spell the activator controls (a copy of a spell is one, an ability
+is not), and it is exiled as the cost is paid, without resolving and
+without being countered. The effect reads which spell through
+`ctx.Exiled()` and "the exiled spell's mana value" through
+`g.LastKnownSpellManaValueForEffect(id)`: the spell as it last existed on
+the stack (CR 608.2h), an announced X counted (CR 202.3e). Do not read
+the card in exile for it, where X is 0 and a copy is gone. A CR 602
+ability's cost only, one spell, no link: `Register` refuses the rest.
 
 **"Exile a creature you control" (#1600):** `ExileACreatureYouControl()`,
 or `ExileAPermanentYouControl(label, preds...)` for another clause,

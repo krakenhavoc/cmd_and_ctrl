@@ -104,6 +104,17 @@ func proliferateTimesKeyed(g *game.Game, player, source uuid.UUID, n int) error 
 	return g.ProliferateChoosingKeyedForEffect(player, source, rest)
 }
 
+// WheneverYouProliferate is "Whenever you proliferate, <effect>" (Ezuri,
+// Stalker of Spheres; Scheming Aspirant), off game.EventProliferate
+// (#5653): one trigger per finished proliferate, after its counters have
+// landed, so "proliferate twice" triggers it twice. A proliferate that
+// chose nothing still triggers it (CR 701.34a: "any number" includes
+// none). Wrap it in InGraveyard for an ability that works from the
+// graveyard (Voidwing Hybrid).
+func WheneverYouProliferate(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventProliferate, ByYou, label, effect)
+}
+
 // BeneficialProliferateChoice is the pick a proliferate suggests on
 // `controller`'s behalf (game.ProliferateSuggestionForEffect). Kept
 // under this name for the tests and for any card that wants to hand a

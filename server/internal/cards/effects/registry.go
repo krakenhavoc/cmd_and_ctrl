@@ -907,6 +907,10 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d puts a card from exile into a graveyard — a CR 602 ability's cost only (#5457)",
 				spec.Name, i))
 		}
+		if ma.Cost.ExileCards.ExilesSpell() {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles a spell from the stack — a CR 602 ability's cost only (#5655)",
+				spec.Name, i))
+		}
 		checkExileCardsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExileCards)
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		checkManaForage(spec.Name, i, ma)
@@ -2835,7 +2839,7 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 			name, where, ec.N))
 	}
 	if !game.ExileCostZoneSupported(ec.Zone()) {
-		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — an exile cost reads the hand or the graveyard",
+		panic(fmt.Sprintf("effects.Register: %q %s exiles cards from the %s — an exile cost reads the hand, the graveyard, exile or the stack",
 			name, where, ec.Zone()))
 	}
 	// #5457: "Put a card an opponent owns from exile into that player's
@@ -2843,6 +2847,13 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	// exile, so "cards exiled with this" could never name it.
 	if ec.Processes() && (ec.AnyNumber || ec.LinkToSource) {
 		panic(fmt.Sprintf("effects.Register: %q %s puts cards from exile into a graveyard with an open count or a link — build it with ProcessCards (#5457)",
+			name, where))
+	}
+	// #5655: "Exile a spell you control" has a printed count and links
+	// nothing: no printed card reads an open count of spells or "cards
+	// exiled with this" off the clause.
+	if ec.ExilesSpell() && (ec.AnyNumber || ec.LinkToSource) {
+		panic(fmt.Sprintf("effects.Register: %q %s exiles spells from the stack with an open count or a link — build it with ExileASpellYouControl (#5655)",
 			name, where))
 	}
 }
