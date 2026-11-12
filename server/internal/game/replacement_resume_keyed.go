@@ -582,11 +582,12 @@ var replacementEventFields = map[string]replacementEventField{
 	"CounterBySource":    repFieldGate,
 	"counterInstead":     repFieldGate,
 	// #4307: a dice roll's window never pauses (mustSettleNow).
-	"RollPlayer":  repFieldGate,
-	"RollSides":   repFieldGate,
-	"RollCount":   repFieldGate,
-	"RollPlanar":  repFieldGate,
-	"rollShields": repFieldGate,
+	"RollPlayer":       repFieldGate,
+	"RollSides":        repFieldGate,
+	"RollCount":        repFieldGate,
+	"RollPlanar":       repFieldGate,
+	"rollShields":      repFieldGate,
+	"rollIgnoreLowest": repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is

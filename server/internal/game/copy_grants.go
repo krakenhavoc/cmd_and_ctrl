@@ -226,6 +226,13 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		// abilities per bundle instead, so it can tell each row's
 		// origin (manaAbilityRows).
 		merged.ManaAbilities = concatMana(merged.ManaAbilities, g.ManaAbilities)
+		// #5683: a "triggers of <card>" part carries that card's
+		// triggered mana abilities (CR 605.1b) with its triggered rows
+		// (triggers_of_key.go). manaTriggersOf reads them off the
+		// composite key, so the object is the trigger's source.
+		if len(g.ManaTriggers) > 0 {
+			merged.ManaTriggers = append(append([]ManaTrigger(nil), merged.ManaTriggers...), g.ManaTriggers...)
+		}
 		// A copy grant may carry a legend-rule exemption (Sakashima of a
 		// Thousand Faces: "except it has Sakashima's other abilities").
 		if len(g.LegendRuleExemptions) > 0 {

@@ -481,6 +481,12 @@ type StackItem struct {
 	// copy was not cast this way (CR 707.10).
 	EntersTapped bool
 
+	// EntryRolls is the kept results of "As this permanent enters, roll
+	// X d6" (Neverwinter Hydra, #5682; EntryCountersFromCast.RollXSides),
+	// rolled as the spell resolves and before its entry begins, in the
+	// order rolled. Nil for every other spell, and for one whose X was 0.
+	EntryRolls []int
+
 	// FaceDown is the CR 708.2 state a spell CAST FACE DOWN
 	// (CR 708.4) resolves into — FaceDownMorphed for a morph or a
 	// megamorph, FaceDownDisguised for a disguise, and the zero value

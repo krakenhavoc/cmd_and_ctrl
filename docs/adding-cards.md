@@ -28,6 +28,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Granting an ability to another permanent (ADR 0093, #754)](#granting-an-ability-to-another-permanent-adr-0093-754)
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](#abilities-any-player-may-activate-adr-0106-1793)
+  - [A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)](#a-token-with-all-triggered-abilities-of-other-cards-and-exiling-by-name-as-a-cost-5683)
   - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
   - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
@@ -644,6 +645,51 @@ the `*Game` they receive, so undo operates on the restored game.
 `WheneverYouRollDice` triggers once per instruction, including when
 another roll trigger is still pending. See ADR 0054 and the random card
 tests for compositions; clear any caveat made stale by the new mechanic.
+
+**A roll's modifier and its natural result** (#5681, CR 706.2). "Roll a
+d20 and add the number of cards in your hand" puts the number in
+`RollDice{…, Modifier: n}` (negative for "subtract"), read as the effect
+resolves; never add it inside the tail. The roll is then announced with
+both: on each `EventRollDie`, `Amount` is the natural result (the number
+the die shows) and `Modifier` the instruction's, and `ev.RollResult()` is
+their sum. The tail reads the result of the die as `DiceResult(o)` (a
+`CardTail`; `o.Rolls` stay natural, `o.RollModifier` is the modifier) and
+reads `o.Tail.N` / `o.Tail.Carry` for anything else it was handed
+(`RollDice.TailN`, `.TailCarry`). A results table has no row below 1
+unless the card prints one (The Deck of Many Things' "0 or less").
+
+- "If any of those results was 10 or higher" (Farideh) is a
+  `WheneverYouRollDice` effect that walks `RolledDice(g, item)` and tests
+  `RollResult()`. The helper's `total` is the sum of the results.
+- "Whenever you roll a die's highest natural result" (Netherese
+  Puzzle-Ward) is `On(game.EventRollDie, YouRolledADiesHighestNaturalResult, …)`:
+  once per kept die. "When you roll a natural 20" (Critical Hit) tests
+  `ev.Amount == 20` the same way. Natural-result triggers never read the
+  modifier.
+- "If you would roll one or more dice, instead roll that many dice plus
+  one and ignore the lowest roll" (Pixie Guide, Barbarian Class) is
+  `Replacements: []game.ReplacementEffect{RollOneMoreDieAndIgnoreTheLowest("<card>")}`.
+  Nobody is asked, two of them stack, and planar dice are left alone
+  (CR 706.7). "…and ignore one" with a chooser is Ichor Elixir's
+  `ev.RollOneMoreAndIgnoreOne`.
+
+Two rolls are not an effect's, and each has its own declaration (#5682,
+[game/dice_cost.go](../server/internal/game/dice_cost.go)); both still go
+through the dice door, so a replacement of the roll and `WheneverYouRollDice`
+see them:
+
+- **A roll as an activation cost** ("{6}, Roll a d8: Monstrosity X, where
+  X is the result", Clay Golem): `Plus(ManaCost("{6}"), RollDieCost(8))`.
+  It is paid after every other component (CR 601.2h), once the ability is
+  on the stack, and the effect reads the result with `CostRollOf(item)`
+  (`PaidCost.Rolled`). Not for a mana ability.
+- **A roll as the permanent enters** ("As this creature enters, roll X d6.
+  It enters with a number of +1/+1 counters on it equal to the total of
+  those results", Neverwinter Hydra):
+  `EntersWithCountersFromCast: []game.EntryCountersFromCast{RollXDiceCounters(game.CounterPlusOne, 6)}`.
+  The dice are rolled as the spell resolves, before the entry begins; a
+  permanent that was not cast rolls nothing (CR 107.3m). One such clause
+  per card.
 
 ### Adding a mana ability (S15+)
 
@@ -1475,6 +1521,52 @@ See `borrowed_lender_cards_test.go` and `borrowed_last_cards_test.go`.
 
 The client groups lent rows under "From <lender>" and shows identical rows
 once (`client/src/lib/borrowedRows.ts`); nothing per card.
+
+### A token with "all triggered abilities of" other cards, and exiling by name as a cost (#5683)
+
+The Book of Vile Darkness: "{T}, Exile The Book of Vile Darkness and
+artifacts you control named Eye of Vecna and Hand of Vecna: Create Vecna,
+… with indestructible and all triggered abilities of the exiled cards."
+
+**The cost.** "… and <card type>s you control named A and B" is
+`ExileYourPermanentsNamed("artifact", "Eye of Vecna", "Hand of Vecna")`
+(`game.AbilityCost.ExileNamed`), composed with `ExileThis()` for the
+source. The board decides the set: every permanent the activator controls
+with the card type and one of the names, the source left out. Nothing is
+picked or sent by the client, an empty set still pays, and what was
+exiled is on `ctx.Paid().Exiled` after any picked exiles. It is an
+activated ability's component only.
+
+**The token.** This is not a borrow. A borrow is a layer-6 effect, re-read
+on every pass; here the creating effect defines the token's text (CR
+111.3), so the abilities are fixed as the ability resolves, are copied by
+a Clone and are removed with the token's other abilities. Collect the
+lender cards as they are now and call
+
+```go
+CreateTokenWithTriggeredAbilitiesOf(ctx, TokenCard("8/8 black Legendary Zombie God named Vecna with indestructible"), lenders)
+```
+
+Each lender adds one part to the template's `GrantedAbilities`,
+`game.TriggersOfKey(<its catalog key>)`, which the catalog answers with
+that card's triggered rows and triggered mana abilities and nothing else
+(`game/triggers_of_key.go`). The rows keep the lender's catalog identity,
+so a harvested trigger restores without the lender and adds no effect
+key. A triggered keyword the engine derives from the ability list joins
+the template's `Keywords` (prowess, exalted, undying); decayed and
+modular lend their trigger alone. A card with no triggered ability, a
+face-down card and a card the catalog does not know add nothing. The
+token enters with the abilities, so a lent "when this enters" triggers
+for its own arrival.
+
+Hand of Vecna's "Equip—Pay 1 life for each card in your hand" is the
+computed life cost on an equip:
+`EquipPayingAbility(label, PayLifeCount(handOfVecnaLifePerCardInHand))`,
+with the count registered once by `game.LifeCount` in the card's file.
+
+A test reads the token's `GrantedAbilities`, counts
+`game.TriggersForCard`, checks `game.ActivatedAbilitiesForCard` is empty,
+and lets a lent trigger fire (`vecna_cards_test.go`).
 
 ### Abilities any player may activate (ADR 0106, #1793)
 
@@ -2381,7 +2473,8 @@ line after escape's `applyAltCostEntryCountersLocked`, so a card file
 declares arithmetic over `game.CastCounts` — `X`, `Kicked`,
 `ColorsSpent`, `ManaSpent` (CR 601.2h's "the amount of mana spent to cast
 it", #1735), `Delved` — and nothing else. Constructors:
-`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)` in
+`XCounters(kind)`, `CountersPerKick(kind, per)`, `CountersPerDelved(kind, match)`,
+`RollXDiceCounters(kind, sides)` (#5682, "roll X d6 ... equal to the total of those results") in
 [cards/effects/entry_counters.go](../server/internal/cards/effects/entry_counters.go).
 Sunburst is not one of them any more: it is a keyword (ADR 0109 §11).
 Never build a `game.EntryCountersFromCast` by hand, for the reason

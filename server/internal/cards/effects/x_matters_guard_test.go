@@ -240,6 +240,11 @@ var xHolders = map[string]bool{"ctx": true, "cast": true}
 // for it at announce, and the card's resolution only honours the
 // division — so Shatterskull Smashing reaches X through its target
 // clause, and X=0 does nothing at all.
+//
+// #5682 adds a fifth, a declaration for the same reason: "roll X d6" as
+// the permanent enters (`game.EntryCountersFromCast{RollXSides: ...}`,
+// built by RollXDiceCounters). The engine reads X to roll the dice, and
+// the clause's Count only reads their total.
 func readsXDirectly(n ast.Node) bool {
 	found := false
 	ast.Inspect(n, func(n ast.Node) bool {
@@ -247,7 +252,7 @@ func readsXDirectly(n ast.Node) bool {
 			return false
 		}
 		if kv, ok := n.(*ast.KeyValueExpr); ok {
-			if key, ok := kv.Key.(*ast.Ident); ok && key.Name == "FromX" {
+			if key, ok := kv.Key.(*ast.Ident); ok && (key.Name == "FromX" || key.Name == "RollXSides") {
 				found = true
 				return false
 			}

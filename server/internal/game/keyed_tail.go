@@ -101,6 +101,10 @@ type TailOutcome struct {
 	// Rolls is a dice roll's kept results, in the order rolled (#4307,
 	// dice_roll.go): the rolls an ignored one was dropped from.
 	Rolls []int
+	// RollModifier is what the instruction added to each of Rolls (CR
+	// 706.2, DiceRoll.Modifier, #5681): a die's result is its natural
+	// result in Rolls plus this.
+	RollModifier int
 }
 
 // TailFunc is the body of a keyed continuation. It runs with g.mu held,
@@ -175,10 +179,10 @@ func (g *Game) runKeyedTailLocked(t KeyedTail, ids []uuid.UUID, amount int) erro
 }
 
 // runKeyedRollTailLocked runs a dice roll's recorded continuation, told
-// the kept rolls (#4307).
+// the kept rolls (#4307) and the instruction's modifier (#5681).
 //
 // Caller must hold g.mu.
-func (g *Game) runKeyedRollTailLocked(t KeyedTail, rolls []int) error {
+func (g *Game) runKeyedRollTailLocked(t KeyedTail, rolls []int, modifier int) error {
 	if t.IsZero() {
 		return nil
 	}
@@ -188,7 +192,7 @@ func (g *Game) runKeyedRollTailLocked(t KeyedTail, rolls []int) error {
 	if body == nil {
 		return nil
 	}
-	return body(g, TailOutcome{Tail: copyKeyedTail(t), Amount: len(rolls), Rolls: append([]int(nil), rolls...)})
+	return body(g, TailOutcome{Tail: copyKeyedTail(t), Amount: len(rolls), Rolls: append([]int(nil), rolls...), RollModifier: modifier})
 }
 
 // Run runs the tail at once, told ids: for a caller whose event never

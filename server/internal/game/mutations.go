@@ -4568,6 +4568,11 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// caster chose, after the main spell's (spliced texts wait for a
 	// prompt an earlier instruction opened, as a later bullet does).
 	g.runSpellBodiesLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top), ownText)
+	// #5682, CR 614.1c: "As this creature enters, roll X d6." The dice of
+	// a permanent spell's own entry clause are rolled here, before its
+	// entry begins, so a replacement of the roll that asks which roll to
+	// ignore is one more prompt the tail below waits for (dice_cost.go).
+	g.rollEntryDiceLocked(top, item)
 	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
 	// finished until the answer is in, so neither is the spell. The
 	// rest of this resolution — the exit below and the log's
