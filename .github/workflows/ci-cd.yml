@@ -349,6 +349,13 @@ jobs:
         # It runs on the job's own Go 1.27 (its floor is 1.26), so the
         # GOTOOLCHAIN=auto this step once needed is gone (ADR 0122 §1.1)
         # and lint, vet, test and build all use one toolchain.
+        # GOMEMLIMIT (#5741): unbounded, golangci-lint on this tree peaks
+        # near 13 GiB and the hosted runner (16 GB) kills it at random
+        # ("received a shutdown signal", make lint Killed). A soft limit
+        # makes Go's GC work harder before the heap reaches it: measured
+        # at 9.6 GiB peak and 0 issues under 9GiB, so 10GiB leaves room.
+        env:
+          GOMEMLIMIT: 10GiB
         run: make lint
 
       # Known vulnerabilities the server can reach (#3335), in this

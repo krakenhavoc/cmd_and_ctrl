@@ -75,6 +75,7 @@ body caveat-h2/vizkopa-guildmage-drain
 body channel-harm/may-deal-that-much
 body cipher/cast
 body claim-the-kingdom/indestructible
+body clockwork/remove-a-plus-one-counter-at-end-of-combat
 body clone-saga/copy-creature-spell-not-legendary
 body combat/untap-and-remove-the-payload
 body commander/return-listed-to-command-zone
@@ -480,6 +481,7 @@ choose choose-cards/brazen-bluff-cast
 choose choose-cards/breach-the-multiverse-graveyard
 choose choose-cards/break-out-reveal
 choose choose-cards/breeches-the-blastmaker-sacrifice
+choose choose-cards/bull-elephant-return-two-forests
 choose choose-cards/burning-wish-take
 choose choose-cards/buster-sword-cast
 choose choose-cards/calamity-galloping-inferno-copy
@@ -809,6 +811,7 @@ choose choose-cards/ninjas-blades-loot
 choose choose-cards/north-wind-avatar-take
 choose choose-cards/northampton-farm-return
 choose choose-cards/nothing
+choose choose-cards/ob-nixilis-the-adversary-discarded
 choose choose-cards/oblivion-sower-lands
 choose choose-cards/occult-epiphany-spirits
 choose choose-cards/one-last-job-host
@@ -817,6 +820,7 @@ choose choose-cards/ordered-pick-leg
 choose choose-cards/orphans-of-the-wheat-tap
 choose choose-cards/ostrich-horse-land-or-counter
 choose choose-cards/otc-gonti-lord-of-luxury-exile
+choose choose-cards/ovinomancer-return-three-basic-lands
 choose choose-cards/path-of-the-schemer-reanimate
 choose choose-cards/patient-naturalist-land
 choose choose-cards/perforating-artist-punisher-discarded
@@ -1479,6 +1483,7 @@ option option-pick/nesting-grounds-counter-kind
 option option-pick/nick-fury-spymaster-attacks
 option option-pick/noctis-warp-strike-attack
 option option-pick/null-chamber-opponent
+option option-pick/ob-nixilis-the-adversary-answer
 option option-pick/opponent-target-chooser
 option option-pick/orcish-medicine-keyword
 option option-pick/orvar-the-all-form-copy
@@ -2040,6 +2045,7 @@ steps then-steps/midnight-clock-draw-then-exile
 steps then-steps/mog-moogle-warrior-draw
 steps then-steps/mog-moogle-warrior-finish
 steps then-steps/niv-mizzet-ghost-counsel-pay-and-draw
+steps then-steps/ob-nixilis-the-adversary-loss
 steps then-steps/ogre-head-helm-wheel
 steps then-steps/orchard-elemental-votes
 steps then-steps/pendant-of-prosperity-owner
@@ -2089,6 +2095,7 @@ tail anchor-to-reality/scry-if-cheaper
 tail ancient-adamantoise/after-exile
 tail animists-awakening/rest-then-untap
 tail another-round/after-return
+tail anowon-the-ruin-thief/after-mill
 tail approach-of-the-second-sun/gain-seven
 tail arcane-bombardment/copy-exiled
 tail archdruids-charm/bite
@@ -2569,6 +2576,8 @@ tail mechanical-mobster/connive
 tail mechanized-production/check-win
 tail meek-attack/entered
 tail memory-vessel/ban-hands
+tail mgb/bull-elephant-after-return
+tail mgb/ovinomancer-after-return
 tail mill-then-take/cache-grab
 tail mill-then-take/first-contact
 tail mill-then-take/first-contact-first-spell
@@ -2905,6 +2914,7 @@ tail then/change-creature-type-word-with
 tail then/change-life
 tail then/chaos-warp-shuffle-reveal
 tail then/clone-saga-named
+tail then/clutch-of-the-undercity-controller-loses-3
 tail then/cmdr2-s43-tectonic-giant-choose
 tail then/coercive-portal-carnage
 tail then/coin-of-fate-return-others

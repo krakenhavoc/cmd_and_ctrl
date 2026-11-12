@@ -28,6 +28,9 @@ type LiveTable struct {
 	Archived bool
 	Practice bool
 	Seats    []LiveSeat
+	// ClosedReason is why the idle sweep closed the table (ADR 0211
+	// §4), "" for an open table and an admin's archive.
+	ClosedReason string
 }
 
 // LiveSeat is one seat of a LiveTable.
@@ -84,6 +87,8 @@ func (l *Lobby) LiveTables() []LiveTable {
 			Archived:  e.meta.Archived(),
 			Practice:  e.practice,
 			Seats:     make([]LiveSeat, 0, len(e.meta.Players)),
+			// ADR 0211 §5: the admin views show why it closed.
+			ClosedReason: e.closedReason,
 		}
 		for _, s := range e.meta.Players {
 			seat := LiveSeat{

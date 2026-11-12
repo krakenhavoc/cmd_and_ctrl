@@ -586,6 +586,10 @@ export interface GameView {
   // by the server to this viewer's own part. Absent until one is offered,
   // and for a spectator.
   rematch?: RematchView;
+  // When the server will close this started game for having had no move
+  // by a person (ADR 0211 §6), RFC 3339 UTC. Absent until the game is
+  // warned; the next person's move clears it. lib/idleClose.ts words it.
+  idle_close_at?: string;
   // Where this viewer dragged the stack panel to (#3429, ADR 0176), keyed
   // by seat id. The server keeps only the viewer's own entry; absent when
   // the panel is at its default and for a spectator.
@@ -1201,6 +1205,10 @@ export type LogKind =
   // #5658: a creature enlisted another (CR 702.154c). `card_id` is the
   // attacker, `target` the creature tapped; server-rendered `text`.
   | "enlist"
+  // #5271: an attack declaration paid a CR 508.1h attack tax. `seat` is
+  // the payer, `target_seat` the defender, `card_id` the taxing
+  // permanent and `label` the price; server-rendered `text`.
+  | "attack_tax"
   // ADR 0127 §6: the server answered a prompt with its chooser's
   // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
   // Server-rendered `text`.
@@ -4169,6 +4177,16 @@ export interface ActivatedAbilityView {
   // activation's `x_value`; min / max are then unset (0 / 0).
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
+  // #5669: `tap_others_untap` turns the clause over, "Untap N tapped
+  // creatures you control" (Halo Fountain). The same label, options
+  // and `tap_ids`, the options now the TAPPED permanents that could be
+  // untapped to pay, and the picker's verb "Untap".
+  // `tap_others_frees_source` is set when the ability also costs {T},
+  // its source is tapped, and the source is one of the options: naming
+  // it untaps it first and so pays the {T} (CR 601.2h), so the row is
+  // not "already tapped".
+  tap_others_untap?: boolean;
+  tap_others_frees_source?: boolean;
   // #4566: the branches of an either/or cost ("Sacrifice an artifact or
   // discard a nonland card"). The client asks which branch first, runs
   // that branch's own picker as for a row printing the clause alone, and

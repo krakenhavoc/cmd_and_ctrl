@@ -409,6 +409,40 @@ func TestStatusCountsPeopleAndRemembersThem(t *testing.T) {
 	}
 }
 
+// A room is away when nobody has had a socket for AwayGrace: a seat
+// that never connected is away from the start, and one whose socket has
+// just dropped is not, until the grace has run (#5698).
+func TestARoomIsAwayOnlyAfterTheGrace(t *testing.T) {
+	r, clock, seats := newRoom(t, PickOne, 8, 2, 9)
+	if !r.Status().Away {
+		t.Fatal("a room nobody ever connected to is not away")
+	}
+	_, detachA := attach(t, r, seats[0])
+	_, detachB := attach(t, r, seats[1])
+	if r.Status().Away {
+		t.Fatal("a room with sockets is away")
+	}
+	detachA()
+	clock.Advance(AwayGrace)
+	detachB()
+	if st := r.Status(); st.Connected != 0 || st.Away {
+		t.Fatalf("a socket that has just gone: %+v, want not away", st)
+	}
+	clock.Advance(AwayGrace - time.Second)
+	if r.Status().Away {
+		t.Fatal("away before the grace has run")
+	}
+	clock.Advance(time.Second)
+	if !r.Status().Away {
+		t.Fatal("not away once the grace has run")
+	}
+	_, detach := attach(t, r, seats[1])
+	if r.Status().Away {
+		t.Fatal("away with a socket back")
+	}
+	detach()
+}
+
 // The real timer, once: a draft of one person who never picks finishes
 // on its own.
 func TestTheRealTimerDrivesADraft(t *testing.T) {

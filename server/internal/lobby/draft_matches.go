@@ -445,8 +445,10 @@ func (l *Lobby) watchDraftMatch(entry *gameEntry, limits DraftMatchLimits) {
 }
 
 // draftAbandoned reports whether a stalled match's draft has nobody
-// left at it: no socket on the draft's own page, and no other match of
-// it still in play.
+// left at it: nobody on the draft's own page, and no other match of it
+// still in play. Nobody on the page is the pick timer's away rule (no
+// socket for draft.AwayGrace), so a socket that dropped and is
+// redialling does not make a draft look abandoned (#5698).
 func (l *Lobby) draftAbandoned(entry *gameEntry) bool {
 	ref := entry.draftMatch
 	if ref == nil {
@@ -464,7 +466,7 @@ func (l *Lobby) draftAbandoned(entry *gameEntry) bool {
 	if !ok || others {
 		return false
 	}
-	return e.room.Status().Connected == 0
+	return e.room.Status().Away
 }
 
 // reportDraftMatch tells the draft how a match's table ended. abandoned

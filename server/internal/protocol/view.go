@@ -100,6 +100,12 @@ type GameView struct {
 	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
 	// Nil until a rematch is offered, and for a spectator.
 	Rematch *RematchView `json:"rematch,omitempty"`
+	// IdleCloseAt is when the server will close this started game for
+	// having had no human move (ADR 0211 §6), RFC 3339 UTC, stamped by
+	// the room from the lobby's warning. Omitted until the game is
+	// warned, and cleared by the next human move. Public and identical
+	// for every viewer: the table shows it as a one-line notice.
+	IdleCloseAt string `json:"idle_close_at,omitempty"`
 	// StackPositions is where each seat dragged the stack panel (#3429,
 	// ADR 0176), keyed by seat id, stamped by the room. FilterViewFor
 	// keeps only the viewer's own entry; a spectator gets none.
@@ -5421,6 +5427,19 @@ type ActivatedAbilityView struct {
 	// (CR 118.3 — it will already be tapped).
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	// TapOthersUntap marks the clause as "Untap N TAPPED creatures you
+	// control" (#5669, Halo Fountain, game.TapOthersCost.Untap): the
+	// same label, options and `tap_ids`, with the cards the TAPPED
+	// permanents that could be untapped to pay, and the picker's verb
+	// "Untap". A permanent that can't become untapped is left off
+	// (CR 614.17b).
+	//
+	// TapOthersFreesSource is set when the ability also prints {T}, its
+	// source is tapped, and the source is among the options: naming it
+	// untaps it first and so pays the {T} (CR 601.2h, any order), so
+	// the row is not "already tapped".
+	TapOthersUntap       bool `json:"tap_others_untap,omitempty"`
+	TapOthersFreesSource bool `json:"tap_others_frees_source,omitempty"`
 	// CostBranches are the ways to pay an either/or part of the cost
 	// (#4566, game.AbilityCost.Either): Bullseye, Death Dealer's
 	// "Sacrifice an artifact or discard a nonland card". The client asks
@@ -11996,6 +12015,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// they may use it.
 		Voice:   filterVoiceFor(v.Voice, viewerID),
 		Rematch: filterRematchFor(v.Rematch, viewerID),
+		// ADR 0211 §6: the closing time is the whole table's.
+		IdleCloseAt: v.IdleCloseAt,
 		// #3429: only the viewer's own placement of the stack panel.
 		StackPositions: filterStackPositionsFor(v.StackPositions, viewerID),
 		StartingSeat:   v.StartingSeat,
@@ -14127,6 +14148,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if tc := a.Cost.TapOthers; !tc.Empty() {
 			v.TapOthersLabel = tc.Label
 			v.TapOthersOptions = tapOthersCostOptions(g, caster, c.InstanceID, tc, a.Cost.Tap)
+			// #5669: the untap form, and a tapped source it frees.
+			v.TapOthersUntap = game.TapOthersUntaps(tc)
+			v.TapOthersFreesSource = v.TapOthersUntap && a.Cost.Tap && c.Tapped &&
+				slices.Contains(v.TapOthersOptions.Cards, c.InstanceID.String())
 		}
 		// #4566: each branch of an either/or cost, off the walks the
 		// engine validates the folded cost against.
@@ -14552,6 +14577,16 @@ func tapOthersCostOptions(g *game.Game, controller, sourceID uuid.UUID, tc *game
 		return nil
 	}
 	ids := g.TapOthersOptionsForEffect(controller, sourceID, tc)
+	// #5669: the untap form on a cost that also taps its source. The
+	// source pays both in either order (CR 601.2h), so it is offered
+	// whatever its state, on the engine's own terms.
+	if alsoTapsSource && game.TapOthersUntaps(tc) {
+		alsoTapsSource = false
+		ids = slices.DeleteFunc(ids, func(id uuid.UUID) bool { return id == sourceID })
+		if g.UntapOthersSourcePaysForEffect(controller, sourceID, tc) {
+			ids = append(ids, sourceID)
+		}
+	}
 	lo, hi := game.TapOthersCostBounds(tc, 0)
 	out := &LegalTargetsView{Min: lo, Max: hi, CountFromX: game.TapOthersCountFromX(tc)}
 	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {

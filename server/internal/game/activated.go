@@ -2,6 +2,7 @@ package game
 
 import (
 	"log/slog"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -1055,6 +1056,17 @@ type ActivatedAbilityShape struct {
 	//     and the payment price it from one function.
 	PowerUp bool
 
+	// Ninjutsu marks a NINJUTSU ability (CR 702.49a) or a commander
+	// ninjutsu ability, the variant of it (CR 702.49d), #5672. Built by
+	// effects.Ninjutsu and effects.CommanderNinjutsu.
+	//
+	// Unlike Exhaust, Boast and PowerUp it gates nothing: the keyword's
+	// rules are its cost, its zones and its effect, which the shape
+	// already carries. The bit is the keyword's NAME, for a cost
+	// modifier that prices "ninjutsu abilities" (Silver-Fur Master,
+	// AbilityCostSubject.Ninjutsu) and must not match on label prose.
+	Ninjutsu bool
+
 	// OnlyOnce is the ability's own "Activate only once." without the
 	// exhaust keyword (#5221, CR 602.1b / 602.5b): Possessed Goat,
 	// Haunted Screen. Once per OBJECT for as long as it stays one, read
@@ -1840,8 +1852,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			return ErrCantPayCounterCost
 		}
 	}
+	// #5669: a tapped source named for its own "Untap N tapped creatures
+	// you control" clause is untapped by that payment first, and then
+	// pays the {T} (CR 601.2h, any order). See
+	// UntapOthersSourcePaysForEffect.
+	untapsSourceFirst := ab.Cost.Tap && source.Tapped && TapOthersUntaps(ab.Cost.TapOthers) &&
+		slices.Contains(params.TapIDs, cardID) && g.UntapOthersSourcePaysForEffect(playerID, cardID, ab.Cost.TapOthers)
 	if ab.Cost.Tap {
-		if source.Tapped {
+		if source.Tapped && !untapsSourceFirst {
 			return ErrAlreadyTapped
 		}
 		// CR 302.6: a creature's {T} ability needs it to have been
@@ -1869,7 +1887,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #758: the tap-another component. Validated here with every
 	// other cost and paid at the foot of the announce, so a refusal
 	// leaves the board entirely untapped (ADR 0020 §3).
-	if err := g.validateTapOthersCostAtXLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs, params.XValue); err != nil {
+	if err := g.validateTapOthersCostWithSourceLocked(playerID, cardID, ab.Cost.TapOthers, params.TapIDs, params.XValue, ab.Cost.Tap); err != nil {
 		return err
 	}
 	// CR 118.3: the source can only be tapped once. A cost that
@@ -1881,7 +1899,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// printed word "another", and this is the interaction between
 	// two components of one cost, which only the activation path
 	// holds both halves of.
-	if ab.Cost.Tap && !ab.Cost.TapOthers.Empty() {
+	//
+	// #5669: not so for the untap form, where the source pays both in
+	// either order (CR 601.2h); the validator above has judged it.
+	if ab.Cost.Tap && !ab.Cost.TapOthers.Empty() && !TapOthersUntaps(ab.Cost.TapOthers) {
 		for _, id := range params.TapIDs {
 			if id == cardID {
 				return ErrInvalidParam
@@ -2354,6 +2375,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		paid.LifePaid = spent.LifePaid
 	}
 	if ab.Cost.Tap {
+		// #5669: the source's own untap clause first, when it is what
+		// makes the {T} payable.
+		if untapsSourceFirst {
+			g.untapPermanentLocked(source)
+		}
 		source.Tapped = true
 		g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: cardID})
 	}
@@ -2832,7 +2858,19 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// record — here, after the item exists, because this is where the
 	// taps are paid — so station's effect can read the tapped
 	// creature back at resolution (CR 702.184a). See PaidTap.
-	item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	//
+	// #5669: the untap form is paid at the same place for the same
+	// reason ("whenever a creature becomes untapped"), and records
+	// nothing: no permanent was tapped.
+	if TapOthersUntaps(ab.Cost.TapOthers) {
+		paidFirst := uuid.Nil
+		if untapsSourceFirst {
+			paidFirst = cardID
+		}
+		g.payUntapOthersCostLocked(params.TapIDs, paidFirst)
+	} else {
+		item.Paid.TappedOthers = paidTapsFrom(g.payTapOthersCostLocked(playerID, params.TapIDs))
+	}
 	// Fishing Pole: and the tap-the-grantor half, for the same reason.
 	g.payTapGrantorCostLocked(playerID, tapGrantor)
 	// #2695: a saddle ability's tapped creatures are the "creatures

@@ -151,6 +151,8 @@ type Card struct {
 	// The catalog value survives as a fallback for cards with no
 	// printed data (tokens, fixtures) — see CatalogStartingLoyalty.
 	StartingLoyalty int
+	// StartingLoyaltyKnown, the bit that says a 0 here was set by a copy
+	// exception, is in the bool block below (beside PrintedPTKnown).
 
 	// Keywords are printed keyword abilities carried on the card
 	// object itself rather than looked up in the catalog by oracle
@@ -1697,6 +1699,15 @@ type Card struct {
 	// template claims, and ToughnessIsKnown asks that question first.
 	PrintedPTKnown bool
 
+	// StartingLoyaltyKnown says the number in StartingLoyalty was set by
+	// a copy effect's exception ("has starting loyalty X", Ob Nixilis,
+	// the Adversary's casualty copy, #5668), so a 0 there is the real
+	// starting loyalty and not "nothing stamped": the CR 306.5b stamp
+	// does not fall back to the catalog's printed number. A copiable
+	// value (PrintedValues.StartingLoyaltyKnown, CR 707.9b). False for
+	// every card and every copy made without such an exception.
+	StartingLoyaltyKnown bool
+
 	// Solved is the CR 719.3 designation on a Case permanent — the
 	// marker that switches its printed "Solved — [ability]" clauses
 	// on (ADR 0071).
@@ -2650,33 +2661,49 @@ func equalFoldASCII(a, b string) bool {
 	return true
 }
 
-// typeLineHas does a case-insensitive substring check against the
-// given lowercase needle. The needle MUST be lowercase (callers in
-// this file always pass a literal). Returns false for an empty
-// TypeLine (placeholder cards from the demo seed are conservatively
-// treated as no-type).
-func typeLineHas(typeLine, lowerNeedle string) bool {
-	if typeLine == "" {
+// typeLineHas reports whether one WORD of the type line is `needle`,
+// case-insensitively. The words are the supertypes and card types
+// before the dash and the subtypes after it: the line splits on
+// whitespace, the em dash and the "//" between faces. A whole-word
+// match, not a substring one (#5213): "Token Artifact — Lander" has
+// the subtype Lander and is not a land, and "Land" is not "Island".
+// A hyphenated subtype (Assembly-Worker) is one word. The needle is
+// one word; a needle with a space in it matches nothing. Returns
+// false for an empty TypeLine (placeholder cards from the demo seed
+// are conservatively treated as no-type).
+func typeLineHas(typeLine, needle string) bool {
+	if typeLine == "" || needle == "" {
 		return false
 	}
-	n := len(lowerNeedle)
-	for i := 0; i+n <= len(typeLine); i++ {
-		match := true
-		for j := 0; j < n; j++ {
-			c := typeLine[i+j]
-			if c >= 'A' && c <= 'Z' {
-				c += 'a' - 'A'
-			}
-			if c != lowerNeedle[j] {
-				match = false
-				break
-			}
+	start := 0
+	for i := 0; i < len(typeLine); {
+		sep := typeLineSeparatorLen(typeLine, i)
+		if sep == 0 {
+			i++
+			continue
 		}
-		if match {
+		if equalFoldASCII(typeLine[start:i], needle) {
 			return true
 		}
+		i += sep
+		start = i
 	}
-	return false
+	return equalFoldASCII(typeLine[start:], needle)
+}
+
+// typeLineSeparatorLen is the byte length of the word separator that
+// starts at typeLine[i], or 0 when a word character is there. The em
+// dash (U+2014) is three bytes in UTF-8.
+func typeLineSeparatorLen(typeLine string, i int) int {
+	switch typeLine[i] {
+	case ' ', '\t', '\n', '/':
+		return 1
+	case 0xE2:
+		if i+2 < len(typeLine) && typeLine[i+1] == 0x80 && typeLine[i+2] == 0x94 {
+			return 3
+		}
+	}
+	return 0
 }
 
 // NewCard constructs a fresh Card instance with a new InstanceID, owned
