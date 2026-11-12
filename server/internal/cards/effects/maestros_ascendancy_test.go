@@ -178,3 +178,24 @@ func TestMaestrosAscendancySurvivesASnapshotRoundTripOnTheStack(t *testing.T) {
 		t.Error("the restored spell was not exiled instead of going to the graveyard")
 	}
 }
+
+// "Would be put into your graveyard" is however it gets there (CR 701.6a):
+// a countered spell cast this way is exiled too.
+func TestMaestrosAscendancyExilesACounteredSpellCastThisWay(t *testing.T) {
+	g := newCatalogGame(t)
+	me := top100ActiveSeat(g)
+	advanceToMain(t, g)
+	pushCatalogPermanent(g, me.ID, "Maestros Ascendancy", "Enchantment", maestrosAscendancyOracle, false)
+	bear := b12Push(g, me.ID, "Bear", "Creature — Bear", "", 2, 2)
+	instant := pushToGraveyard(g, me, game.Card{Name: "Plain Instant", TypeLine: "Instant", ManaCost: "{1}"})
+	floatForTest(g, me, "C")
+	if err := g.CastSpell(me.ID, instant, maestrosParams(bear)); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	if err := g.CounterSpell(instant, nil); err != nil {
+		t.Fatalf("counter: %v", err)
+	}
+	if me.Graveyard.Contains(instant) || !g.Exile.Contains(instant) {
+		t.Error("the countered spell was not exiled instead of going to the graveyard")
+	}
+}
