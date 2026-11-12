@@ -444,7 +444,14 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 			n := producedSlotCount(f.produced)
 			mine, booked = booked[:n], booked[n:]
 		}
+		poolBefore, choicesBefore := 0, len(g.PendingChoices)
+		if p := g.playerByIDLocked(prod.Controller); p != nil {
+			poolBefore = p.ManaPool.Total()
+		}
 		g.addTriggeredManaLocked(prod.Controller, f.source, f.label, f.produced, pending, mine)
+		// #5644: this triggered mana ability has resolved, or will once
+		// the colour it asked for is named.
+		g.manaTriggerResolvedLocked(prod.Controller, f.source, f.label, poolBefore, choicesBefore)
 		if f.skip {
 			// #1997: the tapped permanent, if it is still there, skips
 			// its controller's next untap step.

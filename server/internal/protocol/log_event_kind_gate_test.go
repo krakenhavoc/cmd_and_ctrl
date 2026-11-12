@@ -113,9 +113,10 @@ var silentEventKinds = map[string]string{
 	"EventBeginEndStep":       silentStepSpine,
 
 	// --- mana --------------------------------------------------------
-	"EventManaAdded":       silentManaBookkeeping,
-	"EventManaSpent":       silentManaBookkeeping,
-	"EventManaPoolEmptied": silentManaBookkeeping,
+	"EventManaAdded":           silentManaBookkeeping,
+	"EventManaSpent":           silentManaBookkeeping,
+	"EventManaPoolEmptied":     silentManaBookkeeping,
+	"EventManaAbilityResolved": "a mana ability resolving is the mana it added, read off the mana display (CR 605.3b); the event exists for \"whenever a mana ability of this creature resolves\" (Tyvar the Bellicose, #5644), whose own LogTrigger line follows",
 	// EventManaAbilityActivated left this list with #1864: it is silent
 	// bookkeeping (CR 605.3b) except when a player activates the "Any
 	// player may activate this ability" mana row of a permanent another
