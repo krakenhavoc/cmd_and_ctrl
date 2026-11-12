@@ -4599,6 +4599,28 @@ information — "{T}: this deals 2 damage to any target" deals its damage
 from the graveyard. Consult it only where the effect genuinely cannot
 be performed without the source as a permanent.
 
+### An Equipment that arrives on its own token (#5654)
+
+"When this Equipment enters, create a <token>, then attach this to it" is
+one enters trigger, and the keyword that prints it has a helper:
+`LivingWeapon(name)` (CR 702.92a, the 0/0 black Phyrexian Germ),
+`ForMirrodin(name)` (CR 702.163a, the 2/2 red Rebel) and `JobSelect(name)`
+(the 1/1 colorless Hero). Put it in `Spec.Triggered` beside the card's
+statics and its `EquipAbility`:
+
+```go
+Triggered: []game.TriggeredAbility{ForMirrodin("Vulshok Splitter")},
+Static:    []game.StaticAbility{PumpAttached(2, 0)},
+Activated: []ActivatedAbility{EquipAbility("{2}{R}")},
+```
+
+All three share `createTokenAndAttachSource`, whose attach rides the token
+creation's keyed tail. Never create the token and attach on the next line
+of Go: a token doubler pauses the creation for a CR 616 order prompt, and
+the IDs are not known until it is answered. A card that spells the
+sentence out with its own token (Hook Swords) calls the same body with
+`described` true, so the token is read through the card's text.
+
 ### Unattaching an Equipment as a cost (ADR 0020 amendment 2026-11-02, #4799)
 
 `Plus(ManaCost("{3}"), UnattachAnEquipment())` is Captain America, First Avenger's "{3}, Unattach an Equipment from
