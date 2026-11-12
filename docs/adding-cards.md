@@ -14471,6 +14471,52 @@ Except: func(v *game.PrintedValues) { v.SetPowerToughness(0, 0) }
   choose-cards prompt over the graveyard whose keyed answer exiles with `ExileLinkedForEffect` (so the cards are
   "exiled with it", CR 607.2a) and then puts the counters on.
 
+### "If your life total would be reduced to 0 or less, instead …" (#5678)
+
+Enduring Angel's clause is an ordinary `ReplacementEffect` on the `RepEventLife` window, because every way a life total
+falls already runs it as a negative `LifeDelta`: a loss, a set-life effect (CR 119.5), a life payment (CR 119.4) and
+the life that damage costs (CR 120.3a, [ADR 0169](decisions/0169-the-life-that-damage-costs-runs-the-life-window.md)).
+The engine half is `game/life_instead.go`; `enduring_angel.go` is the card to copy.
+
+```go
+AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+    return src != nil && ev.LifePlayer == src.Controller && g.LifeWouldBeReducedToZeroOrLessForEffect(ev)
+},
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    if g.ReplacementIsPreviewForEffect(ev) {          // the auto-tapper asking: rewrite the event, touch nothing
+        g.LifeTotalBecomesInsteadForEffect(ev, 3)
+        return nil
+    }
+    transformed := g.CanTransformForEffect(src.InstanceID)
+    if transformed {
+        if err := g.TransformPermanentForEffect(src.InstanceID); err != nil {
+            return err
+        }
+    }
+    g.LifeTotalBecomesInsteadForEffect(ev, 3)        // "your life total becomes 3": gains or loses the difference
+    if !transformed {
+        ev.LifeThenLoses = src.InstanceID            // "Then ... you lose the game", after the life lands
+    }
+    return nil
+},
+```
+
+- **`LifeWouldBeReducedToZeroOrLessForEffect(ev)`** reads the event as it stands when the window asks, so a doubler
+  applied first has already made the loss larger. A gain never matches, even for a player below 0.
+- **`LifeTotalBecomesInsteadForEffect(ev, n)`** leaves the event in the window as a gain or a loss of the difference.
+  A later replacement sees it, the caller's "life lost this way" is told what really moved, a player who can't gain
+  life does not gain, and a difference of zero lands as no event at all.
+- **`ev.LifeThenLoses`** is the card the loss of the game comes from. Never call `LoseTheGameForEffect` from a life
+  `Replace`: the event has not landed, other replacements may still apply, and a CR 616 prompt may park it. The place
+  the event lands carries the loss out (CR 104.3e, gated by "can't lose"), for damage after the damage has landed. The
+  field is carried by the snapshot.
+- **A `Replace` on this window that does more than rewrite the event asks `ReplacementIsPreviewForEffect` first.** The
+  auto-tapper previews the life window without touching the game (`lifeChangePreviewLocked`), and it calls the same
+  `Replace` functions.
+- **"<This>'s power and toughness are each equal to your life total"** is `powerAndToughnessEqualToYourLifeTotal()`
+  (Serra Avatar, Angelic Enforcer). It declares `DependsOnLifeTotal`; a life-keyed static without it keeps a stale
+  size until something unrelated drops the layer cache.
+
 ### When in doubt
 
 [ADR 0010](decisions/0010-card-effect-catalog.md) captures every
