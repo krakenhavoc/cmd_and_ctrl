@@ -374,6 +374,13 @@ type AbilityCostSubject struct {
 	// reduction by the source's mana cost (power_up.go).
 	PowerUp bool
 
+	// Ninjutsu is the ninjutsu keyword bit (CR 702.49a, and commander
+	// ninjutsu, its variant, CR 702.49d; #5672): "Ninjutsu abilities you
+	// activate cost {1} less to activate" (Silver-Fur Master). The
+	// query's FromZone is the hand or the command zone, where the card
+	// with the ability is (CR 113.6).
+	Ninjutsu bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation — set by manaAbilityCostQueryLocked (#1191), so a
 	// predicate says which kind it means. CR 605.1a makes both
@@ -1043,12 +1050,13 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 		// because both had to check it to get here.
 		FromZone: zone,
 		Ability: &AbilityCostSubject{
-			Label:   ab.Label,
-			Exhaust: ab.Exhaust,
-			Boast:   ab.Boast,
-			Equip:   ab.Equip,
-			PowerUp: ab.PowerUp,
-			own:     ab.CostModifiers,
+			Label:    ab.Label,
+			Exhaust:  ab.Exhaust,
+			Boast:    ab.Boast,
+			Equip:    ab.Equip,
+			PowerUp:  ab.PowerUp,
+			Ninjutsu: ab.Ninjutsu,
+			own:      ab.CostModifiers,
 		},
 		Targets: targets,
 	}
