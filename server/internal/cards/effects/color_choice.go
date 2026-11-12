@@ -20,6 +20,7 @@ import (
 //	ProducedOneColor(n)                    "Add N mana of any one color."
 //	DifferentColors(n)                     "Add N mana of different colors."
 //	ChooseColorTail(…)                     "Choose a color. <rest of the effect>"
+//	ChooseColorOrColorlessTail(…)          "…colorless or the color of your choice"
 //
 // Every reader of a stored colour treats "not chosen yet" as the
 // weaker outcome — no mana, no anthem — never as "every colour".
@@ -170,6 +171,22 @@ func ChooseColorTail(purpose game.ColorPurpose, g *game.Game, chooser, source uu
 		Question: question,
 		Purpose:  purpose,
 		ThenTail: then,
+	})
+}
+
+// ChooseColorOrColorlessTail is ChooseColorTail for "colorless or the
+// color of your choice" (Angelic Intervention, #5650): the five colours
+// and one more answer, game.ColorlessChoice, which the tail is told as
+// its Word like a colour. Not "choose a color" (CR 105.4 says colorless
+// is not one), so no other prompt offers it.
+func ChooseColorOrColorlessTail(purpose game.ColorPurpose, g *game.Game, chooser, source uuid.UUID, question string, then game.KeyedTail) {
+	g.QueueColorChoiceThenForEffect(game.ColorPrompt{
+		Chooser:     chooser,
+		Source:      source,
+		Question:    question,
+		Purpose:     purpose,
+		OrColorless: true,
+		ThenTail:    then,
 	})
 }
 

@@ -192,6 +192,12 @@ const (
 	// of ProtectionQualityManaValueAtMost, read the same way. Value is N
 	// in decimal; an unreadable cost matches nothing.
 	ProtectionQualityManaValueAtLeast
+	// ProtectionQualityColorless is "protection from colorless" (CR
+	// 702.16a over CR 105.2c, Angelic Intervention, #5650): the source
+	// has no colour. A fact about the source's colours rather than a
+	// colour, so it is its own kind and Value is empty. An unknown
+	// source matches nothing, as for every characteristic quality.
+	ProtectionQualityColorless
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -233,6 +239,8 @@ func (k ProtectionQualityKind) String() string {
 		return "multicolored"
 	case ProtectionQualityManaValueAtLeast:
 		return "mana_value_at_least"
+	case ProtectionQualityColorless:
+		return "colorless"
 	}
 	return ""
 }
@@ -458,6 +466,8 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 		return ProtectionQuality{Kind: ProtectionQualityNoncreaturePermanents, Printed: printed}, true
 	case "multicolored":
 		return ProtectionQuality{Kind: ProtectionQualityMulticolored, Printed: printed}, true
+	case protectionColorless:
+		return ProtectionQuality{Kind: ProtectionQualityColorless, Printed: printed}, true
 	}
 	// A designation as a quality (CR 701.54b). Plural, as printed.
 	if lower == protectionRingBearers {
@@ -519,8 +529,10 @@ func parseManaValueBound(lower, tail string) (int, bool) {
 // one-letter wire colour. The five colours and nothing else:
 // "protection from all colors", "from monocolored" and "from
 // multicolored" are outside the grammar on purpose (ADR 0072 §10), except
-// "multicolored" alone, which Stonecoil Serpent prints (#4834) and which
-// parseQuality reads as a whole phrase.
+// "multicolored" alone, which Stonecoil Serpent prints (#4834), and
+// "colorless", which Angelic Intervention grants (#5650); parseQuality
+// reads each as a whole phrase. Colorless is not a colour (CR 105.4), so
+// it is not in this map.
 var protectionColors = map[string]string{
 	"white": "W",
 	"blue":  "U",
@@ -642,6 +654,32 @@ func ProtectionFromColor(color string) string {
 		}
 	}
 	return ""
+}
+
+// protectionColorless is the printed quality of "protection from
+// colorless", lowercased for the parser's comparison. #5650.
+const protectionColorless = "colorless"
+
+// ProtectionFromColorless is the token for "protection from colorless"
+// (CR 702.16a: the quality "can be any characteristic value or
+// information", and CR 105.2c: "A colorless object has no color").
+// Exported for the reason ProtectionFromChosenPlayer is. #5650.
+const ProtectionFromColorless = protectionPrefix + protectionColorless
+
+// ProtectionFromColorOrColorless is the token for the answer to
+// "protection from colorless or from the color of your choice" (Angelic
+// Intervention, #5650): ColorlessChoice is protection from colorless,
+// and a colour letter is ProtectionFromColor of it. Empty for anything
+// else.
+//
+// The place that answer becomes a token, beside ProtectionFromColor,
+// which stays the five colours: a prompt that offers only colours never
+// hands a colourless answer to it.
+func ProtectionFromColorOrColorless(answer string) string {
+	if answer == ColorlessChoice {
+		return ProtectionFromColorless
+	}
+	return ProtectionFromColor(answer)
 }
 
 // ChoosableCardTypes is the answer list for "choose a card type"
@@ -838,6 +876,11 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return len(src.Colors) > 0
 	case ProtectionQualityMulticolored:
 		return len(src.Colors) >= 2
+	case ProtectionQualityColorless:
+		// CR 105.2c. The snapshot's colours are the post-layer ones, so
+		// an artifact an effect made red is not colourless and a
+		// creature an effect made colourless is (CR 105.3).
+		return len(src.Colors) == 0
 	case ProtectionQualityColor:
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:

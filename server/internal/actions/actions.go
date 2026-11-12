@@ -2209,7 +2209,8 @@ func dispatch(g *game.Game, a Action) error {
 			CardIDs  []string `json:"card_ids"`
 			// Color answers the two colour prompts: a PendingChoiceMana
 			// pick (one of "W"/"U"/"B"/"R"/"G"/"C") and a #742
-			// PendingChoiceColor ("choose a color", W/U/B/R/G). The
+			// PendingChoiceColor ("choose a color", W/U/B/R/G, and "C"
+			// where the prompt offers colorless, #5650). The
 			// two share the field so the client's colour buttons
 			// answer both, and are routed by the choice's KIND — the
 			// presence of `color` alone no longer says which resolver

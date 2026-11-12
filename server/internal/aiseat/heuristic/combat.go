@@ -73,6 +73,11 @@ func protectedFrom(defender, source *protocol.CardView) bool {
 			if slices.Contains(source.Colors, p.Value) {
 				return true
 			}
+		case "colorless":
+			// #5650, CR 105.2c: a source with no colour.
+			if len(source.Colors) == 0 {
+				return true
+			}
 		case "mana_value_at_most":
 			// #2181: the bound against the source's printed cost. A
 			// minimal edit; the engine owns the rule (CR 202.3).
@@ -785,8 +790,21 @@ func hasRestriction(c *protocol.CardView, want string) bool {
 }
 
 func hasColor(c *protocol.CardView, want string) bool {
-	return c != nil && slices.Contains(c.Colors, want)
+	if c == nil {
+		return false
+	}
+	// "C" is the colourless answer of a prompt that offers it (#5650):
+	// it asks whether the card has no colour at all.
+	if want == colorlessAnswer {
+		return len(c.Colors) == 0
+	}
+	return slices.Contains(c.Colors, want)
 }
+
+// colorlessAnswer is the wire letter of the colourless answer on a
+// choose_color prompt (game.ColorlessChoice; this package may not import
+// internal/game).
+const colorlessAnswer = "C"
 
 func sharesColor(a, b *protocol.CardView) bool {
 	if a == nil || b == nil {
