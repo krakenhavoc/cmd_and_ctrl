@@ -17,12 +17,13 @@ func observerTags() []string {
 	)}
 }
 
-func observerPool(n int) ManaPool {
-	pool := make(ManaPool, 0, n)
-	for i := 0; i < n; i++ {
-		pool = append(pool, ManaToken{Color: "U", Restrictions: observerTags()})
+// observerPool is three of the Observer's {U}.
+func observerPool() ManaPool {
+	return ManaPool{
+		{Color: "U", Restrictions: observerTags()},
+		{Color: "U", Restrictions: observerTags()},
+		{Color: "U", Restrictions: observerTags()},
 	}
-	return pool
 }
 
 func withAltCost(ctx ManaSpendContext, key string) ManaSpendContext {
@@ -42,7 +43,7 @@ func TestAltCostRestriction(t *testing.T) {
 		{"a cast for the disturb cost", withAltCost(creature, "disturb"), true},
 		{"a graveyard cast for the mana cost", creature, false},
 		{"a cast for flashback", withAltCost(creature, "flashback"), false},
-		{"a cast for escape", withAltCost(creature, "escape"), false},
+		{"an instant cast for escape", withAltCost(instantSpendContext(), "escape"), false},
 		{"an activation that claims the key", ManaSpendContext{Purpose: SpendPurposeActivate, AltCost: "disturb"}, false},
 		{"an unknown purpose that claims the key", ManaSpendContext{AltCost: "disturb"}, false},
 	} {
@@ -75,7 +76,7 @@ func TestAltCostManaPaysADisturbCast(t *testing.T) {
 	me := g.Seats[0]
 	id := seedDisturb(t, g, me)
 
-	me.ManaPool = observerPool(3)
+	me.ManaPool = observerPool()
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "graveyard", AlternativeCost: "disturb", Strict: true}); err != nil {
 		t.Fatalf("disturb cast with disturb-only mana: %v", err)
 	}
@@ -98,7 +99,7 @@ func TestAltCostManaRefusesTheManaCostOfADisturbCard(t *testing.T) {
 	c := disturbFixture(me.ID)
 	me.Hand.PushTop(c)
 
-	me.ManaPool = observerPool(3)
+	me.ManaPool = observerPool()
 	err := g.CastSpell(me.ID, c.InstanceID, CastSpellParams{Strict: true})
 	var short *InsufficientManaError
 	if !errors.As(err, &short) {
