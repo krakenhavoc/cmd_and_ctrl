@@ -622,6 +622,21 @@ const (
 	// EventTapCard precedes it.
 	EventEnlist EventKind = "enlist"
 
+	// EventAttackTaxPaid — an attack declaration paid its CR 508.1h
+	// cost to one taxing permanent (#5271): Propaganda's, Ghostly
+	// Prison's, Windborn Muse's "can't attack you unless their
+	// controller pays {2}". Actor is the player who paid, Target the
+	// defending player, Source and CardID the permanent whose clause
+	// charged (for a tax with a duration, attack_tax_duration.go, the
+	// card that made it), and Label what that permanent charged this
+	// payment, e.g. "{2}{2}" for two creatures.
+	//
+	// Emitted only by payAttackTaxLocked, after the payment succeeds:
+	// one event per (defending player, taxing permanent) pair, so a
+	// board with two taxes says both. A refused declaration paid
+	// nothing and emits nothing. A log breadcrumb, watched by nothing.
+	EventAttackTaxPaid EventKind = "attack_tax_paid"
+
 	// EventForage — a player foraged (CR 701.61a, #5184): exiled three
 	// cards from their graveyard or sacrificed a Food, as a cost, an
 	// additional cost or an effect's "you may forage". Actor is the

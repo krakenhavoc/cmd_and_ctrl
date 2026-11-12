@@ -449,3 +449,81 @@ func itoa(n int) string {
 	}
 	return string(b[i:])
 }
+
+// --- the payment is said out loud (#5271) ---------------------------
+
+// attackTaxPaidEvents is every EventAttackTaxPaid in the log.
+func attackTaxPaidEvents(g *Game) []Event {
+	var out []Event
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == EventAttackTaxPaid {
+				out = append(out, ev)
+			}
+		}
+	})
+	return out
+}
+
+// #5271: a player reported a Ghostly Prison that "did not work". The
+// auto-tapper had paid the {2} out of the attacker's lands, and the
+// only line at the table was "<creature> attacks <player>". The payment
+// now has its own event naming who paid what to attack whom, and which
+// permanent charged it. A refused declaration has none.
+func TestAPaidAttackTaxIsAnnouncedAndARefusedOneIsNot(t *testing.T) {
+	g, bear := taxedTable(t, map[string][]AttackTax{
+		ghostlyPrisonTestOracle: {flatTax("{2}")},
+	})
+	prison := pushTaxEnchantment(g, g.Seats[1], "Ghostly Prison", ghostlyPrisonTestOracle)
+
+	if err := g.DeclareAttacker(bear, g.Seats[1].ID); !errors.Is(err, ErrAttackTaxUnpaid) {
+		t.Fatalf("an empty pool into Ghostly Prison: %v, want ErrAttackTaxUnpaid", err)
+	}
+	if evs := attackTaxPaidEvents(g); len(evs) != 0 {
+		t.Fatalf("a refused declaration announced a payment: %+v", evs)
+	}
+
+	addMana(g.Seats[0], 2)
+	if err := g.DeclareAttacker(bear, g.Seats[1].ID); err != nil {
+		t.Fatalf("{2} into Ghostly Prison: %v", err)
+	}
+	evs := attackTaxPaidEvents(g)
+	if len(evs) != 1 {
+		t.Fatalf("got %d EventAttackTaxPaid, want 1", len(evs))
+	}
+	ev := evs[0]
+	if ev.Actor != g.Seats[0].ID || ev.Target != g.Seats[1].ID || ev.CardID != prison || ev.Source != prison || ev.Label != "{2}" {
+		t.Errorf("EventAttackTaxPaid = actor %v target %v card %v source %v label %q; want the attacker, the defender, the Prison and {2}",
+			ev.Actor, ev.Target, ev.CardID, ev.Source, ev.Label)
+	}
+}
+
+// Two taxes on one board are two events, each with its own share, and
+// a two-creature swing charges each of them once per creature.
+func TestEachTaxingPermanentAnnouncesItsOwnShare(t *testing.T) {
+	g, first := taxedTable(t, map[string][]AttackTax{
+		propagandaTestOracle:    {flatTax("{2}")},
+		ghostlyPrisonTestOracle: {flatTax("{2}")},
+	})
+	second := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	propaganda := pushTaxEnchantment(g, g.Seats[1], "Propaganda", propagandaTestOracle)
+	prison := pushTaxEnchantment(g, g.Seats[1], "Ghostly Prison", ghostlyPrisonTestOracle)
+	addMana(g.Seats[0], 8)
+
+	if _, err := g.DeclareAttackers([]AttackDeclaration{
+		{Attacker: first, Target: g.Seats[1].ID},
+		{Attacker: second, Target: g.Seats[1].ID},
+	}); err != nil {
+		t.Fatalf("two attackers into two taxes with {8}: %v", err)
+	}
+	got := map[uuid.UUID]string{}
+	for _, ev := range attackTaxPaidEvents(g) {
+		if _, dup := got[ev.CardID]; dup {
+			t.Errorf("%v announced twice for one payment", ev.CardID)
+		}
+		got[ev.CardID] = ev.Label
+	}
+	if len(got) != 2 || got[propaganda] != "{2}{2}" || got[prison] != "{2}{2}" {
+		t.Errorf("announced shares = %v, want {2}{2} from each of Propaganda and Ghostly Prison", got)
+	}
+}

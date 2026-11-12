@@ -83,6 +83,8 @@ const LOG_TONE: Record<LogKind, string> = {
   exert: "tone-combat",
   // #5658: so is an enlist.
   enlist: "tone-combat",
+  // #5271: and so is the attack tax it paid.
+  attack_tax: "tone-combat",
   eliminated: "tone-bad",
   // ADR 0057: the end of the game is the spine of the log, not a
   // whisper; a prevented win is a swing that didn't happen.
