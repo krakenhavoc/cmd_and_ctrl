@@ -476,6 +476,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileGrantor {
 			out.ExileGrantor = true
 		}
+		// #5683: and the exile-by-name component; dropped, The Book of
+		// Vile Darkness would keep the Eye and the Hand.
+		if c.ExileNamed != nil {
+			out.ExileNamed = c.ExileNamed
+		}
 		// Cursecloth Wrappings: and "its mana cost" as the mana component;
 		// dropped, the granted embalm would be free.
 		if c.ManaFromSource {
@@ -753,6 +758,17 @@ func ExileACreatureYouControl() game.AbilityCost {
 // Register refuses it on an ability that functions from any other
 // zone (game.ExileSelfZoneSupported).
 func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
+
+// ExileYourPermanentsNamed is the "… and <card type>s you control named
+// A and B" cost component (#5683, game.AbilityCost.ExileNamed) — The Book
+// of Vile Darkness's "Exile The Book of Vile Darkness and artifacts you
+// control named Eye of Vecna and Hand of Vecna", composed with
+// ExileThis. Every permanent the activator controls with the card type
+// and one of the names is exiled; there is nothing to pick, and an empty
+// set still pays. `cardType` is lowercase ("artifact").
+func ExileYourPermanentsNamed(cardType string, names ...string) game.AbilityCost {
+	return game.AbilityCost{ExileNamed: &game.ExileNamedCost{CardType: cardType, Names: names}}
+}
 
 // ReturnThis is the "Return this <permanent> to its owner's hand" cost
 // component (#2028) — Gossamer Chains' "Return this enchantment to its

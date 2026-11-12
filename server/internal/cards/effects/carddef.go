@@ -15,8 +15,15 @@ import (
 // defs is the engine-facing catalog, keyed exactly as registry is.
 var defs = map[string]*game.CardDef{}
 
-// lookupDef is the game.CatalogLookup implementation.
-func lookupDef(key string) *game.CardDef { return defs[key] }
+// lookupDef is the game.CatalogLookup implementation. A derived key
+// ("all triggered abilities of <card>", #5683) is answered from the card
+// it names; every other key is a filed definition.
+func lookupDef(key string) *game.CardDef {
+	if d, ok := defs[key]; ok {
+		return d
+	}
+	return derivedTriggerDef(key)
+}
 
 // fileDef is the one writer of `defs`: it stamps every triggered row of
 // the definition with its catalog identity (the key and its index —

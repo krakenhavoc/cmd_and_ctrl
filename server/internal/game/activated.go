@@ -575,6 +575,16 @@ type AbilityCost struct {
 	// moves (CR 118.3). See exile_grantor_cost.go.
 	ExileGrantor bool
 
+	// ExileNamed exiles every permanent the activator controls with a
+	// card type and one of the listed names as part of the cost (#5683):
+	// The Book of Vile Darkness's "{T}, Exile The Book of Vile Darkness
+	// and artifacts you control named Eye of Vecna and Hand of Vecna".
+	// The board decides the set, so nothing is announced, and an empty
+	// set is still a payable cost. The source is never in it (ExileSelf
+	// pays for the source). What it exiled is recorded on
+	// PaidCost.Exiled. See exile_named_cost.go.
+	ExileNamed *ExileNamedCost
+
 	// TapGrantor taps the permanent that GRANTED this ability as part of
 	// the cost: Fishing Pole's equipped creature has "{1}, {T}, Tap
 	// Fishing Pole: …". Same grantor as ExileGrantor (AbilityOrigin.
@@ -1930,6 +1940,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
+	// #5683: "and artifacts you control named …" (The Book of Vile
+	// Darkness). The board decides the set, read once here as the cost
+	// is determined (CR 601.2f); a permanent in it pays no other
+	// component (CR 118.3).
+	exileNamed := g.exileNamedSetLocked(playerID, cardID, ab.Cost.ExileNamed)
+	if err := validateExileNamedCostLocked(exileNamed, sacrifices, params.ReturnIDs, params.ExilePermanentIDs, []uuid.UUID{grantor}); err != nil {
+		return err
+	}
 	// "Tap <the permanent that granted this>" (Fishing Pole): the row's
 	// grantor must still be on the battlefield and untapped, and pays no
 	// other component (CR 118.3).
@@ -2166,6 +2184,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// a commander exiled to The Soul Stone's harness is offered the
 	// command zone (CR 903.9a) before anything is paid.
 	moving = append(moving, params.ExilePermanentIDs...)
+	// #5683: and the permanents an exile-by-name component moves.
+	moving = append(moving, exileNamed...)
 	// ADR 0109 §7: and the cards the library components move — the
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
@@ -2516,6 +2536,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #5683: the exile-by-name set, through the same door and for the
+	// same reasons; recorded after the picked permanents.
+	exiledNamed, err := g.payExilePermanentsCostKindLocked(playerID, cardID, exileNamed, params.commanderAnswers, MoveCauseCost, PermissionCardRef{})
+	if err != nil {
+		return err
+	}
+	exiledPermanents = append(exiledPermanents, exiledNamed...)
 	// #4000: the exile-the-grantor half, with the other permanent-moving
 	// components and for the same reasons: the source stays where it is
 	// (only the grantor moves), and the grantor's leaves-triggers sit
