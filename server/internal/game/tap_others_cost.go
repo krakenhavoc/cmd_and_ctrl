@@ -367,16 +367,11 @@ func (g *Game) TapOthersPayableAtX(playerID, sourceID uuid.UUID, tc *TapOthersCo
 //
 // Caller must hold g.mu.
 func (g *Game) validateTapOthersCostLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID) error {
-	return g.validateTapOthersCostAtXLocked(playerID, sourceID, tc, ids, 0)
+	return g.validateTapOthersCostWithSourceLocked(playerID, sourceID, tc, ids, 0, false)
 }
 
-// validateTapOthersCostAtXLocked validates the component against the
-// X announced for this activation. Fixed costs ignore x.
-func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *TapOthersCost, ids []uuid.UUID, x int) error {
-	return g.validateTapOthersCostWithSourceLocked(playerID, sourceID, tc, ids, x, false)
-}
-
-// validateTapOthersCostWithSourceLocked is the validator itself.
+// validateTapOthersCostWithSourceLocked is the validator itself, against
+// the X announced for this activation (fixed costs ignore x).
 // `alsoTapsSource` is set by the activation path when the same cost
 // prints {T}: for the untap form (#5669) the source may then be named
 // whatever its state, on UntapOthersSourcePaysForEffect's terms.
