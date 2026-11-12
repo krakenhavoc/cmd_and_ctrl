@@ -13804,6 +13804,15 @@ ctx.SourcePermanent()                                                           
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
+- **"The next spell you cast this turn has convoke"** is `Do(NextSpellHasConvoke("<card name>"))` (Wand of the
+  Worldsoul, Flockchaser Phantom): a one-use `game.NextSpellPromise{Convoke: true}`, spent by the next spell cast
+  whether or not a creature was tapped, gone at end of turn. A spell's own tap cost, a promised one and the granted
+  ones are chained, so a spell with improvise that is promised convoke can tap artifacts and creatures (#5647).
+- **"Whenever you cast a spell that has convoke"** is `On(game.EventCast, YouCastASpellThatHasConvoke, label, effect)`
+  (Joyful Stormsculptor, Kasla, the Broken Halo, Saint Traft and Rem Karolus). It reads `StackItem.HadConvoke`
+  through `Game.SpellHadConvokeForEffect`: stamped as the spell becomes cast (CR 601.2i), true when convoke is
+  printed on the spell, given by a permanent (`SpellsYouCastHaveConvoke`) or given by a promise, and true whether or
+  not a creature was tapped (that is `Paid.Convoked`). "Another spell" needs no extra check on a permanent.
 
 ### Pieces from the Wilhelt deck (#3209)
 

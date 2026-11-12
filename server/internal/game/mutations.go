@@ -2490,7 +2490,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #5647: whether the spell HAS convoke, tapped for or not, read
 	// here while a "the next spell you cast this turn has convoke"
 	// promise is still standing (the spend below takes it).
-	if item := g.StackMeta[cardID]; item != nil && castTapCost.HasKey("convoke") {
+	if item := g.StackMeta[cardID]; item != nil && castTapCost.HasConvoke() {
 		item.HadConvoke = true
 	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same

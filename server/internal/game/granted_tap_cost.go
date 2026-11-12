@@ -82,11 +82,11 @@ func (g *Game) TapPermanentsCostForCastLocked(caster uuid.UUID, card Card, from 
 	return out
 }
 
-// HasKey reports whether the cost, or one chained to it, is the keyword
-// `key` ("convoke", "improvise", "waterbend"). Nil-safe.
-func (c *TapPermanentsCost) HasKey(key string) bool {
+// HasConvoke reports whether the cost, or one chained to it, is convoke
+// (CR 702.51). Nil-safe.
+func (c *TapPermanentsCost) HasConvoke() bool {
 	for _, l := range c.links() {
-		if l.Key == key {
+		if l.Key == "convoke" {
 			return true
 		}
 	}
