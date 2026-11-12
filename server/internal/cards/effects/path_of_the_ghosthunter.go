@@ -13,6 +13,9 @@ package effects
 // 608.2c). The vote happens at every table; planeswalking and chaos do
 // something only at a table playing Planechase.
 //
+// XMatters is left unset on purpose: the vote is a fixed rider that
+// happens whatever X is, so X = 0 is a real move (x_matters_guard_test.go).
+//
 // No simplification.
 func init() {
 	Register(Spec{
