@@ -29,6 +29,10 @@ type RollDice struct {
 	// TailN is a number read as the effect resolves that the tail reads
 	// (TailOutcome.Tail.N): Diviner's Portent's X.
 	TailN int
+	// TailCarry are IDs read as the effect resolves that the tail reads
+	// (TailOutcome.Tail.Carry): the cards Danse Macabre's sacrifices put
+	// into graveyards.
+	TailCarry []uuid.UUID
 	// Modifier is what the instruction adds to the roll, negative for
 	// "subtract" (CR 706.2, #5681): "roll a d20 and add the number of
 	// cards in your hand". Read it as the effect resolves and put it
@@ -44,6 +48,7 @@ func (r RollDice) Apply(ctx *Context) error {
 	var then game.KeyedTail
 	if r.Then.Key() != "" {
 		then = withN(ctx.ItemTail(r.Then), r.TailN)
+		then.Carry = append([]uuid.UUID(nil), r.TailCarry...)
 	}
 	d := randomDraw(ctx)
 	return ctx.Game.RollDiceThenForEffect(game.DiceRoll{
