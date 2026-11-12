@@ -2169,6 +2169,21 @@ type Event struct {
 	// schema v9.
 	XCost bool `json:"x_cost,omitempty"`
 
+	// LifePaid is, on an EventActivateAbility, the life the activator
+	// paid to activate the ability: PaidCost.LifePaid as the
+	// announcement finished paying, so a printed "Pay N life" component
+	// (CR 119.4), the life an X or a counted life cost came to, and 2
+	// for each Phyrexian mana symbol paid with life (CR 107.4f), all in
+	// one total. "Whenever you activate an ability that isn't a mana
+	// ability, if life was paid to activate it, you may pay that much
+	// life again" (Verrak, Warped Sengir, #5662) reads it for both the
+	// "if" and the amount. On the event for Exhaust's reason, and one
+	// more: the ability may have left the stack by the time the trigger
+	// resolves, and CR 603.4 still asks what was paid. Zero when no
+	// life was paid, and on every other event. Additive within schema
+	// v9.
+	LifePaid int `json:"life_paid,omitempty"`
+
 	// Converted marks an EventTransform whose turn-over was a CONVERT
 	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a
 	// transform. A convert follows the rules for transforming, so every
