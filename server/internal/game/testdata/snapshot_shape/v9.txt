@@ -20942,6 +20942,8 @@ loyaltyExtraActivationsThisTurn{}	number:int
 loyaltyExtraActivationsUsedThisTurn	map:array
 loyaltyExtraActivationsUsedThisTurn{}	map:array
 loyaltyExtraActivationsUsedThisTurn{}{}	number:int
+loyaltyTwiceThisTurn	map:array
+loyaltyTwiceThisTurn{}	bool
 match	object
 match.bestOf	number:int
 match.between	object

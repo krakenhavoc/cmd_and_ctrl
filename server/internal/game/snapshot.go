@@ -441,6 +441,11 @@ type GameSnapshot struct {
 	LoyaltyExtraActivationsThisTurn     map[uuid.UUID]int               `json:"loyaltyExtraActivationsThisTurn,omitempty"`
 	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int `json:"loyaltyExtraActivationsUsedThisTurn,omitempty"`
 
+	// LoyaltyTwiceThisTurn is Game's (#5665, ADR 0145 amendment
+	// 2026-11-12): the players whose planeswalkers may activate loyalty
+	// abilities twice this turn. Additive.
+	LoyaltyTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyTwiceThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -2656,6 +2661,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
 	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
 	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
+	s.LoyaltyTwiceThisTurn = copyBoolMap(g.LoyaltyTwiceThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.DilemmasFacedThisTurn = copyIntMap(g.DilemmasFacedThisTurn)
@@ -4001,6 +4007,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LoyaltyActivatedTwiceThisTurn = copyBoolMap(s.LoyaltyActivatedTwiceThisTurn)
 	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
 	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
+	g.LoyaltyTwiceThisTurn = copyBoolMap(s.LoyaltyTwiceThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.DilemmasFacedThisTurn = copyIntMap(s.DilemmasFacedThisTurn)
