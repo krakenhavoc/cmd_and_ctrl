@@ -77027,6 +77027,10 @@ turnTally.attacks[].defender	custom(uuid.UUID)
 turnTally.attacks[].epoch	number:int
 turnTally.attacks[].phaseId	number:int
 turnTally.attacks[].planeswalkerController	custom(uuid.UUID)
+turnTally.becameCrewed	array
+turnTally.becameCrewed[]	object
+turnTally.becameCrewed[].epoch	number:int
+turnTally.becameCrewed[].id	custom(uuid.UUID)
 turnTally.becameTapped	map:string
 turnTally.becameTapped{}	number:int
 turnTally.casts	array

@@ -4994,6 +4994,9 @@ func (g *Game) resolveTopAbilityLocked() {
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
+	// CR 702.122e (#5671): a crew ability has resolved, so its Vehicle
+	// "becomes crewed".
+	g.noteCrewAbilityResolvedLocked(top)
 	// #3613: an ability that asked something has not resolved until the
 	// answer is in; its log line waits for it (resolution_tail.go).
 	g.holdResolutionTailLocked(top, resolveSeq)
